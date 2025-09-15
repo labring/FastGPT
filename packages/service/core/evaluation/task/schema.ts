@@ -62,40 +62,33 @@ export const EvaluationEvaluatorSchema = new Schema(
       required: false,
       default: {}
     },
-    weight: {
-      type: Number,
-      required: false,
-      default: 0
-    },
     thresholdValue: {
       type: Number,
       required: false,
       default: 80
     },
-    calculateType: {
+    scoreScaling: {
       type: Number,
-      enum: CaculateMethodValues,
-      default: CalculateMethodEnum.mean
-    },
-    metricsScore: {
-      type: Number,
-      required: false
-    },
-    summary: {
-      type: String,
-      required: false
-    },
-    summaryStatus: {
-      type: Number,
-      enum: SummaryStatusValues,
-      default: SummaryStatusEnum.pending
-    },
-    errorReason: {
-      type: String,
-      required: false
+      required: false,
+      default: 100, // Default 100x amplification
+      validate: {
+        validator: function (value: number) {
+          return (
+            typeof value === 'number' &&
+            !isNaN(value) &&
+            isFinite(value) &&
+            value > 0 &&
+            value <= 10000
+          ); // Support decimals like 0.01 for reduction
+        },
+        message:
+          'Score scaling must be a positive number greater than 0 and less than or equal to 10000'
+      }
     }
   },
-  { _id: false }
+  {
+    _id: false
+  }
 );
 
 // Collection names
@@ -164,7 +157,43 @@ export const EvaluationTaskSchema = new Schema({
       type: Number,
       default: 0
     }
-  }
+  },
+  // Summary configuration for each evaluator (indexed by evaluator index)
+  summaryConfigs: [
+    {
+      metricId: {
+        type: String,
+        required: true
+      },
+      metricName: {
+        type: String,
+        required: true
+      },
+      weight: {
+        type: Number,
+        required: true
+      },
+      calculateType: {
+        type: Number,
+        enum: CaculateMethodValues,
+        required: true
+      },
+      summary: {
+        type: String,
+        default: ''
+      },
+      summaryStatus: {
+        type: Number,
+        enum: SummaryStatusValues,
+        default: SummaryStatusEnum.pending
+      },
+      errorReason: {
+        type: String,
+        default: ''
+      },
+      _id: false
+    }
+  ]
 });
 
 // Optimized indexes for EvaluationTaskSchema

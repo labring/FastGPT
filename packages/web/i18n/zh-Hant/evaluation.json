@@ -11,6 +11,7 @@
   "target_version_id_missing": "應用版本ID缺失",
   "evaluators_required": "評估器必填",
   "evaluator_invalid_config": "評估器配置無效",
+  "evaluator_invalid_score_scaling": "評估器分數縮放值無效，必須是大於0且小於等於10000的正數（支持小數，如0.01表示縮小100倍）",
   "user_input_required": "用戶輸入必填",
   "expected_output_required": "預期輸出必填",
   "invalid_format": "無效的格式",

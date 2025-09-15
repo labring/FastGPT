@@ -11,6 +11,7 @@
   "target_version_id_missing": "Application version ID is missing",
   "evaluators_required": "Evaluators are required",
   "evaluator_invalid_config": "Evaluator configuration is invalid",
+  "evaluator_invalid_score_scaling": "Invalid score scaling value, must be a positive number greater than 0 and less than or equal to 10000 (decimals supported, e.g., 0.01 means 100x reduction)",
   "user_input_required": "User input is required",
   "expected_output_required": "Expected output is required",
   "invalid_format": "Invalid format",

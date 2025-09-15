@@ -59,14 +59,14 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
       calculateTypeName: '平均值',
       metricsConfig: [
         {
-          metricsId: 'metric-1',
-          metricsName: '准确性',
+          metricId: 'metric-1',
+          metricName: '准确性',
           thresholdValue: 0.8,
           weight: 50
         },
         {
-          metricsId: 'metric-2',
-          metricsName: '相关性',
+          metricId: 'metric-2',
+          metricName: '相关性',
           thresholdValue: 0.7,
           weight: 50
         }
@@ -93,14 +93,14 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
       calculateTypeName: '平均值',
       metricsConfig: [
         {
-          metricsId: 'metric-1',
-          metricsName: '准确性',
+          metricId: 'metric-1',
+          metricName: '准确性',
           thresholdValue: 0.8,
           weight: 50
         },
         {
-          metricsId: 'metric-2',
-          metricsName: '相关性',
+          metricId: 'metric-2',
+          metricName: '相关性',
           thresholdValue: 0.7,
           weight: 50
         }
@@ -185,8 +185,8 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
       calculateTypeName: '中位数',
       metricsConfig: [
         {
-          metricsId: 'metric-1',
-          metricsName: '完整性',
+          metricId: 'metric-1',
+          metricName: '完整性',
           thresholdValue: 0.9,
           weight: 100
         }

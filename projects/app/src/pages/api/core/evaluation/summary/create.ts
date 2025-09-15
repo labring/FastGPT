@@ -14,14 +14,26 @@ async function handler(
   req: ApiRequestProps<GenerateSummaryParams>
 ): Promise<GenerateSummaryResponse> {
   try {
-    const { evalId, metricsIds } = req.body;
+    const { evalId, metricIds } = req.body;
 
     // Validate parameters
     if (!evalId) {
       return Promise.reject(EvaluationErrEnum.evalIdRequired);
     }
-    if (!metricsIds || !Array.isArray(metricsIds) || metricsIds.length === 0) {
+    if (!metricIds || !Array.isArray(metricIds) || metricIds.length === 0) {
       return Promise.reject(EvaluationErrEnum.summaryMetricsConfigError);
+    }
+
+    // Deduplicate metricIds to avoid duplicate processing
+    const uniqueMetricIds = [...new Set(metricIds)];
+
+    if (uniqueMetricIds.length !== metricIds.length) {
+      addLog.info('[EvaluationSummary] Removed duplicate metricIds in API layer', {
+        evalId,
+        originalCount: metricIds.length,
+        uniqueCount: uniqueMetricIds.length,
+        duplicates: metricIds.filter((id, index) => metricIds.indexOf(id) !== index)
+      });
     }
 
     const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
@@ -35,12 +47,12 @@ async function handler(
 
     addLog.info('[EvaluationSummary] Starting summary report generation', {
       evalId,
-      metricsIds,
-      metricsCount: metricsIds.length
+      metricIds: uniqueMetricIds,
+      metricsCount: uniqueMetricIds.length
     });
 
     // Generate summary report asynchronously
-    await EvaluationSummaryService.generateSummaryReports(evalId, metricsIds);
+    await EvaluationSummaryService.generateSummaryReports(evalId, uniqueMetricIds);
 
     const response: GenerateSummaryResponse = {
       success: true,
@@ -51,7 +63,7 @@ async function handler(
   } catch (error) {
     addLog.error('[EvaluationSummary] Failed to start report generation task', {
       evalId: req.body?.evalId,
-      metricsIds: req.body?.metricsIds,
+      metricIds: req.body?.metricIds,
       error
     });
     return Promise.reject(error);

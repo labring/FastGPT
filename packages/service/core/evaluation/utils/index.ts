@@ -185,6 +185,28 @@ export async function validateEvaluationParams(
         }));
         return { isValid: false, errors };
       }
+
+      // Validate scoreScaling if provided
+      if (evaluator.scoreScaling !== undefined) {
+        if (
+          typeof evaluator.scoreScaling !== 'number' ||
+          isNaN(evaluator.scoreScaling) ||
+          !isFinite(evaluator.scoreScaling) ||
+          evaluator.scoreScaling <= 0 ||
+          evaluator.scoreScaling > 10000
+        ) {
+          return {
+            isValid: false,
+            errors: [
+              {
+                code: EvaluationErrEnum.evalEvaluatorInvalidScoreScaling,
+                message: 'Evaluator scoreScaling invalid',
+                field: 'scoreScaling'
+              }
+            ]
+          };
+        }
+      }
     }
   }
 

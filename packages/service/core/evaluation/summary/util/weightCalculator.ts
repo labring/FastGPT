@@ -1,6 +1,6 @@
 import { CalculateMethodEnum, SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvalMetric } from '../../metric/schema';
-import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluatorSchema, SummaryConfig } from '@fastgpt/global/core/evaluation/type';
 import { addLog } from '../../../../common/system/log';
 
 /**
@@ -52,34 +52,48 @@ function getDefaultThreshold(): number {
 
 /**
  * Build evaluation default configuration
+ * Returns both cleaned evaluators (without summaryConfig) and separate summaryConfigs array
  */
-export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): EvaluatorSchema[] {
+export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
+  evaluators: EvaluatorSchema[];
+  summaryConfigs: SummaryConfig[];
+} {
   if (!evaluators || evaluators.length === 0) {
-    return [];
+    return { evaluators: [], summaryConfigs: [] };
   }
 
   const weights = calculateMetricWeights(evaluators.length);
   const defaultThreshold = getDefaultThreshold();
 
-  const result = evaluators.map((evaluator, index) => ({
-    ...evaluator,
-    weight: evaluator.weight ?? weights[index], // 如果已有权重则保留，否则使用计算的权重
-    thresholdValue: evaluator.thresholdValue ?? defaultThreshold, // 如果已有阈值则保留，否则使用环境配置的默认值
-    summaryStatus: evaluator.summaryStatus ?? SummaryStatusEnum.pending,
-    calculateType: evaluator.calculateType ?? CalculateMethodEnum.mean,
-    metricsScore: evaluator.metricsScore ?? 0
+  // Clean evaluators without summaryConfig
+  const cleanedEvaluators = evaluators.map((evaluator) => ({
+    metric: evaluator.metric,
+    runtimeConfig: evaluator.runtimeConfig,
+    thresholdValue: evaluator.thresholdValue ?? defaultThreshold
   }));
 
-  addLog.debug('[buildEvalDataConfig] 处理后的evaluators:', {
-    evaluators: result.map((evaluator) => ({
+  // Create separate summaryConfigs array with metric relationship
+  const summaryConfigs = evaluators.map((evaluator, index) => ({
+    metricId: evaluator.metric._id.toString(),
+    metricName: evaluator.metric.name,
+    weight: weights[index],
+    calculateType: CalculateMethodEnum.mean,
+    summary: '',
+    summaryStatus: SummaryStatusEnum.pending,
+    errorReason: ''
+  }));
+
+  addLog.debug('[buildEvalDataConfig] Processed configuration:', {
+    evaluators: cleanedEvaluators.map((evaluator, index) => ({
       metricId: evaluator.metric._id,
       metricName: evaluator.metric.name,
-      weight: evaluator.weight,
       thresholdValue: evaluator.thresholdValue,
-      calculateType: evaluator.calculateType,
-      summaryStatus: evaluator.summaryStatus
+      summaryConfig: summaryConfigs[index]
     }))
   });
 
-  return result;
+  return {
+    evaluators: cleanedEvaluators,
+    summaryConfigs
+  };
 }
