@@ -23,6 +23,7 @@
   "config_input_guide": "設定輸入導引",
   "config_input_guide_lexicon": "設定詞彙庫",
   "config_input_guide_lexicon_title": "設定詞彙庫",
+  "confirm_plan_agent": "請確認改計劃是否符合預期，如需修改，可在底部輸入框中發送修改要求。",
   "content_empty": "無內容",
   "contextual": "{{num}} 筆上下文",
   "contextual_preview": "上下文預覽 {{num}} 筆",

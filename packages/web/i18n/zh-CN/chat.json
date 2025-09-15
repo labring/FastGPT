@@ -23,6 +23,7 @@
   "config_input_guide": "配置输入引导",
   "config_input_guide_lexicon": "配置词库",
   "config_input_guide_lexicon_title": "配置词库",
+  "confirm_plan_agent": "请确认改计划是否符合预期，如需修改，可在底部输入框中发送修改要求。",
   "content_empty": "内容为空",
   "contextual": "{{num}}条上下文",
   "contextual_preview": "上下文预览 {{num}} 条",
