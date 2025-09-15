@@ -265,13 +265,22 @@ const finishEvaluationTask = async (evalId: string) => {
     // Check if truly completed
     const pendingCount = evaluatingCount + queuingCount;
 
-    // Task status is always completed when all items are finished
-    let taskStatus: EvaluationStatusEnum = EvaluationStatusEnum.completed;
+    // Determine task status based on pending items and error count
+    let taskStatus: EvaluationStatusEnum;
     if (pendingCount > 0) {
       addLog.debug(
         `[Evaluation] Task not yet completed: ${evalId}, pending items: ${pendingCount}`
       );
       taskStatus = EvaluationStatusEnum.evaluating;
+    } else if (errorCount > 0) {
+      // When there are failed items, mark task as error
+      addLog.info(
+        `[Evaluation] Task completed with errors: ${evalId}, error items: ${errorCount}, completed: ${completedCount}`
+      );
+      taskStatus = EvaluationStatusEnum.error;
+    } else {
+      // All items completed successfully
+      taskStatus = EvaluationStatusEnum.completed;
     }
 
     // Update task status with statistical fields
@@ -285,21 +294,31 @@ const finishEvaluationTask = async (evalId: string) => {
       }
     };
 
-    // Only set finishTime if the task is actually completed
-    if (taskStatus === EvaluationStatusEnum.completed) {
+    // Set finishTime if the task is completed (either successfully or with errors)
+    if (
+      taskStatus === EvaluationStatusEnum.completed ||
+      taskStatus === EvaluationStatusEnum.error
+    ) {
       updateFields.finishTime = new Date();
     }
 
     await MongoEvaluation.updateOne({ _id: new Types.ObjectId(evalId) }, { $set: updateFields });
 
-    addLog.debug(
-      `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
+    addLog.info(
+      `[Evaluation] Task finished: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
         `success: ${completedCount}, failed: ${errorCount}`
     );
 
-    // Trigger async summary generation only for metrics with empty summaries if task completed successfully
-    if (taskStatus === EvaluationStatusEnum.completed && completedCount > 0) {
+    // Calculate and save metric scores, then trigger async summary generation if task finished and has completed items
+    if (
+      (taskStatus === EvaluationStatusEnum.completed ||
+        taskStatus === EvaluationStatusEnum.error) &&
+      completedCount > 0
+    ) {
       try {
+        // First, calculate and save metric scores to MongoDB
+        await EvaluationSummaryService.calculateAndSaveMetricScores(evalId);
+
         // Get current evaluation to extract metric IDs and check summary status
         const currentEvaluation = await MongoEvaluation.findById(
           evalId,
@@ -333,12 +352,12 @@ const finishEvaluationTask = async (evalId: string) => {
               );
             });
 
-            addLog.debug(
-              `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}`
+            addLog.info(
+              `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}, taskStatus: ${taskStatus}`
             );
           } else {
-            addLog.debug(
-              `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}`
+            addLog.info(
+              `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}, taskStatus: ${taskStatus}`
             );
           }
         }
@@ -654,10 +673,14 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
           targetCallParams: evalItem.dataItem.targetCallParams
         });
 
-        // Save target output as checkpoint
+        // Save target output as checkpoint with chat information
         await MongoEvalItem.updateOne(
           { _id: new Types.ObjectId(evalItemId) },
-          { $set: { targetOutput: targetOutput } }
+          {
+            $set: {
+              targetOutput: targetOutput
+            }
+          }
         );
 
         // Report progress: target execution completed

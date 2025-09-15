@@ -34,6 +34,7 @@ import { getUserChatInfoAndAuthTeamPoints } from '../../../support/permission/au
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { removeDatasetCiteText } from '../../ai/utils';
 import { saveChat } from '../../chat/saveChat';
+import { MongoChatItem } from '../../chat/chatItemSchema';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -207,11 +208,27 @@ export class WorkflowTarget extends EvaluationTarget {
       durationSeconds
     });
 
+    // Get the latest AI chat item dataId from the saved chat record
+    const latestAiChatItem = await MongoChatItem.findOne(
+      {
+        chatId,
+        appId: appData._id,
+        obj: ChatRoleEnum.AI
+      },
+      'dataId'
+    )
+      .sort({ _id: -1 })
+      .lean();
+
+    const aiChatItemDataId = latestAiChatItem?.dataId || '';
+
     return {
       actualOutput: response,
       retrievalContext: extractRetrievalContext(flowResponses),
       usage: flowUsages,
-      responseTime: Date.now() - startTime
+      responseTime: Date.now() - startTime,
+      chatId,
+      aiChatItemDataId
     };
   }
 

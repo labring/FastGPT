@@ -78,9 +78,13 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
     metricName: evaluator.metric.name,
     weight: weights[index],
     calculateType: CalculateMethodEnum.mean,
+    score: 0,
     summary: '',
     summaryStatus: SummaryStatusEnum.pending,
-    errorReason: ''
+    errorReason: '',
+    completedItemCount: 0,
+    overThresholdItemCount: 0,
+    thresholdPassRate: 0
   }));
 
   addLog.debug('[buildEvalDataConfig] Processed configuration:', {

@@ -951,6 +951,13 @@ export class EvaluationTaskService {
 
     const retriedCount = await mongoSessionRun(retryItems);
 
+    // Note: Score recalculation will be triggered when items complete in finishEvaluationTask
+    if (retriedCount > 0) {
+      addLog.debug(
+        `[Evaluation] Queued ${retriedCount} failed items for retry, scores will be recalculated when items complete: ${evalId}`
+      );
+    }
+
     return retriedCount;
   }
 
