@@ -37,9 +37,9 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  checkIsInteractiveByHistories,
+  getInteractiveStatus,
   formatChatValue2InputType,
-  setUserSelectResultToHistories
+  rewriteHistoriesByInteractiveResponse
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -149,7 +149,10 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
+  const { interactiveType, canSendQuery } = useMemo(
+    () => getInteractiveStatus(chatRecords),
+    [chatRecords]
+  );
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -338,7 +341,7 @@ const ChatBox = ({
             })();
             const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
             updateValue.id = responseValueId;
-            console.log(event, tool, updateValue);
+
             if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
               return {
                 ...item,
@@ -544,8 +547,8 @@ const ChatBox = ({
       text = '',
       files = [],
       history = chatRecords,
+      interactiveType,
       autoTTSResponse = false,
-      isInteractivePrompt = false,
       hideInUI = false
     }) => {
       variablesForm.handleSubmit(
@@ -638,9 +641,13 @@ const ChatBox = ({
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
-            isInteractivePrompt
+            interactiveType
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+                rewriteHistoriesByInteractiveResponse({
+                  histories: newChatList,
+                  interactiveType: interactiveType,
+                  interactiveVal: text
+                })
               : newChatList
           );
 
@@ -698,7 +705,7 @@ const ChatBox = ({
             });
 
             setTimeout(() => {
-              if (!checkIsInteractiveByHistories(newChatHistories)) {
+              if (!getInteractiveStatus(newChatHistories).interactiveType) {
                 createQuestionGuide();
               }
 
@@ -982,7 +989,7 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
 
   // Add listener
   useEffect(() => {
@@ -995,9 +1002,12 @@ const ChatBox = ({
     };
     window.addEventListener('message', windowMessage);
 
-    const fn: SendPromptFnType = (e) => {
-      if (canSendPrompt || e.isInteractivePrompt) {
-        sendPrompt(e);
+    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
+      if (canSendPrompt || focus) {
+        sendPrompt({
+          ...e,
+          interactiveType
+        });
       }
     };
     eventBus.on(EventNameEnum.sendQuestion, fn);
@@ -1011,7 +1021,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, interactiveType]);
 
   // Auto send prompt
   useDebounceEffect(

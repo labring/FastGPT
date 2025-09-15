@@ -1,10 +1,10 @@
 import type { NodeOutputItemType } from '../../../../chat/type';
-import type { FlowNodeOutputItemType } from '../../../type/io';
 import type { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import type { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
+import type { RuntimeEdgeItemType } from '../../../type/edge';
 
-type InteractiveBasicType = {
+export type InteractiveBasicType = {
   entryNodeIds: string[];
   memoryEdges: RuntimeEdgeItemType[];
   nodeOutputs: NodeOutputItemType[];
@@ -40,12 +40,26 @@ type LoopInteractive = InteractiveNodeType & {
   };
 };
 
+// Agent Interactive
+export type AgentPlanCheckInteractive = InteractiveNodeType & {
+  type: 'agentPlanCheck';
+  params: {
+    confirmed?: boolean;
+  };
+};
+export type AgentPlanAskQueryInteractive = InteractiveNodeType & {
+  type: 'agentPlanAskQuery';
+  params: {
+    content: string;
+  };
+};
+
 export type UserSelectOptionItemType = {
   key: string;
   value: string;
 };
-type UserSelectInteractive = InteractiveNodeType & {
-  type: 'userSelect';
+export type UserSelectInteractive = InteractiveNodeType & {
+  type: 'userSelect' | 'agentPlanAskUserSelect';
   params: {
     description: string;
     userSelectOptions: UserSelectOptionItemType[];
@@ -71,8 +85,8 @@ export type UserInputFormItemType = {
   // select
   list?: { label: string; value: string }[];
 };
-type UserInputInteractive = InteractiveNodeType & {
-  type: 'userInput';
+export type UserInputInteractive = InteractiveNodeType & {
+  type: 'userInput' | 'agentPlanAskUserForm';
   params: {
     description: string;
     inputForm: UserInputFormItemType[];
@@ -84,6 +98,8 @@ export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
   | ChildrenInteractive
-  | LoopInteractive;
+  | LoopInteractive
+  | AgentPlanCheckInteractive
+  | AgentPlanAskQueryInteractive;
 
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;
