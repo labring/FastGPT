@@ -1,3 +1,7 @@
+import type {
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 
 const namespaceMap = new Map<string, string>([
@@ -58,4 +62,44 @@ export const parseAgentSystem = ({
   });
 
   return processedPrompt;
+};
+
+export const checkPlan = (messages: ChatCompletionMessageParam[]) => {
+  const hasPlan = messages.some(
+    (m) =>
+      m.role === 'assistant' &&
+      'tool_calls' in m &&
+      Array.isArray(m.tool_calls) &&
+      m.tool_calls.some((t) => t.type === 'function' && t.function?.name === 'plan_agent')
+  );
+  const hasConfirmedPlan = messages.some(
+    (m) => m.role === 'user' && m.content === 'Confirm the plan'
+  );
+
+  return { hasPlan, hasConfirmedPlan };
+};
+
+export const getPlanAgentToolCallId = (messages: ChatCompletionMessageParam[]) => {
+  return messages
+    .filter((m) => m.role === 'assistant' && 'tool_calls' in m)
+    .flatMap((m) => (m as ChatCompletionAssistantMessageParam).tool_calls || [])
+    .find((t) => t.type === 'function' && t.function?.name === 'plan_agent')?.id;
+};
+
+export const rewritePlanResponse = (
+  messages: ChatCompletionMessageParam[],
+  response: string
+): ChatCompletionMessageParam[] => {
+  const planMsg = messages.find(
+    (m) => m.role === 'assistant' && m.tool_calls?.some((t) => t.function.name === 'plan_agent')
+  );
+
+  if (planMsg?.role === 'assistant') {
+    const callId = planMsg?.tool_calls?.[0]?.id;
+    return messages.map((m) =>
+      m.role === 'tool' && m.tool_call_id === callId ? { ...m, content: response } : m
+    );
+  }
+
+  return messages;
 };
