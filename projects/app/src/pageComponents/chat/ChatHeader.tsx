@@ -14,7 +14,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
 import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
@@ -53,7 +53,6 @@ const ChatHeader = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const pathname = usePathname();
   const { source } = useChatStore();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);

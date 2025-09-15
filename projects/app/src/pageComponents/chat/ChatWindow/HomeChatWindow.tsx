@@ -16,7 +16,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -37,18 +37,14 @@ import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
-import type {
-  AppFileSelectConfigType,
-  AppListItemType,
-  AppWhisperConfigType
-} from '@fastgpt/global/core/app/type';
+import type { AppFileSelectConfigType, AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
-import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
 
 type Props = {
   myApps: AppListItemType[];

@@ -48,6 +48,10 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
   const router = useRouter();
   const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
 
+  if (router.pathname === '/openapi') {
+    return <>{setLayout(<Component {...pageProps} />)}</>;
+  }
+
   return (
     <>
       {showHead && (

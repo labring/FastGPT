@@ -8,7 +8,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider from '@/web/core/chat/context/chatContext';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';

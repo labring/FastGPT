@@ -2,26 +2,39 @@
   "name": "@fastgpt/global",
   "version": "1.0.0",
   "dependencies": {
+    "@anatine/zod-openapi": "^2.2.8",
     "@fastgpt-sdk/plugin": "^0.1.16",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
-    "axios": "^1.12.1",
+    "@ts-rest/core": "^3.52.1",
+    "@ts-rest/next": "^3.52.1",
+    "@ts-rest/open-api": "^3.52.1",
+    "axios": "^1.8.2",
     "cron-parser": "^4.9.0",
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
     "js-yaml": "^4.1.0",
     "jschardet": "3.1.1",
     "json5": "^2.2.3",
+    "lodash": "^4.17.21",
+    "mongoose": "^8.10.1",
     "nanoid": "^5.1.3",
     "next": "14.2.32",
     "openai": "4.61.0",
     "openapi-types": "^12.1.3",
     "timezones-list": "^3.0.2",
-    "lodash": "^4.17.21"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.191",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "20.14.0"
+    "@types/lodash": "^4.14.191",
+    "@types/node": "20.14.0",
+    "vitest": "^3.0.9"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:tsrest": "vitest run common/tsRest/test/",
+    "openapi": "npx tsx common/tsRest/scripts/openapi.ts"
   }
 }
