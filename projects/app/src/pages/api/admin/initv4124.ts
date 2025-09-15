@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -32,51 +33,60 @@ async function handler(
     MongoTeamMember.find({ role: 'owner' }, '_id teamId').lean()
   ]);
 
-  await MongoResourcePermission.bulkWrite(
-    apps.map((app) => ({
-      updateOne: {
-        filter: {
-          resourceId: app._id,
-          resourceType: PerResourceTypeEnum.app,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        update: {
-          permission: OwnerRoleVal
-        },
-        upsert: true
-      }
-    }))
-  );
-
-  await MongoResourcePermission.bulkWrite(
-    datasets.map((dataset) => ({
-      updateOne: {
-        filter: {
-          resourceId: dataset._id,
-          resourceType: PerResourceTypeEnum.dataset,
-          teamId: dataset.teamId,
-          tmbId: dataset.tmbId
-        },
-        update: {
-          permission: OwnerRoleVal
-        },
-        upsert: true
-      }
-    }))
-  );
-
-  await MongoResourcePermission.bulkWrite(
-    tmbs.map((team) => ({
-      deleteOne: {
-        filter: {
-          resourceType: PerResourceTypeEnum.team,
-          teamId: team.teamId,
-          tmbId: team._id
+  for (let i = 0; i < apps.length; i += 10000) {
+    const appList = apps.slice(i, i + 10000);
+    await MongoResourcePermission.bulkWrite(
+      appList.map((app) => ({
+        updateOne: {
+          filter: {
+            resourceId: app._id,
+            resourceType: PerResourceTypeEnum.app,
+            teamId: app.teamId,
+            tmbId: app.tmbId
+          },
+          update: {
+            permission: OwnerRoleVal
+          },
+          upsert: true
         }
-      }
-    }))
-  );
+      }))
+    );
+  }
+
+  for (let i = 0; i < datasets.length; i += 10000) {
+    const datasetList = datasets.slice(i, i + 10000);
+    await MongoResourcePermission.bulkWrite(
+      datasetList.map((dataset) => ({
+        updateOne: {
+          filter: {
+            resourceId: dataset._id,
+            resourceType: PerResourceTypeEnum.dataset,
+            teamId: dataset.teamId,
+            tmbId: dataset.tmbId
+          },
+          update: {
+            permission: OwnerRoleVal
+          },
+          upsert: true
+        }
+      }))
+    );
+  }
+
+  for (let i = 0; i < tmbs.length; i += 10000) {
+    const tmbList = tmbs.slice(i, i + 10000);
+    await MongoResourcePermission.bulkWrite(
+      tmbList.map((team) => ({
+        deleteOne: {
+          filter: {
+            resourceType: PerResourceTypeEnum.team,
+            teamId: team.teamId,
+            tmbId: team._id
+          }
+        }
+      }))
+    );
+  }
 
   return {
     message: 'Success'
