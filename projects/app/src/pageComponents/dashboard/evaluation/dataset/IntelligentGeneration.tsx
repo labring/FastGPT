@@ -78,6 +78,11 @@ const IntelligentGeneration = ({
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
   const [collectionId, setCollectionId] = useState<string>(defaultValues?.collectionId || '');
+
+  const evalModelList = useMemo(() => {
+    return llmModelList.filter((item) => item.useInEvaluation);
+  }, [llmModelList]);
+
   useEffect(() => {
     defaultValues?.collectionId && setCollectionId(defaultValues?.collectionId);
   }, [defaultValues?.collectionId]);
@@ -97,7 +102,7 @@ const IntelligentGeneration = ({
   } = useForm<IntelligentGenerationForm>({
     defaultValues: {
       name: defaultValues?.name || '',
-      generationModel: defaultValues?.generationModel || '',
+      generationModel: defaultValues?.generationModel || evalModelList[0]?.model || '',
       dataAmount: defaultValues?.dataAmount || 50,
       selectedDatasets: defaultValues?.selectedDatasets || []
     }
@@ -133,8 +138,8 @@ const IntelligentGeneration = ({
   const maxDataAmount = useMemo(() => {
     return selectedDatasets.length > 0
       ? selectedDatasets.reduce((pre, cur) => pre + (cur.dataCount || 0), 0)
-      : 1;
-  }, [selectedDatasets]);
+      : defaultValues?.dataAmount || 50;
+  }, [selectedDatasets, defaultValues]);
 
   useEffect(() => {
     if (maxDataAmount < 50) {
@@ -182,14 +187,15 @@ const IntelligentGeneration = ({
     <MyModal
       isOpen={isOpen}
       onClose={onClose}
-      iconSrc="modal/edit"
+      iconSrc="core/app/aiLight"
+      iconColor={'primary.600'}
       title={
         scene === 'dataset'
           ? t('dashboard_evaluation:intelligent_generation_dataset')
           : t('dashboard_evaluation:intelligent_generate_data')
       }
       w={'100%'}
-      maxW={['90vw', '800px']}
+      maxW={['90vw', '600px']}
       isCentered
     >
       <ModalBody>
@@ -333,7 +339,8 @@ const IntelligentGeneration = ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,
             name: item.name,
-            avatar: item.avatar
+            avatar: item.avatar,
+            dataCount: item.dataCount
           }))}
           onChange={handleDatasetSelect}
           onClose={onCloseDatasetSelect}
