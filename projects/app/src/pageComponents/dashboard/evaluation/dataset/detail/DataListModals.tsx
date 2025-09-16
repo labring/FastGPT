@@ -127,16 +127,18 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
     formData: {
       question: string;
       referenceAnswer: string;
-      metadata: Record<string, any>;
+      qualityMetadata?: Record<string, any>;
+      synthesisMetadata?: Record<string, any>;
     },
     isGoNext = false
   ) => {
-    const { question, referenceAnswer, metadata } = formData;
+    const { question, referenceAnswer, qualityMetadata, synthesisMetadata } = formData;
     await updateDataFn({
       dataId: selectedItem._id,
       userInput: question,
       expectedOutput: referenceAnswer,
-      metadata
+      qualityMetadata,
+      synthesisMetadata
     });
     isGoNext && handleGoNextData();
     !isGoNext && onEditModalClose();

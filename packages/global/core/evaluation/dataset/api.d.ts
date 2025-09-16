@@ -3,8 +3,11 @@ import type {
   EvalDatasetCollectionSchemaType,
   EvalDatasetDataSchemaType,
   EvalDatasetCollectionStatus,
-  EvalDatasetDataQualityStatus
+  EvalDatasetDataQualityStatus,
+  EvalDatasetDataQualityMetadata,
+  EvalDatasetDataSynthesisMetadata
 } from './type';
+import type { EvalDatasetDataQualityResultEnum } from './constants';
 import type { EvalDatasetDataKeyEnum } from './constants';
 
 type EvalDatasetCollectionBase = {
@@ -57,7 +60,9 @@ type EvalDatasetDataBase = {
   [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
   [EvalDatasetDataKeyEnum.Context]?: string[];
   [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
-  [EvalDatasetDataKeyEnum.Metadata]?: Record<string, any>;
+  qualityMetadata?: Partial<EvalDatasetDataQualityMetadata>;
+  synthesisMetadata?: Partial<EvalDatasetDataSynthesisMetadata>;
+  qualityResult?: EvalDatasetDataQualityResultEnum;
 };
 
 export type createEvalDatasetDataBody = EvalDatasetDataBase &
@@ -80,7 +85,9 @@ export type listEvalDatasetDataResponse = PaginationResponse<
     | EvalDatasetDataKeyEnum.ExpectedOutput
     | EvalDatasetDataKeyEnum.Context
     | EvalDatasetDataKeyEnum.RetrievalContext
-    | 'metadata'
+    | 'qualityMetadata'
+    | 'synthesisMetadata'
+    | 'qualityResult'
     | 'createFrom'
     | 'createTime'
     | 'updateTime'
@@ -128,7 +135,9 @@ export type getEvalDatasetDataDetailResponse = Pick<
   | EvalDatasetDataKeyEnum.ExpectedOutput
   | EvalDatasetDataKeyEnum.Context
   | EvalDatasetDataKeyEnum.RetrievalContext
-  | EvalDatasetDataKeyEnum.Metadata
+  | 'qualityMetadata'
+  | 'synthesisMetadata'
+  | 'qualityResult'
   | 'createFrom'
   | 'createTime'
   | 'updateTime'

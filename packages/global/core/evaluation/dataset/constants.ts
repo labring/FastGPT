@@ -18,7 +18,10 @@ export enum EvalDatasetDataQualityStatusEnum {
   queuing = 'queuing',
   evaluating = 'evaluating',
   error = 'error',
-  completed = 'completed',
+  completed = 'completed'
+}
+
+export enum EvalDatasetDataQualityResultEnum {
   highQuality = 'highQuality',
   needsOptimization = 'needsOptimization'
 }
@@ -33,3 +36,4 @@ export enum EvalDatasetDataKeyEnum {
 }
 
 export const EvalDatasetDataQualityStatusValues = Object.values(EvalDatasetDataQualityStatusEnum);
+export const EvalDatasetDataQualityResultValues = Object.values(EvalDatasetDataQualityResultEnum);
