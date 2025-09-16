@@ -97,7 +97,7 @@ export const getHistoryFileLinks = (histories: ChatItemType[]) => {
   return histories
     .filter((item) => {
       if (item.obj === ChatRoleEnum.Human) {
-        return item.value.filter((value) => value.type === 'file');
+        return item.value.filter((value) => value.file);
       }
       return false;
     })
