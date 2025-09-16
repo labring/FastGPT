@@ -76,15 +76,8 @@ const EditForm = ({
   const [selectedSkillKey, setSelectedSkillKey] = useState<string>('');
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
-  const appSkill = [
-    {
-      key: 'appSkill',
-      label: '应用',
-      icon: 'core/workflow/template/runApp'
-    }
-  ];
   const {
-    toolSkills,
+    toolSkillOptions,
     queryString,
     setQueryString,
     handleAddToolFromEditor,
@@ -92,7 +85,6 @@ const EditForm = ({
     handleRemoveToolFromEditor,
     onAddTool
   } = useToolManager({
-    appId: appDetail._id,
     appForm,
     setAppForm,
     setConfigTool,
@@ -248,11 +240,7 @@ const EditForm = ({
                 selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
-                skills={
-                  toolSkills.length > 0 && !toolSkills[0].toolCategories
-                    ? toolSkills
-                    : [...appSkill, ...toolSkills]
-                }
+                skillOptionList={[...toolSkillOptions]}
                 queryString={queryString}
                 setQueryString={setQueryString}
                 selectedSkillKey={selectedSkillKey}

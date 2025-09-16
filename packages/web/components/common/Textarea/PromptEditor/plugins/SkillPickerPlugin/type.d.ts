@@ -27,4 +27,6 @@ export type SkillOptionType = {
   level: 'primary' | 'secondary' | 'tertiary';
   parentKey?: string;
   canOpen?: boolean;
+  categoryType?: string;
+  categoryLabel?: string;
 };

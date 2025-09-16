@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -9,7 +9,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { EditorSkillPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/type';
+import type { SkillOptionType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/type';
 import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
@@ -26,7 +26,6 @@ export type ExtendedToolType = FlowNodeTemplateType & {
 };
 
 type UseToolManagerProps = {
-  appId?: string;
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
   setConfigTool: (tool: ExtendedToolType | undefined) => void;
@@ -34,7 +33,7 @@ type UseToolManagerProps = {
 };
 
 type UseToolManagerReturn = {
-  toolSkills: EditorSkillPickerType[];
+  toolSkillOptions: SkillOptionType[];
   queryString: string | null;
   setQueryString: (value: string | null) => void;
 
@@ -45,7 +44,6 @@ type UseToolManagerReturn = {
 };
 
 export const useToolManager = ({
-  appId,
   appForm,
   setAppForm,
   setConfigTool,
@@ -54,7 +52,7 @@ export const useToolManager = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const lang = i18n?.language as localeType;
-  const [toolSkills, setToolSkills] = useState<EditorSkillPickerType[]>([]);
+  const [toolSkillOptions, setToolSkillOptions] = useState<SkillOptionType[]>([]);
   const [queryString, setQueryString] = useState<string | null>(null);
 
   const { data: pluginGroups = [] } = useRequest2(
@@ -69,13 +67,13 @@ export const useToolManager = ({
     {
       manual: false,
       onSuccess(data) {
-        setToolSkills(
-          data.map((item) => ({
-            key: item.groupId,
-            label: t(item.groupName),
-            icon: item.groupAvatar
-          }))
-        );
+        const primaryOptions: SkillOptionType[] = data.map((item) => ({
+          key: item.groupId,
+          label: t(item.groupName),
+          icon: item.groupAvatar,
+          level: 'primary'
+        }));
+        setToolSkillOptions(primaryOptions);
       }
     }
   );
@@ -83,80 +81,124 @@ export const useToolManager = ({
     if (queryString?.trim()) {
       return '';
     }
-    if (toolSkills.some((skill) => !skill.toolCategories && skill.key === selectedSkillKey)) {
+    const selectedOption = toolSkillOptions.find((option) => option.key === selectedSkillKey);
+    if (!toolSkillOptions.some((option) => option.level === 'secondary') && selectedOption) {
       return '';
     }
-
-    for (const skill of toolSkills) {
-      for (const category of skill.toolCategories || []) {
-        const tool = category.list.find(
-          (item) =>
-            item.key === selectedSkillKey &&
-            item.subItems?.some((subItem) => subItem.key === 'loading')
-        );
-        if (tool) {
-          return selectedSkillKey;
-        }
+    if (selectedOption?.level === 'secondary' && selectedOption.canOpen) {
+      const hasLoadingPlaceholder = toolSkillOptions.some(
+        (option) =>
+          option.level === 'tertiary' &&
+          option.parentKey === selectedSkillKey &&
+          option.key === 'loading'
+      );
+      if (hasLoadingPlaceholder) {
+        return selectedSkillKey;
       }
     }
 
     return null;
-  }, [toolSkills, selectedSkillKey, queryString]);
-  const buildToolSkills = useCallback(
+  }, [toolSkillOptions, selectedSkillKey, queryString]);
+  const buildToolSkillOptions = useCallback(
     (systemPlugins: NodeTemplateListItemType[], pluginGroups: SystemToolGroupSchemaType[]) => {
-      return pluginGroups.map((group) => {
-        const categoryMap = group.groupTypes.reduce<
-          Record<
-            string,
-            {
-              list: Array<{
-                key: string;
-                name: string;
-                avatar: string;
-                canOpen?: boolean;
-                subItems?: { key: string; label: string }[];
-              }>;
-              label: string;
-            }
-          >
-        >((acc, item) => {
-          acc[item.typeId] = {
-            list: [],
-            label: t(parseI18nString(item.typeName, lang))
-          };
-          return acc;
-        }, {});
-        systemPlugins.forEach((plugin) => {
-          if (categoryMap[plugin.templateType]) {
-            const canOpen = plugin.flowNodeType === 'toolSet' || plugin.isFolder;
-            const subItems = canOpen ? [{ key: 'loading', label: 'Loading... ' }] : undefined;
+      const skillOptions: SkillOptionType[] = [];
 
-            categoryMap[plugin.templateType].list.push({
-              key: plugin.id,
-              name: t(parseI18nString(plugin.name, lang)),
-              avatar: plugin.avatar || 'core/workflow/template/toolCall',
-              canOpen,
-              subItems
-            });
-          }
-        });
-        return {
+      pluginGroups.forEach((group) => {
+        skillOptions.push({
           key: group.groupId,
           label: t(group.groupName as any),
           icon: group.groupAvatar,
-          toolCategories: Object.entries(categoryMap)
-            .map(([type, { list, label }]) => ({
-              type,
-              label,
-              list
-            }))
-            .filter((item) => item.list.length > 0)
-        };
+          level: 'primary'
+        });
       });
+
+      pluginGroups.forEach((group) => {
+        const categoryMap = group.groupTypes.reduce<
+          Record<string, { label: string; type: string }>
+        >((acc, item) => {
+          acc[item.typeId] = {
+            label: t(parseI18nString(item.typeName, lang)),
+            type: item.typeId
+          };
+          return acc;
+        }, {});
+
+        const pluginsByCategory = new Map<string, NodeTemplateListItemType[]>();
+        systemPlugins.forEach((plugin) => {
+          if (categoryMap[plugin.templateType]) {
+            if (!pluginsByCategory.has(plugin.templateType)) {
+              pluginsByCategory.set(plugin.templateType, []);
+            }
+            pluginsByCategory.get(plugin.templateType)!.push(plugin);
+          }
+        });
+
+        pluginsByCategory.forEach((plugins, categoryType) => {
+          plugins.forEach((plugin) => {
+            const canOpen = plugin.flowNodeType === 'toolSet' || plugin.isFolder;
+            const category = categoryMap[categoryType];
+
+            skillOptions.push({
+              key: plugin.id,
+              label: t(parseI18nString(plugin.name, lang)),
+              icon: plugin.avatar || 'core/workflow/template/toolCall',
+              level: 'secondary',
+              parentKey: group.groupId,
+              canOpen,
+              categoryType: category.type,
+              categoryLabel: category.label
+            });
+
+            if (canOpen) {
+              skillOptions.push({
+                key: 'loading',
+                label: 'Loading...',
+                icon: plugin.avatar || 'core/workflow/template/toolCall',
+                level: 'tertiary',
+                parentKey: plugin.id
+              });
+            }
+          });
+        });
+      });
+
+      return skillOptions;
     },
     [t, lang]
   );
+  const buildSearchOptions = useCallback(
+    (searchResults: NodeTemplateListItemType[]) => {
+      return searchResults.map((plugin) => ({
+        key: plugin.id,
+        label: t(parseI18nString(plugin.name, lang)),
+        icon: plugin.avatar || 'core/workflow/template/toolCall',
+        level: 'primary' as const
+      }));
+    },
+    [t, lang]
+  );
+  const updateTertiaryOptions = useCallback(
+    (
+      currentOptions: SkillOptionType[],
+      parentKey: string | undefined,
+      subItems: NodeTemplateListItemType[]
+    ) => {
+      const filteredOptions = currentOptions.filter(
+        (option) => !(option.level === 'tertiary' && option.parentKey === parentKey)
+      );
 
+      const newTertiaryOptions = subItems.map((plugin) => ({
+        key: plugin.id,
+        label: t(parseI18nString(plugin.name, lang)),
+        icon: 'core/workflow/template/toolCall',
+        level: 'tertiary' as const,
+        parentKey
+      }));
+
+      return [...filteredOptions, ...newTertiaryOptions];
+    },
+    [t, lang]
+  );
   useRequest2(
     async () => {
       try {
@@ -171,43 +213,18 @@ export const useToolManager = ({
     },
     {
       manual: requestParentId === null,
-      refreshDeps: [appId, requestParentId, queryString],
+      refreshDeps: [requestParentId, queryString],
       onSuccess(data) {
         if (queryString?.trim()) {
-          const searchResults = data.map((plugin) => ({
-            key: plugin.id,
-            label: t(parseI18nString(plugin.name, lang)),
-            icon: plugin.avatar || 'core/workflow/template/toolCall'
-          }));
-
-          setToolSkills(searchResults.length > 0 ? searchResults : []);
+          const searchOptions = buildSearchOptions(data);
+          setToolSkillOptions(searchOptions);
         } else if (requestParentId === '') {
-          const newToolSkills = buildToolSkills(data, pluginGroups);
-          setToolSkills(newToolSkills);
+          const fullOptions = buildToolSkillOptions(data, pluginGroups);
+          setToolSkillOptions(fullOptions);
         } else if (requestParentId === selectedSkillKey) {
-          setToolSkills((prevSkills) => {
-            return prevSkills.map((skill) => ({
-              ...skill,
-              toolCategories: skill.toolCategories?.map((category) => ({
-                ...category,
-                list: category.list.map((toolItem) => {
-                  if (toolItem.key === requestParentId) {
-                    const subItems = data.map((plugin) => ({
-                      key: plugin.id,
-                      label: t(parseI18nString(plugin.name, lang)),
-                      description: t(parseI18nString(plugin.intro, lang))
-                    }));
-
-                    return {
-                      ...toolItem,
-                      subItems
-                    };
-                  }
-                  return toolItem;
-                })
-              }))
-            }));
-          });
+          setToolSkillOptions((prevOptions) =>
+            updateTertiaryOptions(prevOptions, requestParentId, data)
+          );
         }
       }
     }
@@ -254,7 +271,6 @@ export const useToolManager = ({
     },
     [appForm.chatConfig, toast, t]
   );
-  // 检查工具是否需要用户配置
   const checkNeedsUserConfiguration = useCallback((toolTemplate: FlowNodeTemplateType): boolean => {
     const formRenderTypes = [
       FlowNodeInputTypeEnum.input,
@@ -280,7 +296,6 @@ export const useToolManager = ({
       })
     );
   }, []);
-
   const handleAddToolFromEditor = useCallback(
     async (toolKey: string): Promise<string> => {
       try {
@@ -365,7 +380,7 @@ export const useToolManager = ({
   );
 
   return {
-    toolSkills,
+    toolSkillOptions,
     queryString,
     setQueryString,
 

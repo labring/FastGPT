@@ -17,12 +17,12 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { useRequest2 } from '../../../../../../hooks/useRequest';
-import { buildSkillOptions, getSkillDisplayState, getToolDisplayState } from './utils';
-import type { EditorSkillPickerType, SkillOptionType, SkillToolItem } from './type';
+import { getSkillDisplayState, getToolDisplayState } from './utils';
+import type { SkillOptionType } from './type';
 import MyBox from '../../../../MyBox';
 
 export default function SkillPickerPlugin({
-  skills,
+  skillOptionList,
   isFocus,
   onAddToolFromEditor,
   selectedKey,
@@ -30,7 +30,7 @@ export default function SkillPickerPlugin({
   queryString,
   setQueryString
 }: {
-  skills: EditorSkillPickerType[];
+  skillOptionList: SkillOptionType[];
   isFocus: boolean;
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   selectedKey: string;
@@ -79,31 +79,19 @@ export default function SkillPickerPlugin({
     }
   );
 
-  const skillOptionList = useMemo(() => {
-    return buildSkillOptions(skills);
-  }, [skills]);
-
   const currentOptions = useMemo(() => {
-    if (queryString) {
-      return skills.map((skill) => ({
-        key: skill.key,
-        label: skill.label,
-        icon: skill.icon,
-        level: 'primary' as const,
-        parentKey: undefined
-      }));
-    }
-
     const currentOption = skillOptionList.find((option) => option.key === selectedKey);
     if (!currentOption) {
       return skillOptionList.filter((item) => item.level === 'primary');
     }
 
     const currentLevel = currentOption.level;
-    return skillOptionList.filter(
+    const filteredOptions = skillOptionList.filter(
       (item) => item.level === currentLevel && item.parentKey === currentOption.parentKey
     );
-  }, [skills, queryString, skillOptionList, selectedKey]);
+
+    return filteredOptions;
+  }, [skillOptionList, selectedKey]);
 
   useEffect(() => {
     if (!isFocus || queryString === null) return;
@@ -278,69 +266,13 @@ export default function SkillPickerPlugin({
           return null;
         })();
 
-        if (queryString) {
-          return ReactDOM.createPortal(
-            <MyBox
-              p={1.5}
-              borderRadius={'sm'}
-              w={'200px'}
-              boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
-              bg={'white'}
-              maxH={'320px'}
-              overflow={'auto'}
-              zIndex={99999}
-              isLoading={isAddToolLoading}
-            >
-              {currentOptions.map((option, index) => (
-                <Flex
-                  key={option.key}
-                  px={2}
-                  py={1.5}
-                  gap={2}
-                  borderRadius={'4px'}
-                  cursor={'pointer'}
-                  ref={(el) => {
-                    highlightedRefs.current[option.key] = el;
-                  }}
-                  onMouseDown={(e) => {
-                    const menuOption = menuOptions.find((m) => m.key === option.key);
-                    if (menuOption) selectOptionAndCleanUp(menuOption);
-                  }}
-                  {...(selectedKey === option.key
-                    ? {
-                        bg: '#1118240D'
-                      }
-                    : {
-                        bg: 'white'
-                      })}
-                  _hover={{
-                    bg: '#1118240D'
-                  }}
-                >
-                  <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
-                  <Box
-                    color={selectedKey === option.key ? 'primary.700' : 'myGray.600'}
-                    fontSize={'12px'}
-                    fontWeight={'medium'}
-                    letterSpacing={'0.5px'}
-                    flex={1}
-                  >
-                    {option.label}
-                  </Box>
-                </Flex>
-              ))}
-            </MyBox>,
-            anchorElementRef.current
-          );
-        }
-
         return ReactDOM.createPortal(
           <Flex position="relative" align="flex-start" zIndex={99999}>
             {/* 一级菜单 */}
             <MyBox
               p={1.5}
               borderRadius={'sm'}
-              w={'160px'}
+              w={queryString ? '200px' : '160px'}
               boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
               bg={'white'}
               flexShrink={0}
@@ -396,7 +328,7 @@ export default function SkillPickerPlugin({
             </MyBox>
 
             {/* 二级菜单 */}
-            {selectedSkillKey && (
+            {selectedSkillKey && !queryString && (
               <MyBox
                 ml={2}
                 p={1.5}
@@ -419,19 +351,14 @@ export default function SkillPickerPlugin({
                   // 按分类组织
                   const categories = new Map();
                   secondaryOptions.forEach((item) => {
-                    const skill = skills.find((skill) => skill.key === selectedSkillKey);
-                    const category = skill?.toolCategories?.find((category) =>
-                      category.list.some((toolItem: SkillToolItem) => toolItem.key === item.key)
-                    );
-
-                    if (category) {
-                      if (!categories.has(category.type)) {
-                        categories.set(category.type, {
-                          label: category.label,
+                    if (item.categoryType && item.categoryLabel) {
+                      if (!categories.has(item.categoryType)) {
+                        categories.set(item.categoryType, {
+                          label: item.categoryLabel,
                           options: []
                         });
                       }
-                      categories.get(category.type).options.push(item);
+                      categories.get(item.categoryType).options.push(item);
                     }
                   });
 
@@ -502,7 +429,7 @@ export default function SkillPickerPlugin({
               </MyBox>
             )}
 
-            {/* 第三级菜单 */}
+            {/* 三级菜单 */}
             {selectedToolKey &&
               (() => {
                 const tertiaryOptions = skillOptionList.filter(
