@@ -1,7 +1,7 @@
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { GET, POST } from '@/web/common/api/request';
 import type {
-  CollaboratorItemDetailType,
+  CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 
@@ -13,9 +13,10 @@ export const getSystemInitData = (bufferId?: string) =>
 // model permissions
 
 export const getModelCollaborators = (modelName: string) =>
-  GET<CollaboratorItemDetailType[]>('/proApi/system/model/collaborator/list', {
+  GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
     modelName
   });
 
-export const updateModelCollaborators = (props: UpdateClbPermissionProps & { modelName: string }) =>
-  POST('/proApi/system/model/collaborator/update', props);
+export const updateModelCollaborators = (
+  props: UpdateClbPermissionProps & { modelNames: string[] }
+) => POST('/proApi/system/model/collaborator/update', props);

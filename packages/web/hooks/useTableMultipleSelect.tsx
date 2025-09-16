@@ -64,7 +64,7 @@ export const useTableMultipleSelect = <T = any,>({
       children,
       Controler,
       ...props
-    }: { children: ReactNode; Controler: ReactNode } & FlexProps) => {
+    }: { children?: ReactNode; Controler: ReactNode } & FlexProps) => {
       return (
         <Flex w={'100%'} bg="white" px={6} pt={4} pb={2} alignItems="center" {...props}>
           {hasSelections && (
