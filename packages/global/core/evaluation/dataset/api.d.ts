@@ -48,7 +48,6 @@ type QualityEvaluationBase = {
 };
 
 export type importEvalDatasetFromFileBody = {
-  fileId?: string; // Optional for form-data, files will be uploaded directly
   collectionId?: string; // Optional - use existing collection mode
   // Optional fields for creating new collection mode
   name?: string;
@@ -74,6 +73,7 @@ export type listEvalDatasetDataBody = PaginationProps<{
   collectionId: string;
   searchKey?: string;
   status?: EvalDatasetDataQualityStatus;
+  qualityResult?: EvalDatasetDataQualityResultEnum;
 }>;
 
 export type listEvalDatasetDataResponse = PaginationResponse<

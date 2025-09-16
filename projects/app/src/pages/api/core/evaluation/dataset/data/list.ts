@@ -8,9 +8,11 @@ import type {
   listEvalDatasetDataResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import type { EvalDatasetDataQualityResultEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
   EvalDatasetDataKeyEnum,
-  EvalDatasetDataQualityStatusEnum
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultValues
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { authEvaluationDatasetDataRead } from '@fastgpt/service/core/evaluation/common';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -20,7 +22,7 @@ async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
 ): Promise<listEvalDatasetDataResponse> {
   const { offset, pageSize } = parsePaginationRequest(req);
-  const { collectionId, searchKey, status: qualityStatus } = req.body;
+  const { collectionId, searchKey, status: qualityStatus, qualityResult } = req.body;
 
   if (!collectionId) {
     return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
@@ -30,6 +32,12 @@ async function handler(
     !Object.values(EvalDatasetDataQualityStatusEnum).includes(
       qualityStatus as EvalDatasetDataQualityStatusEnum
     )
+  ) {
+    return Promise.reject(EvaluationErrEnum.evalDataQualityStatusInvalid);
+  }
+  if (
+    qualityResult &&
+    !EvalDatasetDataQualityResultValues.includes(qualityResult as EvalDatasetDataQualityResultEnum)
   ) {
     return Promise.reject(EvaluationErrEnum.evalDataQualityStatusInvalid);
   }
@@ -55,6 +63,10 @@ async function handler(
 
   if (qualityStatus && typeof qualityStatus === 'string' && qualityStatus.trim().length > 0) {
     match['qualityMetadata.status'] = qualityStatus.trim();
+  }
+
+  if (qualityResult && typeof qualityResult === 'string' && qualityResult.trim().length > 0) {
+    match['qualityResult'] = qualityResult.trim();
   }
 
   try {
@@ -87,6 +99,7 @@ async function handler(
       collectionId,
       searchKey,
       qualityStatus,
+      qualityResult,
       offset,
       pageSize,
       error
