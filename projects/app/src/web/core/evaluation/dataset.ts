@@ -113,3 +113,48 @@ export const getEvaluationDatasetDataDetail = (dataId: string) =>
 // 批量重试所有任务
 export const postRetryAllEvaluationDatasetTasks = (data: { collectionId: string }) =>
   POST('/core/evaluation/dataset/collection/retryAllTask', data);
+
+// 上传文件
+export const generateDataByUploadFile = ({
+  fileList,
+  percentListen,
+  name,
+  enableQualityEvaluation,
+  evaluationModel,
+  collectionId
+}: {
+  fileList: File[];
+  percentListen: (percent: number) => void;
+  collectionId: string;
+  name?: string;
+  enableQualityEvaluation: boolean;
+  evaluationModel?: string;
+}) => {
+  const formData = new FormData();
+
+  // 处理文件数组，为每个文件添加到 FormData
+  fileList.forEach((singleFile, index) => {
+    formData.append('file', singleFile, encodeURIComponent(singleFile.name));
+  });
+
+  const otherParams = {
+    ...(name ? { name } : {}),
+    ...(evaluationModel ? { evaluationModel } : {}),
+    enableQualityEvaluation,
+    collectionId
+  };
+  formData.append('data', JSON.stringify(otherParams));
+
+  return POST(`/core/evaluation/dataset/data/import`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
