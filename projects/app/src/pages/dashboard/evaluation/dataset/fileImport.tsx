@@ -11,7 +11,7 @@ import {
   IconButton,
   Switch,
   HStack,
-  Spinner
+  Progress
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -23,27 +23,20 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FileSelector, {
-  type SelectFileItemType,
-  type EvaluationFileItemType
-} from '@/pageComponents/dashboard/evaluation/dataset/FileSelector';
-import RenderFiles from '@/pageComponents/dashboard/evaluation/dataset/RenderFiles';
+  type SelectFileItemType
+} from '@/pageComponents/dataset/detail/components/FileSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import {
   postCreateEvaluationDataset,
-  postImportEvaluationDatasetFile
+  generateDataByUploadFile
 } from '@/web/core/evaluation/dataset';
 
 type FileImportFormType = {
   name: string;
   evaluationModel: string;
-  files: EvaluationFileItemType[];
+  files: File[];
   autoEvaluation: boolean;
 };
 
@@ -59,7 +52,8 @@ const FileImport = () => {
   const { toast } = useToast();
   const { llmModelList } = useSystemStore();
   const [isFormValid, setIsFormValid] = useState(false);
-  const [selectFiles, setSelectFiles] = useState<EvaluationFileItemType[]>([]);
+  const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
+  const [percent, setPercent] = useState(0);
   const [collectionId, setCollectionId] = useState<string>(
     (router.query.collectionId as string) || ''
   );
@@ -85,99 +79,23 @@ const FileImport = () => {
   const files = watch('files');
   const autoEvaluation = watch('autoEvaluation');
 
-  const successFiles = useMemo(() => selectFiles.filter((item) => !item.errorMsg), [selectFiles]);
-  const errorFiles = useMemo(() => selectFiles.filter((item) => item.errorMsg), [selectFiles]);
-
   // 检查表单是否有效
   const checkFormValid = useCallback(() => {
     const isValid =
-      (router.query.collectionId ? true : name.trim() !== '') && successFiles.length > 0;
+      (router.query.collectionId ? true : name.trim() !== '') && selectFiles.length > 0;
     setIsFormValid(isValid);
-  }, [name, successFiles, router.query.collectionId]);
+  }, [name, selectFiles, router.query.collectionId]);
 
   React.useEffect(() => {
     checkFormValid();
   }, [checkFormValid]);
 
   React.useEffect(() => {
-    setValue('files', successFiles);
-  }, [setValue, successFiles]);
-
-  const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
-    async (files: SelectFileItemType[]) => {
-      await Promise.all(
-        files.map(async ({ fileId, file }) => {
-          try {
-            const { fileId: uploadFileId } = await uploadFile2DB({
-              file,
-              bucketName: BucketNameEnum.evaluation,
-              percentListen: (e) => {
-                setSelectFiles((state) =>
-                  state.map((item) =>
-                    item.id === fileId
-                      ? {
-                          ...item,
-                          uploadedFileRate: item.uploadedFileRate
-                            ? Math.max(e, item.uploadedFileRate)
-                            : e
-                        }
-                      : item
-                  )
-                );
-              }
-            });
-            setSelectFiles((state) =>
-              state.map((item) =>
-                item.id === fileId
-                  ? {
-                      ...item,
-                      dbFileId: uploadFileId,
-                      isUploading: false,
-                      uploadedFileRate: 100
-                    }
-                  : item
-              )
-            );
-          } catch (error) {
-            setSelectFiles((state) =>
-              state.map((item) =>
-                item.id === fileId
-                  ? {
-                      ...item,
-                      isUploading: false,
-                      errorMsg: getErrText(error)
-                    }
-                  : item
-              )
-            );
-          }
-        })
-      );
-    },
-    {
-      onBefore([files]) {
-        setSelectFiles((state) => {
-          return [
-            ...state,
-            ...files.map<EvaluationFileItemType>((selectFile) => {
-              const { fileId, file } = selectFile;
-
-              return {
-                id: fileId,
-                createStatus: 'waiting',
-                file,
-                sourceName: file.name,
-                sourceSize: formatFileSize(file.size),
-                icon: getFileIcon(file.name),
-                isUploading: true,
-                uploadedFileRate: 0
-              };
-            })
-          ];
-        });
-      }
-    }
-  );
+    setValue(
+      'files',
+      selectFiles.map((item) => item.file)
+    );
+  }, [setValue, selectFiles]);
 
   // 根据场景获取跳转URL
   const getRedirectUrl = () => {
@@ -198,7 +116,6 @@ const FileImport = () => {
   const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest2(
     async (data: FileImportFormType) => {
       let currentCollectionId = collectionId;
-      let hasError = false;
 
       // 如果collectionId不存在，先创建评测数据集
       if (!currentCollectionId) {
@@ -208,63 +125,18 @@ const FileImport = () => {
         setCollectionId(currentCollectionId);
       }
 
-      // 串行导入文件到数据集，跳过已成功的文件
-      for (const file of data.files) {
-        // 跳过已经成功导入的文件
-        if (file.createStatus === 'success') {
-          continue;
-        }
-
-        try {
-          await postImportEvaluationDatasetFile({
-            fileId: file.dbFileId!,
-            collectionId: currentCollectionId,
-            enableQualityEvaluation: data.autoEvaluation,
-            evaluationModel: data.autoEvaluation ? data.evaluationModel : undefined
-          });
-
-          // 导入成功，更新文件状态
-          setSelectFiles((state) =>
-            state.map((item) =>
-              item.dbFileId === file.dbFileId
-                ? {
-                    ...item,
-                    createStatus: 'success',
-                    errorMsg: undefined
-                  }
-                : item
-            )
-          );
-        } catch (error) {
-          hasError = true;
-          // 将错误信息写入对应文件的errorMsg，并设置状态为fail
-          setSelectFiles((state) =>
-            state.map((item) =>
-              item.dbFileId === file.dbFileId
-                ? {
-                    ...item,
-                    createStatus: 'fail',
-                    errorMsg: getErrText(error)
-                  }
-                : item
-            )
-          );
-          // 继续处理下一个文件，不中断整个流程
-        }
-      }
-
-      // 检查是否所有文件都成功导入
-      const allFilesSuccess = data.files.every((file) => {
-        const currentFile = selectFiles.find((item) => item.dbFileId === file.dbFileId);
-        return currentFile?.createStatus === 'success';
+      // 使用 generateDataByUploadFile 上传多个文件
+      await generateDataByUploadFile({
+        fileList: data.files,
+        percentListen: setPercent,
+        collectionId: currentCollectionId,
+        enableQualityEvaluation: data.autoEvaluation,
+        evaluationModel: data.autoEvaluation ? data.evaluationModel : undefined
       });
-
-      if (allFilesSuccess) {
-        toast({
-          title: t('dashboard_evaluation:file_import_success'),
-          status: 'success'
-        });
-
+    },
+    {
+      successToast: t('dashboard_evaluation:file_import_success'),
+      onSuccess() {
         router.push(getRedirectUrl());
       }
     }
@@ -369,7 +241,7 @@ const FileImport = () => {
                     fileType=".csv"
                     selectFiles={selectFiles}
                     w={'100%'}
-                    onSelectFiles={onSelectFiles}
+                    setSelectFiles={(e) => setSelectFiles(e)}
                   />
 
                   {/* 渲染已选择的文件 */}
@@ -388,15 +260,10 @@ const FileImport = () => {
                         <VStack key={index} w={'100%'} align="stretch">
                           <HStack w={'100%'}>
                             <MyIcon name={item.icon as any} w={'1rem'} />
-                            <Box color={'myGray.900'}>{item.sourceName}</Box>
+                            <Box color={'myGray.900'}>{item.name}</Box>
                             <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
-                              {item.sourceSize}
+                              {item.size}
                             </Box>
-                            {item.isUploading && (
-                              <HStack spacing={2}>
-                                <Spinner size="sm" color="blue.500" />
-                              </HStack>
-                            )}
                             <MyIconButton
                               icon="delete"
                               hoverColor="red.500"
@@ -406,19 +273,15 @@ const FileImport = () => {
                               }}
                             />
                           </HStack>
-                          {/* 显示错误信息 */}
-                          {item.errorMsg && (
-                            <Box
-                              fontSize={'xs'}
-                              color={'red.500'}
-                              bg={'red.50'}
-                              px={2}
-                              py={1}
-                              borderRadius={'md'}
+                          {/* 显示上传进度条 */}
+                          {isSubmitting && (
+                            <Progress
+                              value={percent}
+                              size="sm"
+                              colorScheme="blue"
+                              borderRadius="md"
                               ml={6}
-                            >
-                              {t('common:error')}: {item.errorMsg}
-                            </Box>
+                            />
                           )}
                         </VStack>
                       ))}
@@ -473,10 +336,14 @@ const FileImport = () => {
                 h={9}
                 type="submit"
                 form="file-import-form"
-                isDisabled={!isFormValid || uploading || errorFiles.length > 0}
+                isDisabled={!isFormValid}
                 isLoading={isSubmitting}
               >
-                {t('dashboard_evaluation:file_import_confirm')}
+                {isSubmitting
+                  ? percent === 100
+                    ? t('dataset:data_parsing')
+                    : t('dataset:data_uploading', { num: percent })
+                  : t('dashboard_evaluation:file_import_confirm')}
               </Button>
             </Flex>
           </Flex>

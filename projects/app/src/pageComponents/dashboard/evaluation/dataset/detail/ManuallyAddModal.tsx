@@ -86,21 +86,29 @@ const ManuallyAddModal = ({
 
   // 检查表单是否有效
   const isFormValid = useMemo(() => {
-    return (
-      questionValue.trim() !== '' && answerValue.trim() !== '' && evaluationModelValue.trim() !== ''
-    );
-  }, [questionValue, answerValue, evaluationModelValue]);
+    const basicValid = questionValue.trim() !== '' && answerValue.trim() !== '';
+    if (autoEvaluationValue) {
+      return basicValid && evaluationModelValue.trim() !== '';
+    }
+    return basicValid;
+  }, [questionValue, answerValue, autoEvaluationValue, evaluationModelValue]);
 
   // 处理表单提交
   const handleFormSubmit = useCallback(
     async (data: ManuallyAddForm) => {
-      await handleAddData({
+      const submitData: any = {
         userInput: data.question,
         expectedOutput: data.answer,
-        evaluationModel: data.evaluationModel,
         enableQualityEvaluation: data.autoEvaluation,
         collectionId
-      });
+      };
+
+      // 只有当开启自动评测时才传递评测模型
+      if (data.autoEvaluation) {
+        submitData.evaluationModel = data.evaluationModel;
+      }
+
+      await handleAddData(submitData);
       onConfirm?.(data);
       onClose?.();
       reset();
@@ -168,22 +176,24 @@ const ManuallyAddModal = ({
             />
           </HStack>
 
-          {/* 质量评测模型 */}
-          <Box>
-            <FormLabel required mb={1}>
-              {t('dashboard_evaluation:quality_eval_model_label')}
-            </FormLabel>
-            <AIModelSelector
-              bg="myGray.50"
-              value={evaluationModelValue}
-              list={evalModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(value) => setValue('evaluationModel', value)}
-              placeholder={t('dashboard_evaluation:select_quality_eval_model_placeholder')}
-            />
-          </Box>
+          {/* 质量评测模型 - 仅在开启自动评测时显示 */}
+          {autoEvaluationValue && (
+            <Box>
+              <FormLabel required mb={1}>
+                {t('dashboard_evaluation:quality_eval_model_label')}
+              </FormLabel>
+              <AIModelSelector
+                bg="myGray.50"
+                value={evaluationModelValue}
+                list={evalModelList.map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
+                onChange={(value) => setValue('evaluationModel', value)}
+                placeholder={t('dashboard_evaluation:select_quality_eval_model_placeholder')}
+              />
+            </Box>
+          )}
         </VStack>
       </ModalBody>
 

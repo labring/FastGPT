@@ -151,13 +151,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   );
 
   // 轮询获取数据详情 - 在评测中或排队中时才轮询
-  useRequest2(() => getEvaluationDatasetDataDetail(formData._id), {
+  const { runAsync: getDetail } = useRequest2(() => getEvaluationDatasetDataDetail(formData._id), {
     pollingInterval: 3000,
     pollingWhenHidden: false,
-    manual:
-      !isOpen ||
-      (currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.evaluating &&
-        currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.queuing),
+    manual: true,
     ready: isOpen,
     onSuccess: (data: any) => {
       if (data?.qualityMetadata?.status !== currentEvaluationStatus) {
@@ -199,6 +196,13 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
       // 根据评测状态设置按钮显示状态
       updateButtonsByStatus(evaluationStatus, formData?.qualityResult);
+
+      if (
+        currentEvaluationStatus === EvalDatasetDataQualityStatusEnum.evaluating ||
+        currentEvaluationStatus === EvalDatasetDataQualityStatusEnum.queuing
+      ) {
+        getDetail();
+      }
     }
   }, [isOpen, defaultQuestion, defaultReferenceAnswer, evaluationStatus, qualityReason, reset]);
 
@@ -292,12 +296,16 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   {t('dashboard_evaluation:evaluation_abnormal')}
                 </Text>
               </Flex>
-              <Text fontSize="14px" color="myGray.600" mb={2}>
-                {t('dashboard_evaluation:error_message')}:
-              </Text>
-              <Text fontSize="14px" color="myGray.900" lineHeight="1.5">
-                {errorMsg}
-              </Text>
+              {errorMsg && (
+                <>
+                  <Text fontSize="14px" color="myGray.600" mb={2}>
+                    {t('dashboard_evaluation:error_message')}:
+                  </Text>
+                  <Text fontSize="14px" color="myGray.900" lineHeight="1.5">
+                    {errorMsg}
+                  </Text>
+                </>
+              )}
             </Box>
           </VStack>
         );
@@ -374,6 +382,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
             isShow: btn.key === 'modifyRes' || btn.key === 'reStart'
           }))
         );
+        getDetail();
         break;
 
       case 'modifyRes':
