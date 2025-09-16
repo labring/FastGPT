@@ -3,12 +3,7 @@ import { replaceVariable, valToStr } from '../../../common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID,
-  WorkflowIOValueTypeEnum
-} from '../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
 import {
   type InteractiveNodeResponseType,
@@ -20,6 +15,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
+import { type WorkflowIOValueType, WorkflowIOValueTypeEnum } from '../../app/type.d';
 
 export const checkIsBranchNode = (node: RuntimeNodeItemType) => {
   if (node.catchError) return true;
@@ -68,7 +64,7 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
 };
 
 /* value type format */
-export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum) => {
+export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueType) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -146,7 +142,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectDataset,
       WorkflowIOValueTypeEnum.selectApp
-    ].includes(valueType)
+    ].includes(valueType as any)
   ) {
     if (isObjectString(value)) {
       try {
@@ -492,7 +488,7 @@ export const getReferenceVariableValue = ({
   return value;
 };
 
-export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {
+export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueType) => {
   if (!valueType) return val;
   if (val === undefined || val === null) return;
   // Value type check, If valueType invalid, return undefined
@@ -508,7 +504,7 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectApp,
       WorkflowIOValueTypeEnum.selectDataset
-    ].includes(valueType) &&
+    ].includes(valueType as any) &&
     typeof val !== 'object'
   )
     return undefined;

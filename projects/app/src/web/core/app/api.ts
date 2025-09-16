@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
+import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
 import type { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
 import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
@@ -15,7 +15,6 @@ export const getMyApps = (data?: ListAppBody) =>
   });
 
 export const getRecentlyUsedApps = RestAPI(client.app.list);
-
 /**
  * 创建一个应用
  */

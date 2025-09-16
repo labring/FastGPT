@@ -1,8 +1,15 @@
 import type { UserModelSchema } from '../type';
-import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
+import type { TeamMemberRoleEnum } from './constant';
 import type { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 import type { TeamPermission } from '../../permission/user/controller';
+import { z } from '../../../common/tsRest/z';
+
+export const TeamMemberStatusSchema = z
+  .enum(['active', 'leave', 'forbidden'])
+  .describe('团队成员状态');
+export const TeamMemberStatusEnum = TeamMemberStatusSchema.enum;
+export type TeamMemberStatusType = z.infer<typeof TeamMemberStatusSchema>;
 
 export type ThirdPartyAccountType = {
   lafAccount?: LafAccountType;

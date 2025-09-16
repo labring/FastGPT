@@ -3,6 +3,24 @@ import type { RequireOnlyOne } from '../../common/type/utils';
 import type { TeamMemberSchema } from '../user/team/type';
 import type { CommonRoleKeyEnum } from './constant';
 import { type CommonPerKeyEnum, type PerResourceTypeEnum } from './constant';
+import { z } from '../../common/tsRest/z';
+
+export const PermissionSchema = z
+  .object({
+    hasReadPer: z.boolean().describe('是否有读取权限'),
+    hasWritePer: z.boolean().describe('是否有写入权限'),
+    hasManagePer: z.boolean().describe('是否有管理权限'),
+    isOwner: z.boolean().describe('是否为所有者')
+  })
+  .openapi({
+    example: {
+      hasReadPer: true,
+      hasWritePer: true,
+      hasManagePer: true,
+      isOwner: false
+    }
+  })
+  .describe('用户权限信息');
 
 // PermissionValueType, the type of permission's value is a number, which is a bit field actually.
 // It is spired by the permission system in Linux.

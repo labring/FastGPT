@@ -30,11 +30,5 @@
     "@types/lodash": "^4.14.191",
     "@types/node": "20.14.0",
     "vitest": "^3.0.9"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:tsrest": "vitest run common/tsRest/test/",
-    "openapi": "npx tsx common/tsRest/scripts/openapi.ts"
   }
 }

@@ -1,7 +1,8 @@
 import { c } from './init';
 import { appContract } from './contracts/app';
-import { OpenAPIObject } from './server';
+import { supportContract } from './contracts/support';
 
 export const contract = c.router({
-  app: appContract
+  app: appContract,
+  support: supportContract
 });

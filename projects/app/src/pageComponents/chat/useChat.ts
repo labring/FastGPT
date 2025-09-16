@@ -12,15 +12,12 @@ export const useChat = (appId: string) => {
   const [isInitedUser, setIsInitedUser] = useState(false);
 
   // get app list
-  const { data: myApps = [] } = useRequest2(
-    () => getRecentlyUsedApps({ body: { getRecentlyChat: true } }),
-    {
-      manual: false,
-      errorToast: '',
-      refreshDeps: [userInfo],
-      pollingInterval: 30000
-    }
-  );
+  const { data: myApps = [] } = useRequest2(() => getRecentlyUsedApps({ getRecentlyChat: true }), {
+    manual: false,
+    errorToast: '',
+    refreshDeps: [userInfo],
+    pollingInterval: 30000
+  });
 
   // initialize user info
   useMount(async () => {
