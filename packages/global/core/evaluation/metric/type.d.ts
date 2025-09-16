@@ -36,14 +36,14 @@ export type EvalMetricSchemaType = {
   type: EvalMetricTypeEnum;
   prompt?: string;
 
-  userInputRequired: boolean;
-  actualOutputRequired: boolean;
-  expectedOutputRequired: boolean;
-  contextRequired: boolean;
-  retrievalContextRequired: boolean;
+  userInputRequired?: boolean;
+  actualOutputRequired?: boolean;
+  expectedOutputRequired?: boolean;
+  contextRequired?: boolean;
+  retrievalContextRequired?: boolean;
 
-  embeddingRequired: boolean;
-  llmRequired: boolean;
+  embeddingRequired?: boolean;
+  llmRequired?: boolean;
 
   createTime: Date;
   updateTime: Date;
