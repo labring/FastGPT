@@ -1,5 +1,5 @@
 ---
-title: 'V4.12.4'
+title: 'V4.12.4(包含升级脚本)'
 description: 'FastGPT V4.12.4 更新说明, 发布于 2025-9-15'
 ---
 
@@ -13,6 +13,22 @@ description: 'FastGPT V4.12.4 更新说明, 发布于 2025-9-15'
 - mcp_server 无需更新
 - 更新 Sandbox 镜像 tag: v4.12.4
 - AIProxy 无需更新
+
+### 2. 执行升级脚本
+
+该脚本仅需商业版用户执行。
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4124' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**脚本功能**
+
+1. 补充所有资源的owner权限
 
 ## 🚀 新增内容
 
