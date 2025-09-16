@@ -1,7 +1,4 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { getPlanAgentPrompt } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
@@ -85,7 +82,7 @@ export const dispatchPlanAgent = async ({
       content: userInput
     });
   }
-  console.log(JSON.stringify({ requestMessages }, null, 2));
+  // console.log(JSON.stringify({ requestMessages }, null, 2));
 
   const {
     answerText,
