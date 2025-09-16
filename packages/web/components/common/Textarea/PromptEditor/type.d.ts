@@ -57,12 +57,21 @@ export type TabEditorNode = BaseEditorNode & {
   type: 'tab';
 };
 
+export type SkillEditorNode = BaseEditorNode & {
+  type: 'skill';
+  skillKey: string;
+  skillName?: string;
+  skillAvatar?: string;
+  format: number;
+};
+
 export type ChildEditorNode =
   | TextEditorNode
   | LineBreakEditorNode
   | VariableLabelEditorNode
   | VariableEditorNode
-  | TabEditorNode;
+  | TabEditorNode
+  | SkillEditorNode;
 
 export type ParagraphEditorNode = BaseEditorNode & {
   type: 'paragraph';
