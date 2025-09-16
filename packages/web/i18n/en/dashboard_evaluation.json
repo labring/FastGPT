@@ -289,6 +289,18 @@
   "please_select_dimension_first": "请先选择该维度",
   "model_evaluation_tip": "语言模型可判断实际回答和参考答案中的文本内容是否匹配；\n索引模型可将实际回答和参考答案转成向量，进一步评估语义相似性。",
   "create_new_dimension": "新建维度",
-    "retry_success": "重试成功",
-  "data_generation_error_count": "{{count}}条数据生成异常"
+  "retry_success": "重试成功",
+  "data_generation_error_count": "{{count}}条数据生成异常",
+  "builtin_answer_correctness_name": "Answer Correctness",
+  "builtin_answer_correctness_desc": "Evaluates the factual consistency between the generated answer and the reference answer, evaluating whether it is accurate and error-free.",
+  "builtin_answer_similarity_name": "Answer Similarity",
+  "builtin_answer_similarity_desc": "Evaluates the semantic alignment between the generated answer and the reference answer, determining whether they convey the same core information.",
+  "builtin_answer_relevancy_name": "Answer Relevance",
+  "builtin_answer_relevancy_desc": "Evaluates how well the generated answer aligns with the question, judging whether the response directly addresses the query.",
+  "builtin_faithfulness_name": "Faithfulness",
+  "builtin_faithfulness_desc": "Evaluates whether the generated answer remains faithful to the provided context, determining whether it contains fabricated or inaccurate content.",
+  "builtin_context_recall_name": "Context Recall",
+  "builtin_context_recall_desc": "Evaluates whether the retrieval system successfully retrieves all key information necessary for formulating the answer, assessing the completeness of retrieval.",
+  "builtin_context_precision_name": "Context Precision",
+  "builtin_context_precision_desc": "Evaluates whether high-value information is prioritized in the retrieved content, reflecting the quality of ranking and information density."
 }
