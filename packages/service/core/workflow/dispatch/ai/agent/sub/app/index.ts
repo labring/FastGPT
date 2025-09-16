@@ -10,8 +10,7 @@ import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
   storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes,
-  textAdaptGptResponse
+  storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getUserChatInfoAndAuthTeamPoints } from '../../../../../../../support/permission/auth/team';

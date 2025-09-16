@@ -1,8 +1,4 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   ConfirmPlanAgentText,
   DispatchNodeResponseKeyEnum,
@@ -27,14 +23,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import {
-  filterMemoryMessages,
-  filterToolResponseToPreview,
-  formatToolResponse,
-  getToolNodesByIds,
-  initToolNodes,
-  parseToolArgs
-} from '../utils';
+import { filterMemoryMessages, filterToolResponseToPreview, parseToolArgs } from '../utils';
 import { SubAppIds, systemSubInfo } from './sub/constants';
 import {
   getReferenceVariableValue,
@@ -46,10 +35,7 @@ import { dispatchPlanAgent } from './sub/plan';
 import { dispatchModelAgent } from './sub/model';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getSubApps, rewriteSubAppsToolset } from './sub';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchTool } from './sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMasterAgentDefaultPrompt } from './constants';
@@ -57,8 +43,6 @@ import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -94,6 +78,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     externalProvider,
     stream,
     res,
+    workflowDispatchDeep,
     workflowStreamResponse,
     params: {
       model,
@@ -185,7 +170,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // Get master request messages
     const systemMessages = chats2GPTMessages({
-      messages: getSystemPrompt_ChatItemType(getMasterAgentDefaultPrompt()),
+      messages: getSystemPrompt_ChatItemType(
+        workflowDispatchDeep === 1 ? getMasterAgentDefaultPrompt() : systemPrompt
+      ),
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
@@ -213,21 +200,23 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
-    let planMessages: ChatCompletionMessageParam[] = [];
 
     // TODO: 执行 plan function(只有lastInteractive userselect/userInput 时候，才不需要进入 plan)
     if (
       lastInteractive?.type !== 'userSelect' &&
       lastInteractive?.type !== 'userInput' &&
-      userChatInput !== ConfirmPlanAgentText
+      userChatInput !== ConfirmPlanAgentText &&
+      workflowDispatchDeep === 1
     ) {
+      const planRequestMessages = [...planHistoryMessages, ...userMessages];
       const { completeMessages, toolMessages, usages, interactiveResponse } =
         await dispatchPlanAgent({
-          messages: requestMessages,
+          messages: planRequestMessages,
           subApps: subAppList,
           model,
           temperature,
           top_p: aiChatTopP,
+          systemPrompt,
           stream,
           onReasoning: ({ text }: { text: string }) => {
             workflowStreamResponse?.({
@@ -256,29 +245,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         },
         [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
 
-        // Mock：返回 plan check
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanCheck',
-        //   params: {}
-        // }
-
-        // Mock: 返回 plan user select
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanAskUserSelect',
-        //   params: {
-        //     description: '测试',
-        //     userSelectOptions: [
-        //       {
-        //         key: 'test',
-        //         value: '测试'
-        //       },
-        //       {
-        //         key: 'test2',
-        //         value: '测试2'
-        //       }
-        //     ]
-        //   }
-        // }
         // Mock: 返回 plan user input
         // [DispatchNodeResponseKeyEnum.interactive]: {
         //   type: 'agentPlanAskUserForm',
@@ -294,13 +260,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         //         required: true
         //       }
         //     ]
-        //   }
-        // }
-        // Mock: 返回 plan user query
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanAskQuery',
-        //   params: {
-        //     content: '请提供 xxxxx'
         //   }
         // }
       };
@@ -401,8 +360,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         const {
           response,
           usages = [],
-          isEnd,
-          interactive
+          isEnd
         } = await (async () => {
           try {
             if (toolId === SubAppIds.stop) {
@@ -411,28 +369,29 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 usages: [],
                 isEnd: true
               };
-            } else if (toolId === SubAppIds.plan) {
-              const { completeMessages, response, usages, interactiveResponse } =
-                await dispatchPlanAgent({
-                  messages,
-                  subApps: subAppList,
-                  model,
-                  temperature,
-                  top_p: aiChatTopP,
-                  stream,
-                  onReasoning,
-                  onStreaming
-                });
+            }
+            // TODO: 现在是程序中强制执行的 Plan
+            // else if (toolId === SubAppIds.plan) {
+            // const { completeMessages, response, usages, interactiveResponse } =
+            //   await dispatchPlanAgent({
+            //     messages,
+            //     subApps: subAppList,
+            //     model,
+            //     temperature,
+            //     top_p: aiChatTopP,
+            //     stream,
+            //     onReasoning,
+            //     onStreaming
+            //   });
 
-              planMessages = completeMessages;
-
-              return {
-                response,
-                usages,
-                isEnd: false,
-                interactive: interactiveResponse
-              };
-            } else if (toolId === SubAppIds.model) {
+            // return {
+            //   response,
+            //   usages,
+            //   isEnd: false,
+            //   interactive: interactiveResponse
+            // };
+            // }
+            else if (toolId === SubAppIds.model) {
               const { systemPrompt, task } = parseToolArgs<{
                 systemPrompt: string;
                 task: string;
@@ -603,8 +562,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         return {
           response,
           usages,
-          isEnd,
-          interactive
+          isEnd
         };
       }
     });
@@ -632,7 +590,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
         [masterMessagesKey]: filterMemoryMessages(completeMessages),
-        [planMessagesKey]: [filterMemoryMessages(planMessages)]
+        [planMessagesKey]: [filterMemoryMessages(planHistoryMessages)]
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
