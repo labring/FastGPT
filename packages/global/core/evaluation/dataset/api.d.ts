@@ -45,8 +45,11 @@ type QualityEvaluationBase = {
 };
 
 export type importEvalDatasetFromFileBody = {
-  fileId: string;
-  collectionId: string;
+  fileId?: string; // Optional for form-data, files will be uploaded directly
+  collectionId?: string; // Optional - use existing collection mode
+  // Optional fields for creating new collection mode
+  name?: string;
+  description?: string;
 } & QualityEvaluationBase;
 type EvalDatasetDataBase = {
   [EvalDatasetDataKeyEnum.UserInput]: string;
