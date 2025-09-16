@@ -1,4 +1,8 @@
-import { replaceVariable, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import {
+  replaceVariable,
+  sliceJsonStr,
+  sliceStrStartEnd
+} from '@fastgpt/global/common/string/tools';
 import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType
@@ -174,10 +178,10 @@ export const getToolNodesByIds = ({
     });
 };
 
-export const parseToolArgs = <T = Record<string, any>>(toolArgs: string): T => {
+export const parseToolArgs = <T = Record<string, any>>(toolArgs: string) => {
   try {
-    return json5.parse(toolArgs) as T;
+    return json5.parse(sliceJsonStr(toolArgs)) as T;
   } catch {
-    return {} as T;
+    return;
   }
 };
