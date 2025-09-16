@@ -8,6 +8,7 @@ import AIResponseBox from '../../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 const RenderOutput = () => {
   const { t } = useTranslation();
 
@@ -37,7 +38,7 @@ const RenderOutput = () => {
                   <AIResponseBox
                     chatItemDataId={histories[1].dataId}
                     key={key}
-                    value={value}
+                    value={value as AIChatItemValueItemType}
                     isLastResponseValue={true}
                     isChatting={isChatting}
                   />
