@@ -88,7 +88,7 @@ const RenderInput = () => {
     if (histories.length === 0) return pluginInputs;
     try {
       const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+      const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
 
       if (!inputValueString) return pluginInputs;
       return JSON.parse(inputValueString) as FlowNodeInputItemType[];
@@ -127,7 +127,7 @@ const RenderInput = () => {
       if (!historyValue) return undefined;
 
       try {
-        const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+        const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
         return (
           inputValueString &&
           JSON.parse(inputValueString).reduce(
@@ -152,7 +152,7 @@ const RenderInput = () => {
     // Parse history file
     const historyFileList = (() => {
       const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      return historyValue?.filter((item) => item.type === 'file').map((item) => item.file);
+      return historyValue?.filter((item) => item.file).map((item) => item.file);
     })();
 
     reset({
