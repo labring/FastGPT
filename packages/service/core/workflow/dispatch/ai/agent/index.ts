@@ -212,8 +212,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reserveId: false
     });
 
-    const masterRequestMessages = [...systemMessages, ...historyMessages, ...userMessages];
-    const planRequestMessages = [...systemMessages, ...historyMessages, ...userMessages];
+    const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
+    let planMessages: ChatCompletionMessageParam[] = [];
 
     // TODO: 执行 plan function(只有lastInteractive userselect/userInput 时候，才不需要进入 plan)
     if (
@@ -221,9 +221,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       lastInteractive?.type !== 'userInput' &&
       userChatInput !== ConfirmPlanAgentText
     ) {
-      const { response, usages, assistantResponses, interactiveResponse } = await dispatchPlanAgent(
-        {
-          messages: planRequestMessages,
+      const { completeMessages, toolMessages, usages, interactiveResponse } =
+        await dispatchPlanAgent({
+          messages: requestMessages,
           subApps: subAppList,
           model,
           temperature,
@@ -246,44 +246,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               })
             });
           }
-        }
-      );
-
-      response ?? planRequestMessages.push({ role: 'assistant', content: response });
-
-      const checkResponse: InteractiveNodeResponseType = {
-        type: 'agentPlanCheck',
-        params: {}
-      };
-
-      if (response) {
-        const toolId = getNanoid(6);
-        masterRequestMessages.push({
-          role: 'assistant',
-          tool_calls: [
-            {
-              id: toolId,
-              type: 'function',
-              function: {
-                name: SubAppIds.plan,
-                arguments: ''
-              }
-            }
-          ]
         });
-        masterRequestMessages.push({
-          role: 'tool',
-          tool_call_id: toolId,
-          content: response
-        });
-      }
+
+      if (toolMessages) requestMessages.push(...toolMessages);
 
       return {
         [DispatchNodeResponseKeyEnum.memories]: {
-          [masterMessagesKey]: filterMemoryMessages(masterRequestMessages),
-          [planMessagesKey]: filterMemoryMessages(planRequestMessages)
+          [masterMessagesKey]: filterMemoryMessages(requestMessages),
+          [planMessagesKey]: filterMemoryMessages(completeMessages)
         },
-        [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse ?? checkResponse
+        [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
 
         // Mock：返回 plan check
         // [DispatchNodeResponseKeyEnum.interactive]: {
@@ -347,7 +319,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       maxRunAgentTimes: 100,
       interactiveEntryToolParams: lastInteractive?.toolParams,
       body: {
-        messages: masterRequestMessages,
+        messages: requestMessages,
         model: agentModel,
         temperature,
         stream,
@@ -441,28 +413,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 isEnd: true
               };
             } else if (toolId === SubAppIds.plan) {
-              const { response, usages, interactiveResponse } = await dispatchPlanAgent({
-                messages,
-                subApps: subAppList,
-                model,
-                temperature,
-                top_p: aiChatTopP,
-                stream,
-                getToolInfo: getSubAppInfo,
-                onReasoning,
-                onStreaming
-              });
+              const { completeMessages, response, usages, interactiveResponse } =
+                await dispatchPlanAgent({
+                  messages,
+                  subApps: subAppList,
+                  model,
+                  temperature,
+                  top_p: aiChatTopP,
+                  stream,
+                  getToolInfo: getSubAppInfo,
+                  onReasoning,
+                  onStreaming
+                });
 
-              const planCheckInteractive: InteractiveNodeResponseType = {
-                type: 'agentPlanCheck',
-                params: {}
-              };
+              planMessages = completeMessages;
 
               return {
                 response,
                 usages,
                 isEnd: false,
-                interactive: interactiveResponse ?? planCheckInteractive
+                interactive: interactiveResponse
               };
             } else if (toolId === SubAppIds.model) {
               const { systemPrompt, task } = parseToolArgs<{
@@ -664,7 +634,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
         [masterMessagesKey]: filterMemoryMessages(completeMessages),
-        [planMessagesKey]: [filterMemoryMessages(completeMessages)] // TODO: plan messages 需要记录
+        [planMessagesKey]: [filterMemoryMessages(planMessages)]
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

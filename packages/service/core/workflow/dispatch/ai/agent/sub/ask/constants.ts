@@ -32,7 +32,7 @@ export const AskAgentTool: ChatCompletionTool = {
         },
         options: {
           type: 'array',
-          description: '当 mode=elect 时可供选择的选项',
+          description: '当 mode=select 时可供选择的选项',
           items: {
             type: 'string'
           }

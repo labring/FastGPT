@@ -13,6 +13,8 @@ import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/
 import { runAgentCall } from '../../../../../../../core/ai/llm/agentCall';
 import { parseToolArgs } from '../../../utils';
 import { AskAgentTool, type AskAgentToolParamsType } from '../ask/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
 type PlanAgentConfig = {
   model: string;
@@ -33,7 +35,8 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
 type DispatchPlanAgentResponse = {
   response: string;
   usages: ChatNodeUsageType[];
-  assistantResponses: AIChatItemValueItemType[];
+  completeMessages: ChatCompletionMessageParam[];
+  toolMessages?: ChatCompletionMessageParam[];
   interactiveResponse?: InteractiveNodeResponseType;
 };
 
@@ -62,8 +65,8 @@ export const dispatchPlanAgent = async ({
   const filterPlanTools = subApps.filter((item) => item.function.name !== SubAppIds.plan);
   filterPlanTools.push(AskAgentTool);
 
-  const { assistantResponses, inputTokens, outputTokens, interactiveResponse } = await runAgentCall(
-    {
+  const { completeMessages, assistantResponses, inputTokens, outputTokens, interactiveResponse } =
+    await runAgentCall({
       maxRunAgentTimes: 10,
       body: {
         model: modelData,
@@ -117,8 +120,7 @@ export const dispatchPlanAgent = async ({
 
         return { response: 'invalid tool call', usages: [], isEnd: false };
       }
-    }
-  );
+    });
 
   const responseText = assistantResponses
     .filter((item) => item.text?.content)
@@ -131,6 +133,35 @@ export const dispatchPlanAgent = async ({
     outputTokens
   });
 
+  const checkResponse: InteractiveNodeResponseType = {
+    type: 'agentPlanCheck',
+    params: {}
+  };
+
+  const toolMessages: ChatCompletionMessageParam[] = [];
+  if (responseText) {
+    const toolId = getNanoid(6);
+    const toolCall: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      tool_calls: [
+        {
+          id: toolId,
+          type: 'function',
+          function: {
+            name: SubAppIds.plan,
+            arguments: ''
+          }
+        }
+      ]
+    };
+    const toolCallResponse: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: toolId,
+      content: responseText
+    };
+    toolMessages.push(toolCall, toolCallResponse);
+  }
+
   return {
     response: responseText,
     usages: [
@@ -142,7 +173,8 @@ export const dispatchPlanAgent = async ({
         outputTokens
       }
     ],
-    assistantResponses,
-    interactiveResponse
+    completeMessages,
+    toolMessages,
+    interactiveResponse: interactiveResponse || checkResponse
   };
 };
