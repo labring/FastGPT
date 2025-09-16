@@ -4,22 +4,14 @@ import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema'
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
-import type { ListMetricsBody } from '@fastgpt/global/core/evaluation/metric/api';
+import { getBuiltinMetrics } from '@fastgpt/service/core/evaluation/metric/provider';
 import { Types } from '@fastgpt/service/common/mongo';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/evaluation/metric/schema', () => ({
   MongoEvalMetric: {
-    find: vi.fn(() => ({
-      sort: vi.fn(() => ({
-        skip: vi.fn(() => ({
-          limit: vi.fn(() => ({
-            lean: vi.fn()
-          }))
-        }))
-      }))
-    })),
-    countDocuments: vi.fn()
+    find: vi.fn()
   }
 }));
 
@@ -35,6 +27,10 @@ vi.mock('@fastgpt/service/core/evaluation/common', () => ({
   getEvaluationPermissionAggregation: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/evaluation/metric/provider', () => ({
+  getBuiltinMetrics: vi.fn()
+}));
+
 describe('/api/core/evaluation/metric/list', () => {
   const mockTeamId = '507f1f77bcf86cd799439011';
   const mockTmbId = '507f1f77bcf86cd799439012';
@@ -44,7 +40,7 @@ describe('/api/core/evaluation/metric/list', () => {
     vi.clearAllMocks();
   });
 
-  it('should list metrics successfully without search', async () => {
+  it('should list metrics successfully', async () => {
     // Mock auth response
     vi.mocked(authUserPer).mockResolvedValue({
       userId: mockUserId,
@@ -65,71 +61,51 @@ describe('/api/core/evaluation/metric/list', () => {
       myOrgSet: new Set()
     });
 
-    // Mock database response
-    const mockMetrics = [
+    // Mock custom metrics from database
+    const mockCustomMetrics = [
       {
         _id: 'metric1',
-        name: 'Metric 1',
-        description: 'Description 1',
+        name: 'Custom Metric 1',
+        description: 'Custom Description 1',
         createTime: new Date('2024-01-01'),
         updateTime: new Date('2024-01-01'),
         tmbId: mockTmbId,
-        permission: { hasReadPer: true }
-      },
-      {
-        _id: 'metric2',
-        name: 'Metric 2',
-        description: 'Description 2',
-        createTime: new Date('2024-01-02'),
-        updateTime: new Date('2024-01-02'),
-        tmbId: mockTmbId,
-        permission: { hasReadPer: true }
+        type: EvalMetricTypeEnum.Custom
       }
     ];
 
-    const mockMetricsWithSource = [
+    // Mock builtin metrics
+    const mockBuiltinMetrics = [
       {
-        _id: 'metric1',
-        name: 'Metric 1',
-        description: 'Description 1',
+        _id: 'builtin_accuracy',
+        name: 'Accuracy',
+        description: 'Accuracy metric',
+        type: EvalMetricTypeEnum.Builtin,
+        teamId: '',
+        tmbId: '',
         createTime: new Date('2024-01-01'),
-        updateTime: new Date('2024-01-01'),
-        tmbId: mockTmbId,
-        sourceMember: { name: 'User 1', avatar: 'avatar1.png', status: 'active' as any }
-      },
-      {
-        _id: 'metric2',
-        name: 'Metric 2',
-        description: 'Description 2',
-        createTime: new Date('2024-01-02'),
-        updateTime: new Date('2024-01-02'),
-        tmbId: mockTmbId,
-        sourceMember: { name: 'User 2', avatar: 'avatar2.png', status: 'active' as any }
+        updateTime: new Date('2024-01-01')
       }
     ];
 
-    const mockQuery = {
-      lean: vi.fn().mockResolvedValue(mockMetrics)
-    };
-    const mockSkip = {
-      limit: vi.fn().mockReturnValue(mockQuery)
-    };
-    const mockSort = {
-      skip: vi.fn().mockReturnValue(mockSkip)
-    };
-    const mockFind = {
-      sort: vi.fn().mockReturnValue(mockSort)
-    };
+    const mockCustomMetricsWithSource = [
+      {
+        ...mockCustomMetrics[0],
+        sourceMember: { name: 'User 1', avatar: 'avatar1.png', status: 'active' as any },
+        permission: { hasReadPer: true },
+        private: true
+      }
+    ];
 
-    vi.mocked(MongoEvalMetric.find).mockReturnValue(mockFind as any);
-    vi.mocked(MongoEvalMetric.countDocuments).mockResolvedValue(2);
-    vi.mocked(addSourceMember).mockResolvedValue(mockMetricsWithSource);
+    vi.mocked(MongoEvalMetric.find).mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockCustomMetrics)
+      })
+    } as any);
+    vi.mocked(addSourceMember).mockResolvedValue(mockCustomMetricsWithSource);
+    vi.mocked(getBuiltinMetrics).mockResolvedValue(mockBuiltinMetrics);
 
     const req = {
-      body: {
-        pageNum: 1,
-        pageSize: 10
-      } as ListMetricsBody,
       auth: {
         userId: mockUserId,
         teamId: mockTeamId,
@@ -159,79 +135,44 @@ describe('/api/core/evaluation/metric/list', () => {
       authToken: true
     });
 
-    // Verify database query with expected filter structure
+    // Verify database query for custom metrics
     expect(MongoEvalMetric.find).toHaveBeenCalledWith({
-      $or: [
-        {
-          _id: {
-            $in: []
-          }
-        },
-        {
-          tmbId: new Types.ObjectId(mockTmbId)
-        },
-        {
-          type: 'builtin_metric'
-        }
-      ],
-      teamId: new Types.ObjectId(mockTeamId)
-    });
-    expect(mockFind.sort).toHaveBeenCalledWith({ createTime: -1 });
-    expect(mockSort.skip).toHaveBeenCalledWith(0);
-    expect(mockSkip.limit).toHaveBeenCalledWith(10);
-
-    // Verify count query
-    expect(MongoEvalMetric.countDocuments).toHaveBeenCalledWith({
-      $or: [
-        {
-          _id: {
-            $in: []
-          }
-        },
-        {
-          tmbId: new Types.ObjectId(mockTmbId)
-        },
-        {
-          type: 'builtin_metric'
-        }
-      ],
       teamId: new Types.ObjectId(mockTeamId)
     });
 
-    // Verify source member addition (with permission objects added)
+    // Verify builtin metrics were fetched
+    expect(getBuiltinMetrics).toHaveBeenCalled();
+
+    // Verify source member addition for custom metrics only
     expect(addSourceMember).toHaveBeenCalledWith({
       list: expect.arrayContaining([
         expect.objectContaining({
           _id: 'metric1',
-          name: 'Metric 1',
-          description: 'Description 1',
-          createTime: new Date('2024-01-01'),
-          updateTime: new Date('2024-01-01'),
-          tmbId: mockTmbId,
-          permission: expect.any(Object),
-          private: expect.any(Boolean)
-        }),
-        expect.objectContaining({
-          _id: 'metric2',
-          name: 'Metric 2',
-          description: 'Description 2',
-          createTime: new Date('2024-01-02'),
-          updateTime: new Date('2024-01-02'),
-          tmbId: mockTmbId,
+          name: 'Custom Metric 1',
           permission: expect.any(Object),
           private: expect.any(Boolean)
         })
       ])
     });
 
-    // Verify response
+    // Verify response structure
     expect(result).toEqual({
-      total: 2,
-      list: mockMetricsWithSource
+      list: expect.arrayContaining([
+        expect.objectContaining({
+          _id: 'metric1',
+          name: 'Custom Metric 1',
+          sourceMember: expect.any(Object)
+        }),
+        expect.objectContaining({
+          _id: 'builtin_accuracy',
+          name: 'Accuracy',
+          type: EvalMetricTypeEnum.Builtin
+        })
+      ])
     });
   });
 
-  it('should list metrics with search key filter', async () => {
+  it('should handle owner permissions correctly', async () => {
     // Mock auth response
     vi.mocked(authUserPer).mockResolvedValue({
       userId: mockUserId,
@@ -242,52 +183,136 @@ describe('/api/core/evaluation/metric/list', () => {
       tmb: {} as any
     });
 
-    // Mock database response
-    const mockMetrics = [
+    // Mock permission aggregation response with owner status
+    vi.mocked(getEvaluationPermissionAggregation).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isOwner: true,
+      roleList: [],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
+    });
+
+    const mockCustomMetrics = [
       {
         _id: 'metric1',
         name: 'Test Metric',
         description: 'Test Description',
         createTime: new Date('2024-01-01'),
         updateTime: new Date('2024-01-01'),
-        tmbId: mockTmbId
+        tmbId: mockTmbId,
+        type: EvalMetricTypeEnum.Custom
       }
     ];
 
-    const mockQuery = {
-      lean: vi.fn().mockResolvedValue(mockMetrics)
-    };
-    const mockSkip = {
-      limit: vi.fn().mockReturnValue(mockQuery)
-    };
-    const mockSort = {
-      skip: vi.fn().mockReturnValue(mockSkip)
-    };
-    const mockFind = {
-      sort: vi.fn().mockReturnValue(mockSort)
-    };
-
-    vi.mocked(MongoEvalMetric.find).mockReturnValue(mockFind as any);
-    vi.mocked(MongoEvalMetric.countDocuments).mockResolvedValue(1);
+    vi.mocked(MongoEvalMetric.find).mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockCustomMetrics)
+      })
+    } as any);
     vi.mocked(addSourceMember).mockResolvedValue(
-      mockMetrics.map((item) => ({
+      mockCustomMetrics.map((item) => ({
         ...item,
-        sourceMember: { name: 'User', avatar: 'avatar.png', status: 'active' as any }
+        sourceMember: { name: 'User', avatar: 'avatar.png', status: 'active' as any },
+        permission: { hasReadPer: true },
+        private: true
       }))
     );
+    vi.mocked(getBuiltinMetrics).mockResolvedValue([]);
 
     const req = {
-      body: {
-        pageNum: 1,
-        pageSize: 10,
-        searchKey: 'Test'
-      } as ListMetricsBody
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
+    };
+
+    const result = await handler(req as any);
+
+    // Verify that for owners, simple filter is used (no $or with accessible IDs)
+    expect(MongoEvalMetric.find).toHaveBeenCalledWith({
+      teamId: new Types.ObjectId(mockTeamId)
+    });
+
+    expect(result.list).toHaveLength(1);
+  });
+
+  it('should handle non-owner permissions with accessible resources', async () => {
+    // Mock auth response
+    vi.mocked(authUserPer).mockResolvedValue({
+      userId: mockUserId,
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isRoot: false,
+      permission: {} as any,
+      tmb: {} as any
+    });
+
+    // Mock permission aggregation response with accessible resources
+    const accessibleMetricId = '507f1f77bcf86cd799439020';
+    vi.mocked(getEvaluationPermissionAggregation).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isOwner: false,
+      roleList: [
+        {
+          resourceId: accessibleMetricId,
+          tmbId: mockTmbId,
+          permission: 1,
+          groupId: null,
+          orgId: null
+        }
+      ],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
+    });
+
+    vi.mocked(MongoEvalMetric.find).mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([])
+      })
+    } as any);
+    vi.mocked(addSourceMember).mockResolvedValue([]);
+    vi.mocked(getBuiltinMetrics).mockResolvedValue([]);
+
+    const req = {
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await handler(req as any);
+
+    // Verify database query with permission-based filter
+    expect(MongoEvalMetric.find).toHaveBeenCalledWith({
+      teamId: new Types.ObjectId(mockTeamId),
+      $or: [
+        {
+          _id: {
+            $in: [new Types.ObjectId(accessibleMetricId)]
+          }
+        },
+        {
+          tmbId: new Types.ObjectId(mockTmbId)
+        }
+      ]
+    });
   });
 
-  it('should handle empty search key', async () => {
+  it('should filter metrics by permission', async () => {
     // Mock auth response
     vi.mocked(authUserPer).mockResolvedValue({
       userId: mockUserId,
@@ -308,29 +333,50 @@ describe('/api/core/evaluation/metric/list', () => {
       myOrgSet: new Set()
     });
 
-    const mockQuery = {
-      lean: vi.fn().mockResolvedValue([])
-    };
-    const mockSkip = {
-      limit: vi.fn().mockReturnValue(mockQuery)
-    };
-    const mockSort = {
-      skip: vi.fn().mockReturnValue(mockSkip)
-    };
-    const mockFind = {
-      sort: vi.fn().mockReturnValue(mockSort)
-    };
+    // Mock metrics where some don't have read permission
+    const mockCustomMetrics = [
+      {
+        _id: 'metric1',
+        name: 'Accessible Metric',
+        tmbId: mockTmbId,
+        createTime: new Date(),
+        updateTime: new Date()
+      },
+      {
+        _id: 'metric2',
+        name: 'Inaccessible Metric',
+        tmbId: 'other_user_id',
+        createTime: new Date(),
+        updateTime: new Date()
+      }
+    ];
 
-    vi.mocked(MongoEvalMetric.find).mockReturnValue(mockFind as any);
-    vi.mocked(MongoEvalMetric.countDocuments).mockResolvedValue(0);
-    vi.mocked(addSourceMember).mockResolvedValue([]);
+    // Mock the custom metrics with different permission results
+    const mockCustomWithPermissions = [
+      {
+        ...mockCustomMetrics[0],
+        permission: { hasReadPer: true },
+        private: true,
+        sourceMember: { name: 'User', avatar: 'avatar.png', status: 'active' as any }
+      },
+      {
+        ...mockCustomMetrics[1],
+        permission: { hasReadPer: false },
+        private: false
+      }
+    ];
+
+    vi.mocked(MongoEvalMetric.find).mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockCustomMetrics)
+      })
+    } as any);
+    vi.mocked(addSourceMember).mockResolvedValue([
+      mockCustomWithPermissions[0] // Only the one with read permission
+    ]);
+    vi.mocked(getBuiltinMetrics).mockResolvedValue([]);
 
     const req = {
-      body: {
-        pageNum: 1,
-        pageSize: 10,
-        searchKey: '   ' // whitespace only
-      } as ListMetricsBody,
       auth: {
         userId: mockUserId,
         teamId: mockTeamId,
@@ -343,67 +389,16 @@ describe('/api/core/evaluation/metric/list', () => {
       }
     };
 
-    await handler(req as any);
+    const result = await handler(req as any);
 
-    // Verify database query without search filter (whitespace is trimmed)
-    expect(MongoEvalMetric.find).toHaveBeenCalledWith({
-      $or: [
-        {
-          _id: {
-            $in: []
-          }
-        },
-        {
-          tmbId: new Types.ObjectId(mockTmbId)
-        },
-        {
-          type: 'builtin_metric'
-        }
-      ],
-      teamId: new Types.ObjectId(mockTeamId)
-    });
-  });
-
-  it('should handle pagination correctly', async () => {
-    // Mock auth response
-    vi.mocked(authUserPer).mockResolvedValue({
-      userId: mockUserId,
-      teamId: mockTeamId,
-      tmbId: mockTmbId,
-      isRoot: false,
-      permission: {} as any,
-      tmb: {} as any
-    });
-
-    const mockQuery = {
-      lean: vi.fn().mockResolvedValue([])
-    };
-    const mockSkip = {
-      limit: vi.fn().mockReturnValue(mockQuery)
-    };
-    const mockSort = {
-      skip: vi.fn().mockReturnValue(mockSkip)
-    };
-    const mockFind = {
-      sort: vi.fn().mockReturnValue(mockSort)
-    };
-
-    vi.mocked(MongoEvalMetric.find).mockReturnValue(mockFind as any);
-    vi.mocked(MongoEvalMetric.countDocuments).mockResolvedValue(0);
-    vi.mocked(addSourceMember).mockResolvedValue([]);
-
-    const req = {
-      body: {
-        pageNum: 3,
-        pageSize: 5
-      } as ListMetricsBody
-    };
-
-    await handler(req as any);
-
-    // Verify pagination: page 3 with size 5 = skip 10, limit 5
-    expect(mockSort.skip).toHaveBeenCalledWith(10);
-    expect(mockSkip.limit).toHaveBeenCalledWith(5);
+    // Verify that only metrics with read permission are included
+    expect(result.list).toHaveLength(1);
+    expect(result.list[0]).toEqual(
+      expect.objectContaining({
+        _id: 'metric1',
+        name: 'Accessible Metric'
+      })
+    );
   });
 
   it('should handle auth failure', async () => {
@@ -411,10 +406,16 @@ describe('/api/core/evaluation/metric/list', () => {
     vi.mocked(authUserPer).mockRejectedValue(authError);
 
     const req = {
-      body: {
-        pageNum: 1,
-        pageSize: 10
-      } as ListMetricsBody
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any)).rejects.toThrow('Authentication failed');
@@ -433,16 +434,31 @@ describe('/api/core/evaluation/metric/list', () => {
       tmb: {} as any
     });
 
+    vi.mocked(getEvaluationPermissionAggregation).mockResolvedValue({
+      teamId: mockTeamId,
+      tmbId: mockTmbId,
+      isOwner: false,
+      roleList: [],
+      myGroupMap: new Map(),
+      myOrgSet: new Set()
+    });
+
     const dbError = new Error('Database query failed');
     vi.mocked(MongoEvalMetric.find).mockImplementation(() => {
       throw dbError;
     });
 
     const req = {
-      body: {
-        pageNum: 1,
-        pageSize: 10
-      } as ListMetricsBody
+      auth: {
+        userId: mockUserId,
+        teamId: mockTeamId,
+        tmbId: mockTmbId,
+        appId: '',
+        authType: 'token' as any,
+        sourceName: undefined,
+        apikey: '',
+        isRoot: false
+      }
     };
 
     await expect(handler(req as any)).rejects.toThrow('Database query failed');

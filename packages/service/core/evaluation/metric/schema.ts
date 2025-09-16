@@ -23,11 +23,15 @@ const EvalMetricSchema = new Schema({
   },
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
+    maxlength: 100
   },
   description: {
     type: String,
-    required: false
+    default: '',
+    trim: true,
+    maxlength: 100
   },
   type: {
     type: String,
@@ -41,34 +45,34 @@ const EvalMetricSchema = new Schema({
 
   userInputRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
 
   actualOutputRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
 
   expectedOutputRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
   contextRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
   retrievalContextRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
 
   embeddingRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
   llmRequired: {
     type: Boolean,
-    default: false
+    required: false
   },
 
   createTime: {
@@ -85,6 +89,7 @@ const EvalMetricSchema = new Schema({
 
 EvalMetricSchema.index({ teamId: 1, name: 1 }, { unique: true });
 EvalMetricSchema.index({ createTime: -1 });
+EvalMetricSchema.index({ updateTime: -1 });
 
 EvalMetricSchema.pre('save', function (next) {
   this.updateTime = new Date();
