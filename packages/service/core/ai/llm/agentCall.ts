@@ -6,7 +6,10 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { CreateLLMResponseProps, ResponseEvents } from './request';
 import { createLLMResponse } from './request';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -39,13 +42,14 @@ type RunAgentCallProps = {
     response: string;
     usages: ChatNodeUsageType[];
     isEnd: boolean;
+    interactive?: InteractiveNodeResponseType;
   }>;
 } & ResponseEvents;
 
 type RunAgentResponse = {
   completeMessages: ChatCompletionMessageParam[];
   assistantResponses: AIChatItemValueItemType[];
-  interactiveResponse?: WorkflowInteractiveResponseType;
+  interactiveResponse?: InteractiveNodeResponseType;
 
   // Usage
   inputTokens: number;
@@ -71,7 +75,7 @@ export const runAgentCall = async ({
   let runTimes = 0;
 
   const assistantResponses: AIChatItemValueItemType[] = [];
-  let interactiveResponse: WorkflowInteractiveResponseType | undefined;
+  let interactiveResponse: InteractiveNodeResponseType | undefined;
 
   let requestMessages = messages;
 
@@ -127,7 +131,7 @@ export const runAgentCall = async ({
     let isEndSign = false;
     for await (const tool of toolCalls) {
       // TODO: 加入交互节点处理
-      const { response, usages, isEnd } = await handleToolResponse({
+      const { response, usages, isEnd, interactive } = await handleToolResponse({
         call: tool,
         messages: requestMessages.slice(0, requestMessagesLength) // 取原来 request 的上下文
       });
@@ -142,8 +146,12 @@ export const runAgentCall = async ({
         content: response
       });
       subAppUsages.push(...usages);
-    }
 
+      if (interactive) {
+        interactiveResponse = interactive;
+        isEndSign = true;
+      }
+    }
     // TODO: 移动到工作流里 assistantResponses concat
     const currentAssistantResponses = GPTMessages2Chats({
       messages: requestMessages.slice(requestMessagesLength),
@@ -168,6 +176,7 @@ export const runAgentCall = async ({
     outputTokens,
     completeMessages: requestMessages,
     assistantResponses,
-    subAppUsages
+    subAppUsages,
+    interactiveResponse
   };
 };

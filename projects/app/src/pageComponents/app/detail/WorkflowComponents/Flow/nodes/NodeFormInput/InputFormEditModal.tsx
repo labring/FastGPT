@@ -73,9 +73,9 @@ const InputFormEditModal = ({
     }
   ];
 
-  const defaultValueType = inputTypeList
-    .flat()
-    .find((item) => item.value === inputType)?.defaultValueType;
+  const defaultValueType =
+    inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType ??
+    WorkflowIOValueTypeEnum.string;
 
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
