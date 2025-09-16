@@ -1,12 +1,11 @@
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
 
 export const pushGenerateVectorUsage = ({
-  billId,
+  usageId,
   teamId,
   tmbId,
   inputTokens,
@@ -19,7 +18,7 @@ export const pushGenerateVectorUsage = ({
   deepSearchInputTokens,
   deepSearchOutputTokens
 }: {
-  billId?: string;
+  usageId?: string;
   teamId: string;
   tmbId: string;
   inputTokens: number;
@@ -75,14 +74,13 @@ export const pushGenerateVectorUsage = ({
   const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
 
   // 插入 Bill 记录
-  if (billId) {
+  if (usageId) {
     concatUsage({
       teamId,
-      tmbId,
       totalPoints,
-      billId,
+      usageId,
       inputTokens,
-      listIndex: 0
+      itemType: UsageItemTypeEnum.training_vector
     });
   } else {
     createUsage({

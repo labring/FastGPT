@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
-  const { billId } = await createTrainingUsage({
+  const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: '切换索引模型',
@@ -115,7 +115,7 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
                 tmbId,
                 datasetId,
                 collectionId: data.collectionId,
-                billId,
+                billId: usageId,
                 mode: TrainingModeEnum.chunk,
                 model: vectorModel,
                 dataId: data._id,
