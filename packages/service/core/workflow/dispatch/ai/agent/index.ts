@@ -78,6 +78,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     externalProvider,
     stream,
     res,
+    workflowDispatchDeep,
     workflowStreamResponse,
     params: {
       model,
@@ -169,7 +170,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // Get master request messages
     const systemMessages = chats2GPTMessages({
-      messages: getSystemPrompt_ChatItemType(getMasterAgentDefaultPrompt()),
+      messages: getSystemPrompt_ChatItemType(
+        workflowDispatchDeep === 1 ? getMasterAgentDefaultPrompt() : systemPrompt
+      ),
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
@@ -197,13 +200,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
-    let planMessages: ChatCompletionMessageParam[] = [];
 
     // TODO: 执行 plan function(只有lastInteractive userselect/userInput 时候，才不需要进入 plan)
     if (
       lastInteractive?.type !== 'userSelect' &&
       lastInteractive?.type !== 'userInput' &&
-      userChatInput !== ConfirmPlanAgentText
+      userChatInput !== ConfirmPlanAgentText &&
+      workflowDispatchDeep === 1
     ) {
       const planRequestMessages = [...planHistoryMessages, ...userMessages];
       const { completeMessages, toolMessages, usages, interactiveResponse } =
@@ -357,8 +360,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         const {
           response,
           usages = [],
-          isEnd,
-          interactive
+          isEnd
         } = await (async () => {
           try {
             if (toolId === SubAppIds.stop) {
@@ -367,28 +369,29 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 usages: [],
                 isEnd: true
               };
-            } else if (toolId === SubAppIds.plan) {
-              const { completeMessages, response, usages, interactiveResponse } =
-                await dispatchPlanAgent({
-                  messages,
-                  subApps: subAppList,
-                  model,
-                  temperature,
-                  top_p: aiChatTopP,
-                  stream,
-                  onReasoning,
-                  onStreaming
-                });
+            }
+            // TODO: 现在是程序中强制执行的 Plan
+            // else if (toolId === SubAppIds.plan) {
+            // const { completeMessages, response, usages, interactiveResponse } =
+            //   await dispatchPlanAgent({
+            //     messages,
+            //     subApps: subAppList,
+            //     model,
+            //     temperature,
+            //     top_p: aiChatTopP,
+            //     stream,
+            //     onReasoning,
+            //     onStreaming
+            //   });
 
-              planMessages = completeMessages;
-
-              return {
-                response,
-                usages,
-                isEnd: false,
-                interactive: interactiveResponse
-              };
-            } else if (toolId === SubAppIds.model) {
+            // return {
+            //   response,
+            //   usages,
+            //   isEnd: false,
+            //   interactive: interactiveResponse
+            // };
+            // }
+            else if (toolId === SubAppIds.model) {
               const { systemPrompt, task } = parseToolArgs<{
                 systemPrompt: string;
                 task: string;
@@ -559,8 +562,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         return {
           response,
           usages,
-          isEnd,
-          interactive
+          isEnd
         };
       }
     });
@@ -588,7 +590,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
         [masterMessagesKey]: filterMemoryMessages(completeMessages),
-        [planMessagesKey]: [filterMemoryMessages(planMessages)]
+        [planMessagesKey]: [filterMemoryMessages(planHistoryMessages)]
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
