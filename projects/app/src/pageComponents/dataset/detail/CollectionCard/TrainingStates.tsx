@@ -556,7 +556,7 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={2}>
+        <Flex align="center" justify="space-between" mb={4}>
           <FillRowTabs
             py={1}
             value={tab}

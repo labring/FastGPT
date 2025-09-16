@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
-  const { billId } = await createTrainingUsage({
+  const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: name,
@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest) {
     vllmModel: getVlmModel(dataset.vlmModel)?.name
   });
 
-  return billId;
+  return usageId;
 }
 
 export default NextAPI(handler);

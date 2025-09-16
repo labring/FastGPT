@@ -61,3 +61,15 @@ export const UsageSourceMap = {
     label: i18nT('common:support.wallet.usage.Optimize Prompt')
   }
 };
+
+export enum UsageItemTypeEnum {
+  training_vector = 1,
+  training_qa = 2,
+  training_autoIndex = 3,
+  training_imageIndex = 4,
+  training_paragraph = 5,
+  training_imageParse = 6,
+
+  evaluation_generateAnswer = 7,
+  evaluation_answerAccuracy = 8
+}

@@ -31,6 +31,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 const requestLLMPargraph = async ({
   rawText,
@@ -221,6 +222,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         teamId: data.teamId,
         tmbId: data.tmbId,
         customPdfParse: collection.customPdfParse,
+        usageId: data.billId,
         ...sourceReadType
       });
 
@@ -234,12 +236,11 @@ export const datasetParseQueue = async (): Promise<any> => {
       // Push usage
       pushLLMTrainingUsage({
         teamId: data.teamId,
-        tmbId: data.tmbId,
         model: dataset.agentModel,
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
-        billId: data.billId,
-        mode: 'paragraph'
+        usageId: data.billId,
+        type: UsageItemTypeEnum.training_paragraph
       });
 
       // 4. Chunk split

@@ -15,9 +15,10 @@ import {
   type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search/controller';
 import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
-import {
-  type ConcatUsageProps,
-  type CreateUsageProps
+import type {
+  PushUsageItemsProps,
+  ConcatUsageProps,
+  CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from './constants';
 import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
@@ -64,12 +65,15 @@ export function initGlobalVariables() {
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/createUsage', data);
+      return POST<string>('/support/wallet/usage/createUsage', data);
     };
-
     global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
       if (!isProVersion()) return;
       return POST('/support/wallet/usage/concatUsage', data);
+    };
+    global.pushUsageItemsHandler = function pushUsageItemsHandler(data: PushUsageItemsProps) {
+      if (!isProVersion()) return;
+      return POST('/support/wallet/usage/pushUsageItems', data);
     };
   }
 
