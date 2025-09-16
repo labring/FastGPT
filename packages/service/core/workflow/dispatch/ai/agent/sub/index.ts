@@ -1,5 +1,4 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { PlanAgentTool } from './plan/constants';
 import { readFileTool } from './file/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
@@ -79,7 +78,11 @@ export const getSubApps = ({
   ];
 
   // Node Tools
-  const nodeTools = subApps.map<ChatCompletionTool>((item) => {
+  const unitNodeTools = subApps.filter(
+    (item, index, array) => array.findIndex((app) => app.pluginId === item.pluginId) === index
+  );
+
+  const nodeTools = unitNodeTools.map<ChatCompletionTool>((item) => {
     const toolParams: FlowNodeInputItemType[] = [];
     let jsonSchema: JSONSchemaInputType | undefined;
 

@@ -46,6 +46,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import { getSubAppsPrompt } from './sub/plan/prompt';
+import { parseAgentSystemPrompt } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -100,21 +101,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   const masterMessagesKey = `masterMessages-${nodeId}`;
   const planMessagesKey = `planMessages-${nodeId}`;
+  const planToolCallMessagesKey = `planToolCallMessages-${nodeId}`;
 
   // Get history messages
-  const { masterHistoryMessages, planHistoryMessages } = (() => {
+  let { masterHistoryMessages, planHistoryMessages, planToolCallMessages } = (() => {
     const lastHistory = chatHistories[chatHistories.length - 1];
     if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
       return {
         masterHistoryMessages: (lastHistory.memories?.[masterMessagesKey] ||
           []) as ChatCompletionMessageParam[],
         planHistoryMessages: (lastHistory.memories?.[planMessagesKey] ||
+          []) as ChatCompletionMessageParam[],
+        planToolCallMessages: (lastHistory.memories?.[planToolCallMessagesKey] ||
           []) as ChatCompletionMessageParam[]
       };
     }
     return {
       masterHistoryMessages: [],
-      planHistoryMessages: []
+      planHistoryMessages: [],
+      planToolCallMessages: []
     };
   })();
 
@@ -187,65 +192,69 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       Sub agent
       只会执行一次，肯定有。
     */
-    let masterPlanToolCallMessages: ChatCompletionMessageParam[] = [];
-
     if (
-      // 不为 userSelect 和 userInput，或者如果为 agentPlanCheck 并且 interactiveInput !== ConfirmPlanAgentText 都会执行
-      (lastInteractive?.type !== 'userSelect' &&
-        lastInteractive?.type !== 'userInput' &&
-        lastInteractive?.type !== 'agentPlanCheck') ||
-      (lastInteractive?.type === 'agentPlanCheck' && interactiveInput !== ConfirmPlanAgentText)
+      // 如果是 userSelect 和 userInput，说明不是 plan 触发的交互。
+      lastInteractive?.type !== 'userSelect' &&
+      lastInteractive?.type !== 'userInput'
     ) {
-      // 临时代码
-      const tmpText = '正在进行规划生成...\n';
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: tmpText
-        })
-      });
+      // Confirm 操作
+      if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
+      } else {
+        // 临时代码
+        const tmpText = '正在进行规划生成...\n';
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: tmpText
+          })
+        });
 
-      const {
-        answerText,
-        planList,
-        planToolCallMessages,
-        completeMessages,
-        usages,
-        interactiveResponse
-      } = await dispatchPlanAgent({
-        historyMessages: planHistoryMessages,
-        userInput: lastInteractive ? interactiveInput : taskInput,
-        interactive: lastInteractive,
-        subAppPrompt: getSubAppsPrompt({ subAppList, getSubAppInfo }),
-        model,
-        systemPrompt,
-        temperature,
-        top_p: aiChatTopP,
-        stream,
-        isTopPlanAgent: workflowDispatchDeep === 1
-      });
+        const {
+          answerText,
+          planList,
+          planToolCallMessages: newPlanToolCallMessages,
+          completeMessages,
+          usages,
+          interactiveResponse
+        } = await dispatchPlanAgent({
+          historyMessages: planHistoryMessages,
+          userInput: lastInteractive ? interactiveInput : taskInput,
+          interactive: lastInteractive,
+          subAppPrompt: getSubAppsPrompt({ subAppList, getSubAppInfo }),
+          model,
+          systemPrompt: parseAgentSystemPrompt({
+            systemPrompt,
+            getSubAppInfo
+          }),
+          temperature,
+          top_p: aiChatTopP,
+          stream,
+          isTopPlanAgent: workflowDispatchDeep === 1
+        });
 
-      const text = `${answerText}${planList ? `\n\`\`\`json\n${JSON.stringify(planList, null, 2)}\n\`\`\`` : ''}`;
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text
-        })
-      });
+        const text = `${answerText}${planList ? `\n\`\`\`json\n${JSON.stringify(planList, null, 2)}\n\`\`\`` : ''}`;
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text
+          })
+        });
 
-      planMessages = completeMessages;
-      masterPlanToolCallMessages = planToolCallMessages;
+        planMessages = completeMessages;
+        planToolCallMessages = newPlanToolCallMessages;
 
-      // TODO: usage 合并
-      // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
-      if (interactiveResponse) {
-        return {
-          [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
-          [DispatchNodeResponseKeyEnum.memories]: {
-            [planMessagesKey]: filterMemoryMessages(planMessages)
-          },
-          [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
-        };
+        // TODO: usage 合并
+        // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
+        if (interactiveResponse) {
+          return {
+            [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
+            [DispatchNodeResponseKeyEnum.memories]: {
+              [planMessagesKey]: filterMemoryMessages(planMessages),
+              [planToolCallMessagesKey]: planToolCallMessages
+            },
+            [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+          };
+        }
       }
     }
 
@@ -261,7 +270,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         return masterHistoryMessages;
       }
 
-      return chats2GPTMessages({ messages: chatHistories, reserveId: false });
+      return [];
     })();
 
     const userMessages = chats2GPTMessages({
@@ -279,9 +288,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const requestMessages = [
       ...systemMessages,
       ...historyMessages,
-      ...masterPlanToolCallMessages,
-      ...userMessages
+      ...userMessages,
+      ...planToolCallMessages
     ];
+    console.log(JSON.stringify({ requestMessages }, null, 2));
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
     const {
