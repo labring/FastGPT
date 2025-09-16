@@ -15,7 +15,7 @@ export const systemSubInfo: Record<
   [SubAppIds.plan]: {
     name: i18nT('chat:plan_agent'),
     avatar: 'common/detail',
-    toolDescription: '分析和拆解用户问题，制定分步计划。'
+    toolDescription: '分析和拆解用户问题，制定执行步骤。'
   },
   [SubAppIds.fileRead]: {
     name: i18nT('chat:file_parse'),
