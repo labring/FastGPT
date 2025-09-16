@@ -40,8 +40,12 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
-import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
 import ListExitPlugin from './plugins/ListExitPlugin';
+import SkillPickerPlugin from './plugins/SkillPickerPlugin';
+import SkillPlugin from './plugins/SkillPlugin';
+import { SkillNode } from './plugins/SkillPlugin/node';
+import type { SkillOptionType } from './plugins/SkillPickerPlugin';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -72,6 +76,15 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  onAddToolFromEditor?: (toolKey: string) => Promise<string>;
+  onRemoveToolFromEditor?: (toolId: string) => void;
+  onConfigureTool?: (toolId: string) => void;
+  selectedTools?: FlowNodeTemplateType[];
+  skillOptionList?: SkillOptionType[];
+  queryString?: string | null;
+  setQueryString?: (value: string | null) => void;
+  selectedSkillKey?: string;
+  setSelectedSkillKey?: (key: string) => void;
   value?: string;
   showOpenModal?: boolean;
   minH?: number;
@@ -95,6 +108,15 @@ export default function Editor({
   onOpenModal,
   variables = [],
   variableLabels = [],
+  skillOptionList = [],
+  queryString,
+  setQueryString,
+  onAddToolFromEditor,
+  onRemoveToolFromEditor,
+  onConfigureTool,
+  selectedTools = [],
+  selectedSkillKey,
+  setSelectedSkillKey,
   onChange,
   onChangeText,
   onBlur,
@@ -121,6 +143,7 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
+      SkillNode,
       HeadingNode,
       ListNode,
       ListItemNode,
@@ -137,7 +160,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [value, variables, variableLabels, selectedTools]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -219,6 +242,24 @@ export default function Editor({
             </>
           )}
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {skillOptionList && skillOptionList.length > 0 && setSelectedSkillKey && (
+            <>
+              <SkillPlugin
+                selectedTools={selectedTools}
+                onConfigureTool={onConfigureTool}
+                onRemoveToolFromEditor={onRemoveToolFromEditor}
+              />
+              <SkillPickerPlugin
+                skillOptionList={skillOptionList}
+                queryString={queryString}
+                setQueryString={setQueryString}
+                isFocus={focus}
+                onAddToolFromEditor={onAddToolFromEditor}
+                selectedKey={selectedSkillKey || ''}
+                setSelectedKey={setSelectedSkillKey}
+              />
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
           <OnChangePlugin
             onChange={(editorState, editor) => {

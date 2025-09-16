@@ -125,6 +125,7 @@ export const iconPaths = {
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
   'common/wallet': () => import('./icons/common/wallet.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
+  'common/warningFill': () => import('./icons/common/warningFill.svg'),
   'common/wechat': () => import('./icons/common/wechat.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
   'common/wecom': () => import('./icons/common/wecom.svg'),
@@ -272,10 +273,6 @@ export const iconPaths = {
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dataset': () => import('./icons/core/workflow/inputType/dataset.svg'),
-  'core/workflow/inputType/timePointSelect': () =>
-    import('./icons/core/workflow/inputType/timePointSelect.svg'),
-  'core/workflow/inputType/timeRangeSelect': () =>
-    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
   'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
@@ -301,6 +298,10 @@ export const iconPaths = {
     import('./icons/core/workflow/inputType/selectLLM.svg'),
   'core/workflow/inputType/switch': () => import('./icons/core/workflow/inputType/switch.svg'),
   'core/workflow/inputType/textarea': () => import('./icons/core/workflow/inputType/textarea.svg'),
+  'core/workflow/inputType/timePointSelect': () =>
+    import('./icons/core/workflow/inputType/timePointSelect.svg'),
+  'core/workflow/inputType/timeRangeSelect': () =>
+    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
