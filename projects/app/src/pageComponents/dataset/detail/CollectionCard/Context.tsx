@@ -14,6 +14,10 @@ import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type'
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
+import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
+import { TabEnum } from '../../../../pages/dataset/detail/index';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -31,6 +35,8 @@ type CollectionPageContextType = {
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
   setFilterTags: Dispatch<SetStateAction<string[]>>;
+  hasDatabaseConfig: boolean;
+  handleOpenConfigPage: (mode?: 'edit' | 'create', databaseName?: string) => void;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -58,7 +64,9 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   filterTags: [],
   setFilterTags: function (value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  hasDatabaseConfig: false,
+  handleOpenConfigPage: () => {}
 });
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
@@ -139,6 +147,24 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, filterTags]
   });
 
+  // database
+  const hasDatabaseConfig = useMemo(() => !isEmpty(datasetDetail.databaseConfig), [datasetDetail]);
+  const handleOpenConfigPage = (mode: 'edit' | 'create' = 'create', databaseName?: string) => {
+    router.replace({
+      query: {
+        ...router.query,
+        currentTab: TabEnum.import,
+        source: ImportDataSourceEnum.database,
+        mode,
+        ...(databaseName
+          ? {
+              databaseName
+            }
+          : {})
+      }
+    });
+  };
+
   const contextValue: CollectionPageContextType = {
     openDatasetSyncConfirm: openDatasetSyncConfirm(syncDataset),
     onOpenWebsiteModal,
@@ -153,7 +179,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     getData,
     isGetting,
     pageNum,
-    pageSize
+    pageSize,
+    hasDatabaseConfig,
+    handleOpenConfigPage
   };
 
   return (

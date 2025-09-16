@@ -11,6 +11,7 @@ const EmptyCollectionTip = () => {
   const { t } = useTranslation();
   const onOpenWebsiteModal = useContextSelector(CollectionPageContext, (v) => v.onOpenWebsiteModal);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const hasDatabaseConfig = useContextSelector(CollectionPageContext, (v) => v.hasDatabaseConfig);
 
   return (
     <>
@@ -54,14 +55,16 @@ const EmptyCollectionTip = () => {
       {datasetDetail.type === DatasetTypeEnum.database && (
         <EmptyTip
           text={
-            <Flex>
-              {/* TODO-lyx */}
-              {t('common:no_database_connection')}
-              {', '}
-              <Box textDecoration={'underline'} cursor={'pointer'} onClick={onOpenWebsiteModal}>
-                {t('common:click_config_database')}
-              </Box>
-            </Flex>
+            !hasDatabaseConfig ? (
+              <Flex>
+                {t('common:no_database_connection')}
+                <Box textDecoration={'underline'} cursor={'pointer'} onClick={onOpenWebsiteModal}>
+                  {t('common:click_config_database')}
+                </Box>
+              </Flex>
+            ) : (
+              t('common:core.dataset.collection.Empty Tip')
+            )
           }
         />
       )}

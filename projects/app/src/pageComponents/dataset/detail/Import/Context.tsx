@@ -39,6 +39,7 @@ type DatasetImportContextType = {
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
   setTab: React.Dispatch<React.SetStateAction<number>>;
+  datasetId: string;
 };
 
 export const defaultFormData: ImportFormType = {
@@ -87,7 +88,8 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
   chunkOverlapRatio: 0,
   //@ts-ignore
   processParamsForm: undefined,
-  autoChunkSize: 0
+  autoChunkSize: 0,
+  datasetId: ''
 });
 
 const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -102,6 +104,8 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     parentId?: string;
     mode: 'create' | 'edit';
   };
+
+  const datasetId = (router.query.datasetId || '') as string;
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
@@ -237,7 +241,17 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     processParamsForm,
     sources,
     setSources,
-    setTab
+    setTab,
+    datasetId
+  };
+
+  const handleReturn = () => {
+    router.replace({
+      query: {
+        ...router.query,
+        currentTab: TabEnum.collectionCard
+      }
+    });
   };
 
   const renderCreateStatusStep = () => {
@@ -253,16 +267,11 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
                 borderRadius={'50%'}
                 variant={'whiteBase'}
                 mr={2}
-                onClick={() =>
-                  router.replace({
-                    query: {
-                      ...router.query,
-                      currentTab: TabEnum.collectionCard
-                    }
-                  })
-                }
+                onClick={handleReturn}
               />
-              {t('common:Exit')}
+              <Text onClick={handleReturn} cursor={'pointer'}>
+                {t('common:Exit')}
+              </Text>
             </Flex>
           ) : (
             <Button
@@ -315,16 +324,11 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
               borderRadius={'50%'}
               variant={'whiteBase'}
               mr={2}
-              onClick={() =>
-                router.replace({
-                  query: {
-                    ...router.query,
-                    currentTab: TabEnum.collectionCard
-                  }
-                })
-              }
+              onClick={handleReturn}
             />
-            <Text>{t('common:Exit')}</Text>
+            <Text onClick={handleReturn} cursor={'pointer'}>
+              {t('common:Exit')}
+            </Text>
           </Box>
           <Flex flex="1" justifyContent="center" mr="70px">
             <Box>
