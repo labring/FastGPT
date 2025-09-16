@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -32,6 +32,8 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { useToolManager, type ExtendedToolType } from './hooks/useToolManager';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -40,6 +42,7 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const ConfigToolModal = dynamic(() => import('../component/ConfigToolModal'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -70,6 +73,36 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
+  const [selectedSkillKey, setSelectedSkillKey] = useState<string>('');
+  const [configTool, setConfigTool] = useState<ExtendedToolType>();
+  const onAddTool = useCallback(
+    (tool: FlowNodeTemplateType) => {
+      setAppForm((state: any) => ({
+        ...state,
+        selectedTools: state.selectedTools.map((t: ExtendedToolType) =>
+          t.id === tool.id ? { ...tool, isUnconfigured: false } : t
+        )
+      }));
+      setConfigTool(undefined);
+    },
+    [setAppForm, setConfigTool]
+  );
+
+  const {
+    toolSkillOptions,
+    queryString,
+    setQueryString,
+    handleAddToolFromEditor,
+    handleConfigureTool,
+    handleRemoveToolFromEditor
+  } = useToolManager({
+    appForm,
+    setAppForm,
+    setConfigTool,
+    selectedSkillKey
+  });
+
+  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -214,8 +247,17 @@ const EditForm = ({
                     }));
                   });
                 }}
+                onAddToolFromEditor={handleAddToolFromEditor}
+                onRemoveToolFromEditor={handleRemoveToolFromEditor}
+                onConfigureTool={handleConfigureTool}
+                selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
+                skillOptionList={[...toolSkillOptions]}
+                queryString={queryString}
+                setQueryString={setQueryString}
+                selectedSkillKey={selectedSkillKey}
+                setSelectedSkillKey={setSelectedSkillKey}
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPopverComponent]}
@@ -459,6 +501,13 @@ const EditForm = ({
               }
             }));
           }}
+        />
+      )}
+      {!!configTool && (
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={onCloseConfigTool}
+          onAddTool={onAddTool}
         />
       )}
     </>
