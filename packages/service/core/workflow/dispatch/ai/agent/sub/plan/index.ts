@@ -9,7 +9,6 @@ import { formatModelChars2Points } from '../../../../../../../support/wallet/usa
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '../constants';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { runAgentCall } from '../../../../../../../core/ai/llm/agentCall';
 import { parseToolArgs } from '../../../utils';
 import { AskAgentTool, type AskAgentToolParamsType } from './ask/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
