@@ -285,6 +285,18 @@
   "please_select_dimension_first": "請先選擇該維度",
   "model_evaluation_tip": "語言模型可判斷實際回答和參考答案中的文本內容是否匹配；\n索引模型可將實際回答和參考答案轉成向量，進一步評估語義相似性。",
   "create_new_dimension": "新建維度",
-   "retry_success": "重試成功",
-  "data_generation_error_count": "{{count}}條數據生成異常"
+  "retry_success": "重試成功",
+  "data_generation_error_count": "{{count}}條數據生成異常",
+  "builtin_answer_correctness_name": "答案正確性",
+  "builtin_answer_correctness_desc": "衡量生成的回答與參考答案在事實上的一致性，評估其是否準確無誤。",
+  "builtin_answer_similarity_name": "答案相似度",
+  "builtin_answer_similarity_desc": "評估生成回答與參考答案在語義上的匹配程度，判斷其是否表達了相同的核心信息。",
+  "builtin_answer_relevancy_name": "答案相關性",
+  "builtin_answer_relevancy_desc": "衡量生成回答與提問之間的契合度，判斷回答是否緊扣問題。",
+  "builtin_faithfulness_name": "忠誠度",
+  "builtin_faithfulness_desc": "評估生成回答是否忠實於提供的上下文信息，判斷是否存在虛構或不實內容。",
+  "builtin_context_recall_name": "上下文召回",
+  "builtin_context_recall_desc": "衡量檢索系統是否能夠獲取回答所需的所有關鍵信息，評估其檢索的完整性。",
+  "builtin_context_precision_name": "上下文精度",
+  "builtin_context_precision_desc": "衡量檢索內容中是否優先返回高價值信息，反映排序質量與信息密度。"
 }
