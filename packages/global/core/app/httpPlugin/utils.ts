@@ -14,7 +14,7 @@ import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandleId } from '../../workflow/utils';
 import { type CreateHttpPluginChildrenPros } from '../controller';
-import { AppTypeEnum } from '../constants';
+import { AppTypeEnum } from '../type';
 import type { StoreEdgeItemType } from '../../workflow/type/edge';
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {

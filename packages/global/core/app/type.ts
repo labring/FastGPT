@@ -1,18 +1,13 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
-import type { AppTypeEnum } from './constants';
-import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PermissionSchema } from '../../support/permission/type';
-import { SourceMemberSchema } from '../../support/user/type.d';
-import type { NodeInputKeyEnum, VariableInputEnum } from '../workflow/constants';
+import { SourceMemberSchema } from '../../support/user/type';
+import type { NodeInputKeyEnum } from '../workflow/constants';
 import type { SelectedDatasetType } from '../workflow/type/io';
 import type { DatasetSearchModeEnum } from '../dataset/constants';
-import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import type { StoreEdgeItemType } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import type { ParentIdType } from '../../common/parentFolder/type';
-import { FlowNodeInputTypeEnum } from '../workflow/node/constant';
-import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-import type { SourceMemberType } from '../../support/user/type';
+import type { WorkflowTemplateBasicType } from '../workflow/type/index.d';
 import type { JSONSchemaInputType } from './jsonschema';
 import { z } from '../../common/tsRest/z';
 import {
@@ -25,9 +20,10 @@ import {
 export const AppTypeSchema = z
   .enum(['folder', 'simple', 'advanced', 'plugin', 'httpPlugin', 'toolSet', 'tool', 'hidden'])
   .describe(
-    '应用类型: \nfolder - 文件夹, \nsimple - 简单应用, \nadvanced - 高级工作流, \nplugin - 插件, \nhttpPlugin - HTTP插件, \ntoolSet - 工具集, \ntool - 工具, \nhidden - 隐藏应用'
+    '应用类型: folder - 文件夹, simple - 简单应用, advanced - 高级工作流, plugin - 插件, httpPlugin - HTTP插件, toolSet - 工具集, tool - 工具, hidden - 隐藏应用'
   );
-export type AppTypeEnum = z.infer<typeof AppTypeSchema>;
+export const AppTypeEnum = AppTypeSchema.enum;
+export type AppType = z.infer<typeof AppTypeSchema>;
 
 export const VariableInputTypeSchema = z
   .enum([
@@ -48,7 +44,8 @@ export const VariableInputTypeSchema = z
     'JSONEditor'
   ])
   .describe('变量输入类型');
-export type VariableInputTypeEnum = z.infer<typeof VariableInputTypeSchema>;
+export const VariableInputTypeEnum = VariableInputTypeSchema.enum;
+export type VariableInputType = z.infer<typeof VariableInputTypeSchema>;
 
 export const WorkflowIOValueTypeSchema = z
   .enum([
@@ -89,6 +86,13 @@ export const VariableItemSchema = z
     maxLength: z.number().positive().optional().describe('输入最大长度'),
     max: z.number().optional().describe('数值最大值'),
     min: z.number().optional().describe('数值最小值'),
+    canSelectFile: z.boolean().optional().describe('是否可选择文件'),
+    canSelectImg: z.boolean().optional().describe('是否可选择图片'),
+    maxFiles: z.number().positive().optional().describe('最大文件数量'),
+    timeGranularity: z.enum(['day', 'hour', 'minute', 'second']).optional().describe('时间粒度'),
+    timeType: z.enum(['point', 'range']).optional().describe('时间类型'),
+    timeRangeStart: z.string().optional().describe('时间范围开始'),
+    timeRangeEnd: z.string().optional().describe('时间范围结束'),
     list: z
       .array(
         z.object({
@@ -253,7 +257,7 @@ export type AppSchema = {
   parentId?: ParentIdType;
   teamId: string;
   tmbId: string;
-  type: AppTypeEnum;
+  type: AppType;
   version?: 'v1' | 'v2';
 
   name: string;
@@ -286,23 +290,6 @@ export type AppSchema = {
 
   // abandon
   defaultPermission?: number;
-};
-
-export type AppListItemType = {
-  _id: string;
-  parentId: ParentIdType;
-  tmbId: string;
-  name: string;
-  avatar: string;
-  intro: string;
-  type: AppTypeEnum;
-  updateTime: Date;
-  pluginData?: AppSchema['pluginData'];
-  permission: AppPermission;
-  inheritPermission?: boolean;
-  private?: boolean;
-  sourceMember: SourceMemberType;
-  hasInteractiveNode?: boolean;
 };
 
 export type AppDetailType = AppSchema & {
@@ -351,21 +338,6 @@ export type McpToolConfigType = {
   inputSchema: JSONSchemaInputType;
 };
 
-/* app chat config type */
-export type AppChatConfigType = {
-  welcomeText?: string;
-  variables?: VariableItemType[];
-  autoExecute?: AppAutoExecuteConfigType;
-  questionGuide?: AppQGConfigType;
-  ttsConfig?: AppTTSConfigType;
-  whisperConfig?: AppWhisperConfigType;
-  scheduledTriggerConfig?: AppScheduledTriggerConfigType;
-  chatInputGuide?: ChatInputGuideConfigType;
-  fileSelectConfig?: AppFileSelectConfigType;
-
-  // plugin
-  instruction?: string;
-};
 export type SettingAIDataType = {
   model: string;
   temperature?: number;
@@ -378,84 +350,6 @@ export type SettingAIDataType = {
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
-};
-
-// variable
-export type VariableItemType = {
-  // id: string;
-  key: string;
-  label: string;
-  type: VariableInputEnum;
-  required: boolean;
-  description: string;
-  valueType?: WorkflowIOValueType;
-  defaultValue?: any;
-
-  // input
-  maxLength?: number;
-  // password
-  minLength?: number;
-  // numberInput
-  max?: number;
-  min?: number;
-  // select
-  list?: { label: string; value: string }[];
-  // file
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
-  maxFiles?: number;
-  // timeSelect
-  timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
-  timeType?: 'point' | 'range';
-  timeRangeStart?: string;
-  timeRangeEnd?: string;
-
-  // @deprecated
-  enums?: { value: string; label: string }[];
-};
-// tts
-export type AppTTSConfigType = {
-  type: 'none' | 'web' | 'model';
-  model?: string;
-  voice?: string;
-  speed?: number;
-};
-// whisper
-export type AppWhisperConfigType = {
-  open: boolean;
-  autoSend: boolean;
-  autoTTSResponse: boolean;
-};
-
-// question guide
-export type AppQGConfigType = {
-  open: boolean;
-  model?: string;
-  customPrompt?: string;
-};
-
-// question guide text
-export type ChatInputGuideConfigType = {
-  open: boolean;
-  customUrl: string;
-};
-// interval timer
-export type AppScheduledTriggerConfigType = {
-  cronString: string;
-  timezone: string;
-  defaultPrompt: string;
-};
-// auto execute
-export type AppAutoExecuteConfigType = {
-  open: boolean;
-  defaultPrompt: string;
-};
-// File
-export type AppFileSelectConfigType = {
-  canSelectFile: boolean;
-  customPdfParse?: boolean;
-  canSelectImg: boolean;
-  maxFiles: number;
 };
 
 export type SystemPluginListItemType = {

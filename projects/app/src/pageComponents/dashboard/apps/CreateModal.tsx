@@ -22,7 +22,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -40,7 +40,7 @@ type FormType = {
   curlContent: string;
 };
 
-export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+export type CreateAppType = Extract<AppType, 'simple' | 'advanced' | 'plugin'>;
 
 const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
   const { t } = useTranslation();

@@ -15,7 +15,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
-import { type WorkflowIOValueType, WorkflowIOValueTypeEnum } from '../../app/type.d';
+import { type WorkflowIOValueType, WorkflowIOValueTypeEnum } from '../../app/type';
 
 export const checkIsBranchNode = (node: RuntimeNodeItemType) => {
   if (node.catchError) return true;

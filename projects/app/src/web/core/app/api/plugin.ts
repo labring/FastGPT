@@ -10,7 +10,7 @@ import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import type {
   GetPathProps,
   ParentIdType,
@@ -62,7 +62,7 @@ export const getTeamPlugTemplates = async (data?: {
         app.type === AppTypeEnum.toolSet,
       templateType: FlowNodeTemplateTypeEnum.teamApp,
       flowNodeType:
-        app.type === AppTypeEnum.workflow
+        app.type === AppTypeEnum.advanced
           ? FlowNodeTypeEnum.appModule
           : app.type === AppTypeEnum.toolSet
             ? FlowNodeTypeEnum.toolSet

@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';

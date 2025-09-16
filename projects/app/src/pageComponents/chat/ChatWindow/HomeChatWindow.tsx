@@ -44,7 +44,7 @@ import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 
 type Props = {
   myApps: AppListItemType[];

@@ -17,8 +17,8 @@ import {
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import type { StoreEdgeItemType } from './edge';
 import type { AppChatConfigType } from '../../app/type';
-import type { ParentIdType } from 'common/parentFolder/type';
-import type { AppTypeEnum } from 'core/app/constants';
+import type { ParentIdType } from '../../../common/parentFolder/type';
+import { type AppType, AppTypeEnum } from '../../app/type';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
 import type { SecretValueType } from './../../../common/secret/type';
@@ -50,7 +50,7 @@ export type WorkflowTemplateType = {
 // template market
 export type TemplateMarketItemType = WorkflowTemplateType & {
   tags: string[];
-  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+  type: Extract<AppType, 'simple' | 'advanced' | 'plugin'>;
 };
 // template market list
 export type TemplateMarketListItemType = {
@@ -59,6 +59,6 @@ export type TemplateMarketListItemType = {
   intro?: string;
   author?: string;
   tags: string[];
-  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+  type: Extract<AppType, 'simple' | 'advanced' | 'plugin'>;
   avatar: string;
 };

@@ -1,9 +1,8 @@
 import type { UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum } from './constant';
-import type { LafAccountType } from './type';
-import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 import type { TeamPermission } from '../../permission/user/controller';
 import { z } from '../../../common/tsRest/z';
+import type { GroupMemberRole } from '../../permission/memberGroup/constant';
 
 export const TeamMemberStatusSchema = z
   .enum(['active', 'leave', 'forbidden'])
@@ -52,7 +51,7 @@ export type TeamMemberSchema = {
   updateTime?: Date;
   name: string;
   role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
+  status: TeamMemberStatusType;
   avatar: string;
 };
 
@@ -72,7 +71,7 @@ export type TeamTmbItemType = {
   tmbId: string;
   teamDomain: string;
   role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
+  status: TeamMemberStatusType;
   notificationAccount?: string;
   permission: TeamPermission;
 } & ThirdPartyAccountType;
@@ -90,7 +89,7 @@ export type TeamMemberItemType<
   memberName: string;
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
+  status: TeamMemberStatusType;
   contact?: string;
   createTime: Date;
   updateTime?: Date;

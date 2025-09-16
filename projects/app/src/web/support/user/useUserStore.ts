@@ -3,7 +3,7 @@ import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import type { UserUpdateParams } from '@/types/user';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import type { ClientTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { getTeamPlanStatus } from './team/api';
 

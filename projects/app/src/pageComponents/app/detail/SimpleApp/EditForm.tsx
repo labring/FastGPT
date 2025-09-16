@@ -9,7 +9,7 @@ import {
   Button,
   HStack
 } from '@chakra-ui/react';
-import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 

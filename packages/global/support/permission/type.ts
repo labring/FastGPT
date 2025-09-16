@@ -10,6 +10,7 @@ export const PermissionSchema = z
     hasReadPer: z.boolean().describe('是否有读取权限'),
     hasWritePer: z.boolean().describe('是否有写入权限'),
     hasManagePer: z.boolean().describe('是否有管理权限'),
+    hasReadChatLogPer: z.boolean().describe('是否有读取聊天记录权限'),
     isOwner: z.boolean().describe('是否为所有者')
   })
   .openapi({

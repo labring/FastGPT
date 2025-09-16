@@ -92,7 +92,6 @@ function beforeFetch(options: BeforeFetchOptions):
   const { id, signal, release } = checkMaxRequestLimitation({ url: args.path, max });
   args.fetchOptions ??= {};
   args.fetchOptions.signal = signal;
-  console.log(queue);
 
   return {
     limit: { id, url: args.path, release }
@@ -129,12 +128,12 @@ function afterFetch(
 type Client = typeof client;
 type U<T> = { [K in keyof T]: T[K] extends (...args: any[]) => any ? T[K] : U<T[K]> }[keyof T];
 type Endpoints = U<Client>;
-type Result<T> =
-  T extends Promise<infer R> ? (R extends { status: 200; body: infer B } ? B : never) : never;
 type Options<T extends Endpoints> = NonNullable<Parameters<T>[0]>;
 type RestAPIParameters<T extends Endpoints> = 'body' extends keyof Options<T>
   ? [body?: Options<T>['body'], options?: Omit<Options<T>, 'body'>]
   : [options?: Parameters<T>[0]];
+type Ok<T extends Endpoints> = Extract<Awaited<ReturnType<T>>, { status: 200 }>['body'];
+type RestAPIResult<T extends Endpoints> = Ok<T> extends { data: infer D } ? D : Ok<T>;
 
 /**
  *
@@ -145,7 +144,7 @@ type RestAPIParameters<T extends Endpoints> = 'body' extends keyof Options<T>
 export const RestAPI = <T extends Endpoints>(
   api: T,
   prepare?: Parameters<T>[0]
-): ((...args: RestAPIParameters<T>) => Promise<Result<ReturnType<T>>>) => {
+): ((...args: RestAPIParameters<T>) => Promise<RestAPIResult<T>>) => {
   return async (...args: RestAPIParameters<T>) => {
     if (args.length > 2) throw new Error('RestAPI only accepts 0, 1 or 2 arguments');
 
@@ -169,6 +168,6 @@ export const RestAPI = <T extends Endpoints>(
       throw new Error(`Unexpected status: ${res.status}`);
     }
 
-    return res.body as Result<ReturnType<T>>;
+    return res.body as RestAPIResult<T>;
   };
 };

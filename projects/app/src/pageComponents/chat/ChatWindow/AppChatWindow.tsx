@@ -7,7 +7,7 @@ import SideBar from '@/components/SideBar';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { useCallback } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';

@@ -4,7 +4,7 @@ import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ClientTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/controller';
@@ -33,7 +33,7 @@ async function handler(
         MongoApp.countDocuments({
           teamId,
           type: {
-            $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+            $in: [AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin, AppTypeEnum.toolSet]
           }
         }),
         MongoDataset.countDocuments({

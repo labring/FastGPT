@@ -10,11 +10,12 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { type AppListItemType } from '@fastgpt/global/common/tsRest/schemas/app';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
@@ -30,7 +31,6 @@ import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { usePathname } from 'next/navigation';
 import type { ChatSettingReturnType } from '@fastgpt/global/core/chat/setting/type';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 

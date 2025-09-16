@@ -5,7 +5,7 @@ import { useContextSelector } from 'use-context-selector';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import List from '@/pageComponents/chat/ChatTeamApp/List';
@@ -38,19 +38,19 @@ const MyApps = () => {
       ({
         all: t('common:core.module.template.all_team_app'),
         [AppTypeEnum.simple]: t('app:type.Simple bot'),
-        [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
+        [AppTypeEnum.advanced]: t('app:type.Workflow bot'),
         [AppTypeEnum.plugin]: t('app:type.Plugin'),
         [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
         [AppTypeEnum.folder]: t('common:Folder'),
         [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
         [AppTypeEnum.tool]: t('app:type.MCP tools'),
         [AppTypeEnum.hidden]: t('app:type.hidden')
-      }) satisfies Record<AppTypeEnum | 'all', string>,
+      }) satisfies Record<AppType | 'all', string>,
     [t]
   );
 
-  const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
+  const [appType, setAppType] = useState<AppType | 'all'>('all');
+  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin];
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

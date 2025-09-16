@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type.d';
+import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyInput from '@/components/MyInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';

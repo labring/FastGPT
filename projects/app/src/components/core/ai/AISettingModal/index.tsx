@@ -23,7 +23,7 @@ import {
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';

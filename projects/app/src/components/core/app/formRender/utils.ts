@@ -5,10 +5,11 @@ import {
 import { InputTypeEnum } from './constant';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type { VariableInputType, WorkflowIOValueType } from '@fastgpt/global/core/app/type';
 
 export const variableInputTypeToInputType = (
-  inputType: VariableInputEnum,
-  valueType?: WorkflowIOValueTypeEnum
+  inputType: VariableInputType,
+  valueType?: WorkflowIOValueType
 ) => {
   if (inputType === VariableInputEnum.input) return InputTypeEnum.input;
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
@@ -41,7 +42,7 @@ export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = [
   return InputTypeEnum.textarea;
 };
 
-export const valueTypeToInputType = (valueType?: WorkflowIOValueTypeEnum) => {
+export const valueTypeToInputType = (valueType?: WorkflowIOValueType) => {
   if (valueType === WorkflowIOValueTypeEnum.string) return InputTypeEnum.input;
   if (valueType === WorkflowIOValueTypeEnum.number) return InputTypeEnum.numberInput;
   if (valueType === WorkflowIOValueTypeEnum.boolean) return InputTypeEnum.switch;

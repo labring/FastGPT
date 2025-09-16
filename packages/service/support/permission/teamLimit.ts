@@ -4,7 +4,7 @@ import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
@@ -46,7 +46,7 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     MongoApp.countDocuments({
       teamId,
       type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+        $in: [AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin, AppTypeEnum.toolSet]
       }
     })
   ]);
@@ -59,7 +59,7 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
     const totalApps = await MongoApp.countDocuments({
       type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+        $in: [AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin, AppTypeEnum.toolSet]
       }
     });
     if (totalApps >= global.licenseData.maxApps) {

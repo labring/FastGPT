@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';

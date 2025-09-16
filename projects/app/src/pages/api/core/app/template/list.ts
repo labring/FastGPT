@@ -3,12 +3,12 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { type AppType } from '@fastgpt/global/core/app/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type ListParams = {
   isQuickTemplate?: boolean;
-  type?: AppTypeEnum | 'all';
+  type?: AppType | 'all';
 };
 
 async function handler(
@@ -45,7 +45,10 @@ async function handler(
       type: item.type,
       author: item.author,
       userGuide: item.userGuide,
-      workflow: {}
+      workflow: {
+        nodes: [],
+        edges: []
+      }
     };
   });
 }

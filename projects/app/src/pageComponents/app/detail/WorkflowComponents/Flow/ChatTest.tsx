@@ -10,7 +10,7 @@ import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useChatTest } from '../../useChatTest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';

@@ -8,7 +8,7 @@ import { type Tool } from '@modelcontextprotocol/sdk/types';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
@@ -125,7 +125,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
   const appList = await MongoApp.find(
     {
       _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+      type: { $in: [AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin] }
     },
     { name: 1, intro: 1 }
   ).lean();
@@ -308,7 +308,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
   // Get app list
   const appList = await MongoApp.find({
     _id: { $in: mcp.apps.map((app) => app.appId) },
-    type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+    type: { $in: [AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin] }
   }).lean();
 
   const app = appList.find((app) => {

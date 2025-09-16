@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';

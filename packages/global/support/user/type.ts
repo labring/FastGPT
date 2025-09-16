@@ -4,7 +4,7 @@ import type { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
 import { z } from '../../common/tsRest/z';
 import { ObjectIdSchema } from '../../common/type/utils';
-import { TeamMemberStatusSchema } from './team/type.d';
+import { TeamMemberStatusSchema } from './team/type';
 
 export const SourceMemberSchema = z
   .object({

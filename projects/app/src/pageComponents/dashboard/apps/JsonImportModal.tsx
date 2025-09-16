@@ -6,7 +6,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { appTypeMap } from '@/pageComponents/app/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { useMemo } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';

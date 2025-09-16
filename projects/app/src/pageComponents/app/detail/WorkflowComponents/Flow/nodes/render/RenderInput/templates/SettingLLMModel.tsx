@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';

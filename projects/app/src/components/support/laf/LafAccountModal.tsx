@@ -10,7 +10,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { LafAccountType } from '@fastgpt/global/support/user/team/type.d';
+import type { LafAccountType } from '@fastgpt/global/support/user/team/type';
 import { postLafPat2Token, getLafApplications } from '@/web/support/laf/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getDocPath } from '@/web/common/system/doc';

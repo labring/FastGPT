@@ -9,7 +9,7 @@ import type {
   GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const AppSelect = ({ value, onSelect }: { value: string; onSelect: (id: string) => void }) => {
@@ -19,7 +19,7 @@ const AppSelect = ({ value, onSelect }: { value: string; onSelect: (id: string) 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
       parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.advanced]
     }).then((res) =>
       res
         .filter((item) => !item.hasInteractiveNode)

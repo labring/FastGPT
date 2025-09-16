@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { type AppType } from '@fastgpt/global/core/app/type';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
@@ -32,7 +32,7 @@ export type CreateAppBody = {
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
-  type?: AppTypeEnum;
+  type?: AppType;
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
@@ -105,7 +105,7 @@ export const onCreateApp = async ({
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
-  type?: AppTypeEnum;
+  type?: AppType;
   modules?: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];

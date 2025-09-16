@@ -18,7 +18,7 @@ import {
   variableConfigs,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm, type UseFormReset } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -153,7 +153,7 @@ const VariableEdit = ({
     });
   }, [variables]);
 
-  /* 
+  /*
     - New var: random key
     - Update var: keep key
   */
@@ -442,7 +442,7 @@ const VariableEdit = ({
               form={form}
               type={'variable'}
               isEdit={!!value.key}
-              inputType={type}
+              inputType={type as any}
               defaultValueType={defaultValueType}
               onClose={() => reset({})}
               onSubmitSuccess={onSubmitSuccess}

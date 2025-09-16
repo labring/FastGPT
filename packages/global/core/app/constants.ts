@@ -3,21 +3,12 @@ import {
   type AppFileSelectConfigType,
   type AppWhisperConfigType,
   type AppAutoExecuteConfigType,
-  type AppQGConfigType
+  type AppQGConfigType,
+  type AppType,
+  AppTypeEnum
 } from './type';
 
-export enum AppTypeEnum {
-  folder = 'folder',
-  simple = 'simple',
-  workflow = 'advanced',
-  plugin = 'plugin',
-  httpPlugin = 'httpPlugin',
-  toolSet = 'toolSet',
-  tool = 'tool',
-  hidden = 'hidden'
-}
-
-export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
+export const AppFolderTypeList: AppType[] = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

@@ -12,14 +12,14 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { type AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
   parentId?: string | null;
-  appType: AppTypeEnum | 'all';
+  appType: AppType | 'all';
   myApps: AppListItemType[];
   loadMyApps: () => Promise<AppListItemType[]>;
   isFetchingApps: boolean;
@@ -62,7 +62,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const { parentId = null, type = 'all' } = router.query as {
     parentId?: string | null;
-    type: AppTypeEnum;
+    type: AppType;
   };
   const [searchKey, setSearchKey] = useState('');
 

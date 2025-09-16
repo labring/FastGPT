@@ -12,7 +12,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -265,7 +266,9 @@ const ListItem = () => {
                             />
                           }
                           menuList={[
-                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                            ...(([AppTypeEnum.simple, AppTypeEnum.advanced] as AppType[]).includes(
+                              app.type
+                            )
                               ? [
                                   {
                                     children: [
@@ -284,7 +287,7 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            ...([AppTypeEnum.plugin].includes(app.type)
+                            ...(([AppTypeEnum.plugin] as AppType[]).includes(app.type)
                               ? [
                                   {
                                     children: [
@@ -436,7 +439,7 @@ const ListItem = () => {
           name={editPerApp.name}
           managePer={{
             defaultRole: ReadRoleVal,
-            permission: editPerApp.permission,
+            permission: editPerApp.permission as any,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             roleList: AppRoleList,
             onUpdateCollaborators: (props) =>

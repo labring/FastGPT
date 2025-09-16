@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { onCreateApp } from './create';
 
 export type transitionWorkflowQuery = {};
@@ -35,7 +35,7 @@ async function handler(
       parentId: app.parentId,
       name: app.name + ' Copy',
       avatar: app.avatar,
-      type: AppTypeEnum.workflow,
+      type: AppTypeEnum.advanced,
       modules: app.modules,
       edges: app.edges,
       chatConfig: app.chatConfig,
@@ -46,7 +46,7 @@ async function handler(
     return { id: appId };
   }
 
-  await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
+  await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.advanced });
 
   return {};
 }

@@ -1,5 +1,5 @@
 import { c } from '../../init';
-import { AppListParamsSchema, AppListResponseSchema } from '../../../../core/app/type.d';
+import { AppListParamsSchema, AppListResponseSchema } from '../../../../core/app/type';
 
 export const appContract = c.router({
   list: {

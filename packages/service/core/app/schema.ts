@@ -1,6 +1,6 @@
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { Schema, getMongoModel } from '../../common/mongo';
-import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
+import type { AppSchema as AppType } from '@fastgpt/global/core/app/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -45,7 +45,7 @@ const AppSchema = new Schema(
     },
     type: {
       type: String,
-      default: AppTypeEnum.workflow,
+      default: AppTypeEnum.advanced,
       enum: Object.values(AppTypeEnum)
     },
     version: {

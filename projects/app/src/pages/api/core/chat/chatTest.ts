@@ -19,7 +19,7 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import {
   getPluginRunUserQuery,
   updatePluginInputByVariables

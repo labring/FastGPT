@@ -10,7 +10,7 @@ import {
   ModalFooter
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { type AppSchema, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import { type AppSchema, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';

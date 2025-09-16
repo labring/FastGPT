@@ -5,8 +5,12 @@ import { createContext } from 'use-context-selector';
 import { type ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { defaultChatData } from '@/global/core/chat/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
+import {
+  type AppChatConfigType,
+  type VariableItemType,
+  type AppType
+} from '@fastgpt/global/core/app/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -28,7 +32,7 @@ type ChatBoxDataType = {
     chatConfig?: AppChatConfigType;
     name: string;
     avatar: string;
-    type: `${AppTypeEnum}`;
+    type: AppType;
     pluginInputs: FlowNodeInputItemType[];
     chatModels?: string[];
   };
@@ -114,7 +118,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   }
 });
 
-/* 
+/*
     Chat 对象的上下文
 */
 const ChatItemContextProvider = ({

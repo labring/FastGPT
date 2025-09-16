@@ -3,7 +3,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import type {
   FastLoginProps,
   OauthLoginProps,

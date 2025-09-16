@@ -1,6 +1,5 @@
 import type { ParentIdType } from 'common/parentFolder/type';
-import type { AppSchema } from './type';
-import type { AppTypeEnum } from './constants';
+import type { AppSchema, AppTypeEnum } from './type';
 
 export type CreateAppProps = {
   parentId?: ParentIdType;

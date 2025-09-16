@@ -7,7 +7,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 
@@ -53,7 +53,7 @@ const AppDetail = () => {
         ) : (
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
-            {appDetail.type === AppTypeEnum.workflow && <Workflow />}
+            {appDetail.type === AppTypeEnum.advanced && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
           </>

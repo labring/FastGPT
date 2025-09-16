@@ -10,7 +10,8 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -81,7 +82,7 @@ const handler: Handler<typeof contract.app.list> = async ({ body, headers, req, 
       return {
         // get all chat app, excluding hidden apps
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] }
+        type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple, AppTypeEnum.plugin] }
       };
     }
 
