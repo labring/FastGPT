@@ -1,5 +1,5 @@
-FROM mirrors.sangfor.com/python:3.11-slim-bookworm AS builder
-COPY --from=mirrors.sangfor.com/astral-sh/uv:0.7.17 /uv /uvx /bin/
+FROM python:3.11-slim-bookworm AS builder
+COPY --from=astral-sh/uv:0.7.17 /uv /uvx /bin/
 
 WORKDIR /app
 # Build context ../../
@@ -17,7 +17,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --package diting-server --no-editable --no-dev
 
-FROM mirrors.sangfor.com/python:3.11-slim-bookworm
+FROM python:3.11-slim-bookworm
+RUN apt-get update \
+    && apt-get install -y curl vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy the environment, but not the source code
 COPY --from=builder --chown=diting:diting /app/.venv /app/.venv
 # ENV DT_SERVER_DATA="/app/data"
