@@ -33,6 +33,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useToolManager, type ExtendedToolType } from './hooks/useToolManager';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -73,20 +74,31 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const [selectedSkillKey, setSelectedSkillKey] = useState<string>('');
+  const [configTool, setConfigTool] = useState<ExtendedToolType>();
+  const onAddTool = useCallback(
+    (tool: FlowNodeTemplateType) => {
+      setAppForm((state: any) => ({
+        ...state,
+        selectedTools: state.selectedTools.map((t: ExtendedToolType) =>
+          t.id === tool.id ? { ...tool, isUnconfigured: false } : t
+        )
+      }));
+      setConfigTool(undefined);
+    },
+    [setAppForm, setConfigTool]
+  );
 
   const {
     toolSkillOptions,
     queryString,
     setQueryString,
-    configTool,
-    setConfigTool,
     handleAddToolFromEditor,
     handleConfigureTool,
-    handleRemoveToolFromEditor,
-    onAddTool
+    handleRemoveToolFromEditor
   } = useToolManager({
     appForm,
     setAppForm,
+    setConfigTool,
     selectedSkillKey
   });
 

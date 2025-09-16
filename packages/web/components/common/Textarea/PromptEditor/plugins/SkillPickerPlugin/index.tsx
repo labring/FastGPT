@@ -346,6 +346,12 @@ export default function SkillPickerPlugin({
                       _hover={{
                         bg: '#1118240D'
                       }}
+                      onMouseDown={(e) => {
+                        const menuOption = menuOptions.find(
+                          (option) => option.key === skillOption.key
+                        );
+                        menuOption && selectOptionAndCleanUp(menuOption);
+                      }}
                     >
                       <Avatar src={skillOption.icon} w={'16px'} borderRadius={'3px'} />
                       <Box
@@ -419,9 +425,13 @@ export default function SkillPickerPlugin({
                             ref={(el) => {
                               highlightedRefs.current[option.key] = el;
                             }}
-                            onMouseDown={() => {
-                              const menuOption = menuOptions.find((m) => m.key === option.key);
-                              if (menuOption) selectOptionAndCleanUp(menuOption);
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const menuOption = skillOptionList.find(
+                                (item) => item.key === option.key
+                              );
+                              menuOption &&
+                                selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
                             }}
                             {...(isCurrentFocus || hasSelectedChild
                               ? {
@@ -494,9 +504,13 @@ export default function SkillPickerPlugin({
                           ref={(el) => {
                             highlightedRefs.current[option.key] = el;
                           }}
-                          onMouseDown={() => {
-                            const menuOption = menuOptions.find((m) => m.key === option.key);
-                            if (menuOption) selectOptionAndCleanUp(menuOption);
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            const menuOption = skillOptionList.find(
+                              (item) => item.key === option.key
+                            );
+                            menuOption &&
+                              selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
                           }}
                           {...(selectedKey === option.key
                             ? {

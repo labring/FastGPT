@@ -28,6 +28,7 @@ export type ExtendedToolType = FlowNodeTemplateType & {
 type UseToolManagerProps = {
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  setConfigTool: (tool: ExtendedToolType | undefined) => void;
   selectedSkillKey?: string;
 };
 
@@ -35,18 +36,16 @@ type UseToolManagerReturn = {
   toolSkillOptions: SkillOptionType[];
   queryString: string | null;
   setQueryString: (value: string | null) => void;
-  configTool: ExtendedToolType | undefined;
-  setConfigTool: (tool: ExtendedToolType | undefined) => void;
 
   handleAddToolFromEditor: (toolKey: string) => Promise<string>;
   handleConfigureTool: (toolId: string) => void;
   handleRemoveToolFromEditor: (toolId: string) => void;
-  onAddTool: (tool: FlowNodeTemplateType) => void;
 };
 
 export const useToolManager = ({
   appForm,
   setAppForm,
+  setConfigTool,
   selectedSkillKey
 }: UseToolManagerProps): UseToolManagerReturn => {
   const { t, i18n } = useTranslation();
@@ -54,8 +53,8 @@ export const useToolManager = ({
   const lang = i18n?.language as localeType;
   const [toolSkillOptions, setToolSkillOptions] = useState<SkillOptionType[]>([]);
   const [queryString, setQueryString] = useState<string | null>(null);
-  const [configTool, setConfigTool] = useState<ExtendedToolType>();
 
+  /* get tool skills */
   const { data: pluginGroups = [] } = useRequest2(
     async () => {
       try {
@@ -300,24 +299,17 @@ export const useToolManager = ({
   const handleAddToolFromEditor = useCallback(
     async (toolKey: string): Promise<string> => {
       try {
-        // 生成唯一的工具ID
-        const toolId = `tool_${getNanoid(6)}`;
-
         const toolTemplate = await getPreviewPluginNode({ appId: toolKey });
-
         if (!validateToolConfiguration(toolTemplate)) {
           return '';
         }
 
-        // 检查是否需要用户配置
         const needsConfiguration = checkNeedsUserConfiguration(toolTemplate);
-
-        // 构建工具实例
+        const toolId = `tool_${getNanoid(6)}`;
         const toolInstance: ExtendedToolType = {
           ...toolTemplate,
           id: toolId,
           inputs: toolTemplate.inputs.map((input) => {
-            // 文件上传类型设置默认值（从工作流开始节点获取）
             if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
               return {
                 ...input,
@@ -329,7 +321,6 @@ export const useToolManager = ({
           isUnconfigured: needsConfiguration
         };
 
-        // 添加到应用表单
         setAppForm((state: any) => ({
           ...state,
           selectedTools: [...state.selectedTools, toolInstance]
@@ -338,7 +329,6 @@ export const useToolManager = ({
         return toolId;
       } catch (error) {
         console.error('Failed to add tool from editor:', error);
-        // 发生错误时也返回空字符串，避免抛出错误
         return '';
       }
     },
@@ -367,29 +357,14 @@ export const useToolManager = ({
     },
     [appForm.selectedTools, setConfigTool]
   );
-  const onAddTool = useCallback(
-    (tool: FlowNodeTemplateType) => {
-      setAppForm((state: any) => ({
-        ...state,
-        selectedTools: state.selectedTools.map((t: ExtendedToolType) =>
-          t.id === tool.id ? { ...tool, isUnconfigured: false } : t
-        )
-      }));
-      setConfigTool(undefined);
-    },
-    [setAppForm, setConfigTool]
-  );
 
   return {
     toolSkillOptions,
     queryString,
     setQueryString,
-    configTool,
-    setConfigTool,
 
     handleAddToolFromEditor,
     handleConfigureTool,
-    handleRemoveToolFromEditor,
-    onAddTool
+    handleRemoveToolFromEditor
   };
 };
