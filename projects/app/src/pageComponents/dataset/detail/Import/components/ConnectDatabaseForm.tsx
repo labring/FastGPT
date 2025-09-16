@@ -12,31 +12,26 @@ import {
   VStack,
   HStack,
   Text,
-  Alert,
-  AlertIcon,
-  Spinner,
-  ModalBody,
-  Circle
+  Alert
 } from '@chakra-ui/react';
-import { CloseIcon } from '@chakra-ui/icons';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetImportContext } from '../Context';
 import { useContextSelector } from 'use-context-selector';
 import FormBottomButtons from './FormBottomButtons';
-import { useConnectionTest } from './hooks/useConnectTest';
 import { databaseAddrValidator } from '../utils';
+import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
-type DatabaseFormData = {
-  dbType: string;
+export type DatabaseFormData = {
+  client: DatabaseConfig['client'];
   host: string;
-  port: string;
-  dbName: string;
-  username: string;
+  port: number;
+  database: string;
+  user: string;
   password: string;
-  connectionPoolSize: number;
+  poolSize: number;
 };
 
 const PORT_RANGE = [1, 65535];
@@ -44,136 +39,54 @@ const PORT_RANGE = [1, 65535];
 const ConnectDatabaseConfig = () => {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'loading' | 'success' | 'error' | null>(
-    null
-  );
-  const [connectionMessage, setConnectionMessage] = useState('');
 
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
+  const setCurrentTab = useContextSelector(DatasetImportContext, (v) => v.setTab);
   const isEditMode = useContextSelector(DatasetImportContext, (v) => v.isEditMode);
+  const datasetId = useContextSelector(DatasetImportContext, (v) => v.datasetId);
+  const databaseConfig = useContextSelector(
+    DatasetPageContext,
+    (v) => v.datasetDetail?.databaseConfig
+  );
+
+  const defaultValues = {
+    client: databaseConfig?.client || 'mysql',
+    host: databaseConfig?.host || '',
+    port: databaseConfig?.port || 3306,
+    database: databaseConfig?.database || '',
+    user: databaseConfig?.user || '',
+    password: databaseConfig?.password || '',
+    poolSize: databaseConfig?.poolSize || 20
+  };
 
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors }
+    getValues,
+    formState: { errors, isValid }
   } = useForm<DatabaseFormData>({
-    defaultValues: {
-      dbType: 'MySQL',
-      host: '',
-      port: '',
-      dbName: '',
-      username: '',
-      password: '',
-      connectionPoolSize: 20
-    }
+    defaultValues
   });
 
-  const onSubmit = async (data: DatabaseFormData) => {
-    setShowConnectionModal(true);
-    setConnectionStatus('loading');
-    setConnectionMessage('');
-    try {
-      const result = await testConnection(data);
+  const formData = watch();
 
-      if (result.success) {
-        setConnectionStatus('success');
-        setConnectionMessage(t('dataset:reconnect_success'));
-
-        // 延迟关闭弹窗并跳转
-        setTimeout(() => {
-          setShowConnectionModal(false);
-          goToNext();
-        }, 2000);
-      } else {
-        setConnectionStatus('success');
-        setConnectionMessage(result.message || t('dataset:auth_failed'));
-      }
-    } catch (error) {
-      setConnectionStatus('success');
-      setConnectionMessage(t('dataset:connection_failed'));
-    }
-  };
-
-  const { isConnecting, connectionError, connectionSuccess, testConnection } = useConnectionTest();
-
-  const handleTestConnection = async () => {
-    // const formData = getValues();
-    await testConnection({});
-  };
-
-  const handleCloseModal = () => {
-    setShowConnectionModal(false);
-    setConnectionStatus(null);
-    setConnectionMessage('');
-  };
-
-  const renderModalContent = () => {
-    switch (connectionStatus) {
-      case 'loading':
-        return (
-          <VStack h={'100%'} justifyContent={'center'}>
-            <Spinner size="lg" color="blue.500" thickness="4px" w={'48px'} h={'48px'} />
-            <Text fontSize="sm" color="myGray.600">
-              {t('dataset:reconnecting')}
-            </Text>
-          </VStack>
-        );
-
-      case 'success':
-        return (
-          <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
-            <Flex direction="column" h={'70px'} w="317px">
-              <Flex mb={1} w={'100%'}>
-                <Circle size="20px" bg="green.500" color="white" mt={0.5}>
-                  <MyIcon name="check" w="12px" h="12px" />
-                </Circle>
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900" ml={1}>
-                  {t('dataset:reconnect_success_detail')}
-                </Box>
-              </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={6}>
-                {t('dataset:table_changes_notice', { changedCount: 2, deletedCount: 2 })}
-                <Text as="span" color="blue.500" cursor="pointer" textDecoration="underline" ml={1}>
-                  {t('dataset:data_config')}
-                </Text>
-              </Text>
-            </Flex>
-          </ModalBody>
-        );
-
-      case 'error':
-        return (
-          <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
-            <Flex direction="column" h={'70px'} w="317px">
-              <Flex mb={1} w={'100%'}>
-                <Circle size="20px" bg="red.500" color="white" mt={0.5}>
-                  <CloseIcon boxSize={2.5} />
-                </Circle>
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900" ml={1}>
-                  {t('dataset:connection_failed')}
-                </Box>
-              </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={6}>
-                {t('dataset:auth_failed')}
-              </Text>
-            </Flex>
-          </ModalBody>
-        );
-
-      default:
-        return null;
-    }
+  const handleSuccess = () => {
+    console.log(goToNext);
+    !isEditMode ? goToNext() : setCurrentTab(1);
   };
 
   return (
     <Box w="full" maxW="800px" mx="auto" p={2}>
       {/* Edit Mode Warning Banner */}
       {isEditMode && (
-        <Alert status="warning" borderRadius="md" mb={4}>
-          <AlertIcon />
-          <Text fontSize="sm">{t('dataset:edit_database_warning')}</Text>
+        <Alert status="warning" borderRadius="md" mb={4} py={3} px={4} bgColor={'yellow.50'}>
+          <HStack>
+            <MyIcon name="common/info" w={4} h={4} color="yellow.500"></MyIcon>
+            <Text color="myGray.600" fontSize="sm">
+              {t('dataset:edit_database_warning')}
+            </Text>
+          </HStack>
         </Alert>
       )}
 
@@ -245,16 +158,17 @@ const ConnectDatabaseConfig = () => {
             {t('dataset:port')}
           </FormLabel>
           <Input
+            type="number"
             placeholder="3306"
             bg="myGray.50"
             {...register('port', {
               required: t('dataset:port_required'),
+              valueAsNumber: true,
               validate: (val) => {
-                const number = Number(val);
-                if (typeof number !== 'number' || isNaN(number)) {
+                if (typeof val !== 'number' || isNaN(val)) {
                   return t('dataset:port_invalid');
                 }
-                return number >= PORT_RANGE[0] && number <= PORT_RANGE[1]
+                return val >= PORT_RANGE[0] && val <= PORT_RANGE[1]
                   ? true
                   : t('dataset:port_range_error');
               }
@@ -264,33 +178,33 @@ const ConnectDatabaseConfig = () => {
         </FormControl>
 
         {/* Database Name */}
-        <FormControl isRequired isInvalid={!!errors.dbName}>
+        <FormControl isRequired isInvalid={!!errors.database}>
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dataset:database_name')}
           </FormLabel>
           <Input
             placeholder={t('dataset:database_name_placeholder')}
             bg="myGray.50"
-            {...register('dbName', {
+            {...register('database', {
               required: t('dataset:database_name_required')
             })}
           />
-          {errors.dbName && <FormErrorMessage>{errors.dbName.message}</FormErrorMessage>}
+          {errors.database && <FormErrorMessage>{errors.database.message}</FormErrorMessage>}
         </FormControl>
 
         {/* Username */}
-        <FormControl isRequired isInvalid={!!errors.username}>
+        <FormControl isRequired isInvalid={!!errors.user}>
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dataset:database_username')}
           </FormLabel>
           <Input
             placeholder={t('dataset:username_placeholder')}
             bg="myGray.50"
-            {...register('username', {
+            {...register('user', {
               required: t('dataset:username_required')
             })}
           />
-          {errors.username && <FormErrorMessage>{errors.username.message}</FormErrorMessage>}
+          {errors.user && <FormErrorMessage>{errors.user.message}</FormErrorMessage>}
         </FormControl>
 
         {/* Password */}
@@ -310,7 +224,7 @@ const ConnectDatabaseConfig = () => {
         </FormControl>
 
         {/* Connection Pool Size */}
-        <FormControl isRequired isInvalid={!!errors.connectionPoolSize}>
+        <FormControl isRequired isInvalid={!!errors.poolSize}>
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dataset:connection_pool_size')}
           </FormLabel>
@@ -318,8 +232,9 @@ const ConnectDatabaseConfig = () => {
             type="number"
             placeholder="20"
             bg="myGray.50"
-            {...register('connectionPoolSize', {
+            {...register('poolSize', {
               required: t('dataset:connection_pool_required'),
+              valueAsNumber: true,
               min: {
                 value: 1,
                 message: t('dataset:connection_pool_min_error')
@@ -330,34 +245,17 @@ const ConnectDatabaseConfig = () => {
               }
             })}
           />
-          {errors.connectionPoolSize && (
-            <FormErrorMessage>{errors.connectionPoolSize.message}</FormErrorMessage>
-          )}
+          {errors.poolSize && <FormErrorMessage>{errors.poolSize.message}</FormErrorMessage>}
         </FormControl>
         <FormBottomButtons
           isEditMode={isEditMode}
-          isConnecting={isConnecting}
-          connectionError={connectionError}
-          connectionSuccess={connectionSuccess}
-          onTestConnection={handleTestConnection}
-          onConnectAndNext={handleSubmit(onSubmit)}
+          disabled={!isValid}
+          formData={formData}
+          datasetId={datasetId}
+          onSuccess={handleSuccess}
+          originalConfig={defaultValues}
         />
       </VStack>
-
-      {/* Connection Status Modal */}
-      <MyModal
-        isOpen={showConnectionModal}
-        onClose={connectionStatus === 'loading' ? undefined : handleCloseModal}
-        title={t('dataset:reconnect_database')}
-        iconSrc="/imgs/modal/database.svg"
-        size="md"
-        w="500px"
-        h="300px"
-        closeOnOverlayClick={connectionStatus !== 'loading'}
-        showCloseButton={connectionStatus !== 'loading'}
-      >
-        {renderModalContent()}
-      </MyModal>
     </Box>
   );
 };

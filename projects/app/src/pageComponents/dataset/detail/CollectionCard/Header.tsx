@@ -71,7 +71,9 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     getData,
     pageNum,
     onOpenWebsiteModal,
-    openDatasetSyncConfirm
+    openDatasetSyncConfirm,
+    hasDatabaseConfig,
+    handleOpenConfigPage
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
@@ -142,7 +144,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
 
   return (
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
-      <HStack flex={1}>
+      <HStack flex={1} gap={0}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
           <FolderPath
             paths={paths.map((path, i) => ({
@@ -192,6 +194,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         {/* search input */}
         {isPc && (
           <MyInput
+            mr={3}
             maxW={'250px'}
             flex={1}
             size={'sm'}
@@ -480,102 +483,19 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           )}
           {isDatabase && (
             <>
-              {/* TODO-lyx 是否配置字段待定 */}
-              {datasetDetail?.websiteConfig?.url ? (
-                <>
-                  {datasetDetail.status === DatasetStatusEnum.active && (
-                    <HStack gap={2}>
-                      <Button
-                        onClick={onOpenWebsiteModal}
-                        leftIcon={<Icon name="change" w={'1rem'} />}
-                      >
-                        {t('dataset:params_config')}
-                      </Button>
-                      {!hasTrainingData && feConfigs?.isPlus && (
-                        <Button
-                          variant={'whitePrimary'}
-                          onClick={openDatasetSyncConfirm}
-                          leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
-                        >
-                          {t('dataset:immediate_sync')}
-                        </Button>
-                      )}
-                    </HStack>
-                  )}
-                  {datasetDetail.status === DatasetStatusEnum.syncing && (
-                    <MyTag
-                      colorSchema="purple"
-                      showDot
-                      px={3}
-                      h={'36px'}
-                      DotStyles={{
-                        w: '8px',
-                        h: '8px',
-                        animation: 'zoomStopIcon 0.5s infinite alternate'
-                      }}
-                    >
-                      {t('common:core.dataset.status.syncing')}
-                    </MyTag>
-                  )}
-                  {datasetDetail.status === DatasetStatusEnum.waiting && (
-                    <MyTag
-                      colorSchema="gray"
-                      showDot
-                      px={3}
-                      h={'36px'}
-                      DotStyles={{
-                        w: '8px',
-                        h: '8px',
-                        animation: 'zoomStopIcon 0.5s infinite alternate'
-                      }}
-                    >
-                      {t('common:core.dataset.status.waiting')}
-                    </MyTag>
-                  )}
-                  {datasetDetail.status === DatasetStatusEnum.error && (
-                    <MyTag colorSchema="red" showDot px={3} h={'36px'}>
-                      <HStack spacing={1}>
-                        <Box>{t('dataset:status_error')}</Box>
-                        <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
-                      </HStack>
-                    </MyTag>
-                  )}
-                </>
-              ) : (
+              {hasDatabaseConfig ? (
                 <>
                   <Button
-                    onClick={() => {
-                      router.replace({
-                        query: {
-                          ...router.query,
-                          currentTab: TabEnum.import,
-                          source: ImportDataSourceEnum.database,
-                          mode: 'create'
-                        }
-                      });
-                    }}
-                    leftIcon={<Icon name="common/setting" w={'18px'} />}
-                  >
-                    {t('common:core.dataset.Set Website Config')}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      router.replace({
-                        query: {
-                          ...router.query,
-                          currentTab: TabEnum.import,
-                          source: ImportDataSourceEnum.database,
-                          mode: 'edit'
-                        }
-                      });
-                    }}
-                    leftIcon={<Icon name="common/setting" w={'18px'} />}
+                    mr={3}
+                    onClick={() => handleOpenConfigPage('edit')}
+                    leftIcon={<Icon name="common/lineChange" w={'18px'} />}
                   >
                     {t('dataset:database_config')}
                   </Button>
                   <Button
+                    variant="outline"
                     onClick={() => {
-                      toast({
+                      const toastId = toast({
                         position: 'bottom-right',
                         duration: null,
                         render: () => (
@@ -590,15 +510,25 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                               position="relative"
                               right={-1}
                               top={-1}
-                              onClick={() => {}}
+                              onClick={() => toast.close(toastId)}
                             />
                           </Alert>
                         )
                       });
                     }}
-                    leftIcon={<Icon name="common/setting" w={'18px'} />}
+                    leftIcon={<Icon name="common/retryLight" w={'18px'} />}
                   >
                     {t('dataset:refresh_datasource')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    mx={3}
+                    onClick={() => handleOpenConfigPage('create')}
+                    leftIcon={<Icon name="common/setting" w={'18px'} />}
+                  >
+                    {t('common:core.dataset.Set Website Config')}
                   </Button>
                 </>
               )}
