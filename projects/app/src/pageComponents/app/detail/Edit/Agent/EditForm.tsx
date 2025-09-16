@@ -85,6 +85,7 @@ const EditForm = ({
   ];
   const {
     toolSkills,
+    queryString,
     setQueryString,
     handleAddToolFromEditor,
     handleConfigureTool,
@@ -252,6 +253,7 @@ const EditForm = ({
                     ? toolSkills
                     : [...appSkill, ...toolSkills]
                 }
+                queryString={queryString}
                 setQueryString={setQueryString}
                 selectedSkillKey={selectedSkillKey}
                 setSelectedSkillKey={setSelectedSkillKey}

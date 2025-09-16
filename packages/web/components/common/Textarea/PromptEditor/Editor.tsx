@@ -81,6 +81,7 @@ export type EditorProps = {
   onConfigureTool?: (toolId: string) => void;
   selectedTools?: FlowNodeTemplateType[];
   skills?: EditorSkillPickerType[];
+  queryString?: string | null;
   setQueryString?: (value: string | null) => void;
   selectedSkillKey?: string;
   setSelectedSkillKey?: (key: string) => void;
@@ -108,6 +109,7 @@ export default function Editor({
   variables = [],
   variableLabels = [],
   skills = [],
+  queryString,
   setQueryString,
   onAddToolFromEditor,
   onRemoveToolFromEditor,
@@ -249,6 +251,7 @@ export default function Editor({
               />
               <SkillPickerPlugin
                 skills={skills}
+                queryString={queryString}
                 setQueryString={setQueryString}
                 isFocus={focus}
                 onAddToolFromEditor={onAddToolFromEditor}

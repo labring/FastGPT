@@ -35,6 +35,7 @@ type UseToolManagerProps = {
 
 type UseToolManagerReturn = {
   toolSkills: EditorSkillPickerType[];
+  queryString: string | null;
   setQueryString: (value: string | null) => void;
 
   handleAddToolFromEditor: (toolKey: string) => Promise<string>;
@@ -365,6 +366,7 @@ export const useToolManager = ({
 
   return {
     toolSkills,
+    queryString,
     setQueryString,
 
     handleAddToolFromEditor,

@@ -11,7 +11,7 @@ import {
 } from 'lexical';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
@@ -27,6 +27,7 @@ export default function SkillPickerPlugin({
   onAddToolFromEditor,
   selectedKey,
   setSelectedKey,
+  queryString,
   setQueryString
 }: {
   skills: EditorSkillPickerType[];
@@ -34,17 +35,13 @@ export default function SkillPickerPlugin({
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   selectedKey: string;
   setSelectedKey: (key: string) => void;
+  queryString?: string | null;
   setQueryString?: (value: string | null) => void;
 }) {
   const [editor] = useLexicalComposerContext();
 
-  const isSearchMode = useMemo(() => {
-    return skills.length > 0 && !skills[1]?.toolCategories;
-  }, [skills]);
-
   const highlightedRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const nextIndexRef = useRef<number | null>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -67,7 +64,9 @@ export default function SkillPickerPlugin({
   const { runAsync: addTool, loading: isAddToolLoading } = useRequest2(
     async (selectedOption: SkillOptionType) => {
       if (
-        (selectedOption.level === 'secondary' || selectedOption.level === 'tertiary') &&
+        (selectedOption.level === 'secondary' ||
+          selectedOption.level === 'tertiary' ||
+          queryString) &&
         onAddToolFromEditor
       ) {
         return await onAddToolFromEditor(selectedOption.key);
@@ -85,7 +84,7 @@ export default function SkillPickerPlugin({
   }, [skills]);
 
   const currentOptions = useMemo(() => {
-    if (isSearchMode) {
+    if (queryString) {
       return skills.map((skill) => ({
         key: skill.key,
         label: skill.label,
@@ -104,11 +103,10 @@ export default function SkillPickerPlugin({
     return skillOptionList.filter(
       (item) => item.level === currentLevel && item.parentKey === currentOption.parentKey
     );
-  }, [skills, isSearchMode, skillOptionList, selectedKey]);
+  }, [skills, queryString, skillOptionList, selectedKey]);
 
   useEffect(() => {
-    if (!isFocus) return;
-    if (isSearchMode) return;
+    if (!isFocus || queryString === null) return;
     const removeRightCommand = editor.registerCommand(
       KEY_ARROW_RIGHT_COMMAND,
       (e: KeyboardEvent) => {
@@ -165,7 +163,7 @@ export default function SkillPickerPlugin({
       removeRightCommand();
       removeLeftCommand();
     };
-  }, [editor, isFocus, isSearchMode, selectedKey, skillOptionList, setSelectedKey]);
+  }, [editor, isFocus, queryString, selectedKey, skillOptionList, setSelectedKey]);
 
   const onSelectOption = useCallback(
     async (selectedOption: SkillOptionType, closeMenu: () => void) => {
@@ -178,7 +176,6 @@ export default function SkillPickerPlugin({
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
 
-        // manually remove the @ symbol
         const nodes = selection.getNodes();
         nodes.forEach((node) => {
           if ($isTextNode(node)) {
@@ -205,30 +202,21 @@ export default function SkillPickerPlugin({
   }, [currentOptions]);
 
   const handleQueryChange = useCallback(
-    (query: string | null) => {
-      if (setQueryString) {
-        if (debounceTimerRef.current) {
-          clearTimeout(debounceTimerRef.current);
+    (() => {
+      let timeout: NodeJS.Timeout;
+      return (query: string | null) => {
+        if (setQueryString) {
+          clearTimeout(timeout);
+          if (!query?.trim()) {
+            setQueryString(query);
+            return;
+          }
+          timeout = setTimeout(() => setQueryString(query), 300);
         }
-        if (!query?.trim()) {
-          setQueryString(query);
-          return;
-        }
-        debounceTimerRef.current = setTimeout(() => {
-          setQueryString(query);
-        }, 300);
-      }
-    },
+      };
+    })(),
     [setQueryString]
   );
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
 
   return (
     <LexicalTypeaheadMenuPlugin
@@ -290,7 +278,7 @@ export default function SkillPickerPlugin({
           return null;
         })();
 
-        if (isSearchMode) {
+        if (queryString) {
           return ReactDOM.createPortal(
             <MyBox
               p={1.5}
