@@ -23,7 +23,6 @@ export type SkillOptionType = {
   key: string;
   label: string;
   icon?: string;
-  level: 'primary' | 'secondary' | 'tertiary';
   parentKey?: string;
   canOpen?: boolean;
   categoryType?: string;
@@ -44,10 +43,9 @@ const getDisplayState = ({
     (item) =>
       item.parentKey === skillOption.key &&
       (selectedKey === item.key ||
-        (item.level === 'secondary' &&
-          skillOptionList.some(
-            (subItem) => subItem.parentKey === item.key && selectedKey === subItem.key
-          )))
+        skillOptionList.some(
+          (subItem) => subItem.parentKey === item.key && selectedKey === subItem.key
+        ))
   );
 
   return {
@@ -98,12 +96,7 @@ export default function SkillPickerPlugin({
 
   const { runAsync: addTool, loading: isAddToolLoading } = useRequest2(
     async (selectedOption: SkillOptionType) => {
-      if (
-        (selectedOption.level === 'secondary' ||
-          selectedOption.level === 'tertiary' ||
-          queryString) &&
-        onAddToolFromEditor
-      ) {
+      if ((selectedOption.parentKey || queryString) && onAddToolFromEditor) {
         return await onAddToolFromEditor(selectedOption.key);
       } else {
         return '';
@@ -117,12 +110,11 @@ export default function SkillPickerPlugin({
   const currentOptions = useMemo(() => {
     const currentOption = skillOptionList.find((option) => option.key === selectedKey);
     if (!currentOption) {
-      return skillOptionList.filter((item) => item.level === 'primary');
+      return skillOptionList.filter((item) => !item.parentKey);
     }
 
-    const currentLevel = currentOption.level;
     const filteredOptions = skillOptionList.filter(
-      (item) => item.level === currentLevel && item.parentKey === currentOption.parentKey
+      (item) => item.parentKey === currentOption.parentKey
     );
 
     return filteredOptions.map((option) => ({
@@ -140,11 +132,8 @@ export default function SkillPickerPlugin({
         const currentOption = skillOptionList.find((option) => option.key === selectedKey);
         if (!currentOption) return false;
 
-        const currentLevel = currentOption.level;
-        const nextLevel = currentLevel === 'primary' ? 'secondary' : 'tertiary';
-
         const firstChildOption = skillOptionList.find(
-          (item) => item.level === nextLevel && item.parentKey === currentOption.key
+          (item) => item.parentKey === currentOption.key
         );
         if (firstChildOption) {
           setSelectedKey(firstChildOption.key);
@@ -167,9 +156,8 @@ export default function SkillPickerPlugin({
         if (currentOption.parentKey) {
           const parentOption = skillOptionList.find((item) => item.key === currentOption.parentKey);
           if (parentOption) {
-            const parentLevel = parentOption.level;
             const parentSiblings = skillOptionList.filter(
-              (item) => item.level === parentLevel && item.parentKey === parentOption.parentKey
+              (item) => item.parentKey === parentOption.parentKey
             );
             const parentIndexInSiblings = parentSiblings.findIndex(
               (item) => item.key === parentOption.key
@@ -279,15 +267,22 @@ export default function SkillPickerPlugin({
           setSelectedKey(currentOption.key);
         }
 
-        const currentLevel = currentOption.level;
+        // 判断层级：没有 parentKey 的是顶级，有 parentKey 的根据父级判断层级
+        const getNodeDepth = (nodeKey: string): number => {
+          const node = skillOptionList.find((opt) => opt.key === nodeKey);
+          if (!node?.parentKey) return 0;
+          return 1 + getNodeDepth(node.parentKey);
+        };
+
+        const currentDepth = currentOption ? getNodeDepth(currentOption.key) : 0;
 
         const selectedSkillKey = (() => {
-          if (currentLevel === 'primary') {
+          if (currentDepth === 0) {
             return currentOption?.key;
           } else if (currentOption?.parentKey) {
-            if (currentLevel === 'secondary') {
+            if (currentDepth === 1) {
               return currentOption.parentKey;
-            } else if (currentLevel === 'tertiary') {
+            } else if (currentDepth === 2) {
               const parentOption = skillOptionList.find(
                 (item) => item.key === currentOption.parentKey
               );
@@ -297,9 +292,9 @@ export default function SkillPickerPlugin({
           return null;
         })();
         const selectedToolKey = (() => {
-          if (currentLevel === 'secondary') {
+          if (currentDepth === 1) {
             return currentOption?.key;
-          } else if (currentLevel === 'tertiary') {
+          } else if (currentDepth === 2) {
             return currentOption?.parentKey;
           }
           return null;
@@ -318,7 +313,7 @@ export default function SkillPickerPlugin({
               isLoading={isAddToolLoading}
             >
               {skillOptionList
-                .filter((option) => option.level === 'primary')
+                .filter((option) => !option.parentKey)
                 .map((skillOption) => {
                   const { isCurrentFocus, hasSelectedChild } = getDisplayState({
                     selectedKey,
@@ -386,7 +381,7 @@ export default function SkillPickerPlugin({
               >
                 {(() => {
                   const secondaryOptions = skillOptionList.filter(
-                    (item) => item.level === 'secondary' && item.parentKey === selectedSkillKey
+                    (item) => item.parentKey === selectedSkillKey
                   );
 
                   // Organize by category
@@ -474,7 +469,7 @@ export default function SkillPickerPlugin({
             {selectedToolKey &&
               (() => {
                 const tertiaryOptions = skillOptionList.filter(
-                  (option) => option.level === 'tertiary' && option.parentKey === selectedToolKey
+                  (option) => option.parentKey === selectedToolKey
                 );
 
                 if (tertiaryOptions.length > 0) {

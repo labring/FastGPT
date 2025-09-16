@@ -70,8 +70,7 @@ export const useToolManager = ({
         const primaryOptions: SkillOptionType[] = data.map((item) => ({
           key: item.groupId,
           label: t(item.groupName),
-          icon: 'core/workflow/template/toolCall',
-          level: 'primary'
+          icon: 'core/workflow/template/toolCall'
         }));
         setToolSkillOptions(primaryOptions);
       }
@@ -82,15 +81,12 @@ export const useToolManager = ({
       return '';
     }
     const selectedOption = toolSkillOptions.find((option) => option.key === selectedSkillKey);
-    if (!toolSkillOptions.some((option) => option.level === 'secondary') && selectedOption) {
+    if (!toolSkillOptions.some((option) => option.parentKey) && selectedOption) {
       return '';
     }
-    if (selectedOption?.level === 'secondary' && selectedOption.canOpen) {
+    if (selectedOption?.canOpen) {
       const hasLoadingPlaceholder = toolSkillOptions.some(
-        (option) =>
-          option.level === 'tertiary' &&
-          option.parentKey === selectedSkillKey &&
-          option.key === 'loading'
+        (option) => option.parentKey === selectedSkillKey && option.key === 'loading'
       );
       if (hasLoadingPlaceholder) {
         return selectedSkillKey;
@@ -107,8 +103,7 @@ export const useToolManager = ({
         skillOptions.push({
           key: group.groupId,
           label: t(group.groupName as any),
-          icon: 'core/workflow/template/toolCall',
-          level: 'primary'
+          icon: 'core/workflow/template/toolCall'
         });
       });
 
@@ -142,7 +137,6 @@ export const useToolManager = ({
               key: plugin.id,
               label: t(parseI18nString(plugin.name, lang)),
               icon: plugin.avatar || 'core/workflow/template/toolCall',
-              level: 'secondary',
               parentKey: group.groupId,
               canOpen,
               categoryType: category.type,
@@ -154,7 +148,6 @@ export const useToolManager = ({
                 key: 'loading',
                 label: 'Loading...',
                 icon: plugin.avatar || 'core/workflow/template/toolCall',
-                level: 'tertiary',
                 parentKey: plugin.id
               });
             }
@@ -171,8 +164,7 @@ export const useToolManager = ({
       return searchResults.map((plugin) => ({
         key: plugin.id,
         label: t(parseI18nString(plugin.name, lang)),
-        icon: plugin.avatar || 'core/workflow/template/toolCall',
-        level: 'primary' as const
+        icon: plugin.avatar || 'core/workflow/template/toolCall'
       }));
     },
     [t, lang]
@@ -183,15 +175,12 @@ export const useToolManager = ({
       parentKey: string | undefined,
       subItems: NodeTemplateListItemType[]
     ) => {
-      const filteredOptions = currentOptions.filter(
-        (option) => !(option.level === 'tertiary' && option.parentKey === parentKey)
-      );
+      const filteredOptions = currentOptions.filter((option) => !(option.parentKey === parentKey));
 
       const newTertiaryOptions = subItems.map((plugin) => ({
         key: plugin.id,
         label: t(parseI18nString(plugin.name, lang)),
         icon: 'core/workflow/template/toolCall',
-        level: 'tertiary' as const,
         parentKey
       }));
 
