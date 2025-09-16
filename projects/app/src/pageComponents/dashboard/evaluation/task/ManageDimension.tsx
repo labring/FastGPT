@@ -62,8 +62,8 @@ const transformMetricToDimension = (
     description: metric.description || '',
     evaluationModel: metric.llmRequired ? defaultEvaluationModel || '' : '', // 使用默认评估模型
     indexModel: metric.embeddingRequired ? defaultEmbeddingModel || '' : undefined, // 如果不需要索引模型则为 undefined
-    llmRequired: metric.llmRequired,
-    embeddingRequired: metric.embeddingRequired,
+    llmRequired: metric.llmRequired ?? false,
+    embeddingRequired: metric.embeddingRequired ?? false,
     isSelected: false
   };
 };

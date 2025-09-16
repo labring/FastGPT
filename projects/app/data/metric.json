@@ -2,68 +2,49 @@
   "builtinMetrics": [  
     {  
       "name": "answer_correctness",  
-      "description": "Evaluates the factual accuracy of model responses compared to ground truth answers.",  
+      "description": "Evaluates the factual consistency between the generated answer and the reference answer, evaluating whether it is accurate and error-free.",  
       "userInputRequired": true,  
       "actualOutputRequired": true,  
       "expectedOutputRequired": true,  
-      "contextRequired": false,  
-      "retrievalContextRequired": false,  
       "embeddingRequired": true,  
       "llmRequired": true  
     },  
     {  
       "name": "answer_similarity",  
-      "description": "Measures semantic similarity between model output and reference answer.",  
-      "userInputRequired": false,  
+      "description": "Evaluates the semantic alignment between the generated answer and the reference answer, determining whether they convey the same core information.",   
       "actualOutputRequired": true,  
       "expectedOutputRequired": true,  
-      "contextRequired": false,  
-      "retrievalContextRequired": false,  
-      "embeddingRequired": true,  
-      "llmRequired": false  
+      "embeddingRequired": true
     },  
     {  
       "name": "answer_relevancy",  
-      "description": "Measures how relevant the generated answer is to the user's question.",  
+      "description": "Evaluates how well the generated answer aligns with the question, judging whether the response directly addresses the query.",  
       "userInputRequired": true,  
-      "actualOutputRequired": true,  
-      "expectedOutputRequired": false,  
-      "contextRequired": false,  
-      "retrievalContextRequired": false,  
-      "embeddingRequired": false,  
+      "actualOutputRequired": true,    
       "llmRequired": true  
     },  
     {  
       "name": "context_precision",  
-      "description": "Measures the proportion of relevant contexts among the retrieved contexts.",  
+      "description": "Evaluates whether high-value information is prioritized in the retrieved content, reflecting the quality of ranking and information density.",  
       "userInputRequired": true,  
-      "actualOutputRequired": false,  
-      "expectedOutputRequired": true,  
-      "contextRequired": false,  
-      "retrievalContextRequired": true,  
-      "embeddingRequired": false,  
+      "expectedOutputRequired": true,   
+      "retrievalContextRequired": true,    
       "llmRequired": true  
     },  
     {  
       "name": "context_recall",  
-      "description": "Measures the proportion of relevant contexts that were successfully retrieved.",  
-      "userInputRequired": true,  
-      "actualOutputRequired": false,  
+      "description": "Evaluates whether the retrieval system successfully retrieves all key information necessary for formulating the answer, assessing the completeness of retrieval.",  
+      "userInputRequired": true,   
       "expectedOutputRequired": true,  
-      "contextRequired": false,  
       "retrievalContextRequired": true,  
-      "embeddingRequired": false,  
       "llmRequired": true  
     },  
     {  
       "name": "faithfulness",  
-      "description": "Evaluates whether the generated answer is faithful to the retrieved context.",  
+      "description": "Evaluates whether the generated answer remains faithful to the provided context, determining whether it contains fabricated or inaccurate content.",  
       "userInputRequired": true,  
       "actualOutputRequired": true,  
-      "expectedOutputRequired": false,  
-      "contextRequired": false,  
       "retrievalContextRequired": true,  
-      "embeddingRequired": false,  
       "llmRequired": true  
     }
   ]  
