@@ -120,6 +120,12 @@ export const dispatchPlanAgent = async ({
           }
         };
       }
+
+      completeMessages.push({
+        tool_call_id: call.id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: 'wait for user input'
+      });
     }
   }
 
