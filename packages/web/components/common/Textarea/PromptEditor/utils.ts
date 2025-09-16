@@ -466,11 +466,8 @@ export const editorStateToText = (editor: LexicalEditor) => {
           paragraphText.push('  ');
         } else if (child.type === 'variableLabel' || child.type === 'Variable') {
           paragraphText.push(child.variableKey);
-<<<<<<< HEAD
-=======
         } else if (child.type === 'skill') {
           paragraphText.push(`{{@${child.skillKey}@}}`);
->>>>>>> bc66c3a91 (feat: enable tool selection as skills (#5638))
         }
       });
 
