@@ -1,7 +1,7 @@
 {
-  "notification_detail": "notification details",
-  "no_notifications": "No notification yet",
+  "notification_detail": "Notification details",
+  "no_notifications": "No data available.",
   "read": "Read",
-  "system": "official",
-  "team": "team"
+  "system": "Official",
+  "team": "Team"
 }
