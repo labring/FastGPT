@@ -422,6 +422,13 @@ export const updateInteractiveChat = async (props: Props) => {
         : aiResponse.citeCollectionIds;
     }
 
+    if (aiContent.memories) {
+      chatItem.memories = {
+        ...chatItem.memories,
+        ...aiContent.memories
+      };
+    }
+
     chatItem.durationSeconds = chatItem.durationSeconds
       ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
       : durationSeconds;
