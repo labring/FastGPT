@@ -101,17 +101,17 @@ export type EvaluationDataItemType = EvalDatasetDataSchemaType & {
   targetCallParams?: TargetCallParams;
 };
 
-// Evaluation item type (atomic: one dataItem + one target + one evaluator)
+// Evaluation item type (batch: one dataItem + one target + multiple evaluators)
 export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
   // Dependent component configurations
   dataItem: EvaluationDataItemType;
   target: EvalTarget;
-  evaluator: EvaluatorSchema; // Single evaluator configuration
+  evaluators: EvaluatorSchema[]; // Multiple evaluator configurations
   // Execution results
   targetOutput?: TargetOutput; // Actual output from target
-  evaluatorOutput?: MetricResult; // Result from single evaluator
+  evaluatorOutputs?: MetricResult[]; // Results from multiple evaluators
   status: EvaluationStatusEnum;
   retry: number;
   finishTime?: Date;
@@ -157,9 +157,7 @@ export type EvaluationDisplayType = Pick<
   sourceMember: SourceMemberType;
 };
 
-export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
-  evalItemId: string;
-};
+export type EvaluationItemDisplayType = EvaluationItemSchemaType;
 
 export interface CreateEvaluationParams {
   name: string;
