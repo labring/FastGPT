@@ -3,8 +3,11 @@ import type {
   EvalDatasetCollectionSchemaType,
   EvalDatasetDataSchemaType,
   EvalDatasetCollectionStatus,
-  EvalDatasetDataQualityStatus
+  EvalDatasetDataQualityStatus,
+  EvalDatasetDataQualityMetadata,
+  EvalDatasetDataSynthesisMetadata
 } from './type';
+import type { EvalDatasetDataQualityResultEnum } from './constants';
 import type { EvalDatasetDataKeyEnum } from './constants';
 
 type EvalDatasetCollectionBase = {
@@ -45,8 +48,11 @@ type QualityEvaluationBase = {
 };
 
 export type importEvalDatasetFromFileBody = {
-  fileId: string;
-  collectionId: string;
+  fileId?: string; // Optional for form-data, files will be uploaded directly
+  collectionId?: string; // Optional - use existing collection mode
+  // Optional fields for creating new collection mode
+  name?: string;
+  description?: string;
 } & QualityEvaluationBase;
 type EvalDatasetDataBase = {
   [EvalDatasetDataKeyEnum.UserInput]: string;
@@ -54,7 +60,9 @@ type EvalDatasetDataBase = {
   [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
   [EvalDatasetDataKeyEnum.Context]?: string[];
   [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
-  [EvalDatasetDataKeyEnum.Metadata]?: Record<string, any>;
+  qualityMetadata?: Partial<EvalDatasetDataQualityMetadata>;
+  synthesisMetadata?: Partial<EvalDatasetDataSynthesisMetadata>;
+  qualityResult?: EvalDatasetDataQualityResultEnum;
 };
 
 export type createEvalDatasetDataBody = EvalDatasetDataBase &
@@ -77,7 +85,9 @@ export type listEvalDatasetDataResponse = PaginationResponse<
     | EvalDatasetDataKeyEnum.ExpectedOutput
     | EvalDatasetDataKeyEnum.Context
     | EvalDatasetDataKeyEnum.RetrievalContext
-    | 'metadata'
+    | 'qualityMetadata'
+    | 'synthesisMetadata'
+    | 'qualityResult'
     | 'createFrom'
     | 'createTime'
     | 'updateTime'
@@ -119,23 +129,28 @@ export type getEvalDatasetDataDetailResponse = Pick<
   | '_id'
   | 'teamId'
   | 'tmbId'
-  | 'datasetId'
+  | 'evalDatasetCollectionId'
   | EvalDatasetDataKeyEnum.UserInput
   | EvalDatasetDataKeyEnum.ActualOutput
   | EvalDatasetDataKeyEnum.ExpectedOutput
   | EvalDatasetDataKeyEnum.Context
   | EvalDatasetDataKeyEnum.RetrievalContext
-  | EvalDatasetDataKeyEnum.Metadata
+  | 'qualityMetadata'
+  | 'synthesisMetadata'
+  | 'qualityResult'
   | 'createFrom'
   | 'createTime'
   | 'updateTime'
 >;
 
 export type smartGenerateEvalDatasetBody = {
-  collectionId: string;
+  collectionId?: string;
   kbDatasetIds: string[];
   count?: number;
   intelligentGenerationModel: string;
+  // Optional fields for creating new collection
+  name?: string;
+  description?: string;
 };
 
 export type listFailedTasksBody = {
@@ -145,6 +160,7 @@ export type listFailedTasksBody = {
 export type listFailedTasksResponse = {
   tasks: Array<{
     jobId: string;
+    // all about dataset
     dataId: string;
     datasetId: string;
     datasetName: string;

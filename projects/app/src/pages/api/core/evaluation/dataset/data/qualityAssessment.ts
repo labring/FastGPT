@@ -48,7 +48,7 @@ async function handler(
   }
 
   const collection = await MongoEvalDatasetCollection.findOne({
-    _id: datasetData.datasetId,
+    _id: datasetData.evalDatasetCollectionId,
     teamId
   });
 
@@ -82,9 +82,9 @@ async function handler(
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-        'metadata.qualityModel': finalEvaluationModel,
-        'metadata.qualityQueueTime': new Date()
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+        'qualityMetadata.model': finalEvaluationModel,
+        'qualityMetadata.queueTime': new Date()
       }
     });
 

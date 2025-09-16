@@ -21,6 +21,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { EvaluationStatus, evaluationStatusMap } from './const';
+import {
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import EvaluationStatusSelect from './StatusSelect';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -90,19 +94,30 @@ const DataListContent = () => {
   }, [evaluationDataList, setEvaluationDataList]);
 
   // 获取状态标签颜色
-  const getStatusColor = (status: EvaluationStatus) => {
-    switch (status) {
-      case EvaluationStatus.HighQuality:
+  const getStatusColor = (qualityStatus: string, qualityResult?: string) => {
+    // 如果有质量结果，优先显示质量结果的颜色
+    if (qualityResult) {
+      switch (qualityResult) {
+        case EvalDatasetDataQualityResultEnum.highQuality:
+          return 'green';
+        case EvalDatasetDataQualityResultEnum.needsOptimization:
+          return 'yellow';
+        default:
+          return 'gray';
+      }
+    }
+
+    // 否则根据质量状态显示颜色
+    switch (qualityStatus) {
+      case EvalDatasetDataQualityStatusEnum.completed:
         return 'green';
-      case EvaluationStatus.NeedsImprovement:
-        return 'yellow';
-      case EvaluationStatus.Abnormal:
-        return 'red';
-      case EvaluationStatus.Evaluating:
+      case EvalDatasetDataQualityStatusEnum.evaluating:
         return 'blue';
-      case EvaluationStatus.Queuing:
+      case EvalDatasetDataQualityStatusEnum.queuing:
         return 'gray';
-      case EvaluationStatus.NotEvaluated:
+      case EvalDatasetDataQualityStatusEnum.error:
+        return 'red';
+      case EvalDatasetDataQualityStatusEnum.unevaluated:
         return 'gray';
       default:
         return 'gray';
@@ -110,17 +125,58 @@ const DataListContent = () => {
   };
 
   const renderStatusTag = (item: any) => {
-    if (!item.metadata?.qualityStatus) return '';
+    const qualityStatus = item.qualityMetadata?.status;
+    const qualityResult = item.qualityResult;
+
+    if (!qualityStatus) return '';
+
+    // 确定要显示的状态和文本
+    let displayStatus: string;
+    let statusText: string;
+
+    if (qualityResult && qualityStatus === EvalDatasetDataQualityStatusEnum.completed) {
+      // 如果有质量结果且评估已完成，显示质量结果
+      displayStatus = qualityResult;
+      if (qualityResult === EvalDatasetDataQualityResultEnum.highQuality) {
+        statusText = t(evaluationStatusMap[EvaluationStatus.HighQuality]);
+      } else if (qualityResult === EvalDatasetDataQualityResultEnum.needsOptimization) {
+        statusText = t(evaluationStatusMap[EvaluationStatus.NeedsImprovement]);
+      } else {
+        statusText = qualityResult;
+      }
+    } else {
+      // 否则显示质量状态
+      displayStatus = qualityStatus;
+      switch (qualityStatus) {
+        case EvalDatasetDataQualityStatusEnum.unevaluated:
+          statusText = t(evaluationStatusMap[EvaluationStatus.NotEvaluated]);
+          break;
+        case EvalDatasetDataQualityStatusEnum.queuing:
+          statusText = t(evaluationStatusMap[EvaluationStatus.Queuing]);
+          break;
+        case EvalDatasetDataQualityStatusEnum.evaluating:
+          statusText = t(evaluationStatusMap[EvaluationStatus.Evaluating]);
+          break;
+        case EvalDatasetDataQualityStatusEnum.error:
+          statusText = t(evaluationStatusMap[EvaluationStatus.Abnormal]);
+          break;
+        case EvalDatasetDataQualityStatusEnum.completed:
+          statusText = t('dashboard_evaluation:completed');
+          break;
+        default:
+          statusText = qualityStatus;
+      }
+    }
 
     return (
       <Box>
         <MyTag
-          colorSchema={getStatusColor(item.metadata.qualityStatus)}
+          colorSchema={getStatusColor(qualityStatus, qualityResult)}
           type={'fill'}
           mx={6}
           fontWeight={500}
         >
-          {t(evaluationStatusMap[item.metadata.qualityStatus as EvaluationStatus])}
+          {statusText}
         </MyTag>
       </Box>
     );

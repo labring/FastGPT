@@ -41,7 +41,7 @@ async function handler(
   });
 
   const match: Record<string, any> = {
-    datasetId: new Types.ObjectId(collectionId)
+    evalDatasetCollectionId: new Types.ObjectId(collectionId)
   };
 
   if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
@@ -54,7 +54,7 @@ async function handler(
   }
 
   if (qualityStatus && typeof qualityStatus === 'string' && qualityStatus.trim().length > 0) {
-    match['metadata.qualityStatus'] = qualityStatus.trim();
+    match['qualityMetadata.status'] = qualityStatus.trim();
   }
 
   try {
@@ -72,7 +72,11 @@ async function handler(
         [EvalDatasetDataKeyEnum.ExpectedOutput]: item.expectedOutput,
         [EvalDatasetDataKeyEnum.Context]: item.context || [],
         [EvalDatasetDataKeyEnum.RetrievalContext]: item.retrievalContext || [],
-        [EvalDatasetDataKeyEnum.Metadata]: item.metadata || {},
+        qualityMetadata: item.qualityMetadata || {
+          status: EvalDatasetDataQualityStatusEnum.unevaluated
+        },
+        synthesisMetadata: item.synthesisMetadata || {},
+        qualityResult: item.qualityResult,
         createFrom: item.createFrom,
         createTime: item.createTime,
         updateTime: item.updateTime
@@ -107,7 +111,9 @@ const buildPipeline = (match: Record<string, any>, offset: number, pageSize: num
       [EvalDatasetDataKeyEnum.ExpectedOutput]: 1,
       [EvalDatasetDataKeyEnum.Context]: 1,
       [EvalDatasetDataKeyEnum.RetrievalContext]: 1,
-      metadata: 1,
+      qualityMetadata: 1,
+      synthesisMetadata: 1,
+      qualityResult: 1,
       createFrom: 1,
       createTime: 1,
       updateTime: 1

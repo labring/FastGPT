@@ -4,7 +4,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import type { deleteEvalDatasetCollectionQuery } from '@fastgpt/global/core/evaluation/dataset/api';
-import { removeEvalDatasetSmartGenerateJobsRobust } from '@fastgpt/service/core/evaluation/dataset/smartGenerateMq';
 import { removeEvalDatasetDataQualityJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { removeEvalDatasetDataSynthesizeJobsRobust } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -53,25 +52,10 @@ async function handler(
       collectionName: collection.name
     });
 
-    addLog.info('Cleaning up smart generation queue tasks', { collectionId });
-    try {
-      await removeEvalDatasetSmartGenerateJobsRobust([collectionId], {
-        forceCleanActiveJobs: true,
-        retryAttempts: 3,
-        retryDelay: 200
-      });
-      addLog.info('Smart generation queue cleanup completed', { collectionId });
-    } catch (error) {
-      addLog.error('Failed to clean up smart generation queue', {
-        collectionId,
-        error
-      });
-    }
-
     addLog.info('Cleaning up quality assessment queue tasks', { collectionId });
     try {
       const datasetDataIds = await MongoEvalDatasetData.find(
-        { datasetId: collectionId },
+        { evalDatasetCollectionId: collectionId },
         { _id: 1 }
       ).session(session);
 
@@ -111,7 +95,7 @@ async function handler(
     }
 
     const deletedDataResult = await MongoEvalDatasetData.deleteMany(
-      { datasetId: collectionId },
+      { evalDatasetCollectionId: collectionId },
       { session }
     );
 

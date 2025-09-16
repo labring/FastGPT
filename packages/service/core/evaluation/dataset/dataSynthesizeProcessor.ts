@@ -6,7 +6,8 @@ import { MongoDatasetData } from '../../dataset/data/schema';
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum,
-  EvalDatasetDataQualityStatusEnum
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { EvalDatasetDataSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import {
@@ -66,30 +67,36 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       totalPoints = calculatedPoints;
     }
 
+    const qualityResult =
+      synthesisResult.data?.metadata?.score && synthesisResult.data.metadata.score >= 0.7
+        ? EvalDatasetDataQualityResultEnum.highQuality
+        : EvalDatasetDataQualityResultEnum.needsOptimization;
+
     const evalData: Partial<EvalDatasetDataSchemaType> = {
       teamId: evalDatasetCollection.teamId,
       tmbId: evalDatasetCollection.tmbId,
-      datasetId: evalDatasetCollectionId,
+      evalDatasetCollectionId: evalDatasetCollectionId,
       [EvalDatasetDataKeyEnum.UserInput]: synthesisResult.data?.qaPair.question,
       [EvalDatasetDataKeyEnum.ExpectedOutput]: synthesisResult.data?.qaPair.answer,
       [EvalDatasetDataKeyEnum.ActualOutput]: '',
       [EvalDatasetDataKeyEnum.Context]: [],
       [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-      metadata: {
-        sourceDataId: sourceData._id,
-        sourceDatasetId: sourceData.datasetId,
-        sourceCollectionId: sourceData.collectionId,
-        qualityScore: synthesisResult.data?.metadata?.score,
-        qualityReason: synthesisResult.data?.metadata?.reason,
-        qualityUsages: synthesisResult?.usages,
-        qualityStatus:
-          synthesisResult.data?.metadata?.score && synthesisResult.data.metadata.score >= 0.7
-            ? EvalDatasetDataQualityStatusEnum.highQuality
-            : EvalDatasetDataQualityStatusEnum.needsOptimization,
-        generatedAt: new Date(),
-        synthesizedAt: new Date(),
-        intelligentGenerationModel
+      qualityMetadata: {
+        status: EvalDatasetDataQualityStatusEnum.completed,
+        score: synthesisResult.data?.metadata?.score,
+        reason: synthesisResult.data?.metadata?.reason,
+        usages: synthesisResult?.usages,
+        finishTime: new Date()
       },
+      synthesisMetadata: {
+        sourceDataId: sourceData._id.toString(),
+        sourceDatasetId: sourceData.datasetId.toString(),
+        sourceCollectionId: sourceData.collectionId.toString(),
+        intelligentGenerationModel,
+        generatedAt: new Date(),
+        synthesizedAt: new Date()
+      },
+      qualityResult,
       createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration
     };
 

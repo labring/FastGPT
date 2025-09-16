@@ -74,7 +74,7 @@ describe('EvalDatasetData Delete API', () => {
 
     const mockDataDocument = {
       _id: CONSTANTS.validDataId,
-      datasetId: CONSTANTS.validCollectionId,
+      evalDatasetCollectionId: CONSTANTS.validCollectionId,
       userInput: 'test input',
       expectedOutput: 'test output'
     };

@@ -4,7 +4,10 @@ import { EvalDatasetCollectionName } from './evalDatasetCollectionSchema';
 import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataCreateFromValues,
-  EvalDatasetDataKeyEnum
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum,
+  EvalDatasetDataQualityResultValues
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
   TeamCollectionName,
@@ -27,7 +30,7 @@ const EvalDatasetDataSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
-  datasetId: {
+  evalDatasetCollectionId: {
     type: Schema.Types.ObjectId,
     ref: EvalDatasetCollectionName,
     required: true,
@@ -70,9 +73,38 @@ const EvalDatasetDataSchema = new Schema({
     ],
     default: []
   },
-  metadata: {
-    type: Schema.Types.Mixed,
-    default: {}
+  qualityMetadata: {
+    status: {
+      type: String,
+      enum: Object.values(EvalDatasetDataQualityStatusEnum),
+      default: EvalDatasetDataQualityStatusEnum.unevaluated,
+      required: true
+    },
+    score: {
+      type: Number,
+      min: 0,
+      max: 1
+    },
+    reason: String,
+    model: String,
+    usages: [Schema.Types.Mixed],
+    runLogs: [Schema.Types.Mixed],
+    startTime: Date,
+    finishTime: Date,
+    queueTime: Date,
+    error: String
+  },
+  synthesisMetadata: {
+    sourceDataId: String,
+    sourceDatasetId: String,
+    sourceCollectionId: String,
+    intelligentGenerationModel: String,
+    synthesizedAt: Date,
+    generatedAt: Date
+  },
+  qualityResult: {
+    type: String,
+    enum: EvalDatasetDataQualityResultValues
   },
   createFrom: {
     type: String,
@@ -93,8 +125,13 @@ const EvalDatasetDataSchema = new Schema({
 });
 
 // Indexes for efficient queries
-EvalDatasetDataSchema.index({ datasetId: 1, createTime: -1 });
-EvalDatasetDataSchema.index({ datasetId: 1, updateTime: -1 });
+EvalDatasetDataSchema.index({ evalDatasetCollectionId: 1, createTime: -1 });
+EvalDatasetDataSchema.index({ evalDatasetCollectionId: 1, updateTime: -1 });
+
+// Quality related indexes
+EvalDatasetDataSchema.index({ 'qualityMetadata.status': 1 });
+EvalDatasetDataSchema.index({ qualityResult: 1 });
+EvalDatasetDataSchema.index({ evalDatasetCollectionId: 1, qualityResult: 1 });
 
 // Text search index for searching within inputs and outputs
 EvalDatasetDataSchema.index({

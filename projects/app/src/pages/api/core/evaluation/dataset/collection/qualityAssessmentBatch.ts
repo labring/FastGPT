@@ -69,7 +69,7 @@ async function handler(
   const evalModel = finalEvaluationModel.model;
 
   const dataItems = await MongoEvalDatasetData.find({
-    datasetId: collectionId,
+    evalDatasetCollectionId: collectionId,
     teamId
   }).select('_id');
 
@@ -113,12 +113,12 @@ async function handler(
           evaluationModel: evalModel
         });
 
-        // Update metadata
+        // Update quality metadata
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
-            'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-            'metadata.qualityModel': evalModel,
-            'metadata.qualityQueueTime': new Date()
+            'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+            'qualityMetadata.model': evalModel,
+            'qualityMetadata.queueTime': new Date()
           }
         });
 
@@ -153,12 +153,12 @@ async function handler(
           evaluationModel: evalModel
         });
 
-        // Update metadata
+        // Update quality metadata
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
-            'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-            'metadata.qualityModel': evalModel,
-            'metadata.qualityQueueTime': new Date()
+            'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+            'qualityMetadata.model': evalModel,
+            'qualityMetadata.queueTime': new Date()
           }
         });
 

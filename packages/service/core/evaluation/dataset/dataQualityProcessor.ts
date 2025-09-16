@@ -4,7 +4,8 @@ import { MongoEvalDatasetData } from './evalDatasetDataSchema';
 import { getEvalDatasetDataQualityWorker, type EvalDatasetDataQualityData } from './dataQualityMq';
 import {
   EvalDatasetDataKeyEnum,
-  EvalDatasetDataQualityStatusEnum
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
@@ -27,9 +28,9 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,
-        'metadata.qualityError': errorMsg,
-        'metadata.qualityFinishTime': new Date()
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.error,
+        'qualityMetadata.error': errorMsg,
+        'qualityMetadata.finishTime': new Date()
       }
     });
 
@@ -39,8 +40,8 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
   try {
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.evaluating,
-        'metadata.qualityStartTime': new Date()
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.evaluating,
+        'qualityMetadata.startTime': new Date()
       }
     });
 
@@ -101,20 +102,21 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
         totalPoints = calculatedPoints;
       }
 
-      const qualityStatus =
+      const qualityResult =
         metricResult.data.score >= 0.7
-          ? EvalDatasetDataQualityStatusEnum.highQuality
-          : EvalDatasetDataQualityStatusEnum.needsOptimization;
+          ? EvalDatasetDataQualityResultEnum.highQuality
+          : EvalDatasetDataQualityResultEnum.needsOptimization;
 
       await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
         $set: {
-          'metadata.qualityStatus': qualityStatus,
-          'metadata.qualityScore': metricResult.data.score,
-          'metadata.qualityReason': metricResult.data?.reason,
-          'metadata.qualityRunLogs': metricResult.data?.runLogs,
-          'metadata.qualityUsages': metricResult?.usages,
-          'metadata.qualityFinishTime': new Date(),
-          'metadata.qualityModel': evaluationModel
+          'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.completed,
+          'qualityMetadata.score': metricResult.data.score,
+          'qualityMetadata.reason': metricResult.data?.reason,
+          'qualityMetadata.runLogs': metricResult.data?.runLogs,
+          'qualityMetadata.usages': metricResult?.usages,
+          'qualityMetadata.finishTime': new Date(),
+          'qualityMetadata.model': evaluationModel,
+          qualityResult: qualityResult
         }
       });
 
@@ -131,9 +133,9 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.error,
-        'metadata.qualityError': error instanceof Error ? error.message : 'Unknown error',
-        'metadata.qualityFinishTime': new Date()
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.error,
+        'qualityMetadata.error': error instanceof Error ? error.message : 'Unknown error',
+        'qualityMetadata.finishTime': new Date()
       }
     });
 

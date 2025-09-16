@@ -421,7 +421,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
 
     // Load dataset
     const dataItems = await MongoEvalDatasetData.find({
-      datasetId: evaluation.datasetId,
+      evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
       teamId: evaluation.teamId
     }).lean();
 

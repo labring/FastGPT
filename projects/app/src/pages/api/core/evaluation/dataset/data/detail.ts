@@ -5,7 +5,10 @@ import type {
   getEvalDatasetDataDetailQuery,
   getEvalDatasetDataDetailResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
+import {
+  EvalDatasetDataKeyEnum,
+  EvalDatasetDataQualityStatusEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 import { authEvaluationDatasetDataReadById } from '@fastgpt/service/core/evaluation/common';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
@@ -34,13 +37,17 @@ async function handler(
     _id: String(dataItem._id),
     teamId: String(dataItem.teamId),
     tmbId: String(dataItem.tmbId),
-    datasetId: String(dataItem.datasetId),
+    evalDatasetCollectionId: String(dataItem.evalDatasetCollectionId),
     [EvalDatasetDataKeyEnum.UserInput]: dataItem.userInput,
     [EvalDatasetDataKeyEnum.ActualOutput]: dataItem.actualOutput || '',
     [EvalDatasetDataKeyEnum.ExpectedOutput]: dataItem.expectedOutput,
     [EvalDatasetDataKeyEnum.Context]: dataItem.context || [],
     [EvalDatasetDataKeyEnum.RetrievalContext]: dataItem.retrievalContext || [],
-    [EvalDatasetDataKeyEnum.Metadata]: dataItem.metadata || {},
+    qualityMetadata: dataItem.qualityMetadata || {
+      status: EvalDatasetDataQualityStatusEnum.unevaluated
+    },
+    synthesisMetadata: dataItem.synthesisMetadata || {},
+    qualityResult: dataItem.qualityResult,
     createFrom: dataItem.createFrom,
     createTime: dataItem.createTime,
     updateTime: dataItem.updateTime
