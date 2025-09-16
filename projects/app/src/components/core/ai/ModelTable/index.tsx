@@ -1,7 +1,9 @@
 import {
+  Button,
   Box,
   Flex,
   HStack,
+  IconButton,
   ModalBody,
   Table,
   TableContainer,
@@ -10,7 +12,8 @@ import {
   Th,
   Thead,
   Tr,
-  useDisclosure
+  useDisclosure,
+  Checkbox
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
@@ -22,16 +25,26 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import { Icon } from '@chakra-ui/icons';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import MemberModal from '@/components/support/permission/MemberManager/MemberModal';
+import { useUserStore } from '@/web/support/user/useUserStore';
+
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
   const { t, i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: any; value: string | '' }[]>([
     { label: t('common:All'), value: '' },
-    ...getModelProviders(i18n.language).map((item) => ({
+    ...(getModelProviders(i18n.language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
@@ -39,7 +52,7 @@ const ModelTable = () => {
         </HStack>
       ),
       value: item.id
-    }))
+    })) as any)
   ]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
@@ -210,6 +223,19 @@ const ModelTable = () => {
     );
   }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList]);
 
+  const {
+    selectedItems,
+    toggleSelect,
+    isSelected,
+    setSelectedItems,
+    FloatingActionBar,
+    isSelecteAll,
+    selectAllTrigger
+  } = useTableMultipleSelect({
+    list: modelList,
+    getItemId: (e) => e.name
+  });
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex>
@@ -251,14 +277,24 @@ const ModelTable = () => {
         <Table>
           <Thead>
             <Tr color={'myGray.600'}>
+              <Th w="10px">
+                <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
+              </Th>
               <Th fontSize={'xs'}>{t('common:model.name')}</Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+              <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
             </Tr>
           </Thead>
           <Tbody>
             {modelList.map((item, index) => (
               <Tr key={index} _hover={{ bg: 'myGray.50' }}>
+                <Td w="10px">
+                  <Checkbox
+                    isChecked={isSelected(item)}
+                    onChange={(e) => toggleSelect(item)}
+                  ></Checkbox>
+                </Td>
                 <Td fontSize={'sm'}>
                   <HStack>
                     <Avatar src={item.avatar} w={'1.2rem'} />
@@ -271,11 +307,67 @@ const ModelTable = () => {
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
+                <Td fontSize={'sm'}>
+                  <CollaboratorContextProvider
+                    defaultRole={ReadRoleVal}
+                    onGetCollaboratorList={() => getModelCollaborators(item.name)}
+                    onUpdateCollaborators={({ collaborators }) =>
+                      updateModelCollaborators({
+                        collaborators,
+                        modelNames: [item.name]
+                      })
+                    }
+                    permission={userInfo?.team.permission!}
+                  >
+                    {({ onOpenManageModal }) => (
+                      <MyIconButton
+                        icon={'edit'}
+                        size="1rem"
+                        hoverColor={'blue.500'}
+                        w="min-content"
+                        onClick={() => {
+                          onOpenManageModal();
+                        }}
+                      />
+                    )}
+                  </CollaboratorContextProvider>
+                </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       </TableContainer>
+      <FloatingActionBar
+        Controler={
+          <CollaboratorContextProvider
+            defaultRole={ReadRoleVal}
+            batch={true}
+            onGetCollaboratorList={() =>
+              Promise.resolve({
+                clbs: []
+              })
+            }
+            onUpdateCollaborators={({ collaborators }) =>
+              updateModelCollaborators({
+                collaborators,
+                modelNames: selectedItems.map((i) => i.name)
+              })
+            }
+            permission={userInfo?.team.permission!}
+          >
+            {({ onOpenManageModal }) => (
+              <Button
+                variant={'whiteBase'}
+                onClick={() => {
+                  onOpenManageModal();
+                }}
+              >
+                {t('common:permission.Permission config')}
+              </Button>
+            )}
+          </CollaboratorContextProvider>
+        }
+      ></FloatingActionBar>
     </Flex>
   );
 };
