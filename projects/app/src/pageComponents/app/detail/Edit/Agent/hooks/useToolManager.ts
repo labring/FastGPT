@@ -70,7 +70,7 @@ export const useToolManager = ({
         const primaryOptions: SkillOptionType[] = data.map((item) => ({
           key: item.groupId,
           label: t(item.groupName),
-          icon: item.groupAvatar,
+          icon: 'core/workflow/template/toolCall',
           level: 'primary'
         }));
         setToolSkillOptions(primaryOptions);
@@ -107,7 +107,7 @@ export const useToolManager = ({
         skillOptions.push({
           key: group.groupId,
           label: t(group.groupName as any),
-          icon: group.groupAvatar,
+          icon: 'core/workflow/template/toolCall',
           level: 'primary'
         });
       });
