@@ -14,12 +14,10 @@ import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
-  InteractiveBasicType,
-  InteractiveNodeResponseType,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -147,7 +145,6 @@ const RenderTool = React.memo(
     onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   }) {
     const { t } = useSafeTranslation();
-    const [userOnchange, setUserOnchange] = useState(false);
     const formatJson = (string: string) => {
       try {
         return JSON.stringify(JSON.parse(string), null, 2);
@@ -159,14 +156,7 @@ const RenderTool = React.memo(
     const response = formatJson(tool.response);
 
     return (
-      <Accordion
-        key={tool.id}
-        allowToggle
-        index={userOnchange ? undefined : showAnimation ? 0 : undefined}
-        onChange={() => {
-          setUserOnchange(true);
-        }}
-      >
+      <Accordion key={tool.id} allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
           <AccordionButton {...accordionButtonStyle}>
             <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
@@ -199,7 +189,7 @@ ${params}`}
 ${response}`}
               />
             )}
-            {subAppValue && (
+            {subAppValue && subAppValue.length > 0 && (
               <Box bg={'white'} p={2}>
                 {subAppValue.map((value, index) => (
                   <AIResponseBox
