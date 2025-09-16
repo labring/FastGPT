@@ -358,6 +358,13 @@ export const updateInteractiveChat = async (props: Props) => {
       chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
     }
 
+    if (aiContent.memories) {
+      chatItem.memories = {
+        ...chatItem.memories,
+        ...aiContent.memories
+      };
+    }
+
     chatItem.durationSeconds = chatItem.durationSeconds
       ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
       : durationSeconds;

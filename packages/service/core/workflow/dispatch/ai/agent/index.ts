@@ -205,13 +205,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       lastInteractive?.type !== 'userInput' &&
       userChatInput !== ConfirmPlanAgentText
     ) {
+      const planRequestMessages = [...planHistoryMessages, ...userMessages];
       const { completeMessages, toolMessages, usages, interactiveResponse } =
         await dispatchPlanAgent({
-          messages: requestMessages,
+          messages: planRequestMessages,
           subApps: subAppList,
           model,
           temperature,
           top_p: aiChatTopP,
+          systemPrompt,
           stream,
           onReasoning: ({ text }: { text: string }) => {
             workflowStreamResponse?.({
@@ -240,29 +242,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         },
         [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
 
-        // Mock：返回 plan check
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanCheck',
-        //   params: {}
-        // }
-
-        // Mock: 返回 plan user select
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanAskUserSelect',
-        //   params: {
-        //     description: '测试',
-        //     userSelectOptions: [
-        //       {
-        //         key: 'test',
-        //         value: '测试'
-        //       },
-        //       {
-        //         key: 'test2',
-        //         value: '测试2'
-        //       }
-        //     ]
-        //   }
-        // }
         // Mock: 返回 plan user input
         // [DispatchNodeResponseKeyEnum.interactive]: {
         //   type: 'agentPlanAskUserForm',
@@ -278,13 +257,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         //         required: true
         //       }
         //     ]
-        //   }
-        // }
-        // Mock: 返回 plan user query
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanAskQuery',
-        //   params: {
-        //     content: '请提供 xxxxx'
         //   }
         // }
       };
