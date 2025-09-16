@@ -28,12 +28,16 @@ export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.ev
 
 export const getEvaluationTaskWorker = (processor: any) =>
   getWorker<EvaluationTaskJobData>(QueueNames.evalTask, processor, {
-    concurrency: Number(process.env.EVAL_TASK_CONCURRENCY) || 3
+    concurrency: Number(process.env.EVAL_TASK_CONCURRENCY) || 3,
+    stalledInterval: Number(process.env.EVAL_TASK_STALLED_INTERVAL) || 60000, // 1 minute
+    maxStalledCount: Number(process.env.EVAL_TASK_MAX_STALLED_COUNT) || 3
   });
 
 export const getEvaluationItemWorker = (processor: any) =>
   getWorker<EvaluationItemJobData>(QueueNames.evalTaskItem, processor, {
-    concurrency: Number(process.env.EVAL_ITEM_CONCURRENCY) || 10
+    concurrency: Number(process.env.EVAL_ITEM_CONCURRENCY) || 10,
+    stalledInterval: Number(process.env.EVAL_ITEM_STALLED_INTERVAL) || 300000, // 5 minutes
+    maxStalledCount: Number(process.env.EVAL_ITEM_MAX_STALLED_COUNT) || 3
   });
 
 export const removeEvaluationTaskJob = async (

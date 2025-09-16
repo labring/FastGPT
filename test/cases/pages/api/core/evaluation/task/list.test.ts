@@ -79,7 +79,6 @@ describe('List Evaluation Tasks API Handler', () => {
       'mock-tmb-id',
       true,
       undefined,
-      undefined,
       undefined
     );
     expect(result).toEqual({
@@ -115,7 +114,6 @@ describe('List Evaluation Tasks API Handler', () => {
       'mock-tmb-id',
       true,
       undefined,
-      undefined,
       undefined
     );
   });
@@ -139,7 +137,6 @@ describe('List Evaluation Tasks API Handler', () => {
       [],
       'mock-tmb-id',
       true,
-      undefined,
       undefined,
       undefined
     );
@@ -170,8 +167,7 @@ describe('List Evaluation Tasks API Handler', () => {
       'mock-tmb-id',
       true,
       'Test App',
-      '507f1f77bcf86cd799439011',
-      '507f1f77bcf86cd799439012'
+      '507f1f77bcf86cd799439011'
     );
   });
 
@@ -198,7 +194,6 @@ describe('List Evaluation Tasks API Handler', () => {
       'mock-tmb-id',
       true,
       'Partial App',
-      undefined,
       undefined
     );
   });
@@ -228,8 +223,7 @@ describe('List Evaluation Tasks API Handler', () => {
       'mock-tmb-id',
       true,
       'Test App',
-      '507f1f77bcf86cd799439011',
-      '507f1f77bcf86cd799439012'
+      '507f1f77bcf86cd799439011'
     );
   });
 });
