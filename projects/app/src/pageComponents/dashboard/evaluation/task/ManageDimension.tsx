@@ -16,18 +16,20 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo } from 'react';
 import { getMetricList } from '@/web/core/evaluation/dimension';
 import type { EvalMetricDisplayType } from '@fastgpt/global/core/evaluation/metric/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import {
   getWebDefaultEmbeddingModel,
   getWebDefaultEvaluationModel
 } from '@/web/common/system/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // 维度类型定义
 export interface Dimension {
@@ -35,10 +37,10 @@ export interface Dimension {
   name: string;
   type: 'builtin' | 'custom';
   description: string;
-  evaluationModel: string; // 评测模型 (对应 llmRequired)
-  indexModel?: string; // 索引模型 (对应 embeddingRequired)
-  llmRequired: boolean; // 是否需要评测模型
-  embeddingRequired: boolean; // 是否需要索引模型
+  evaluationModel: string;
+  indexModel?: string;
+  llmRequired: boolean;
+  embeddingRequired: boolean;
   isSelected: boolean;
 }
 
@@ -49,26 +51,36 @@ interface ManageDimensionProps {
   onConfirm: (dimensions: Dimension[]) => void;
 }
 
-// 转换 API 数据为组件所需格式
 const transformMetricToDimension = (
   metric: EvalMetricDisplayType,
   defaultEmbeddingModel?: string,
-  defaultEvaluationModel?: string
+  defaultEvaluationModel?: string,
+  t?: any
 ): Dimension => {
+  let name = metric.name;
+  let description = metric.description || '';
+
+  if (metric.type === EvalMetricTypeEnum.Builtin) {
+    const builtinInfo = getBuiltinDimensionInfo(metric._id);
+    if (builtinInfo && t) {
+      name = t(builtinInfo.name);
+      description = t(builtinInfo.description);
+    }
+  }
+
   return {
     id: metric._id,
-    name: metric.name,
+    name,
     type: metric.type === 'builtin_metric' ? 'builtin' : 'custom',
-    description: metric.description || '',
-    evaluationModel: metric.llmRequired ? defaultEvaluationModel || '' : '', // 使用默认评估模型
-    indexModel: metric.embeddingRequired ? defaultEmbeddingModel || '' : undefined, // 如果不需要索引模型则为 undefined
+    description,
+    evaluationModel: metric.llmRequired ? defaultEvaluationModel || '' : '',
+    indexModel: metric.embeddingRequired ? defaultEmbeddingModel || '' : '',
     llmRequired: metric.llmRequired ?? false,
     embeddingRequired: metric.embeddingRequired ?? false,
     isSelected: false
   };
 };
 
-// 维度项组件
 const DimensionItem = ({
   dimension,
   isSelected,
@@ -134,7 +146,6 @@ const DimensionItem = ({
       </HStack>
 
       <HStack spacing={2} w="full" px={8}>
-        {/* 评测模型选择器 */}
         {dimension.llmRequired && (
           <AIModelSelector
             w="300px"
@@ -159,7 +170,6 @@ const DimensionItem = ({
           />
         )}
 
-        {/* 索引模型选择器 */}
         {dimension.embeddingRequired && (
           <AIModelSelector
             w="300px"
@@ -228,49 +238,36 @@ const ManageDimension = ({
 
   const watchedDimensions = watch('dimensions');
 
-  // 空状态提示组件
-  const EmptyTipDom = useMemo(
-    () => <EmptyTip text={t('dashboard_evaluation:no_dimension_data')} />,
-    [t]
-  );
-
-  // API 适配器函数 - 转换参数格式
-  const getMetricListAdapter = useCallback(
-    async (data: PaginationProps): Promise<PaginationResponse<EvalMetricDisplayType>> => {
-      return getMetricList({
-        pageNum: Math.floor(Number(data.offset) / Number(data.pageSize)) + 1,
-        pageSize: Number(data.pageSize),
-        searchKey: ''
-      });
-    },
-    []
-  );
-
-  // 获取维度列表 - 使用滚动分页
+  // 获取维度列表
   const {
-    data: metricList,
-    ScrollData,
-    refreshList
-  } = useScrollPagination(getMetricListAdapter, {
-    pageSize: 10,
-    params: {},
-    refreshDeps: [isOpen],
-    EmptyTip: EmptyTipDom,
-    disabled: !isOpen
-  });
+    data: metricListData,
+    loading: isLoading,
+    runAsync: fetchMetricList
+  } = useRequest2(
+    async () => {
+      const result = await getMetricList({});
+      return result;
+    },
+    {
+      manual: false,
+      refreshDeps: [isOpen],
+      ready: isOpen
+    }
+  );
 
   // 转换并合并维度数据
   const transformedDimensions = useMemo(() => {
-    if (!metricList.length) return [];
+    if (!metricListData?.list?.length) return [];
 
     const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.model;
     const defaultEvaluationModel = getWebDefaultEvaluationModel(evalModelList)?.model;
 
-    return metricList.map((metric) => {
+    return metricListData.list.map((metric) => {
       const dimension = transformMetricToDimension(
         metric,
         defaultEmbeddingModel,
-        defaultEvaluationModel
+        defaultEvaluationModel,
+        t
       );
       const selectedDimension = selectedDimensions.find((s) => s.id === dimension.id);
 
@@ -285,7 +282,7 @@ const ManageDimension = ({
       }
       return dimension;
     });
-  }, [metricList, selectedDimensions, embeddingModelList, evalModelList]);
+  }, [metricListData, selectedDimensions, embeddingModelList, evalModelList, t]);
 
   // 同步转换后的维度数据到表单，保持已有的选择状态
   useEffect(() => {
@@ -298,33 +295,30 @@ const ManageDimension = ({
         return;
       }
 
-      // 合并新数据和已有数据，保持已有的选择状态
-      const mergedDimensions = transformedDimensions.map((newDimension) => {
+      // 检查是否需要更新（避免不必要的更新）
+      const needsUpdate = transformedDimensions.some((newDimension) => {
         const existingDimension = currentDimensions.find((d) => d.id === newDimension.id);
-
-        if (existingDimension) {
-          // 如果维度已存在，保持其当前状态（选择状态和模型配置）
-          return existingDimension;
-        }
-
-        // 新维度，使用转换后的默认状态
-        return newDimension;
+        return !existingDimension;
       });
 
-      // 添加新加载的维度（在滚动加载时）
-      const existingIds = currentDimensions.map((d) => d.id);
-      const newDimensions = transformedDimensions.filter((d) => !existingIds.includes(d.id));
+      if (needsUpdate) {
+        // 合并新数据和已有数据，保持已有的选择状态
+        const mergedDimensions = transformedDimensions.map((newDimension) => {
+          const existingDimension = currentDimensions.find((d) => d.id === newDimension.id);
 
-      if (newDimensions.length > 0) {
-        // 有新维度，追加到现有列表
-        const finalDimensions = [...currentDimensions, ...newDimensions];
-        replace(finalDimensions);
-      } else if (mergedDimensions.length !== currentDimensions.length) {
-        // 维度数量发生变化，更新列表
+          if (existingDimension) {
+            // 如果维度已存在，保持其当前状态（选择状态和模型配置）
+            return existingDimension;
+          }
+
+          // 新维度，使用转换后的默认状态
+          return newDimension;
+        });
+
         replace(mergedDimensions);
       }
     }
-  }, [transformedDimensions, replace, watchedDimensions]);
+  }, [transformedDimensions, replace]);
 
   // 处理维度选择
   const handleDimensionToggle = useCallback(
@@ -359,12 +353,11 @@ const ManageDimension = ({
 
   // 刷新维度列表
   const handleRefresh = useCallback(() => {
-    refreshList();
-  }, [refreshList]);
+    fetchMetricList();
+  }, [fetchMetricList]);
 
   // 新建维度
   const handleCreateDimension = useCallback(() => {
-    // TODO:
     window.open('/dashboard/evaluation/dimension/create', '_blank');
   }, []);
 
@@ -375,15 +368,10 @@ const ManageDimension = ({
     onClose();
   }, [watchedDimensions, onConfirm, onClose]);
 
-  // 计算真实的选中数量：包括表单中的选中维度和传入的已选维度（可能还未加载到表单中）
+  // 计算当前选中的维度数量
   const selectedCount = useMemo(() => {
-    const formSelectedIds = watchedDimensions.filter((d) => d.isSelected).map((d) => d.id);
-    const propsSelectedIds = selectedDimensions.map((d) => d.id);
-
-    // 合并两个数组并去重，得到真实的选中维度数量
-    const allSelectedIds = new Set([...formSelectedIds, ...propsSelectedIds]);
-    return allSelectedIds.size;
-  }, [watchedDimensions, selectedDimensions]);
+    return watchedDimensions.filter((d) => d.isSelected).length;
+  }, [watchedDimensions]);
 
   const isMaxSelected = selectedCount >= MAX_SELECTION_COUNT;
 
@@ -417,26 +405,30 @@ const ManageDimension = ({
           </Flex>
         </Box>
 
-        <ScrollData flex={1} px={6}>
-          {fields.map((field, index) => {
-            const dimension = watchedDimensions[index];
-            const isSelected = dimension?.isSelected || false;
-            const isDisabled = !isSelected && isMaxSelected;
+        <MyBox flex={1} px={6} isLoading={isLoading} overflowY="auto">
+          {fields.length === 0 && !isLoading ? (
+            <EmptyTip text={t('dashboard_evaluation:no_dimension_data')} />
+          ) : (
+            fields.map((field, index) => {
+              const dimension = watchedDimensions[index];
+              const isSelected = dimension?.isSelected || false;
+              const isDisabled = !isSelected && isMaxSelected;
 
-            return (
-              <DimensionItem
-                key={field.id}
-                dimension={dimension}
-                isSelected={isSelected}
-                onToggle={handleDimensionToggle}
-                onModelChange={handleModelChange}
-                evalModelList={evalModelList}
-                filterNotHiddenVectorModelList={filterNotHiddenVectorModelList}
-                isDisabled={isDisabled}
-              />
-            );
-          })}
-        </ScrollData>
+              return (
+                <DimensionItem
+                  key={field.id}
+                  dimension={dimension}
+                  isSelected={isSelected}
+                  onToggle={handleDimensionToggle}
+                  onModelChange={handleModelChange}
+                  evalModelList={evalModelList}
+                  filterNotHiddenVectorModelList={filterNotHiddenVectorModelList}
+                  isDisabled={isDisabled}
+                />
+              );
+            })
+          )}
+        </MyBox>
       </ModalBody>
 
       <ModalFooter>
