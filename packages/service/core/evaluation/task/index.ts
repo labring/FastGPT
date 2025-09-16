@@ -5,7 +5,6 @@ import type {
   CreateEvaluationParams,
   EvaluationItemDisplayType,
   TargetCallParams,
-  EvaluationDataItemType,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
@@ -216,12 +215,6 @@ export class EvaluationTaskService {
   ): Promise<EvaluationListResponse> {
     // Build basic filter and pagination
     const filter: any = { teamId: new Types.ObjectId(teamId) };
-    if (searchKey) {
-      filter.$or = [
-        { name: { $regex: searchKey, $options: 'i' } },
-        { description: { $regex: searchKey, $options: 'i' } }
-      ];
-    }
     const skip = offset;
     const limit = pageSize;
     const sort = { createTime: -1 as const };
@@ -605,6 +598,29 @@ export class EvaluationTaskService {
 
   // ========================= Evaluation Item Related APIs =========================
 
+  static async listEvaluationItems(
+    evalId: string,
+    teamId: string,
+    offset: number = 0,
+    pageSize: number = 20
+  ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
+    const evaluation = await this.getEvaluation(evalId, teamId);
+
+    const skip = offset;
+    const limit = pageSize;
+
+    const [items, total] = await Promise.all([
+      MongoEvalItem.find({ evalId: evaluation._id })
+        .sort({ createTime: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      MongoEvalItem.countDocuments({ evalId: evaluation._id })
+    ]);
+
+    return { items, total };
+  }
+
   static async getEvaluationItem(
     itemId: string,
     teamId: string
@@ -678,6 +694,38 @@ export class EvaluationTaskService {
     if (result.matchedCount === 0) {
       throw new Error(EvaluationErrEnum.evalItemNotFound);
     }
+
+    // If actual update occurred, re-queue the item for evaluation
+    if (result.modifiedCount > 0) {
+      // Get the updated item to determine the evalId
+      const updatedItem = await MongoEvalItem.findById(itemId, 'evalId');
+      if (updatedItem) {
+        // Reset evaluation results and re-queue
+        await MongoEvalItem.updateOne(
+          { _id: new Types.ObjectId(itemId) },
+          {
+            $set: {
+              status: EvaluationStatusEnum.queuing,
+              retry: 3
+            },
+            $unset: {
+              targetOutput: 1,
+              evaluatorOutputs: 1,
+              finishTime: 1,
+              errorMessage: 1
+            }
+          }
+        );
+
+        // Re-submit to evaluation queue
+        await evaluationItemQueue.add(`eval_item_update_${itemId}`, {
+          evalId: updatedItem.evalId.toString(),
+          evalItemId: itemId
+        });
+
+        addLog.debug(`[Evaluation] Item updated and re-queued for evaluation: ${itemId}`);
+      }
+    }
   }
 
   static async deleteEvaluationItem(itemId: string, teamId: string): Promise<void> {
@@ -742,7 +790,7 @@ export class EvaluationTaskService {
             status: EvaluationStatusEnum.queuing,
             retry: Math.max(item.retry || 0, 1), // Ensure at least 1 retry chance
             targetOutput: {},
-            evaluatorOutput: {}
+            evaluatorOutputs: []
           },
           $unset: {
             finishTime: 1,
@@ -815,7 +863,7 @@ export class EvaluationTaskService {
           $set: {
             status: EvaluationStatusEnum.queuing,
             targetOutput: {},
-            evaluatorOutput: {}
+            evaluatorOutputs: []
           },
           $unset: {
             finishTime: 1,
@@ -863,14 +911,7 @@ export class EvaluationTaskService {
     teamId: string
   ): Promise<EvaluationItemResultResponse> {
     const item = await this.getEvaluationItem(itemId, teamId);
-
-    return {
-      item,
-      dataItem: item.dataItem,
-      response: item.targetOutput?.actualOutput,
-      result: item.evaluatorOutput,
-      score: item.evaluatorOutput?.data?.score
-    };
+    return item;
   }
 
   // Search evaluation items
@@ -912,7 +953,7 @@ export class EvaluationTaskService {
         scoreFilter.$lte = scoreRange.max;
       }
       if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutput.data.score'] = scoreFilter;
+        filter['evaluatorOutputs.0.data.score'] = scoreFilter;
       }
     }
 
@@ -964,10 +1005,10 @@ export class EvaluationTaskService {
         userInput: item.dataItem?.userInput,
         expectedOutput: item.dataItem?.expectedOutput,
         actualOutput: item.targetOutput?.actualOutput,
-        score: item.evaluatorOutput?.data?.score,
+        scores: item.evaluatorOutputs?.map((output) => output?.data?.score) || [],
         status: item.status,
         targetOutput: item.targetOutput,
-        evaluatorOutput: item.evaluatorOutput,
+        evaluatorOutputs: item.evaluatorOutputs,
         errorMessage: item.errorMessage,
         finishTime: item.finishTime
       }));
@@ -979,12 +1020,23 @@ export class EvaluationTaskService {
         return { results: Buffer.from(''), total: 0 };
       }
 
+      // Collect all unique metric names from evaluator outputs
+      const metricNames = new Set<string>();
+      items.forEach((item) => {
+        item.evaluatorOutputs?.forEach((output) => {
+          if (output?.data?.metricName) {
+            metricNames.add(output.data.metricName);
+          }
+        });
+      });
+      const sortedMetricNames = Array.from(metricNames).sort();
+
       const headers = [
         'ItemId',
         'UserInput',
         'ExpectedOutput',
         'ActualOutput',
-        'Score',
+        ...sortedMetricNames, // Dynamic metric columns
         'Status',
         'ErrorMessage',
         'FinishTime'
@@ -993,12 +1045,21 @@ export class EvaluationTaskService {
       const csvRows = [headers.join(',')];
 
       items.forEach((item) => {
+        // Create a map of metric name to score for easier lookup
+        const metricScoreMap = new Map<string, number>();
+        item.evaluatorOutputs?.forEach((output) => {
+          if (output?.data?.metricName && output.data.score !== undefined) {
+            metricScoreMap.set(output.data.metricName, output.data.score);
+          }
+        });
+
         const row = [
           item._id.toString(),
           `"${(item.dataItem?.userInput || '').replace(/"/g, '""')}"`,
           `"${(item.dataItem?.expectedOutput || '').replace(/"/g, '""')}"`,
           `"${(item.targetOutput?.actualOutput || '').replace(/"/g, '""')}"`,
-          item.evaluatorOutput?.data?.score || '',
+          // Add scores for each metric column in the same order as headers
+          ...sortedMetricNames.map((metricName) => metricScoreMap.get(metricName) || ''),
           item.status || '',
           `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
           item.finishTime || ''

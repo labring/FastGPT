@@ -112,42 +112,42 @@ export class WorkflowTarget extends EvaluationTarget {
     // Construct conversation history based on input.context
     const histories: (UserChatItemType | AIChatItemType)[] = [];
 
-    if (input.context && input.context.length > 0) {
-      // Convert context strings to alternating user-ai conversation history
-      // Assume context format: [user1, ai1, user2, ai2, ...]
-      for (let i = 0; i < input.context.length; i++) {
-        const isUser = i % 2 === 0;
-        const content = input.context[i];
+    // if (input.histories && input.histories.length > 0) {
+    //   // Convert histories strings to alternating user-ai conversation history
+    //   // Assume histories format: [user1, ai1, user2, ai2, ...]
+    //   for (let i = 0; i < input.histories.length; i++) {
+    //     const isUser = i % 2 === 0;
+    //     const content = input.histories[i];
 
-        if (isUser) {
-          // User message
-          histories.push({
-            obj: ChatRoleEnum.Human,
-            value: [
-              {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content
-                }
-              }
-            ]
-          });
-        } else {
-          // AI message
-          histories.push({
-            obj: ChatRoleEnum.AI,
-            value: [
-              {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content
-                }
-              }
-            ]
-          });
-        }
-      }
-    }
+    //     if (isUser) {
+    //       // User message
+    //       histories.push({
+    //         obj: ChatRoleEnum.Human,
+    //         value: [
+    //           {
+    //             type: ChatItemValueTypeEnum.text,
+    //             text: {
+    //               content
+    //             }
+    //           }
+    //         ]
+    //       });
+    //     } else {
+    //       // AI message
+    //       histories.push({
+    //         obj: ChatRoleEnum.AI,
+    //         value: [
+    //           {
+    //             type: ChatItemValueTypeEnum.text,
+    //             text: {
+    //               content
+    //             }
+    //           }
+    //         ]
+    //       });
+    //     }
+    //   }
+    // }
 
     const chatId = getNanoid();
 

@@ -34,7 +34,6 @@ export type ListEvaluationsRequest = PaginationProps<{
   searchKey?: string;
   appName?: string;
   appId?: string;
-  versionId?: string;
 }>;
 export type ListEvaluationsResponse = PaginationResponse<EvaluationDisplayType>;
 
@@ -79,13 +78,7 @@ export type ListEvaluationItemsResponse = PaginationResponse<EvaluationItemDispl
 
 // Get Evaluation Item Detail
 export type EvaluationItemDetailRequest = EvalItemIdQuery;
-export type EvaluationItemDetailResponse = {
-  item: EvaluationItemSchemaType;
-  dataItem: any;
-  response?: string;
-  result?: any;
-  score?: number;
-};
+export type EvaluationItemDetailResponse = EvaluationItemSchemaType;
 
 // Update Evaluation Item
 export type UpdateEvaluationItemRequest = EvalItemIdQuery & Partial<EvaluationDataItemType>;
