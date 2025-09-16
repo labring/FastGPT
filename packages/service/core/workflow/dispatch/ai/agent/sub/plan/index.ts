@@ -2,17 +2,16 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type.d';
-import { type ResponseEvents } from '../../../../../../ai/llm/request';
+import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
 import { getPlanAgentPrompt } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '../constants';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { runAgentCall } from '../../../../../../../core/ai/llm/agentCall';
 import { parseToolArgs } from '../../../utils';
-import { AskAgentTool, type AskAgentToolParamsType } from '../ask/constants';
+import { AskAgentTool, type AskAgentToolParamsType } from './ask/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -27,7 +26,6 @@ type PlanAgentConfig = {
 type DispatchPlanAgentProps = PlanAgentConfig & {
   messages: ChatCompletionMessageParam[];
   subApps: ChatCompletionTool[];
-  getToolInfo: (id: string) => { name: string; avatar: string };
   onReasoning: ResponseEvents['onReasoning'];
   onStreaming: ResponseEvents['onStreaming'];
 };
@@ -49,7 +47,6 @@ export const dispatchPlanAgent = async ({
   temperature,
   top_p,
   stream,
-  getToolInfo,
   onReasoning,
   onStreaming
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
@@ -65,81 +62,76 @@ export const dispatchPlanAgent = async ({
   const filterPlanTools = subApps.filter((item) => item.function.name !== SubAppIds.plan);
   filterPlanTools.push(AskAgentTool);
 
-  const { completeMessages, assistantResponses, inputTokens, outputTokens, interactiveResponse } =
-    await runAgentCall({
-      maxRunAgentTimes: 10,
-      body: {
-        model: modelData,
-        messages: requestMessages,
-        temperature,
-        top_p,
-        stream,
-        subApps: filterPlanTools
-      },
-      getToolInfo,
-      onReasoning,
-      onStreaming,
-      handleToolResponse: async ({ call }) => {
-        const toolId = call.function.name;
+  const {
+    reasoningText,
+    answerText,
+    toolCalls = [],
+    usage,
+    getEmptyResponseTip,
+    completeMessages
+  } = await createLLMResponse({
+    body: {
+      model: modelData.model,
+      temperature,
+      messages: requestMessages,
+      top_p,
+      stream,
 
-        if (toolId === SubAppIds.ask) {
-          const params = parseToolArgs<AskAgentToolParamsType>(call.function.arguments);
-
-          if (params.mode === 'select') {
-            return {
-              response: '',
-              usages: [],
-              isEnd: false,
-              interactive: {
-                type: 'agentPlanAskUserSelect',
-                params: {
-                  description: params?.prompt ?? '选择选项',
-                  userSelectOptions: params?.options?.map((v, i) => {
-                    return { key: `option${i}`, value: v };
-                  })
-                }
-              } as InteractiveNodeResponseType
-            };
-          }
-          if (params.mode === 'input') {
-            return {
-              response: '',
-              usages: [],
-              isEnd: false,
-              interactive: {
-                type: 'agentPlanAskQuery',
-                params: {
-                  content: params?.prompt ?? '输入详细信息'
-                }
-              }
-            };
-          }
-
-          return { response: 'invalid interactive mode', usages: [], isEnd: false };
-        }
-
-        return { response: 'invalid tool call', usages: [], isEnd: false };
-      }
-    });
-
-  const responseText = assistantResponses
-    .filter((item) => item.text?.content)
-    .map((item) => item.text?.content || '')
-    .join('');
-
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: modelData.model,
-    inputTokens,
-    outputTokens
+      tools: filterPlanTools,
+      tool_choice: 'auto',
+      toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
+      parallel_tool_calls: true
+    },
+    onReasoning,
+    onStreaming
   });
 
-  const checkResponse: InteractiveNodeResponseType = {
+  if (!answerText && !reasoningText && !toolCalls.length) {
+    return Promise.reject(getEmptyResponseTip());
+  }
+
+  // TODO: 需要考虑多个 Interactive 并发的情况
+  let interactiveResponse: InteractiveNodeResponseType = {
     type: 'agentPlanCheck',
     params: {}
   };
 
+  for await (const call of toolCalls) {
+    const toolId = call.function.name;
+
+    if (toolId === SubAppIds.ask) {
+      const params = parseToolArgs<AskAgentToolParamsType>(call.function.arguments);
+
+      if (params.mode === 'select') {
+        interactiveResponse = {
+          type: 'agentPlanAskUserSelect',
+          params: {
+            description: params?.prompt ?? '选择选项',
+            userSelectOptions: params?.options?.map((v, i) => {
+              return { key: `option${i}`, value: v };
+            })
+          }
+        } as InteractiveNodeResponseType;
+      }
+      if (params.mode === 'input') {
+        interactiveResponse = {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: params?.prompt ?? '输入详细信息'
+          }
+        };
+      }
+    }
+  }
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelData.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
+
   const toolMessages: ChatCompletionMessageParam[] = [];
-  if (responseText) {
+  if (answerText) {
     const toolId = getNanoid(6);
     const toolCall: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -157,24 +149,24 @@ export const dispatchPlanAgent = async ({
     const toolCallResponse: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Tool,
       tool_call_id: toolId,
-      content: responseText
+      content: answerText
     };
     toolMessages.push(toolCall, toolCallResponse);
   }
 
   return {
-    response: responseText,
+    response: answerText,
     usages: [
       {
         moduleName: modelName,
         model: modelData.model,
         totalPoints,
-        inputTokens,
-        outputTokens
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
       }
     ],
     completeMessages,
     toolMessages,
-    interactiveResponse: interactiveResponse || checkResponse
+    interactiveResponse
   };
 };

@@ -152,15 +152,9 @@ export const runAgentCall = async ({
         isEndSign = true;
       }
     }
-
-    const gptMessages =
-      toolCalls.length === 0
-        ? requestMessages.slice(requestMessagesLength - 1).filter((msg) => msg.role !== 'user')
-        : requestMessages.slice(requestMessagesLength);
-
     // TODO: 移动到工作流里 assistantResponses concat
     const currentAssistantResponses = GPTMessages2Chats({
-      messages: gptMessages,
+      messages: requestMessages.slice(requestMessagesLength),
       getToolInfo
     })[0] as AIChatItemType;
 

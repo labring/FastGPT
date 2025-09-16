@@ -229,7 +229,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           temperature,
           top_p: aiChatTopP,
           stream,
-          getToolInfo: getSubAppInfo,
           onReasoning: ({ text }: { text: string }) => {
             workflowStreamResponse?.({
               event: SseResponseEventEnum.answer,
@@ -421,7 +420,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   temperature,
                   top_p: aiChatTopP,
                   stream,
-                  getToolInfo: getSubAppInfo,
                   onReasoning,
                   onStreaming
                 });
