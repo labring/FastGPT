@@ -6,7 +6,8 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import type { updateEvalDatasetDataBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
   EvalDatasetDataKeyEnum,
-  EvalDatasetDataQualityStatusEnum
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -24,10 +25,17 @@ function validateRequestParams(params: {
   expectedOutput?: string;
   context?: string[];
   retrievalContext?: string[];
-  metadata?: Record<string, any>;
+  qualityMetadata?: Record<string, any>;
 }) {
-  const { dataId, userInput, actualOutput, expectedOutput, context, retrievalContext, metadata } =
-    params;
+  const {
+    dataId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    qualityMetadata
+  } = params;
   if (!dataId || typeof dataId !== 'string') {
     throw EvaluationErrEnum.datasetDataIdRequired;
   }
@@ -60,8 +68,10 @@ function validateRequestParams(params: {
   }
 
   if (
-    metadata !== undefined &&
-    (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata))
+    qualityMetadata !== undefined &&
+    (typeof qualityMetadata !== 'object' ||
+      qualityMetadata === null ||
+      Array.isArray(qualityMetadata))
   ) {
     throw EvaluationErrEnum.datasetDataMetadataMustBeObject;
   }
@@ -70,8 +80,17 @@ function validateRequestParams(params: {
 async function handler(
   req: ApiRequestProps<EvalDatasetDataUpdateBody, EvalDatasetDataUpdateQuery>
 ): Promise<EvalDatasetDataUpdateResponse> {
-  const { dataId, userInput, actualOutput, expectedOutput, context, retrievalContext, metadata } =
-    req.body;
+  const {
+    dataId,
+    userInput,
+    actualOutput,
+    expectedOutput,
+    context,
+    retrievalContext,
+    qualityMetadata,
+    synthesisMetadata,
+    qualityResult
+  } = req.body;
 
   validateRequestParams({
     dataId,
@@ -80,7 +99,7 @@ async function handler(
     expectedOutput,
     context,
     retrievalContext,
-    metadata
+    qualityMetadata
   });
 
   const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
@@ -118,22 +137,35 @@ async function handler(
       updateTime: new Date()
     };
 
-    if (metadata !== undefined) {
-      if (Object.keys(metadata).length > 0) {
-        for (const [key, value] of Object.entries(metadata)) {
-          if (key == 'qualityStatus' && value == EvalDatasetDataQualityStatusEnum.highQuality) {
-            const currentQualityStatus = existingData.metadata?.qualityStatus;
-            if (
-              currentQualityStatus === EvalDatasetDataQualityStatusEnum.queuing ||
-              currentQualityStatus === EvalDatasetDataQualityStatusEnum.evaluating
-            ) {
-              return Promise.reject(EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality);
-            }
-          }
-          updateFields[`metadata.${key}`] = value;
+    // Handle quality result updates
+    if (qualityResult !== undefined) {
+      if (qualityResult === EvalDatasetDataQualityResultEnum.highQuality) {
+        const currentQualityStatus = existingData.qualityMetadata?.status;
+        if (
+          currentQualityStatus === EvalDatasetDataQualityStatusEnum.queuing ||
+          currentQualityStatus === EvalDatasetDataQualityStatusEnum.evaluating
+        ) {
+          return Promise.reject(EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality);
         }
-      } else {
-        updateFields.metadata = {};
+      }
+      updateFields.qualityResult = qualityResult;
+    }
+
+    // Handle quality metadata updates
+    if (qualityMetadata !== undefined) {
+      if (Object.keys(qualityMetadata).length > 0) {
+        for (const [key, value] of Object.entries(qualityMetadata)) {
+          updateFields[`qualityMetadata.${key}`] = value;
+        }
+      }
+    }
+
+    // Handle synthesis metadata updates
+    if (synthesisMetadata !== undefined) {
+      if (Object.keys(synthesisMetadata).length > 0) {
+        for (const [key, value] of Object.entries(synthesisMetadata)) {
+          updateFields[`synthesisMetadata.${key}`] = value;
+        }
       }
     }
 

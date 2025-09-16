@@ -1,14 +1,18 @@
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import {
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
 
-// 评测结果枚举
+// 评测结果枚举（用于前端状态管理和筛选）
 export enum EvaluationStatus {
   All = 'all',
-  HighQuality = 'highQuality',
-  NeedsImprovement = 'needsOptimization',
-  Abnormal = 'error',
-  NotEvaluated = 'unevaluated',
-  Evaluating = 'evaluating',
-  Queuing = 'queuing'
+  HighQuality = EvalDatasetDataQualityResultEnum.highQuality,
+  NeedsImprovement = EvalDatasetDataQualityResultEnum.needsOptimization,
+  Abnormal = EvalDatasetDataQualityStatusEnum.error,
+  NotEvaluated = EvalDatasetDataQualityStatusEnum.unevaluated,
+  Evaluating = EvalDatasetDataQualityStatusEnum.evaluating,
+  Queuing = EvalDatasetDataQualityStatusEnum.queuing
 }
 
 // 评测列表状态映射（含任务状态和结果）

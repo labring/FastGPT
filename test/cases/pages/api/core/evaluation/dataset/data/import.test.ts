@@ -122,6 +122,10 @@ describe('EvalDatasetData Import API', () => {
     // Mock file system
     const fs = require('fs');
     vi.spyOn(fs, 'readFileSync').mockReturnValue(validCSVContent);
+    vi.spyOn(fs, 'statSync').mockReturnValue({
+      isFile: () => true,
+      isDirectory: () => false
+    } as any);
 
     mockGetUploadModel.mockReturnValue(mockUploadModel as any);
     mockUploadModel.getUploadFiles.mockResolvedValue({
@@ -203,7 +207,7 @@ describe('EvalDatasetData Import API', () => {
       const req = { body: {} };
       const res = {};
 
-      await expect(handler_test(req as any, res as any)).rejects.toBe('commonMissingParams');
+      await expect(handler_test(req as any, res as any)).rejects.toBe('missingParams');
     });
 
     it('should reject when both collectionId and name provided', async () => {
@@ -219,7 +223,7 @@ describe('EvalDatasetData Import API', () => {
       const req = { body: {} };
       const res = {};
 
-      await expect(handler_test(req as any, res as any)).rejects.toBe('commonInvalidParams');
+      await expect(handler_test(req as any, res as any)).rejects.toBe('invalidParams');
     });
 
     it('should reject when enableQualityEvaluation is not boolean', async () => {
@@ -314,7 +318,7 @@ describe('EvalDatasetData Import API', () => {
         const res = {};
 
         await expect(handler_test(req as any, res as any)).rejects.toBe(
-          'evaluationEvalInsufficientPermission'
+          'evaluationInsufficientPermission'
         );
       });
     });
@@ -363,9 +367,7 @@ describe('EvalDatasetData Import API', () => {
         const req = { body: {} };
         const res = {};
 
-        await expect(handler_test(req as any, res as any)).rejects.toBe(
-          'evaluationEvalNameRequired'
-        );
+        await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationNameRequired');
       });
 
       it('should reject when collection name already exists', async () => {
@@ -378,7 +380,7 @@ describe('EvalDatasetData Import API', () => {
         const res = {};
 
         await expect(handler_test(req as any, res as any)).rejects.toBe(
-          'evaluationEvalDuplicateDatasetName'
+          'evaluationDuplicateDatasetName'
         );
       });
     });
@@ -496,6 +498,92 @@ describe('EvalDatasetData Import API', () => {
         dataId: '65f5b5b5b5b5b5b5b5b5b5b6',
         evaluationModel: 'gpt-4'
       });
+    });
+  });
+
+  describe('Security - Directory Traversal Protection', () => {
+    it('should reject files with directory traversal attempts', async () => {
+      mockUploadModel.getUploadFiles.mockResolvedValue({
+        files: [{ ...mockFiles[0], path: '../../../etc/passwd' }],
+        data: { collectionId: validCollectionId, enableQualityEvaluation: false }
+      });
+
+      const req = { body: {} };
+      const res = {};
+
+      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationCSVParsingError');
+    });
+
+    it('should reject files with Windows-style directory traversal', async () => {
+      mockUploadModel.getUploadFiles.mockResolvedValue({
+        files: [{ ...mockFiles[0], path: '..\\..\\windows\\system32\\config\\sam' }],
+        data: { collectionId: validCollectionId, enableQualityEvaluation: false }
+      });
+
+      const req = { body: {} };
+      const res = {};
+
+      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationCSVParsingError');
+    });
+
+    it('should reject non-existent file paths', async () => {
+      mockUploadModel.getUploadFiles.mockResolvedValue({
+        files: [{ ...mockFiles[0], path: '/non/existent/file.csv' }],
+        data: { collectionId: validCollectionId, enableQualityEvaluation: false }
+      });
+
+      const fs = require('fs');
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
+
+      const req = { body: {} };
+      const res = {};
+
+      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationCSVParsingError');
+    });
+
+    it('should reject directory paths instead of files', async () => {
+      mockUploadModel.getUploadFiles.mockResolvedValue({
+        files: [{ ...mockFiles[0], path: '/tmp/' }],
+        data: { collectionId: validCollectionId, enableQualityEvaluation: false }
+      });
+
+      const fs = require('fs');
+      fs.statSync = vi.fn().mockReturnValue({
+        isFile: () => false,
+        isDirectory: () => true
+      });
+
+      const req = { body: {} };
+      const res = {};
+
+      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationCSVParsingError');
+    });
+
+    it('should allow legitimate file paths', async () => {
+      const legitimateFiles = [
+        { ...mockFiles[0], path: '/tmp/uploads/valid-file.csv' },
+        { ...mockFiles[1], path: '/var/tmp/upload-123.csv' }
+      ];
+
+      mockUploadModel.getUploadFiles.mockResolvedValue({
+        files: legitimateFiles,
+        data: { collectionId: validCollectionId, enableQualityEvaluation: false }
+      });
+
+      const fs = require('fs');
+      fs.statSync = vi.fn().mockReturnValue({
+        isFile: () => true,
+        isDirectory: () => false
+      });
+      fs.readFileSync.mockReturnValue(validCSVContent);
+
+      const req = { body: {} };
+      const res = {};
+
+      const result = await handler_test(req as any, res as any);
+      expect(result).toBe('success');
     });
   });
 

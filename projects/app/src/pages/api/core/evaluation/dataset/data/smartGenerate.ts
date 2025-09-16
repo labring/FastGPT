@@ -262,13 +262,15 @@ async function handler(
           [EvalDatasetDataKeyEnum.ActualOutput]: '',
           [EvalDatasetDataKeyEnum.Context]: [],
           [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-          metadata: {
-            sourceDataId: sample._id,
-            sourceDatasetId: sample.datasetId,
-            sourceCollectionId: sample.collectionId,
-            qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated,
-            generatedAt: new Date(),
-            intelligentGenerationModel
+          qualityMetadata: {
+            status: EvalDatasetDataQualityStatusEnum.unevaluated
+          },
+          synthesisMetadata: {
+            sourceDataId: sample._id.toString(),
+            sourceDatasetId: sample.datasetId.toString(),
+            sourceCollectionId: sample.collectionId.toString(),
+            intelligentGenerationModel,
+            generatedAt: new Date()
           },
           createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration
         };

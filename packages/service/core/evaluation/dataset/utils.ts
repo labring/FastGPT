@@ -51,7 +51,7 @@ export function buildCollectionAggregationPipeline(baseFields?: Record<string, a
       $lookup: {
         from: 'eval_dataset_datas',
         localField: '_id',
-        foreignField: 'datasetId',
+        foreignField: 'evalDatasetCollectionId',
         as: 'dataItems'
       }
     },

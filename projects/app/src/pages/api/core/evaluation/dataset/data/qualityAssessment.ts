@@ -82,9 +82,9 @@ async function handler(
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-        'metadata.qualityModel': finalEvaluationModel,
-        'metadata.qualityQueueTime': new Date()
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+        'qualityMetadata.model': finalEvaluationModel,
+        'qualityMetadata.queueTime': new Date()
       }
     });
 

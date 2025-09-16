@@ -251,18 +251,18 @@ describe('EvalDatasetData Update API', () => {
           expectedError: EvaluationErrEnum.datasetDataRetrievalContextMustBeArrayOfStrings
         },
         {
-          description: 'should reject when metadata is not an object',
-          bodyOverrides: { metadata: 'not an object' },
+          description: 'should reject when qualityMetadata is not an object',
+          bodyOverrides: { qualityMetadata: 'not an object' },
           expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
         },
         {
-          description: 'should reject when metadata is an array',
-          bodyOverrides: { metadata: ['array'] },
+          description: 'should reject when qualityMetadata is an array',
+          bodyOverrides: { qualityMetadata: ['array'] },
           expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
         },
         {
-          description: 'should reject when metadata is null',
-          bodyOverrides: { metadata: null },
+          description: 'should reject when qualityMetadata is null',
+          bodyOverrides: { qualityMetadata: null },
           expectedError: EvaluationErrEnum.datasetDataMetadataMustBeObject
         }
       ]);
@@ -402,25 +402,21 @@ describe('EvalDatasetData Update API', () => {
       expectUpdateCall(createExpectedUpdateFields());
     });
 
-    it('should handle metadata updates', async () => {
-      const req = createBaseRequest({ metadata: { custom: 'value', score: 95 } });
+    it('should handle qualityMetadata updates', async () => {
+      const req = createBaseRequest({ qualityMetadata: { custom: 'value', score: 95 } });
       await handler_test(req as any);
       expectUpdateCall(
         createExpectedUpdateFields({
-          'metadata.custom': 'value',
-          'metadata.score': 95
+          'qualityMetadata.custom': 'value',
+          'qualityMetadata.score': 95
         })
       );
     });
 
-    it('should handle empty metadata object', async () => {
-      const req = createBaseRequest({ metadata: {} });
+    it('should handle empty qualityMetadata object', async () => {
+      const req = createBaseRequest({ qualityMetadata: {} });
       await handler_test(req as any);
-      expectUpdateCall(
-        createExpectedUpdateFields({
-          metadata: {}
-        })
-      );
+      expectUpdateCall(createExpectedUpdateFields());
     });
 
     it('should propagate database update errors', async () => {

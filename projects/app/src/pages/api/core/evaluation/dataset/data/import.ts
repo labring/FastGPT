@@ -49,6 +49,42 @@ const ENUM_TO_CSV_MAPPING = {
   [EvalDatasetDataKeyEnum.RetrievalContext]: 'retrieval_context'
 } as const;
 
+function validateFilePath(filePath: string): string {
+  const path = require('path');
+  const fs = require('fs');
+
+  // Check for directory traversal attempts in the original path
+  if (filePath.includes('..') || filePath.includes('..\\')) {
+    throw new Error('Invalid file path: directory traversal detected');
+  }
+
+  // Normalize the path to resolve any . and .. segments
+  const normalizedPath = path.normalize(filePath);
+
+  // Get the absolute path
+  const absolutePath = path.resolve(normalizedPath);
+
+  // ensure normalized path doesn't contain traversal after normalization
+  if (normalizedPath.includes('..') || normalizedPath.includes('..\\')) {
+    throw new Error('Invalid file path: directory traversal detected');
+  }
+
+  // Verify the file exists and is actually a file (not a directory)
+  try {
+    const stats = fs.statSync(absolutePath);
+    if (!stats.isFile()) {
+      throw new Error('Invalid file path: path is not a file');
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('directory traversal')) {
+      throw error;
+    }
+    throw new Error('Invalid file path: file does not exist or is not accessible');
+  }
+
+  return absolutePath;
+}
+
 interface CSVRow {
   user_input: string;
   expected_output: string;
@@ -101,7 +137,7 @@ function parseCSVContent(csvContent: string): CSVRow[] {
   const lines = csvContent.split('\n').filter((line) => line.trim());
 
   if (lines.length === 0) {
-    throw new Error('CSV file is empty');
+    return [];
   }
 
   // Parse header
@@ -186,10 +222,10 @@ async function handler(
 
     const { collectionId, name, description, enableQualityEvaluation, evaluationModel } = data;
 
-    if (!collectionId && !name) {
+    if (!collectionId && name === undefined) {
       return Promise.reject(CommonErrEnum.missingParams);
     }
-    if (collectionId && name) {
+    if (collectionId && name !== undefined) {
       return Promise.reject(CommonErrEnum.invalidParams);
     }
 
@@ -295,9 +331,11 @@ async function handler(
     let totalRows = 0;
 
     for (const file of files) {
-      // Read file content from disk (since it's uploaded via form-data)
       const fs = require('fs');
-      const rawText = fs.readFileSync(file.path, 'utf8');
+
+      // Validate file path to prevent directory traversal attacks
+      const safePath = validateFilePath(file.path);
+      const rawText = fs.readFileSync(safePath, 'utf8');
 
       const csvRows = parseCSVContent(rawText);
 
