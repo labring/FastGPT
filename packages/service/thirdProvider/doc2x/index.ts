@@ -22,6 +22,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       Authorization: `Bearer ${apiKey}`
     }
   });
+
   // Response check
   const checkRes = (data: ApiResponseDataType) => {
     if (data === undefined) {
@@ -30,6 +31,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     }
     return data;
   };
+
   const responseError = (err: any) => {
     if (!err) {
       return Promise.reject({ message: '[Doc2x] Unknown error' });
@@ -50,6 +52,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     addLog.error('[Doc2x] Unknown error', err);
     return Promise.reject({ message: `[Doc2x] ${getErrText(err)}` });
   };
+
   const request = <T>(url: string, data: any, method: Method): Promise<ApiResponseDataType<T>> => {
     // Remove empty data
     for (const key in data) {
@@ -74,11 +77,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     const startTime = Date.now();
 
     // 1. Get pre-upload URL first
-    const {
-      code,
-      msg,
-      data: preupload_data
-    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', null, 'POST');
+    const { code, msg, data: preupload_data } = await request<{ uid: string; url: string }>('/v2/parse/preupload', null, 'POST');
     if (!['ok', 'success'].includes(code)) {
       return Promise.reject(`[Doc2x] Failed to get pre-upload URL: ${msg}`);
     }
@@ -86,20 +85,17 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     const uid = preupload_data.uid;
 
     // 2. Upload file to pre-signed URL with binary stream
-    const blob = new Blob([fileBuffer], { type: 'application/pdf' });
+    const uint8Array = new Uint8Array(fileBuffer);
+    const blob = new Blob([uint8Array], { type: 'application/pdf' });
+
     const response = await axios
       .put(upload_url, blob, {
-        headers: {
-          'Content-Type': 'application/pdf'
-        }
+        headers: { 'Content-Type': 'application/pdf' }
       })
-      .catch((error) => {
-        return Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
-      });
+      .catch((error) => Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`));
+
     if (response.status !== 200) {
-      return Promise.reject(
-        `[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`
-      );
+      return Promise.reject(`[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`);
     }
     addLog.debug(`[Doc2x] Uploaded file success, uid: ${uid}`);
 
@@ -107,37 +103,24 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
     // 3. Get the result by uid
     const checkResult = async () => {
-      // 10 minutes
-      let retry = 120;
-
+      let retry = 120; // 10 minutes
       while (retry > 0) {
         try {
-          const {
-            code,
-            data: result_data,
-            msg
-          } = await request<{
+          const { code, data: result_data, msg } = await request<{
             progress: number;
             status: 'processing' | 'failed' | 'success';
-            result: {
-              pages: {
-                md: string;
-              }[];
-            };
+            result: { pages: { md: string }[] };
           }>(`/v2/parse/status?uid=${uid}`, null, 'GET');
 
-          // Error
           if (!['ok', 'success'].includes(code)) {
             return Promise.reject(`[Doc2x] Failed to get result (uid: ${uid}): ${msg}`);
           }
 
-          // Process
           if (['ready', 'processing'].includes(result_data.status)) {
             addLog.debug(`[Doc2x] Waiting for the result, uid: ${uid}`);
             await delay(5000);
           }
 
-          // Finifsh
           if (result_data.status === 'success') {
             return {
               text: result_data.result.pages
@@ -154,11 +137,9 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
             };
           }
         } catch (error) {
-          // Just network error
           addLog.warn(`[Doc2x] Get result error`, { error });
           await delay(500);
         }
-
         retry--;
       }
       return Promise.reject(`[Doc2x] Failed to get result (uid: ${uid}): Process timeout`);
@@ -166,31 +147,22 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
     const { text, pages } = await checkResult();
 
-    // ![](url) => ![](base64)
+    // Replace image links with base64
     const parseTextImage = async (text: string) => {
-      // Extract image links and convert to base64
       const imageList: { id: string; url: string }[] = [];
       let processedText = text.replace(/!\[.*?\]\((http[^)]+)\)/g, (match, url) => {
         const id = `IMAGE_${getNanoid()}_IMAGE`;
-        imageList.push({
-          id,
-          url
-        });
+        imageList.push({ id, url });
         return `![](${id})`;
       });
 
-      // Get base64 from image url
       let resultImageList: ImageType[] = [];
       await batchRun(
         imageList,
         async (item) => {
           try {
             const { base64, mime } = await getImageBase64(item.url);
-            resultImageList.push({
-              uuid: item.id,
-              mime,
-              base64
-            });
+            resultImageList.push({ uuid: item.id, mime, base64 });
           } catch (error) {
             processedText = processedText.replace(item.id, item.url);
             addLog.warn(`[Doc2x] Failed to get image from ${item.url}: ${getErrText(error)}`);
@@ -199,11 +171,9 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
         5
       );
 
-      return {
-        text: processedText,
-        imageList: resultImageList
-      };
+      return { text: processedText, imageList: resultImageList };
     };
+
     const { text: formatText, imageList } = await parseTextImage(htmlTable2Md(text));
 
     addLog.debug(`[Doc2x] PDF parse finished`, {
@@ -211,14 +181,8 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       pages
     });
 
-    return {
-      pages,
-      text: formatText,
-      imageList
-    };
+    return { pages, text: formatText, imageList };
   };
 
-  return {
-    parsePDF
-  };
+  return { parsePDF };
 };

@@ -115,7 +115,7 @@ services:
     restart: always
     environment:
       - FE_DOMAIN=http://10.14.53.120:3000           # 替换成你服务器公网IP或域名
-      - DEFAULT_ROOT_PSW=1234
+      - DEFAULT_ROOT_PSW=123456
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       - FILE_TOKEN_KEY=filetoken

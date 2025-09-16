@@ -2,3 +2,13 @@ packages:
   - packages/*
   - projects/*
   - scripts/icon
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@parcel/watcher'
+  - core-js
+  - esbuild
+  - isolated-vm
+  - mongodb-memory-server
+  - msgpackr-extract
+  - protobufjs

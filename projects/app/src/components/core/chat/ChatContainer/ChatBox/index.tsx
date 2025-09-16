@@ -473,13 +473,13 @@ const ChatBox = ({
               time: new Date(),
               hideInUI,
               value: [
-                ...files.map((file) => ({
+                ...files.map((file: File) => ({
                   type: ChatItemValueTypeEnum.file,
                   file: {
                     type: file.type,
                     name: file.name,
-                    url: file.url || '',
-                    icon: file.icon || ''
+                    url: (file as any).url || '',
+                    icon: (file as any).icon || ''
                   }
                 })),
                 ...(text
