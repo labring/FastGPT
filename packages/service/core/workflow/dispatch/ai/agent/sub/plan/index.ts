@@ -9,7 +9,6 @@ import { formatModelChars2Points } from '../../../../../../../support/wallet/usa
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '../constants';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { runAgentCall } from '../../../../../../../core/ai/llm/agentCall';
 import { parseToolArgs } from '../../../utils';
 import { AskAgentTool, type AskAgentToolParamsType } from './ask/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -59,8 +58,11 @@ export const dispatchPlanAgent = async ({
     },
     ...messages.filter((item) => item.role !== 'system')
   ];
-  const filterPlanTools = subApps.filter((item) => item.function.name !== SubAppIds.plan);
-  filterPlanTools.push(AskAgentTool);
+
+  // TODO: 考虑一下 plan 要不要挂上 master 的工具组
+  // const filterPlanTools = subApps.filter((item) => item.function.name !== SubAppIds.plan);
+  // filterPlanTools.push(AskAgentTool);
+  const tools = [AskAgentTool];
 
   const {
     reasoningText,
@@ -77,7 +79,7 @@ export const dispatchPlanAgent = async ({
       top_p,
       stream,
 
-      tools: filterPlanTools,
+      tools,
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: true
@@ -121,6 +123,12 @@ export const dispatchPlanAgent = async ({
           }
         };
       }
+
+      completeMessages.push({
+        tool_call_id: call.id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: '等待用户输入内容'
+      });
     }
   }
 
