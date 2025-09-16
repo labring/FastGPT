@@ -1,3 +1,7 @@
+import type {
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
 import type { ToolNodeItemType } from './type';
 
 const namespaceMap = new Map<string, string>([
