@@ -42,19 +42,12 @@ export default function SkillPlugin({
           tool.name,
           tool.avatar,
           extendedTool.isUnconfigured,
-          false, // isInvalid = false when tool is found
+          false,
           onConfigureClick
         );
       }
 
-      // Tool not found in selectedTools, mark as invalid
-      return $createSkillNode(
-        skillKey,
-        undefined,
-        undefined,
-        false,
-        true // isInvalid = true when tool is not found
-      );
+      return $createSkillNode(skillKey, undefined, undefined, false, true);
     },
     [selectedTools, onConfigureTool]
   );
@@ -110,7 +103,6 @@ export default function SkillPlugin({
                   : undefined;
             }
           } else {
-            // Tool not found, mark as invalid
             if (node.__isInvalid !== true) {
               const writableNode = node.getWritable();
               writableNode.__isInvalid = true;
