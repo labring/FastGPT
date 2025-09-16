@@ -44,7 +44,7 @@ import ListExitPlugin from './plugins/ListExitPlugin';
 import SkillPickerPlugin from './plugins/SkillPickerPlugin';
 import SkillPlugin from './plugins/SkillPlugin';
 import { SkillNode } from './plugins/SkillPlugin/node';
-import type { EditorSkillPickerType, SkillSubToolItem } from './plugins/SkillPickerPlugin/type';
+import type { EditorSkillPickerType } from './plugins/SkillPickerPlugin/type';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
@@ -81,6 +81,7 @@ export type EditorProps = {
   onConfigureTool?: (toolId: string) => void;
   selectedTools?: FlowNodeTemplateType[];
   skills?: EditorSkillPickerType[];
+  setQueryString?: (value: string | null) => void;
   selectedSkillKey?: string;
   setSelectedSkillKey?: (key: string) => void;
   value?: string;
@@ -107,6 +108,7 @@ export default function Editor({
   variables = [],
   variableLabels = [],
   skills = [],
+  setQueryString,
   onAddToolFromEditor,
   onRemoveToolFromEditor,
   onConfigureTool,
@@ -241,13 +243,13 @@ export default function Editor({
           {skills && skills.length > 0 && setSelectedSkillKey && (
             <>
               <SkillPlugin
-                skills={skills}
                 selectedTools={selectedTools}
                 onConfigureTool={onConfigureTool}
                 onRemoveToolFromEditor={onRemoveToolFromEditor}
               />
               <SkillPickerPlugin
                 skills={skills}
+                setQueryString={setQueryString}
                 isFocus={focus}
                 onAddToolFromEditor={onAddToolFromEditor}
                 selectedKey={selectedSkillKey || ''}

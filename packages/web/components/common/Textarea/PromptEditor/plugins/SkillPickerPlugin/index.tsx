@@ -1,6 +1,5 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import type { TextNode } from 'lexical';
 import {
   $createTextNode,
   $getSelection,
@@ -19,12 +18,7 @@ import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { useRequest2 } from '../../../../../../hooks/useRequest';
 import { buildSkillOptions, getSkillDisplayState, getToolDisplayState } from './utils';
-import type {
-  EditorSkillPickerType,
-  SkillOptionType,
-  SkillToolItem,
-  SkillSubToolItem
-} from './type';
+import type { EditorSkillPickerType, SkillOptionType, SkillToolItem } from './type';
 import MyBox from '../../../../MyBox';
 
 export default function SkillPickerPlugin({
@@ -32,20 +26,25 @@ export default function SkillPickerPlugin({
   isFocus,
   onAddToolFromEditor,
   selectedKey,
-  setSelectedKey
+  setSelectedKey,
+  setQueryString
 }: {
   skills: EditorSkillPickerType[];
   isFocus: boolean;
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   selectedKey: string;
   setSelectedKey: (key: string) => void;
+  setQueryString?: (value: string | null) => void;
 }) {
   const [editor] = useLexicalComposerContext();
 
-  const [queryString, setQueryString] = useState<string | null>(null);
+  const isSearchMode = useMemo(() => {
+    return skills.length > 0 && !skills[1]?.toolCategories;
+  }, [skills]);
 
   const highlightedRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const nextIndexRef = useRef<number | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -67,14 +66,11 @@ export default function SkillPickerPlugin({
 
   const { runAsync: addTool, loading: isAddToolLoading } = useRequest2(
     async (selectedOption: SkillOptionType) => {
-      if (selectedOption.level === 'secondary' && selectedOption.toolItem && onAddToolFromEditor) {
-        return await onAddToolFromEditor(selectedOption.toolItem.key);
-      } else if (
-        selectedOption.level === 'tertiary' &&
-        selectedOption.subItem &&
+      if (
+        (selectedOption.level === 'secondary' || selectedOption.level === 'tertiary') &&
         onAddToolFromEditor
       ) {
-        return await onAddToolFromEditor(selectedOption.subItem.key);
+        return await onAddToolFromEditor(selectedOption.key);
       } else {
         return '';
       }
@@ -89,12 +85,14 @@ export default function SkillPickerPlugin({
   }, [skills]);
 
   const currentOptions = useMemo(() => {
-    if (queryString && queryString.trim()) {
-      const searchTerm = queryString.toLowerCase().trim();
-      return skillOptionList.filter((option) => {
-        if (option.level === 'primary') return false; // filter primary level
-        return option.label.toLowerCase().includes(searchTerm.toLowerCase());
-      });
+    if (isSearchMode) {
+      return skills.map((skill) => ({
+        key: skill.key,
+        label: skill.label,
+        icon: skill.icon,
+        level: 'primary' as const,
+        parentKey: undefined
+      }));
     }
 
     const currentOption = skillOptionList.find((option) => option.key === selectedKey);
@@ -106,10 +104,11 @@ export default function SkillPickerPlugin({
     return skillOptionList.filter(
       (item) => item.level === currentLevel && item.parentKey === currentOption.parentKey
     );
-  }, [skillOptionList, selectedKey, queryString]);
+  }, [skills, isSearchMode, skillOptionList, selectedKey]);
 
   useEffect(() => {
-    if (!isFocus || queryString === null) return;
+    if (!isFocus) return;
+    if (isSearchMode) return;
     const removeRightCommand = editor.registerCommand(
       KEY_ARROW_RIGHT_COMMAND,
       (e: KeyboardEvent) => {
@@ -166,7 +165,7 @@ export default function SkillPickerPlugin({
       removeRightCommand();
       removeLeftCommand();
     };
-  }, [editor, isFocus, queryString, selectedKey, skillOptionList]);
+  }, [editor, isFocus, isSearchMode, selectedKey, skillOptionList, setSelectedKey]);
 
   const onSelectOption = useCallback(
     async (selectedOption: SkillOptionType, closeMenu: () => void) => {
@@ -195,7 +194,7 @@ export default function SkillPickerPlugin({
         closeMenu();
       });
     },
-    [editor, onAddToolFromEditor]
+    [editor, addTool]
   );
 
   const menuOptions = useMemo(() => {
@@ -205,9 +204,35 @@ export default function SkillPickerPlugin({
     }));
   }, [currentOptions]);
 
+  const handleQueryChange = useCallback(
+    (query: string | null) => {
+      if (setQueryString) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+        if (!query?.trim()) {
+          setQueryString(query);
+          return;
+        }
+        debounceTimerRef.current = setTimeout(() => {
+          setQueryString(query);
+        }, 300);
+      }
+    },
+    [setQueryString]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <LexicalTypeaheadMenuPlugin
-      onQueryChange={setQueryString}
+      onQueryChange={handleQueryChange}
       onSelectOption={(
         selectedOption: SkillOptionType & { setRefElement: () => void },
         nodeToRemove,
@@ -243,7 +268,7 @@ export default function SkillPickerPlugin({
 
         const selectedSkillKey = (() => {
           if (currentLevel === 'primary') {
-            return currentOption?.skillType?.key;
+            return currentOption?.key;
           } else if (currentOption?.parentKey) {
             if (currentLevel === 'secondary') {
               return currentOption.parentKey;
@@ -258,15 +283,15 @@ export default function SkillPickerPlugin({
         })();
         const selectedToolKey = (() => {
           if (currentLevel === 'secondary') {
-            return currentOption?.toolItem?.key;
+            return currentOption?.key;
           } else if (currentLevel === 'tertiary') {
             return currentOption?.parentKey;
           }
           return null;
         })();
 
-        return ReactDOM.createPortal(
-          queryString && queryString.trim() ? (
+        if (isSearchMode) {
+          return ReactDOM.createPortal(
             <MyBox
               p={1.5}
               borderRadius={'sm'}
@@ -304,7 +329,7 @@ export default function SkillPickerPlugin({
                     bg: '#1118240D'
                   }}
                 >
-                  <Avatar src={option.toolItem?.avatar} w={'16px'} borderRadius={'3px'} />
+                  <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
                   <Box
                     color={selectedKey === option.key ? 'primary.700' : 'myGray.600'}
                     fontSize={'12px'}
@@ -316,216 +341,124 @@ export default function SkillPickerPlugin({
                   </Box>
                 </Flex>
               ))}
+            </MyBox>,
+            anchorElementRef.current
+          );
+        }
+
+        return ReactDOM.createPortal(
+          <Flex position="relative" align="flex-start" zIndex={99999}>
+            {/* 一级菜单 */}
+            <MyBox
+              p={1.5}
+              borderRadius={'sm'}
+              w={'160px'}
+              boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
+              bg={'white'}
+              flexShrink={0}
+              isLoading={isAddToolLoading}
+            >
+              {skillOptionList
+                .filter((option) => option.level === 'primary')
+                .map((skillOption) => {
+                  const displayState = getSkillDisplayState({
+                    selectedKey,
+                    skillOptionList,
+                    skillOption
+                  });
+                  return (
+                    <Flex
+                      key={skillOption.key}
+                      px={2}
+                      py={1.5}
+                      gap={2}
+                      borderRadius={'4px'}
+                      cursor={'pointer'}
+                      ref={(el) => {
+                        highlightedRefs.current[skillOption.key] = el;
+                      }}
+                      {...(displayState.isCurrentFocus
+                        ? {
+                            bg: '#1118240D'
+                          }
+                        : displayState.hasSelectedChild
+                          ? {
+                              bg: '#1118240D'
+                            }
+                          : {
+                              bg: 'white'
+                            })}
+                      _hover={{
+                        bg: '#1118240D'
+                      }}
+                    >
+                      <Avatar src={skillOption.icon} w={'16px'} borderRadius={'3px'} />
+                      <Box
+                        color={displayState.isCurrentFocus ? 'primary.700' : 'myGray.600'}
+                        fontSize={'12px'}
+                        fontWeight={'medium'}
+                        letterSpacing={'0.5px'}
+                        flex={1}
+                      >
+                        {skillOption.label}
+                      </Box>
+                    </Flex>
+                  );
+                })}
             </MyBox>
-          ) : (
-            <Flex position="relative" align="flex-start" zIndex={99999}>
-              {/* 一级菜单 */}
+
+            {/* 二级菜单 */}
+            {selectedSkillKey && (
               <MyBox
+                ml={2}
                 p={1.5}
                 borderRadius={'sm'}
-                w={'160px'}
+                w={'200px'}
                 boxShadow={
                   '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
                 }
                 bg={'white'}
                 flexShrink={0}
+                maxH={'320px'}
+                overflow={'auto'}
                 isLoading={isAddToolLoading}
               >
-                {skillOptionList
-                  .filter((option) => option.level === 'primary')
-                  .map((skillOption) => {
-                    const displayState = getSkillDisplayState({
-                      selectedKey,
-                      skillOptionList,
-                      skillOption
-                    });
-                    return (
-                      <Flex
-                        key={skillOption.key}
-                        px={2}
-                        py={1.5}
-                        gap={2}
-                        borderRadius={'4px'}
-                        cursor={'pointer'}
-                        ref={(el) => {
-                          highlightedRefs.current[skillOption.key] = el;
-                        }}
-                        {...(displayState.isCurrentFocus
-                          ? {
-                              bg: '#1118240D'
-                            }
-                          : displayState.hasSelectedChild
-                            ? {
-                                bg: '#1118240D'
-                              }
-                            : {
-                                bg: 'white'
-                              })}
-                        _hover={{
-                          bg: '#1118240D'
-                        }}
-                      >
-                        <Avatar src={skillOption.skillType?.icon} w={'16px'} borderRadius={'3px'} />
-                        <Box
-                          color={displayState.isCurrentFocus ? 'primary.700' : 'myGray.600'}
-                          fontSize={'12px'}
-                          fontWeight={'medium'}
-                          letterSpacing={'0.5px'}
-                          flex={1}
-                        >
-                          {skillOption.skillType?.label}
-                        </Box>
-                      </Flex>
-                    );
-                  })}
-              </MyBox>
-
-              {/* 二级菜单 */}
-              {selectedSkillKey && (
-                <MyBox
-                  ml={2}
-                  p={1.5}
-                  borderRadius={'sm'}
-                  w={'200px'}
-                  boxShadow={
-                    '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
-                  }
-                  bg={'white'}
-                  flexShrink={0}
-                  maxH={'320px'}
-                  overflow={'auto'}
-                  isLoading={isAddToolLoading}
-                >
-                  {(() => {
-                    const secondaryOptions = skillOptionList.filter(
-                      (item) => item.level === 'secondary' && item.parentKey === selectedSkillKey
-                    );
-
-                    // 按分类组织
-                    const categories = new Map();
-                    secondaryOptions.forEach((item) => {
-                      const toolItem = item.toolItem;
-                      if (!toolItem) return;
-
-                      const skill = skills.find((skill) => skill.key === selectedSkillKey);
-                      const category = skill?.toolCategories?.find((item) =>
-                        item.list.some((toolItem: SkillToolItem) => toolItem.key === toolItem.key)
-                      );
-
-                      if (category) {
-                        if (!categories.has(category.type)) {
-                          categories.set(category.type, {
-                            label: category.label,
-                            options: []
-                          });
-                        }
-                        categories.get(category.type).options.push(item);
-                      }
-                    });
-
-                    return Array.from(categories.entries()).map(([categoryType, categoryData]) => (
-                      <Box key={categoryType} mb={3}>
-                        <Box
-                          fontSize={'12px'}
-                          fontWeight={'600'}
-                          color={'myGray.900'}
-                          mb={1}
-                          px={2}
-                        >
-                          {categoryData.label}
-                        </Box>
-                        {categoryData.options.map((option: SkillOptionType) => {
-                          const toolDisplayState = getToolDisplayState({
-                            selectedKey,
-                            skillOptionList,
-                            toolOption: option
-                          });
-                          return (
-                            <Flex
-                              key={option.key}
-                              px={2}
-                              py={1.5}
-                              gap={2}
-                              borderRadius={'4px'}
-                              cursor={'pointer'}
-                              ref={(el) => {
-                                highlightedRefs.current[option.key] = el;
-                              }}
-                              onMouseDown={() => {
-                                const menuOption = menuOptions.find((m) => m.key === option.key);
-                                if (menuOption) selectOptionAndCleanUp(menuOption);
-                              }}
-                              {...(toolDisplayState.isCurrentFocus
-                                ? {
-                                    bg: '#1118240D'
-                                  }
-                                : toolDisplayState.hasSelectedChild
-                                  ? {
-                                      bg: '#1118240D'
-                                    }
-                                  : {
-                                      bg: 'white'
-                                    })}
-                              _hover={{
-                                bg: '#1118240D'
-                              }}
-                            >
-                              <Avatar
-                                src={option.toolItem?.avatar}
-                                w={'16px'}
-                                borderRadius={'3px'}
-                              />
-                              <Box
-                                color={
-                                  toolDisplayState.isCurrentFocus ? 'primary.700' : 'myGray.600'
-                                }
-                                fontSize={'12px'}
-                                fontWeight={'medium'}
-                                letterSpacing={'0.5px'}
-                                flex={1}
-                              >
-                                {option.toolItem?.name}
-                              </Box>
-                              {option.toolItem?.canOpen && (
-                                <MyIcon
-                                  name={'core/chat/chevronRight'}
-                                  w={'12px'}
-                                  color={'myGray.400'}
-                                />
-                              )}
-                            </Flex>
-                          );
-                        })}
-                      </Box>
-                    ));
-                  })()}
-                </MyBox>
-              )}
-
-              {/* 第三级菜单 */}
-              {selectedToolKey &&
-                (() => {
-                  const tertiaryOptions = skillOptionList.filter(
-                    (option) => option.level === 'tertiary' && option.parentKey === selectedToolKey
+                {(() => {
+                  const secondaryOptions = skillOptionList.filter(
+                    (item) => item.level === 'secondary' && item.parentKey === selectedSkillKey
                   );
 
-                  if (tertiaryOptions.length > 0) {
-                    return (
-                      <MyBox
-                        ml={2}
-                        p={1.5}
-                        borderRadius={'sm'}
-                        w={'200px'}
-                        boxShadow={
-                          '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
-                        }
-                        bg={'white'}
-                        flexShrink={0}
-                        maxH={'280px'}
-                        overflow={'auto'}
-                        isLoading={isAddToolLoading}
-                      >
-                        {tertiaryOptions.map((option: SkillOptionType) => (
+                  // 按分类组织
+                  const categories = new Map();
+                  secondaryOptions.forEach((item) => {
+                    const skill = skills.find((skill) => skill.key === selectedSkillKey);
+                    const category = skill?.toolCategories?.find((category) =>
+                      category.list.some((toolItem: SkillToolItem) => toolItem.key === item.key)
+                    );
+
+                    if (category) {
+                      if (!categories.has(category.type)) {
+                        categories.set(category.type, {
+                          label: category.label,
+                          options: []
+                        });
+                      }
+                      categories.get(category.type).options.push(item);
+                    }
+                  });
+
+                  return Array.from(categories.entries()).map(([categoryType, categoryData]) => (
+                    <Box key={categoryType} mb={3}>
+                      <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'} mb={1} px={2}>
+                        {categoryData.label}
+                      </Box>
+                      {categoryData.options.map((option: SkillOptionType) => {
+                        const toolDisplayState = getToolDisplayState({
+                          selectedKey,
+                          skillOptionList,
+                          toolOption: option
+                        });
+                        return (
                           <Flex
                             key={option.key}
                             px={2}
@@ -540,41 +473,114 @@ export default function SkillPickerPlugin({
                               const menuOption = menuOptions.find((m) => m.key === option.key);
                               if (menuOption) selectOptionAndCleanUp(menuOption);
                             }}
-                            {...(selectedKey === option.key
+                            {...(toolDisplayState.isCurrentFocus
                               ? {
                                   bg: '#1118240D'
                                 }
-                              : {
-                                  bg: 'white'
-                                })}
+                              : toolDisplayState.hasSelectedChild
+                                ? {
+                                    bg: '#1118240D'
+                                  }
+                                : {
+                                    bg: 'white'
+                                  })}
                             _hover={{
                               bg: '#1118240D'
                             }}
                           >
-                            <Box flex={1}>
-                              <Box
-                                color={selectedKey === option.key ? 'primary.700' : 'myGray.600'}
-                                fontSize={'12px'}
-                                fontWeight={'medium'}
-                                letterSpacing={'0.5px'}
-                              >
-                                {option.subItem?.label}
-                              </Box>
-                              {option.subItem?.description && (
-                                <Box color={'myGray.400'} fontSize={'10px'} mt={0.5}>
-                                  {option.subItem.description}
-                                </Box>
-                              )}
+                            <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
+                            <Box
+                              color={toolDisplayState.isCurrentFocus ? 'primary.700' : 'myGray.600'}
+                              fontSize={'12px'}
+                              fontWeight={'medium'}
+                              letterSpacing={'0.5px'}
+                              flex={1}
+                            >
+                              {option.label}
                             </Box>
+                            {option.canOpen && (
+                              <MyIcon
+                                name={'core/chat/chevronRight'}
+                                w={'12px'}
+                                color={'myGray.400'}
+                              />
+                            )}
                           </Flex>
-                        ))}
-                      </MyBox>
-                    );
-                  }
-                  return null;
+                        );
+                      })}
+                    </Box>
+                  ));
                 })()}
-            </Flex>
-          ),
+              </MyBox>
+            )}
+
+            {/* 第三级菜单 */}
+            {selectedToolKey &&
+              (() => {
+                const tertiaryOptions = skillOptionList.filter(
+                  (option) => option.level === 'tertiary' && option.parentKey === selectedToolKey
+                );
+
+                if (tertiaryOptions.length > 0) {
+                  return (
+                    <MyBox
+                      ml={2}
+                      p={1.5}
+                      borderRadius={'sm'}
+                      w={'200px'}
+                      boxShadow={
+                        '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
+                      }
+                      bg={'white'}
+                      flexShrink={0}
+                      maxH={'280px'}
+                      overflow={'auto'}
+                      isLoading={isAddToolLoading}
+                    >
+                      {tertiaryOptions.map((option: SkillOptionType) => (
+                        <Flex
+                          key={option.key}
+                          px={2}
+                          py={1.5}
+                          gap={2}
+                          borderRadius={'4px'}
+                          cursor={'pointer'}
+                          ref={(el) => {
+                            highlightedRefs.current[option.key] = el;
+                          }}
+                          onMouseDown={() => {
+                            const menuOption = menuOptions.find((m) => m.key === option.key);
+                            if (menuOption) selectOptionAndCleanUp(menuOption);
+                          }}
+                          {...(selectedKey === option.key
+                            ? {
+                                bg: '#1118240D'
+                              }
+                            : {
+                                bg: 'white'
+                              })}
+                          _hover={{
+                            bg: '#1118240D'
+                          }}
+                        >
+                          <Box flex={1}>
+                            <Box
+                              color={selectedKey === option.key ? 'primary.700' : 'myGray.600'}
+                              fontSize={'12px'}
+                              fontWeight={'medium'}
+                              letterSpacing={'0.5px'}
+                            >
+                              {option.label}
+                            </Box>
+                          </Box>
+                        </Flex>
+                      ))}
+                    </MyBox>
+                  );
+                }
+                return null;
+              })()}
+          </Flex>,
           anchorElementRef.current
         );
       }}

@@ -7,8 +7,8 @@ export const buildSkillOptions = (skills: EditorSkillPickerType[]): SkillOptionT
     const skillOption: SkillOptionType = {
       key: skill.key,
       label: skill.label,
-      level: 'primary',
-      skillType: skill
+      icon: skill.icon,
+      level: 'primary'
     };
     skillOptions.push(skillOption);
   });
@@ -19,9 +19,10 @@ export const buildSkillOptions = (skills: EditorSkillPickerType[]): SkillOptionT
         const toolOption: SkillOptionType = {
           key: toolItem.key,
           label: toolItem.name,
+          icon: toolItem.avatar,
           level: 'secondary',
           parentKey: skill.key,
-          toolItem
+          canOpen: toolItem.canOpen
         };
         skillOptions.push(toolOption);
       });
@@ -36,9 +37,9 @@ export const buildSkillOptions = (skills: EditorSkillPickerType[]): SkillOptionT
             const subOption: SkillOptionType = {
               key: subItem.key,
               label: subItem.label,
+              icon: toolItem.avatar,
               level: 'tertiary',
-              parentKey: toolItem.key,
-              subItem
+              parentKey: toolItem.key
             };
             skillOptions.push(subOption);
           });

@@ -35,6 +35,7 @@ type UseToolManagerProps = {
 
 type UseToolManagerReturn = {
   toolSkills: EditorSkillPickerType[];
+  setQueryString: (value: string | null) => void;
 
   handleAddToolFromEditor: (toolKey: string) => Promise<string>;
   handleConfigureTool: (toolId: string) => void;
@@ -53,6 +54,7 @@ export const useToolManager = ({
   const { toast } = useToast();
   const lang = i18n?.language as localeType;
   const [toolSkills, setToolSkills] = useState<EditorSkillPickerType[]>([]);
+  const [queryString, setQueryString] = useState<string | null>(null);
 
   const { data: pluginGroups = [] } = useRequest2(
     async () => {
@@ -77,14 +79,10 @@ export const useToolManager = ({
     }
   );
   const requestParentId = useMemo(() => {
-    if (
-      toolSkills.some(
-        (skill) =>
-          skill.key &&
-          (!skill.toolCategories || skill.toolCategories.length === 0) &&
-          skill.key === selectedSkillKey
-      )
-    ) {
+    if (queryString?.trim()) {
+      return '';
+    }
+    if (toolSkills.some((skill) => !skill.toolCategories && skill.key === selectedSkillKey)) {
       return '';
     }
 
@@ -102,7 +100,7 @@ export const useToolManager = ({
     }
 
     return null;
-  }, [toolSkills, selectedSkillKey]);
+  }, [toolSkills, selectedSkillKey, queryString]);
   const buildToolSkills = useCallback(
     (systemPlugins: NodeTemplateListItemType[], pluginGroups: SystemToolGroupSchemaType[]) => {
       return pluginGroups.map((group) => {
@@ -161,7 +159,10 @@ export const useToolManager = ({
   useRequest2(
     async () => {
       try {
-        return await getSystemPlugTemplates({ parentId: requestParentId || '', searchKey: '' });
+        return await getSystemPlugTemplates({
+          parentId: requestParentId || '',
+          searchKey: queryString?.trim() || ''
+        });
       } catch (error) {
         console.error('Failed to load system plugin templates:', error);
         return [];
@@ -169,9 +170,17 @@ export const useToolManager = ({
     },
     {
       manual: requestParentId === null,
-      refreshDeps: [appId, requestParentId],
+      refreshDeps: [appId, requestParentId, queryString],
       onSuccess(data) {
-        if (requestParentId === '') {
+        if (queryString?.trim()) {
+          const searchResults = data.map((plugin) => ({
+            key: plugin.id,
+            label: t(parseI18nString(plugin.name, lang)),
+            icon: plugin.avatar || 'core/workflow/template/toolCall'
+          }));
+
+          setToolSkills(searchResults.length > 0 ? searchResults : []);
+        } else if (requestParentId === '') {
           const newToolSkills = buildToolSkills(data, pluginGroups);
           setToolSkills(newToolSkills);
         } else if (requestParentId === selectedSkillKey) {
@@ -356,6 +365,7 @@ export const useToolManager = ({
 
   return {
     toolSkills,
+    setQueryString,
 
     handleAddToolFromEditor,
     handleConfigureTool,

@@ -85,6 +85,7 @@ const EditForm = ({
   ];
   const {
     toolSkills,
+    setQueryString,
     handleAddToolFromEditor,
     handleConfigureTool,
     handleRemoveToolFromEditor,
@@ -246,7 +247,12 @@ const EditForm = ({
                 selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
-                skills={[...appSkill, ...toolSkills]}
+                skills={
+                  toolSkills.length > 0 && !toolSkills[0].toolCategories
+                    ? toolSkills
+                    : [...appSkill, ...toolSkills]
+                }
+                setQueryString={setQueryString}
                 selectedSkillKey={selectedSkillKey}
                 setSelectedSkillKey={setSelectedSkillKey}
                 placeholder={t('common:core.app.tip.systemPromptTip')}

@@ -2,13 +2,11 @@ export type EditorSkillPickerType = {
   key: string;
   label: string;
   icon: string;
-  toolCategories?: SkillToolCategory[];
-};
-
-type SkillToolCategory = {
-  type: string;
-  label: string;
-  list: SkillToolItem[];
+  toolCategories?: {
+    type: string;
+    label: string;
+    list: SkillToolItem[];
+  }[];
 };
 
 export type SkillToolItem = {
@@ -16,23 +14,17 @@ export type SkillToolItem = {
   name: string;
   avatar: string;
   canOpen?: boolean;
-  subItems?: SkillSubToolItem[];
-};
-
-export type SkillSubToolItem = {
-  key: string;
-  label: string;
-  description?: string;
+  subItems?: {
+    key: string;
+    label: string;
+  }[];
 };
 
 export type SkillOptionType = {
   key: string;
   label: string;
+  icon?: string;
   level: 'primary' | 'secondary' | 'tertiary';
-
   parentKey?: string;
-
-  skillType?: EditorSkillPickerType;
-  toolItem?: SkillToolItem;
-  subItem?: SkillSubToolItem;
+  canOpen?: boolean;
 };

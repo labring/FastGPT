@@ -5,17 +5,14 @@ import type { TextNode } from 'lexical';
 import { getSkillRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
-import type { EditorSkillPickerType } from '../SkillPickerPlugin/type';
 
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
 export default function SkillPlugin({
-  skills = [],
   selectedTools = [],
   onConfigureTool,
   onRemoveToolFromEditor
 }: {
-  skills?: EditorSkillPickerType[];
   selectedTools?: any[];
   onConfigureTool?: (toolId: string) => void;
   onRemoveToolFromEditor?: (toolId: string) => void;
@@ -52,7 +49,7 @@ export default function SkillPlugin({
 
       return $createSkillNode(skillKey);
     },
-    [skills, selectedTools, onConfigureTool]
+    [selectedTools, onConfigureTool]
   );
 
   const getSkillMatch = useCallback((text: string) => {
