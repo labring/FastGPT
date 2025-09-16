@@ -1,19 +1,28 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../../constants';
 
-export type AskAgentToolParamsType = Partial<{
-  mode: 'select' | 'formInput' | 'input';
-  prompt: string;
-  options: string[];
-  form: {
-    field: string;
-    type: 'textInput' | 'numberInput' | 'singleSelect' | 'multiSelect';
-    required: boolean;
-    options: string[];
-  }[];
-}>;
+export type AskAgentToolParamsType =
+  | {
+      mode: 'select';
+      prompt?: string;
+      options: string[];
+    }
+  | {
+      mode: 'formInput';
+      prompt?: string;
+      form: {
+        field: string;
+        type: 'textInput' | 'numberInput' | 'singleSelect' | 'multiSelect';
+        required: boolean;
+        options: string[];
+      }[];
+    }
+  | {
+      mode: 'input';
+      prompt: string;
+    };
 
-export const AskAgentTool: ChatCompletionTool = {
+export const PlanAgentAskTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SubAppIds.ask,
@@ -30,7 +39,6 @@ export const AskAgentTool: ChatCompletionTool = {
 2. mode = "input"
     - 用于自由文本输入，适合用户提供个性化或开放式回答。
     - prompt: 展示的问题提示，引导用户填写。
-    - options: 此模式下通常留空或忽略。
     - 场景示例：
       * 需要用户补充说明原因、填写备注、输入 URL/编号等。
       * 当 "select" 的选项无法覆盖用户真实答案时，可以再调用一次 "input" 追问。
