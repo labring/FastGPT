@@ -1,6 +1,6 @@
 import type { NodeOutputItemType } from '../../../../chat/type';
-import type { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
-import type { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
+import type { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constant';
+import type { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
 import type { RuntimeEdgeItemType } from '../../../type/edge';
 

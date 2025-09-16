@@ -8,10 +8,16 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '../constants';
+import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { runAgentCall } from '../../../../../../../core/ai/llm/agentCall';
+import { parseToolArgs } from '../../../utils';
+import { AskAgentTool, type AskAgentToolParamsType } from './ask/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
 type PlanAgentConfig = {
   model: string;
-  customSystemPrompt?: string;
+  systemPrompt?: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
@@ -19,7 +25,7 @@ type PlanAgentConfig = {
 
 type DispatchPlanAgentProps = PlanAgentConfig & {
   messages: ChatCompletionMessageParam[];
-  tools: ChatCompletionTool[];
+  subApps: ChatCompletionTool[];
   onReasoning: ResponseEvents['onReasoning'];
   onStreaming: ResponseEvents['onStreaming'];
 };
@@ -27,14 +33,17 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
 type DispatchPlanAgentResponse = {
   response: string;
   usages: ChatNodeUsageType[];
+  completeMessages: ChatCompletionMessageParam[];
+  toolMessages?: ChatCompletionMessageParam[];
+  interactiveResponse?: InteractiveNodeResponseType;
 };
 
 export const dispatchPlanAgent = async ({
   messages,
 
-  tools,
+  subApps,
   model,
-  customSystemPrompt,
+  systemPrompt,
   temperature,
   top_p,
   stream,
@@ -46,14 +55,21 @@ export const dispatchPlanAgent = async ({
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: getPlanAgentPrompt(customSystemPrompt)
+      content: getPlanAgentPrompt(systemPrompt)
     },
-    ...messages.filter((item) => item.role !== 'system'),
-    { role: 'user', content: 'Start plan' }
+    ...messages.filter((item) => item.role !== 'system')
   ];
-  const filterPlanTools = tools.filter((item) => item.function.name !== SubAppIds.plan);
+  const filterPlanTools = subApps.filter((item) => item.function.name !== SubAppIds.plan);
+  filterPlanTools.push(AskAgentTool);
 
-  const { answerText, usage } = await createLLMResponse({
+  const {
+    reasoningText,
+    answerText,
+    toolCalls = [],
+    usage,
+    getEmptyResponseTip,
+    completeMessages
+  } = await createLLMResponse({
     body: {
       model: modelData.model,
       temperature,
@@ -70,11 +86,73 @@ export const dispatchPlanAgent = async ({
     onStreaming
   });
 
+  if (!answerText && !reasoningText && !toolCalls.length) {
+    return Promise.reject(getEmptyResponseTip());
+  }
+
+  // TODO: 需要考虑多个 Interactive 并发的情况
+  let interactiveResponse: InteractiveNodeResponseType = {
+    type: 'agentPlanCheck',
+    params: {}
+  };
+
+  for await (const call of toolCalls) {
+    const toolId = call.function.name;
+
+    if (toolId === SubAppIds.ask) {
+      const params = parseToolArgs<AskAgentToolParamsType>(call.function.arguments);
+
+      if (params.mode === 'select') {
+        interactiveResponse = {
+          type: 'agentPlanAskUserSelect',
+          params: {
+            description: params?.prompt ?? '选择选项',
+            userSelectOptions: params?.options?.map((v, i) => {
+              return { key: `option${i}`, value: v };
+            })
+          }
+        } as InteractiveNodeResponseType;
+      }
+      if (params.mode === 'input') {
+        interactiveResponse = {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: params?.prompt ?? '输入详细信息'
+          }
+        };
+      }
+    }
+  }
+
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens
   });
+
+  const toolMessages: ChatCompletionMessageParam[] = [];
+  if (answerText) {
+    const toolId = getNanoid(6);
+    const toolCall: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      tool_calls: [
+        {
+          id: toolId,
+          type: 'function',
+          function: {
+            name: SubAppIds.plan,
+            arguments: ''
+          }
+        }
+      ]
+    };
+    const toolCallResponse: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: toolId,
+      content: answerText
+    };
+    toolMessages.push(toolCall, toolCallResponse);
+  }
 
   return {
     response: answerText,
@@ -86,6 +164,9 @@ export const dispatchPlanAgent = async ({
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
-    ]
+    ],
+    completeMessages,
+    toolMessages,
+    interactiveResponse
   };
 };

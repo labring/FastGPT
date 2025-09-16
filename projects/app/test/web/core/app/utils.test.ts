@@ -1,29 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import {
-  form2AppWorkflow,
-  filterSensitiveFormData,
-  getAppQGuideCustomURL
-} from '@/web/core/app/utils';
+import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
 
 describe('form2AppWorkflow', () => {
   const mockT = (str: string) => str;
 
   it('should generate simple chat workflow when no datasets or tools selected', () => {
-    const form = {
+    const form: AppFormEditFormType = {
       aiSettings: {
-        model: 'gpt-3.5',
-        temperature: 0.7,
-        maxToken: 2000,
-        systemPrompt: 'You are a helpful assistant',
+        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiChatTemperature]: 0.7,
+        [NodeInputKeyEnum.aiChatMaxToken]: 2000,
+        [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
         maxHistories: 5,
-        aiChatReasoning: true,
-        aiChatTopP: 0.8,
-        aiChatStopSign: '',
-        aiChatResponseFormat: '',
-        aiChatJsonSchema: ''
+        [NodeInputKeyEnum.aiChatIsResponseText]: true,
+        [NodeInputKeyEnum.aiChatReasoning]: true,
+        [NodeInputKeyEnum.aiChatTopP]: 0.8,
+        [NodeInputKeyEnum.aiChatStopSign]: '',
+        [NodeInputKeyEnum.aiChatResponseFormat]: '',
+        [NodeInputKeyEnum.aiChatJsonSchema]: ''
       },
       dataset: {
         datasets: [],
@@ -49,21 +48,29 @@ describe('form2AppWorkflow', () => {
   });
 
   it('should generate dataset workflow when datasets are selected', () => {
-    const form = {
+    const form: AppFormEditFormType = {
       aiSettings: {
-        model: 'gpt-3.5',
-        temperature: 0.7,
-        maxToken: 2000,
-        systemPrompt: 'You are a helpful assistant',
+        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiChatTemperature]: 0.7,
+        [NodeInputKeyEnum.aiChatMaxToken]: 2000,
+        [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
         maxHistories: 5,
-        aiChatReasoning: true,
-        aiChatTopP: 0.8,
-        aiChatStopSign: '',
-        aiChatResponseFormat: '',
-        aiChatJsonSchema: ''
+        [NodeInputKeyEnum.aiChatIsResponseText]: true,
+        [NodeInputKeyEnum.aiChatReasoning]: true,
+        [NodeInputKeyEnum.aiChatTopP]: 0.8,
+        [NodeInputKeyEnum.aiChatStopSign]: '',
+        [NodeInputKeyEnum.aiChatResponseFormat]: '',
+        [NodeInputKeyEnum.aiChatJsonSchema]: ''
       },
       dataset: {
-        datasets: ['dataset1'],
+        datasets: [
+          {
+            datasetId: 'dataset1',
+            avatar: '',
+            name: 'Test Dataset',
+            vectorModel: { model: 'text-embedding-ada-002' } as any
+          }
+        ],
         similarity: 0.8,
         limit: 1500,
         searchMode: 'embedding',
@@ -88,14 +95,32 @@ describe('form2AppWorkflow', () => {
 
 describe('filterSensitiveFormData', () => {
   it('should filter sensitive data from app form', () => {
-    const appForm = {
+    const appForm: AppFormEditFormType = {
       aiSettings: {
-        model: 'gpt-4',
-        temperature: 0.8
+        [NodeInputKeyEnum.aiModel]: 'gpt-4',
+        [NodeInputKeyEnum.aiChatTemperature]: 0.8,
+        maxHistories: 5,
+        [NodeInputKeyEnum.aiChatIsResponseText]: true
       },
       dataset: {
-        datasets: ['sensitive-dataset'],
-        similarity: 0.9
+        datasets: [
+          {
+            datasetId: 'sensitive-dataset',
+            avatar: '',
+            name: 'Sensitive Dataset',
+            vectorModel: { model: 'text-embedding-ada-002' } as any
+          }
+        ],
+        searchMode: 'embedding' as any,
+        similarity: 0.9,
+        limit: 1500,
+        embeddingWeight: 0.7,
+        usingReRank: false,
+        rerankModel: '',
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: false,
+        datasetSearchExtensionModel: '',
+        datasetSearchExtensionBg: ''
       },
       selectedTools: [],
       chatConfig: {}
@@ -125,7 +150,7 @@ describe('getAppQGuideCustomURL', () => {
           ]
         }
       ]
-    };
+    } as any;
 
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('https://example.com');
@@ -139,7 +164,7 @@ describe('getAppQGuideCustomURL', () => {
           inputs: []
         }
       ]
-    };
+    } as any;
 
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('');
