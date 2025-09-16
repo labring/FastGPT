@@ -6,7 +6,7 @@ export const getPlanAgentPrompt = (background?: string) => {
 ${
   background
     ? `<user_role>
-{{userRole}}
+${background}
 </user_role>`
     : ''
 }
