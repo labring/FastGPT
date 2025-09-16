@@ -80,6 +80,10 @@ import type {
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
+import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
+import type { GetConfigurationResponse } from '@/pages/api/core/dataset/database/getConfiguration';
+import type { DetectChangesResponse } from '@/pages/api/core/dataset/database/detectChanges';
+import type { CreateDatabaseCollectionsBody } from '@/pages/api/core/dataset/database/createCollections';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -319,3 +323,60 @@ export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
 
 export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
   POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);
+
+/* ================== database ======================== */
+/**
+ * 搜索测试 (需要结合text2SQL微服务，确认数据口径)
+ */
+export const postDatasetCollectionSearchTest = (collectionId: string) =>
+  POST(`/core/dataset/collection/searchTest`, { collectionId });
+
+/**
+ * 更新数据配置
+ */
+export const postUpdateDatasetCollectionConfig = (data: {
+  collectionId: string;
+  [key: string]: any;
+}) => POST(`/core/dataset/collection/update`, data);
+
+/**
+ * 检测变更 | 刷新数据源
+ */
+export const postDetectDatabaseChanges = (data: { datasetId: string }) =>
+  POST<DetectChangesResponse>(`/core/dataset/database/detectChanges?datasetId=${data.datasetId}`);
+
+/**
+ * 创建数据库知识库数据集
+ */
+export const postCreateDatabaseCollections = (
+  data: { datasetId: string } & CreateDatabaseCollectionsBody
+) => {
+  const { datasetId, ...body } = data;
+
+  return POST(`/core/dataset/database/createCollections?datasetId=${datasetId}`, body);
+};
+
+/**
+ * 获取数据配置
+ */
+export const postGetDatabaseConfiguration = (data: { datasetId: string }) =>
+  GET<GetConfigurationResponse>(
+    `/core/dataset/database/getConfiguration?datasetId=${data.datasetId}`
+  );
+
+/**
+ * 连通性测试
+ * TODO-lyx 临时适配后端接口，参数要变更
+ */
+export const postCheckDatabaseConnection = (data: {
+  datasetId: string;
+  databaseConfig: DatabaseConfig;
+}) => {
+  const { datasetId, databaseConfig } = data;
+  return POST(`/core/dataset/database/checkConnection?datasetId=${datasetId}`, { databaseConfig });
+};
+
+/**
+ * 更新知识库配置
+ */
+export const updateDatasetConfig = (data: DatasetUpdateBody) => POST(`/core/dataset/update`, data);
