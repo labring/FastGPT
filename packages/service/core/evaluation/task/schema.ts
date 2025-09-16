@@ -215,15 +215,15 @@ export const EvaluationItemSchema = new Schema({
     required: true
   },
   target: EvaluationTargetSchema,
-  evaluator: EvaluationEvaluatorSchema, // Single evaluator configuration
+  evaluators: [EvaluationEvaluatorSchema], // Multiple evaluator configurations
   // Execution results
   targetOutput: {
     type: Schema.Types.Mixed,
     default: {}
   },
-  evaluatorOutput: {
-    type: Schema.Types.Mixed,
-    default: {}
+  evaluatorOutputs: {
+    type: [Schema.Types.Mixed],
+    default: []
   },
   status: {
     type: Number,

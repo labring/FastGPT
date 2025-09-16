@@ -5,11 +5,8 @@ import type {
   CreateEvaluationParams,
   EvaluationItemDisplayType,
   TargetCallParams,
-  EvaluationDataItemType,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import type { DataItemListResponse } from '@fastgpt/global/core/evaluation/api';
-import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
@@ -25,9 +22,6 @@ import { buildEvalDataConfig } from '../summary/util/weightCalculator';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type ClientSession } from '../../../common/mongo';
-
-// Constants
-const MAX_EXPORT_PAGE_SIZE = 100000;
 
 export class EvaluationTaskService {
   static async createEvaluation(
@@ -173,17 +167,10 @@ export class EvaluationTaskService {
     tmbId?: string,
     isOwner: boolean = false,
     appName?: string,
-    appId?: string,
-    versionId?: string
+    appId?: string
   ): Promise<{ list: EvaluationDisplayType[]; total: number }> {
     // Build basic filter and pagination
     const filter: any = { teamId: new Types.ObjectId(teamId) };
-    if (searchKey) {
-      filter.$or = [
-        { name: { $regex: searchKey, $options: 'i' } },
-        { description: { $regex: searchKey, $options: 'i' } }
-      ];
-    }
     const skip = offset;
     const limit = pageSize;
     const sort = { createTime: -1 as const };
@@ -247,7 +234,7 @@ export class EvaluationTaskService {
     ];
 
     // Add target filtering stage if any target filters are provided
-    if (appName || appId || versionId) {
+    if (appName || appId) {
       const targetFilter: any = {};
 
       if (appName) {
@@ -258,11 +245,21 @@ export class EvaluationTaskService {
         targetFilter['target.config.appId'] = appId;
       }
 
-      if (versionId) {
-        targetFilter['target.config.versionId'] = versionId;
-      }
-
       aggregationPipeline.push({ $match: targetFilter });
+    }
+
+    // Add searchKey filtering after target config is populated (includes versionId/versionName search)
+    if (searchKey) {
+      aggregationPipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: searchKey, $options: 'i' } },
+            { description: { $regex: searchKey, $options: 'i' } },
+            { 'target.config.versionId': { $regex: searchKey, $options: 'i' } },
+            { 'target.config.versionName': { $regex: searchKey, $options: 'i' } }
+          ]
+        }
+      });
     }
 
     const [evaluations, total] = await Promise.all([
@@ -276,7 +273,7 @@ export class EvaluationTaskService {
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: ['$evalId', '$evalId'] }
+                  $expr: { $eq: ['$evalId', '$$evalId'] }
                 }
               },
               {
@@ -402,7 +399,7 @@ export class EvaluationTaskService {
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ['$evalId', '$evalId'] }
+                $expr: { $eq: ['$evalId', '$$evalId'] }
               }
             },
             {
@@ -480,35 +477,6 @@ export class EvaluationTaskService {
     }
 
     return evaluation;
-  }
-
-  static async listEvaluationItems(
-    evalId: string,
-    teamId: string,
-    offset: number = 0,
-    pageSize: number = 20
-  ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    const skip = offset;
-    const limit = pageSize;
-
-    const [items, total] = await Promise.all([
-      MongoEvalItem.find({ evalId: evaluation._id })
-        .sort({ createTime: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .then((items) =>
-          items.map((item) => ({
-            ...item,
-            evalItemId: item._id.toString()
-          }))
-        ),
-      MongoEvalItem.countDocuments({ evalId: evaluation._id })
-    ]);
-
-    return { items, total };
   }
 
   static async startEvaluation(evalId: string, teamId: string): Promise<void> {
@@ -676,6 +644,29 @@ export class EvaluationTaskService {
 
   // ========================= Evaluation Item Related APIs =========================
 
+  static async listEvaluationItems(
+    evalId: string,
+    teamId: string,
+    offset: number = 0,
+    pageSize: number = 20
+  ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
+    const evaluation = await this.getEvaluation(evalId, teamId);
+
+    const skip = offset;
+    const limit = pageSize;
+
+    const [items, total] = await Promise.all([
+      MongoEvalItem.find({ evalId: evaluation._id })
+        .sort({ createTime: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      MongoEvalItem.countDocuments({ evalId: evaluation._id })
+    ]);
+
+    return { items, total };
+  }
+
   static async getEvaluationItem(
     itemId: string,
     teamId: string
@@ -749,6 +740,38 @@ export class EvaluationTaskService {
     if (result.matchedCount === 0) {
       throw new Error(EvaluationErrEnum.evalItemNotFound);
     }
+
+    // If actual update occurred, re-queue the item for evaluation
+    if (result.modifiedCount > 0) {
+      // Get the updated item to determine the evalId
+      const updatedItem = await MongoEvalItem.findById(itemId, 'evalId');
+      if (updatedItem) {
+        // Reset evaluation results and re-queue
+        await MongoEvalItem.updateOne(
+          { _id: new Types.ObjectId(itemId) },
+          {
+            $set: {
+              status: EvaluationStatusEnum.queuing,
+              retry: 3
+            },
+            $unset: {
+              targetOutput: 1,
+              evaluatorOutputs: 1,
+              finishTime: 1,
+              errorMessage: 1
+            }
+          }
+        );
+
+        // Re-submit to evaluation queue
+        await evaluationItemQueue.add(`eval_item_update_${itemId}`, {
+          evalId: updatedItem.evalId.toString(),
+          evalItemId: itemId
+        });
+
+        addLog.debug(`[Evaluation] Item updated and re-queued for evaluation: ${itemId}`);
+      }
+    }
   }
 
   static async deleteEvaluationItem(itemId: string, teamId: string): Promise<void> {
@@ -813,7 +836,7 @@ export class EvaluationTaskService {
             status: EvaluationStatusEnum.queuing,
             retry: Math.max(item.retry || 0, 1), // Ensure at least 1 retry chance
             targetOutput: {},
-            evaluatorOutput: {}
+            evaluatorOutputs: []
           },
           $unset: {
             finishTime: 1,
@@ -886,7 +909,7 @@ export class EvaluationTaskService {
           $set: {
             status: EvaluationStatusEnum.queuing,
             targetOutput: {},
-            evaluatorOutput: {}
+            evaluatorOutputs: []
           },
           $unset: {
             finishTime: 1,
@@ -934,22 +957,9 @@ export class EvaluationTaskService {
   static async getEvaluationItemResult(
     itemId: string,
     teamId: string
-  ): Promise<{
-    item: EvaluationItemSchemaType;
-    dataItem: EvaluationDataItemType;
-    response?: string;
-    result?: MetricResult;
-    score?: number;
-  }> {
+  ): Promise<EvaluationItemSchemaType> {
     const item = await this.getEvaluationItem(itemId, teamId);
-
-    return {
-      item,
-      dataItem: item.dataItem,
-      response: item.targetOutput?.actualOutput,
-      result: item.evaluatorOutput,
-      score: item.evaluatorOutput?.data?.score
-    };
+    return item;
   }
 
   // Search evaluation items
@@ -991,7 +1001,7 @@ export class EvaluationTaskService {
         scoreFilter.$lte = scoreRange.max;
       }
       if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutput.data.score'] = scoreFilter;
+        filter['evaluatorOutputs.0.data.score'] = scoreFilter;
       }
     }
 
@@ -1043,10 +1053,10 @@ export class EvaluationTaskService {
         userInput: item.dataItem?.userInput,
         expectedOutput: item.dataItem?.expectedOutput,
         actualOutput: item.targetOutput?.actualOutput,
-        score: item.evaluatorOutput?.data?.score,
+        scores: item.evaluatorOutputs?.map((output) => output?.data?.score) || [],
         status: item.status,
         targetOutput: item.targetOutput,
-        evaluatorOutput: item.evaluatorOutput,
+        evaluatorOutputs: item.evaluatorOutputs,
         errorMessage: item.errorMessage,
         finishTime: item.finishTime
       }));
@@ -1058,12 +1068,23 @@ export class EvaluationTaskService {
         return { results: Buffer.from(''), total: 0 };
       }
 
+      // Collect all unique metric names from evaluator outputs
+      const metricNames = new Set<string>();
+      items.forEach((item) => {
+        item.evaluatorOutputs?.forEach((output) => {
+          if (output?.data?.metricName) {
+            metricNames.add(output.data.metricName);
+          }
+        });
+      });
+      const sortedMetricNames = Array.from(metricNames).sort();
+
       const headers = [
         'ItemId',
         'UserInput',
         'ExpectedOutput',
         'ActualOutput',
-        'Score',
+        ...sortedMetricNames, // Dynamic metric columns
         'Status',
         'ErrorMessage',
         'FinishTime'
@@ -1072,12 +1093,21 @@ export class EvaluationTaskService {
       const csvRows = [headers.join(',')];
 
       items.forEach((item) => {
+        // Create a map of metric name to score for easier lookup
+        const metricScoreMap = new Map<string, number>();
+        item.evaluatorOutputs?.forEach((output) => {
+          if (output?.data?.metricName && output.data.score !== undefined) {
+            metricScoreMap.set(output.data.metricName, output.data.score);
+          }
+        });
+
         const row = [
           item._id.toString(),
           `"${(item.dataItem?.userInput || '').replace(/"/g, '""')}"`,
           `"${(item.dataItem?.expectedOutput || '').replace(/"/g, '""')}"`,
           `"${(item.targetOutput?.actualOutput || '').replace(/"/g, '""')}"`,
-          item.evaluatorOutput?.data?.score || '',
+          // Add scores for each metric column in the same order as headers
+          ...sortedMetricNames.map((metricName) => metricScoreMap.get(metricName) || ''),
           item.status || '',
           `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
           item.finishTime || ''
@@ -1086,352 +1116,6 @@ export class EvaluationTaskService {
       });
 
       return { results: Buffer.from(csvRows.join('\n')), total };
-    }
-  }
-
-  // ========================= DataItem Aggregation APIs =========================
-
-  static async listDataItemsGrouped(
-    teamId: string,
-    options: {
-      evalId: string;
-      status?: number;
-      keyword?: string;
-      offset?: number;
-      pageSize?: number;
-    }
-  ): Promise<DataItemListResponse> {
-    const { evalId, status, keyword, offset = 0, pageSize = 20 } = options;
-
-    // Verify team access to the evaluation task
-    await this.getEvaluation(evalId, teamId);
-
-    // Build match stage
-    const matchStage: any = {
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    if (status !== undefined) {
-      matchStage.status = status;
-    }
-
-    if (keyword) {
-      matchStage.$or = [
-        { 'dataItem.userInput': { $regex: keyword, $options: 'i' } },
-        { 'dataItem.expectedOutput': { $regex: keyword, $options: 'i' } }
-      ];
-    }
-
-    // Build aggregation pipeline
-    const aggregationPipeline = [
-      { $match: matchStage },
-      {
-        $group: {
-          _id: '$dataItem._id',
-          dataItem: { $first: '$dataItem' },
-          items: { $push: '$$ROOT' },
-          totalItems: { $sum: 1 },
-          completedItems: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
-          },
-          errorItems: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          }
-        }
-      },
-      {
-        $addFields: {
-          dataItemId: '$_id',
-          'statistics.totalItems': '$totalItems',
-          'statistics.completedItems': '$completedItems',
-          'statistics.errorItems': '$errorItems'
-        }
-      },
-      { $sort: { totalItems: -1 as const, _id: 1 as const } }
-    ];
-
-    // Simple Promise.all approach like listEvaluationItems
-    const [list, total] = await Promise.all([
-      // Get paginated results with projection
-      MongoEvalItem.aggregate([
-        ...aggregationPipeline,
-        { $skip: offset },
-        { $limit: pageSize },
-        {
-          $project: {
-            dataItemId: 1,
-            dataItem: 1,
-            items: {
-              $map: {
-                input: '$items',
-                as: 'item',
-                in: {
-                  $mergeObjects: ['$$item', { evalItemId: { $toString: '$$item._id' } }]
-                }
-              }
-            },
-            statistics: {
-              totalItems: '$totalItems',
-              completedItems: '$completedItems',
-              errorItems: '$errorItems'
-            }
-          }
-        }
-      ]),
-      // Get total count
-      MongoEvalItem.aggregate([...aggregationPipeline, { $count: 'total' }]).then(
-        (result) => result[0]?.total || 0
-      )
-    ]);
-
-    return {
-      list,
-      total
-    };
-  }
-
-  static async deleteEvaluationItemsByDataItem(
-    dataItemId: string,
-    teamId: string,
-    evalId: string
-  ): Promise<{ deletedCount: number }> {
-    // Verify team access to the evaluation task
-    await this.getEvaluation(evalId, teamId);
-
-    const filter: any = {
-      'dataItem._id': new Types.ObjectId(dataItemId),
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    // Find items to delete
-    const itemsToDelete = await MongoEvalItem.find(filter).lean();
-
-    if (itemsToDelete.length === 0) {
-      return { deletedCount: 0 };
-    }
-
-    const deleteOperation = async (session: ClientSession) => {
-      // Clean up queue jobs for items to be deleted
-      const itemIds = itemsToDelete.map((item) => item._id.toString());
-      const cleanupPromises = itemIds.map((itemId) =>
-        removeEvaluationItemJobsByItemId(itemId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        })
-      );
-
-      await Promise.allSettled(cleanupPromises);
-
-      // Delete the items
-      const result = await MongoEvalItem.deleteMany(filter, { session });
-
-      addLog.debug(`[Evaluation] Deleted ${result.deletedCount} items for dataItem: ${dataItemId}`);
-
-      return result.deletedCount;
-    };
-
-    const deletedCount = await mongoSessionRun(deleteOperation);
-
-    return {
-      deletedCount
-    };
-  }
-
-  static async retryEvaluationItemsByDataItem(
-    dataItemId: string,
-    teamId: string,
-    evalId: string
-  ): Promise<{ retriedCount: number }> {
-    // Verify evaluation access first
-    await this.getEvaluation(evalId, teamId);
-
-    const filter: any = {
-      'dataItem._id': new Types.ObjectId(dataItemId),
-      evalId: new Types.ObjectId(evalId),
-      status: EvaluationStatusEnum.error
-    };
-
-    // Find items to retry
-    const itemsToRetry = await MongoEvalItem.find(filter).lean();
-
-    if (itemsToRetry.length === 0) {
-      return { retriedCount: 0 };
-    }
-
-    const retryOperation = async (session: ClientSession) => {
-      // Clean up existing jobs
-      const itemIds = itemsToRetry.map((item) => item._id.toString());
-      const cleanupPromises = itemIds.map((itemId) =>
-        removeEvaluationItemJobsByItemId(itemId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        })
-      );
-
-      await Promise.allSettled(cleanupPromises);
-
-      // Update items status
-      const result = await MongoEvalItem.updateMany(
-        { _id: { $in: itemsToRetry.map((item) => item._id) } },
-        {
-          $set: {
-            status: EvaluationStatusEnum.queuing,
-            targetOutput: {},
-            evaluatorOutput: {}
-          },
-          $unset: {
-            finishTime: 1,
-            errorMessage: 1
-          },
-          $inc: { retry: 1 }
-        },
-        { session }
-      );
-
-      // Resubmit to queue
-      const jobs = itemsToRetry.map((item, index) => ({
-        name: `eval_item_dataitem_retry_${dataItemId}_${index}`,
-        data: {
-          evalId: item.evalId,
-          evalItemId: item._id.toString()
-        },
-        opts: {
-          delay: index * 100
-        }
-      }));
-
-      await evaluationItemQueue.addBulk(jobs);
-
-      addLog.debug(
-        `[Evaluation] Retried ${result.modifiedCount} items for dataItem: ${dataItemId}`
-      );
-
-      return result.modifiedCount;
-    };
-
-    const retriedCount = await mongoSessionRun(retryOperation);
-
-    return {
-      retriedCount
-    };
-  }
-
-  static async updateEvaluationItemsByDataItem(
-    dataItemId: string,
-    updates: {
-      userInput?: string;
-      expectedOutput?: string;
-      context?: string[];
-      targetCallParams?: TargetCallParams;
-    },
-    teamId: string,
-    evalId: string
-  ): Promise<{ updatedCount: number }> {
-    // Verify evaluation access first
-    await this.getEvaluation(evalId, teamId);
-
-    // Build MongoDB update object with dot notation
-    const updateObj = this.buildEvaluationDataItemUpdateObject(updates);
-    if (Object.keys(updateObj).length === 0) {
-      return { updatedCount: 0 };
-    }
-
-    const filter: any = {
-      'dataItem._id': new Types.ObjectId(dataItemId),
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    const result = await MongoEvalItem.updateMany(filter, { $set: updateObj });
-
-    addLog.debug(`[Evaluation] Updated ${result.modifiedCount} items for dataItem: ${dataItemId}`);
-
-    return {
-      updatedCount: result.modifiedCount
-    };
-  }
-
-  static async exportEvaluationResultsGroupedByDataItem(
-    teamId: string,
-    evalId: string,
-    format: 'csv' | 'json' = 'json'
-  ): Promise<{ results: Buffer; totalItems: number }> {
-    // Get evaluation config for metric names
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    // Use listDataItemsGrouped to get all dataItems (large pageSize to get all)
-    const { list: dataItems } = await this.listDataItemsGrouped(teamId, {
-      evalId,
-      offset: 0,
-      pageSize: MAX_EXPORT_PAGE_SIZE // Large pageSize to get all items
-    });
-
-    if (dataItems.length === 0) {
-      const emptyResult = format === 'json' ? '[]' : '';
-      return {
-        results: Buffer.from(emptyResult),
-        totalItems: 0
-      };
-    }
-
-    // Extract metric names from evaluation config
-    const metricNames = evaluation.evaluators.map(
-      (evaluator) => evaluator.metric.name || evaluator.metric._id || 'Unknown Metric'
-    );
-
-    // Transform listDataItemsGrouped result to export format (remove totalItems, completedItems, errorItems)
-    const exportData = dataItems.map((groupedItem: any) => {
-      const dataItemExport = {
-        dataItemId: groupedItem.dataItemId,
-        userInput: groupedItem.dataItem?.userInput,
-        expectedOutput: groupedItem.dataItem?.expectedOutput,
-        actualOutput: groupedItem.items.find((item: any) => item.targetOutput?.actualOutput)
-          ?.targetOutput?.actualOutput,
-        // Build metric scores object
-        metricScores: {} as Record<string, number>
-      };
-
-      // Add scores for each metric from the grouped items
-      groupedItem.items.forEach((item: any) => {
-        if (item.evaluator?.metric?.name && item.evaluatorOutput?.data?.score !== undefined) {
-          const metricName = item.evaluator.metric.name;
-          dataItemExport.metricScores[metricName] = item.evaluatorOutput.data.score;
-        }
-      });
-
-      return dataItemExport;
-    });
-
-    if (format === 'json') {
-      return {
-        results: Buffer.from(JSON.stringify(exportData, null, 2)),
-        totalItems: exportData.length
-      };
-    } else {
-      // CSV format with dynamic metric columns (remove totalItems, completedItems, errorItems)
-      const baseHeaders = ['DataItemId', 'UserInput', 'ExpectedOutput', 'ActualOutput'];
-
-      const headers = [...baseHeaders, ...metricNames];
-      const csvRows = [headers.join(',')];
-
-      exportData.forEach((dataItem) => {
-        const row = [
-          dataItem.dataItemId,
-          `"${(dataItem.userInput || '').replace(/"/g, '""')}"`,
-          `"${(dataItem.expectedOutput || '').replace(/"/g, '""')}"`,
-          `"${(dataItem.actualOutput || '').replace(/"/g, '""')}"`,
-          // Add metric scores in the same order as headers
-          ...metricNames.map((metricName) => dataItem.metricScores[metricName] || '')
-        ];
-
-        csvRows.push(row.join(','));
-      });
-
-      return {
-        results: Buffer.from(csvRows.join('\n')),
-        totalItems: exportData.length
-      };
     }
   }
 }
