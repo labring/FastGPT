@@ -1,4 +1,5 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   ConfirmPlanAgentText,
   DispatchNodeResponseKeyEnum,
@@ -17,6 +18,7 @@ import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
+  chatValue2RuntimePrompt,
   chats2GPTMessages,
   getSystemPrompt_ChatItemType,
   runtimePrompt2ChatsValue
@@ -43,6 +45,7 @@ import { addFilePrompt2Input, getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
+import { getSubAppsPrompt } from './sub/plan/prompt';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -83,7 +86,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     params: {
       model,
       systemPrompt,
-      userChatInput,
+      userChatInput: taskInput,
       history = 6,
       fileUrlList: fileLinks,
       temperature,
@@ -117,6 +120,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   // Check interactive entry
   props.node.isEntry = false;
+
+  // 交互模式进来的话，这个值才是交互输入的值
+  const interactiveInput = lastInteractive ? chatValue2RuntimePrompt(query).text : '';
 
   try {
     // Get files
@@ -164,15 +170,90 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const toolNode = subAppsMap.get(id) || systemSubInfo[id];
       return {
         name: toolNode?.name || '',
-        avatar: toolNode?.avatar || ''
+        avatar: toolNode?.avatar || '',
+        toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
 
+    /* ===== Plan Agent ===== */
+    let planMessages: ChatCompletionMessageParam[] = [];
+    /* 
+      Top agent
+      1. 首轮执行：有
+      2. 交互/check：有
+      3. Confirmed plan: 无
+      4. masteragent 的交互时间: 无
+
+      Sub agent
+      只会执行一次，肯定有。
+    */
+    let masterPlanToolCallMessages: ChatCompletionMessageParam[] = [];
+
+    if (
+      // 不为 userSelect 和 userInput，或者如果为 agentPlanCheck 并且 interactiveInput !== ConfirmPlanAgentText 都会执行
+      (lastInteractive?.type !== 'userSelect' &&
+        lastInteractive?.type !== 'userInput' &&
+        lastInteractive?.type !== 'agentPlanCheck') ||
+      (lastInteractive?.type === 'agentPlanCheck' && interactiveInput !== ConfirmPlanAgentText)
+    ) {
+      // 临时代码
+      const tmpText = '正在进行规划生成...\n';
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: tmpText
+        })
+      });
+
+      const {
+        answerText,
+        planList,
+        planToolCallMessages,
+        completeMessages,
+        usages,
+        interactiveResponse
+      } = await dispatchPlanAgent({
+        historyMessages: planHistoryMessages,
+        userInput: lastInteractive ? interactiveInput : taskInput,
+        interactive: lastInteractive,
+        subAppPrompt: getSubAppsPrompt({ subAppList, getSubAppInfo }),
+        model,
+        systemPrompt,
+        temperature,
+        top_p: aiChatTopP,
+        stream,
+        isTopPlanAgent: workflowDispatchDeep === 1
+      });
+
+      const text = `${answerText}${planList ? `\n\`\`\`json\n${JSON.stringify(planList, null, 2)}\n\`\`\`` : ''}`;
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text
+        })
+      });
+
+      planMessages = completeMessages;
+      masterPlanToolCallMessages = planToolCallMessages;
+
+      // TODO: usage 合并
+      // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
+      if (interactiveResponse) {
+        return {
+          [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
+          [DispatchNodeResponseKeyEnum.memories]: {
+            [planMessagesKey]: filterMemoryMessages(planMessages)
+          },
+          [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+        };
+      }
+    }
+
+    /* ===== Master agent ===== */
+
     // Get master request messages
     const systemMessages = chats2GPTMessages({
-      messages: getSystemPrompt_ChatItemType(
-        workflowDispatchDeep === 1 ? getMasterAgentDefaultPrompt() : systemPrompt
-      ),
+      messages: getSystemPrompt_ChatItemType(getMasterAgentDefaultPrompt()),
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
@@ -183,87 +264,24 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       return chats2GPTMessages({ messages: chatHistories, reserveId: false });
     })();
 
-    if (lastInteractive?.type !== 'userSelect' && lastInteractive?.type !== 'userInput') {
-      userChatInput = query[0].text?.content ?? userChatInput;
-    }
     const userMessages = chats2GPTMessages({
       messages: [
         {
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({
-            text: addFilePrompt2Input({ query: userChatInput, filePrompt: fileInputPrompt }),
+            text: addFilePrompt2Input({ query: taskInput, filePrompt: fileInputPrompt }),
             files: []
           })
         }
       ],
       reserveId: false
     });
-
-    const requestMessages = [...systemMessages, ...historyMessages, ...userMessages];
-
-    // TODO: 执行 plan function(只有lastInteractive userselect/userInput 时候，才不需要进入 plan)
-    if (
-      lastInteractive?.type !== 'userSelect' &&
-      lastInteractive?.type !== 'userInput' &&
-      userChatInput !== ConfirmPlanAgentText &&
-      workflowDispatchDeep === 1
-    ) {
-      const planRequestMessages = [...planHistoryMessages, ...userMessages];
-      const { completeMessages, toolMessages, usages, interactiveResponse } =
-        await dispatchPlanAgent({
-          messages: planRequestMessages,
-          subApps: subAppList,
-          model,
-          temperature,
-          top_p: aiChatTopP,
-          systemPrompt,
-          stream,
-          onReasoning: ({ text }: { text: string }) => {
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                reasoning_content: text
-              })
-            });
-          },
-          onStreaming: ({ text }: { text: string }) => {
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                text
-              })
-            });
-          }
-        });
-
-      if (toolMessages) requestMessages.push(...toolMessages);
-
-      return {
-        [DispatchNodeResponseKeyEnum.memories]: {
-          [masterMessagesKey]: filterMemoryMessages(requestMessages),
-          [planMessagesKey]: filterMemoryMessages(completeMessages)
-        },
-        [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
-
-        // Mock: 返回 plan user input
-        // [DispatchNodeResponseKeyEnum.interactive]: {
-        //   type: 'agentPlanAskUserForm',
-        //   params: {
-        //     description: '测试',
-        //     inputForm: [
-        //       {
-        //         type: FlowNodeInputTypeEnum.input,
-        //         key: 'test1',
-        //         label: '测试1',
-        //         value: '',
-        //         valueType: WorkflowIOValueTypeEnum.string,
-        //         required: true
-        //       }
-        //     ]
-        //   }
-        // }
-      };
-    }
+    const requestMessages = [
+      ...systemMessages,
+      ...historyMessages,
+      ...masterPlanToolCallMessages,
+      ...userMessages
+    ];
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
     const {
@@ -370,7 +388,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 isEnd: true
               };
             }
-            // TODO: 现在是程序中强制执行的 Plan
+            // TODO: 可能会再次触发 plan
             // else if (toolId === SubAppIds.plan) {
             // const { completeMessages, response, usages, interactiveResponse } =
             //   await dispatchPlanAgent({
@@ -392,18 +410,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             // };
             // }
             else if (toolId === SubAppIds.model) {
-              const { systemPrompt, task } = parseToolArgs<{
+              const params = parseToolArgs<{
                 systemPrompt: string;
                 task: string;
               }>(call.function.arguments);
+
+              if (!params) {
+                return {
+                  response: 'params is not object',
+                  usages: [],
+                  isEnd: false
+                };
+              }
 
               const { response, usages } = await dispatchModelAgent({
                 model,
                 temperature,
                 top_p: aiChatTopP,
                 stream,
-                systemPrompt,
-                task,
+                systemPrompt: params.systemPrompt,
+                task: params.task,
                 onReasoning,
                 onStreaming
               });
@@ -413,10 +439,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 isEnd: false
               };
             } else if (toolId === SubAppIds.fileRead) {
-              const { file_indexes } = parseToolArgs<{
+              const params = parseToolArgs<{
                 file_indexes: string[];
               }>(call.function.arguments);
-              if (!Array.isArray(file_indexes)) {
+              if (!params) {
+                return {
+                  response: 'params is not object',
+                  usages: [],
+                  isEnd: false
+                };
+              }
+              if (!Array.isArray(params.file_indexes)) {
                 return {
                   response: 'file_indexes is not array',
                   usages: [],
@@ -424,7 +457,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 };
               }
 
-              const files = file_indexes.map((index) => ({
+              const files = params.file_indexes.map((index) => ({
                 index,
                 url: filesMap[index]
               }));
@@ -452,6 +485,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               }
 
               const toolCallParams = parseToolArgs(call.function.arguments);
+
+              if (!toolCallParams) {
+                return {
+                  response: 'params is not object',
+                  usages: [],
+                  isEnd: false
+                };
+              }
+
               // Get params
               const requestParams = (() => {
                 const params: Record<string, any> = toolCallParams;
@@ -581,16 +623,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
 
     return {
-      data: {
-        [NodeOutputKeyEnum.answerText]: previewAssistantResponses
-          .filter((item) => item.text?.content)
-          .map((item) => item.text?.content || '')
-          .join('')
-      },
+      // 目前 Master 不会触发交互
+      // [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse,
       // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
         [masterMessagesKey]: filterMemoryMessages(completeMessages),
-        [planMessagesKey]: [filterMemoryMessages(planHistoryMessages)]
+        [planMessagesKey]: [filterMemoryMessages(planMessages)]
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -600,7 +638,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolCallOutputTokens: outputTokens,
         childTotalPoints: toolTotalPoints,
         model: modelName,
-        query: userChatInput,
+        query: taskInput,
         historyPreview: getHistoryPreview(
           GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
           10000,
@@ -620,8 +658,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         },
         // Tool usage
         ...subAppUsages
-      ],
-      [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+      ]
     };
   } catch (error) {
     return getNodeErrResponse({ error });
