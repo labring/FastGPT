@@ -27,6 +27,7 @@ import {
 } from '@/web/core/evaluation/dataset';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { EvalDatasetDataQualityResultEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 
 interface DataListModalsProps {
   total: number;
@@ -129,16 +130,23 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
       referenceAnswer: string;
       qualityMetadata?: Record<string, any>;
       synthesisMetadata?: Record<string, any>;
+      qualityResult?: string;
     },
     isGoNext = false
   ) => {
-    const { question, referenceAnswer, qualityMetadata, synthesisMetadata } = formData;
+    const { question, referenceAnswer, qualityMetadata, synthesisMetadata, qualityResult } =
+      formData;
     await updateDataFn({
       dataId: selectedItem._id,
       userInput: question,
       expectedOutput: referenceAnswer,
       qualityMetadata,
-      synthesisMetadata
+      synthesisMetadata,
+      ...(qualityResult
+        ? {
+            qualityResult: qualityResult as EvalDatasetDataQualityResultEnum
+          }
+        : {})
     });
     isGoNext && handleGoNextData();
     !isGoNext && onEditModalClose();
@@ -214,6 +222,9 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
         isOpen={isManualAddModalOpen}
         collectionId={collectionId}
         onClose={onManualAddModalClose}
+        defaultValues={{
+          autoEvaluation: true
+        }}
         onConfirm={refreshList}
       />
 
