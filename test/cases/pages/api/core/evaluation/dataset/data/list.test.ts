@@ -289,7 +289,7 @@ describe('EvalDatasetData List API', () => {
 
         const expectedMatch = {
           evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-          'metadata.qualityStatus': status
+          'qualityMetadata.status': status
         };
 
         expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
@@ -332,7 +332,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality,
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.highQuality,
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI', 'i') } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('AI', 'i') } },
@@ -362,7 +362,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.needsOptimization
       };
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
@@ -421,7 +421,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch1 = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality,
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.highQuality,
         $or: expect.arrayContaining([
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: expect.any(RegExp) } },
@@ -452,7 +452,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch2 = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization,
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.needsOptimization,
         $or: expect.arrayContaining([
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: expect.any(RegExp) } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: expect.any(RegExp) } },
@@ -487,7 +487,9 @@ describe('EvalDatasetData List API', () => {
             [EvalDatasetDataKeyEnum.ExpectedOutput]: 1,
             [EvalDatasetDataKeyEnum.Context]: 1,
             [EvalDatasetDataKeyEnum.RetrievalContext]: 1,
-            metadata: 1,
+            qualityMetadata: 1,
+            synthesisMetadata: 1,
+            qualityResult: 1,
             createFrom: 1,
             createTime: 1,
             updateTime: 1
@@ -536,7 +538,7 @@ describe('EvalDatasetData List API', () => {
           {
             $match: {
               evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-              'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
+              'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.highQuality
             }
           }
         ])
@@ -561,7 +563,7 @@ describe('EvalDatasetData List API', () => {
           {
             $match: {
               evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-              'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.needsOptimization,
+              'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.needsOptimization,
               $or: [
                 { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI', 'i') } },
                 { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('AI', 'i') } },
@@ -605,7 +607,9 @@ describe('EvalDatasetData List API', () => {
               'Artificial Intelligence is a field of computer science',
             [EvalDatasetDataKeyEnum.Context]: ['Machine learning context'],
             [EvalDatasetDataKeyEnum.RetrievalContext]: ['AI knowledge base'],
-            metadata: { quality: 'good' },
+            qualityMetadata: { status: 'unevaluated' },
+            synthesisMetadata: {},
+            qualityResult: undefined,
             createFrom: 'manual',
             createTime: expect.any(Date),
             updateTime: expect.any(Date)
@@ -618,7 +622,9 @@ describe('EvalDatasetData List API', () => {
               'Machine Learning works by training algorithms',
             [EvalDatasetDataKeyEnum.Context]: [],
             [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-            metadata: {},
+            qualityMetadata: { status: 'unevaluated' },
+            synthesisMetadata: {},
+            qualityResult: undefined,
             createFrom: 'auto',
             createTime: expect.any(Date),
             updateTime: expect.any(Date)
@@ -732,7 +738,9 @@ describe('EvalDatasetData List API', () => {
 
       const result = await handler_test(req as any);
 
-      expect(result.list[0].metadata).toEqual({});
+      expect(result.list[0].qualityMetadata).toEqual({ status: 'unevaluated' });
+      expect(result.list[0].synthesisMetadata).toEqual({});
+      expect(result.list[0].qualityResult).toEqual(undefined);
     });
 
     it('should convert ObjectId to string', async () => {
@@ -883,7 +891,9 @@ describe('EvalDatasetData List API', () => {
             [EvalDatasetDataKeyEnum.ExpectedOutput]: 1,
             [EvalDatasetDataKeyEnum.Context]: 1,
             [EvalDatasetDataKeyEnum.RetrievalContext]: 1,
-            metadata: 1,
+            qualityMetadata: 1,
+            synthesisMetadata: 1,
+            qualityResult: 1,
             createFrom: 1,
             createTime: 1,
             updateTime: 1
@@ -933,7 +943,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.highQuality
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.highQuality
       };
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
@@ -958,7 +968,7 @@ describe('EvalDatasetData List API', () => {
 
       const expectedMatch = {
         evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
-        'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.completed,
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.completed,
         $or: [
           { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI model', 'i') } },
           { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('AI model', 'i') } },

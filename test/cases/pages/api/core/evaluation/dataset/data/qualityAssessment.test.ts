@@ -314,9 +314,9 @@ describe('QualityAssessment API', () => {
 
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
-          'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvaluationModel,
-          'metadata.qualityQueueTime': expect.any(Date)
+          'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+          'qualityMetadata.model': validEvaluationModel,
+          'qualityMetadata.queueTime': expect.any(Date)
         }
       });
     });
@@ -524,9 +524,9 @@ describe('QualityAssessment API', () => {
       });
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
-          'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvaluationModel,
-          'metadata.qualityQueueTime': expect.any(Date)
+          'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+          'qualityMetadata.model': validEvaluationModel,
+          'qualityMetadata.queueTime': expect.any(Date)
         }
       });
       expect(result).toBe('success');
@@ -551,9 +551,9 @@ describe('QualityAssessment API', () => {
       });
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
-          'metadata.qualityStatus': EvalDatasetDataQualityStatusEnum.queuing,
-          'metadata.qualityModel': validEvaluationModel,
-          'metadata.qualityQueueTime': expect.any(Date)
+          'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
+          'qualityMetadata.model': validEvaluationModel,
+          'qualityMetadata.queueTime': expect.any(Date)
         }
       });
       expect(result).toBe('success');

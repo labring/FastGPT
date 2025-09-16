@@ -22,6 +22,10 @@ import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import ModifyEvaluationModal from './ModifyEvaluationModal';
 import { evaluationStatusMap, EvaluationStatus } from './const';
 import {
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum
+} from '@fastgpt/global/core/evaluation/dataset/constants';
+import {
   postEvaluationDatasetQualityAssessment,
   getEvaluationDatasetDataDetail
 } from '@/web/core/evaluation/dataset';
@@ -37,7 +41,10 @@ interface EditDataFormData {
 interface EditDataModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: EditDataFormData & { metadata: Record<string, any> }, isGoNext?: boolean) => void;
+  onSave: (
+    data: EditDataFormData & { qualityMetadata: any; qualityResult: string },
+    isGoNext?: boolean
+  ) => void;
   isLoading?: boolean;
   formData: listEvalDatasetDataResponse;
 }
@@ -58,22 +65,25 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   isLoading = false
 }) => {
   const evaluationStatus = useMemo(
-    () => formData?.metadata?.qualityStatus || EvaluationStatus.NotEvaluated,
+    () => formData?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated,
     [formData]
   );
-  const evaluationResult = useMemo(() => formData?.metadata?.qualityReason || '', [formData]);
+  const qualityReason = useMemo(() => formData?.qualityMetadata?.reason || '', [formData]);
   const defaultQuestion = useMemo(() => formData?.userInput || '', [formData]);
   const defaultReferenceAnswer = useMemo(() => formData?.expectedOutput || '', [formData]);
 
   const { t } = useTranslation();
-  const [currentEvaluationStatus, setCurrentEvaluationStatus] = useState<EvaluationStatus>(
-    formData?.metadata?.qualityStatus || EvaluationStatus.NotEvaluated
+  const [currentEvaluationStatus, setCurrentEvaluationStatus] = useState<string>(
+    formData?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated
   );
-  const [currentEvaluationResult, setCurrentEvaluationResult] = useState<string>(
-    formData?.metadata?.qualityReason
+  const [currentQualityReason, setCurrentQualityReason] = useState<string>(
+    formData?.qualityMetadata?.reason
+  );
+  const [currentQualityResult, setCurrentQualityResult] = useState<string>(
+    formData?.qualityResult || ''
   );
 
-  const [errorMsg, setErrorMsg] = useState(formData.metadata?.qualityError || '');
+  const [errorMsg, setErrorMsg] = useState(formData.qualityMetadata?.error || '');
 
   const [reviewBtns, setReviewBtns] = useState<ReviewBtnType[]>([
     {
@@ -94,31 +104,31 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   ]);
 
   // 根据评测状态更新按钮显示的公共函数
-  const updateButtonsByStatus = (status: EvaluationStatus) => {
+  const updateButtonsByStatus = (status: string, qualityResult?: string) => {
     setReviewBtns((prev) =>
       prev.map((btn) => {
         switch (btn.key) {
           case 'startReview':
             // 开始测评：只有状态为未测评时才显示
-            return { ...btn, isShow: status === EvaluationStatus.NotEvaluated };
+            return { ...btn, isShow: status === EvalDatasetDataQualityStatusEnum.unevaluated };
 
           case 'reStart':
-            // 重新测评：异常、质量高、待优化才显示
+            // 重新测评：异常、已完成(有质量结果)才显示
             return {
               ...btn,
-              isShow:
-                status === EvaluationStatus.Abnormal ||
-                status === EvaluationStatus.HighQuality ||
-                status === EvaluationStatus.NeedsImprovement
+              isShow: Boolean(
+                status === EvalDatasetDataQualityStatusEnum.error ||
+                  (status === EvalDatasetDataQualityStatusEnum.completed && qualityResult)
+              )
             };
 
           case 'modifyRes':
-            // 修改结果：异常、质量高、待优化才显示
+            // 修改结果：已完成且有质量结果时才显示
             return {
               ...btn,
-              isShow:
-                status === EvaluationStatus.HighQuality ||
-                status === EvaluationStatus.NeedsImprovement
+              isShow: Boolean(
+                status === EvalDatasetDataQualityStatusEnum.completed && !!qualityResult
+              )
             };
 
           default:
@@ -133,8 +143,9 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     postEvaluationDatasetQualityAssessment,
     {
       onError() {
-        setCurrentEvaluationStatus(formData?.metadata?.qualityStatus);
-        setCurrentEvaluationResult(formData?.metadata?.qualityReason);
+        setCurrentEvaluationStatus(formData?.qualityMetadata?.status);
+        setCurrentQualityReason(formData?.qualityMetadata?.reason);
+        setCurrentQualityResult(formData?.qualityResult || '');
       }
     }
   );
@@ -145,16 +156,20 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     pollingWhenHidden: false,
     manual:
       !isOpen ||
-      (currentEvaluationStatus !== EvaluationStatus.Evaluating &&
-        currentEvaluationStatus !== EvaluationStatus.Queuing),
+      (currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.evaluating &&
+        currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.queuing),
     ready: isOpen,
     onSuccess: (data: any) => {
-      if (data?.metadata?.qualityStatus !== currentEvaluationStatus) {
-        const newStatus = data?.metadata.qualityStatus || EvaluationStatus.NotEvaluated;
+      if (data?.qualityMetadata?.status !== currentEvaluationStatus) {
+        const newStatus =
+          data?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated;
+        const newQualityResult = data?.qualityResult || '';
         setCurrentEvaluationStatus(newStatus);
-        setCurrentEvaluationResult(data?.metadata.qualityReason || '');
-        updateButtonsByStatus(newStatus);
-        newStatus === EvaluationStatus.Abnormal && setErrorMsg(data?.metadata?.qualityError);
+        setCurrentQualityReason(data?.qualityMetadata?.reason || '');
+        setCurrentQualityResult(newQualityResult);
+        updateButtonsByStatus(newStatus, newQualityResult);
+        newStatus === EvalDatasetDataQualityStatusEnum.error &&
+          setErrorMsg(data?.qualityMetadata?.error);
       }
     }
   });
@@ -179,21 +194,23 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         referenceAnswer: defaultReferenceAnswer
       });
       setCurrentEvaluationStatus(evaluationStatus);
-      setCurrentEvaluationResult(evaluationResult);
+      setCurrentQualityReason(qualityReason);
+      setCurrentQualityResult(formData?.qualityResult || '');
 
       // 根据评测状态设置按钮显示状态
-      updateButtonsByStatus(evaluationStatus);
+      updateButtonsByStatus(evaluationStatus, formData?.qualityResult);
     }
-  }, [isOpen, defaultQuestion, defaultReferenceAnswer, evaluationStatus, evaluationResult, reset]);
+  }, [isOpen, defaultQuestion, defaultReferenceAnswer, evaluationStatus, qualityReason, reset]);
 
   const handleSaveClick = (data: EditDataFormData, isGoNext = false) => {
     onSave(
       {
         ...data,
-        metadata: {
-          qualityStatus: currentEvaluationStatus,
-          qualityReason: currentEvaluationResult
-        }
+        qualityMetadata: {
+          status: currentEvaluationStatus,
+          reason: currentQualityReason
+        },
+        qualityResult: currentQualityResult
       },
       isGoNext
     );
@@ -201,7 +218,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
   const renderEvaluationContent = () => {
     switch (currentEvaluationStatus) {
-      case EvaluationStatus.Queuing:
+      case EvalDatasetDataQualityStatusEnum.queuing:
         return (
           <VStack spacing={4} justify="center" h="100%">
             <HStack spacing={3} align="center">
@@ -213,7 +230,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           </VStack>
         );
 
-      case EvaluationStatus.Evaluating:
+      case EvalDatasetDataQualityStatusEnum.evaluating:
         return (
           <VStack spacing={4} justify="center" h="100%">
             <HStack spacing={3} align="center">
@@ -225,35 +242,47 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           </VStack>
         );
 
-      case EvaluationStatus.NeedsImprovement:
-        return (
-          <Box>
-            <HStack spacing={2} mb={4}>
-              <MyTag colorSchema="yellow" type={'fill'} fontWeight={500}>
-                {t(evaluationStatusMap[EvaluationStatus.NeedsImprovement])}
-              </MyTag>
-            </HStack>
-            <Text fontSize="14px" lineHeight="1.6" color="gray.700">
-              {currentEvaluationResult}
-            </Text>
-          </Box>
-        );
+      case EvalDatasetDataQualityStatusEnum.completed:
+        // 已完成的情况下，根据 qualityResult 显示结果
+        if (currentQualityResult === EvalDatasetDataQualityResultEnum.needsOptimization) {
+          return (
+            <Box>
+              <HStack spacing={2} mb={4}>
+                <MyTag colorSchema="yellow" type={'fill'} fontWeight={500}>
+                  {t(evaluationStatusMap[EvaluationStatus.NeedsImprovement])}
+                </MyTag>
+              </HStack>
+              <Text fontSize="14px" lineHeight="1.6" color="gray.700">
+                {currentQualityReason}
+              </Text>
+            </Box>
+          );
+        } else if (currentQualityResult === EvalDatasetDataQualityResultEnum.highQuality) {
+          return (
+            <Box>
+              <HStack spacing={2} mb={4}>
+                <MyTag colorSchema="green" type={'fill'} fontWeight={500}>
+                  {t(evaluationStatusMap[EvaluationStatus.HighQuality])}
+                </MyTag>
+              </HStack>
+              <Text fontSize="14px" lineHeight="1.6" color="gray.700">
+                {currentQualityReason}
+              </Text>
+            </Box>
+          );
+        } else {
+          // 没有质量结果的已完成状态
+          return (
+            <Box>
+              <Text fontSize="14px" color="gray.600">
+                {t('dashboard_evaluation:evaluation_completed_no_result') ||
+                  'Evaluation completed without result'}
+              </Text>
+            </Box>
+          );
+        }
 
-      case EvaluationStatus.HighQuality:
-        return (
-          <Box>
-            <HStack spacing={2} mb={4}>
-              <MyTag colorSchema="green" type={'fill'} fontWeight={500}>
-                {t(evaluationStatusMap[EvaluationStatus.HighQuality])}
-              </MyTag>
-            </HStack>
-            <Text fontSize="14px" lineHeight="1.6" color="gray.700">
-              {currentEvaluationResult}
-            </Text>
-          </Box>
-        );
-
-      case EvaluationStatus.Abnormal:
+      case EvalDatasetDataQualityStatusEnum.error:
         return (
           <VStack spacing={4} justify="center" h="100%">
             <Box borderRadius="md">
@@ -273,7 +302,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
           </VStack>
         );
 
-      case EvaluationStatus.NotEvaluated:
+      case EvalDatasetDataQualityStatusEnum.unevaluated:
       default:
         return (
           <VStack spacing={4} justify="center" h="100%">
@@ -306,8 +335,18 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   };
 
   const handleConfirm = (data: { result: EvaluationStatus; reason: string }) => {
-    setCurrentEvaluationStatus(data.result);
-    setCurrentEvaluationResult(data.reason);
+    // 将前端的 EvaluationStatus 转换为对应的状态和结果
+    if (
+      data.result === EvaluationStatus.HighQuality ||
+      data.result === EvaluationStatus.NeedsImprovement
+    ) {
+      setCurrentEvaluationStatus(EvalDatasetDataQualityStatusEnum.completed);
+      setCurrentQualityResult(data.result);
+    } else {
+      setCurrentEvaluationStatus(data.result);
+      setCurrentQualityResult('');
+    }
+    setCurrentQualityReason(data.reason);
     handleCloseModal();
   };
 
@@ -318,7 +357,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         await simulateEvaluation({ dataId: formData._id });
 
         // 设置评测状态为进行中
-        setCurrentEvaluationStatus(EvaluationStatus.Evaluating);
+        setCurrentEvaluationStatus(EvalDatasetDataQualityStatusEnum.evaluating);
 
         // 更新按钮状态
         setReviewBtns((prev) =>
@@ -401,8 +440,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   {t('dashboard_evaluation:quality_evaluation')}
                 </Text>
                 {/* 只有当不是评估中或排队中状态时才显示操作按钮 */}
-                {currentEvaluationStatus !== EvaluationStatus.Evaluating &&
-                  currentEvaluationStatus !== EvaluationStatus.Queuing && (
+                {currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.evaluating &&
+                  currentEvaluationStatus !== EvalDatasetDataQualityStatusEnum.queuing && (
                     <HStack ml={'auto'}>
                       {reviewBtns
                         .filter((btn) => btn.isShow)
@@ -477,10 +516,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         onConfirm={handleConfirm}
         defaultValues={{
           evaluationStatus:
-            currentEvaluationStatus === EvaluationStatus.HighQuality
-              ? EvaluationStatus.NeedsImprovement
-              : EvaluationStatus.HighQuality,
-          evaluationResult: currentEvaluationResult
+            currentQualityResult === EvalDatasetDataQualityResultEnum.highQuality
+              ? EvaluationStatus.HighQuality
+              : EvaluationStatus.NeedsImprovement,
+          evaluationResult: currentQualityReason
         }}
       />
     </>
