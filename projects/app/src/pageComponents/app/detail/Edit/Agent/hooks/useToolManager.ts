@@ -9,7 +9,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SkillOptionType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/type';
+import type { SkillOptionType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
@@ -28,7 +28,6 @@ export type ExtendedToolType = FlowNodeTemplateType & {
 type UseToolManagerProps = {
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
-  setConfigTool: (tool: ExtendedToolType | undefined) => void;
   selectedSkillKey?: string;
 };
 
@@ -36,6 +35,8 @@ type UseToolManagerReturn = {
   toolSkillOptions: SkillOptionType[];
   queryString: string | null;
   setQueryString: (value: string | null) => void;
+  configTool: ExtendedToolType | undefined;
+  setConfigTool: (tool: ExtendedToolType | undefined) => void;
 
   handleAddToolFromEditor: (toolKey: string) => Promise<string>;
   handleConfigureTool: (toolId: string) => void;
@@ -46,7 +47,6 @@ type UseToolManagerReturn = {
 export const useToolManager = ({
   appForm,
   setAppForm,
-  setConfigTool,
   selectedSkillKey
 }: UseToolManagerProps): UseToolManagerReturn => {
   const { t, i18n } = useTranslation();
@@ -54,6 +54,7 @@ export const useToolManager = ({
   const lang = i18n?.language as localeType;
   const [toolSkillOptions, setToolSkillOptions] = useState<SkillOptionType[]>([]);
   const [queryString, setQueryString] = useState<string | null>(null);
+  const [configTool, setConfigTool] = useState<ExtendedToolType>();
 
   const { data: pluginGroups = [] } = useRequest2(
     async () => {
@@ -383,6 +384,8 @@ export const useToolManager = ({
     toolSkillOptions,
     queryString,
     setQueryString,
+    configTool,
+    setConfigTool,
 
     handleAddToolFromEditor,
     handleConfigureTool,

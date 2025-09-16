@@ -72,14 +72,14 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const [configTool, setConfigTool] = useState<ExtendedToolType>();
   const [selectedSkillKey, setSelectedSkillKey] = useState<string>('');
-  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
   const {
     toolSkillOptions,
     queryString,
     setQueryString,
+    configTool,
+    setConfigTool,
     handleAddToolFromEditor,
     handleConfigureTool,
     handleRemoveToolFromEditor,
@@ -87,9 +87,10 @@ const EditForm = ({
   } = useToolManager({
     appForm,
     setAppForm,
-    setConfigTool,
     selectedSkillKey
   });
+
+  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
   const {
     isOpen: isOpenDatasetSelect,

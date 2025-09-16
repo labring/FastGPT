@@ -17,9 +17,44 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import { useRequest2 } from '../../../../../../hooks/useRequest';
-import { getSkillDisplayState, getToolDisplayState } from './utils';
-import type { SkillOptionType } from './type';
 import MyBox from '../../../../MyBox';
+
+export type SkillOptionType = {
+  key: string;
+  label: string;
+  icon?: string;
+  level: 'primary' | 'secondary' | 'tertiary';
+  parentKey?: string;
+  canOpen?: boolean;
+  categoryType?: string;
+  categoryLabel?: string;
+};
+
+const getDisplayState = ({
+  selectedKey,
+  skillOptionList,
+  skillOption
+}: {
+  selectedKey: string;
+  skillOptionList: SkillOptionType[];
+  skillOption: SkillOptionType;
+}) => {
+  const isCurrentFocus = selectedKey === skillOption.key;
+  const hasSelectedChild = skillOptionList.some(
+    (item) =>
+      item.parentKey === skillOption.key &&
+      (selectedKey === item.key ||
+        (item.level === 'secondary' &&
+          skillOptionList.some(
+            (subItem) => subItem.parentKey === item.key && selectedKey === subItem.key
+          )))
+  );
+
+  return {
+    isCurrentFocus,
+    hasSelectedChild
+  };
+};
 
 export default function SkillPickerPlugin({
   skillOptionList,
@@ -90,9 +125,13 @@ export default function SkillPickerPlugin({
       (item) => item.level === currentLevel && item.parentKey === currentOption.parentKey
     );
 
-    return filteredOptions;
+    return filteredOptions.map((option) => ({
+      ...option,
+      setRefElement: () => {}
+    }));
   }, [skillOptionList, selectedKey]);
 
+  // overWrite arrow keys
   useEffect(() => {
     if (!isFocus || queryString === null) return;
     const removeRightCommand = editor.registerCommand(
@@ -281,7 +320,7 @@ export default function SkillPickerPlugin({
               {skillOptionList
                 .filter((option) => option.level === 'primary')
                 .map((skillOption) => {
-                  const displayState = getSkillDisplayState({
+                  const { isCurrentFocus, hasSelectedChild } = getDisplayState({
                     selectedKey,
                     skillOptionList,
                     skillOption
@@ -297,24 +336,20 @@ export default function SkillPickerPlugin({
                       ref={(el) => {
                         highlightedRefs.current[skillOption.key] = el;
                       }}
-                      {...(displayState.isCurrentFocus
+                      {...(isCurrentFocus || hasSelectedChild
                         ? {
                             bg: '#1118240D'
                           }
-                        : displayState.hasSelectedChild
-                          ? {
-                              bg: '#1118240D'
-                            }
-                          : {
-                              bg: 'white'
-                            })}
+                        : {
+                            bg: 'white'
+                          })}
                       _hover={{
                         bg: '#1118240D'
                       }}
                     >
                       <Avatar src={skillOption.icon} w={'16px'} borderRadius={'3px'} />
                       <Box
-                        color={displayState.isCurrentFocus ? 'primary.700' : 'myGray.600'}
+                        color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
                         fontSize={'12px'}
                         fontWeight={'medium'}
                         letterSpacing={'0.5px'}
@@ -348,7 +383,7 @@ export default function SkillPickerPlugin({
                     (item) => item.level === 'secondary' && item.parentKey === selectedSkillKey
                   );
 
-                  // 按分类组织
+                  // Organize by category
                   const categories = new Map();
                   secondaryOptions.forEach((item) => {
                     if (item.categoryType && item.categoryLabel) {
@@ -368,10 +403,10 @@ export default function SkillPickerPlugin({
                         {categoryData.label}
                       </Box>
                       {categoryData.options.map((option: SkillOptionType) => {
-                        const toolDisplayState = getToolDisplayState({
+                        const { isCurrentFocus, hasSelectedChild } = getDisplayState({
                           selectedKey,
                           skillOptionList,
-                          toolOption: option
+                          skillOption: option
                         });
                         return (
                           <Flex
@@ -388,24 +423,20 @@ export default function SkillPickerPlugin({
                               const menuOption = menuOptions.find((m) => m.key === option.key);
                               if (menuOption) selectOptionAndCleanUp(menuOption);
                             }}
-                            {...(toolDisplayState.isCurrentFocus
+                            {...(isCurrentFocus || hasSelectedChild
                               ? {
                                   bg: '#1118240D'
                                 }
-                              : toolDisplayState.hasSelectedChild
-                                ? {
-                                    bg: '#1118240D'
-                                  }
-                                : {
-                                    bg: 'white'
-                                  })}
+                              : {
+                                  bg: 'white'
+                                })}
                             _hover={{
                               bg: '#1118240D'
                             }}
                           >
                             <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
                             <Box
-                              color={toolDisplayState.isCurrentFocus ? 'primary.700' : 'myGray.600'}
+                              color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
                               fontSize={'12px'}
                               fontWeight={'medium'}
                               letterSpacing={'0.5px'}

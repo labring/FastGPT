@@ -29,25 +29,32 @@ export default function SkillPlugin({
       const textContent = textNode.getTextContent();
       const skillKey = textContent.slice(3, -3);
 
-      if (selectedTools.length > 0) {
-        const tool = selectedTools.find((t) => t.id === skillKey);
-        if (tool) {
-          const extendedTool = tool;
-          const onConfigureClick =
-            extendedTool.isUnconfigured && onConfigureTool
-              ? () => onConfigureTool(skillKey)
-              : undefined;
-          return $createSkillNode(
-            skillKey,
-            tool.name,
-            tool.avatar,
-            extendedTool.isUnconfigured,
-            onConfigureClick
-          );
-        }
+      const tool = selectedTools.find((t) => t.id === skillKey);
+
+      if (tool) {
+        const extendedTool = tool;
+        const onConfigureClick =
+          extendedTool.isUnconfigured && onConfigureTool
+            ? () => onConfigureTool(skillKey)
+            : undefined;
+        return $createSkillNode(
+          skillKey,
+          tool.name,
+          tool.avatar,
+          extendedTool.isUnconfigured,
+          false, // isInvalid = false when tool is found
+          onConfigureClick
+        );
       }
 
-      return $createSkillNode(skillKey);
+      // Tool not found in selectedTools, mark as invalid
+      return $createSkillNode(
+        skillKey,
+        undefined,
+        undefined,
+        false,
+        true // isInvalid = true when tool is not found
+      );
     },
     [selectedTools, onConfigureTool]
   );
@@ -89,16 +96,26 @@ export default function SkillPlugin({
             if (
               !node.__skillName ||
               !node.__skillAvatar ||
-              node.__isUnconfigured !== extendedTool.isUnconfigured
+              node.__isUnconfigured !== extendedTool.isUnconfigured ||
+              node.__isInvalid !== false
             ) {
               const writableNode = node.getWritable();
               writableNode.__skillName = tool.name;
               writableNode.__skillAvatar = tool.avatar;
               writableNode.__isUnconfigured = extendedTool.isUnconfigured;
+              writableNode.__isInvalid = false;
               writableNode.__onConfigureClick =
                 extendedTool.isUnconfigured && onConfigureTool
                   ? () => onConfigureTool(skillKey)
                   : undefined;
+            }
+          } else {
+            // Tool not found, mark as invalid
+            if (node.__isInvalid !== true) {
+              const writableNode = node.getWritable();
+              writableNode.__isInvalid = true;
+              writableNode.__isUnconfigured = false;
+              writableNode.__onConfigureClick = undefined;
             }
           }
         }

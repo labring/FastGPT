@@ -44,7 +44,7 @@ import ListExitPlugin from './plugins/ListExitPlugin';
 import SkillPickerPlugin from './plugins/SkillPickerPlugin';
 import SkillPlugin from './plugins/SkillPlugin';
 import { SkillNode } from './plugins/SkillPlugin/node';
-import type { EditorSkillPickerType, SkillOptionType } from './plugins/SkillPickerPlugin/type';
+import type { SkillOptionType } from './plugins/SkillPickerPlugin';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children }: { children: React.ReactNode }) => (
