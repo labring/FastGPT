@@ -3,6 +3,7 @@ import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
+import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 
 export const pushGenerateVectorUsage = ({
   usageId,
@@ -236,39 +237,84 @@ export const pushWhisperUsage = ({
   });
 };
 
-export const pushRerankUsage = ({
+export const pushDatasetTestUsage = ({
   teamId,
   tmbId,
-  model,
-  inputTokens,
-  source = UsageSourceEnum.fastgpt
+  source = UsageSourceEnum.fastgpt,
+  embUsage,
+  rerankUsage,
+  extensionUsage
 }: {
   teamId: string;
   tmbId: string;
-  model: string;
-  inputTokens: number;
   source?: UsageSourceEnum;
+  embUsage?: {
+    model: string;
+    inputTokens: number;
+  };
+  rerankUsage?: {
+    model: string;
+    inputTokens: number;
+  };
+  extensionUsage?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+  };
 }) => {
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model,
-    inputTokens
-  });
+  const list: UsageItemType[] = [];
+  let points = 0;
+
+  if (extensionUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: extensionUsage.model,
+      inputTokens: extensionUsage.inputTokens,
+      outputTokens: extensionUsage.outputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('common:core.module.template.Query extension'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: extensionUsage.inputTokens,
+      outputTokens: extensionUsage.outputTokens
+    });
+  }
+  if (embUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: embUsage.model,
+      inputTokens: embUsage.inputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('account_usage:embedding_index'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: embUsage.inputTokens
+    });
+  }
+  if (rerankUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: rerankUsage.model,
+      inputTokens: rerankUsage.inputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('account_usage:rerank'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: rerankUsage.inputTokens
+    });
+  }
 
   createUsage({
     teamId,
     tmbId,
-    appName: i18nT('account_bill:rerank'),
-    totalPoints,
+    appName: i18nT('account_usage:search_test'),
+    totalPoints: points,
     source,
-    list: [
-      {
-        moduleName: modelName,
-        amount: totalPoints,
-        model: modelName,
-        inputTokens
-      }
-    ]
+    list
   });
 
-  return { totalPoints };
+  return { totalPoints: points };
 };

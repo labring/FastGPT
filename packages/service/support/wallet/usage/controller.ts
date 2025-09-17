@@ -35,14 +35,86 @@ export async function pushUsageItems(data: PushUsageItemsProps) {
   }
 }
 
-export const createChatUsage = ({
+export const createPdfParseUsage = async ({
+  teamId,
+  tmbId,
+  pages,
+  usageId
+}: {
+  teamId: string;
+  tmbId: string;
+  pages: number;
+  usageId?: string;
+}) => {
+  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const totalPoints = pages * unitPrice;
+
+  if (usageId) {
+    pushUsageItems({
+      teamId,
+      usageId,
+      list: [{ moduleName: i18nT('account_usage:pdf_enhanced_parse'), amount: totalPoints, pages }]
+    });
+  } else {
+    createUsage({
+      teamId,
+      tmbId,
+      appName: i18nT('account_usage:pdf_enhanced_parse'),
+      totalPoints,
+      source: UsageSourceEnum.pdfParse,
+      list: [
+        {
+          moduleName: i18nT('account_usage:pdf_enhanced_parse'),
+          amount: totalPoints,
+          pages
+        }
+      ]
+    });
+  }
+};
+export const pushLLMTrainingUsage = async ({
+  teamId,
+  model,
+  inputTokens,
+  outputTokens,
+  usageId,
+  type
+}: {
+  teamId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  usageId: string;
+  type: UsageItemTypeEnum;
+}) => {
+  // Compute points
+  const { totalPoints } = formatModelChars2Points({
+    model,
+    inputTokens,
+    outputTokens
+  });
+
+  concatUsage({
+    usageId,
+    teamId,
+    itemType: type,
+    totalPoints,
+    inputTokens,
+    outputTokens
+  });
+
+  return { totalPoints };
+};
+
+/* Create usage, and return usageId */
+// Chat
+export const createChatUsageRecord = async ({
   appName,
   appId,
   pluginId,
   teamId,
   tmbId,
-  source,
-  flowUsages
+  source
 }: {
   appName: string;
   appId?: string;
@@ -50,19 +122,36 @@ export const createChatUsage = ({
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
-  flowUsages: ChatNodeUsageType[];
 }) => {
-  const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  createUsage({
+  const [{ _id: usageId }] = await MongoUsage.create(
+    [
+      {
+        teamId,
+        tmbId,
+        appId,
+        pluginId,
+        appName,
+        source,
+        totalPoints: 0
+      }
+    ],
+    { ordered: true }
+  );
+  return String(usageId);
+};
+export const pushChatItemUsage = ({
+  teamId,
+  usageId,
+  nodeUsages
+}: {
+  teamId: string;
+  usageId: string;
+  nodeUsages: ChatNodeUsageType[];
+}) => {
+  pushUsageItems({
     teamId,
-    tmbId,
-    appName,
-    appId,
-    pluginId,
-    totalPoints,
-    source,
-    list: flowUsages.map((item) => ({
+    usageId,
+    list: nodeUsages.map((item) => ({
       moduleName: item.moduleName,
       amount: item.totalPoints,
       model: item.model,
@@ -70,15 +159,9 @@ export const createChatUsage = ({
       outputTokens: item.outputTokens
     }))
   });
-  addLog.debug(`Create chat usage`, {
-    source,
-    teamId,
-    totalPoints
-  });
-  return { totalPoints };
 };
 
-// Training
+// Dataset training
 export const createTrainingUsage = async ({
   teamId,
   tmbId,
@@ -192,76 +275,6 @@ export const createTrainingUsage = async ({
   };
   if (session) return create(session);
   return mongoSessionRun(create);
-};
-export const createPdfParseUsage = async ({
-  teamId,
-  tmbId,
-  pages,
-  usageId
-}: {
-  teamId: string;
-  tmbId: string;
-  pages: number;
-  usageId?: string;
-}) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
-  const totalPoints = pages * unitPrice;
-
-  if (usageId) {
-    pushUsageItems({
-      teamId,
-      usageId,
-      list: [{ moduleName: i18nT('account_usage:pdf_enhanced_parse'), amount: totalPoints, pages }]
-    });
-  } else {
-    createUsage({
-      teamId,
-      tmbId,
-      appName: i18nT('account_usage:pdf_enhanced_parse'),
-      totalPoints,
-      source: UsageSourceEnum.pdfParse,
-      list: [
-        {
-          moduleName: i18nT('account_usage:pdf_enhanced_parse'),
-          amount: totalPoints,
-          pages
-        }
-      ]
-    });
-  }
-};
-export const pushLLMTrainingUsage = async ({
-  teamId,
-  model,
-  inputTokens,
-  outputTokens,
-  usageId,
-  type
-}: {
-  teamId: string;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  usageId: string;
-  type: UsageItemTypeEnum;
-}) => {
-  // Compute points
-  const { totalPoints } = formatModelChars2Points({
-    model,
-    inputTokens,
-    outputTokens
-  });
-
-  concatUsage({
-    usageId,
-    teamId,
-    itemType: type,
-    totalPoints,
-    inputTokens,
-    outputTokens
-  });
-
-  return { totalPoints };
 };
 
 // Evaluation

@@ -262,12 +262,12 @@ const CollectionCard = () => {
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <HStack>
-                      <Box onClick={(e) => e.stopPropagation()}>
+                      <HStack onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           isChecked={isSelected(collection)}
                           onChange={(e) => toggleSelect(collection)}
                         />
-                      </Box>
+                      </HStack>
                       <Box>
                         <Flex alignItems={'center'}>
                           <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
