@@ -26,6 +26,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { recalculateAllEvaluationItemAggregateScores } from '../task/processor';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
@@ -400,8 +401,79 @@ export class EvaluationSummaryService {
       }
     }
 
-    // Update configuration and recalculate
-    await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
+    // Check if weights have changed to determine if recalculation is needed
+    const hasWeightChanges = this.checkWeightChanges(evaluation, metricsConfig);
+
+    // Update configuration and recalculate if weights changed
+    if (hasWeightChanges) {
+      await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
+    } else {
+      // Only update configuration without recalculation
+      await this.updateConfigurationOnly(evalId, evaluation, metricsConfig);
+    }
+  }
+
+  // Check if weights have changed by comparing current and new configurations
+  private static checkWeightChanges(
+    evaluation: EvaluationSchemaType,
+    metricsConfig: Array<{
+      metricId: string;
+      thresholdValue: number;
+      weight?: number;
+      calculateType?: CalculateMethodEnum;
+    }>
+  ): boolean {
+    const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
+
+    // Check each current summary config for weight changes
+    for (let index = 0; index < evaluation.summaryConfigs.length; index++) {
+      const currentSummaryConfig = evaluation.summaryConfigs[index];
+      const metricId = evaluation.evaluators[index].metric._id.toString();
+      const newConfig = configMap.get(metricId);
+
+      if (newConfig && newConfig.weight !== undefined) {
+        // Compare current weight with new weight
+        const currentWeight = currentSummaryConfig.weight || 0;
+        const newWeight = newConfig.weight || 0;
+
+        if (currentWeight !== newWeight) {
+          addLog.info('[Evaluation] Weight change detected', {
+            metricId,
+            currentWeight,
+            newWeight
+          });
+          return true;
+        }
+      }
+    }
+
+    addLog.info('[Evaluation] No weight changes detected, skipping recalculation');
+    return false;
+  }
+
+  // Update configuration only without recalculation (for threshold and calculateType changes)
+  private static async updateConfigurationOnly(
+    evalId: string,
+    evaluation: EvaluationSchemaType,
+    metricsConfig: Array<{
+      metricId: string;
+      thresholdValue: number;
+      weight?: number;
+      calculateType?: CalculateMethodEnum;
+    }>
+  ): Promise<void> {
+    const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
+
+    // Update database configuration
+    await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap);
+
+    // Update eval_items thresholds
+    await this.updateEvalItemThresholds(evalId, metricsConfig);
+
+    addLog.info('[Evaluation] Configuration updated without recalculation', {
+      evalId,
+      metricCount: metricsConfig.length
+    });
   }
 
   // Simplified method to update configuration and recalculate everything
@@ -427,12 +499,17 @@ export class EvaluationSummaryService {
     const updatedEvaluation = await MongoEvaluation.findById(evalId).lean();
     if (updatedEvaluation) {
       addLog.info('[Evaluation] Configuration updated, recalculating all metrics', { evalId });
+
+      // Recalculate evaluation summary metrics and aggregate score
       const calculatedData = await this.calculateMetricScores(updatedEvaluation);
       await this.updateSummaryConfigsScores(
         evalId,
         calculatedData.metricsData,
         calculatedData.aggregateScore
       );
+
+      // Recalculate all evaluation item aggregate scores since weights changed
+      await recalculateAllEvaluationItemAggregateScores(evalId);
     }
   }
 
