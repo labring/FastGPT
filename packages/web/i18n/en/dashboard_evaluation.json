@@ -307,5 +307,17 @@
   "not_join_evaluation_dataset": "不加入评测数据集",
   "create_new_dataset_btn_text": "新建数据集",
   "please_select_evaluation_dataset": "请选择评测数据集",
-  "join_knowledge_base": "加入知识库"
+  "join_knowledge_base": "加入知识库",
+  "all_data_with_count": "全部数据（{{num}}）",
+  "question_data_with_count": "问题数据（{{num}}）",
+  "error_data_with_count": "异常数据（{{num}}）",
+  "export_data": "导出",
+  "retry_action": "重试",
+  "basic_info": "基本信息",
+  "application": "应用",
+  "version": "版本",
+  "evaluation_dataset_name": "评测数据集",
+  "start_time": "开始时间",
+  "end_time": "结束时间",
+  "executor_name": "执行人"
 }
