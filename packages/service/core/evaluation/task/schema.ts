@@ -256,7 +256,12 @@ export const EvaluationItemSchema = new Schema({
     default: 3
   },
   finishTime: Date,
-  errorMessage: String
+  errorMessage: String,
+  // Weighted aggregate score calculated from multiple evaluators
+  aggregateScore: {
+    type: Number,
+    default: 0
+  }
 });
 
 // Optimized indexes for EvaluationItemSchema

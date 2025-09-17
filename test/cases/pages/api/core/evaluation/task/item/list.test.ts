@@ -91,7 +91,13 @@ describe('List Evaluation Items API Handler', () => {
       'eval-123',
       'team-123',
       0,
-      20
+      20,
+      {
+        status: undefined,
+        userInput: undefined,
+        expectedOutput: undefined,
+        actualOutput: undefined
+      }
     );
     expect(result).toEqual({
       list: mockItems,
