@@ -158,10 +158,10 @@ async function handler(
           [EvalDatasetDataKeyEnum.Context]: context || [],
           [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContext || [],
           createFrom: EvalDatasetDataCreateFromEnum.manual,
-          metadata: {
+          qualityMetadata: {
             ...(enableQualityEvaluation
               ? {}
-              : { qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated })
+              : { status: EvalDatasetDataQualityStatusEnum.unevaluated })
           }
         }
       ],

@@ -4,8 +4,7 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import {
   addEvalDatasetDataQualityJob,
-  checkEvalDatasetDataQualityJobActive,
-  removeEvalDatasetDataQualityJobsRobust
+  checkEvalDatasetDataQualityJobActive
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import type { qualityAssessmentBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
@@ -69,10 +68,7 @@ async function handler(
   try {
     const isJobActive = await checkEvalDatasetDataQualityJobActive(dataId);
     if (isJobActive) {
-      await removeEvalDatasetDataQualityJobsRobust([dataId], {
-        forceCleanActiveJobs: true,
-        retryDelay: 200
-      });
+      return Promise.reject(EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality);
     }
 
     await addEvalDatasetDataQualityJob({

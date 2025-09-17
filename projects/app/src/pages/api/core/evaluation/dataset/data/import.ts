@@ -397,12 +397,10 @@ async function handler(
           [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
           [EvalDatasetDataKeyEnum.Context]: contextArray,
           [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
-          [EvalDatasetDataKeyEnum.Metadata]: {
-            ...metadataObj,
-            importedFromFile: file.originalname,
+          qualityMetadata: {
             ...(enableQualityEvaluation
               ? {}
-              : { qualityStatus: EvalDatasetDataQualityStatusEnum.unevaluated })
+              : { status: EvalDatasetDataQualityStatusEnum.unevaluated })
           },
           createFrom: EvalDatasetDataCreateFromEnum.fileImport
         };

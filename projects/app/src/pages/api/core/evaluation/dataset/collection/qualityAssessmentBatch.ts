@@ -95,37 +95,9 @@ async function handler(
         }
       }
 
-      if (jobState === 'active') {
-        // Active evaluation task -> remove and overwrite
-        addLog.info('Removing active quality assessment job for re-evaluation', {
-          dataId,
-          jobId,
-          collectionId
-        });
-        await removeEvalDatasetDataQualityJobsRobust([dataId], {
-          forceCleanActiveJobs: true,
-          retryDelay: 200
-        });
-
-        // Create new job
-        await addEvalDatasetDataQualityJob({
-          dataId: dataId,
-          evaluationModel: evalModel
-        });
-
-        // Update quality metadata
-        await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
-          $set: {
-            'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-            'qualityMetadata.model': evalModel,
-            'qualityMetadata.queueTime': new Date()
-          }
-        });
-
-        processedCount++;
-      } else if (jobState && ['waiting', 'delayed', 'prioritized'].includes(jobState)) {
-        // Tasks in queue -> not affected
-        addLog.info('Skipping queued quality assessment job', {
+      if (jobState && ['waiting', 'delayed', 'prioritized', 'active'].includes(jobState)) {
+        // Tasks in queue or active -> not affected
+        addLog.info('Skipping queued or active quality assessment job', {
           dataId,
           jobState,
           collectionId
