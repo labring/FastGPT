@@ -1357,5 +1357,6 @@
   "core.dataset.search.mode.database desc": "使用向量检索查找数据库中可能相关的表和列",
   "core.dataset.training.databaseSchema mode": "数据库结构",
   "core.dataset.import.databaseSchema Tip":"对数据库中的表信息进行自动处理，使其更利于检索，以提高SQL生成的准确率",
-  "database_search": "数据库搜索"
+  "database_search": "数据库搜索",
+  "annotation_answer": "标注答案"
 }

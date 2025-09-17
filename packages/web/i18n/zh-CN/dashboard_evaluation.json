@@ -79,7 +79,7 @@
   "create_new_dataset": "新建",
   "smart_generation": "智能生成",
   "file_import": "文件导入",
-  "confirm_delete_dataset": "确认删除该数据集吗？",
+  "confirm_delete_dataset": "确认删除该数据集？",
   "error_details": "异常详情",
   "status_queuing": "排队中",
   "status_parsing": "文件解析中",
@@ -305,5 +305,10 @@
   "builtin_context_recall_name": "上下文召回",
   "builtin_context_recall_desc": "衡量检索系统是否能够获取回答所需的所有关键信息，评估其检索的完整性。",
   "builtin_context_precision_name": "上下文精度",
-  "builtin_context_precision_desc": "衡量检索内容中是否优先返回高价值信息，反映排序质量与信息密度。"
+  "builtin_context_precision_desc": "衡量检索内容中是否优先返回高价值信息，反映排序质量与信息密度。",
+  "join_evaluation_dataset": "加入评测数据集",
+  "not_join_evaluation_dataset": "不加入评测数据集",
+  "create_new_dataset_btn_text": "新建数据集",
+  "please_select_evaluation_dataset": "请选择评测数据集",
+  "join_knowledge_base": "加入知识库"
 }

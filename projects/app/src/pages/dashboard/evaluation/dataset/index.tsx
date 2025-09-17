@@ -348,8 +348,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
         />
       )}
 
-      <ConfirmModal />
-      <EditTitleModal />
+      <ConfirmModal confirmText={t('common:Delete')} />
+      <EditTitleModal closeBtnText={t('common:Cancel')} />
 
       {/* 智能生成数据集弹窗 */}
       {isIntelligentModalOpen && (
