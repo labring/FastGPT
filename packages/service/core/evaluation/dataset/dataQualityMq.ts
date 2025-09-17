@@ -62,6 +62,25 @@ export const checkEvalDatasetDataQualityJobActive = async (dataId: string): Prom
   }
 };
 
+export const checkEvalDatasetDataQualityJobInactive = async (dataId: string): Promise<boolean> => {
+  try {
+    const jobId = await evalDatasetDataQualityQueue.getDeduplicationJobId(String(dataId));
+    if (!jobId) return false;
+
+    const job = await evalDatasetDataQualityQueue.getJob(jobId);
+    if (!job) return false;
+
+    const jobState = await job.getState();
+    return ['completed', 'failed'].includes(jobState);
+  } catch (error) {
+    addLog.error('Failed to check eval dataset data quality job inactive status', {
+      dataId,
+      error
+    });
+    return false;
+  }
+};
+
 export const removeEvalDatasetDataQualityJobsRobust = async (
   dataIds: string[],
   options?: JobCleanupOptions
