@@ -313,7 +313,7 @@ describe('valueTypeFormat', () => {
 });
 
 import { getHistories } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 describe('getHistories test', async () => {
@@ -322,7 +322,6 @@ describe('getHistories test', async () => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: '你好'
           }
@@ -333,7 +332,6 @@ describe('getHistories test', async () => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: '你好'
           }
@@ -344,7 +342,6 @@ describe('getHistories test', async () => {
       obj: ChatRoleEnum.AI,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: '你好2'
           }
@@ -355,7 +352,6 @@ describe('getHistories test', async () => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: '你好3'
           }
@@ -366,7 +362,6 @@ describe('getHistories test', async () => {
       obj: ChatRoleEnum.AI,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: '你好4'
           }
@@ -392,7 +387,6 @@ describe('getHistories test', async () => {
             obj: ChatRoleEnum.Human,
             value: [
               {
-                type: ChatItemValueTypeEnum.text,
                 text: {
                   content: '你好'
                 }
@@ -407,7 +401,6 @@ describe('getHistories test', async () => {
         obj: ChatRoleEnum.Human,
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: {
               content: '你好'
             }
