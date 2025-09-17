@@ -25,13 +25,11 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
-import { Icon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
-import MemberModal from '@/components/support/permission/MemberManager/MemberModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
