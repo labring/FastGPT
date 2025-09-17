@@ -122,6 +122,7 @@ export type EvaluationItemSchemaType = {
   retry: number;
   finishTime?: Date;
   errorMessage?: string;
+  aggregateScore?: number; // Weighted aggregate score calculated from multiple evaluators
 };
 
 // Evaluation target input/output types
