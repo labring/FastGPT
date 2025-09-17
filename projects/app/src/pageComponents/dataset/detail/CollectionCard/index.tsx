@@ -174,15 +174,16 @@ const CollectionCard = () => {
 
   useRequest2(
     async () => {
-      if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
-      getData(pageNum);
       if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
       }
+      if (hasTrainingData) {
+        getData(pageNum);
+      }
     },
     {
-      retryInterval: 6000,
-      refreshDeps: [hasTrainingData, datasetDetail.status]
+      pollingInterval: 6000,
+      manual: false
     }
   );
 
