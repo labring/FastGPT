@@ -130,10 +130,12 @@ export type FastGPTFeConfigsType = {
 
 export type SystemEnvType = {
   openapiPrefix?: string;
+  tokenWorkers: number; // token count max worker
+
+  datasetParseMaxProcess: number;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  tokenWorkers: number; // token count max worker
 
   hnswEfSearch: number;
   hnswMaxScanTuples: number;
