@@ -1,8 +1,6 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import type {
-  TextNode
-} from 'lexical';
+import type { TextNode } from 'lexical';
 import {
   $createTextNode,
   $getSelection,
@@ -479,7 +477,15 @@ export default function SkillPickerPlugin({
                 flexShrink={0}
                 maxH={'320px'}
                 overflow={'auto'}
-                isLoading={isAddToolLoading}
+                isLoading={
+                  isAddToolLoading ||
+                  skillOptionList.filter((item) => item.parentKey === selectedSkillKey).length === 0
+                }
+                minH={
+                  skillOptionList.filter((item) => item.parentKey === selectedSkillKey).length === 0
+                    ? '200px'
+                    : '0'
+                }
               >
                 {(() => {
                   const secondaryOptions = skillOptionList.filter(

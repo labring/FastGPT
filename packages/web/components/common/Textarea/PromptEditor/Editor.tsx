@@ -263,6 +263,7 @@ export default function Editor({
                 onAddToolFromEditor={onAddToolFromEditor}
                 selectedKey={selectedSkillKey || ''}
                 setSelectedKey={setSelectedSkillKey}
+                // temp
                 loadFolderContent={loadFolderContent}
                 removeFolderContent={removeFolderContent}
                 loadedFolders={loadedFolders}

@@ -9,6 +9,7 @@ type SkillLabelProps = {
   skillKey: string;
   skillName?: string;
   skillAvatar?: string;
+  skillType?: 'tool' | 'app';
   isInvalid?: boolean;
   isUnconfigured?: boolean;
   onConfigureClick?: () => void;
@@ -18,11 +19,45 @@ export default function SkillLabel({
   skillKey,
   skillName,
   skillAvatar,
+  skillType = 'tool',
   isInvalid = false,
   isUnconfigured = false,
   onConfigureClick
 }: SkillLabelProps) {
   const { t } = useTranslation();
+
+  const getColors = () => {
+    if (isInvalid) {
+      return {
+        bg: 'red.50',
+        color: 'red.600',
+        borderColor: 'red.200',
+        hoverBg: 'red.100',
+        hoverBorderColor: 'red.300'
+      };
+    }
+
+    if (skillType === 'app') {
+      return {
+        bg: 'green.50',
+        color: 'green.700',
+        borderColor: 'transparent',
+        hoverBg: 'green.100',
+        hoverBorderColor: 'green.300'
+      };
+    }
+
+    return {
+      bg: 'yellow.50',
+      color: 'myGray.900',
+      borderColor: 'transparent',
+      hoverBg: 'yellow.100',
+      hoverBorderColor: 'yellow.300'
+    };
+  };
+
+  const colors = getColors();
+
   return (
     <Box
       as="span"
@@ -30,17 +65,17 @@ export default function SkillLabel({
       alignItems="center"
       px={2}
       mx={1}
-      bg={isInvalid ? 'red.50' : 'yellow.50'}
-      color={isInvalid ? 'red.600' : 'myGray.900'}
+      bg={colors.bg}
+      color={colors.color}
       borderRadius="4px"
       fontSize="sm"
       cursor="pointer"
       position="relative"
       border={isInvalid ? '1px solid' : 'none'}
-      borderColor={isInvalid ? 'red.200' : 'transparent'}
+      borderColor={colors.borderColor}
       _hover={{
-        bg: isInvalid ? 'red.100' : 'yellow.100',
-        borderColor: isInvalid ? 'red.300' : 'yellow.300'
+        bg: colors.hoverBg,
+        borderColor: colors.hoverBorderColor
       }}
       onClick={isUnconfigured ? onConfigureClick : undefined}
       transform={'translateY(2px)'}
