@@ -20,3 +20,5 @@ export const getModelCollaborators = (modelName: string) =>
 export const updateModelCollaborators = (
   props: UpdateClbPermissionProps & { modelNames: string[] }
 ) => POST('/proApi/system/model/collaborator/update', props);
+
+export const getMyModels = () => GET<string[]>('/proApi/system/model/getMyModels');
