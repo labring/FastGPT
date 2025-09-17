@@ -34,6 +34,7 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useToolManager, type ExtendedToolType } from './hooks/useToolManager';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { useAppManager } from './hooks/useAppManager';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -101,6 +102,15 @@ const EditForm = ({
     setConfigTool,
     selectedSkillKey
   });
+
+  const { appSkillOptions, loadFolderContent, removeFolderContent, loadedFolders } = useAppManager({
+    selectedSkillKey,
+    currentAppId: appDetail._id
+  });
+
+  const skillOptionList = useMemo(() => {
+    return [...appSkillOptions, ...toolSkillOptions];
+  }, [appSkillOptions, toolSkillOptions]);
 
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
@@ -226,7 +236,7 @@ const EditForm = ({
           <Box mt={4}>
             <HStack {...LabelStyles} w={'100%'}>
               <Box>{t('common:core.ai.Prompt')}</Box>
-              <QuestionTip label={t('common:core.app.tip.systemPromptTip')} />
+              <QuestionTip label={t('common:agent_prompt_tips')} />
 
               <Box flex={1} />
               <VariableTip color={'myGray.500'} />
@@ -253,12 +263,15 @@ const EditForm = ({
                 selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
                 variables={formatVariables}
-                skillOptionList={[...toolSkillOptions]}
+                skillOptionList={skillOptionList}
                 queryString={queryString}
                 setQueryString={setQueryString}
                 selectedSkillKey={selectedSkillKey}
                 setSelectedSkillKey={setSelectedSkillKey}
-                placeholder={t('common:core.app.tip.systemPromptTip')}
+                loadFolderContent={loadFolderContent}
+                removeFolderContent={removeFolderContent}
+                loadedFolders={loadedFolders}
+                placeholder={t('common:agent_prompt_tips')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPopverComponent]}
                 isRichText={true}
