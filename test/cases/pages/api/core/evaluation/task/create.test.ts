@@ -59,7 +59,7 @@ describe('Create Evaluation Task API Handler', () => {
     _id: new Types.ObjectId(),
     name: 'Test Evaluation',
     description: 'Test Description',
-    datasetId: new Types.ObjectId(),
+    evalDatasetCollectionId: new Types.ObjectId(),
     target: {
       type: 'workflow',
       config: {
@@ -116,7 +116,7 @@ describe('Create Evaluation Task API Handler', () => {
       body: {
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: new Types.ObjectId().toString(),
+        evalDatasetCollectionId: new Types.ObjectId().toString(),
         target: {
           type: 'workflow',
           config: {
@@ -152,7 +152,7 @@ describe('Create Evaluation Task API Handler', () => {
       expect.objectContaining({
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: mockReq.body.datasetId,
+        evalDatasetCollectionId: mockReq.body.evalDatasetCollectionId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
         autoStart: undefined, // 用户未传递 autoStart 参数时应该是 undefined，服务层会设置默认值
@@ -184,7 +184,7 @@ describe('Create Evaluation Task API Handler', () => {
       body: {
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: new Types.ObjectId().toString(),
+        evalDatasetCollectionId: new Types.ObjectId().toString(),
         target: {
           type: 'workflow',
           config: {
@@ -221,7 +221,7 @@ describe('Create Evaluation Task API Handler', () => {
       expect.objectContaining({
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: mockReq.body.datasetId,
+        evalDatasetCollectionId: mockReq.body.evalDatasetCollectionId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
         autoStart: true,
@@ -249,7 +249,7 @@ describe('Create Evaluation Task API Handler', () => {
       body: {
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: new Types.ObjectId().toString(),
+        evalDatasetCollectionId: new Types.ObjectId().toString(),
         target: {
           type: 'workflow',
           config: {
@@ -286,7 +286,7 @@ describe('Create Evaluation Task API Handler', () => {
       expect.objectContaining({
         name: 'Test Evaluation',
         description: 'Test Description',
-        datasetId: mockReq.body.datasetId,
+        evalDatasetCollectionId: mockReq.body.evalDatasetCollectionId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
         autoStart: false,
@@ -303,7 +303,7 @@ describe('Create Evaluation Task API Handler', () => {
       method: 'POST',
       body: {
         name: '',
-        datasetId: new Types.ObjectId().toString(),
+        evalDatasetCollectionId: new Types.ObjectId().toString(),
         target: {
           type: 'workflow',
           config: {
@@ -337,7 +337,7 @@ describe('Create Evaluation Task API Handler', () => {
       method: 'POST',
       body: {
         name: 'Test Evaluation',
-        datasetId: new Types.ObjectId().toString(),
+        evalDatasetCollectionId: new Types.ObjectId().toString(),
         target: {
           type: 'workflow',
           config: {
@@ -370,7 +370,7 @@ describe('Create Evaluation Task API Handler', () => {
     //   message: 'Target validation failed'
     // });
 
-    // datasetId 验证会先失败
-    await expect(createHandler(mockReq)).rejects.toThrow('evaluationDatasetIdRequired');
+    // evalDatasetCollectionId 验证会先失败
+    await expect(createHandler(mockReq)).rejects.toThrow('evaluationDatasetCollectionIdRequired');
   });
 });
