@@ -253,7 +253,7 @@ describe('QualityAssessment API', () => {
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
     });
 
-    it('should remove active job if one exists', async () => {
+    it('should reject when active job exists', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
 
       const req = {
@@ -263,12 +263,9 @@ describe('QualityAssessment API', () => {
         }
       };
 
-      await handler_test(req as any);
-
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
-        forceCleanActiveJobs: true,
-        retryDelay: 200
-      });
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality
+      );
     });
 
     it('should not remove job if none exists', async () => {
@@ -335,15 +332,13 @@ describe('QualityAssessment API', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle job removal errors and reject with quality assessment failed', async () => {
-      const jobError = new Error('Failed to remove job');
+    it('should reject with evalDataQualityJobActiveCannotSetHighQuality when active job exists', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
-      mockRemoveEvalDatasetDataQualityJobsRobust.mockRejectedValue(jobError);
 
       const req = createRequest();
 
       await expect(handler_test(req as any)).rejects.toBe(
-        EvaluationErrEnum.qualityAssessmentFailed
+        EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality
       );
     });
 
@@ -501,12 +496,13 @@ describe('QualityAssessment API', () => {
   });
 
   describe('Integration Workflow', () => {
-    it('should execute complete workflow when job exists', async () => {
+    it('should reject when active job exists in integration workflow', async () => {
       mockCheckEvalDatasetDataQualityJobActive.mockResolvedValue(true);
-      mockRemoveEvalDatasetDataQualityJobsRobust.mockResolvedValue(undefined);
       const req = createRequest();
 
-      const result = await handler_test(req as any);
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDataQualityJobActiveCannotSetHighQuality
+      );
 
       expect(mockAuthEvaluationDatasetDataUpdateById).toHaveBeenCalledWith(validDataId, {
         req,
@@ -514,22 +510,9 @@ describe('QualityAssessment API', () => {
         authApiKey: true
       });
       expect(mockCheckEvalDatasetDataQualityJobActive).toHaveBeenCalledWith(validDataId);
-      expect(mockRemoveEvalDatasetDataQualityJobsRobust).toHaveBeenCalledWith([validDataId], {
-        forceCleanActiveJobs: true,
-        retryDelay: 200
-      });
-      expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
-        dataId: validDataId,
-        evaluationModel: validEvaluationModel
-      });
-      expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
-        $set: {
-          'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-          'qualityMetadata.model': validEvaluationModel,
-          'qualityMetadata.queueTime': expect.any(Date)
-        }
-      });
-      expect(result).toBe('success');
+      // Should not proceed to add job or update database when active job exists
+      expect(mockAddEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockMongoEvalDatasetData.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     it('should execute complete workflow when no job exists', async () => {

@@ -417,8 +417,8 @@ describe('EvalDatasetData Import API', () => {
       expect(mockMongoEvalDatasetData.insertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
-            [EvalDatasetDataKeyEnum.Metadata]: expect.objectContaining({
-              importedFromFile: 'test1.csv'
+            qualityMetadata: expect.objectContaining({
+              status: 'unevaluated'
             })
           })
         ]),
