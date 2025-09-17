@@ -50,6 +50,8 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -222,8 +224,10 @@ const RenderList = React.memo(function RenderList({
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
 }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language as localeType;
+  const { i18n } = useTranslation();
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
+
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -424,7 +428,7 @@ const RenderList = React.memo(function RenderList({
                       key={template.id}
                       placement={'right'}
                       label={
-                        <Box py={2}>
+                        <Box py={2} minW={['auto', '250px']}>
                           <Flex alignItems={'center'}>
                             <MyAvatar
                               src={template.avatar}
@@ -432,8 +436,11 @@ const RenderList = React.memo(function RenderList({
                               objectFit={'contain'}
                               borderRadius={'sm'}
                             />
-                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
                               {t(template.name as any)}
+                            </Box>
+                            <Box color={'myGray.500'}>
+                              By {template.author || feConfigs?.systemTitle}
                             </Box>
                           </Flex>
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
