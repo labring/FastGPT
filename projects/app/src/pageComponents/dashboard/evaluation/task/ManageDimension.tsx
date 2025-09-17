@@ -399,7 +399,7 @@ const ManageDimension = ({
                 {t('dashboard_evaluation:create_new_dimension')}
               </Button>
               <Button variant="whiteBase" size="md" onClick={handleRefresh}>
-                <MyIcon name="common/refreshLight" w="14px" />
+                <MyIcon name="common/confirm/restoreTip" w="14px" />
               </Button>
             </HStack>
           </Flex>
