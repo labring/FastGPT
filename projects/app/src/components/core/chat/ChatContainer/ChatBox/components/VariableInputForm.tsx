@@ -110,6 +110,21 @@ const VariableInput = ({
                 />
               );
             })}
+            {!chatStarted &&
+              externalVariableList.length === 0 &&
+              commonVariableList.length === 0 && (
+                <Button
+                  leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                  size={'sm'}
+                  maxW={'100px'}
+                  mt={4}
+                  onClick={variablesForm.handleSubmit(() => {
+                    chatForm.setValue('chatStarted', true);
+                  })}
+                >
+                  {t('chat:start_chat')}
+                </Button>
+              )}
           </Card>
         </Box>
       )}
@@ -152,6 +167,19 @@ const VariableInput = ({
                 />
               );
             })}
+            {!chatStarted && commonVariableList.length === 0 && (
+              <Button
+                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                size={'sm'}
+                maxW={'100px'}
+                mt={4}
+                onClick={variablesForm.handleSubmit(() => {
+                  chatForm.setValue('chatStarted', true);
+                })}
+              >
+                {t('chat:start_chat')}
+              </Button>
+            )}
           </Card>
         </Box>
       )}
