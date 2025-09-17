@@ -5,6 +5,7 @@
     "mcpServerProxyEndpoint": "" // mcp server 代理地址，例如： http://localhost:3005
   },
   "systemEnv": {
+    "datasetParseMaxProcess": 10, // 知识库文件解析最大线程数量
     "vectorMaxProcess": 10, // 向量处理线程数量
     "qaMaxProcess": 10, // 问答拆分线程数量
     "vlmMaxProcess": 10, // 图片理解模型最大处理进程

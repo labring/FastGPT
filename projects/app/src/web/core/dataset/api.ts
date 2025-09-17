@@ -57,7 +57,6 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
-import type { GetQueueLenResponse } from '@/pages/api/core/dataset/training/getQueueLen';
 import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
 import type {
   getTrainingDataDetailBody,
@@ -281,9 +280,6 @@ export const getQuoteData = (data: GetQuoteDataProps) =>
 export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
   POST(`/core/dataset/training/rebuildEmbedding`, data);
 
-/* get length of system training queue */
-export const getTrainingQueueLen = () =>
-  GET<GetQueueLenResponse>(`/core/dataset/training/getQueueLen`);
 export const getDatasetTrainingQueue = (datasetId: string) =>
   GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
     datasetId
