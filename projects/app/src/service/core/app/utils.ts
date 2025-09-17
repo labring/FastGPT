@@ -72,7 +72,6 @@ export const getScheduleTriggerApp = async () => {
               chatId,
               mode: 'chat',
               usageId,
-              usageSource: UsageSourceEnum.cronJob,
               runningAppInfo: {
                 id: String(app._id),
                 name: app.name,
