@@ -168,13 +168,18 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
     refreshList?.();
   };
 
+  const handleCloseEditModal = (isRefresh: boolean) => {
+    onEditModalClose();
+    isRefresh && refreshList?.();
+  };
+
   return (
     <>
       {/* 编辑数据弹窗 */}
       {selectedItem && (
         <EditDataModal
           isOpen={isEditModalOpen}
-          onClose={onEditModalClose}
+          onClose={handleCloseEditModal}
           onSave={handleSaveUpdateData}
           formData={selectedItem}
         />
