@@ -26,10 +26,10 @@ export const EvaluationStatusMap = {
 export const EvaluationStatusValues = Object.values(EvaluationStatusEnum);
 
 export enum SummaryStatusEnum {
-  pending = 0,
-  generating = 1,
-  completed = 2,
-  failed = 3
+  pending = 'pending',
+  generating = 'generating',
+  completed = 'completed',
+  failed = 'failed'
 }
 
 export const SummaryStatusMap = {
@@ -47,12 +47,12 @@ export const SummaryStatusMap = {
   }
 };
 
-export const SummaryStatusValues = Object.keys(SummaryStatusMap).map(Number);
+export const SummaryStatusValues = Object.values(SummaryStatusEnum);
 
 // Calculation method enumeration
 export enum CalculateMethodEnum {
-  mean = 0,
-  median = 1
+  mean = 'mean',
+  median = 'median'
 }
 
 export const CaculateMethodMap = {
@@ -64,7 +64,7 @@ export const CaculateMethodMap = {
   }
 };
 
-export const CaculateMethodValues = Object.keys(CaculateMethodMap).map(Number);
+export const CaculateMethodValues = Object.values(CalculateMethodEnum);
 
 // Score constants
 export const PERFECT_SCORE = 100;
