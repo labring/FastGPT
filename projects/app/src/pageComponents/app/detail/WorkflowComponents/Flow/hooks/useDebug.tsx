@@ -261,62 +261,58 @@ export const useDebug = () => {
               onChange={setCurrentTab}
             />
           )}
-          {currentTab === TabEnum.node && (
-            <Box>
-              {renderInputs.map((item) => (
-                <LabelAndFormRender
-                  key={item.key}
-                  label={t(item.label)}
-                  required={item.required}
-                  placeholder={t(item.placeholder || item.description)}
-                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                  form={variablesForm}
-                  fieldName={`nodeVariables.${item.key}`}
-                  bg={'myGray.50'}
-                />
-              ))}
-            </Box>
-          )}
-          {currentTab === TabEnum.global && (
-            <Box>
-              {customVar.map((item) => (
-                <LabelAndFormRender
-                  key={item.key}
-                  label={t(item.label)}
-                  required={item.required}
-                  placeholder={t(item.description)}
-                  inputType={variableInputTypeToInputType(item.type)}
-                  form={variablesForm}
-                  fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
-                />
-              ))}
-              {internalVar.map((item) => (
-                <LabelAndFormRender
-                  key={item.key}
-                  label={t(item.label)}
-                  required={item.required}
-                  placeholder={t(item.description)}
-                  inputType={variableInputTypeToInputType(item.type)}
-                  form={variablesForm}
-                  fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
-                />
-              ))}
-              {filteredVar.map((item) => (
-                <LabelAndFormRender
-                  key={item.key}
-                  label={t(item.label)}
-                  required={item.required}
-                  placeholder={item.description}
-                  inputType={variableInputTypeToInputType(item.type)}
-                  form={variablesForm}
-                  fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
-                />
-              ))}
-            </Box>
-          )}
+          <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
+            {renderInputs.map((item) => (
+              <LabelAndFormRender
+                key={item.key}
+                label={t(item.label)}
+                required={item.required}
+                placeholder={t(item.placeholder || item.description)}
+                inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                form={variablesForm}
+                fieldName={`nodeVariables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+          </Box>
+          <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
+            {customVar.map((item) => (
+              <LabelAndFormRender
+                key={item.key}
+                label={t(item.label)}
+                required={item.required}
+                placeholder={t(item.description)}
+                inputType={variableInputTypeToInputType(item.type)}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+            {internalVar.map((item) => (
+              <LabelAndFormRender
+                key={item.key}
+                label={t(item.label)}
+                required={item.required}
+                placeholder={t(item.description)}
+                inputType={variableInputTypeToInputType(item.type)}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+            {filteredVar.map((item) => (
+              <LabelAndFormRender
+                key={item.key}
+                label={t(item.label)}
+                required={item.required}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type)}
+                form={variablesForm}
+                fieldName={`variables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+          </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
           <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
