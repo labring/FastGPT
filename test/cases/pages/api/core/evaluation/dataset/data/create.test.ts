@@ -306,7 +306,7 @@ describe('EvalDatasetData Create API', () => {
     [EvalDatasetDataKeyEnum.ExpectedOutput]: 'Test output',
     [EvalDatasetDataKeyEnum.Context]: [],
     [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-    metadata: { qualityStatus: 'unevaluated' },
+    qualityMetadata: { status: 'unevaluated' },
     createFrom: EvalDatasetDataCreateFromEnum.manual,
     ...overrides
   });
@@ -460,7 +460,7 @@ describe('EvalDatasetData Create API', () => {
       mockAddEvalDatasetDataQualityJob.mockResolvedValue(undefined);
       await handler_test(req as any);
 
-      expectDataCreation(createExpectedDataObject({ metadata: {} }));
+      expectDataCreation(createExpectedDataObject({ qualityMetadata: {} }));
     });
 
     it('should set qualityStatus when quality evaluation is disabled', async () => {
