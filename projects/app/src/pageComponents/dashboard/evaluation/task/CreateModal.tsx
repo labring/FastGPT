@@ -28,7 +28,7 @@ import AppSelect from '@/components/Select/AppSelect';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { getEvaluationDatasetList } from '@/web/core/evaluation/dataset';
-import { postCreateEvaluation } from '@/web/core/evaluation/task';
+import { getEvaluationList, postCreateEvaluation } from '@/web/core/evaluation/task';
 import type { CreateEvaluationRequest } from '@fastgpt/global/core/evaluation/api';
 import type { EvalTarget, EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
@@ -41,6 +41,11 @@ import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset
 import { getAppDetailById } from '@/web/core/app/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import {
+  getWebDefaultEmbeddingModel,
+  getWebDefaultEvaluationModel
+} from '@/web/common/system/utils';
 
 // 表单数据类型定义
 export interface TaskFormData {
@@ -112,33 +117,89 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   // 获取推荐维度的函数
   const getRecommendedDimensions = useCallback(
     (hasDatasetSearch: boolean, hasChatNode: boolean): Dimension[] => {
-      // TODO: 根据节点类型返回具体的推荐维度列表
-      // 这里需要根据实际的维度数据结构来定义推荐的维度
-      if (hasDatasetSearch && hasChatNode) {
-        // TODO: 返回包含知识库搜索和AI对话的3个推荐维度
-        return [
-          // 示例结构，需要根据实际维度定义来替换
-          // { id: 'dimension1', name: '相关性', type: 'builtin', ... },
-          // { id: 'dimension2', name: '准确性', type: 'builtin', ... },
-          // { id: 'dimension3', name: '完整性', type: 'builtin', ... }
-        ];
-      } else if (hasChatNode) {
-        // TODO: 返回AI对话的1个推荐维度
-        return [
-          // 示例结构，需要根据实际维度定义来替换
-          // { id: 'dimension1', name: '回答质量', type: 'builtin', ... }
-        ];
-      } else if (hasDatasetSearch) {
-        // TODO: 返回知识库搜索的2个推荐维度
-        return [
-          // 示例结构，需要根据实际维度定义来替换
-          // { id: 'dimension1', name: '检索相关性', type: 'builtin', ... },
-          // { id: 'dimension2', name: '检索准确性', type: 'builtin', ... }
-        ];
+      const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.model || '';
+      const defaultEvaluationModel =
+        getWebDefaultEvaluationModel(llmModelList.filter((item) => item.useInEvaluation))?.model ||
+        '';
+
+      const recommendedDimensions: Dimension[] = [];
+
+      // 生成节点指标：answer_correctness（默认选中）
+      if (hasChatNode) {
+        const answerCorrectnessInfo = getBuiltinDimensionInfo('builtin_answer_correctness');
+        recommendedDimensions.push({
+          id: 'builtin_answer_correctness',
+          name: answerCorrectnessInfo
+            ? t(answerCorrectnessInfo.name)
+            : t('dashboard_evaluation:builtin_answer_correctness_name'),
+          type: 'builtin',
+          description: answerCorrectnessInfo
+            ? t(answerCorrectnessInfo.description)
+            : t('dashboard_evaluation:builtin_answer_correctness_desc'),
+          evaluationModel: defaultEvaluationModel,
+          indexModel: defaultEmbeddingModel,
+          llmRequired: true,
+          embeddingRequired: true,
+          isSelected: true
+        });
       }
-      return [];
+
+      // 检索节点指标：faithfulness（默认选中），context_recall（默认选中）
+      if (hasDatasetSearch) {
+        const faithfulnessInfo = getBuiltinDimensionInfo('builtin_faithfulness');
+        recommendedDimensions.push({
+          id: 'builtin_faithfulness',
+          name: faithfulnessInfo
+            ? t(faithfulnessInfo.name)
+            : t('dashboard_evaluation:builtin_faithfulness_name'),
+          type: 'builtin',
+          description: faithfulnessInfo
+            ? t(faithfulnessInfo.description)
+            : t('dashboard_evaluation:builtin_faithfulness_desc'),
+          evaluationModel: defaultEvaluationModel,
+          indexModel: '',
+          llmRequired: true,
+          embeddingRequired: false,
+          isSelected: true
+        });
+
+        const contextRecallInfo = getBuiltinDimensionInfo('builtin_context_recall');
+        recommendedDimensions.push({
+          id: 'builtin_context_recall',
+          name: contextRecallInfo
+            ? t(contextRecallInfo.name)
+            : t('dashboard_evaluation:builtin_context_recall_name'),
+          type: 'builtin',
+          description: contextRecallInfo
+            ? t(contextRecallInfo.description)
+            : t('dashboard_evaluation:builtin_context_recall_desc'),
+          evaluationModel: defaultEvaluationModel,
+          indexModel: '',
+          llmRequired: true,
+          embeddingRequired: false,
+          isSelected: true
+        });
+      }
+
+      return recommendedDimensions;
     },
-    []
+    [embeddingModelList, llmModelList, t]
+  );
+
+  // 获取应用最近使用的数据集
+  const { runAsync: getLastUsedDataset } = useRequest2(
+    async (appId: string) => {
+      if (!appId) return null;
+      const result = await getEvaluationList({
+        pageNum: 1,
+        pageSize: 1,
+        appId: appId
+      });
+      return result.list.length > 0 ? result.list[0] : null;
+    },
+    {
+      manual: true
+    }
   );
 
   // 获取应用详情并分析节点类型
@@ -149,7 +210,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     },
     {
       manual: true,
-      onSuccess: (appDetail) => {
+      onSuccess: async (appDetail) => {
         if (!appDetail?.modules) {
           setRecommendedDimensionText('');
           // 清空推荐维度
@@ -184,6 +245,16 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
         } else {
           setRecommendedDimensionText('');
           setShouldAutoExpand(true);
+        }
+
+        // 获取并设置该应用最近使用的数据集
+        try {
+          const lastEvaluation = await getLastUsedDataset(appDetail._id);
+          if (lastEvaluation?.evalDatasetCollectionId) {
+            setValue('evalDatasetCollectionId', lastEvaluation.evalDatasetCollectionId);
+          }
+        } catch (error) {
+          console.error('Failed to get last used dataset:', error);
         }
       }
     }
@@ -490,7 +561,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   ]}
                 />
                 <Button variant="whiteBase" size="md" flexShrink={0} onClick={fetchDatasets}>
-                  <MyIcon name="common/refreshLight" w="14px" />
+                  <MyIcon name="common/confirm/restoreTip" w="14px" />
                 </Button>
               </HStack>
             </Flex>
