@@ -21,7 +21,7 @@ import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import { runWorkflow } from '../index';
-import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
 import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 
@@ -111,7 +111,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       };
     });
 
-    const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(runningAppInfo.tmbId);
+    const { externalProvider } = await getUserChatInfo(runningAppInfo.tmbId);
     const runtimeVariables = {
       ...filterSystemVariables(props.variables),
       appId: String(plugin.id),

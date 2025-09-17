@@ -20,7 +20,7 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
@@ -99,7 +99,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     // Rewrite children app variables
     const systemVariables = filterSystemVariables(variables);
-    const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(appData.tmbId);
+    const { externalProvider } = await getUserChatInfo(appData.tmbId);
     const childrenRunVariables = {
       ...systemVariables,
       ...childrenAppVariables,
