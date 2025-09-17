@@ -131,7 +131,7 @@ export const EvaluationTaskSchema = new Schema({
     required: true
   },
   status: {
-    type: Number,
+    type: String,
     enum: EvaluationStatusValues,
     default: EvaluationStatusEnum.queuing
   },
@@ -226,9 +226,9 @@ export const EvaluationItemSchema = new Schema({
     default: []
   },
   status: {
-    type: Number,
-    default: EvaluationStatusEnum.queuing,
-    enum: EvaluationStatusValues
+    type: String,
+    enum: EvaluationStatusValues,
+    default: EvaluationStatusEnum.queuing
   },
   retry: {
     type: Number,

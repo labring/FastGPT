@@ -8,7 +8,6 @@ export enum EvaluationErrEnum {
   evalNameTooLong = 'evaluationNameTooLong',
   evalDescriptionTooLong = 'evaluationDescriptionTooLong',
   evalDescriptionInvalidType = 'evaluationDescriptionInvalidType',
-  evalDatasetIdRequired = 'evaluationDatasetIdRequired',
   evalTargetRequired = 'evaluationTargetRequired',
   evalTargetInvalidConfig = 'evaluationTargetInvalidConfig',
   evalTargetAppIdMissing = 'evaluationTargetAppIdMissing',
@@ -171,10 +170,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalDescriptionTooLong,
     message: i18nT('evaluation:description_too_long')
-  },
-  {
-    statusText: EvaluationErrEnum.evalDatasetIdRequired,
-    message: i18nT('evaluation:dataset_id_required')
   },
   {
     statusText: EvaluationErrEnum.evalTargetRequired,

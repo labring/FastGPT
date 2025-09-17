@@ -13,7 +13,7 @@ async function handler(
   req: ApiRequestProps<ListEvaluationItemsRequest>
 ): Promise<ListEvaluationItemsResponse> {
   const { offset, pageSize } = parsePaginationRequest(req);
-  const { evalId } = req.body;
+  const { evalId, status, userInput, expectedOutput, actualOutput } = req.body;
 
   if (!evalId) {
     throw new Error(EvaluationErrEnum.evalIdRequired);
@@ -25,7 +25,12 @@ async function handler(
     authToken: true
   });
 
-  const result = await EvaluationTaskService.listEvaluationItems(evalId, teamId, offset, pageSize);
+  const result = await EvaluationTaskService.listEvaluationItems(evalId, teamId, offset, pageSize, {
+    status,
+    userInput,
+    expectedOutput,
+    actualOutput
+  });
 
   return {
     list: result.items,
