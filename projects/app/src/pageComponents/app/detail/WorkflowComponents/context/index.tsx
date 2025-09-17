@@ -273,6 +273,7 @@ export type DebugDataType = {
   history?: ChatItemType[];
   query?: UserChatItemValueItemType[];
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
+  usageId?: string;
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
@@ -713,7 +714,8 @@ const WorkflowContextProvider = ({
           entryNodeIds,
           skipNodeQueue,
           nodeResponses,
-          newVariables
+          newVariables,
+          usageId
         } = await postWorkflowDebug({
           nodes: runtimeNodes,
           edges: debugData.runtimeEdges,
@@ -735,7 +737,8 @@ const WorkflowContextProvider = ({
           runtimeEdges: memoryEdges,
           entryNodeIds,
           skipNodeQueue,
-          variables: newVariables
+          variables: newVariables,
+          usageId
         });
 
         // 5. selected entry node and Update entry node debug result

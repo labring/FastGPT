@@ -48,6 +48,7 @@ export type ChatDispatchProps = {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
     teamId: string;
     tmbId: string; // App tmbId
+    name: string;
     isChildApp?: boolean;
   };
   runningUserInfo: {

@@ -1,6 +1,6 @@
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { pushGenerateVectorUsage, pushRerankUsage } from '@/service/support/wallet/usage/push';
+import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import {
   deepRagSearch,
   defaultSearchDatasetData
@@ -98,40 +98,36 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
 
   // push bill
   const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
-  const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
+  const { totalPoints } = pushDatasetTestUsage({
     teamId,
     tmbId,
-    inputTokens: embeddingTokens,
-    model: dataset.vectorModel,
     source,
-
-    ...(queryExtensionResult && {
-      extensionModel: queryExtensionResult.model,
-      extensionInputTokens: queryExtensionResult.inputTokens,
-      extensionOutputTokens: queryExtensionResult.outputTokens
-    }),
-    ...(deepSearchResult && {
-      deepSearchModel: deepSearchResult.model,
-      deepSearchInputTokens: deepSearchResult.inputTokens,
-      deepSearchOutputTokens: deepSearchResult.outputTokens
-    })
+    embUsage: {
+      model: dataset.vectorModel,
+      inputTokens: embeddingTokens
+    },
+    rerankUsage: searchUsingReRank
+      ? {
+          model: rerankModelData.model,
+          inputTokens: reRankInputTokens
+        }
+      : undefined,
+    extensionUsage: queryExtensionResult
+      ? {
+          model: queryExtensionResult.model,
+          inputTokens: queryExtensionResult.inputTokens,
+          outputTokens: queryExtensionResult.outputTokens
+        }
+      : undefined
   });
-  const { totalPoints: reRankTotalPoints } = searchUsingReRank
-    ? pushRerankUsage({
-        teamId,
-        tmbId,
-        inputTokens: reRankInputTokens,
-        model: rerankModelData.model,
-        source
-      })
-    : { totalPoints: 0 };
 
   if (apikey) {
     updateApiKeyUsage({
       apikey,
-      totalPoints: embeddingTotalPoints + reRankTotalPoints
+      totalPoints
     });
   }
+
   (async () => {
     addAuditLog({
       tmbId,

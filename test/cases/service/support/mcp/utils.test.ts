@@ -37,7 +37,7 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/team', () => ({
-  getUserChatInfoAndAuthTeamPoints: vi.fn(),
+  getUserChatInfo: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn()
 }));
 
@@ -47,10 +47,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   saveChat: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createChatUsage: vi.fn()
 }));
 
 describe('pluginNodes2InputSchema', () => {
