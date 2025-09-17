@@ -6,6 +6,9 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getMyModels } from '@/web/common/system/api';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -21,6 +24,10 @@ const ImportSettings = ({ onClose }: Props) => {
   const initData = useContextSelector(WorkflowContext, (v) => v.initData);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
+
+  const { data: myModels } = useRequest2(getMyModels, {
+    manual: false
+  });
 
   return (
     <MyModal
@@ -44,6 +51,7 @@ const ImportSettings = ({ onClose }: Props) => {
             }
             try {
               const data = JSON.parse(value);
+              removeUnauthModels({ modules: data.nodes, allowedModels: myModels ?? [] });
               await initData(data);
               toast({
                 title: t('app:import_configs_success'),
