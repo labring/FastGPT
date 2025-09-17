@@ -265,7 +265,7 @@ export const useDebug = () => {
             {renderInputs.map((item) => (
               <LabelAndFormRender
                 key={item.key}
-                label={t(item.label)}
+                label={item.label}
                 required={item.required}
                 placeholder={t(item.placeholder || item.description)}
                 inputType={nodeInputTypeToInputType(item.renderTypeList)}
@@ -279,7 +279,7 @@ export const useDebug = () => {
             {customVar.map((item) => (
               <LabelAndFormRender
                 key={item.key}
-                label={t(item.label)}
+                label={item.label}
                 required={item.required}
                 placeholder={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
@@ -291,7 +291,7 @@ export const useDebug = () => {
             {internalVar.map((item) => (
               <LabelAndFormRender
                 key={item.key}
-                label={t(item.label)}
+                label={item.label}
                 required={item.required}
                 placeholder={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
@@ -303,7 +303,7 @@ export const useDebug = () => {
             {filteredVar.map((item) => (
               <LabelAndFormRender
                 key={item.key}
-                label={t(item.label)}
+                label={item.label}
                 required={item.required}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
