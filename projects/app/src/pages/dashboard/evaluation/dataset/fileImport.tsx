@@ -178,16 +178,13 @@ const FileImport = () => {
       {() => (
         <MyBox h={'100%'} px={6} py={4} bg={'white'} overflow={'auto'}>
           <Flex alignItems={'center'}>
-            <IconButton
-              icon={<MyIcon name={'common/backFill'} w={'14px'} />}
-              aria-label={''}
-              size={'smSquare'}
-              borderRadius={'50%'}
-              variant={'whiteBase'}
-              mr={2}
+            <Button
+              leftIcon={<MyIcon name={'common/backFill'} w={4} />}
+              variant={'whitePrimary'}
               onClick={() => router.push(getRedirectUrl())}
-            />
-            {t('dashboard_evaluation:file_import_back')}
+            >
+              {t('dashboard_evaluation:file_import_back')}
+            </Button>
           </Flex>
           <VStack gap={4} align="stretch" maxW={['90vw', '800px']} mx="auto">
             <VStack

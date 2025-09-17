@@ -29,6 +29,7 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyImage from '@/components/MyImage/index';
+import { postCreateEvaluationDatasetData } from '@/web/core/evaluation/dataset';
 
 export type InputDataType = {
   q: string;
@@ -51,11 +52,13 @@ const InputDataModal = ({
   dataId,
   defaultValue,
   onClose,
-  onSuccess
+  onSuccess,
+  evaluationDatasetId
 }: {
   collectionId: string;
   dataId?: string;
   defaultValue?: { q?: string; a?: string; imagePreivewUrl?: string };
+  evaluationDatasetId?: string;
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
 }) => {
@@ -167,6 +170,14 @@ const InputDataModal = ({
       };
 
       await putDatasetDataById(updateData);
+      if (evaluationDatasetId) {
+        await postCreateEvaluationDatasetData({
+          collectionId: evaluationDatasetId,
+          userInput: e.q,
+          expectedOutput: e.a,
+          enableQualityEvaluation: false
+        });
+      }
 
       return {
         dataId,
@@ -196,18 +207,15 @@ const InputDataModal = ({
     return vectorModel?.maxToken || 2000;
   }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
-  return (
-    <MyModal
-      isOpen={true}
-      isCentered
-      w={['20rem', '64rem']}
-      onClose={() => onClose()}
-      closeOnOverlayClick={false}
-      maxW={'1440px'}
-      h={'46.25rem'}
-      title={
+  const modalTitle = useMemo(
+    () => (
+      <>
         <Flex ml={-3}>
-          <MyIcon name={icon as any} w={['16px', '20px']} mr={2} />
+          <MyIcon
+            name={(evaluationDatasetId ? 'modal/edit' : icon) as any}
+            w={['16px', '20px']}
+            mr={2}
+          />
           <Box
             className={'textEllipsis'}
             wordBreak={'break-all'}
@@ -219,10 +227,26 @@ const InputDataModal = ({
             overflow={'hidden'}
             textOverflow={'ellipsis'}
           >
-            {collection.sourceName || t('common:unknow_source')}
+            {evaluationDatasetId
+              ? t('common:annotation_answer')
+              : collection.sourceName || t('common:unknow_source')}
           </Box>
         </Flex>
-      }
+      </>
+    ),
+    [collection.sourceName, icon, evaluationDatasetId, t]
+  );
+
+  return (
+    <MyModal
+      isOpen={true}
+      isCentered
+      w={['20rem', '64rem']}
+      onClose={() => onClose()}
+      closeOnOverlayClick={false}
+      maxW={'1440px'}
+      h={'46.25rem'}
+      title={modalTitle}
     >
       <MyBox
         display={'flex'}
@@ -233,7 +257,7 @@ const InputDataModal = ({
       >
         {/* Tab */}
         <Box px={[5, '3.25rem']}>
-          {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && (
+          {(currentTab === TabEnum.chunk || currentTab === TabEnum.qa) && !evaluationDatasetId && (
             <FillRowTabs
               list={[
                 { label: t('common:dataset_data_input_chunk'), value: TabEnum.chunk },

@@ -72,7 +72,7 @@
   "create_new_dataset": "新建",
   "smart_generation": "智能生成",
   "file_import": "文件導入",
-  "confirm_delete_dataset": "確認刪除該數據集嗎？",
+  "confirm_delete_dataset": "確認刪除該數據集？",
   "error_details": "異常詳情",
   "status_queuing": "排隊中",
   "status_parsing": "文件解析中",
@@ -298,5 +298,10 @@
   "builtin_context_recall_name": "上下文召回",
   "builtin_context_recall_desc": "衡量檢索系統是否能夠獲取回答所需的所有關鍵信息，評估其檢索的完整性。",
   "builtin_context_precision_name": "上下文精度",
-  "builtin_context_precision_desc": "衡量檢索內容中是否優先返回高價值信息，反映排序質量與信息密度。"
+  "builtin_context_precision_desc": "衡量檢索內容中是否優先返回高價值信息，反映排序質量與信息密度。",
+  "join_evaluation_dataset": "加入評測數據集",
+  "not_join_evaluation_dataset": "不加入評測數據集",
+  "create_new_dataset_btn_text": "新建數據集",
+  "please_select_evaluation_dataset": "請選擇評測數據集",
+  "join_knowledge_base": "加入知識庫"
 }
