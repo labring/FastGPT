@@ -64,6 +64,7 @@ const ChatInput = ({
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
   const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
+  const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
 
   const fileCtrl = useFieldArray({
     control,
@@ -448,7 +449,8 @@ const ChatInput = ({
               handleSend={(text) => {
                 onSendMessage({
                   text: text.trim(),
-                  files: fileList
+                  files: fileList,
+                  autoTTSResponse
                 });
                 replaceFiles([]);
               }}
