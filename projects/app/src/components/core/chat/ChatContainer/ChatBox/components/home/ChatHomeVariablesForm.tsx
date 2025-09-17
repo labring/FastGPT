@@ -20,7 +20,12 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
 
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
-  const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
+  const externalVariableList = variableList.filter(
+    (item) => item.type === VariableInputEnum.custom
+  );
+  const commonVariableList = variableList.filter(
+    (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+  );
 
   return (
     <Card
@@ -31,27 +36,25 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
     >
       <Box p={3}>
         {/* custom variables */}
-        {allVariableList.filter((i) => i.type === VariableInputEnum.custom).length > 0 && (
+        {externalVariableList.length > 0 && (
           <>
-            {allVariableList
-              .filter((i) => i.type === VariableInputEnum.custom)
-              .map((item) => (
-                <LabelAndFormRender
-                  {...item}
-                  key={item.key}
-                  fieldName={`variables.${item.key}`}
-                  placeholder={item.description}
-                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  form={variablesForm}
-                  bg={'myGray.50'}
-                />
-              ))}
+            {externalVariableList.map((item) => (
+              <LabelAndFormRender
+                {...item}
+                key={item.key}
+                fieldName={`variables.${item.key}`}
+                placeholder={item.description}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                form={variablesForm}
+                bg={'myGray.50'}
+              />
+            ))}
           </>
         )}
         {/* normal variables */}
-        {variableList.length > 0 && (
+        {commonVariableList.length > 0 && (
           <>
-            {variableList.map((item) => (
+            {commonVariableList.map((item) => (
               <LabelAndFormRender
                 {...item}
                 key={item.key}

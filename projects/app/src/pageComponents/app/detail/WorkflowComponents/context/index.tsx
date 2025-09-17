@@ -707,25 +707,31 @@ const WorkflowContextProvider = ({
 
       try {
         // 3. Run one step
-        const { memoryEdges, entryNodeIds, skipNodeQueue, nodeResponses, newVariables } =
-          await postWorkflowDebug({
-            nodes: runtimeNodes,
-            edges: debugData.runtimeEdges,
-            skipNodeQueue: debugData.skipNodeQueue,
-            variables: {
-              appId,
-              cTime: formatTime2YMDHMW(),
-              ...debugData.variables
-            },
-            query: debugData.query, // 添加 query 参数
-            history: debugData.history,
+        const {
+          memoryEdges,
+          memoryNodes,
+          entryNodeIds,
+          skipNodeQueue,
+          nodeResponses,
+          newVariables
+        } = await postWorkflowDebug({
+          nodes: runtimeNodes,
+          edges: debugData.runtimeEdges,
+          skipNodeQueue: debugData.skipNodeQueue,
+          variables: {
             appId,
-            chatConfig: appDetail.chatConfig
-          });
+            cTime: formatTime2YMDHMW(),
+            ...debugData.variables
+          },
+          query: debugData.query, // 添加 query 参数
+          history: debugData.history,
+          appId,
+          chatConfig: appDetail.chatConfig
+        });
 
         // 4. Store debug result
         setWorkflowDebugData({
-          runtimeNodes: debugData.runtimeNodes,
+          runtimeNodes: memoryNodes,
           runtimeEdges: memoryEdges,
           entryNodeIds,
           skipNodeQueue,
@@ -776,7 +782,7 @@ const WorkflowContextProvider = ({
         console.log(error);
       }
     },
-    [appId, onChangeNode, setNodes]
+    [appId, onChangeNode, setNodes, appDetail.chatConfig]
   );
   const onStopNodeDebug = useMemoizedFn(() => {
     setWorkflowDebugData(undefined);
