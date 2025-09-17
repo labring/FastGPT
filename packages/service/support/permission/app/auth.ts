@@ -114,6 +114,10 @@ export const authAppByTmbId = async ({
 
     const Per = new AppPermission({ role: sumPer(folderPer, myPer), isOwner });
 
+    if (app.favourite || app.quick) {
+      Per.addRole(ReadRoleVal);
+    }
+
     if (!Per.checkPer(per)) {
       return Promise.reject(AppErrEnum.unAuthApp);
     }
