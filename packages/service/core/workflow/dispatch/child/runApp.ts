@@ -144,6 +144,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         : {}),
       runningAppInfo: {
         id: String(appData._id),
+        name: appData.name,
         teamId: String(appData.teamId),
         tmbId: String(appData.tmbId),
         isChildApp: true
