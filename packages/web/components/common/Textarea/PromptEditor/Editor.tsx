@@ -86,8 +86,10 @@ export type EditorProps = {
   setQueryString?: (value: string | null) => void;
   selectedSkillKey?: string;
   setSelectedSkillKey?: (key: string) => void;
+  loadFolderContent?: (folderId: string) => Promise<void>;
+  removeFolderContent?: (folderId: string) => void;
+  loadedFolders?: Set<string>;
   value: string;
-
   showOpenModal?: boolean;
   minH?: number;
   maxH?: number;
@@ -121,6 +123,9 @@ export default function Editor({
   selectedTools = [],
   selectedSkillKey,
   setSelectedSkillKey,
+  loadFolderContent,
+  removeFolderContent,
+  loadedFolders,
   onChange,
   onChangeText,
   onBlur,
@@ -266,6 +271,10 @@ export default function Editor({
                 onAddToolFromEditor={onAddToolFromEditor}
                 selectedKey={selectedSkillKey || ''}
                 setSelectedKey={setSelectedSkillKey}
+                // temp
+                loadFolderContent={loadFolderContent}
+                removeFolderContent={removeFolderContent}
+                loadedFolders={loadedFolders}
               />
             </>
           )}
