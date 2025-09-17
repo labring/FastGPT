@@ -206,11 +206,11 @@ describe('EvalDatasetData Delete API', () => {
       );
       expect(mockAddLog.info).toHaveBeenCalledWith(
         'Removing active quality evaluation job before deletion',
-        { dataId: CONSTANTS.validDataId, teamId: CONSTANTS.validTeamId }
+        { dataId: CONSTANTS.validDataId, teamId: CONSTANTS.validTeamId, jobType: 'active' }
       );
       expect(mockAddLog.info).toHaveBeenCalledWith(
         'Quality evaluation job removed successfully before deletion',
-        { dataId: CONSTANTS.validDataId, teamId: CONSTANTS.validTeamId }
+        { dataId: CONSTANTS.validDataId, teamId: CONSTANTS.validTeamId, jobType: 'active' }
       );
     });
 
@@ -225,7 +225,12 @@ describe('EvalDatasetData Delete API', () => {
 
       expect(mockAddLog.error).toHaveBeenCalledWith(
         'Failed to remove quality evaluation job before deletion',
-        { dataId: CONSTANTS.validDataId, teamId: CONSTANTS.validTeamId, error: jobError }
+        {
+          dataId: CONSTANTS.validDataId,
+          teamId: CONSTANTS.validTeamId,
+          jobType: 'active',
+          error: jobError
+        }
       );
       expect(mockMongoEvalDatasetData.deleteOne).toHaveBeenCalled();
       expect(result).toBe('success');
