@@ -148,6 +148,7 @@ export type EvaluationDisplayType = Pick<
   | 'tmbId'
   | 'permission'
   | 'statistics'
+  | 'target'
 > & {
   _id: string;
   avgScore?: number;
@@ -163,7 +164,7 @@ export type EvaluationItemDisplayType = EvaluationItemSchemaType;
 export interface CreateEvaluationParams {
   name: string;
   description?: string;
-  datasetId: string;
+  evalDatasetCollectionId: string;
   target: EvalTarget; // Only supports workflow type target configuration
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
 }

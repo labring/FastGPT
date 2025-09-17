@@ -28,12 +28,12 @@ async function handler(
     authToken: true
   });
 
-  // Now validate all evaluation parameters with teamId (includes target and dataset validation)
+  // Now validate all evaluation parameters with teamId (includes target and evalDatasetCollection validation)
   const paramValidation = await validateEvaluationParamsForCreate(
     {
       name,
       description,
-      datasetId,
+      evalDatasetCollectionId,
       target,
       evaluators
     },
@@ -52,7 +52,7 @@ async function handler(
   const evaluation = await EvaluationTaskService.createEvaluation({
     name: name.trim(),
     description: description?.trim(),
-    datasetId,
+    evalDatasetCollectionId,
     target: target as EvalTarget,
     evaluators,
     teamId,
@@ -66,7 +66,7 @@ async function handler(
       event: AuditEventEnum.CREATE_EVALUATION_TASK,
       params: {
         taskName: evaluation.name,
-        datasetId,
+        evalDatasetCollectionId,
         targetType: evaluation.target.type,
         evaluatorCount: evaluation.evaluators.length
       }

@@ -4,7 +4,6 @@
   "name_required": "名称必填",
   "name_too_long": "名称过长",
   "description_too_long": "描述过长",
-  "dataset_id_required": "数据集ID必填",
   "target_required": "评估目标必填",
   "target_invalid_config": "评估目标配置无效",
   "target_app_id_missing": "应用ID缺失",
@@ -76,7 +75,7 @@
   "evaluator_service_unavailable": "评估器服务不可用",
   "evaluator_invalid_response": "评估器返回无效响应",
   "evaluator_network_error": "评估器网络连接错误",
-  
+
   "eval_id_required": "评估任务ID不能为空",
   "summary_metrics_config_error": "指标配置错误",
   "summary_threshold_value_required": "阈值不能为空",

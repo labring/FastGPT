@@ -1,5 +1,5 @@
 import type { EvalDatasetDataKeyEnum } from '../dataset/constants';
-import type { ModelTypeEnum, EvalMetricTypeEnum, EvaluationStatusEnum } from './constants';
+import type { ModelTypeEnum, EvalMetricTypeEnum, MetricResultStatusEnum } from './constants';
 import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 
 export type EvalModelConfigType = {
@@ -20,7 +20,7 @@ export type EvalCase = {
 
 export type MetricResult = {
   metricName: string;
-  status: EvaluationStatusEnum;
+  status: MetricResultStatusEnum;
   data?: EvaluationResult;
   usages?: Usage[];
   error?: string;
@@ -86,7 +86,7 @@ export type Usage = {
 };
 
 export type EvaluationResponse = {
-  status: EvaluationStatusEnum;
+  status: MetricResultStatusEnum;
   data?: EvaluationResult;
   usages?: Usage[];
   error?: string;

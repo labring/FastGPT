@@ -40,7 +40,7 @@ import {
 // import type { updateEvalItemBody } from '@fastgpt/global/core/evaluation/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const formatEvaluationStatus = (item: { status: number; errorMessage?: string }, t: TFunction) => {
+const formatEvaluationStatus = (item: { status: string; errorMessage?: string }, t: TFunction) => {
   if (item.errorMessage) {
     return (
       <Box color="red.600" fontWeight={'medium'}>

@@ -10,7 +10,7 @@ import { createEvaluationMetricDebugUsage } from '@fastgpt/service/support/walle
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import {
   EvalMetricTypeValues,
-  EvaluationStatusEnum
+  MetricResultStatusEnum
 } from '@fastgpt/global/core/evaluation/metric/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -154,7 +154,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     })();
 
     // Check if diting evaluation was successful based on status
-    if (result.status !== EvaluationStatusEnum.Success) {
+    if (result.status !== MetricResultStatusEnum.Success) {
       addLog.error('[Evaluation Debug] Diting evaluation failed', {
         metricName: metricConfig.metricName,
         status: result.status,

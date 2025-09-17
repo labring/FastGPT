@@ -10,8 +10,8 @@ export enum ModelTypeEnum {
 }
 export const ModelTypeValues = Object.values(ModelTypeEnum);
 
-export enum EvaluationStatusEnum {
+export enum MetricResultStatusEnum {
   Success = 'success',
-  Failed = 'failed',
+  Failed = 'failed'
 }
-export const EvaluationStatusValues = Object.values(EvaluationStatusEnum);
+export const MetricResultStatusValues = Object.values(MetricResultStatusEnum);

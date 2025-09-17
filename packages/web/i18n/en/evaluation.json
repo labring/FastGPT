@@ -4,7 +4,6 @@
   "name_required": "Evaluation task name is required",
   "name_too_long": "Evaluation task name is too long",
   "description_too_long": "Evaluation task description is too long",
-  "dataset_id_required": "Dataset ID is required",
   "target_required": "Evaluation target is required",
   "target_invalid_config": "Evaluation target configuration is invalid",
   "target_app_id_missing": "Application ID is missing",
@@ -76,7 +75,7 @@
   "evaluator_service_unavailable": "Evaluator service unavailable",
   "evaluator_invalid_response": "Evaluator returned invalid response",
   "evaluator_network_error": "Evaluator network connection error",
-  
+
   "eval_id_required": "Evaluation task ID is required",
   "summary_metrics_config_error": "Metrics configuration error",
   "summary_threshold_value_required": "Threshold value is required",

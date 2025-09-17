@@ -4,7 +4,6 @@
   "name_required": "名稱必填",
   "name_too_long": "名稱過長",
   "description_too_long": "描述過長",
-  "dataset_id_required": "數據集ID必填",
   "target_required": "評估目標必填",
   "target_invalid_config": "評估目標配置無效",
   "target_app_id_missing": "應用ID缺失",
@@ -76,7 +75,7 @@
   "evaluator_service_unavailable": "評估器服務不可用",
   "evaluator_invalid_response": "評估器返回無效響應",
   "evaluator_network_error": "評估器網絡連接錯誤",
-  
+
   "eval_id_required": "評估任務ID不能為空",
   "summary_metrics_config_error": "指標配置錯誤",
   "summary_threshold_value_required": "閾值不能為空",
