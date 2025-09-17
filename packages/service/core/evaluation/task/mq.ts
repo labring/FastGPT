@@ -111,15 +111,3 @@ export const removeEvaluationItemJobsByItemId = async (
 
   return result;
 };
-
-export const getEvaluationQueueStats = async () => {
-  const [taskStats, itemStats] = await Promise.all([
-    evaluationTaskQueue.getJobCounts('active', 'prioritized', 'waiting', 'completed', 'failed'),
-    evaluationItemQueue.getJobCounts('active', 'prioritized', 'waiting', 'completed', 'failed')
-  ]);
-
-  return {
-    taskQueue: taskStats,
-    itemQueue: itemStats
-  };
-};

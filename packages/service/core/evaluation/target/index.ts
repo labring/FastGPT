@@ -113,42 +113,27 @@ export class WorkflowTarget extends EvaluationTarget {
     // Construct conversation history based on input.context
     const histories: (UserChatItemType | AIChatItemType)[] = [];
 
-    // if (input.histories && input.histories.length > 0) {
-    //   // Convert histories strings to alternating user-ai conversation history
-    //   // Assume histories format: [user1, ai1, user2, ai2, ...]
-    //   for (let i = 0; i < input.histories.length; i++) {
-    //     const isUser = i % 2 === 0;
-    //     const content = input.histories[i];
+    // Add context as background knowledge in conversation history
+    if (input.context && input.context.length > 0) {
+      const contextText = input.context
+        .filter((item) => item && item.trim())
+        .map((item, index) => `${index + 1}. ${item}`)
+        .join('\n');
 
-    //     if (isUser) {
-    //       // User message
-    //       histories.push({
-    //         obj: ChatRoleEnum.Human,
-    //         value: [
-    //           {
-    //             type: ChatItemValueTypeEnum.text,
-    //             text: {
-    //               content
-    //             }
-    //           }
-    //         ]
-    //       });
-    //     } else {
-    //       // AI message
-    //       histories.push({
-    //         obj: ChatRoleEnum.AI,
-    //         value: [
-    //           {
-    //             type: ChatItemValueTypeEnum.text,
-    //             text: {
-    //               content
-    //             }
-    //           }
-    //         ]
-    //       });
-    //     }
-    //   }
-    // }
+      if (contextText) {
+        histories.push({
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              type: ChatItemValueTypeEnum.text,
+              text: {
+                content: `请参考以下背景知识回答问题：\n${contextText}`
+              }
+            }
+          ]
+        });
+      }
+    }
 
     const chatId = getNanoid();
 
