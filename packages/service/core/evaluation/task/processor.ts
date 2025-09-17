@@ -3,7 +3,9 @@ import type { Job } from '../../../common/bullmq';
 import type {
   EvaluationTaskJobData,
   EvaluationItemJobData,
-  TargetOutput
+  TargetOutput,
+  EvaluationItemSchemaType,
+  EvaluationDataItemType
 } from '@fastgpt/global/core/evaluation/type';
 import { evaluationItemQueue, getEvaluationItemWorker, getEvaluationTaskWorker } from './mq';
 import { MongoEvaluation, MongoEvalItem } from './schema';
@@ -43,7 +45,7 @@ export const calculateEvaluationItemAggregateScore = async (
       const score = evaluatorOutput?.data?.score;
       if (score !== undefined && score !== null && evaluation.summaryConfigs[index]) {
         const weight = evaluation.summaryConfigs[index].weight || 0;
-        const scoreScaling = evalItem.evaluators[index]?.scoreScaling || 100;
+        const scoreScaling = evaluation.evaluators[index]?.scoreScaling || 100;
 
         // Apply score scaling and calculate weighted score
         const scaledScore = score * (scoreScaling / 100);
@@ -533,14 +535,6 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     // Report progress: dataset loaded
     await job.updateProgress(20);
 
-    // TODO: Handle targetCallParams population for evaluation data items
-    // The dataItems loaded from dataset only contain basic EvalDatasetDataSchemaType fields
-    // but evaluation items need EvaluationDataItemType (including targetCallParams).
-    // Need to:
-    // 1. Determine source of targetCallParams (evaluation config, dataset metadata, or default)
-    // 2. Transform dataItems to include targetCallParams before creating evaluation items
-    // 3. Consider caching strategy for targetCallParams if they are dynamic per evaluation
-
     if (dataItems.length === 0) {
       throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
     }
@@ -584,14 +578,28 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
       return;
     }
 
-    // Create evaluation items for each dataItem with all evaluators (batch structure)
-    const evalItems = [];
+    // Create evaluation items for each dataItem (batch structure)
+    const evalItems: Omit<EvaluationItemSchemaType, '_id'>[] = [];
     for (const dataItem of dataItems) {
+      // Extract only the necessary fields for evaluation execution
+      const evaluationDataItem: EvaluationDataItemType = {
+        _id: dataItem._id,
+        userInput: dataItem.userInput,
+        expectedOutput: dataItem.expectedOutput,
+        context: dataItem.context,
+        // TODO: Handle targetCallParams population for evaluation data items
+        // The dataItems loaded from dataset only contain basic EvalDatasetDataSchemaType fields
+        // but evaluation items need EvaluationDataItemType (including targetCallParams).
+        // Need to:
+        // 1. Determine source of targetCallParams (evaluation config, dataset metadata, or default)
+        // 2. Transform dataItems to include targetCallParams before creating evaluation items
+        // 3. Consider caching strategy for targetCallParams if they are dynamic per evaluation
+        targetCallParams: undefined
+      };
+
       evalItems.push({
         evalId,
-        dataItem,
-        target: evaluation.target,
-        evaluators: evaluation.evaluators, // All evaluators for this dataItem
+        dataItem: evaluationDataItem,
         status: EvaluationStatusEnum.queuing,
         retry: maxRetries
       });
@@ -667,8 +675,11 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       return;
     }
 
-    // Get evaluation information for AI Points check
-    const evaluation = await MongoEvaluation.findById(evalId, 'teamId tmbId usageId');
+    // Get evaluation information for AI Points check and target/evaluators config
+    const evaluation = await MongoEvaluation.findById(
+      evalId,
+      'teamId tmbId usageId target evaluators'
+    );
     if (!evaluation) {
       throw new EvaluationStageError(
         EvaluationStageEnum.ResourceCheck,
@@ -721,7 +732,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     // 1. Call evaluation target (if not already done)
     if (!targetOutput || !targetOutput.actualOutput) {
       try {
-        const targetInstance = await createTargetInstance(evalItem.target, { validate: false });
+        const targetInstance = await createTargetInstance(evaluation.target, { validate: false });
         targetOutput = await targetInstance.execute({
           userInput: evalItem.dataItem.userInput,
           context: evalItem.dataItem.context,
@@ -785,96 +796,91 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     }
 
     // 2. Execute evaluators (batch processing - only execute missing ones)
-    const completedCount = evaluatorOutputs.filter(
-      (output) => output?.data?.score !== undefined
-    ).length;
-    const needToExecute = evalItem.evaluators.length - completedCount;
+    // Ensure evaluatorOutputs array matches the length of evaluators
+    while (evaluatorOutputs.length < evaluation.evaluators.length) {
+      evaluatorOutputs.push({} as MetricResult);
+    }
 
-    if (needToExecute > 0) {
-      const errors: Array<{ evaluatorName: string; error: string }> = [];
+    const errors: Array<{ evaluatorName: string; error: string }> = [];
+
+    // Execute only missing evaluators
+    for (let i = 0; i < evaluation.evaluators.length; i++) {
+      const evaluator = evaluation.evaluators[i];
+      const existingOutput = evaluatorOutputs[i];
+
+      // Skip if this evaluator already has a valid result
+      if (existingOutput?.data?.score !== undefined) {
+        continue;
+      }
 
       try {
-        // Execute only missing evaluators
-        for (let i = completedCount; i < evalItem.evaluators.length; i++) {
-          const evaluator = evalItem.evaluators[i];
+        const evaluatorInstance = await createEvaluatorInstance(evaluator, {
+          validate: false
+        });
 
-          const evaluatorInstance = await createEvaluatorInstance(evaluator, {
-            validate: false
-          });
+        const evaluatorOutput = await evaluatorInstance.evaluate({
+          userInput: evalItem.dataItem.userInput,
+          expectedOutput: evalItem.dataItem.expectedOutput,
+          actualOutput: targetOutput.actualOutput,
+          context: evalItem.dataItem.context,
+          retrievalContext: targetOutput.retrievalContext
+        });
 
-          const evaluatorOutput = await evaluatorInstance.evaluate({
-            userInput: evalItem.dataItem.userInput,
-            expectedOutput: evalItem.dataItem.expectedOutput,
-            actualOutput: targetOutput.actualOutput,
-            context: evalItem.dataItem.context,
-            retrievalContext: targetOutput.retrievalContext
-          });
-
-          const inputTokens =
-            evaluatorOutput.usages?.reduce((sum, usage) => sum + (usage.promptTokens || 0), 0) || 0;
-          const outputTokens =
+        await createMergedEvaluationUsage({
+          evalId,
+          teamId: evaluation.teamId,
+          tmbId: evaluation.tmbId,
+          usageId: evaluation.usageId,
+          totalPoints: evaluatorOutput.totalPoints || 0,
+          inputTokens:
+            evaluatorOutput.usages?.reduce((sum, usage) => sum + (usage.promptTokens || 0), 0) || 0,
+          outputTokens:
             evaluatorOutput.usages?.reduce(
               (sum, usage) => sum + (usage.completionTokens || 0),
               0
-            ) || 0;
+            ) || 0,
+          type: 'metric'
+        });
 
-          await createMergedEvaluationUsage({
-            evalId,
-            teamId: evaluation.teamId,
-            tmbId: evaluation.tmbId,
-            usageId: evaluation.usageId,
-            totalPoints: evaluatorOutput.totalPoints || 0,
-            type: 'metric',
-            inputTokens,
-            outputTokens
-          });
-
-          // Record error but continue processing
-          if (evaluatorOutput.status !== MetricResultStatusEnum.Success || evaluatorOutput.error) {
-            const errorMessage = evaluatorOutput.error || 'Evaluator execution failed';
-            const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
-            errors.push({ evaluatorName, error: errorMessage });
-          }
-
-          evaluatorOutputs.push(evaluatorOutput);
-
-          // Save progress after each evaluator (checkpoint for resume)
-          await MongoEvalItem.updateOne(
-            { _id: new Types.ObjectId(evalItemId) },
-            { $set: { evaluatorOutputs: evaluatorOutputs } }
-          );
-
-          // Report progress: evaluator completed
-          const evaluatorProgress = 30 + (60 * (i + 1)) / evalItem.evaluators.length;
-          await job.updateProgress(Math.round(evaluatorProgress));
+        // Record error but continue processing
+        if (evaluatorOutput.status !== MetricResultStatusEnum.Success || evaluatorOutput.error) {
+          const errorMessage = evaluatorOutput.error || 'Evaluator execution failed';
+          const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
+          errors.push({ evaluatorName, error: errorMessage });
         }
 
-        // After all evaluators, check if there were any errors
-        if (errors.length > 0) {
-          throw new EvaluatorAggregatedError(errors);
-        }
-      } catch (error) {
-        // If it's already an EvaluatorAggregatedError, wrap it in EvaluationStageError
-        if (error instanceof EvaluatorAggregatedError) {
-          throw new EvaluationStageError(
-            EvaluationStageEnum.EvaluatorExecute,
-            error.message,
-            error.retriable,
-            error
-          );
-        }
+        // Update the specific position in the array
+        evaluatorOutputs[i] = evaluatorOutput;
 
-        // Normalize other evaluator execution errors
-        const retriable = isEvaluatorExecutionRetriable(error);
-        const errorMessage = getErrText(error) || 'Evaluator execution failed';
-
-        throw new EvaluationStageError(
-          EvaluationStageEnum.EvaluatorExecute,
-          errorMessage,
-          retriable,
-          error
+        // Save progress after each evaluator (checkpoint for resume)
+        await MongoEvalItem.updateOne(
+          { _id: new Types.ObjectId(evalItemId) },
+          { $set: { evaluatorOutputs: evaluatorOutputs } }
         );
+
+        // Report progress: evaluator completed
+        const completedEvaluators = evaluatorOutputs.filter(
+          (output) => output?.data?.score !== undefined
+        ).length;
+        const evaluatorProgress = 30 + (60 * completedEvaluators) / evaluation.evaluators.length;
+        await job.updateProgress(Math.round(evaluatorProgress));
+      } catch (error) {
+        // Handle individual evaluator error
+        const errorMessage = getErrText(error) || 'Evaluator execution failed';
+        const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
+        errors.push({ evaluatorName, error: errorMessage });
       }
+    }
+
+    // After all evaluators, check if there were any errors
+    if (errors.length > 0) {
+      const aggregatedError = new EvaluatorAggregatedError(errors);
+      throw new EvaluationStageError(
+        EvaluationStageEnum.EvaluatorExecute,
+        aggregatedError.message,
+        aggregatedError.retriable,
+        aggregatedError
+      );
     }
 
     // 3. Calculate aggregate score for this evaluation item
