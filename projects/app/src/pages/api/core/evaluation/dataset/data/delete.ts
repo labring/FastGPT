@@ -6,6 +6,7 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import type { deleteEvalDatasetDataQuery } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
   checkEvalDatasetDataQualityJobActive,
+  checkEvalDatasetDataQualityJobInactive,
   removeEvalDatasetDataQualityJobsRobust
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -54,26 +55,31 @@ async function handler(
     collectionName = collection.name;
 
     const hasActiveQualityJob = await checkEvalDatasetDataQualityJobActive(dataId);
+    const hasInactiveQualityJob = await checkEvalDatasetDataQualityJobInactive(dataId);
 
-    if (hasActiveQualityJob) {
-      addLog.info('Removing active quality evaluation job before deletion', {
+    if (hasActiveQualityJob || hasInactiveQualityJob) {
+      const jobType = hasActiveQualityJob ? 'active' : 'inactive';
+      addLog.info(`Removing ${jobType} quality evaluation job before deletion`, {
         dataId,
-        teamId
+        teamId,
+        jobType
       });
 
       try {
         await removeEvalDatasetDataQualityJobsRobust([dataId], {
-          forceCleanActiveJobs: true,
+          forceCleanActiveJobs: hasActiveQualityJob,
           retryDelay: 200
         });
         addLog.info('Quality evaluation job removed successfully before deletion', {
           dataId,
-          teamId
+          teamId,
+          jobType
         });
       } catch (error) {
         addLog.error('Failed to remove quality evaluation job before deletion', {
           dataId,
           teamId,
+          jobType,
           error
         });
         // Continue with deletion even if queue removal fails

@@ -314,6 +314,16 @@ describe('QualityAssessment API', () => {
           'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
           'qualityMetadata.model': validEvaluationModel,
           'qualityMetadata.queueTime': expect.any(Date)
+        },
+        $unset: {
+          'qualityMetadata.score': '',
+          'qualityMetadata.reason': '',
+          'qualityMetadata.usages': '',
+          'qualityMetadata.runLogs': '',
+          'qualityMetadata.startTime': '',
+          'qualityMetadata.finishTime': '',
+          'qualityMetadata.error': '',
+          qualityResult: ''
         }
       });
     });
@@ -537,6 +547,16 @@ describe('QualityAssessment API', () => {
           'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
           'qualityMetadata.model': validEvaluationModel,
           'qualityMetadata.queueTime': expect.any(Date)
+        },
+        $unset: {
+          'qualityMetadata.score': '',
+          'qualityMetadata.reason': '',
+          'qualityMetadata.usages': '',
+          'qualityMetadata.runLogs': '',
+          'qualityMetadata.startTime': '',
+          'qualityMetadata.finishTime': '',
+          'qualityMetadata.error': '',
+          qualityResult: ''
         }
       });
       expect(result).toBe('success');
