@@ -15,7 +15,7 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 async function handler(
   req: ApiRequestProps<UpdateEvaluationRequest>
 ): Promise<UpdateEvaluationResponse> {
-  const { evalId, name, description, datasetId, target, evaluators } = req.body;
+  const { evalId, name, description, evalDatasetCollectionId, target, evaluators } = req.body;
 
   if (!evalId) {
     throw new Error(EvaluationErrEnum.evalIdRequired);
@@ -32,7 +32,7 @@ async function handler(
     {
       name,
       description,
-      datasetId,
+      evalDatasetCollectionId,
       target,
       evaluators
     },
@@ -50,7 +50,7 @@ async function handler(
       ...(name !== undefined && { name: name.trim() }),
       ...(description !== undefined && { description: description?.trim() })
       // runing config not support modify
-      // ...(datasetId !== undefined && { datasetId }),
+      // ...(evalDatasetCollectionId !== undefined && { evalDatasetCollectionId }),
       // ...(target !== undefined && { target }),
       // ...(evaluators !== undefined && { evaluators })
     },

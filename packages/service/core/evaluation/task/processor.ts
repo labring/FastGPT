@@ -19,6 +19,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
+import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // Sleep utility function
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -732,7 +733,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
           });
 
           // Record error but continue processing
-          if (evaluatorOutput.status === 'failed' || evaluatorOutput.error) {
+          if (evaluatorOutput.status !== MetricResultStatusEnum.Success || evaluatorOutput.error) {
             const errorMessage = evaluatorOutput.error || 'Evaluator execution failed';
             const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
             errors.push({ evaluatorName, error: errorMessage });

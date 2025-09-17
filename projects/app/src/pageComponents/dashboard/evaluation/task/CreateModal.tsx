@@ -47,7 +47,7 @@ export interface TaskFormData {
   name: string;
   appId: string;
   appVersion: string;
-  datasetId: string;
+  evalDatasetCollectionId: string;
   selectedDimensions: Dimension[];
 }
 
@@ -61,7 +61,7 @@ const defaultForm: TaskFormData = {
   name: '',
   appId: '',
   appVersion: '',
-  datasetId: '',
+  evalDatasetCollectionId: '',
   selectedDimensions: []
 };
 
@@ -235,7 +235,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
       const createRequest: CreateEvaluationRequest = {
         name: data.name,
-        datasetId: data.datasetId,
+        evalDatasetCollectionId: data.evalDatasetCollectionId,
         target,
         evaluators
       };
@@ -352,12 +352,12 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
   // 智能生成数据集确认回调
   const handleIntelligentGenerationConfirm = useCallback(
-    (data: any, datasetId?: string) => {
+    (data: any, evalDatasetCollectionId?: string) => {
       onCloseIntelligentModal();
       fetchDatasets();
       // 如果返回了数据集ID，自动选择新创建的数据集
-      if (datasetId) {
-        setValue('datasetId', datasetId);
+      if (evalDatasetCollectionId) {
+        setValue('evalDatasetCollectionId', evalDatasetCollectionId);
       }
     },
     [onCloseIntelligentModal, fetchDatasets, setValue]
@@ -445,9 +445,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   <MySelect
                     h={8}
                     placeholder={t('dashboard_evaluation:evaluation_dataset_select_placeholder')}
-                    value={watchedValues.datasetId}
+                    value={watchedValues.evalDatasetCollectionId}
                     list={datasetOptions}
-                    onChange={(val) => setValue('datasetId', val)}
+                    onChange={(val) => setValue('evalDatasetCollectionId', val)}
                     isLoading={isLoadingDatasets}
                     ScrollData={DatasetScrollData}
                   />
@@ -634,7 +634,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
             isDisabled={
               !watchedValues.name ||
               !watchedValues.appId ||
-              !watchedValues.datasetId ||
+              !watchedValues.evalDatasetCollectionId ||
               selectedDimensions.length === 0
             }
             onClick={handleSubmit((data) => createTask(data))}

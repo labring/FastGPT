@@ -148,10 +148,11 @@ export type EvaluationDisplayType = Pick<
   | 'tmbId'
   | 'permission'
   | 'statistics'
+  | 'target'
 > & {
   _id: string;
-  datasetName?: string;
-  target: EvalTarget; // Complete target object with extended config
+  evalDatasetCollectionName?: string;
+  evalDatasetCollectionId?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
@@ -162,7 +163,7 @@ export type EvaluationItemDisplayType = EvaluationItemSchemaType;
 export interface CreateEvaluationParams {
   name: string;
   description?: string;
-  datasetId: string;
+  evalDatasetCollectionId: string;
   target: EvalTarget; // Only supports workflow type target configuration
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
   autoStart?: boolean; // Whether to automatically start the evaluation task after creation (default: true)
