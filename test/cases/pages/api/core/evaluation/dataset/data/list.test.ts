@@ -5,7 +5,9 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   EvalDatasetDataKeyEnum,
-  EvalDatasetDataQualityStatusEnum
+  EvalDatasetDataQualityStatusEnum,
+  EvalDatasetDataQualityResultEnum,
+  EvalDatasetDataQualityResultValues
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
@@ -1128,6 +1130,126 @@ describe('EvalDatasetData List API', () => {
       await expect(handler_test(req as any)).rejects.toBe(
         EvaluationErrEnum.datasetCollectionIdRequired
       );
+    });
+  });
+
+  describe('Quality Result Filtering', () => {
+    it.each([
+      { qualityResult: '', desc: 'empty' },
+      { qualityResult: null, desc: 'null' },
+      { qualityResult: undefined, desc: 'undefined' }
+    ])(
+      'should handle $desc qualityResult parameter without filtering',
+      async ({ qualityResult }) => {
+        const req = {
+          body: { collectionId: validCollectionId, qualityResult, pageNum: 1, pageSize: 10 }
+        };
+
+        await handler_test(req as any);
+
+        expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } }
+          ])
+        );
+      }
+    );
+
+    it.each([
+      { qualityResult: '   ', desc: 'whitespace-only' },
+      { qualityResult: 123, desc: 'non-string' },
+      { qualityResult: 'invalidResult', desc: 'invalid enum value' }
+    ])('should reject invalid $desc qualityResult parameter', async ({ qualityResult }) => {
+      const req = {
+        body: { collectionId: validCollectionId, qualityResult, pageNum: 1, pageSize: 10 }
+      };
+
+      await expect(handler_test(req as any)).rejects.toBe(
+        EvaluationErrEnum.evalDataQualityStatusInvalid
+      );
+    });
+
+    it.each(Object.values(EvalDatasetDataQualityResultEnum))(
+      'should filter by quality result - %s',
+      async (qualityResult) => {
+        const req = {
+          body: {
+            collectionId: validCollectionId,
+            qualityResult,
+            pageNum: 1,
+            pageSize: 10
+          }
+        };
+
+        await handler_test(req as any);
+
+        const expectedMatch = {
+          evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
+          qualityResult: qualityResult
+        };
+
+        expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+          expect.arrayContaining([{ $match: expectedMatch }])
+        );
+
+        expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
+      }
+    );
+
+    it('should combine status and qualityResult filters', async () => {
+      const req = {
+        body: {
+          collectionId: validCollectionId,
+          status: EvalDatasetDataQualityStatusEnum.completed,
+          qualityResult: EvalDatasetDataQualityResultEnum.highQuality,
+          pageNum: 1,
+          pageSize: 10
+        }
+      };
+
+      await handler_test(req as any);
+
+      const expectedMatch = {
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
+        'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.completed,
+        qualityResult: EvalDatasetDataQualityResultEnum.highQuality
+      };
+
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([{ $match: expectedMatch }])
+      );
+
+      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
+    });
+
+    it('should handle search with qualityResult filter', async () => {
+      const req = {
+        body: {
+          collectionId: validCollectionId,
+          searchKey: 'AI test',
+          qualityResult: EvalDatasetDataQualityResultEnum.needsOptimization,
+          pageNum: 1,
+          pageSize: 10
+        }
+      };
+
+      await handler_test(req as any);
+
+      const expectedMatch = {
+        evalDatasetCollectionId: new Types.ObjectId(validCollectionId),
+        qualityResult: EvalDatasetDataQualityResultEnum.needsOptimization,
+        $or: [
+          { [EvalDatasetDataKeyEnum.UserInput]: { $regex: new RegExp('AI test', 'i') } },
+          { [EvalDatasetDataKeyEnum.ExpectedOutput]: { $regex: new RegExp('AI test', 'i') } },
+          { [EvalDatasetDataKeyEnum.ActualOutput]: { $regex: new RegExp('AI test', 'i') } }
+        ]
+      };
+
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([{ $match: expectedMatch }])
+      );
+
+      expect(mockMongoEvalDatasetData.countDocuments).toHaveBeenCalledWith(expectedMatch);
     });
   });
 });

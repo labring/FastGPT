@@ -65,14 +65,23 @@ const DataListContent = () => {
     successToast: t('common:delete_success')
   });
 
-  const scrollParams = useMemo(
-    () => ({
+  const scrollParams = useMemo(() => {
+    const baseParams = {
       searchKey: searchKey || '',
-      status: status === EvaluationStatus.All ? '' : status,
       collectionId
-    }),
-    [searchKey, status, collectionId]
-  );
+    };
+
+    if (status === EvaluationStatus.All) {
+      return { ...baseParams, status: '', qualityResult: '' };
+    } else if (
+      status === EvaluationStatus.HighQuality ||
+      status === EvaluationStatus.NeedsImprovement
+    ) {
+      return { ...baseParams, status: '', qualityResult: status };
+    } else {
+      return { ...baseParams, status: status, qualityResult: '' };
+    }
+  }, [searchKey, status, collectionId]);
 
   const EmptyTipDom = useMemo(() => <EmptyTip text={t('dashboard_evaluation:no_data')} />, [t]);
 
@@ -95,6 +104,11 @@ const DataListContent = () => {
 
   // 获取状态标签颜色
   const getStatusColor = (qualityStatus: string, qualityResult?: string) => {
+    // 错误状态优先显示，不管有没有质量结果
+    if (qualityStatus === EvalDatasetDataQualityStatusEnum.error) {
+      return 'red';
+    }
+
     // 如果有质量结果，优先显示质量结果的颜色
     if (qualityResult) {
       switch (qualityResult) {
@@ -115,8 +129,6 @@ const DataListContent = () => {
         return 'blue';
       case EvalDatasetDataQualityStatusEnum.queuing:
         return 'gray';
-      case EvalDatasetDataQualityStatusEnum.error:
-        return 'red';
       case EvalDatasetDataQualityStatusEnum.unevaluated:
         return 'gray';
       default:
