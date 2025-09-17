@@ -144,7 +144,6 @@ const ChatBox = ({
   const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
-  const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
   const startSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.startSegmentedAudio);
   const finishSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.finishSegmentedAudio);
@@ -156,11 +155,14 @@ const ChatBox = ({
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
   const showExternalVariable = useMemo(() => {
-    return (
-      [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(chatType) &&
-      allVariableList.some((item) => item.type === VariableInputEnum.custom)
-    );
-  }, [allVariableList, chatType]);
+    const map: Record<string, boolean> = {
+      [ChatTypeEnum.log]: true,
+      [ChatTypeEnum.test]: true,
+      [ChatTypeEnum.chat]: true,
+      [ChatTypeEnum.home]: true
+    };
+    return map[chatType] && variableList.some((item) => item.type === VariableInputEnum.custom);
+  }, [variableList, chatType]);
 
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
@@ -173,10 +175,20 @@ const ChatBox = ({
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
 
-  // 可以进入对话框对话
+  const commonVariableList = variableList.filter(
+    (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+  );
+
+  /* 
+    对话已经开始的标记：
+    1. 保证 appId 一致。
+    2. 有对话记录/手动点了开始/默认没有需要填写的变量。
+  */
   const chatStarted =
     chatBoxData?.appId === appId &&
-    (chatRecords.length > 0 || chatStartedWatch || variableList.length === 0);
+    (chatRecords.length > 0 ||
+      chatStartedWatch ||
+      (commonVariableList.length === 0 && !showExternalVariable));
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -449,7 +461,7 @@ const ChatBox = ({
 
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
-          allVariableList?.forEach((item) => {
+          variableList?.forEach((item) => {
             const val =
               variables[item.key] === '' ||
               variables[item.key] === undefined ||
@@ -827,7 +839,7 @@ const ChatBox = ({
       feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatRecords.length === 0 &&
-      !variableList?.length &&
+      !commonVariableList?.length &&
       !showExternalVariable &&
       !welcomeText,
     [
@@ -835,7 +847,7 @@ const ChatBox = ({
       feConfigs?.show_emptyChat,
       showEmptyIntro,
       chatRecords.length,
-      variableList?.length,
+      commonVariableList?.length,
       showExternalVariable,
       welcomeText
     ]
@@ -1126,8 +1138,7 @@ const ChatBox = ({
         >
           <Flex h={'100%'} flexDir={'column'} justifyContent={'center'} w={'100%'}>
             {HomeChatRenderBox}
-            {allVariableList.filter((item) => item.type !== VariableInputEnum.internal).length >
-            0 ? (
+            {variableList.filter((item) => item.type !== VariableInputEnum.internal).length > 0 ? (
               <Box w={'100%'}>
                 <ChatHomeVariablesForm chatForm={chatForm} />
               </Box>

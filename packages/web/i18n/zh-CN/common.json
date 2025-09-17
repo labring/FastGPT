@@ -707,7 +707,6 @@
   "core.workflow.Custom outputs": "自定义输出",
   "core.workflow.Dataset quote": "知识库引用",
   "core.workflow.Debug": "调试",
-  "core.workflow.Debug Node": "Debug 模式",
   "core.workflow.Failed": "运行失败",
   "core.workflow.Not intro": "这个节点没有介绍~",
   "core.workflow.Run": "运行",

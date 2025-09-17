@@ -15,6 +15,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 
 export type WorkflowDebugResponse = {
   memoryEdges: RuntimeEdgeItemType[];
+  memoryNodes: RuntimeNodeItemType[];
   entryNodeIds: string[]; // Next step entry nodes
   nodeResponses: Record<
     string,

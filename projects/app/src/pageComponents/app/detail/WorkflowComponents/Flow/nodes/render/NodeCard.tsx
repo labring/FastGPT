@@ -514,7 +514,8 @@ const MenuRender = React.memo(function MenuRender({
               version: template.version,
               versionLabel: template.versionLabel,
               isLatestVersion: template.isLatestVersion,
-              toolConfig: template.toolConfig
+              toolConfig: template.toolConfig,
+              catchError: template.catchError
             },
             selected: true,
             parentNodeId: undefined,
