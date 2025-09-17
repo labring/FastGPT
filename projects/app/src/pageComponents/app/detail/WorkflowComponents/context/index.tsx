@@ -731,7 +731,7 @@ const WorkflowContextProvider = ({
 
         // 4. Store debug result
         setWorkflowDebugData({
-          runtimeNodes: memoryNodes || debugData.runtimeNodes,
+          runtimeNodes: memoryNodes,
           runtimeEdges: memoryEdges,
           entryNodeIds,
           skipNodeQueue,

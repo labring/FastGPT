@@ -707,7 +707,6 @@
   "core.workflow.Custom outputs": "Custom Outputs",
   "core.workflow.Dataset quote": "Dataset Quote",
   "core.workflow.Debug": "Debug",
-  "core.workflow.Debug Node": "Debug Mode",
   "core.workflow.Failed": "Run Failed",
   "core.workflow.Not intro": "This Node Has No Introduction",
   "core.workflow.Run": "Run",

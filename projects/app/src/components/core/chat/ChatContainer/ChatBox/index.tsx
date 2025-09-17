@@ -155,11 +155,13 @@ const ChatBox = ({
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
   const showExternalVariable = useMemo(() => {
-    return (
-      [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat, ChatTypeEnum.home].includes(
-        chatType
-      ) && variableList.some((item) => item.type === VariableInputEnum.custom)
-    );
+    const map: Record<string, boolean> = {
+      [ChatTypeEnum.log]: true,
+      [ChatTypeEnum.test]: true,
+      [ChatTypeEnum.chat]: true,
+      [ChatTypeEnum.home]: true
+    };
+    return map[chatType] && variableList.some((item) => item.type === VariableInputEnum.custom);
   }, [variableList, chatType]);
 
   // compute variable input is finish.
@@ -176,6 +178,12 @@ const ChatBox = ({
   const commonVariableList = variableList.filter(
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
+
+  /* 
+    对话已经开始的标记：
+    1. 保证 appId 一致。
+    2. 有对话记录/手动点了开始/默认没有需要填写的变量。
+  */
   const chatStarted =
     chatBoxData?.appId === appId &&
     (chatRecords.length > 0 ||

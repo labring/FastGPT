@@ -706,7 +706,6 @@
   "core.workflow.Custom outputs": "自訂輸出",
   "core.workflow.Dataset quote": "知識庫引用",
   "core.workflow.Debug": "除錯",
-  "core.workflow.Debug Node": "除錯模式",
   "core.workflow.Failed": "執行失敗",
   "core.workflow.Not intro": "此節點沒有介紹",
   "core.workflow.Run": "執行",
