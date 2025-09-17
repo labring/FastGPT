@@ -33,6 +33,7 @@ export default function SkillPlugin({
 
       if (tool) {
         const extendedTool = tool;
+        const skillType = tool.templateType === 'teamApp' ? 'app' : 'tool';
         const onConfigureClick =
           extendedTool.isUnconfigured && onConfigureTool
             ? () => onConfigureTool(skillKey)
@@ -41,13 +42,14 @@ export default function SkillPlugin({
           skillKey,
           tool.name,
           tool.avatar,
+          skillType,
           extendedTool.isUnconfigured,
           false,
           onConfigureClick
         );
       }
 
-      return $createSkillNode(skillKey, undefined, undefined, false, true);
+      return $createSkillNode(skillKey, undefined, undefined, 'tool', false, true);
     },
     [selectedTools, onConfigureTool]
   );
@@ -86,15 +88,18 @@ export default function SkillPlugin({
 
           if (tool) {
             const extendedTool = tool;
+            const skillType = tool.templateType === 'teamApp' ? 'app' : 'tool';
             if (
               !node.__skillName ||
               !node.__skillAvatar ||
+              node.__skillType !== skillType ||
               node.__isUnconfigured !== extendedTool.isUnconfigured ||
               node.__isInvalid !== false
             ) {
               const writableNode = node.getWritable();
               writableNode.__skillName = tool.name;
               writableNode.__skillAvatar = tool.avatar;
+              writableNode.__skillType = skillType;
               writableNode.__isUnconfigured = extendedTool.isUnconfigured;
               writableNode.__isInvalid = false;
               writableNode.__onConfigureClick =
