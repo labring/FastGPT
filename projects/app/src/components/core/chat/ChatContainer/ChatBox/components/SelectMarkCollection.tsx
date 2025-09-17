@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ModalBody, ModalFooter, Button, Box } from '@chakra-ui/react';
+import { ModalBody, ModalFooter, Button, VStack, FormControl, FormLabel } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dynamic from 'next/dynamic';
 import { type AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import FilesCascader from './FilesCascader';
 import type { FileSelection } from './FilesCascader';
+import EvaluationDatasetSelector from './EvaluationDatasetSelector';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
@@ -59,6 +60,14 @@ const SelectMarkCollection = ({
     [adminMarkData, setAdminMarkData]
   );
 
+  // 评测数据集选择相关
+  const [selectedEvaluationDataset, setSelectedEvaluationDataset] = useState<string>('');
+
+  // 处理评测数据集选择变化
+  const handleEvaluationDatasetChange = useCallback((datasetId: string) => {
+    setSelectedEvaluationDataset(datasetId);
+  }, []);
+
   // 处理确认按钮点击
   const handleConfirm = useCallback(() => {
     if (adminMarkData.datasetId && adminMarkData.collectionId) {
@@ -80,14 +89,25 @@ const SelectMarkCollection = ({
       <MyModal
         isOpen={!showInputDataModal}
         onClose={onClose}
+        iconSrc="kbTest"
+        iconColor={'primary.600'}
         title={t('app:select_join_location')}
         w={'600px'}
         h={'400px'}
       >
         <ModalBody flex={'1 0 0'} overflowY={'auto'} p={6}>
-          <Box mb={4}>
-            <FilesCascader value={cascaderValue} onChange={handleCascaderChange} />
-          </Box>
+          <VStack spacing={4} align="stretch">
+            <EvaluationDatasetSelector
+              value={selectedEvaluationDataset}
+              onChange={handleEvaluationDatasetChange}
+            />
+            <FormControl>
+              <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+                {t('dashboard_evaluation:join_knowledge_base')}
+              </FormLabel>
+              <FilesCascader value={cascaderValue} onChange={handleCascaderChange} />
+            </FormControl>
+          </VStack>
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
@@ -106,6 +126,9 @@ const SelectMarkCollection = ({
             setShowInputDataModal(false);
           }}
           collectionId={adminMarkData.collectionId || ''}
+          evaluationDatasetId={
+            selectedEvaluationDataset === 'null' ? '' : selectedEvaluationDataset
+          }
           dataId={adminMarkData.feedbackDataId}
           defaultValue={{
             q: adminMarkData.q,

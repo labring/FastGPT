@@ -302,5 +302,10 @@
   "builtin_context_recall_name": "Context Recall",
   "builtin_context_recall_desc": "Evaluates whether the retrieval system successfully retrieves all key information necessary for formulating the answer, assessing the completeness of retrieval.",
   "builtin_context_precision_name": "Context Precision",
-  "builtin_context_precision_desc": "Evaluates whether high-value information is prioritized in the retrieved content, reflecting the quality of ranking and information density."
+  "builtin_context_precision_desc": "Evaluates whether high-value information is prioritized in the retrieved content, reflecting the quality of ranking and information density.",
+  "join_evaluation_dataset": "加入评测数据集",
+  "not_join_evaluation_dataset": "不加入评测数据集",
+  "create_new_dataset_btn_text": "新建数据集",
+  "please_select_evaluation_dataset": "请选择评测数据集",
+  "join_knowledge_base": "加入知识库"
 }

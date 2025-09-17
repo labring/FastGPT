@@ -331,7 +331,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       case EvalDatasetDataQualityStatusEnum.error:
         return (
           <VStack spacing={4} justify="center" h="100%">
-            <Box borderRadius="md">
+            <Box borderRadius="md" maxW={'370px'}>
               <Flex align="center" mb={4}>
                 <MyIcon name="closeSolid" w={4} h={4} color="red" mr={1} />
                 <Text fontSize="14px" fontWeight="medium" color="red.500">
