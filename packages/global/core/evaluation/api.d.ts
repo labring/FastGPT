@@ -8,6 +8,8 @@ import type {
   EvaluationDataItemType,
   EvaluationStatistics
 } from './type';
+import type { EvaluationStatusEnum } from './constants';
+import type { EvalDatasetDataKeyEnum } from './dataset/constants';
 
 // ===== Common Types =====
 export type MessageResponse = { message: string };
@@ -73,7 +75,14 @@ export type RetryFailedItemsResponse = {
 export type EvalItemIdQuery = { evalItemId: string };
 
 // List Evaluation Items
-export type ListEvaluationItemsRequest = PaginationProps<EvalIdQuery>;
+export type ListEvaluationItemsRequest = PaginationProps<
+  EvalIdQuery & {
+    status?: EvaluationStatusEnum;
+    [EvalDatasetDataKeyEnum.UserInput]?: string;
+    [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
+    [EvalDatasetDataKeyEnum.ActualOutput]?: string;
+  }
+>;
 export type ListEvaluationItemsResponse = PaginationResponse<EvaluationItemDisplayType>;
 
 // Get Evaluation Item Detail

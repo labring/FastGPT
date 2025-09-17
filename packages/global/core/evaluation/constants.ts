@@ -3,10 +3,10 @@ import { i18nT } from '../../../web/i18n/utils';
 export const evaluationFileErrors = i18nT('dashboard_evaluation:eval_file_check_error');
 
 export enum EvaluationStatusEnum {
-  queuing = 0,
-  evaluating = 1,
-  completed = 2,
-  error = 3
+  queuing = 'queuing',
+  evaluating = 'evaluating',
+  completed = 'completed',
+  error = 'error'
 }
 
 export const EvaluationStatusMap = {
@@ -23,7 +23,7 @@ export const EvaluationStatusMap = {
     name: i18nT('dashboard_evaluation:error')
   }
 };
-export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
+export const EvaluationStatusValues = Object.values(EvaluationStatusEnum);
 
 export enum SummaryStatusEnum {
   pending = 0,

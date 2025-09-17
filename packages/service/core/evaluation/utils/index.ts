@@ -11,46 +11,46 @@ export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
 export interface EvaluationValidationOptions {
   mode?: 'create' | 'update'; // validation mode
-  teamId?: string; // required for dataset existence validation
+  teamId?: string; // required for evalDatasetCollection existence validation
 }
 
 /**
- * Validate if a dataset exists and is accessible by the team
+ * Validate if a evalDatasetCollection exists and is accessible by the team
  */
-async function validateDatasetExists(
-  datasetId: string,
+async function validateEvalDatasetCollectionExists(
+  evalDatasetCollectionId: string,
   teamId?: string
 ): Promise<ValidationResult> {
-  // Validate datasetId format
-  if (!Types.ObjectId.isValid(datasetId)) {
+  // Validate evalDatasetCollectionId format
+  if (!Types.ObjectId.isValid(evalDatasetCollectionId)) {
     return {
       isValid: false,
       errors: [
         {
-          code: EvaluationErrEnum.evalDatasetIdRequired,
-          message: 'Invalid dataset ID format',
-          field: 'datasetId'
+          code: EvaluationErrEnum.datasetCollectionIdRequired,
+          message: 'Invalid evalDatasetCollectionId format',
+          field: 'evalDatasetCollectionId'
         }
       ]
     };
   }
 
-  // Check if dataset exists
-  const filter: any = { _id: new Types.ObjectId(datasetId) };
+  // Check if evalDatasetCollection exists
+  const filter: any = { _id: new Types.ObjectId(evalDatasetCollectionId) };
   if (teamId) {
     filter.teamId = new Types.ObjectId(teamId);
   }
 
-  const dataset = await MongoEvalDatasetCollection.findOne(filter).lean();
+  const datasetCollection = await MongoEvalDatasetCollection.findOne(filter).lean();
 
-  if (!dataset) {
+  if (!datasetCollection) {
     return {
       isValid: false,
       errors: [
         {
           code: EvaluationErrEnum.datasetCollectionNotFound,
-          message: 'Dataset not found or access denied',
-          field: 'datasetId'
+          message: 'evalDatasetCollection not found or access denied',
+          field: 'evalDatasetCollectionId'
         }
       ]
     };
@@ -63,7 +63,7 @@ export async function validateEvaluationParams(
   params: EvaluationValidationParams,
   options?: EvaluationValidationOptions
 ): Promise<ValidationResult> {
-  const { name, description, datasetId, target, evaluators } = params;
+  const { name, description, evalDatasetCollectionId, target, evaluators } = params;
   const mode = options?.mode || 'create';
   const isCreateMode = mode === 'create';
 
@@ -82,14 +82,14 @@ export async function validateEvaluationParams(
       };
     }
 
-    if (!datasetId) {
+    if (!evalDatasetCollectionId) {
       return {
         isValid: false,
         errors: [
           {
-            code: EvaluationErrEnum.evalDatasetIdRequired,
-            message: 'Dataset ID is required',
-            field: 'datasetId'
+            code: EvaluationErrEnum.datasetCollectionIdRequired,
+            message: 'datasetCollectionId is required',
+            field: 'evalDatasetCollectionId'
           }
         ]
       };
@@ -166,22 +166,25 @@ export async function validateEvaluationParams(
     };
   }
 
-  if (datasetId !== undefined) {
-    if (!datasetId) {
+  if (evalDatasetCollectionId !== undefined) {
+    if (!evalDatasetCollectionId) {
       return {
         isValid: false,
         errors: [
           {
-            code: EvaluationErrEnum.evalDatasetIdRequired,
-            message: 'Dataset ID is required',
-            field: 'datasetId'
+            code: EvaluationErrEnum.datasetCollectionIdRequired,
+            message: 'datasetCollectionId is required',
+            field: 'evalDatasetCollectionId'
           }
         ]
       };
     }
 
-    // Validate dataset exists and is accessible
-    const datasetValidation = await validateDatasetExists(datasetId, options?.teamId);
+    // Validate evaldatasetcollection exists and is accessible
+    const datasetValidation = await validateEvalDatasetCollectionExists(
+      evalDatasetCollectionId,
+      options?.teamId
+    );
     if (!datasetValidation.isValid) {
       return datasetValidation;
     }

@@ -195,7 +195,7 @@ export class EvaluationTaskService {
           from: 'eval_dataset_collections',
           localField: 'evalDatasetCollectionId',
           foreignField: '_id',
-          as: 'dataset'
+          as: 'evalDatasetCollection'
         }
       },
       {
@@ -294,7 +294,8 @@ export class EvaluationTaskService {
         },
         {
           $addFields: {
-            datasetName: { $arrayElemAt: ['$dataset.name', 0] },
+            evalDatasetCollectionName: { $arrayElemAt: ['$evalDatasetCollection.name', 0] },
+            evalDatasetCollectionId: '$evalDatasetCollectionId',
             metricNames: {
               $map: {
                 input: '$evaluators',
@@ -329,7 +330,8 @@ export class EvaluationTaskService {
             finishTime: 1,
             status: 1,
             errorMessage: 1,
-            datasetName: 1,
+            evalDatasetCollectionName: 1,
+            evalDatasetCollectionId: 1,
             target: {
               type: '$target.type',
               config: {
@@ -365,6 +367,14 @@ export class EvaluationTaskService {
   static async getEvaluationDetail(evalId: string, teamId: string): Promise<EvaluationDisplayType> {
     const evaluationResult = await MongoEvaluation.aggregate([
       { $match: { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) } },
+      {
+        $lookup: {
+          from: 'eval_dataset_collections',
+          localField: 'evalDatasetCollectionId',
+          foreignField: '_id',
+          as: 'evalDatasetCollection'
+        }
+      },
       {
         $addFields: {
           'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
@@ -423,6 +433,8 @@ export class EvaluationTaskService {
           'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
           'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
           'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
+          evalDatasetCollectionName: { $arrayElemAt: ['$evalDatasetCollection.name', 0] },
+          evalDatasetCollectionId: '$evalDatasetCollectionId',
           // Use real-time statistics if available, otherwise fallback to stored statistics
           statistics: {
             $cond: {
@@ -450,6 +462,7 @@ export class EvaluationTaskService {
           name: 1,
           description: 1,
           evalDatasetCollectionId: 1,
+          evalDatasetCollectionName: 1,
           target: {
             type: '$target.type',
             config: {
@@ -648,20 +661,43 @@ export class EvaluationTaskService {
     evalId: string,
     teamId: string,
     offset: number = 0,
-    pageSize: number = 20
+    pageSize: number = 20,
+    options: {
+      status?: EvaluationStatusEnum;
+      userInput?: string;
+      expectedOutput?: string;
+      actualOutput?: string;
+    } = {}
   ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
     const evaluation = await this.getEvaluation(evalId, teamId);
+
+    const { status, userInput, expectedOutput, actualOutput } = options;
+
+    // Build query conditions
+    const filter: any = { evalId: evaluation._id };
+
+    if (status !== undefined) {
+      filter.status = status;
+    }
+
+    if (userInput) {
+      filter['dataItem.userInput'] = { $regex: userInput, $options: 'i' };
+    }
+
+    if (expectedOutput) {
+      filter['dataItem.expectedOutput'] = { $regex: expectedOutput, $options: 'i' };
+    }
+
+    if (actualOutput) {
+      filter['targetOutput.actualOutput'] = { $regex: actualOutput, $options: 'i' };
+    }
 
     const skip = offset;
     const limit = pageSize;
 
     const [items, total] = await Promise.all([
-      MongoEvalItem.find({ evalId: evaluation._id })
-        .sort({ createTime: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      MongoEvalItem.countDocuments({ evalId: evaluation._id })
+      MongoEvalItem.find(filter).sort({ createTime: -1 }).skip(skip).limit(limit).lean(),
+      MongoEvalItem.countDocuments(filter)
     ]);
 
     return { items, total };
@@ -962,77 +998,6 @@ export class EvaluationTaskService {
     return item;
   }
 
-  // Search evaluation items
-  static async searchEvaluationItems(
-    evalId: string,
-    teamId: string,
-    options: {
-      status?: EvaluationStatusEnum;
-      hasError?: boolean;
-      scoreRange?: { min?: number; max?: number };
-      keyword?: string;
-      page?: number;
-      pageSize?: number;
-    } = {}
-  ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    const { status, hasError, scoreRange, keyword, page = 1, pageSize = 20 } = options;
-
-    // Build query conditions
-    const filter: any = { evalId: evaluation._id };
-
-    if (status !== undefined) {
-      filter.status = status;
-    }
-
-    if (hasError === true) {
-      filter.status = EvaluationStatusEnum.error;
-    } else if (hasError === false) {
-      filter.status = { $ne: EvaluationStatusEnum.error };
-    }
-
-    if (scoreRange) {
-      const scoreFilter: any = {};
-      if (scoreRange.min !== undefined) {
-        scoreFilter.$gte = scoreRange.min;
-      }
-      if (scoreRange.max !== undefined) {
-        scoreFilter.$lte = scoreRange.max;
-      }
-      if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutputs.0.data.score'] = scoreFilter;
-      }
-    }
-
-    if (keyword) {
-      filter.$or = [
-        { 'dataItem.userInput': { $regex: keyword, $options: 'i' } },
-        { 'dataItem.expectedOutput': { $regex: keyword, $options: 'i' } },
-        { 'targetOutput.actualOutput': { $regex: keyword, $options: 'i' } }
-      ];
-    }
-
-    const skip = (page - 1) * pageSize;
-
-    const [items, total] = await Promise.all([
-      MongoEvalItem.find(filter)
-        .sort({ createTime: -1 })
-        .skip(skip)
-        .limit(pageSize)
-        .lean()
-        .then((items) =>
-          items.map((item) => ({
-            ...item,
-            evalItemId: item._id.toString()
-          }))
-        ),
-      MongoEvalItem.countDocuments(filter)
-    ]);
-
-    return { items, total };
-  }
-
   // Export evaluation item results
   static async exportEvaluationResults(
     evalId: string,
@@ -1107,7 +1072,10 @@ export class EvaluationTaskService {
           `"${(item.dataItem?.expectedOutput || '').replace(/"/g, '""')}"`,
           `"${(item.targetOutput?.actualOutput || '').replace(/"/g, '""')}"`,
           // Add scores for each metric column in the same order as headers
-          ...sortedMetricNames.map((metricName) => metricScoreMap.get(metricName) || ''),
+          ...sortedMetricNames.map((metricName) => {
+            const score = metricScoreMap.get(metricName);
+            return score !== undefined ? score : '';
+          }),
           item.status || '',
           `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
           item.finishTime || ''

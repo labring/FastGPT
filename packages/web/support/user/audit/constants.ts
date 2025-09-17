@@ -539,7 +539,7 @@ export const auditLogMap = {
     params: {} as {
       name?: string;
       taskName: string;
-      datasetId: string;
+      evalDatasetCollectionId: string;
       targetType: string;
       evaluatorCount: number;
     }
@@ -654,7 +654,7 @@ export const auditLogMap = {
     params: {} as {
       name?: string;
       metricName: string;
-   }
+    }
   },
   //Evaluation Task DataItem Aggregation
   [AuditEventEnum.DELETE_EVALUATION_TASK_DATA_ITEM]: {
