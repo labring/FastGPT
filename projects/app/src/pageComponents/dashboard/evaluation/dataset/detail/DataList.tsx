@@ -140,7 +140,7 @@ const DataListContent = () => {
     const qualityStatus = item.qualityMetadata?.status;
     const qualityResult = item.qualityResult;
 
-    if (!qualityStatus) return '';
+    if (!qualityStatus || qualityStatus === EvalDatasetDataQualityStatusEnum.unevaluated) return '';
 
     // 确定要显示的状态和文本
     let displayStatus: string;
