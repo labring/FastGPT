@@ -4,21 +4,22 @@ import Avatar from '../../../../../Avatar';
 import MyTooltip from '../../../../../MyTooltip';
 import MyIcon from '../../../../../Icon';
 import { useTranslation } from 'next-i18next';
-interface SkillLabelProps {
+
+type SkillLabelProps = {
   skillKey: string;
   skillName?: string;
   skillAvatar?: string;
-  isUnconfigured?: boolean;
   isInvalid?: boolean;
+  isUnconfigured?: boolean;
   onConfigureClick?: () => void;
-}
+};
 
 export default function SkillLabel({
   skillKey,
   skillName,
   skillAvatar,
-  isUnconfigured = false,
   isInvalid = false,
+  isUnconfigured = false,
   onConfigureClick
 }: SkillLabelProps) {
   const { t } = useTranslation();

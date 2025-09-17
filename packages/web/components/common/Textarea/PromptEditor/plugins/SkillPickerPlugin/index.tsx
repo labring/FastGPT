@@ -1,5 +1,8 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
+import type {
+  TextNode
+} from 'lexical';
 import {
   $createTextNode,
   $getSelection,
@@ -7,7 +10,8 @@ import {
   $isTextNode,
   COMMAND_PRIORITY_HIGH,
   KEY_ARROW_LEFT_COMMAND,
-  KEY_ARROW_RIGHT_COMMAND
+  KEY_ARROW_RIGHT_COMMAND,
+  KEY_SPACE_COMMAND
 } from 'lexical';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -61,7 +65,10 @@ export default function SkillPickerPlugin({
   selectedKey,
   setSelectedKey,
   queryString,
-  setQueryString
+  setQueryString,
+  loadFolderContent,
+  removeFolderContent,
+  loadedFolders
 }: {
   skillOptionList: SkillOptionType[];
   isFocus: boolean;
@@ -70,6 +77,9 @@ export default function SkillPickerPlugin({
   setSelectedKey: (key: string) => void;
   queryString?: string | null;
   setQueryString?: (value: string | null) => void;
+  loadFolderContent?: (folderId: string) => Promise<void>;
+  removeFolderContent?: (folderId: string) => void;
+  loadedFolders?: Set<string>;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -113,6 +123,36 @@ export default function SkillPickerPlugin({
       return skillOptionList.filter((item) => !item.parentKey);
     }
 
+    // 对于 AppSkill，返回所有可见的选项（递归展开的树形结构）
+    const isInAppTree = (optionKey: string): boolean => {
+      const option = skillOptionList.find((opt) => opt.key === optionKey);
+      if (!option) return false;
+      if (option.parentKey === 'app') return true;
+      if (option.parentKey) return isInAppTree(option.parentKey);
+      return false;
+    };
+
+    if (isInAppTree(selectedKey)) {
+      const getVisibleOptions = (parentKey: string): any[] => {
+        const children = skillOptionList.filter((opt) => opt.parentKey === parentKey);
+        const result: any[] = [];
+
+        children.forEach((child) => {
+          result.push({ ...child, setRefElement: () => {} });
+          // 如果有子项（已加载），递归添加
+          const hasChildren = skillOptionList.some((opt) => opt.parentKey === child.key);
+          if (hasChildren) {
+            result.push(...getVisibleOptions(child.key));
+          }
+        });
+
+        return result;
+      };
+
+      return getVisibleOptions('app');
+    }
+
+    // 对于 ToolSkill，保持原有逻辑
     const filteredOptions = skillOptionList.filter(
       (item) => item.parentKey === currentOption.parentKey
     );
@@ -174,14 +214,70 @@ export default function SkillPickerPlugin({
       },
       COMMAND_PRIORITY_HIGH
     );
+
+    const removeSpaceCommand = editor.registerCommand(
+      KEY_SPACE_COMMAND,
+      (e: KeyboardEvent) => {
+        // 只在菜单聚焦且查询字符串不为空时处理
+        if (!isFocus || queryString === null) return false;
+
+        const currentOption = skillOptionList.find((option) => option.key === selectedKey);
+        if (!currentOption) return false;
+
+        console.log(
+          'Space key pressed, currentOption:',
+          currentOption,
+          'loadFolderContent:',
+          !!loadFolderContent,
+          'removeFolderContent:',
+          !!removeFolderContent,
+          'loadedFolders:',
+          loadedFolders
+        );
+
+        // 如果是文件夹且有相关函数
+        if (currentOption.canOpen && loadFolderContent && removeFolderContent && loadedFolders) {
+          // 检查是否已加载
+          if (!loadedFolders.has(selectedKey)) {
+            console.log('Loading folder:', selectedKey);
+            loadFolderContent(selectedKey);
+          } else {
+            console.log('Collapsing folder:', selectedKey);
+            removeFolderContent(selectedKey);
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          return true; // 阻止默认的空格插入行为
+        }
+
+        return false;
+      },
+      COMMAND_PRIORITY_HIGH
+    );
+
     return () => {
       removeRightCommand();
       removeLeftCommand();
+      removeSpaceCommand();
     };
-  }, [editor, isFocus, queryString, selectedKey, skillOptionList, setSelectedKey]);
+  }, [
+    editor,
+    isFocus,
+    queryString,
+    selectedKey,
+    skillOptionList,
+    setSelectedKey,
+    loadFolderContent,
+    removeFolderContent,
+    loadedFolders
+  ]);
 
   const onSelectOption = useCallback(
-    async (selectedOption: SkillOptionType, closeMenu: () => void) => {
+    async (
+      selectedOption: SkillOptionType,
+      nodeToRemove: TextNode | null,
+      closeMenu: () => void
+    ) => {
       const skillId = await addTool(selectedOption);
       if (!skillId) {
         return;
@@ -197,7 +293,14 @@ export default function SkillPickerPlugin({
             const text = node.getTextContent();
             const atIndex = text.lastIndexOf('@');
             if (atIndex !== -1) {
-              node.setTextContent(text.substring(0, atIndex));
+              const queryLength = queryString ? queryString.length : 0;
+              const deleteLength = 1 + queryLength;
+              const beforeAt = text.substring(0, atIndex);
+              const afterQuery = text.substring(atIndex + deleteLength);
+              node.setTextContent(beforeAt + afterQuery);
+
+              const newOffset = beforeAt.length;
+              node.select(newOffset, newOffset);
             }
           }
         });
@@ -206,7 +309,7 @@ export default function SkillPickerPlugin({
         closeMenu();
       });
     },
-    [editor, addTool]
+    [editor, addTool, queryString]
   );
 
   const menuOptions = useMemo(() => {
@@ -236,13 +339,7 @@ export default function SkillPickerPlugin({
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={handleQueryChange}
-      onSelectOption={(
-        selectedOption: SkillOptionType & { setRefElement: () => void },
-        nodeToRemove,
-        closeMenu
-      ) => {
-        onSelectOption(selectedOption, closeMenu);
-      }}
+      onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={menuOptions}
       menuRenderFn={(
@@ -292,6 +389,11 @@ export default function SkillPickerPlugin({
           return null;
         })();
         const selectedToolKey = (() => {
+          // AppSkill 不需要第三级菜单
+          if (selectedSkillKey === 'app') {
+            return null;
+          }
+
           if (currentDepth === 1) {
             return currentOption?.key;
           } else if (currentDepth === 2) {
@@ -383,6 +485,92 @@ export default function SkillPickerPlugin({
                   const secondaryOptions = skillOptionList.filter(
                     (item) => item.parentKey === selectedSkillKey
                   );
+
+                  // App 的特殊渲染：递归显示树形结构
+                  if (selectedSkillKey === 'app') {
+                    // 递归渲染函数
+                    const renderAppTree = (
+                      parentKey: string,
+                      depth: number = 0
+                    ): React.ReactNode[] => {
+                      const children = skillOptionList.filter((opt) => opt.parentKey === parentKey);
+                      const results: React.ReactNode[] = [];
+
+                      children.forEach((option) => {
+                        const { isCurrentFocus, hasSelectedChild } = getDisplayState({
+                          selectedKey,
+                          skillOptionList,
+                          skillOption: option
+                        });
+
+                        // 渲染当前项
+                        results.push(
+                          <Flex
+                            key={option.key}
+                            px={2}
+                            py={1.5}
+                            gap={2}
+                            pl={2 + depth * 4} // 根据深度缩进
+                            borderRadius={'4px'}
+                            cursor={'pointer'}
+                            ref={(el) => {
+                              highlightedRefs.current[option.key] = el;
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const menuOption = skillOptionList.find(
+                                (item) => item.key === option.key
+                              );
+                              menuOption &&
+                                selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
+                            }}
+                            {...(isCurrentFocus || hasSelectedChild
+                              ? {
+                                  bg: '#1118240D'
+                                }
+                              : {
+                                  bg: 'white'
+                                })}
+                            _hover={{
+                              bg: '#1118240D'
+                            }}
+                          >
+                            {/* 文件夹展开/折叠图标 */}
+                            {option.canOpen && (
+                              <MyIcon
+                                name={'core/chat/chevronRight'}
+                                w={'12px'}
+                                color={'myGray.400'}
+                                transform={
+                                  skillOptionList.some((child) => child.parentKey === option.key)
+                                    ? 'rotate(90deg)'
+                                    : 'none'
+                                }
+                              />
+                            )}
+                            <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
+                            <Box
+                              color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
+                              fontSize={'12px'}
+                              fontWeight={'medium'}
+                              letterSpacing={'0.5px'}
+                              flex={1}
+                            >
+                              {option.label}
+                            </Box>
+                          </Flex>
+                        );
+
+                        // 如果有子项，递归渲染
+                        const childItems = renderAppTree(option.key, depth + 1);
+                        results.push(...childItems);
+                      });
+
+                      return results;
+                    };
+
+                    return renderAppTree('app');
+                  }
 
                   // Organize by category
                   const categories = new Map();
