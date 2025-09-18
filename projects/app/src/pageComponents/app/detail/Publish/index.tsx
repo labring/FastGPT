@@ -64,8 +64,7 @@ const OutLink = () => {
           }
         ]
       : []),
-
-    ...(feConfigs?.show_publish_wecom !== false
+    ...(feConfigs?.show_publish_wecom === true
       ? [
           {
             icon: 'core/app/publish/wecom',
