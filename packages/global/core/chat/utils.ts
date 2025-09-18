@@ -85,10 +85,10 @@ export const getHistoryPreview = (
 
 // Filter workflow public response
 export const filterPublicNodeResponseData = ({
-  flowResponses = [],
+  nodeRespones = [],
   responseDetail = false
 }: {
-  flowResponses?: ChatHistoryItemResType[];
+  nodeRespones?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
   const publicNodeMap: Record<string, any> = {
@@ -98,19 +98,28 @@ export const filterPublicNodeResponseData = ({
     [FlowNodeTypeEnum.pluginOutput]: true
   };
 
-  const filedList = responseDetail
-    ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
-    : ['moduleType', 'pluginOutput', 'runningTime'];
+  const filedMap: Record<string, boolean> = responseDetail
+    ? {
+        quoteList: true,
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      }
+    : {
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      };
 
-  return flowResponses
+  return nodeRespones
     .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
         if (key === 'toolDetail' || key === 'pluginDetail') {
           // @ts-ignore
-          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key], responseDetail });
-        } else if (filedList.includes(key)) {
+          obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
+        } else if (filedMap[key]) {
           // @ts-ignore
           obj[key] = item[key];
         }

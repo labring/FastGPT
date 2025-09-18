@@ -12,10 +12,10 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
+import { MongoChatItemResponse } from './chatItemResponseSchema';
 
 type Props = {
   chatId: string;
@@ -31,10 +31,51 @@ type Props = {
   sourceName?: string;
   shareId?: string;
   outLinkUid?: string;
-  content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
+  userContent: UserChatItemType & { dataId?: string };
+  aiContent: AIChatItemType & { dataId?: string };
   metadata?: Record<string, any>;
   durationSeconds: number; //s
   errorMsg?: string;
+};
+
+const formatAiContent = ({
+  aiContent,
+  durationSeconds,
+  errorMsg
+}: {
+  aiContent: AIChatItemType & { dataId?: string };
+  durationSeconds: number;
+  errorMsg?: string;
+}) => {
+  const { responseData, ...aiResponse } = aiContent;
+
+  const nodeResponses = responseData?.map((responseItem) => {
+    if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
+      return {
+        ...responseItem,
+        quoteList: responseItem.quoteList.map((quote: any) => ({
+          id: quote.id,
+          chunkIndex: quote.chunkIndex,
+          datasetId: quote.datasetId,
+          collectionId: quote.collectionId,
+          sourceId: quote.sourceId,
+          sourceName: quote.sourceName,
+          score: quote.score,
+          tokens: quote.tokens
+        }))
+      };
+    }
+    return responseItem;
+  });
+
+  return {
+    aiResponse: {
+      ...aiResponse,
+      durationSeconds,
+      errorMsg
+    },
+    nodeResponses
+  };
 };
 
 export async function saveChat({
@@ -51,7 +92,8 @@ export async function saveChat({
   sourceName,
   shareId,
   outLinkUid,
-  content,
+  userContent,
+  aiContent,
   durationSeconds,
   errorMsg,
   metadata = {}
@@ -81,42 +123,11 @@ export async function saveChat({
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const processedContent = content.map((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse]?.map((responseItem) => {
-          if (
-            responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
-            responseItem.quoteList
-          ) {
-            return {
-              ...responseItem,
-              quoteList: responseItem.quoteList.map((quote: any) => ({
-                id: quote.id,
-                chunkIndex: quote.chunkIndex,
-                datasetId: quote.datasetId,
-                collectionId: quote.collectionId,
-                sourceId: quote.sourceId,
-                sourceName: quote.sourceName,
-                score: quote.score,
-                tokens: quote.tokens
-              }))
-            };
-          }
-          return responseItem;
-        });
-
-        return {
-          ...item,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          durationSeconds,
-          errorMsg
-        };
-      }
-      return item;
-    });
+    const { aiResponse, nodeResponses } = formatAiContent({ aiContent, durationSeconds, errorMsg });
+    const processedContent = [userContent, aiResponse];
 
     await mongoSessionRun(async (session) => {
-      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.create(
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi, dataId }] = await MongoChatItem.create(
         processedContent.map((item) => ({
           chatId,
           teamId,
@@ -126,6 +137,20 @@ export async function saveChat({
         })),
         { session, ordered: true, ...writePrimary }
       );
+
+      // Create chat item respones
+      if (nodeResponses) {
+        await MongoChatItemResponse.create(
+          nodeResponses.map((item) => ({
+            teamId,
+            appId,
+            chatId,
+            chatItemDataId: dataId,
+            data: item
+          })),
+          { session, ordered: true, ...writePrimary }
+        );
+      }
 
       await MongoChat.updateOne(
         {
@@ -166,18 +191,15 @@ export async function saveChat({
       });
     });
 
+    // Create chat data log
     try {
       const userId = String(outLinkUid || tmbId);
       const now = new Date();
       const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-      const aiResponse = processedContent.find((item) => item.obj === ChatRoleEnum.AI);
-      const errorCount = aiResponse?.responseData?.some((item) => item.errorText) ? 1 : 0;
+      const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
       const totalPoints =
-        aiResponse?.responseData?.reduce(
-          (sum: number, item: any) => sum + (item.totalPoints || 0),
-          0
-        ) || 0;
+        nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
 
       const hasHistoryChat = await MongoAppChatLog.exists({
         teamId,
