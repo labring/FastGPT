@@ -1,14 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import type { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken';
-import { createChatCompletion } from '@fastgpt/service/core/ai/config';
-import { llmCompletionsBodyFormat, parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
-import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
@@ -121,67 +117,16 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       }
     ];
 
-    const requestMessages = await loadRequestMessages({
-      messages,
-      useVision: false
-    });
-
-    const { response, isStreamResponse } = await createChatCompletion({
-      body: llmCompletionsBodyFormat(
-        {
-          model,
-          messages: requestMessages,
-          temperature: 0.1,
-          max_tokens: 2000,
-          stream: true
-        },
-        model
-      )
-    });
-
-    const { inputTokens, outputTokens } = await (async () => {
-      if (isStreamResponse) {
-        const { parsePart, getResponseData } = parseLLMStreamResponse();
-
-        let optimizedText = '';
-
-        for await (const part of response) {
-          const { responseContent } = parsePart({
-            part,
-            parseThinkTag: true,
-            retainDatasetCite: false
-          });
-
-          if (responseContent) {
-            optimizedText += responseContent;
-            responseWrite({
-              res,
-              event: SseResponseEventEnum.answer,
-              data: JSON.stringify({
-                choices: [
-                  {
-                    delta: {
-                      content: responseContent
-                    }
-                  }
-                ]
-              })
-            });
-          }
-        }
-
-        const { content: answer, usage } = getResponseData();
-        return {
-          content: answer,
-          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
-          outputTokens:
-            usage?.completion_tokens ||
-            (await countGptMessagesTokens([{ role: 'assistant', content: optimizedText }]))
-        };
-      } else {
-        const usage = response.usage;
-        const content = response.choices?.[0]?.message?.content || '';
-
+    const llmResponse = await createLLMResponse({
+      body: {
+        model,
+        messages,
+        temperature: 0.1,
+        max_tokens: 2000,
+        stream: true,
+        useVision: false
+      },
+      onStreaming: ({ text }) => {
         responseWrite({
           res,
           event: SseResponseEventEnum.answer,
@@ -189,22 +134,16 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
             choices: [
               {
                 delta: {
-                  content
+                  content: text
                 }
               }
             ]
           })
         });
-
-        return {
-          content,
-          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
-          outputTokens:
-            usage?.completion_tokens ||
-            (await countGptMessagesTokens([{ role: 'assistant', content: content }]))
-        };
       }
-    })();
+    });
+
+    const { inputTokens, outputTokens } = llmResponse.usage;
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
@@ -214,19 +153,18 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     const { totalPoints, modelName } = formatModelChars2Points({
       model,
       inputTokens,
-      outputTokens,
-      modelType: ModelTypeEnum.llm
+      outputTokens
     });
 
     createUsage({
       teamId,
       tmbId,
-      appName: i18nT('common:support.wallet.usage.Code Copilot'),
+      appName: i18nT('app:support.wallet.usage.Code Copilot'),
       totalPoints,
       source: UsageSourceEnum.code_copilot,
       list: [
         {
-          moduleName: i18nT('common:support.wallet.usage.Code Copilot'),
+          moduleName: i18nT('app:support.wallet.usage.Code Copilot'),
           amount: totalPoints,
           model: modelName,
           inputTokens,

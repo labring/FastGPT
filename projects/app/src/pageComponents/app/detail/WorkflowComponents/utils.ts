@@ -143,7 +143,7 @@ export const getEditorVariables = ({
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),
-                key: output.key,
+                key: output.id,
                 parent: {
                   id: node.nodeId,
                   label: node.name,

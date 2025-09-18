@@ -786,7 +786,9 @@ export const extractCodeFromMarkdown = (
   let code = codeMatch ? codeMatch[1].trim() : markdownContent.trim();
 
   // Enhanced regex to capture reference information in square brackets
-  const paramMatches = [...code.matchAll(/@param\s*\{([^}]+)\}\s*(\w+)\s*(?:\[([^\]]+)\])?\s*-?\s*.*/g)];
+  const paramMatches = [
+    ...code.matchAll(/@param\s*\{([^}]+)\}\s*(\w+)\s*(?:\[([^\]]+)\])?\s*-?\s*.*/g)
+  ];
   const inputs = paramMatches.map((paramMatch) => ({
     label: paramMatch[2].trim(),
     type: paramMatch[1].trim(),

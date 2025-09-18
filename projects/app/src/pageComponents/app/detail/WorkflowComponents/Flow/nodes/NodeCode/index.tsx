@@ -1,17 +1,17 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
-import NodeCard from './render/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import Container from '../components/Container';
-import RenderInput from './render/RenderInput';
+import Container from '../../components/Container';
+import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
-import IOTitle from '../components/IOTitle';
-import RenderToolInput from './render/RenderToolInput';
-import RenderOutput from './render/RenderOutput';
+import { WorkflowContext } from '../../../context';
+import IOTitle from '../../components/IOTitle';
+import RenderToolInput from '../render/RenderToolInput';
+import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import CatchError from './render/RenderOutput/CatchError';
+import CatchError from '../render/RenderOutput/CatchError';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();

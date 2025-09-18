@@ -11,7 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
-import { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderNodeCopilot/NodeCopilot';
+import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 
 type StreamFetchProps = {
   url?: string;
@@ -309,7 +309,7 @@ export const onOptimizeCode = async ({
 }: OnOptimizeCodeProps) => {
   const controller = abortController || new AbortController();
   await streamFetch({
-    url: '/api/core/ai/optimizeCode',
+    url: '/api/core/workflow/optimizeCode',
     data: {
       codeType,
       optimizerInput,

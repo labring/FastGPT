@@ -41,7 +41,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
-import NodeCopilot from './RenderNodeCopilot/NodeCopilot';
+import NodeCopilot from '../NodeCode/Copilot';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -306,7 +306,7 @@ const NodeCard = (props: Props) => {
                         size={'xs'}
                         px={1}
                       >
-                        {t('common:core.workflow.Copilot')}
+                        {t('app:core.workflow.Copilot')}
                       </Button>
                     }
                   />

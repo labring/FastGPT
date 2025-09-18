@@ -15,8 +15,7 @@ export enum UsageSourceEnum {
   mcp = 'mcp',
   evaluation = 'evaluation',
   optimize_prompt = 'optimize_prompt',
-  code_copilot = 'code_copilot',
-  code_test = 'code_test'
+  code_copilot = 'code_copilot'
 }
 
 export const UsageSourceMap = {
@@ -63,10 +62,7 @@ export const UsageSourceMap = {
     label: i18nT('common:support.wallet.usage.Optimize Prompt')
   },
   [UsageSourceEnum.code_copilot]: {
-    label: i18nT('common:support.wallet.usage.Code Copilot')
-  },
-  [UsageSourceEnum.code_test]: {
-    label: i18nT('common:support.wallet.usage.Code Test')
+    label: i18nT('app:support.wallet.usage.Code Copilot')
   }
 };
 

@@ -9,19 +9,13 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import Markdown from '@/components/Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizeCode } from '@/web/common/api/fetch';
-import { testCode } from '@/web/core/workflow/api/copilot';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { extractCodeFromMarkdown } from '@/web/core/workflow/utils';
-import {
-  ArrayTypeMap,
-  NodeInputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import { WorkflowContext } from '../../../../context';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { ArrayTypeMap, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { AppContext } from '../../../../../context';
-import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 import { useCreation } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
@@ -29,9 +23,11 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { nanoid } from 'nanoid';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
-import { getEditorVariables } from '../../../../utils';
+import { WorkflowContext } from '../../../context';
+import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
+import { getEditorVariables } from '../../../utils';
 
 export type OnOptimizeCodeProps = {
   codeType: SandboxCodeTypeEnum;
@@ -49,7 +45,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
@@ -122,10 +118,11 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     });
   };
   const { runAsync: handleSendOptimization, loading } = useRequest2(async () => {
-    setOptimizerInput('');
-    setCodeResult('');
+    if (isInputEmpty) return;
 
     const processedInput = replaceVariables(optimizerInput);
+
+    setCodeResult('');
 
     const newConversationHistory = [
       ...conversationHistory,
@@ -137,6 +134,8 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     setConversationHistory(newConversationHistory);
     const controller = new AbortController();
     setAbortController(controller);
+
+    setOptimizerInput('');
 
     let fullResponse = '';
 
@@ -159,46 +158,8 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
         ...newConversationHistory,
         { role: 'assistant' as const, content: fullResponse }
       ]);
-      setAbortController(null);
-    } else {
-      setAbortController(null);
     }
-  });
-  const { runAsync: handleTestCode, loading: testCodeLoading } = useRequest2(async () => {
-    if (!codeResult) return;
-    const { code, inputs, outputs } = extractCodeFromMarkdown(codeResult);
-
-    if (!code) {
-      toast({
-        status: 'warning',
-        title: t('app:test_code_incomplete')
-      });
-      return;
-    }
-
-    try {
-      const summary = await testCode({
-        code,
-        codeType,
-        model: selectedModel,
-        inputs,
-        outputs
-      });
-
-      const isAllPassed = summary.passed === summary.total;
-
-      toast({
-        status: isAllPassed ? 'success' : 'error',
-        title: isAllPassed
-          ? t('app:test_all_passed')
-          : `${t('app:test_failed_with_progress', { passed: summary.passed, total: summary.total })}`
-      });
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: t('app:test_execution_failed')
-      });
-    }
+    setAbortController(null);
   });
   const handleApplyCode = () => {
     try {
@@ -278,12 +239,12 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
 
       toast({
         status: 'success',
-        title: t('common:code_applied_successfully')
+        title: t('app:code_applied_successfully')
       });
     } catch (error) {
       toast({
         status: 'error',
-        title: t('common:apply_code_failed')
+        title: t('app:apply_code_failed')
       });
     }
   };
@@ -408,17 +369,6 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
 
             {codeResult && !loading && (
               <Flex gap={3} w="full" justifyContent={'end'}>
-                <Button
-                  variant="whiteBase"
-                  size="md"
-                  h={10}
-                  px={5}
-                  isLoading={testCodeLoading}
-                  loadingText={t('app:testing')}
-                  onClick={handleTestCode}
-                >
-                  {t('app:test_code')}
-                </Button>
                 <Button variant="primary" size="md" h={10} px={5} onClick={handleApplyCode}>
                   {t('app:apply_code')}
                 </Button>

@@ -67,7 +67,7 @@ const DynamicInputs = (props: RenderInputProps) => {
                 {t('workflow:Variable_name')}
               </Box>
               <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
-                {t('common:reference_variable')}
+                {t('app:reference_variable')}
               </Box>
               <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'140px'} px={3}>
                 {t('common:core.module.Data Type')}
