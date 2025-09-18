@@ -10,7 +10,6 @@ import {
   Th,
   Td,
   TableContainer,
-  Flex,
   HStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -22,6 +21,7 @@ import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
 const RenderToolInput = ({
@@ -34,7 +34,10 @@ const RenderToolInput = ({
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { toolInputs } = splitToolInputs(inputs, nodeId);
+  const { toolInputs } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
 
   const dynamicInput = useMemo(() => {
     return inputs.find((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);
