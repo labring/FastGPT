@@ -98,7 +98,7 @@ export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.parseMaxProcess;
   addLog.debug(`[Parse Queue] Queue size: ${global.parseQueueLen}`);
 
-  if (max != null && global.parseQueueLen >= max) return;
+  if (max != null && max > 0 && global.parseQueueLen >= max) return;
   global.parseQueueLen++;
 
   const startTime = Date.now();
