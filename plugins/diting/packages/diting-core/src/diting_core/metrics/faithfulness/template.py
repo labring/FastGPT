@@ -9,6 +9,8 @@ class FaithfulnessTemplate:
     @staticmethod
     def generate_statements(user_input: str, text: str) -> str:
         return f"""Given a question and an answer, analyze the complexity of each sentence in the answer. Break down each sentence into one or more fully understandable statements. Ensure that no pronouns are used in any statement. Format the outputs in JSON.
+
+IMPORTANT: Generate statements in the SAME LANGUAGE as the input text. If the input is in Chinese, generate Chinese statements. If the input is in English, generate English statements. Do not translate or change the language. Maintain the original language throughout your response.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Statements.model_json_schema())}
 Do not use single quotes in your response but double quotes, properly escaped with a backslash.
@@ -42,6 +44,8 @@ Output: """
         statements: List[str],
     ) -> str:
         return f"""Your task is to judge the faithfulness of a series of statements based on a given context. For each statement you must return verdict as 1 if the statement can be directly inferred based on the context or 0 if the statement can not be directly inferred based on the context.
+
+IMPORTANT: When providing reasons, use the SAME LANGUAGE as the input. If the input is in Chinese, provide reasons in Chinese. If the input is in English, provide reasons in English.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Verdicts.model_json_schema())}
 Do not use single quotes in your response but double quotes,properly escaped with a backslash.
@@ -110,7 +114,9 @@ Output: """
     @staticmethod
     def generate_reason(score: float, contradictions: List[str]):
         return f"""Below is a list of Contradictions. It is a list of strings explaining why the 'actual output' does not align with the information presented in the 'retrieval context'. Contradictions happen in the 'actual output', NOT the 'retrieval context'.
-Given the faithfulness score, which is a 0-1 score indicating how faithful the `actual output` is to the retrieval context (higher the better), CONCISELY summarize the contradictions to justify the score. 
+Given the faithfulness score, which is a 0-1 score indicating how faithful the `actual output` is to the retrieval context (higher the better), CONCISELY summarize the contradictions. Do NOT include the numeric score in your reason.
+
+IMPORTANT: Provide your reason in the SAME LANGUAGE as the input. If the input is in Chinese, respond in Chinese. If the input is in English, respond in English. 
 
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Reason.model_json_schema())}
@@ -118,7 +124,7 @@ Do not use single quotes in your response but double quotes, properly escaped wi
 
 Example JSON:
 {{
-    "reason": "The score is <faithfulness_score> because <your_reason>."
+    "reason": "<your_reason>"
 }}
 
 If there are no contradictions, just say something positive with an upbeat encouraging tone (but don't overdo it otherwise it gets annoying).
