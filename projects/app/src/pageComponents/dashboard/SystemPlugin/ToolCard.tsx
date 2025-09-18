@@ -19,6 +19,7 @@ const PluginCard = ({
 }: {
   item: NodeTemplateListItemType;
   groups: SystemToolGroupSchemaType[];
+  onDelete?: (id: string) => Promise<void>;
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
