@@ -42,6 +42,17 @@ export type listEvalDatasetCollectionResponse = PaginationResponse<
     dataItemsCount: number;
   }
 >;
+
+export type listEvalDatasetCollectionV2Body = {
+  searchKey?: string;
+  pageSize?: number;
+  pageNum?: number;
+  offset?: number;
+};
+
+export type listEvalDatasetCollectionV2Response = PaginationResponse<
+  Pick<EvalDatasetCollectionSchemaType, '_id' | 'name' | 'createTime'>
+>;
 type QualityEvaluationBase = {
   enableQualityEvaluation: boolean;
   evaluationModel?: string;
