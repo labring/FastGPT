@@ -452,6 +452,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 }
 
 export default NextAPI(
-  // useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
+  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
   handler
 );
