@@ -67,7 +67,7 @@ export const CaculateMethodMap = {
 export const CaculateMethodValues = Object.values(CalculateMethodEnum);
 
 // Score constants
-export const PERFECT_SCORE = 100;
+export const PERFECT_SCORE = 1;
 
 // Validation length constants
 export const MAX_NAME_LENGTH = 100;

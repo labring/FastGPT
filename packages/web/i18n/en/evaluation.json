@@ -51,6 +51,7 @@
   "metric_prompt_too_long": "Metric prompt must be less than 4000 characters",
   "metric_type_required": "Metric type is required",
   "metric_type_invalid": "Invalid metric type",
+  "metric_name_invalid": "Invalid metric name",
   "metric_id_required": "Missing required parameter: metricId",
 
   "eval_case_required": "EvalCase is required",
