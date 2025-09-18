@@ -13,6 +13,7 @@ const PromptEditor = ({
   value,
   onChange,
   onBlur,
+  onKeyDown,
   title,
   isDisabled,
   ...props
@@ -67,6 +68,7 @@ const PromptEditor = ({
           onChange={onChangeInput}
           onChangeText={onChange}
           onBlur={onBlurInput}
+          onKeyDown={onKeyDown}
         />
         {isDisabled && (
           <Box
@@ -100,6 +102,7 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onChangeText={onChange}
             onBlur={onBlurInput}
+            onKeyDown={onKeyDown}
           />
         </ModalBody>
         <ModalFooter>
