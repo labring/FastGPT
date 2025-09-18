@@ -99,10 +99,16 @@ export interface TargetCallParams {
 }
 
 /**
- * Extended evaluation data item that combines dataset data with target call parameters.
+ * Evaluation data item that contains only the necessary fields for evaluation execution.
  * Used in evaluation context where both dataset content and execution parameters are needed.
  */
-export type EvaluationDataItemType = EvalDatasetDataSchemaType & {
+export type EvaluationDataItemType = Pick<
+  EvalDatasetDataSchemaType,
+  | '_id'
+  | EvalDatasetDataKeyEnum.UserInput
+  | EvalDatasetDataKeyEnum.ExpectedOutput
+  | EvalDatasetDataKeyEnum.Context
+> & {
   targetCallParams?: TargetCallParams;
 };
 
@@ -113,8 +119,6 @@ export type EvaluationItemSchemaType = {
   // Chat information is stored in targetOutput.chatId and targetOutput.aiChatItemDataId
   // Dependent component configurations
   dataItem: EvaluationDataItemType;
-  target: EvalTarget;
-  evaluators: EvaluatorSchema[]; // Multiple evaluator configurations
   // Execution results
   targetOutput?: TargetOutput; // Actual output from target
   evaluatorOutputs?: MetricResult[]; // Results from multiple evaluators
@@ -147,21 +151,8 @@ export type EvaluationWithPerType = EvaluationSchemaType & {
 
 // ===== Display Types =====
 
-export type EvaluationDisplayType = Pick<
-  EvaluationWithPerType,
-  | 'name'
-  | 'createTime'
-  | 'finishTime'
-  | 'status'
-  | 'errorMessage'
-  | 'tmbId'
-  | 'permission'
-  | 'statistics'
-  | 'target'
-> & {
-  _id: string;
+export type EvaluationDisplayType = EvaluationWithPerType & {
   evalDatasetCollectionName?: string;
-  evalDatasetCollectionId?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
