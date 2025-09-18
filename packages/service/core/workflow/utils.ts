@@ -49,10 +49,11 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const nodes = await Promise.all(
     children.map(async (child, index) => {
       const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
-        (item) => item.toolId === child.id
+        (item) => item.toolId === child.id && item.type !== 'deprecated'
       );
 
-      const tool = await getSystemPluginByIdAndVersionId(child.id);
+      const versionId = toolListItem?.selectedVersionId;
+      const tool = await getSystemPluginByIdAndVersionId(child.id, versionId);
 
       const inputs = tool.inputs ?? [];
       if (toolsetInputConfig?.value) {

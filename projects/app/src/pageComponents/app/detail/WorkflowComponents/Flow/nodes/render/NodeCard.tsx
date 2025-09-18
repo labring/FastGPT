@@ -121,9 +121,11 @@ const NodeCard = (props: Props) => {
   const showVersion = useMemo(() => {
     // 1. MCP tool set do not have version
     if (isAppNode && (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool)) return false;
-    // 2. Team app/System commercial plugin
+    // 2. System tool set do not have version
+    if (isAppNode && node.toolConfig?.systemToolSet) return false;
+    // 3. Team app/System commercial plugin
     if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
-    // 3. System tool
+    // 4. System tool
     if (isAppNode && node?.toolConfig?.systemTool) return true;
 
     return false;
@@ -747,18 +749,39 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         label: t('app:keep_the_latest'),
         value: ''
       },
-      ...versionList.map((item) => ({
-        label: item.versionName,
+      ...versionList.map((item, index) => ({
+        label:
+          index === 0 ? (
+            <Flex alignItems={'center'} gap={1}>
+              <span>{item.versionName}</span>
+              <Box
+                px={2}
+                py={0.5}
+                fontSize={'xs'}
+                color={'primary.600'}
+                bg={'white'}
+                borderRadius={'sm'}
+                borderColor={'primary.200'}
+              >
+                {t('app:newest')}
+              </Box>
+            </Flex>
+          ) : (
+            item.versionName
+          ),
         value: item._id
       }))
     ],
     [node.isLatestVersion, node.version, t, versionList]
   );
   const valueLabel = useMemo(() => {
+    // When auto-update is enabled (version is empty), show "keep the latest" text
+    const displayLabel = node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel;
+
     return (
       <Flex alignItems={'center'} gap={0.5}>
-        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
-        {!node.isLatestVersion && (
+        {displayLabel}
+        {node?.version !== '' && !node.isLatestVersion && (
           <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
             {t('app:not_the_newest')}
           </MyTag>
