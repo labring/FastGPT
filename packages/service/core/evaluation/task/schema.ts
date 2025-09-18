@@ -5,8 +5,10 @@ import {
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import type {
   EvaluationSchemaType,
-  EvaluationItemSchemaType
+  EvaluationItemSchemaType,
+  TargetOutput
 } from '@fastgpt/global/core/evaluation/type';
+import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 import {
   EvaluationStatusEnum,
@@ -65,12 +67,12 @@ export const EvaluationEvaluatorSchema = new Schema(
     thresholdValue: {
       type: Number,
       required: false,
-      default: 80
+      default: 0.8
     },
     scoreScaling: {
       type: Number,
       required: false,
-      default: 100, // Default 100x amplification
+      default: 1, // Default no scaling
       validate: {
         validator: function (value: number) {
           return (

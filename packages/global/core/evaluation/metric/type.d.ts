@@ -20,7 +20,7 @@ export type EvalCase = {
 
 export type MetricResult = {
   metricName: string;
-  status: MetricResultStatusEnum;
+  status?: MetricResultStatusEnum;
   data?: EvaluationResult;
   usages?: Usage[];
   error?: string;

@@ -54,6 +54,7 @@ export enum EvaluationErrEnum {
   evalMetricPromptTooLong = 'evaluationMetricPromptTooLong',
   evalMetricTypeRequired = 'evaluationMetricTypeRequired',
   evalMetricTypeInvalid = 'evaluationMetricTypeInvalid',
+  evalMetricNameInvalid = 'evaluationMetricNameInvalid',
   evalMetricBuiltinCannotModify = 'evaluationMetricBuiltinCannotModify',
   evalMetricBuiltinCannotDelete = 'evaluationMetricBuiltinCannotDelete',
   evalMetricIdRequired = 'evaluationMetricIdRequired',
@@ -335,6 +336,10 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalMetricTypeInvalid,
     message: i18nT('evaluation:metric_type_invalid')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricNameInvalid,
+    message: i18nT('evaluation:metric_name_invalid')
   },
   {
     statusText: EvaluationErrEnum.evalMetricBuiltinCannotModify,

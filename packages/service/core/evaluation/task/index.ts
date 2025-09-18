@@ -801,6 +801,9 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalItemNoErrorToRetry);
     }
 
+    // Get evaluation to access evaluators for proper evaluatorOutputs initialization
+    const evaluation = await this.getEvaluation(item.evalId, teamId);
+
     // Remove existing jobs for this item to prevent duplicates
     const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
       forceCleanActiveJobs: true,
@@ -815,6 +818,11 @@ export class EvaluationTaskService {
 
     // Use transaction for atomic status update and queue submission
     const retryItem = async (session: ClientSession) => {
+      // Initialize evaluatorOutputs based on evaluators schema definition
+      const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
+        metricName: evaluator.metric.name
+      }));
+
       // Update status within transaction
       const result = await MongoEvalItem.updateOne(
         { _id: new Types.ObjectId(itemId) },
@@ -823,7 +831,7 @@ export class EvaluationTaskService {
             status: EvaluationStatusEnum.queuing,
             retry: Math.max(item.retry || 0, 1), // Ensure at least 1 retry chance
             targetOutput: {},
-            evaluatorOutputs: []
+            evaluatorOutputs
           },
           $unset: {
             finishTime: 1,
@@ -887,6 +895,11 @@ export class EvaluationTaskService {
         failedCleanups: cleanupResults.length - successfulCleanups
       });
 
+      // Initialize evaluatorOutputs based on evaluators schema definition
+      const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
+        metricName: evaluator.metric.name
+      }));
+
       // Batch update status
       await MongoEvalItem.updateMany(
         {
@@ -896,7 +909,7 @@ export class EvaluationTaskService {
           $set: {
             status: EvaluationStatusEnum.queuing,
             targetOutput: {},
-            evaluatorOutputs: []
+            evaluatorOutputs
           },
           $unset: {
             finishTime: 1,
