@@ -12,6 +12,7 @@ export interface MetricConfigItem {
 export interface MetricConfigItemWithName extends Omit<MetricConfigItem, 'calculateType'> {
   weight: number; // Required in config responses
   metricName: string; // Metric name for display
+  metricDescription: string; // Metric description for display
 }
 
 export interface UpdateMetricConfigItem extends Omit<MetricConfigItem, 'calculateType'> {

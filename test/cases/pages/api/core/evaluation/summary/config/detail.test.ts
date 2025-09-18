@@ -61,12 +61,14 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
         {
           metricId: 'metric-1',
           metricName: '准确性',
+          metricDescription: '评估生成答案的事实一致性，判断是否准确无误',
           thresholdValue: 0.8,
           weight: 50
         },
         {
           metricId: 'metric-2',
           metricName: '相关性',
+          metricDescription: '评估生成答案与问题的语义一致性',
           thresholdValue: 0.7,
           weight: 50
         }
@@ -95,12 +97,14 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
         {
           metricId: 'metric-1',
           metricName: '准确性',
+          metricDescription: '评估生成答案的事实一致性，判断是否准确无误',
           thresholdValue: 0.8,
           weight: 50
         },
         {
           metricId: 'metric-2',
           metricName: '相关性',
+          metricDescription: '评估生成答案与问题的语义一致性',
           thresholdValue: 0.7,
           weight: 50
         }
@@ -187,6 +191,7 @@ describe('Get Evaluation Summary Config Detail API Handler', () => {
         {
           metricId: 'metric-1',
           metricName: '完整性',
+          metricDescription: '评估生成答案的完整性和综合性',
           thresholdValue: 0.9,
           weight: 100
         }
