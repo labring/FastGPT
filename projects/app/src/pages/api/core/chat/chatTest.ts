@@ -129,7 +129,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId,
         offset: 0,
         limit,
-        field: `dataId obj value memories`
+        field: `obj value memories`
       }),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
       // auth balance
@@ -245,7 +245,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         isUpdateUseTime: false, // owner update use time
         newTitle,
         source: ChatSourceEnum.test,
-        content: [userQuestion, aiResponse],
+        userContent: userQuestion,
+        aiContent: aiResponse,
         durationSeconds
       });
     }
