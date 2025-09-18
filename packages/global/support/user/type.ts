@@ -2,9 +2,11 @@ import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import type { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
-import { z } from '../../common/tsRest/z';
-import { ObjectIdSchema } from '../../common/type/utils';
+import { extendZodWithOpenApi } from '@anatine/zod-openapi';
+import { z } from 'zod';
 import { TeamMemberStatusSchema } from './team/type';
+
+extendZodWithOpenApi(z);
 
 export const SourceMemberSchema = z
   .object({

@@ -1,3 +1,5 @@
+import '@scalar/api-reference-react/style.css';
+
 import type { AppProps } from 'next/app';
 import Script from 'next/script';
 

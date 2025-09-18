@@ -10,7 +10,6 @@ export const createCommonResponseSchema = <T extends z.ZodTypeAny>(schema: T) =>
 
 export const ObjectIdSchema = z
   .string()
-  .length(5)
   .openapi({ example: '6894728240dc458ece573294' })
   .describe('MongoDB ObjectId 格式的字符串');
 export type ObjectIdType = z.infer<typeof ObjectIdSchema>;

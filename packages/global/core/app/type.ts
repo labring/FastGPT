@@ -9,7 +9,8 @@ import type { AppPermission } from '../../support/permission/app/controller';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type/index.d';
 import type { JSONSchemaInputType } from './jsonschema';
-import { z } from '../../common/tsRest/z';
+import { extendZodWithOpenApi } from '@anatine/zod-openapi';
+import { z } from 'zod';
 import {
   ObjectIdSchema,
   ParentIdSchema,
@@ -17,10 +18,12 @@ import {
   createCommonResponseSchema
 } from '../../common/type/utils';
 
+extendZodWithOpenApi(z);
+
 export const AppTypeSchema = z
   .enum(['folder', 'simple', 'advanced', 'plugin', 'httpPlugin', 'toolSet', 'tool', 'hidden'])
   .describe(
-    '应用类型: folder - 文件夹, simple - 简单应用, advanced - 高级工作流, plugin - 插件, httpPlugin - HTTP插件, toolSet - 工具集, tool - 工具, hidden - 隐藏应用'
+    '应用类型: folder - 文件夹, simple - 简单应用, advanced - 工作流, plugin - 插件, httpPlugin - HTTP 插件, toolSet - 工具集, tool - 工具, hidden - 隐藏应用'
   );
 export const AppTypeEnum = AppTypeSchema.enum;
 export type AppType = z.infer<typeof AppTypeSchema>;

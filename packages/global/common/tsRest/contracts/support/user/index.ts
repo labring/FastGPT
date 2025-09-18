@@ -7,6 +7,9 @@ export const userContract = c.router({
     responses: {
       200: c.type<void>()
     },
-    summary: '退出登录'
+    summary: '退出登录',
+    metadata: {
+      openApiTags: ['用户']
+    }
   }
 });

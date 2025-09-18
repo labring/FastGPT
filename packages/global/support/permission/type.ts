@@ -3,7 +3,10 @@ import type { RequireOnlyOne } from '../../common/type/utils';
 import type { TeamMemberSchema } from '../user/team/type';
 import type { CommonRoleKeyEnum } from './constant';
 import { type CommonPerKeyEnum, type PerResourceTypeEnum } from './constant';
-import { z } from '../../common/tsRest/z';
+import { extendZodWithOpenApi } from '@anatine/zod-openapi';
+import { z } from 'zod';
+
+extendZodWithOpenApi(z);
 
 export const PermissionSchema = z
   .object({

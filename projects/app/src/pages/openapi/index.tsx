@@ -1,13 +1,17 @@
+import NextHead from '@/components/common/NextHead';
+import { contract } from '@fastgpt/global/common/tsRest/contract';
+import { generateOpenApiDocument } from '@fastgpt/global/common/tsRest/server';
 import { ApiReferenceReact } from '@scalar/api-reference-react';
 
-import '@scalar/api-reference-react/style.css';
-
 export default function OpenAPI() {
+  const config = {
+    content: generateOpenApiDocument(contract)
+  };
+
   return (
-    <ApiReferenceReact
-      configuration={{
-        url: '/api/openapi'
-      }}
-    />
+    <>
+      <NextHead title="OpenAPI" />
+      <ApiReferenceReact configuration={config} />
+    </>
   );
 }

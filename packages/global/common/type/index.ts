@@ -1,18 +1,31 @@
-import { z } from '../tsRest/z';
+import { extendZodWithOpenApi } from '@anatine/zod-openapi';
+import { z } from 'zod';
+
+extendZodWithOpenApi(z);
 
 export const createCommonResponseSchema = <T extends z.ZodTypeAny>(schema: T) =>
-  z.object({
-    code: z.number().describe('状态码'),
-    message: z.string().describe('消息'),
-    data: schema.describe('数据'),
-    statusText: z.string().describe('状态文本')
-  });
+  z
+    .object({
+      code: z.number().describe('状态码'),
+      message: z.string().describe('消息'),
+      data: schema.describe('数据'),
+      statusText: z.string().describe('状态文本')
+    })
+    .describe('通用响应')
+    .openapi({
+      example: {
+        code: 200,
+        data: null,
+        message: 'Success',
+        statusText: 'Success'
+      }
+    });
 
 export const ObjectIdSchema = z
   .string()
   .length(5)
-  .openapi({ example: '6894728240dc458ece573294' })
-  .describe('MongoDB ObjectId 格式的字符串');
+  .describe('MongoDB ObjectId 格式的字符串')
+  .openapi({ example: '6894728240dc458ece573294' });
 export type ObjectIdType = z.infer<typeof ObjectIdSchema>;
 
 export const ParentIdSchema = ObjectIdSchema.nullish()
