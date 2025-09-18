@@ -1,12 +1,14 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ModalBody, ModalFooter, Button, VStack, FormControl, FormLabel } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dynamic from 'next/dynamic';
 import { type AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import FilesCascader from './FilesCascader';
 import type { FileSelection } from './FilesCascader';
 import EvaluationDatasetSelector from './EvaluationDatasetSelector';
+import { getEvaluationList } from '@/web/core/evaluation/task';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
@@ -35,6 +37,12 @@ const SelectMarkCollection = ({
   onSuccess: (adminFeedback: AdminFbkType) => void;
 }) => {
   const { t } = useTranslation();
+  const router = useRouter();
+
+  // 从路由查询参数获取appId
+  const appId = useMemo(() => {
+    return router.query.appId as string;
+  }, [router.query.appId]);
 
   // 级联选择器的值
   const cascaderValue: FileSelection = useMemo(() => {
@@ -70,18 +78,35 @@ const SelectMarkCollection = ({
 
   // 处理确认按钮点击
   const handleConfirm = useCallback(() => {
-    if (adminMarkData.datasetId && adminMarkData.collectionId) {
+    if (
+      (adminMarkData.datasetId && adminMarkData.collectionId) ||
+      (selectedEvaluationDataset && selectedEvaluationDataset !== 'null')
+    ) {
       // 打开输入数据模态框
       setShowInputDataModal(true);
     }
-  }, [adminMarkData.datasetId, adminMarkData.collectionId]);
+  }, [adminMarkData.datasetId, adminMarkData.collectionId, selectedEvaluationDataset]);
 
   // 控制是否显示输入数据模态框
   const [showInputDataModal, setShowInputDataModal] = useState(false);
 
   // 检查是否可以选择（需要同时选择了数据集和集合，且不是"不加入知识库"）
   const canConfirm =
-    adminMarkData.datasetId && adminMarkData.collectionId && !adminMarkData.noKnowledgeBase;
+    (adminMarkData.datasetId && adminMarkData.collectionId && !adminMarkData.noKnowledgeBase) ||
+    (selectedEvaluationDataset !== 'null' && selectedEvaluationDataset);
+
+  useEffect(() => {
+    getEvaluationList({
+      pageNum: 1,
+      pageSize: 1,
+      appId: appId
+    }).then((res) => {
+      const item = res?.list?.[0];
+      if (item) {
+        setSelectedEvaluationDataset(item.evalDatasetCollectionId);
+      }
+    });
+  }, [appId]);
 
   return (
     <>
