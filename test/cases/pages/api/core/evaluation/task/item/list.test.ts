@@ -94,6 +94,7 @@ describe('List Evaluation Items API Handler', () => {
       20,
       {
         status: undefined,
+        belowThreshold: undefined,
         userInput: undefined,
         expectedOutput: undefined,
         actualOutput: undefined
@@ -136,5 +137,41 @@ describe('List Evaluation Items API Handler', () => {
     });
 
     await expect(handler(req)).rejects.toThrow('Database connection failed');
+  });
+
+  test('应该支持belowThreshold筛选', async () => {
+    const { authEvaluationTaskRead } = await import('@fastgpt/service/core/evaluation/common');
+    (authEvaluationTaskRead as any).mockResolvedValue({
+      teamId: 'team-123'
+    });
+    (EvaluationTaskService.listEvaluationItems as any).mockResolvedValue({
+      items: [],
+      total: 0
+    });
+
+    const req = mockRequest({
+      evalId: 'eval-123',
+      belowThreshold: true
+    });
+
+    const result = await handler(req);
+
+    expect(EvaluationTaskService.listEvaluationItems).toHaveBeenCalledWith(
+      'eval-123',
+      'team-123',
+      0,
+      20,
+      {
+        status: undefined,
+        belowThreshold: true,
+        userInput: undefined,
+        expectedOutput: undefined,
+        actualOutput: undefined
+      }
+    );
+    expect(result).toEqual({
+      list: [],
+      total: 0
+    });
   });
 });
