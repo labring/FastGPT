@@ -11,6 +11,8 @@ class ContextRecallTemplate:
         user_input: str, expected_output: str, retrieval_context: List[str]
     ) -> str:
         return f"""Given a context, and an answer, analyze each sentence in the answer and classify if the sentence can be attributed to the given context or not. Use only "Yes" (1) or "No" (0) as a binary classification. Output json with reason.
+
+IMPORTANT: When providing reasons, use the SAME LANGUAGE as the input. If the input is in Chinese, provide reasons in Chinese. If the input is in English, provide reasons in English.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Verdicts.model_json_schema())}
 Do not use single quotes in your response but double quotes, properly escaped with a backslash.
@@ -63,7 +65,9 @@ Output: """
         unsupportive_reasons: list[str],
         score: float,
     ):
-        return f"""Given the original expected output, a list of supportive reasons, and a list of unsupportive reasons (which are deduced directly from the 'expected output'), and a contextual recall score (closer to 1 the better), summarize a CONCISE reason for the score.
+        return f"""Given the original expected output, a list of supportive reasons, and a list of unsupportive reasons (which are deduced directly from the 'expected output'), and a contextual recall score (closer to 1 the better), summarize a CONCISE reason. Do NOT include the numeric score in your reason.
+
+IMPORTANT: Provide your reason in the SAME LANGUAGE as the input. If the input is in Chinese, respond in Chinese. If the input is in English, respond in English.
 Relate supportive/unsupportive reasons to the sentence number in expected output, and include info regarding the node number in retrieval context to support your final reason. The first mention of "node(s)" should specify "node(s) in retrieval context".
 
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
@@ -72,7 +76,7 @@ Do not use single quotes in your response but double quotes, properly escaped wi
 
 Example JSON:
 {{
-    "reason": "The score is <contextual_recall_score> because <your_reason>."
+    "reason": "<your_reason>"
 }}
 
 DO NOT mention 'supportive reasons' and 'unsupportive reasons' in your reason, these terms are just here for you to understand the broader scope of things.
