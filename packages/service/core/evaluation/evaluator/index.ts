@@ -166,7 +166,7 @@ export class DitingEvaluator extends Evaluator {
     llmConfig?: EvalModelConfigType,
     embeddingConfig?: EvalModelConfigType,
     evaluatorConfig?: EvaluatorSchema,
-    scoreScaling: number = 100
+    scoreScaling: number = 1
   ) {
     super(metricConfig, llmConfig, embeddingConfig, evaluatorConfig);
     this.client = createDitingClient();
@@ -207,7 +207,7 @@ export class DitingEvaluator extends Evaluator {
     }
 
     // Apply score scaling if data.score exists
-    // scoreScaling directly multiplies the original score (e.g., 100 means 100x amplification)
+    // scoreScaling directly multiplies the original score (e.g., 1 means no scaling, 100 means 100x amplification)
     let scaledData = response.data;
     if (response.data?.score !== undefined && response.data?.score !== null) {
       scaledData = {
@@ -266,7 +266,7 @@ export async function createEvaluatorInstance(
     }
   }
 
-  const scoreScaling = evaluatorConfig.scoreScaling ?? 100;
+  const scoreScaling = evaluatorConfig.scoreScaling ?? 1;
   const evaluatorInstance = new DitingEvaluator(
     metricConfig,
     llmConfig,

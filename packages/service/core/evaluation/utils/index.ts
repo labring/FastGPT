@@ -6,6 +6,8 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvalDatasetCollection } from '../dataset/evalDatasetCollectionSchema';
 import { Types } from 'mongoose';
+import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
+import { getBuiltinMetrics } from '../metric/provider';
 
 export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 
@@ -57,6 +59,47 @@ async function validateEvalDatasetCollectionExists(
   }
 
   return { isValid: true, errors: [] };
+}
+
+/**
+ * Validate builtin metric name
+ */
+async function validateBuiltinMetricName(
+  metricName: string,
+  metricType: string
+): Promise<ValidationResult> {
+  if (metricType !== EvalMetricTypeEnum.Builtin) {
+    return { isValid: true, errors: [] };
+  }
+
+  try {
+    const builtinMetrics = await getBuiltinMetrics();
+    const validMetricNames = builtinMetrics.map((metric) => metric.name);
+
+    if (!validMetricNames.includes(metricName)) {
+      return {
+        isValid: false,
+        errors: [
+          {
+            code: EvaluationErrEnum.evalMetricNameInvalid,
+            message: `Invalid builtin metric name '${metricName}'. Valid builtin metrics are: ${validMetricNames.join(', ')}`,
+            field: 'metric.name',
+            debugInfo: {
+              providedName: metricName,
+              validNames: validMetricNames
+            }
+          }
+        ]
+      };
+    }
+
+    return { isValid: true, errors: [] };
+  } catch (err) {
+    // If we can't load builtin metrics, log error but allow validation to pass
+    // This prevents blocking evaluation creation if metric service is temporarily unavailable
+    console.warn('Failed to validate builtin metric name:', err);
+    return { isValid: true, errors: [] };
+  }
 }
 
 export async function validateEvaluationParams(
@@ -243,6 +286,27 @@ export async function validateEvaluationParams(
           }
         }));
         return { isValid: false, errors };
+      }
+
+      // Validate builtin metric name if type is builtin_metric
+      if (evaluator.metric) {
+        const builtinMetricValidation = await validateBuiltinMetricName(
+          evaluator.metric.name,
+          evaluator.metric.type
+        );
+        if (!builtinMetricValidation.isValid) {
+          // Prefix error messages with evaluator index for clarity
+          const errors = builtinMetricValidation.errors.map((err) => ({
+            ...err,
+            message: `Evaluator at index ${i}: ${err.message}`,
+            field: `evaluators[${i}].${err.field || 'unknown'}`,
+            debugInfo: {
+              evaluatorIndex: i,
+              ...err.debugInfo
+            }
+          }));
+          return { isValid: false, errors };
+        }
       }
 
       // Validate scoreScaling if provided

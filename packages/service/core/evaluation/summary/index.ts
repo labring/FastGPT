@@ -683,9 +683,9 @@ export class EvaluationSummaryService {
         }
 
         // 检查该指标是否已经在生成中
+        const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
         const summaryConfig = evaluation.summaryConfigs[evaluatorIndex];
         if (summaryConfig.summaryStatus === SummaryStatusEnum.generating) {
-          const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
           addLog.info('[EvaluationSummary] Metric is already generating, skipping', {
             evalId,
             metricId,
@@ -838,7 +838,8 @@ export class EvaluationSummaryService {
       const { filteredData, totalDataCount } = await this.getFilteredEvaluationData(
         evalId,
         metricId,
-        evaluator.thresholdValue || 0
+        evaluator.thresholdValue || 0,
+        evaluator
       );
 
       if (filteredData.length === 0) {
@@ -850,6 +851,7 @@ export class EvaluationSummaryService {
           evalId,
           evaluatorIndex,
           SummaryStatusEnum.failed,
+          '',
           'No matching evaluation data found, cannot generate summary report'
         );
         return;
@@ -997,7 +999,8 @@ export class EvaluationSummaryService {
   private static async getFilteredEvaluationData(
     evalId: string,
     metricId: string,
-    thresholdValue: number
+    thresholdValue: number,
+    evaluator: any
   ): Promise<{
     filteredData: any[];
     totalDataCount: number;
@@ -1005,6 +1008,7 @@ export class EvaluationSummaryService {
     addLog.debug('[getFilteredEvaluationData] 入参:', {
       evalId,
       metricId,
+      metricName: evaluator.metric.name,
       thresholdValue
     });
 
@@ -1032,7 +1036,7 @@ export class EvaluationSummaryService {
                   $filter: {
                     input: '$evaluatorOutputs',
                     as: 'output',
-                    cond: { $eq: ['$$output.metricName', metricId] }
+                    cond: { $eq: ['$$output.metricName', evaluator.metric.name] }
                   }
                 },
                 0
