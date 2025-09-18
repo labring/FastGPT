@@ -23,6 +23,7 @@ const FileSelector = ({
   maxCount = 1000,
   maxSize,
   FileTypeNode,
+  autoFilterOverSize,
   ...props
 }: {
   fileType: string;
@@ -31,6 +32,7 @@ const FileSelector = ({
   maxCount?: number;
   maxSize?: string;
   FileTypeNode?: React.ReactNode;
+  autoFilterOverSize?: boolean;
 } & FlexProps) => {
   const { t } = useTranslation();
 
@@ -46,7 +48,12 @@ const FileSelector = ({
   const { File, onOpen } = useSelectFile({
     fileType,
     multiple: formatMaxCount > 1,
-    maxCount: formatMaxCount
+    maxCount: formatMaxCount,
+    ...(autoFilterOverSize
+      ? {
+          maxSize: systemMaxSize
+        }
+      : {})
   });
   const [isDragging, setIsDragging] = useState(false);
   const isMaxSelected = useMemo(
