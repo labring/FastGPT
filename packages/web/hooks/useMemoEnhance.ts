@@ -18,7 +18,6 @@ export function useMemoEnhance<T>(factory: () => T, deps: DependencyList): T {
 
   // Check if this is the first render or if dependencies have changed
   if (!current.initialized || !isEqual(current.deps, deps)) {
-    console.log(222111);
     current.obj = factory();
     current.initialized = true;
     current.deps = deps;

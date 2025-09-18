@@ -33,7 +33,6 @@ const NodeSimple = ({
   );
 
   const Render = useMemo(() => {
-    console.log(121212);
     return (
       <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
         {isTool && (
