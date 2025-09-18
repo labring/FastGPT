@@ -6,14 +6,16 @@ import { compressImgFileAndUpload } from '../controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 export const useSelectFile = (props?: {
   fileType?: string;
   multiple?: boolean;
   maxCount?: number;
+  maxSize?: number;
 }) => {
   const { t } = useTranslation();
-  const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
+  const { fileType = '*', multiple = false, maxCount = 10, maxSize } = props || {};
   const { toast } = useToast();
   const SelectFileDom = useRef<HTMLInputElement>(null);
   const openSign = useRef<any>();
@@ -38,7 +40,18 @@ export const useSelectFile = (props?: {
             });
             fileList = fileList.slice(0, maxCount);
           }
-          onSelect(fileList, openSign.current);
+          if (!maxSize) {
+            onSelect(fileList, openSign.current);
+          } else {
+            const filterFiles = fileList.filter((item) => item.size <= maxSize);
+            if (filterFiles.length < files.length) {
+              toast({
+                status: 'warning',
+                title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
+              });
+            }
+            onSelect(filterFiles, openSign.current);
+          }
 
           e.target.value = '';
         }}
