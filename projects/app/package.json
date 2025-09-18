@@ -29,6 +29,7 @@
     "axios": "^1.12.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
+    "dompurify": "^3.2.7",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
     "framer-motion": "9.1.7",
@@ -58,6 +59,7 @@
     "recharts": "^2.15.0",
     "rehype-external-links": "^3.0.0",
     "rehype-katex": "^7.0.0",
+    "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
@@ -68,6 +70,7 @@
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
+    "@types/dompurify": "^3.2.0",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.3",
     "@types/lodash": "^4.14.191",

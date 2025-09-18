@@ -1,19 +1,22 @@
+import 'katex/dist/katex.min.css';
 import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import 'katex/dist/katex.min.css';
-import RemarkMath from 'remark-math'; // Math syntax
-import RemarkBreaks from 'remark-breaks'; // Line break
-import RehypeKatex from 'rehype-katex'; // Math render
-import RemarkGfm from 'remark-gfm'; // Special markdown syntax
 import RehypeExternalLinks from 'rehype-external-links';
+import RehypeKatex from 'rehype-katex'; // Math render
+import RehypeRaw from 'rehype-raw';
+import RemarkBreaks from 'remark-breaks'; // Line break
+import RemarkGfm from 'remark-gfm'; // Special markdown syntax
+import RemarkMath from 'remark-math'; // Math syntax
 
-import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
+import styles from './index.module.scss';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat } from './utils';
 import { useCreation } from 'ahooks';
 import type { AProps } from './A';
+import { CodeClassNameEnum } from './utils';
+
+import DomPurify from 'dompurify';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -33,6 +36,8 @@ const TextBlock = dynamic(() => import('./codeBlock/TextBlock'), { ssr: false })
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 const A = dynamic(() => import('./A'), { ssr: false });
+
+const formatCodeBlock = (lang: string, content: string) => `\`\`\`${lang}\n${content}\n\`\`\``;
 
 type Props = {
   source?: string;
@@ -74,108 +79,79 @@ const MarkdownRender = ({
     };
   }, [chatAuthData, onOpenCiteModal, showAnimation]);
 
-  // parse fragmented JSON array
-  const parseFragmentedJson = useCallback((source: string): {}[] => {
-    const jsonArrays = source.split('][');
-    const allItems: {}[] = [];
-
-    jsonArrays.forEach((jsonStr, index) => {
-      let fixedJsonStr = jsonStr;
-
-      // fix fragmented JSON string format
-      if (index === 0 && !jsonStr.endsWith(']')) {
-        fixedJsonStr = jsonStr + ']';
-      } else if (index === jsonArrays.length - 1 && !jsonStr.startsWith('[')) {
-        fixedJsonStr = '[' + jsonStr;
-      } else if (index > 0 && index < jsonArrays.length - 1) {
-        fixedJsonStr = '[' + jsonStr + ']';
-      }
-
-      try {
-        const items = JSON.parse(fixedJsonStr);
-        if (Array.isArray(items)) {
-          allItems.push(...items);
-        }
-      } catch {
-        // ignore parse error
-      }
-    });
-
-    return allItems;
-  }, []);
-
   // convert single item to Markdown
-  const convertItemToMarkdown = useCallback((item: { type: string; content: any }): string => {
-    const { type, content } = item;
+  const convertRenderBlockToMarkdown = useCallback((jsonContent: string): string => {
+    const converItem = (type: string, content: any) => {
+      switch (type) {
+        case 'TEXT':
+          return (typeof content === 'string' ? content : JSON.stringify(content)) + '\n\n';
 
-    switch (type) {
-      case 'TEXT':
-        return (typeof content === 'string' ? content : JSON.stringify(content)) + '\n\n';
+        case 'CHART':
+          return content?.hasChart && content?.echartsData
+            ? `\`\`\`echarts\n${JSON.stringify(content.echartsData, null, 2)}\n\`\`\`\n\n`
+            : '';
 
-      case 'CHART':
-        return content?.hasChart && content?.echartsData
-          ? `\`\`\`echarts\n${JSON.stringify(content.echartsData, null, 2)}\n\`\`\`\n\n`
-          : '';
+        case 'TABLE':
+          return content?.data
+            ? `\`\`\`table\n${JSON.stringify(content.data, null, 2)}\n\`\`\`\n\n`
+            : '';
 
-      case 'TABLE':
-        return content?.data
-          ? `\`\`\`table\n${JSON.stringify(content.data, null, 2)}\n\`\`\`\n\n`
-          : '';
+        case 'INDICATOR':
+          return content?.dataList
+            ? `\`\`\`indicator\n${JSON.stringify(content.dataList, null, 2)}\n\`\`\`\n\n`
+            : '';
 
-      case 'INDICATOR':
-        return content?.dataList
-          ? `\`\`\`indicator\n${JSON.stringify(content.dataList, null, 2)}\n\`\`\`\n\n`
-          : '';
+        case 'LINK':
+          return content?.text && content?.url
+            ? `\`\`\`link\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`
+            : '';
 
-      case 'LINK':
-        return content?.text && content?.url
-          ? `\`\`\`link\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`
-          : '';
+        case 'ERROR_TIPS':
+          return content ? `\`\`\`error_tips\n${content}\n\`\`\`\n\n` : '';
 
-      case 'ERROR_TIPS':
-        return content ? `\`\`\`error_tips\n${content}\n\`\`\`\n\n` : '';
+        case 'WARNING_TIPS':
+          return content ? `\`\`\`warning_tips\n${content}\n\`\`\`\n\n` : '';
 
-      case 'WARNING_TIPS':
-        return content ? `\`\`\`warning_tips\n${content}\n\`\`\`\n\n` : '';
+        case 'DIVIDER':
+          return `\`\`\`divider\n\n\`\`\`\n\n`;
 
-      case 'DIVIDER':
-        return `\`\`\`divider\n\n\`\`\`\n\n`;
+        case 'TEXTBLOCK':
+          return content ? `\`\`\`textblock\n${content}\n\`\`\`\n\n` : '';
 
-      case 'TEXTBLOCK':
-        return content ? `\`\`\`textblock\n${content}\n\`\`\`\n\n` : '';
-
-      default:
-        return '';
+        default:
+          return formatCodeBlock('json', jsonContent);
+      }
+    };
+    try {
+      const jsonObj = JSON.parse(jsonContent);
+      if (Array.isArray(jsonObj)) {
+        return jsonObj.map((item) => converItem(item.type, item.content)).join(`\n\n`);
+      } else {
+        return converItem(jsonObj.type, jsonObj.content);
+      }
+    } catch {
+      return formatCodeBlock('json', jsonContent);
     }
   }, []);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
 
-    // check if it is a tool response
-    const isStructuredResponse =
-      source?.startsWith('[{') && source.includes('"type"') && source.includes('"content"');
+    const result = source.replace(/```RENDER([\s\S]*?)```/g, (match, p1) => {
+      // p1: the content inside ```RENDER ... ```
+      const cleanedContent = p1
+        .replace(/^```[\s\S]*?(\n)?/, '')
+        .replace(/```$/, '')
+        .trim();
+      return convertRenderBlockToMarkdown(cleanedContent);
+    });
 
-    if (!isStructuredResponse) {
-      return mdTextFormat(source);
-    }
+    return result;
+  }, [convertRenderBlockToMarkdown, forbidZhFormat, showAnimation, source]);
 
-    try {
-      // parse JSON data
-      const jsonData = source.includes('][') ? parseFragmentedJson(source) : JSON.parse(source);
-
-      if (!Array.isArray(jsonData)) {
-        return mdTextFormat(source);
-      }
-
-      // convert to Markdown format
-      const result = jsonData.map(convertItemToMarkdown).join('').trim();
-
-      return result || mdTextFormat(source);
-    } catch (error) {
-      return `\`\`\`json\n${source}\n\`\`\``;
-    }
-  }, [forbidZhFormat, showAnimation, source, parseFragmentedJson, convertItemToMarkdown]);
+  const sanitizedSource = useMemo(() => {
+    return DomPurify.sanitize(formatSource);
+  }, [formatSource]);
 
   const urlTransform = useCallback((val: string) => {
     return val;
@@ -185,14 +161,38 @@ const MarkdownRender = ({
     <Box position={'relative'}>
       <ReactMarkdown
         className={`markdown ${styles.markdown}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${sanitizedSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        rehypePlugins={[
+          RehypeKatex,
+          [RehypeExternalLinks, { target: '_blank' }],
+          [
+            RehypeRaw,
+            {
+              tagfilter: [
+                'script',
+                'style',
+                'iframe',
+                'frame',
+                'frameset',
+                'object',
+                'embed',
+                'link',
+                'meta',
+                'base',
+                'form',
+                'input',
+                'button',
+                'img'
+              ]
+            }
+          ]
+        ]}
         components={components}
         urlTransform={urlTransform}
       >
-        {formatSource}
+        {sanitizedSource}
       </ReactMarkdown>
       {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} />}
     </Box>
