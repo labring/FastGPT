@@ -1,13 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button, Box, Text, HStack, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getEvaluationDatasetList } from '@/web/core/evaluation/dataset';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getEvaluationDatasetListV2 } from '@/web/core/evaluation/dataset';
 
 const IntelligentGeneration = dynamic(
   () => import('@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration')
@@ -31,31 +30,19 @@ const EvaluationDatasetSelector: React.FC<EvaluationDatasetSelectorProps> = ({
     onClose: onCloseIntelligentModal
   } = useDisclosure();
 
-  // 获取评测数据集列表
-  const scrollParams = useMemo(
-    () => ({
-      searchKey: '',
-      pageSize: 10
-    }),
-    []
-  );
-
-  const EmptyTipDom = useMemo(() => <EmptyTip text={t('dashboard_evaluation:no_data')} />, [t]);
-
   const {
     data: evaluationDatasetList,
-    ScrollData,
-    isLoading: isLoadingDatasets,
-    refreshList: fetchDatasets
-  } = useScrollPagination(getEvaluationDatasetList, {
-    params: scrollParams,
-    refreshDeps: [],
-    EmptyTip: EmptyTipDom
-  });
+    loading: isLoadingDatasets,
+    runAsync: fetchDatasets
+  } = useRequest2(getEvaluationDatasetListV2);
+
+  useEffect(() => {
+    fetchDatasets({});
+  }, []);
 
   // 转换评测数据集列表为 MySelect 需要的格式
   const evaluationDatasetSelectList = useMemo(() => {
-    const data = evaluationDatasetList.map((item) => ({
+    const data = (evaluationDatasetList?.list || []).map((item: any) => ({
       label: item.name,
       value: item._id
     }));
@@ -85,7 +72,7 @@ const EvaluationDatasetSelector: React.FC<EvaluationDatasetSelectorProps> = ({
   const handleIntelligentGenerationConfirm = useCallback(
     (data: any, datasetId?: string) => {
       onCloseIntelligentModal();
-      fetchDatasets();
+      fetchDatasets({});
     },
     [onCloseIntelligentModal, fetchDatasets]
   );
@@ -138,7 +125,6 @@ const EvaluationDatasetSelector: React.FC<EvaluationDatasetSelectorProps> = ({
           list={evaluationDatasetSelectList}
           isLoading={isLoadingDatasets}
           onChange={onChange}
-          ScrollData={ScrollData}
           bg="myGray.50"
         />
       </Flex>

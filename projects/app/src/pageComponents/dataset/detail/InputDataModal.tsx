@@ -60,7 +60,7 @@ const InputDataModal = ({
   defaultValue?: { q?: string; a?: string; imagePreivewUrl?: string };
   evaluationDatasetId?: string;
   onClose: () => void;
-  onSuccess: (data: InputDataType & { dataId: string }) => void;
+  onSuccess: (data: InputDataType & { dataId?: string }) => void;
 }) => {
   const { t } = useTranslation();
   const { embeddingModelList, defaultModels } = useSystemStore();
@@ -82,7 +82,7 @@ const InputDataModal = ({
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest2(
     async () => {
       const [collection, dataItem] = await Promise.all([
-        getDatasetCollectionById(collectionId),
+        collectionId ? getDatasetCollectionById(collectionId) : Promise.resolve(),
         ...(dataId ? [getDatasetDataItemById(dataId)] : [])
       ]);
 
@@ -109,7 +109,7 @@ const InputDataModal = ({
       }
 
       // Forcus reset to image tab
-      if (collection.type === DatasetCollectionTypeEnum.images) {
+      if (collection?.type === DatasetCollectionTypeEnum.images) {
         setCurrentTab(TabEnum.image);
       }
       return collection;
@@ -124,20 +124,34 @@ const InputDataModal = ({
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(
     async (e: InputDataType) => {
       const data = { ...e };
+      let dataId: string | undefined;
 
-      const postData: any = {
-        collectionId: collection._id,
-        q: e.q,
-        a: currentTab === TabEnum.qa ? e.a : '',
-        // Contains no default index
-        indexes: e.indexes?.filter((item) => !!item.text?.trim()) || []
-      };
+      // 如果存在evaluationDatasetId，调用评估数据集接口
+      if (evaluationDatasetId) {
+        await postCreateEvaluationDatasetData({
+          collectionId: evaluationDatasetId,
+          userInput: e.q,
+          expectedOutput: e.a,
+          enableQualityEvaluation: false
+        });
+      }
 
-      const dataId = await postInsertData2Dataset(postData);
+      // 如果存在collectionId，调用普通数据集接口
+      if (collectionId) {
+        const postData: any = {
+          collectionId: collection._id,
+          q: e.q,
+          a: currentTab === TabEnum.qa ? e.a : '',
+          // Contains no default index
+          indexes: e.indexes?.filter((item) => !!item.text?.trim()) || []
+        };
+
+        dataId = await postInsertData2Dataset(postData);
+      }
 
       return {
         ...data,
-        dataId
+        ...(dataId && { dataId })
       };
     },
     {
@@ -170,14 +184,6 @@ const InputDataModal = ({
       };
 
       await putDatasetDataById(updateData);
-      if (evaluationDatasetId) {
-        await postCreateEvaluationDatasetData({
-          collectionId: evaluationDatasetId,
-          userInput: e.q,
-          expectedOutput: e.a,
-          enableQualityEvaluation: false
-        });
-      }
 
       return {
         dataId,
@@ -465,10 +471,14 @@ const InputDataModal = ({
 
         <ModalFooter px={[5, '3.25rem']} py={0} pt={4}>
           <MyTooltip
-            label={collection.permission.hasWritePer ? '' : t('common:dataset.data.Can not edit')}
+            label={
+              !collectionId || collection.permission.hasWritePer
+                ? ''
+                : t('common:dataset.data.Can not edit')
+            }
           >
             <Button
-              isDisabled={!collection.permission.hasWritePer}
+              isDisabled={Boolean(collectionId) && !Boolean(collection.permission.hasWritePer)}
               isLoading={isImporting || isUpdating}
               // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
