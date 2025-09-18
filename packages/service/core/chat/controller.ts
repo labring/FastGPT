@@ -1,10 +1,13 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { MongoChatItemResponse } from './chatItemResponseSchema';
 
 export async function getChatItems({
   appId,
@@ -23,11 +26,43 @@ export async function getChatItems({
     return { histories: [], total: 0 };
   }
 
+  // Extend dataId
+  field = `dataId ${field}`;
+
   const [histories, total] = await Promise.all([
-    MongoChatItem.find({ chatId, appId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
-    MongoChatItem.countDocuments({ chatId, appId })
+    MongoChatItem.find({ appId, chatId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
+    MongoChatItem.countDocuments({ appId, chatId })
   ]);
   histories.reverse();
+
+  // Add node responses field
+  if (field.includes(DispatchNodeResponseKeyEnum.nodeResponse)) {
+    const chatItemDataIds = histories
+      .filter((item) => item.obj === ChatRoleEnum.AI && !item.responseData?.length)
+      .map((item) => item.dataId);
+
+    const chatItemResponsesMap = await MongoChatItemResponse.find(
+      { appId, chatId, chatItemDataId: { $in: chatItemDataIds } },
+      { chatItemDataId: 1, data: 1 }
+    )
+      .lean()
+      .then((res) => {
+        const map = new Map<string, ChatHistoryItemResType[]>();
+        res.forEach((item) => {
+          const val = map.get(item.chatItemDataId) || [];
+          val.push(item.data);
+          map.set(item.chatItemDataId, val);
+        });
+        return map;
+      });
+
+    histories.forEach((item) => {
+      const val = chatItemResponsesMap.get(String(item.dataId));
+      if (item.obj === ChatRoleEnum.AI && val) {
+        item.responseData = val;
+      }
+    });
+  }
 
   return { histories, total };
 }

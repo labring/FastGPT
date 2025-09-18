@@ -7,12 +7,14 @@ import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { type GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
+import {
+  ChatItemCollectionName,
+  ChatItemResponseCollectionName
+} from '@fastgpt/service/core/chat/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
@@ -20,6 +22,7 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -119,9 +122,11 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                 }
               }
             },
+            { $sort: { _id: 1 } },
             {
               $group: {
                 _id: null,
+                // Statistics aggregation
                 messageCount: { $sum: 1 },
                 goodFeedback: {
                   $sum: {
@@ -183,102 +188,133 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                       in: { $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }] }
                     }
                   }
+                },
+                // Detailed chat items collection
+                chatitems: {
+                  $push: {
+                    value: '$value',
+                    userGoodFeedback: '$userGoodFeedback',
+                    userBadFeedback: '$userBadFeedback',
+                    customFeedbacks: '$customFeedbacks',
+                    adminFeedback: '$adminFeedback'
+                  }
                 }
               }
             }
           ],
-          as: 'chatItemsData'
+          as: 'chatData'
         }
       },
       {
         $lookup: {
-          from: ChatItemCollectionName,
-          let: { chatId: '$chatId' },
+          from: ChatItemResponseCollectionName,
+          let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $and: [
-                    { $eq: ['$appId', new Types.ObjectId(appId)] },
-                    { $eq: ['$chatId', '$$chatId'] }
-                  ]
+                  $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
                 }
               }
             },
-            { $sort: { _id: 1 } },
             {
-              $project: {
-                value: 1,
-                userGoodFeedback: 1,
-                userBadFeedback: 1,
-                customFeedbacks: 1,
-                adminFeedback: 1
+              $group: {
+                _id: null,
+                // errorCount from chatItemResponse data
+                errorCountFromResponse: {
+                  $sum: {
+                    $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
+                  }
+                },
+                // totalPoints from chatItemResponse data
+                totalPointsFromResponse: {
+                  $sum: { $ifNull: ['$data.totalPoints', 0] }
+                }
               }
             }
           ],
-          as: 'chatitems'
+          as: 'chatItemResponsesData'
         }
       },
       {
         $addFields: {
-          messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
+          messageCount: { $ifNull: [{ $arrayElemAt: ['$chatData.messageCount', 0] }, 0] },
           userGoodFeedbackCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
+            $ifNull: [{ $arrayElemAt: ['$chatData.goodFeedback', 0] }, 0]
           },
           userBadFeedbackCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
+            $ifNull: [{ $arrayElemAt: ['$chatData.badFeedback', 0] }, 0]
           },
           customFeedbacksCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
+            $ifNull: [{ $arrayElemAt: ['$chatData.customFeedback', 0] }, 0]
           },
-          markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+          markCount: { $ifNull: [{ $arrayElemAt: ['$chatData.adminMark', 0] }, 0] },
           averageResponseTime: {
             $cond: [
               {
-                $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
+                $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatData.aiMessageCount', 0] }, 0] }, 0]
               },
               {
                 $divide: [
-                  { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
-                  { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+                  { $ifNull: [{ $arrayElemAt: ['$chatData.totalResponseTime', 0] }, 0] },
+                  { $ifNull: [{ $arrayElemAt: ['$chatData.aiMessageCount', 0] }, 1] }
                 ]
               },
               0
             ]
           },
-          errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
-          totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] },
+          // Merge errorCount from both sources
+          errorCount: {
+            $add: [
+              { $ifNull: [{ $arrayElemAt: ['$chatData.errorCountFromChatItem', 0] }, 0] },
+              {
+                $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0]
+              }
+            ]
+          },
+          // Merge totalPoints from both sources
+          totalPoints: {
+            $add: [
+              { $ifNull: [{ $arrayElemAt: ['$chatData.totalPointsFromChatItem', 0] }, 0] },
+              {
+                $ifNull: [
+                  { $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] },
+                  0
+                ]
+              }
+            ]
+          },
           userGoodFeedbackItems: {
             $filter: {
-              input: '$chatitems',
+              input: '$chatData.chatitems',
               as: 'item',
               cond: { $ifNull: ['$$item.userGoodFeedback', false] }
             }
           },
           userBadFeedbackItems: {
             $filter: {
-              input: '$chatitems',
+              input: '$chatData.chatitems',
               as: 'item',
               cond: { $ifNull: ['$$item.userBadFeedback', false] }
             }
           },
           customFeedbackItems: {
             $filter: {
-              input: '$chatitems',
+              input: '$chatData.chatitems',
               as: 'item',
               cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
             }
           },
           markItems: {
             $filter: {
-              input: '$chatitems',
+              input: '$chatData.chatitems',
               as: 'item',
               cond: { $ifNull: ['$$item.adminFeedback', false] }
             }
           },
           chatDetails: {
             $map: {
-              input: { $slice: ['$chatitems', -1000] },
+              input: { $slice: ['$chatData.chatitems', -1000] },
               as: 'item',
               in: {
                 id: '$$item._id',

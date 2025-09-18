@@ -222,7 +222,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId,
         offset: 0,
         limit,
-        field: `dataId obj value nodeOutputs`
+        field: `obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
@@ -357,7 +357,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid: outLinkUserId,
         source,
         sourceName: sourceName || '',
-        content: [userQuestion, aiResponse],
+        userContent: userQuestion,
+        aiContent: aiResponse,
         metadata: {
           originIp,
           ...metadata
@@ -371,7 +372,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* select fe response field */
     const feResponseData = responseAllData
       ? flowResponses
-      : filterPublicNodeResponseData({ flowResponses, responseDetail });
+      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail });
 
     if (stream) {
       workflowResponseWrite({

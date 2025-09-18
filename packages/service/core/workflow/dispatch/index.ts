@@ -534,7 +534,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           data: responseAllData
             ? formatResponseData
             : filterPublicNodeResponseData({
-                flowResponses: [formatResponseData],
+                nodeRespones: [formatResponseData],
                 responseDetail
               })[0]
         });
