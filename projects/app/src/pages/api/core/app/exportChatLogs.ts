@@ -22,6 +22,7 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -451,6 +452,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 }
 
 export default NextAPI(
-  // useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
+  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
   handler
 );
