@@ -235,6 +235,7 @@ const FileImport = () => {
                     />
                   </Flex>
                   <FileSelector
+                    autoFilterOverSize={true}
                     fileType=".csv"
                     selectFiles={selectFiles}
                     w={'100%'}
