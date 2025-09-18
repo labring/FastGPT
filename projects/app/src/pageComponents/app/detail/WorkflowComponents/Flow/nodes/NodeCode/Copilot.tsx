@@ -10,7 +10,7 @@ import Markdown from '@/components/Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { onOptimizeCode } from '@/web/common/api/fetch';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { extractCodeFromMarkdown } from '@/web/core/workflow/utils';
+import { extractCodeFromMarkdown } from '@/web/core/workflow/parser';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { ArrayTypeMap, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '../../../../context';

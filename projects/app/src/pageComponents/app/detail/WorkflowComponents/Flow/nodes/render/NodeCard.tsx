@@ -246,7 +246,7 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} mr={1} />
-              {showVersion && node && <NodeVersion node={node} />}
+              {showVersion && <NodeVersion node={node!} />}
               {!!nodeTemplate?.diagram && (
                 <MyTooltip
                   label={
