@@ -41,7 +41,6 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
-import NodeCopilot from '../NodeCode/Copilot';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -59,6 +58,7 @@ type Props = FlowNodeItemType & {
     delete?: boolean;
   };
   customStyle?: FlexProps;
+  nodeButtons?: React.ReactNode[];
 };
 
 const NodeCard = (props: Props) => {
@@ -85,7 +85,8 @@ const NodeCard = (props: Props) => {
     debugResult,
     isFolded,
     customStyle,
-    inputs
+    inputs,
+    nodeButtons
   } = props;
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
@@ -165,6 +166,42 @@ const NodeCard = (props: Props) => {
   const Header = useMemo(() => {
     const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
     const error = formatToolError(node?.pluginData?.error);
+
+    // Header buttons array
+    const headerButtons = [
+      ...(nodeTemplate?.diagram
+        ? [
+            <MyTooltip
+              key="diagram"
+              label={
+                <MyImage src={nodeTemplate?.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
+              }
+            >
+              <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
+                {t('common:core.module.Diagram')}
+              </Button>
+            </MyTooltip>
+          ]
+        : []),
+      ...(node?.courseUrl || nodeTemplate?.userGuide
+        ? [
+            <UseGuideModal
+              key="userGuide"
+              title={nodeTemplate?.name}
+              iconSrc={nodeTemplate?.avatar}
+              text={nodeTemplate?.userGuide}
+              link={nodeTemplate?.courseUrl}
+            >
+              {({ onClick }) => (
+                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                  <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
+                </MyTooltip>
+              )}
+            </UseGuideModal>
+          ]
+        : []),
+      ...(nodeButtons ? nodeButtons : [])
+    ];
 
     return (
       <Box position={'relative'}>
@@ -247,39 +284,12 @@ const NodeCard = (props: Props) => {
               </Button>
               <Box flex={1} mr={1} />
               {showVersion && <NodeVersion node={node!} />}
-              {!!nodeTemplate?.diagram && (
-                <MyTooltip
-                  label={
-                    <MyImage
-                      src={nodeTemplate?.diagram}
-                      w={'100%'}
-                      minH={['auto', '200px']}
-                      alt={''}
-                    />
-                  }
-                >
-                  <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
-                    {t('common:core.module.Diagram')}
-                  </Button>
-                </MyTooltip>
-              )}
-              {!!nodeTemplate?.diagram && node?.courseUrl && (
-                <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
-              )}
-              {!!(node?.courseUrl || nodeTemplate?.userGuide) && (
-                <UseGuideModal
-                  title={nodeTemplate?.name}
-                  iconSrc={nodeTemplate?.avatar}
-                  text={nodeTemplate?.userGuide}
-                  link={nodeTemplate?.courseUrl}
-                >
-                  {({ onClick }) => (
-                    <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                      <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
-                    </MyTooltip>
-                  )}
-                </UseGuideModal>
-              )}
+              {headerButtons.map((button, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
+                  {button}
+                </React.Fragment>
+              ))}
               {!!error && (
                 <Flex
                   bg={'red.50'}
@@ -293,24 +303,6 @@ const NodeCard = (props: Props) => {
                   <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
                   <Box color={'red.600'}>{t(error as any)}</Box>
                 </Flex>
-              )}
-              {node?.flowNodeType === FlowNodeTypeEnum.code && (
-                <>
-                  <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
-                  <NodeCopilot
-                    nodeId={nodeId}
-                    trigger={
-                      <Button
-                        variant={'grayGhost'}
-                        leftIcon={<MyIcon name={'codeCopilot'} w={'16px'} h={'16px'} mr={-1} />}
-                        size={'xs'}
-                        px={1}
-                      >
-                        {t('app:core.workflow.Copilot')}
-                      </Button>
-                    }
-                  />
-                </>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />

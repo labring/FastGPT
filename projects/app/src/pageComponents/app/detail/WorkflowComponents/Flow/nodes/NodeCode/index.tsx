@@ -13,7 +13,7 @@ import IOTitle from '../../components/IOTitle';
 import RenderToolInput from '../render/RenderToolInput';
 import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
@@ -25,6 +25,8 @@ import {
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import CatchError from '../render/RenderOutput/CatchError';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import NodeCopilot from './Copilot';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -125,8 +127,27 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
+  const nodeButtons = useMemo(() => {
+    return [
+      <NodeCopilot
+        key="copilot"
+        nodeId={nodeId}
+        trigger={
+          <Button
+            variant={'grayGhost'}
+            leftIcon={<MyIcon name={'codeCopilot'} w={'16px'} h={'16px'} mr={-1} />}
+            size={'xs'}
+            px={1}
+          >
+            {t('app:core.workflow.Copilot')}
+          </Button>
+        }
+      />
+    ];
+  }, [t]);
+
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'400px'} selected={selected} nodeButtons={nodeButtons} {...data}>
       {isTool && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
