@@ -9,6 +9,8 @@ class AnswerCorrectnessTemplate:
     @staticmethod
     def generate_statements(user_input: str, text: str) -> str:
         return f"""Given a question and an answer, analyze the complexity of each sentence in the answer. Break down each sentence into one or more fully understandable statements. Ensure that no pronouns are used in any statement. Format the outputs in JSON.
+
+IMPORTANT: Generate statements in the SAME LANGUAGE as the input text. If the input is in Chinese, generate Chinese statements. If the input is in English, generate English statements. Do not translate or change the language. Maintain the original language throughout your response.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Statements.model_json_schema())}
 Do not use single quotes in your response but double quotes, properly escaped with a backslash.
@@ -43,6 +45,8 @@ Output: """
         expected_output_statements: list[str],
     ) -> str:
         return f"""Given a ground truth and an answer statements, analyze each statement and classify them in one of the following categories: TP (true positive): statements that are present in answer that are also directly supported by the one or more statements in ground truth, FP (false positive): statements present in the answer but not directly supported by any statement in ground truth, FN (false negative): statements found in the ground truth but not present in answer. Each statement can only belong to one of the categories. Provide a reason for each classification.
+
+IMPORTANT: When providing reasons, use the SAME LANGUAGE as the input. If the input is in Chinese, provide reasons in Chinese. If the input is in English, provide reasons in English.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Verdicts.model_json_schema())}
 Do not use single quotes in your response but double quotes, properly escaped with a backslash.
@@ -147,8 +151,10 @@ Output: """
 - **Correctly Included (TP)**: Statements in the response that are factually accurate and directly supported by the ground truth.
 - **Incorrectly Added (FP)**: Statements in the response that are not supported by the ground truth.
 - **Missing (FN)**: Important facts present in the ground truth but absent from the response.
-These categories are for analysis only. When generating your explanation, do NOT use the terms "TP", "FP", "FN", "true positive", 
-or any technical evaluation jargon. Provide a concise and user-friendly reason for the score using plain, natural language.
+These categories are for analysis only. When generating your explanation, do NOT use the terms "TP", "FP", "FN", "true positive",
+or any technical evaluation jargon. Do NOT include the numeric score in your reason. Provide a concise and user-friendly reason using plain, natural language.
+
+IMPORTANT: Provide your reason in the SAME LANGUAGE as the input. If the input is in Chinese, respond in Chinese. If the input is in English, respond in English.
 
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Reason.model_json_schema())}
@@ -156,7 +162,7 @@ Do not use single quotes in your response but double quotes, properly escaped wi
 
 Example JSON:
 {{
-    "reason": "The score is <answer_correctness_score> because because <your_reason>."
+    "reason": "<your_reason>"
 }}
 
 If the score is 1, keep it short and say something positive with an upbeat encouraging tone (but don't overdo it).
