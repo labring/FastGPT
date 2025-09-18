@@ -39,7 +39,7 @@ describe('Score Scaling Tests', () => {
     });
   });
 
-  test('should apply default score scaling (100x amplification)', async () => {
+  test('should apply default score scaling (1x no scaling)', async () => {
     evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined);
 
     const result = await evaluator.evaluate({
@@ -48,7 +48,20 @@ describe('Score Scaling Tests', () => {
       actualOutput: 'test actual'
     });
 
-    // Score should be 0.8 * 100 = 80 with default scaling of 100
+    // Score should be 0.8 * 1 = 0.8 with default scaling of 1
+    expect(result.data?.score).toBe(0.8);
+  });
+
+  test('should apply custom score scaling (100x amplification)', async () => {
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 100);
+
+    const result = await evaluator.evaluate({
+      userInput: 'test input',
+      expectedOutput: 'test expected',
+      actualOutput: 'test actual'
+    });
+
+    // Score should be 0.8 * 100 = 80
     expect(result.data?.score).toBe(80);
   });
 

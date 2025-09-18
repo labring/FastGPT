@@ -45,10 +45,10 @@ export const calculateEvaluationItemAggregateScore = async (
       const score = evaluatorOutput?.data?.score;
       if (score !== undefined && score !== null && evaluation.summaryConfigs[index]) {
         const weight = evaluation.summaryConfigs[index].weight || 0;
-        const scoreScaling = evaluation.evaluators[index]?.scoreScaling || 100;
+        const scoreScaling = evaluation.evaluators[index]?.scoreScaling || 1;
 
         // Apply score scaling and calculate weighted score
-        const scaledScore = score * (scoreScaling / 100);
+        const scaledScore = score * scoreScaling;
         totalWeightedScore += scaledScore * weight;
         totalWeight += weight;
       }
@@ -597,9 +597,15 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
         targetCallParams: undefined
       };
 
+      // Initialize evaluatorOutputs array based on the evaluators schema definition
+      const evaluatorOutputs: MetricResult[] = evaluation.evaluators.map((evaluator) => ({
+        metricName: evaluator.metric.name
+      }));
+
       evalItems.push({
         evalId,
         dataItem: evaluationDataItem,
+        evaluatorOutputs,
         status: EvaluationStatusEnum.queuing,
         retry: maxRetries
       });
@@ -798,7 +804,10 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     // 2. Execute evaluators (batch processing - only execute missing ones)
     // Ensure evaluatorOutputs array matches the length of evaluators
     while (evaluatorOutputs.length < evaluation.evaluators.length) {
-      evaluatorOutputs.push({} as MetricResult);
+      const evaluatorIndex = evaluatorOutputs.length;
+      evaluatorOutputs.push({
+        metricName: evaluation.evaluators[evaluatorIndex].metric.name
+      });
     }
 
     const errors: Array<{ evaluatorName: string; error: string }> = [];

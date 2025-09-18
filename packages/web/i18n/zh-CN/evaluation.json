@@ -49,6 +49,7 @@
   "metric_prompt_too_long": "指标提示词不能超过4000个字符",
   "metric_type_required": "指标类型不能为空",
   "metric_type_invalid": "指标类型无效",
+  "metric_name_invalid": "指标名称无效",
   "metric_builtin_cannot_modify": "内置指标不能修改",
   "metric_builtin_cannot_delete": "内置指标不能删除",
   "metric_id_required": "指标ID不能为空",
