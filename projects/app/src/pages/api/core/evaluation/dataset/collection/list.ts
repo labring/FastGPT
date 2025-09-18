@@ -2,20 +2,18 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluation/controller';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { Types } from 'mongoose';
 import type {
   listEvalDatasetCollectionBody,
   listEvalDatasetCollectionResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { getEvaluationPermissionAggregation } from '@fastgpt/service/core/evaluation/common';
 import {
   getCollectionStatus,
   buildCollectionAggregationPipeline,
-  formatCollectionBase
+  formatCollectionBase,
+  buildEvalDatasetCollectionFilter
 } from '@fastgpt/service/core/evaluation/dataset/utils';
 
 /*
@@ -33,51 +31,9 @@ async function handler(
   const { offset, pageSize } = parsePaginationRequest(req);
   const { searchKey } = req.body;
 
-  // API layer permission validation: get permission aggregation info
-  const { teamId, tmbId, isOwner, roleList, myGroupMap, myOrgSet } =
-    await getEvaluationPermissionAggregation({
-      req,
-      authApiKey: true,
-      authToken: true
-    });
-
-  // Calculate resource IDs accessible by user
-  const myRoles = roleList.filter(
-    (item) =>
-      String(item.tmbId) === String(tmbId) ||
-      myGroupMap.has(String(item.groupId)) ||
-      myOrgSet.has(String(item.orgId))
-  );
-  const accessibleIds = myRoles.map((item) => String(item.resourceId));
-
-  // Build unified filter conditions
-  const baseFilter: Record<string, any> = {
-    teamId: new Types.ObjectId(teamId)
-  };
-
-  if (searchKey && typeof searchKey === 'string' && searchKey.trim().length > 0) {
-    baseFilter.name = { $regex: new RegExp(`${replaceRegChars(searchKey.trim())}`, 'i') };
-  }
-
-  // Unified permission filtering logic
-  let finalFilter = baseFilter;
-  if (!isOwner) {
-    if (accessibleIds.length > 0) {
-      finalFilter = {
-        ...baseFilter,
-        $or: [
-          { _id: { $in: accessibleIds.map((id) => new Types.ObjectId(id)) } },
-          { tmbId: new Types.ObjectId(tmbId) } // Own datasets
-        ]
-      };
-    } else {
-      // If no permission roles, can only access self-created datasets
-      finalFilter = {
-        ...baseFilter,
-        tmbId: new Types.ObjectId(tmbId)
-      };
-    }
-  }
+  // Use shared filter logic
+  const { finalFilter, teamId, tmbId, isOwner, myRoles, roleList } =
+    await buildEvalDatasetCollectionFilter(req, searchKey);
 
   const [collections, total] = await Promise.all([
     MongoEvalDatasetCollection.aggregate([
