@@ -4,6 +4,8 @@ import type {
   smartGenerateEvalDatasetBody,
   listEvalDatasetCollectionBody,
   listEvalDatasetCollectionResponse,
+  listEvalDatasetCollectionV2Body,
+  listEvalDatasetCollectionV2Response,
   listEvalDatasetDataBody,
   listEvalDatasetDataResponse,
   createEvalDatasetDataBody,
@@ -36,6 +38,10 @@ export const getEvaluationDatasetList = (data: listEvalDatasetCollectionBody) =>
     '/core/evaluation/dataset/collection/list',
     data
   );
+
+// 获取评测数据集列表 - 轻量级版本
+export const getEvaluationDatasetListV2 = (data: listEvalDatasetCollectionV2Body) =>
+  POST<listEvalDatasetCollectionV2Response>('/core/evaluation/dataset/collection/listv2', data);
 
 // 删除评测数据集
 export const deleteEvaluationDataset = (data: { collectionId: string }) =>
