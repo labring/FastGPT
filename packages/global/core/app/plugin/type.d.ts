@@ -33,6 +33,9 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   versionList?: {
     value: string;
     description?: string;
+    enabled?: boolean;
+    selectedVersionId?: string;
+    storedVersions?: string[];
 
     inputs: FlowNodeInputItemType[];
     outputs: FlowNodeOutputItemType[];

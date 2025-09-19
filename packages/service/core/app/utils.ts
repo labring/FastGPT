@@ -57,7 +57,8 @@ export async function rewriteAppWorkflowToDetail({
           getChildAppPreviewNode({
             appId: node.pluginId,
             versionId: node.version,
-            lang
+            lang,
+            toolConfig: node.toolConfig
           }),
           ...(source === PluginSourceEnum.personal
             ? [
