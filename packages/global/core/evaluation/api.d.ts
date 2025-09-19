@@ -56,6 +56,7 @@ export type EvaluationStatsResponse = {
   evaluating: number;
   queuing: number;
   error: number;
+  failed: number;
 };
 
 // Export Evaluation Items
