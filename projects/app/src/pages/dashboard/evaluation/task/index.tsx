@@ -43,6 +43,7 @@ import {
   EvaluationStatusEnum,
   EvaluationStatusMap
 } from '@fastgpt/global/core/evaluation/constants';
+import { getBuiltinDimensionInfo, formatScoreToPercentage } from '@/web/core/evaluation/utils';
 
 const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
   const router = useRouter();
@@ -57,7 +58,8 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     return getEvaluationList({
       pageNum: Number(data.pageNum),
       pageSize: Number(data.pageSize),
-      searchKey: data.searchKey
+      searchKey: data.searchKey,
+      appId: data.appFilter || undefined
     });
   };
 
@@ -115,36 +117,47 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
 
   // 渲染评测结果
   const renderEvaluationResult = (task: EvaluationDisplayType) => {
-    if (task.status === EvaluationStatusEnum.queuing) {
-      return <Box color={'myGray.600'}>{t('dashboard_evaluation:waiting')}</Box>;
+    // 1. 当状态为error且所有项目都失败时，显示红色的"异常"
+    if (
+      task.status === EvaluationStatusEnum.error &&
+      task.statistics?.errorItems === task.statistics?.totalItems
+    ) {
+      return <Box color={'red.600'}>{t('dashboard_evaluation:error')}</Box>;
     }
 
-    if (task.status === EvaluationStatusEnum.evaluating) {
-      return <Box color={'myGray.600'}>{t('dashboard_evaluation:evaluating_status')}</Box>;
+    // 2. 当状态为queuing或evaluating时，显示灰色的"评测中"
+    if (
+      task.status === EvaluationStatusEnum.queuing ||
+      task.status === EvaluationStatusEnum.evaluating
+    ) {
+      return <Box color={'myGray.500'}>{t('dashboard_evaluation:evaluating')}</Box>;
     }
 
-    //todo replace by summary get api result
-    if (task.status === EvaluationStatusEnum.completed) {
+    // 3. 其他场景判断summaryConfigs
+    if (task.summaryConfigs && task.summaryConfigs.length > 0) {
+      // 如果summaryConfigs数组长度大于等于3，显示aggregateScore
+      if (task.summaryConfigs.length >= 3) {
+        return (
+          <Box color={'myGray.900'}>
+            {task.aggregateScore !== undefined ? formatScoreToPercentage(task.aggregateScore) : '-'}
+          </Box>
+        );
+      }
+
+      // summaryConfigs数组长度小于3，显示各个维度的分数（换行显示）
       return (
-        <Box color={'myGray.900'} fontWeight={'500'}>
-          {100}
+        <Box color={'myGray.900'}>
+          {task.summaryConfigs.map((config, index) => {
+            const builtinInfo = getBuiltinDimensionInfo(config.metricName);
+            const displayName = builtinInfo?.name || config.metricName;
+            const score = formatScoreToPercentage(config.score);
+            return <Box key={index}>{`${score}(${t(displayName)})`}</Box>;
+          })}
         </Box>
       );
     }
 
-    if (task.status === EvaluationStatusEnum.error) {
-      return <Box color={'red.600'}>{t('dashboard_evaluation:error')}</Box>;
-    }
-
     return <Box color={'myGray.600'}>-</Box>;
-  };
-
-  // 状态颜色映射
-  const statusColorMap = {
-    [EvaluationStatusEnum.queuing]: undefined,
-    [EvaluationStatusEnum.evaluating]: 'blue',
-    [EvaluationStatusEnum.completed]: 'green.600',
-    [EvaluationStatusEnum.error]: 'red.600'
   };
 
   const handleDeleteTask = (evalId: string) => {
@@ -243,30 +256,34 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                 >
                   <Td>{task.name}</Td>
                   <Td>
-                    {task.status === EvaluationStatusEnum.evaluating ? (
-                      <HStack spacing={1}>
-                        <Box>
-                          <Box as="span" color={'myGray.900'}>
-                            {task.statistics?.completedItems}
-                          </Box>
-                          <Box as="span" color={'myGray.600'}>
-                            /{task.statistics?.totalItems}
-                          </Box>
-                        </Box>
-                        {task.statistics?.errorItems && task.statistics.errorItems > 0 && (
-                          <MyTooltip
-                            label={t('dashboard_evaluation:error_data_tooltip', {
-                              count: task.statistics.errorItems
-                            })}
-                          >
-                            <MyIcon name={'common/error'} w={'14px'} color={'red.600'} />
-                          </MyTooltip>
-                        )}
-                      </HStack>
+                    {task.status === EvaluationStatusEnum.queuing && (
+                      <Box color={'myGray.600'}>{t(EvaluationStatusMap[task.status]?.name)}</Box>
+                    )}
+                    {task.status === EvaluationStatusEnum.completed &&
+                    task.statistics?.completedItems === task.statistics?.totalItems ? (
+                      <Box color={'green.600'}>{t(EvaluationStatusMap[task.status]?.name)}</Box>
                     ) : (
-                      <Box color={statusColorMap[task.status] as any}>
-                        {t(EvaluationStatusMap[task.status]?.name)}
-                      </Box>
+                      task.status !== EvaluationStatusEnum.queuing && (
+                        <HStack spacing={1}>
+                          <Box>
+                            <Box as="span" color={'myGray.900'}>
+                              {task.statistics?.completedItems || 0}
+                            </Box>
+                            <Box as="span" color={'myGray.600'}>
+                              /{task.statistics?.totalItems || 0}
+                            </Box>
+                          </Box>
+                          {task.statistics?.errorItems && task.statistics.errorItems > 0 && (
+                            <MyTooltip
+                              label={t('dashboard_evaluation:error_data_tooltip', {
+                                count: task.statistics.errorItems
+                              })}
+                            >
+                              <MyIcon name={'common/info'} w={'14px'} color={'red.600'} />
+                            </MyTooltip>
+                          )}
+                        </HStack>
+                      )
                     )}
                   </Td>
                   <Td>

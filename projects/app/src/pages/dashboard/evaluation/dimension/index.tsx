@@ -30,7 +30,10 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getMetricList, deleteMetric } from '@/web/core/evaluation/dimension';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvalMetricDisplayType } from '@fastgpt/global/core/evaluation/metric/type';
-import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import {
+  getBuiltinDimensionInfo,
+  getBuiltinDimensionNameFromId
+} from '@/web/core/evaluation/utils';
 
 const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
@@ -56,7 +59,8 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
     return allDimensions.map((dimension) => {
       // 如果是内置维度，使用国际化信息
       if (dimension.type === EvalMetricTypeEnum.Builtin) {
-        const builtinInfo = getBuiltinDimensionInfo(dimension._id);
+        const dimensionName = getBuiltinDimensionNameFromId(dimension._id);
+        const builtinInfo = getBuiltinDimensionInfo(dimensionName);
         if (builtinInfo) {
           return {
             ...dimension,

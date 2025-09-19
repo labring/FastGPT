@@ -9,8 +9,9 @@ interface GradientBorderBoxProps extends BoxProps {
 const GradientBorderBox: React.FC<GradientBorderBoxProps> = ({ children, ...boxProps }) => {
   return (
     <Box
+      minH={'150px'}
       position={'relative'}
-      p={6}
+      p={4}
       borderRadius={'lg'}
       bg={'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)'}
       _before={{
@@ -27,7 +28,8 @@ const GradientBorderBox: React.FC<GradientBorderBoxProps> = ({ children, ...boxP
         mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
         maskComposite: 'xor',
         WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-        WebkitMaskComposite: 'xor'
+        WebkitMaskComposite: 'xor',
+        pointerEvents: 'none'
       }}
       {...boxProps}
     >

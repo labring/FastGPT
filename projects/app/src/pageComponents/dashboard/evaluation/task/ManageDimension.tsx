@@ -28,7 +28,10 @@ import {
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import {
+  getBuiltinDimensionInfo,
+  getBuiltinDimensionNameFromId
+} from '@/web/core/evaluation/utils';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // 维度类型定义
@@ -61,7 +64,8 @@ const transformMetricToDimension = (
   let description = metric.description || '';
 
   if (metric.type === EvalMetricTypeEnum.Builtin) {
-    const builtinInfo = getBuiltinDimensionInfo(metric._id);
+    const dimensionName = getBuiltinDimensionNameFromId(metric._id);
+    const builtinInfo = getBuiltinDimensionInfo(dimensionName);
     if (builtinInfo && t) {
       name = t(builtinInfo.name);
       description = t(builtinInfo.description);
