@@ -9,6 +9,8 @@ class ContextPrecisionTemplate:
     @staticmethod
     def generate_verdict(user_input: str, expected_output: str, context: str) -> str:
         return f"""Given question, answer and context verify if the context was useful in arriving at the given answer. Give verdict as "1" if useful and "0" if not with json output.
+
+IMPORTANT: When providing reasons, use the SAME LANGUAGE as the input. If the input is in Chinese, provide reasons in Chinese. If the input is in English, provide reasons in English.
 Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:
 {json.dumps(Verdict.model_json_schema())}
 Do not use single quotes in your response but double quotes, properly escaped with a backslash.
@@ -58,7 +60,9 @@ Output: """
 
     @staticmethod
     def generate_reason(user_input: str, score: float, verdicts: list[dict[str, Any]]):
-        return f"""Given the input, retrieval contexts, and contextual precision score, provide a CONCISE summary for the score. Explain why it is not higher, but also why it is at its current score.
+        return f"""Given the input, retrieval contexts, and contextual precision score, provide a CONCISE summary. Explain the evaluation result but do NOT include the numeric score in your reason.
+
+IMPORTANT: Provide your reason in the SAME LANGUAGE as the input. If the input is in Chinese, respond in Chinese. If the input is in English, respond in English.
 The retrieval contexts is a list of JSON with three keys: `verdict`, `reason` (reason for the verdict) and `node`. `verdict` will be either 'yes' or 'no', which represents whether the corresponding 'node' in the retrieval context is relevant to the input. 
 Contextual precision represents if the relevant nodes are ranked higher than irrelevant nodes. Also note that retrieval contexts is given IN THE ORDER OF THEIR RANKINGS.
 
@@ -68,7 +72,7 @@ Do not use single quotes in your response but double quotes, properly escaped wi
 
 Example JSON:
 {{
-    "reason": "The score is <contextual_precision_score> because <your_reason>."
+    "reason": "<your_reason>"
 }}
 
 In your reason, you MUST USE the `reason`, QUOTES in the 'reason', and the node RANK (starting from 1, eg. first node) to explain why the 'no' verdicts should be ranked lower than the 'yes' verdicts.
