@@ -100,7 +100,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               datasetId: item.datasetId,
               vectorModel: item.vectorModel,
               name: item.name,
-              avatar: item.avatar
+              avatar: item.avatar,
+              datasetType: item.datasetType
             }))}
             onChange={(e) => {
               onChangeNode({
