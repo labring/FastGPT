@@ -1,5 +1,5 @@
 import { parseCurl } from '@fastgpt/global/common/string/http';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -14,7 +14,7 @@ import {
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const emptyTemplates: Record<
-  AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow,
+  Extract<AppType, 'simple' | 'plugin' | 'advanced'>,
   {
     name: string;
     avatar: string;
@@ -259,7 +259,7 @@ export const emptyTemplates: Record<
     ],
     chatConfig: {}
   },
-  [AppTypeEnum.workflow]: {
+  [AppTypeEnum.advanced]: {
     avatar: 'core/app/type/workflowFill',
     name: i18nT('common:core.module.template.empty_workflow'),
     nodes: [

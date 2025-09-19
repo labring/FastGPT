@@ -1,7 +1,7 @@
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';

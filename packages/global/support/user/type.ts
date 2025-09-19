@@ -2,6 +2,20 @@ import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import type { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
+import { extendZodWithOpenApi } from '@anatine/zod-openapi';
+import { z } from 'zod';
+import { TeamMemberStatusSchema } from './team/type';
+
+extendZodWithOpenApi(z);
+
+export const SourceMemberSchema = z
+  .object({
+    name: z.string().openapi({ example: 'root' }).describe('用户名称'),
+    avatar: z.string().optional().openapi({ example: '' }).describe('用户头像 URL'),
+    status: TeamMemberStatusSchema.openapi({ example: 'active' }).describe('团队成员状态')
+  })
+  .describe('用户成员信息');
+export type SourceMemberType = z.infer<typeof SourceMemberSchema>;
 
 export type UserModelSchema = {
   _id: string;
@@ -31,10 +45,4 @@ export type UserType = {
   notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
-};
-
-export type SourceMemberType = {
-  name: string;
-  avatar: string;
-  status: `${TeamMemberStatusEnum}`;
 };

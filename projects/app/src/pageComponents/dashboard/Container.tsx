@@ -2,7 +2,8 @@ import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { useMemo } from 'react';
-import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -51,7 +52,7 @@ const DashboardContainer = ({
   // Sub tab
   const { type: currentType, appType } = router.query as {
     type: string;
-    appType?: AppTypeEnum | 'all';
+    appType?: AppType | 'all';
   };
 
   // Template market
@@ -132,7 +133,7 @@ const DashboardContainer = ({
             typeName: t('app:type.Simple bot')
           },
           {
-            typeId: AppTypeEnum.workflow,
+            typeId: AppTypeEnum.advanced,
             typeName: t('app:type.Workflow bot')
           },
           {

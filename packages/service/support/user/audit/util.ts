@@ -1,4 +1,4 @@
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '../../../../web/i18n/utils';
 import { MongoOperationLog } from './schema';
@@ -10,10 +10,10 @@ import type {
 } from '@fastgpt/global/support/user/audit/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
-export function getI18nAppType(type: AppTypeEnum): string {
+export function getI18nAppType(type: AppType): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
   if (type === AppTypeEnum.simple) return i18nT('account_team:type.Simple bot');
-  if (type === AppTypeEnum.workflow) return i18nT('account_team:type.Workflow bot');
+  if (type === AppTypeEnum.advanced) return i18nT('account_team:type.Workflow bot');
   if (type === AppTypeEnum.plugin) return i18nT('account_team:type.Plugin');
   if (type === AppTypeEnum.httpPlugin) return i18nT('account_team:type.Http plugin');
   if (type === AppTypeEnum.toolSet) return i18nT('account_team:type.Tool set');

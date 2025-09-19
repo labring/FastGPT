@@ -1,7 +1,7 @@
 import type { CreateAppBody } from '@/pages/api/core/app/create';
 import createAppAPI from '@/pages/api/core/app/create';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getClbsInfo, getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';

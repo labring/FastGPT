@@ -1,6 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NullRoleVal,
   PerResourceTypeEnum,
@@ -12,7 +12,8 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getTmbPermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';

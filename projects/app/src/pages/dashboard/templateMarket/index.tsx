@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import {
   type AppTemplateSchemaType,
   type TemplateTypeSchemaType
@@ -48,7 +48,7 @@ const TemplateMarket = ({
     parentId,
     type,
     appType = 'all'
-  } = router.query as { parentId?: ParentIdType; type?: string; appType?: AppTypeEnum | 'all' };
+  } = router.query as { parentId?: ParentIdType; type?: string; appType?: AppType | 'all' };
   const [searchKey, setSearchKey] = useState('');
 
   const filterTemplateTags = useMemo(() => {
@@ -71,7 +71,7 @@ const TemplateMarket = ({
         parentId,
         avatar: template.avatar,
         name: template.name,
-        type: template.type as AppTypeEnum,
+        type: template.type as AppType,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig
@@ -126,7 +126,7 @@ const TemplateMarket = ({
               {item.name}
             </Box>
             <Box mr={'-1rem'}>
-              <AppTypeTag type={item.type as AppTypeEnum} />
+              <AppTypeTag type={item.type as AppType} />
             </Box>
           </HStack>
           <Box
@@ -237,7 +237,7 @@ const TemplateMarket = ({
                 label: t('app:type.Simple bot')
               },
               {
-                value: AppTypeEnum.workflow,
+                value: AppTypeEnum.advanced,
                 label: t('app:type.Workflow bot')
               },
               {

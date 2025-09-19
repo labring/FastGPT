@@ -1,10 +1,10 @@
 import React, { useRef } from 'react';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
+const AppTypeTag = ({ type }: { type: AppType }) => {
   const { t } = useTranslation();
 
   const map = useRef({
@@ -14,7 +14,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#DBF3FF',
       color: '#0884DD'
     },
-    [AppTypeEnum.workflow]: {
+    [AppTypeEnum.advanced]: {
       label: t('app:type.Workflow bot'),
       icon: 'core/app/type/workflow',
       bg: '#E4E1FC',

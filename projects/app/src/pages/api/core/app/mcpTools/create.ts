@@ -6,7 +6,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type CreateAppBody, onCreateApp } from '../create';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';

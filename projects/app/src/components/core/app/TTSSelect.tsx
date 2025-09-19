@@ -4,7 +4,7 @@ import { Box, Button, Flex, ModalBody, useDisclosure, Image, HStack } from '@cha
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import type { AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';

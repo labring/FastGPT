@@ -10,7 +10,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { type AppType } from '@fastgpt/global/core/app/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   getBdVId,
@@ -81,7 +81,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             name: t(emptyTemplate.name as any),
             modules: emptyTemplate.nodes,
             edges: emptyTemplate.edges,
-            type: type as AppTypeEnum
+            type: type as AppType
           });
         });
       }, 100);

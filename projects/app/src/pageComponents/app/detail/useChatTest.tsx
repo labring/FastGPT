@@ -8,7 +8,7 @@ import { AppContext } from './context';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';

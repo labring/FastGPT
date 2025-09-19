@@ -8,13 +8,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getMyApps } from '@/web/core/app/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getFavouriteApps, updateFavouriteApps } from '@/web/core/chat/api';
-import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 
 type Props = {
   onClose: () => void;
@@ -38,7 +38,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
         getMyApps({
           parentId,
           searchKey: searchAppNameValue,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.advanced, AppTypeEnum.plugin]
         }),
         searchAppNameValue.trim()
           ? Promise.resolve([])
@@ -191,7 +191,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                   {availableApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('common:folder.empty')} />
                   )}
-                  {availableApps.map((item: App) => (
+                  {availableApps.map((item: AppListItemType) => (
                     <Box key={item._id} userSelect={'none'}>
                       <Flex
                         align="center"

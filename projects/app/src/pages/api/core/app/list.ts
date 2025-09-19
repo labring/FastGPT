@@ -10,7 +10,8 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -23,7 +24,7 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
-  type?: AppTypeEnum | AppTypeEnum[];
+  type?: AppType | AppType[];
   getRecentlyChat?: boolean;
   searchKey?: string;
 };
@@ -99,7 +100,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         // get all chat app, excluding hidden apps
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] }
+        type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple, AppTypeEnum.plugin] }
       };
     }
 

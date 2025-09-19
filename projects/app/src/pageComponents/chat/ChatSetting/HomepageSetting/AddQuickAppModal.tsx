@@ -5,7 +5,6 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -13,9 +12,10 @@ import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FolderPath from '@/components/common/folder/Path';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 
 type Props = {
   selectedIds: string[];
@@ -48,7 +48,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
         getMyApps({
           parentId,
           searchKey: searchAppName,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.advanced]
         }),
         searchAppName.trim()
           ? Promise.resolve([])
@@ -66,7 +66,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   const paths = appData.paths;
 
   const availableAppsMap = useMemo(() => {
-    const map = new Map<string, App>();
+    const map = new Map<string, AppListItemType>();
     availableApps.forEach((app) => map.set(app._id, app));
     return map;
   }, [availableApps]);
@@ -239,7 +239,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   {availableApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('common:folder.empty')} />
                   )}
-                  {availableApps.map((item: App) => (
+                  {availableApps.map((item: AppListItemType) => (
                     <Box key={item._id} userSelect={'none'}>
                       <Flex
                         align="center"

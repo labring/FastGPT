@@ -1,4 +1,4 @@
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const appTypeMap = {
@@ -8,7 +8,7 @@ export const appTypeMap = {
     avatar: 'core/app/type/simpleFill',
     emptyCreateText: i18nT('app:create_empty_app')
   },
-  [AppTypeEnum.workflow]: {
+  [AppTypeEnum.advanced]: {
     icon: 'core/app/type/workflowFill',
     avatar: 'core/app/type/workflowFill',
     title: i18nT('app:type.Create workflow bot'),

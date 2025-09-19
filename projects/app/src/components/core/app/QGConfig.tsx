@@ -12,7 +12,7 @@ import {
 
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';

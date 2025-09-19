@@ -24,7 +24,7 @@ import {
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
 import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
@@ -110,10 +110,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   const appTypeName = useMemo(() => {
-    const map: Record<AppTypeEnum | 'all', string> = {
+    const map: Record<AppType | 'all', string> = {
       all: t('common:core.module.template.Team app'),
       [AppTypeEnum.simple]: t('app:type.Simple bot'),
-      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
+      [AppTypeEnum.advanced]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
       [AppTypeEnum.folder]: t('common:Folder'),
@@ -196,7 +196,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         icon: 'core/app/type/workflowFill',
                         label: t('app:type.Workflow bot'),
                         description: t('app:type.Create workflow tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.workflow)
+                        onClick: () => setCreateAppType(AppTypeEnum.advanced)
                       },
                       {
                         icon: 'core/app/type/pluginFill',

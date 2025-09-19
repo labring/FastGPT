@@ -1,4 +1,5 @@
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, type AppType } from '@fastgpt/global/core/app/type';
 import {
   ManageRoleVal,
   OwnerRoleVal,
@@ -23,7 +24,7 @@ describe('syncChildrenPermission', () => {
   }: {
     user: parseHeaderCertRet;
     name: string;
-    type: AppTypeEnum;
+    type: AppType;
     parentId?: string;
   }) =>
     mongoSessionRun(async (session) => {

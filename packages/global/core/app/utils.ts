@@ -6,7 +6,7 @@ import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
-import { AppTypeEnum } from './constants';
+import { AppTypeEnum } from './type';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
 
@@ -182,7 +182,7 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
 
   if (!('nodes' in config)) return '';
   if (config.nodes.some((node) => node.flowNodeType === 'workflowStart')) {
-    return AppTypeEnum.workflow;
+    return AppTypeEnum.advanced;
   }
   if (config.nodes.some((node) => node.flowNodeType === 'pluginInput')) {
     return AppTypeEnum.plugin;

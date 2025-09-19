@@ -30,7 +30,7 @@ async function handler(
 
   return [
     {
-      parentId: type === 'current' ? plugin.id : plugin.parentId,
+      parentId: type === 'current' ? plugin.id : plugin.parentId || '',
       parentName: parseI18nString(plugin.name, lang)
     }
   ];

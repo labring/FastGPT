@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from '@/pageComponents/dashboard/apps/context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+// import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from '@/pageComponents/chat/ChatTeamApp/TypeTag';
 
@@ -17,8 +17,9 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { type AppType, AppTypeEnum } from '@fastgpt/global/core/app/type';
 
-const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
+const ListItem = ({ appType }: { appType: AppType | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
@@ -29,12 +30,14 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         appType === app.type ||
         app.type === AppTypeEnum.folder ||
         (appType === 'all' &&
-          [
-            AppTypeEnum.folder,
-            AppTypeEnum.simple,
-            AppTypeEnum.workflow,
-            AppTypeEnum.plugin
-          ].includes(app.type))
+          (
+            [
+              AppTypeEnum.folder,
+              AppTypeEnum.simple,
+              AppTypeEnum.advanced,
+              AppTypeEnum.plugin
+            ] as AppType[]
+          ).includes(app.type))
     )
   );
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);

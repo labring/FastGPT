@@ -1,3 +1,5 @@
+import '@scalar/api-reference-react/style.css';
+
 import type { AppProps } from 'next/app';
 import Script from 'next/script';
 
@@ -47,6 +49,10 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
   const router = useRouter();
   const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
+
+  if (router.pathname === '/openapi') {
+    return <>{setLayout(<Component {...pageProps} />)}</>;
+  }
 
   return (
     <>

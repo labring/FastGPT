@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
 import ChatFunctionTip from './Tip';

@@ -15,7 +15,7 @@ import type {
   TeamTmbItemType,
   TeamMemberItemType,
   TeamMemberSchema
-} from '@fastgpt/global/support/user/team/type.d';
+} from '@fastgpt/global/support/user/team/type';
 import type {
   ClientTeamPlanStatusType,
   TeamSubSchema

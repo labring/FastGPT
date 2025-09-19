@@ -1,7 +1,7 @@
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';

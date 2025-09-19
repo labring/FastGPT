@@ -15,7 +15,8 @@ import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import { type ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';

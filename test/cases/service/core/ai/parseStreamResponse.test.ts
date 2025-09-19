@@ -158,9 +158,7 @@ describe('Parse dataset cite content test', async () => {
       data: [
         { content: '知识库' },
         { content: '问答系统' },
-        { content: '[67e517e747' },
-        { content: '67063e882d' },
-        { content: '6861](CITE)' }
+        { content: '[67e517e74767063e882d6861](CITE)' }
       ],
       correct: {
         content: '知识库问答系统[67e517e74767063e882d6861](CITE)',
@@ -400,6 +398,19 @@ describe('Parse dataset cite content test', async () => {
         content: '知识库问答系统[id](CITE)[67e517e74767063e882d6861](CITE)',
         responseContent: '知识库问答系统'
       }
+    },
+    {
+      // [id](CITE)
+      data: [
+        { content: '知识库' },
+        { content: '问答系统' },
+        { content: '[i' },
+        { content: 'd](CITE)' }
+      ],
+      correct: {
+        content: '知识库问答系统[id](CITE)',
+        responseContent: '知识库问答系统'
+      }
     }
   ];
 
@@ -409,7 +420,8 @@ describe('Parse dataset cite content test', async () => {
 
       let answer = '';
       let responseContent = '';
-      part.data.forEach((item, index) => {
+      const list = [...part.data, { content: '' }];
+      list.forEach((item, index) => {
         const formatPart = {
           choices: [
             {
@@ -418,9 +430,7 @@ describe('Parse dataset cite content test', async () => {
                 content: item.content,
                 reasoning_content: ''
               },
-              finish_reason: (index === part.data.length - 1
-                ? 'stop'
-                : null) as CompletionFinishReason
+              finish_reason: (index === list.length - 2 ? 'stop' : null) as CompletionFinishReason
             }
           ]
         };

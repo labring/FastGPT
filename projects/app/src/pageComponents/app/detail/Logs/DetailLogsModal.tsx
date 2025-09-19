@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';

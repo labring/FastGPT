@@ -3,7 +3,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/type';
 import {
   PerResourceTypeEnum,
   WritePermissionVal
