@@ -69,7 +69,6 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
   [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
-  [FlowNodeTypeEnum.httpPlugin]: () => Promise.resolve(),
 
   // @deprecated
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest
