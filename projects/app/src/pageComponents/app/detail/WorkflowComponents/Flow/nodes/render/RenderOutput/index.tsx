@@ -3,12 +3,12 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';
-import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const RenderOutput = ({
   nodeId,
@@ -17,14 +17,12 @@ const RenderOutput = ({
   nodeId: string;
   flowOutputList: FlowNodeOutputItemType[];
 }) => {
-  const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const outputString = useMemo(() => JSON.stringify(flowOutputList), [flowOutputList]);
-  const copyOutputs = useMemo(() => {
-    return JSON.parse(outputString) as FlowNodeOutputItemType[];
-  }, [outputString]);
+  const copyOutputs = useMemoEnhance(() => {
+    return flowOutputList;
+  }, [flowOutputList]);
 
   // Condition check
   const inputs = useContextSelector(WorkflowContext, (v) => {
