@@ -122,7 +122,6 @@ export enum EvaluationErrEnum {
   fileIdRequired = 'evaluationFileIdRequired',
   fileMustBeCSV = 'evaluationFileMustBeCSV',
   csvInvalidStructure = 'evaluationCSVInvalidStructure',
-  csvTooManyRows = 'evaluationCSVTooManyRows',
   csvParsingError = 'evaluationCSVParsingError',
   csvNoDataRows = 'evaluationCSVNoDataRows',
 
@@ -552,10 +551,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.csvInvalidStructure,
     message: i18nT('evaluation:csv_invalid_structure')
-  },
-  {
-    statusText: EvaluationErrEnum.csvTooManyRows,
-    message: i18nT('evaluation:csv_too_many_rows')
   },
   {
     statusText: EvaluationErrEnum.csvParsingError,

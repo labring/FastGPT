@@ -143,10 +143,10 @@ const FileImport = () => {
   );
 
   const handleDownloadTemplate = () => {
-    const templateContent = `userInput,expectedOutput,actualOutput,context,retrievalContext,metadata
-"What is the capital of France?","Paris","","","","{}"
-"How do you install FastGPT?","Follow the installation guide in the documentation","","","","{}"
-"What are the main features of FastGPT?","AI Agent construction platform with data processing and visual workflow orchestration","","","","{}"`;
+    const templateContent = `userInput,expectedOutput,actualOutput,context,retrievalContext
+"What is the capital of France?","Paris","","",""
+"How do you install FastGPT?","Follow the installation guide in the documentation","","",""
+"What are the main features of FastGPT?","AI Agent construction platform with data processing and visual workflow orchestration","","",""`;
     fileDownload({
       text: templateContent,
       type: 'text/csv;charset=utf-8',

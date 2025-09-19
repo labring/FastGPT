@@ -14,7 +14,8 @@ export async function getCollectionStatus(
       'waiting',
       'active',
       'delayed',
-      'failed'
+      'failed',
+      'completed'
     ]);
     const collectionJobs = jobs.filter((job) => job.data.evalDatasetCollectionId === collectionId);
 
@@ -22,22 +23,36 @@ export async function getCollectionStatus(
       return EvalDatasetCollectionStatusEnum.ready;
     }
 
-    if (collectionJobs.some((job) => job.isFailed())) {
-      return EvalDatasetCollectionStatusEnum.error;
+    let hasActive = false;
+    let hasWaiting = false;
+    let hasFailed = false;
+
+    for (const job of collectionJobs) {
+      if (await job.isActive()) {
+        hasActive = true;
+      } else if ((await job.isWaiting()) || (await job.isDelayed())) {
+        hasWaiting = true;
+      } else if (await job.isFailed()) {
+        hasFailed = true;
+      }
     }
 
-    if (collectionJobs.some((job) => job.isActive())) {
+    if (hasWaiting) {
+      return EvalDatasetCollectionStatusEnum.queuing;
+    }
+    if (hasActive) {
       return EvalDatasetCollectionStatusEnum.processing;
     }
-
-    if (collectionJobs.some((job) => job.isWaiting() || job.isDelayed())) {
-      return EvalDatasetCollectionStatusEnum.queuing;
+    if (hasFailed) {
+      return EvalDatasetCollectionStatusEnum.error;
     }
 
     return EvalDatasetCollectionStatusEnum.ready;
   } catch (error) {
     console.error('Error getting collection status:', error);
-    return EvalDatasetCollectionStatusEnum.ready;
+    throw new Error(
+      `Failed to get collection status: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 

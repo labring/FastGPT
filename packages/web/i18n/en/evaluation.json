@@ -116,7 +116,6 @@
   "file_id_required": "File ID is required",
   "file_must_be_csv": "File must be a CSV file",
   "csv_invalid_structure": "CSV file has invalid structure",
-  "csv_too_many_rows": "CSV file contains too many rows (maximum 10,000)",
   "csv_parsing_error": "CSV parsing error",
   "csv_no_data_rows": "CSV file contains no data rows",
   "count_must_be_greater_than_zero": "Count must be greater than zero",
