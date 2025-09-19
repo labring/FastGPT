@@ -149,12 +149,12 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     createUsage({
       teamId,
       tmbId,
-      appName: i18nT('app:support.wallet.usage.Code Copilot'),
+      appName: i18nT('common:support.wallet.usage.Code Copilot'),
       totalPoints,
       source: UsageSourceEnum.code_copilot,
       list: [
         {
-          moduleName: i18nT('app:support.wallet.usage.Code Copilot'),
+          moduleName: i18nT('common:support.wallet.usage.Code Copilot'),
           amount: totalPoints,
           model: modelName,
           inputTokens,
