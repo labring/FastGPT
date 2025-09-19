@@ -2,7 +2,7 @@ import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import { addLog } from '../../../common/system/log';
 import { MysqlClient } from './model/mysql';
-import type { AsyncDB } from './model/AsyncDB';
+import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
 
 export async function createDatabaseClient(config: DatabaseConfig): Promise<AsyncDB> {
@@ -14,15 +14,13 @@ export async function createDatabaseClient(config: DatabaseConfig): Promise<Asyn
   }
 }
 
-export async function testDatabaseConnection(config: DatabaseConfig): Promise<boolean> {
+export async function checkDatabaseConnection(config: DatabaseConfig): Promise<boolean> {
   let dbClient: AsyncDB | undefined;
   try {
     dbClient = await createDatabaseClient(config);
     const result = await dbClient.checkConnection();
     return result;
   } catch (err: any) {
-    addLog.error(`Database connection test failed`, err);
-    console.log('testDatabaseConnection', err, typeof err);
     return Promise.reject(err);
   } finally {
     if (dbClient) {
@@ -43,17 +41,14 @@ export async function withDatabaseClient<T>(
   try {
     const dataset = await MongoDataset.findById(datasetId);
     if (!dataset?.databaseConfig) {
-      return Promise.reject('数据库未配置');
+      return Promise.reject(DatabaseErrEnum.dbConfigNotFound);
     }
 
     dbClient = await createDatabaseClient(dataset.databaseConfig);
-
+    await dbClient.checkConnection();
     const result = await operation(dbClient);
 
     return result;
-  } catch (err) {
-    addLog.error(`Database operation failed for dataset ${datasetId}`, err);
-    throw err;
   } finally {
     if (dbClient) {
       try {
@@ -75,6 +70,7 @@ export async function withDatabaseClientByConfig<T>(
   try {
     dbClient = await createDatabaseClient(config);
 
+    await dbClient.checkConnection();
     const result = await operation(dbClient);
 
     return result;

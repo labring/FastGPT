@@ -5,12 +5,13 @@ import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/tra
 import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 export type GetScrollCollectionsProps = PaginationProps<{
   datasetId: string;
@@ -49,6 +50,10 @@ async function handler(
     per: ReadPermissionVal
   });
 
+  // Get dataset type to check if it's database
+  const dataset = await MongoDataset.findById(datasetId).select('type').lean();
+  const isDatabaseDataset = dataset?.type === DatasetTypeEnum.database;
+
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
@@ -74,7 +79,8 @@ async function handler(
     trainingType: 1,
     fileId: 1,
     rawLink: 1,
-    tags: 1
+    tags: 1,
+    ...(isDatabaseDataset ? { tableSchema: 1 } : {})
   };
 
   // not count data amount
@@ -95,7 +101,10 @@ async function handler(
           dataAmount: 0,
           trainingAmount: 0,
           indexAmount: 0,
-          permission
+          permission,
+          ...(isDatabaseDataset && item.tableSchema
+            ? { tableSchemaDescription: item.tableSchema.description }
+            : {})
         }))
       ),
       total: await MongoDatasetCollection.countDocuments(match)
@@ -174,7 +183,10 @@ async function handler(
   const data = await Promise.all(
     collections.map(async (item) => ({
       ...item,
-      permission
+      permission,
+      ...(isDatabaseDataset && item.tableSchemaDescription
+        ? { tableSchemaDescription: item.tableSchemaDescription }
+        : {})
     }))
   );
 

@@ -346,3 +346,6 @@
    "search_result": "检索结果", 
    "no_search_result": "暂无检索结果"
  }
+  "data_index_column_value":"SQL字段示例值索引",
+  "error_create_datasetcollection": "创建数据集失败，请联系管理员"
+}
