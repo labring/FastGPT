@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -23,7 +23,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { nanoid } from 'nanoid';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import {
+  JS_TEMPLATE,
+  SandboxCodeTypeEnum
+} from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { WorkflowContext } from '../../../context';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
@@ -31,6 +34,7 @@ import { extractCodeFromMarkdown } from './parser';
 
 export type OnOptimizeCodeProps = {
   codeType: SandboxCodeTypeEnum;
+  code: string;
   optimizerInput: string;
   model: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
@@ -66,12 +70,16 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     }).filter((item) => item.parent.id !== nodeId);
   }, [nodeId, nodeList, edges, appDetail, t]);
 
-  const codeType = useMemo(() => {
+  const { codeType, code } = useMemo(() => {
     const currentNode = nodeList.find((node) => node.nodeId === nodeId);
     const codeTypeInput = currentNode?.inputs?.find(
       (input) => input.key === NodeInputKeyEnum.codeType
     );
-    return codeTypeInput?.value || SandboxCodeTypeEnum.js;
+    const codeInput = currentNode?.inputs?.find((input) => input.key === NodeInputKeyEnum.code);
+    return {
+      codeType: codeTypeInput?.value || SandboxCodeTypeEnum.js,
+      code: codeInput?.value || JS_TEMPLATE
+    };
   }, [nodeList, nodeId]);
 
   const modelOptions = useMemo(() => {
@@ -135,12 +143,11 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     const controller = new AbortController();
     setAbortController(controller);
 
-    setOptimizerInput('');
-
     let fullResponse = '';
 
     await onOptimizeCode({
       codeType,
+      code,
       optimizerInput: processedInput,
       model: selectedModel,
       conversationHistory,
@@ -236,6 +243,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
           }
         });
       });
+      setOptimizerInput('');
 
       toast({
         status: 'success',

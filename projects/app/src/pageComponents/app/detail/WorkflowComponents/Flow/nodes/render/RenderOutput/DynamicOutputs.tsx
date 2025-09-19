@@ -147,21 +147,23 @@ const DynamicOutputItem = ({
       setIsEditing(false);
       if (!label.trim()) return;
       if (outputs.find((output) => output.key === label)) return;
-      if (isEmptyItem && label) {
-        onAdd({
-          ...defaultOutput,
-          key: label,
-          label: label,
-          valueType: WorkflowIOValueTypeEnum.any,
-          type: FlowNodeOutputTypeEnum.dynamic
-        });
-      } else if (!isEmptyItem) {
-        onUpdate(output.key, {
-          ...output,
-          label,
-          key: label
-        });
-      }
+      setTimeout(() => {
+        if (isEmptyItem && label) {
+          onAdd({
+            ...defaultOutput,
+            key: label,
+            label: label,
+            valueType: WorkflowIOValueTypeEnum.any,
+            type: FlowNodeOutputTypeEnum.dynamic
+          });
+        } else if (!isEmptyItem) {
+          onUpdate(output.key, {
+            ...output,
+            label,
+            key: label
+          });
+        }
+      }, 50);
       setTempLabel('');
     },
     [output, onUpdate, onAdd, isEmptyItem, outputs]

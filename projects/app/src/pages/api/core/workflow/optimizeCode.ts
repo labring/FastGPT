@@ -13,6 +13,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type OptimizeCodeBody = {
   codeType: SandboxCodeTypeEnum;
+  code: string;
   optimizerInput: string;
   model: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
@@ -83,8 +84,11 @@ function main({paramName, paramRefer, paramType}) {
 `;
 };
 
-const getPromptNodeCopilotUserPrompt = (codeType: string, optimizerInput: string) => {
+const getPromptNodeCopilotUserPrompt = (codeType: string, code: string, optimizerInput: string) => {
   return `请严格遵循用户的需求，生成${codeType}代码: 
+  <当前代码>
+  ${code}
+  </当前代码>
   <用户要求>
   ${optimizerInput}
   </用户要求>
@@ -93,7 +97,13 @@ const getPromptNodeCopilotUserPrompt = (codeType: string, optimizerInput: string
 
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   try {
-    const { codeType, optimizerInput, model, conversationHistory = [] } = req.body;
+    const {
+      codeType,
+      code: currentCode,
+      optimizerInput,
+      model,
+      conversationHistory = []
+    } = req.body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -113,7 +123,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       ...conversationHistory,
       {
         role: 'user',
-        content: getPromptNodeCopilotUserPrompt(codeType, optimizerInput)
+        content: getPromptNodeCopilotUserPrompt(codeType, currentCode, optimizerInput)
       }
     ];
 
