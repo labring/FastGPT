@@ -1,19 +1,19 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
-import NodeCard from './render/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import Container from '../components/Container';
-import RenderInput from './render/RenderInput';
+import Container from '../../components/Container';
+import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
-import IOTitle from '../components/IOTitle';
-import RenderToolInput from './render/RenderToolInput';
-import RenderOutput from './render/RenderOutput';
+import { WorkflowContext } from '../../../context';
+import IOTitle from '../../components/IOTitle';
+import RenderToolInput from '../render/RenderToolInput';
+import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
@@ -24,13 +24,19 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import CatchError from './render/RenderOutput/CatchError';
+import CatchError from '../render/RenderOutput/CatchError';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import NodeCopilot from './Copilot';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
-  const { successOutputs, errorOutputs } = splitOutput(outputs);
+  const { successOutputs, errorOutputs } = useMemoEnhance(
+    () => splitOutput(outputs),
+    [splitOutput, outputs]
+  );
 
   const codeType = inputs.find(
     (item) => item.key === NodeInputKeyEnum.codeType
@@ -39,7 +45,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
 
-  // 切换语言确认
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
   });
@@ -59,7 +64,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ]}
                 value={codeType?.value}
                 onChange={(newLang) => {
-                  console.log(newLang);
                   openSwitchLangConfirm(() => {
                     onChangeNode({
                       nodeId,
@@ -123,12 +127,34 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [codeType, nodeId, onChangeNode, openSwitchLangConfirm, t]);
+  }, [codeType, nodeId, t]);
 
-  const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
+  const { isTool, commonInputs } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
+
+  const rtDoms = useMemo(() => {
+    return [
+      <NodeCopilot
+        key="copilot"
+        nodeId={nodeId}
+        trigger={
+          <Button
+            variant={'grayGhost'}
+            leftIcon={<MyIcon name={'codeCopilot'} w={'16px'} h={'16px'} mr={-1} />}
+            size={'xs'}
+            px={1}
+          >
+            {t('app:core.workflow.Copilot')}
+          </Button>
+        }
+      />
+    ];
+  }, [t]);
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>
       {isTool && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />

@@ -105,18 +105,16 @@ export const getScheduleTriggerApp = async () => {
           isUpdateUseTime: false, // owner update use time
           newTitle: 'Cron Job',
           source: ChatSourceEnum.cronJob,
-          content: [
-            {
-              obj: ChatRoleEnum.Human,
-              value: userQuery
-            },
-            {
-              obj: ChatRoleEnum.AI,
-              value: assistantResponses,
-              [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
-              memories: system_memories
-            }
-          ],
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: userQuery
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: assistantResponses,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+            memories: system_memories
+          },
           durationSeconds,
           errorMsg: getErrText(error)
         });
@@ -134,17 +132,15 @@ export const getScheduleTriggerApp = async () => {
           isUpdateUseTime: false, // owner update use time
           newTitle: 'Cron Job',
           source: ChatSourceEnum.cronJob,
-          content: [
-            {
-              obj: ChatRoleEnum.Human,
-              value: userQuery
-            },
-            {
-              obj: ChatRoleEnum.AI,
-              value: [],
-              [DispatchNodeResponseKeyEnum.nodeResponse]: []
-            }
-          ],
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: userQuery
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            [DispatchNodeResponseKeyEnum.nodeResponse]: []
+          },
           durationSeconds: 0,
           errorMsg: getErrText(error)
         });

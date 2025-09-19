@@ -9,6 +9,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 
 /* 
   检查chat的权限：
@@ -21,7 +22,7 @@ import { getFlatAppResponses } from '@/global/core/chat/utils';
 
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
-const defaultResponseShow = {
+export const defaultResponseShow = {
   responseDetail: true,
   showNodeStatus: true,
   showRawSource: true
@@ -217,21 +218,28 @@ export const authCollectionInChat = async ({
         chatId,
         dataId: chatItemDataId
       },
-      'responseData time'
+      'time responseData'
     ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
 
-    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+
+    // Concat response data
+    if (!chatItem.responseData || chatItem.responseData.length === 0) {
+      const chatItemResponses = await MongoChatItemResponse.find(
+        { appId, chatId, chatItemDataId },
+        { data: 1 }
+      ).lean();
+      chatItem.responseData = chatItemResponses.map((item) => item.data);
+    }
 
     // 找 responseData 里，是否有该文档 id
     const flatResData = getFlatAppResponses(chatItem.responseData || []);
 
     const quoteListSet = new Set(
-      flatResData
-        .map((item) => item.quoteList?.map((quote) => String(quote.collectionId)) || [])
-        .flat()
+      flatResData.map((item) => item.quoteList?.map((quote) => quote.collectionId) || []).flat()
     );
 
-    if (collectionIds.every((id) => quoteListSet.has(String(id)))) {
+    if (collectionIds.every((id) => quoteListSet.has(id))) {
       return {
         chatItem
       };
@@ -239,5 +247,3 @@ export const authCollectionInChat = async ({
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
-
-export { defaultResponseShow };
