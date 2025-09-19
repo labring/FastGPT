@@ -30,7 +30,9 @@ const NodeTemplatesPopover = () => {
     templates,
     onUpdateTemplateType,
     onUpdateParentId
-  } = useNodeTemplates();
+  } = useNodeTemplates({
+    loadToolsTrigger: !!handleParams
+  });
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {

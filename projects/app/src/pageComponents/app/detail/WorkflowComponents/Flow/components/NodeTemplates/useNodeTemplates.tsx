@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -10,7 +10,8 @@ import { WorkflowContext } from '../../../context';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
 
-export const useNodeTemplates = () => {
+export const useNodeTemplates = (options?: { loadToolsTrigger?: boolean }) => {
+  const { loadToolsTrigger } = options || {};
   const { feConfigs } = useSystemStore();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
@@ -141,6 +142,11 @@ export const useNodeTemplates = () => {
     }
     return teamAndSystemApps || [];
   }, [basicNodes, teamAndSystemApps, templateType]);
+
+  useEffect(() => {
+    if (templateType !== TemplateTypeEnum.systemPlugin || !loadToolsTrigger) return;
+    loadNodeTemplates({ parentId, type: templateType });
+  }, [loadToolsTrigger]);
 
   return {
     templateType,
