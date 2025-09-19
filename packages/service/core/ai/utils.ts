@@ -243,6 +243,7 @@ export const parseLLMStreamResponse = () => {
         // 结束时，返回所有剩余内容
         if (isStreamEnd) {
           const content = citeBuffer + text;
+          citeBuffer = ''; // 清空缓冲区，避免重复输出
           return {
             content: removeDatasetCiteText(content, false)
           };
