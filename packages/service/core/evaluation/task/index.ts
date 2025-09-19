@@ -1,4 +1,5 @@
 import { MongoEvaluation, MongoEvalItem } from './schema';
+import { MongoEvalDatasetData } from '../dataset/evalDatasetDataSchema';
 import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
@@ -448,31 +449,28 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
     }
 
-    // Update status to processing and clear error message if restarting
-    const updateData: any = { status: EvaluationStatusEnum.evaluating };
-    const unsetData: any = {};
-
+    // Clear error message if restarting
+    const updateQuery: any = {};
     if (evaluation.status === EvaluationStatusEnum.error) {
-      unsetData.errorMessage = 1;
-      unsetData.finishTime = 1;
+      updateQuery.$unset = {
+        errorMessage: 1,
+        finishTime: 1
+      };
     }
 
-    const updateQuery: any = { $set: updateData };
-    if (Object.keys(unsetData).length > 0) {
-      updateQuery.$unset = unsetData;
-    }
-
-    // Use transaction to ensure atomicity between status update and queue submission
+    // Use transaction to ensure atomicity between cleanup and queue submission
     const startEval = async (session: ClientSession) => {
-      // Update status within transaction
-      const result = await MongoEvaluation.updateOne(
-        { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
-        updateQuery,
-        { session }
-      );
+      // Clear error state if needed, but leave status as queuing for processor to handle
+      if (Object.keys(updateQuery).length > 0) {
+        const result = await MongoEvaluation.updateOne(
+          { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
+          updateQuery,
+          { session }
+        );
 
-      if (result.matchedCount === 0) {
-        throw new Error(EvaluationErrEnum.evalTaskNotFound);
+        if (result.matchedCount === 0) {
+          throw new Error(EvaluationErrEnum.evalTaskNotFound);
+        }
       }
 
       // Queue operation within transaction - if it fails, transaction will rollback
