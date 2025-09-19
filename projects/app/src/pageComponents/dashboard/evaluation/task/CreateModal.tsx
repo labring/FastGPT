@@ -41,7 +41,12 @@ import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset
 import { getAppDetailById } from '@/web/core/app/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import {
+  getBuiltinDimensionInfo,
+  getBuiltinDimensionNameFromId,
+  getBuiltinDimensionIdFromName,
+  getBuiltinDimensionEnglishInfo
+} from '@/web/core/evaluation/utils';
 import {
   getWebDefaultEmbeddingModel,
   getWebDefaultEvaluationModel
@@ -126,9 +131,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
       // 生成节点指标：answer_correctness（默认选中）
       if (hasChatNode) {
-        const answerCorrectnessInfo = getBuiltinDimensionInfo('builtin_answer_correctness');
+        const answerCorrectnessInfo = getBuiltinDimensionInfo('answer_correctness');
         recommendedDimensions.push({
-          id: 'builtin_answer_correctness',
+          id: getBuiltinDimensionIdFromName('answer_correctness'),
           name: answerCorrectnessInfo
             ? t(answerCorrectnessInfo.name)
             : t('dashboard_evaluation:builtin_answer_correctness_name'),
@@ -146,9 +151,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
       // 检索节点指标：faithfulness（默认选中），context_recall（默认选中）
       if (hasDatasetSearch) {
-        const faithfulnessInfo = getBuiltinDimensionInfo('builtin_faithfulness');
+        const faithfulnessInfo = getBuiltinDimensionInfo('faithfulness');
         recommendedDimensions.push({
-          id: 'builtin_faithfulness',
+          id: getBuiltinDimensionIdFromName('faithfulness'),
           name: faithfulnessInfo
             ? t(faithfulnessInfo.name)
             : t('dashboard_evaluation:builtin_faithfulness_name'),
@@ -163,9 +168,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
           isSelected: true
         });
 
-        const contextRecallInfo = getBuiltinDimensionInfo('builtin_context_recall');
+        const contextRecallInfo = getBuiltinDimensionInfo('context_recall');
         recommendedDimensions.push({
-          id: 'builtin_context_recall',
+          id: getBuiltinDimensionIdFromName('context_recall'),
           name: contextRecallInfo
             ? t(contextRecallInfo.name)
             : t('dashboard_evaluation:builtin_context_recall_name'),
@@ -276,12 +281,25 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
       };
 
       const evaluators: EvaluatorSchema[] = data.selectedDimensions.map((dimension) => {
+        // 对于内置维度，使用英文名称和描述
+        let metricName = dimension.name;
+        let metricDescription = dimension.description;
+
+        if (dimension.type === 'builtin') {
+          const dimensionName = getBuiltinDimensionNameFromId(dimension.id);
+          const englishInfo = getBuiltinDimensionEnglishInfo(dimensionName);
+          if (englishInfo) {
+            metricName = englishInfo.name;
+            metricDescription = englishInfo.description;
+          }
+        }
+
         const metric: EvalMetricSchemaType = {
           _id: dimension.id,
           teamId: '',
           tmbId: '',
-          name: dimension.name,
-          description: dimension.description,
+          name: metricName,
+          description: metricDescription,
           type:
             dimension.type === 'builtin' ? EvalMetricTypeEnum.Builtin : EvalMetricTypeEnum.Custom,
           userInputRequired: true,

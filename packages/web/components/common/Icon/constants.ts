@@ -396,6 +396,7 @@ export const iconPaths = {
   'file/qaImport': () => import('./icons/file/qaImport.svg'),
   'file/uploadFile': () => import('./icons/file/uploadFile.svg'),
   fullScreen: () => import('./icons/fullScreen.svg'),
+  gradientLoading: () => import('./icons/gradientLoading.svg'),
   help: () => import('./icons/help.svg'),
   history: () => import('./icons/history.svg'),
   image: () => import('./icons/image.svg'),
