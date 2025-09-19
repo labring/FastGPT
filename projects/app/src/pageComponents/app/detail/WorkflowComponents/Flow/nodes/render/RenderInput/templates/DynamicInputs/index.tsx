@@ -122,32 +122,34 @@ const Reference = ({
         return;
       }
 
-      if (isEmptyItem && label) {
-        const newInput: FlowNodeInputItemType = {
-          ...defaultInput,
-          ...getInputComponentProps(item),
-          key: label,
-          label: label,
-          valueType: WorkflowIOValueTypeEnum.any,
-          required: true
-        };
-        onChangeNode({
-          nodeId,
-          type: 'addInput',
-          value: newInput
-        });
-      } else if (!isEmptyItem) {
-        onChangeNode({
-          nodeId,
-          type: 'replaceInput',
-          key: inputChildren.key,
-          value: {
-            ...inputChildren,
+      setTimeout(() => {
+        if (isEmptyItem && label) {
+          const newInput: FlowNodeInputItemType = {
+            ...defaultInput,
+            ...getInputComponentProps(item),
+            key: label,
             label: label,
-            key: label || inputChildren.key
-          }
-        });
-      }
+            valueType: WorkflowIOValueTypeEnum.any,
+            required: true
+          };
+          onChangeNode({
+            nodeId,
+            type: 'addInput',
+            value: newInput
+          });
+        } else if (!isEmptyItem) {
+          onChangeNode({
+            nodeId,
+            type: 'replaceInput',
+            key: inputChildren.key,
+            value: {
+              ...inputChildren,
+              label: label,
+              key: label || inputChildren.key
+            }
+          });
+        }
+      }, 50);
       setTempLabel('');
     },
     [inputChildren, nodeId, onChangeNode, isEmptyItem, toast, t, item]

@@ -218,7 +218,7 @@ export const pushWhisperUsage = ({
     multiple: 60
   });
 
-  const name = 'support.wallet.usage.Whisper';
+  const name = i18nT('common:support.wallet.usage.Whisper');
 
   createUsage({
     teamId,

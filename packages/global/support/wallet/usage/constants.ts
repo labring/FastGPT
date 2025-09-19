@@ -62,7 +62,7 @@ export const UsageSourceMap = {
     label: i18nT('common:support.wallet.usage.Optimize Prompt')
   },
   [UsageSourceEnum.code_copilot]: {
-    label: i18nT('app:support.wallet.usage.Code Copilot')
+    label: i18nT('common:support.wallet.usage.Code Copilot')
   }
 };
 
