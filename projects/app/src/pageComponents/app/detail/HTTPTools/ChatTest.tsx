@@ -24,11 +24,13 @@ import type { ButtonProps } from '@chakra-ui/react';
 const ChatTest = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  customHeaders
 }: {
   currentTool?: HttpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  customHeaders: Record<string, string>;
 }) => {
   const { t } = useTranslation();
 
@@ -36,7 +38,7 @@ const ChatTest = ({
 
   const form = useForm();
   const { handleSubmit, reset } = form;
-  const [isInputSelected, setIsInputSelected] = useState<boolean>(false);
+  const [isInputSelected, setIsInputSelected] = useState<boolean>(true);
 
   const buttonProps: ButtonProps = {
     fontFamily: 'PingFang SC',
@@ -88,7 +90,8 @@ const ChatTest = ({
         headerSecret,
         toolName: currentTool.name,
         toolPath: currentTool.path,
-        method: currentTool.method
+        method: currentTool.method,
+        customHeaders: customHeaders
       });
     },
     {
@@ -170,8 +173,8 @@ const ChatTest = ({
                           required={required}
                           key={paramName}
                           inputType={inputType}
-                          formKey={paramName}
-                          variablesForm={form}
+                          fieldName={paramName}
+                          form={form}
                           placeholder={paramInfo.description}
                         />
                       );
@@ -202,11 +205,13 @@ const ChatTest = ({
 const Render = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  customHeaders
 }: {
   currentTool?: HttpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  customHeaders: Record<string, string>;
 }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -228,7 +233,12 @@ const Render = ({
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+        <ChatTest
+          currentTool={currentTool}
+          url={url}
+          headerSecret={headerSecret}
+          customHeaders={customHeaders}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

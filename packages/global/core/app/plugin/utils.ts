@@ -60,5 +60,11 @@ export function splitCombinePluginId(id: string) {
       pluginId
     };
   }
+  if (source === 'http') {
+    return {
+      source: PluginSourceEnum.http,
+      pluginId
+    };
+  }
   return { source, pluginId: id };
 }

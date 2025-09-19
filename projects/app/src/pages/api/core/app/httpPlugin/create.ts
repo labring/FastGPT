@@ -44,7 +44,7 @@ async function handler(
       parentId,
       teamId,
       tmbId,
-      type: AppTypeEnum.httpPlugin,
+      type: AppTypeEnum.httpToolSet,
       modules: [
         createHttpToolRuntimeNode({
           name,
@@ -60,7 +60,7 @@ async function handler(
   });
 
   pushTrack.createApp({
-    type: AppTypeEnum.httpPlugin,
+    type: AppTypeEnum.httpToolSet,
     appId: httpPluginId,
     uid: userId,
     teamId,

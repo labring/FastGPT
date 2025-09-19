@@ -18,6 +18,7 @@ export type updateMCPToolsBody = {
   url: string;
   headerSecret: StoreSecretValueType;
   toolList: McpToolConfigType[];
+  toolParamEnabledMap?: Record<string, Record<string, boolean>>;
 };
 
 export type updateMCPToolsResponse = {};
@@ -26,15 +27,44 @@ async function handler(
   req: ApiRequestProps<updateMCPToolsBody, updateMCPToolsQuery>,
   res: ApiResponseType<updateMCPToolsResponse>
 ): Promise<updateMCPToolsResponse> {
-  const { appId, url, toolList, headerSecret } = req.body;
+  const { appId, url, toolList, headerSecret, toolParamEnabledMap } = req.body;
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
+  const patchedToolList: McpToolConfigType[] = toolList.map((tool) => {
+    const properties = (tool.inputSchema?.properties || {}) as Record<string, any>;
+    const enabledMap = toolParamEnabledMap?.[tool.name] || {};
+    const patchedProps = Object.fromEntries(
+      Object.entries(properties).map(([k, v]) => {
+        const prop = { ...(v as any) };
+        if (prop?.description && !('toolDescription' in prop)) {
+          prop.toolDescription = prop.description;
+        }
+        if (k in enabledMap) {
+          const enabled = enabledMap[k];
+          if (enabled === false) {
+            prop.toolDescription = '';
+          } else if (enabled === true && prop.toolDescription === '') {
+            prop.toolDescription = prop.description || '';
+          }
+        }
+        return [k, prop];
+      })
+    );
+    return {
+      ...tool,
+      inputSchema: {
+        ...tool.inputSchema,
+        properties: patchedProps
+      }
+    };
+  });
+
   // create tool set node
   const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
     url,
-    toolList,
+    toolList: patchedToolList,
     headerSecret: formatedHeaderAuth,
     name: app.name,
     avatar: app.avatar,

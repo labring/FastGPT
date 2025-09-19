@@ -478,7 +478,7 @@ export const getHTTPToolRuntimeNode = ({
     avatar,
     intro: tool.description,
     toolConfig: {
-      mcpTool: {
+      httpTool: {
         toolId: `${PluginSourceEnum.http}-${parentId}/${tool.name}`
       }
     },

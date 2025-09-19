@@ -7,7 +7,11 @@ import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 
 export type getHTTPToolsQuery = {};
 
-export type getHTTPToolsBody = { url: string; headerSecret: StoreSecretValueType };
+export type getHTTPToolsBody = {
+  url: string;
+  headerSecret: StoreSecretValueType;
+  customHeaders?: Record<string, string>;
+};
 
 export type getHTTPToolsResponse = HttpToolConfigType[];
 
@@ -15,13 +19,17 @@ async function handler(
   req: ApiRequestProps<getHTTPToolsBody, getHTTPToolsQuery>,
   res: ApiResponseType<getHTTPToolsResponse[]>
 ): Promise<getHTTPToolsResponse> {
-  const { url, headerSecret } = req.body;
+  const { url, headerSecret, customHeaders } = req.body;
 
   const httpClient = new HTTPClient({
     url,
-    headers: getSecretValue({
-      storeSecret: headerSecret
-    })
+    headers: {
+      ...(customHeaders || {}),
+      // auth headers have higher priority
+      ...getSecretValue({
+        storeSecret: headerSecret
+      })
+    }
   });
 
   const result = await httpClient.getTools();

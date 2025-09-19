@@ -23,7 +23,15 @@ const HTTPTools = () => {
     toolSetData?.headerSecret ?? {}
   );
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType>(toolSetData?.toolList?.[0]);
-
+  const [customHeaders, setCustomHeaders] = useState<Record<string, string>>(() => {
+    const raw = appDetail.pluginData?.customHeaders as any;
+    if (!raw) return {};
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) || {} : (raw as Record<string, string>);
+    } catch {
+      return {};
+    }
+  });
   useEffect(() => {
     setUrl(toolSetData?.url || '');
     setToolList(toolSetData?.toolList || []);
@@ -33,7 +41,25 @@ const HTTPTools = () => {
     );
   }, [toolSetData?.url, toolSetData?.headerSecret, toolSetData?.toolList]);
 
-  const createType = appDetail.pluginData?.apiSchemaStr ? 'batch' : 'manual';
+  useEffect(() => {
+    const raw = appDetail.pluginData?.customHeaders as any;
+    if (!raw) {
+      setCustomHeaders({});
+      return;
+    }
+    try {
+      setCustomHeaders(
+        typeof raw === 'string' ? JSON.parse(raw) || {} : (raw as Record<string, string>)
+      );
+    } catch {
+      setCustomHeaders({});
+    }
+  }, [appDetail.pluginData?.customHeaders]);
+
+  const [createType] = useState<'batch' | 'manual'>(() => {
+    const schemaStr = appDetail.pluginData?.apiSchemaStr;
+    return schemaStr != null && String(schemaStr).trim() !== '' ? 'batch' : 'manual';
+  });
 
   console.log('index', appDetail);
 
@@ -49,6 +75,8 @@ const HTTPTools = () => {
         setCurrentTool={setCurrentTool}
         headerSecret={headerSecret}
         setHeaderSecret={setHeaderSecret}
+        createType={createType}
+        customHeaders={customHeaders}
       />
     </Flex>
   );

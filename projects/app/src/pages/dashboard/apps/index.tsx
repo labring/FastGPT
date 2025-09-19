@@ -115,6 +115,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.simple]: t('app:type.Simple bot'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
+      [AppTypeEnum.httpToolSet]: t('app:type.Http plugin'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),

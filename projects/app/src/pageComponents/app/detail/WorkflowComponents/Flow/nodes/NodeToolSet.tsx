@@ -11,7 +11,11 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
   const { toolConfig } = data;
-  const toolList = toolConfig?.mcpToolSet?.toolList ?? toolConfig?.systemToolSet?.toolList ?? [];
+  const toolList =
+    toolConfig?.mcpToolSet?.toolList ??
+    toolConfig?.httpToolSet?.toolList ??
+    toolConfig?.systemToolSet?.toolList ??
+    [];
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>

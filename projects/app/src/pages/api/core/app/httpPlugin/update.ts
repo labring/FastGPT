@@ -20,66 +20,95 @@ import {
 } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 
 export type UpdateHttpPluginBody = {
   appId: string;
   name: string;
   avatar?: string;
   intro?: string;
-  pluginData: AppSchema['pluginData'];
+  pluginData?: AppSchema['pluginData'];
+  headerSecret?: StoreSecretValueType;
+  toolParamEnabledMap?: Record<string, Record<string, boolean>>;
 };
 
 async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiResponse<any>) {
-  const { appId, name, avatar, intro, pluginData } = req.body;
+  const { appId, name, avatar, intro, pluginData, headerSecret, toolParamEnabledMap } = req.body;
 
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
+  const inputPluginData = pluginData ?? app.pluginData;
   const storeData = {
     apiSchemaStr: app.pluginData?.apiSchemaStr,
     customHeaders: app.pluginData?.customHeaders
   };
   const updateData = {
-    apiSchemaStr: pluginData?.apiSchemaStr,
-    customHeaders: pluginData?.customHeaders
+    apiSchemaStr: inputPluginData?.apiSchemaStr,
+    customHeaders: inputPluginData?.customHeaders
   };
 
-  const schema = await str2OpenApiSchema(pluginData?.apiSchemaStr);
+  const schema = await str2OpenApiSchema(inputPluginData?.apiSchemaStr);
 
-  const toolList: HttpToolConfigType[] = schema.pathData.map((item) => ({
-    name: item.name,
-    description: item.description || '',
-    path: item.path,
-    method: item.method,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        // params -> JSONSchema
-        ...(Array.isArray(item.params)
-          ? item.params.reduce((acc: any, p: any) => {
-              acc[p.name] = {
-                type: p?.schema?.type || 'string',
-                description: p?.description
-              };
-              return acc;
-            }, {})
-          : {}),
-        // requestBody.application/json.schema.properties 直接并入
-        ...(item.request?.content?.['application/json']?.schema?.properties || {})
-      },
-      required: [
-        ...(Array.isArray(item.params)
-          ? item.params.filter((p: any) => p.required).map((p: any) => p.name)
-          : []),
-        ...((item.request?.content?.['application/json']?.schema?.required as string[]) || [])
-      ]
-    }
-  }));
+  const toolList: HttpToolConfigType[] = schema.pathData.map((item) => {
+    const rawParamProperties = Array.isArray(item.params)
+      ? item.params.reduce((acc: any, p: any) => {
+          acc[p.name] = {
+            type: p?.schema?.type || 'string',
+            description: p?.description
+          };
+          return acc;
+        }, {})
+      : {};
+    const rawBodyProperties = item.request?.content?.['application/json']?.schema?.properties || {};
+
+    const patchProperties = (props: Record<string, any>) =>
+      Object.fromEntries(
+        Object.entries(props).map(([k, v]) => {
+          const prop = { ...(v as any) };
+          if (prop?.description && !prop?.toolDescription) {
+            prop.toolDescription = prop.description;
+          }
+          return [k, prop];
+        })
+      );
+
+    const mergedProperties = {
+      ...patchProperties(rawParamProperties),
+      ...patchProperties(rawBodyProperties)
+    } as Record<string, any>;
+
+    const enabledMap = toolParamEnabledMap?.[item.name] || {};
+    Object.keys(mergedProperties).forEach((paramKey) => {
+      const enabled = enabledMap[paramKey];
+      if (enabled === false) {
+        mergedProperties[paramKey].toolDescription = '';
+      }
+    });
+
+    return {
+      name: item.name,
+      description: item.description || '',
+      path: item.path,
+      method: item.method,
+      inputSchema: {
+        type: 'object',
+        properties: mergedProperties,
+        required: [
+          ...(Array.isArray(item.params)
+            ? item.params.filter((p: any) => p.required).map((p: any) => p.name)
+            : []),
+          ...((item.request?.content?.['application/json']?.schema?.required as string[]) || [])
+        ]
+      }
+    } as HttpToolConfigType;
+  });
+
+  const formatedHeaderAuth = storeSecretValue(headerSecret || ({} as StoreSecretValueType));
 
   const httpToolSetNode = getHTTPToolSetRuntimeNode({
     url: schema.serverPath || '',
     toolList: toolList,
-    // headerSecret: pluginData?.customHeaders as StoreSecretValueType,
-    headerSecret: undefined,
+    headerSecret: formatedHeaderAuth,
     name: name || app.name,
     avatar: avatar || app.avatar,
     toolId: ''
@@ -92,7 +121,7 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
         teamId: app.teamId,
         tmbId: app.tmbId,
         parentId: app._id,
-        pluginData,
+        pluginData: inputPluginData,
         session
       });
     }
@@ -103,7 +132,7 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
         ...(name && { name }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        pluginData,
+        pluginData: inputPluginData,
         modules: [httpToolSetNode],
         updateTime: new Date()
       },

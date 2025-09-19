@@ -60,7 +60,8 @@ const AppDetail = () => {
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
-            {/* AppTypeEnum.httpPlugin枚举名称还没改 */}
+            {appDetail.type === AppTypeEnum.httpToolSet && <HTTPTools />}
+            {/* httpPlugin is deprecated */}
             {appDetail.type === AppTypeEnum.httpPlugin && <HTTPTools />}
           </>
         )}
