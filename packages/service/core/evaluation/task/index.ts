@@ -344,6 +344,7 @@ export class EvaluationTaskService {
             },
             metricNames: 1,
             statistics: 1,
+            summaryConfigs: 1,
             tmbId: 1
           }
         },
@@ -664,6 +665,7 @@ export class EvaluationTaskService {
     pageSize: number = 20,
     options: {
       status?: EvaluationStatusEnum;
+      belowThreshold?: boolean;
       userInput?: string;
       expectedOutput?: string;
       actualOutput?: string;
@@ -671,36 +673,104 @@ export class EvaluationTaskService {
   ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
-    const { status, userInput, expectedOutput, actualOutput } = options;
+    const { status, belowThreshold, userInput, expectedOutput, actualOutput } = options;
 
     // Build query conditions
     const filter: any = { evalId: evaluation._id };
 
-    if (status !== undefined) {
-      filter.status = status;
+    // Handle special belowThreshold filter
+    if (belowThreshold) {
+      // Filter for completed items where aggregateScore is below weighted threshold
+      filter.status = EvaluationStatusEnum.completed;
+
+      // Calculate weighted threshold from evaluators and summaryConfigs
+      let totalWeightedThreshold = 0;
+      let totalWeight = 0;
+
+      evaluation.evaluators.forEach((evaluator, index) => {
+        const weight = evaluation.summaryConfigs[index]?.weight || 0;
+        const threshold = evaluator.thresholdValue || 0;
+        totalWeightedThreshold += weight * threshold;
+        totalWeight += weight;
+      });
+
+      const weightedThreshold = totalWeight > 0 ? totalWeightedThreshold / totalWeight : 0;
+
+      // Build aggregation pipeline to filter items with aggregateScore below weighted threshold
+      const aggregationPipeline: any[] = [
+        { $match: filter },
+        {
+          $match: {
+            $and: [
+              { aggregateScore: { $exists: true } },
+              { aggregateScore: { $lt: weightedThreshold } }
+            ]
+          }
+        }
+      ];
+
+      // Add other filters
+      if (userInput) {
+        aggregationPipeline.push({
+          $match: { 'dataItem.userInput': { $regex: userInput, $options: 'i' } }
+        });
+      }
+
+      if (expectedOutput) {
+        aggregationPipeline.push({
+          $match: { 'dataItem.expectedOutput': { $regex: expectedOutput, $options: 'i' } }
+        });
+      }
+
+      if (actualOutput) {
+        aggregationPipeline.push({
+          $match: { 'targetOutput.actualOutput': { $regex: actualOutput, $options: 'i' } }
+        });
+      }
+
+      // Get total count
+      const totalPipeline = [...aggregationPipeline, { $count: 'total' }];
+      const totalResult = await MongoEvalItem.aggregate(totalPipeline);
+      const total = totalResult.length > 0 ? totalResult[0].total : 0;
+
+      // Get paginated results
+      aggregationPipeline.push(
+        { $sort: { createTime: -1 } },
+        { $skip: offset },
+        { $limit: pageSize }
+      );
+
+      const items = await MongoEvalItem.aggregate(aggregationPipeline);
+
+      return { items, total };
+    } else {
+      // Handle normal status filtering
+      if (status !== undefined) {
+        filter.status = status;
+      }
+
+      if (userInput) {
+        filter['dataItem.userInput'] = { $regex: userInput, $options: 'i' };
+      }
+
+      if (expectedOutput) {
+        filter['dataItem.expectedOutput'] = { $regex: expectedOutput, $options: 'i' };
+      }
+
+      if (actualOutput) {
+        filter['targetOutput.actualOutput'] = { $regex: actualOutput, $options: 'i' };
+      }
+
+      const skip = offset;
+      const limit = pageSize;
+
+      const [items, total] = await Promise.all([
+        MongoEvalItem.find(filter).sort({ createTime: -1 }).skip(skip).limit(limit).lean(),
+        MongoEvalItem.countDocuments(filter)
+      ]);
+
+      return { items, total };
     }
-
-    if (userInput) {
-      filter['dataItem.userInput'] = { $regex: userInput, $options: 'i' };
-    }
-
-    if (expectedOutput) {
-      filter['dataItem.expectedOutput'] = { $regex: expectedOutput, $options: 'i' };
-    }
-
-    if (actualOutput) {
-      filter['targetOutput.actualOutput'] = { $regex: actualOutput, $options: 'i' };
-    }
-
-    const skip = offset;
-    const limit = pageSize;
-
-    const [items, total] = await Promise.all([
-      MongoEvalItem.find(filter).sort({ createTime: -1 }).skip(skip).limit(limit).lean(),
-      MongoEvalItem.countDocuments(filter)
-    ]);
-
-    return { items, total };
   }
 
   static async getEvaluationItem(

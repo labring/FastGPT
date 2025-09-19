@@ -78,6 +78,7 @@ export type EvalItemIdQuery = { evalItemId: string };
 export type ListEvaluationItemsRequest = PaginationProps<
   EvalIdQuery & {
     status?: EvaluationStatusEnum;
+    belowThreshold?: boolean;
     [EvalDatasetDataKeyEnum.UserInput]?: string;
     [EvalDatasetDataKeyEnum.ExpectedOutput]?: string;
     [EvalDatasetDataKeyEnum.ActualOutput]?: string;

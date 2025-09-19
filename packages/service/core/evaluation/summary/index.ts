@@ -467,9 +467,6 @@ export class EvaluationSummaryService {
     // Update database configuration
     await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap);
 
-    // Update eval_items thresholds
-    await this.updateEvalItemThresholds(evalId, metricsConfig);
-
     addLog.info('[Evaluation] Configuration updated without recalculation', {
       evalId,
       metricCount: metricsConfig.length
@@ -491,9 +488,6 @@ export class EvaluationSummaryService {
 
     // Update database configuration
     await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap);
-
-    // Update eval_items thresholds
-    await this.updateEvalItemThresholds(evalId, metricsConfig);
 
     // Get updated evaluation and recalculate everything
     const updatedEvaluation = await MongoEvaluation.findById(evalId).lean();
@@ -554,19 +548,6 @@ export class EvaluationSummaryService {
     );
   }
 
-  // Update thresholds in eval_items
-  private static async updateEvalItemThresholds(
-    evalId: string,
-    metricsConfig: Array<{ metricId: string; thresholdValue: number }>
-  ): Promise<void> {
-    for (const config of metricsConfig) {
-      await MongoEvalItem.updateMany(
-        { evalId, 'evaluator.metric._id': config.metricId },
-        { $set: { 'evaluator.thresholdValue': config.thresholdValue } }
-      );
-    }
-  }
-
   // Get evaluation summary configuration details
   static async getEvaluationSummaryConfig(evalId: string): Promise<{
     calculateType: CalculateMethodEnum;
@@ -574,6 +555,7 @@ export class EvaluationSummaryService {
     metricsConfig: Array<{
       metricId: string;
       metricName: string;
+      metricDescription: string;
       thresholdValue: number;
       weight: number;
     }>;
@@ -592,6 +574,7 @@ export class EvaluationSummaryService {
       return {
         metricId: evaluator.metric._id.toString(),
         metricName: evaluator.metric.name,
+        metricDescription: evaluator.metric.description || '',
         thresholdValue: evaluator.thresholdValue || 0,
         weight: summaryConfig.weight
       };
