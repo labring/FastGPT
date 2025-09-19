@@ -510,7 +510,7 @@ export const createHttpToolRuntimeNode = ({
 }): RuntimeNodeItemType => {
   return {
     nodeId: getNanoid(16),
-    flowNodeType: FlowNodeTypeEnum.httpPlugin,
+    flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
     intro: 'HTTP Tools',
     toolConfig: {
