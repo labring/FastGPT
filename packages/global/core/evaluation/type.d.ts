@@ -172,7 +172,12 @@ export type EvaluationDisplayType = Pick<
   sourceMember: SourceMemberType;
 };
 
-export type EvaluationItemDisplayType = EvaluationItemSchemaType;
+export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
+  evaluators: Array<{
+    metric: EvalMetricSchemaType; // Contains complete metric configuration
+    thresholdValue?: number; // Threshold value for this evaluator
+  }>; // Array of evaluator configurations
+};
 
 export interface CreateEvaluationParams {
   name: string;
