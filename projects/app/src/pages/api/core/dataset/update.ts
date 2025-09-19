@@ -42,7 +42,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
-import { testDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
+import { checkDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -178,7 +178,7 @@ async function handler(
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
     if (dataset.type === DatasetTypeEnum.database && databaseConfig) {
-      await testDatabaseConnection(databaseConfig);
+      await checkDatabaseConnection(databaseConfig);
     }
     const apiDatasetParams = (() => {
       if (!apiDatasetServer) return {};

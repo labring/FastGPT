@@ -21,6 +21,7 @@ import type chat from './zh-CN/chat.json';
 import type login from './zh-CN/login.json';
 import type account_model from './zh-CN/account_model.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
+import type database_client from './zh-CN/database_client.json';
 import type admin from './zh-CN/admin.json';
 import type { I18N_NAMESPACES } from './constants';
 
@@ -49,6 +50,7 @@ export interface I18nNamespaces {
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
   admin: typeof admin;
+  database_client: typeof database_client;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
