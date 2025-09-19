@@ -106,6 +106,69 @@ export interface BatchUpdateResponse {
 }
 
 export class EvaluationTaskService {
+  /**
+   * Build evaluator fail checks for MongoDB aggregation pipeline
+   * Used by both getEvaluationStats and listEvaluationItems for consistency
+   */
+  private static buildEvaluatorFailChecks(evaluators: any[]) {
+    return evaluators.map((evaluator, index) => {
+      const threshold = evaluator.thresholdValue || 0.8;
+      return {
+        $or: [
+          {
+            $eq: [
+              {
+                $getField: {
+                  field: 'score',
+                  input: {
+                    $getField: {
+                      field: 'data',
+                      input: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                    }
+                  }
+                }
+              },
+              null
+            ]
+          },
+          {
+            $eq: [
+              {
+                $type: {
+                  $getField: {
+                    field: 'score',
+                    input: {
+                      $getField: {
+                        field: 'data',
+                        input: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                      }
+                    }
+                  }
+                }
+              },
+              'missing'
+            ]
+          },
+          {
+            $lt: [
+              {
+                $getField: {
+                  field: 'score',
+                  input: {
+                    $getField: {
+                      field: 'data',
+                      input: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                    }
+                  }
+                }
+              },
+              threshold
+            ]
+          }
+        ]
+      };
+    });
+  }
   static async createEvaluation(
     params: CreateEvaluationParams & {
       teamId: string;
@@ -557,8 +620,18 @@ export class EvaluationTaskService {
   ): Promise<EvaluationStatsResponse> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
-    const [statsResult] = await MongoEvalItem.aggregate([
+    // Build dynamic expressions for checking if each evaluator output fails threshold
+    const evaluators = evaluation.evaluators || [];
+    const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
+
+    const pipeline = [
       { $match: { evalId: evaluation._id } },
+      {
+        $addFields: {
+          // Add a field to check if this item has any failed evaluators
+          hasFailedEvaluator: evaluatorFailChecks.length > 0 ? { $or: evaluatorFailChecks } : false
+        }
+      },
       {
         $group: {
           _id: null,
@@ -602,8 +675,6 @@ export class EvaluationTaskService {
       error: statsResult?.error || 0,
       avgScore: statsResult?.avgScore ? Math.round(statsResult.avgScore * 100) / 100 : undefined
     };
-
-    return result;
   }
 
   // ========================= Evaluation Item Related APIs =========================
@@ -630,31 +701,26 @@ export class EvaluationTaskService {
 
     // Handle special belowThreshold filter
     if (belowThreshold) {
-      // Filter for completed items where aggregateScore is below weighted threshold
+      // Filter for completed items that have at least one failed evaluator (same logic as getEvaluationStats)
       filter.status = EvaluationStatusEnum.completed;
 
-      // Calculate weighted threshold from evaluators and summaryConfigs
-      let totalWeightedThreshold = 0;
-      let totalWeight = 0;
+      // Build dynamic expressions for checking if each evaluator output fails threshold (same as getEvaluationStats)
+      const evaluators = evaluation.evaluators || [];
+      const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
 
-      evaluation.evaluators.forEach((evaluator, index) => {
-        const weight = evaluation.summaryConfigs[index]?.weight || 0;
-        const threshold = evaluator.thresholdValue || 0;
-        totalWeightedThreshold += weight * threshold;
-        totalWeight += weight;
-      });
-
-      const weightedThreshold = totalWeight > 0 ? totalWeightedThreshold / totalWeight : 0;
-
-      // Build aggregation pipeline to filter items with aggregateScore below weighted threshold
+      // Build aggregation pipeline to filter items that have any failed evaluators
       const aggregationPipeline: any[] = [
         { $match: filter },
         {
+          $addFields: {
+            // Add a field to check if this item has any failed evaluators (same logic as getEvaluationStats)
+            hasFailedEvaluator:
+              evaluatorFailChecks.length > 0 ? { $or: evaluatorFailChecks } : false
+          }
+        },
+        {
           $match: {
-            $and: [
-              { aggregateScore: { $exists: true } },
-              { aggregateScore: { $lt: weightedThreshold } }
-            ]
+            hasFailedEvaluator: true
           }
         }
       ];
