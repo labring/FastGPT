@@ -86,6 +86,9 @@ export type AppDatasetSearchParamsType = {
   datasetSearchUsingExtensionQuery?: boolean;
   datasetSearchExtensionModel?: string;
   datasetSearchExtensionBg?: string;
+
+  // database
+  generateSqlModel?: string;
 };
 export type AppSimpleEditFormType = {
   // templateId: string;

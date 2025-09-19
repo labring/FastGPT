@@ -134,6 +134,15 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
       description: i18nT('workflow:filter_description')
+    },
+
+    // database
+    {
+      key: NodeInputKeyEnum.generateSqlModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: i18nT('common:search_model'),
+      value: '',
+      valueType: WorkflowIOValueTypeEnum.string
     }
   ],
   outputs: [

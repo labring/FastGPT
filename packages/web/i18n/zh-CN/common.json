@@ -1358,5 +1358,10 @@
   "core.dataset.training.databaseSchema mode": "数据库结构",
   "core.dataset.import.databaseSchema Tip":"对数据库中的表信息进行自动处理，使其更利于检索，以提高SQL生成的准确率",
   "database_search": "数据库搜索",
-  "annotation_answer": "标注答案"
+  "annotation_answer": "标注答案",
+  "core.dataset.search.Database search": "数据库检索",
+  "search_model": "检索模型",
+  "search_model_desc": "用于生成可在数据库中检索的SQL语句，并进行检索与汇总，生成可用于对话的文本。",
+  "search_model_tip": "使用非推理模型、参数量大的模型效果更佳。",
+  "other_knowledge_base": "其他知识库"
 }

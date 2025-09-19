@@ -352,7 +352,8 @@ function List() {
                                     : [])
                                 ]
                               },
-                              ...(dataset.type != DatasetTypeEnum.folder
+                              ...(dataset.type != DatasetTypeEnum.folder &&
+                              dataset.type != DatasetTypeEnum.database
                                 ? [
                                     {
                                       children: [

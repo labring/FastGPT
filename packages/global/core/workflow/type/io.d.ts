@@ -3,6 +3,7 @@ import type { LLMModelTypeEnum } from '../../ai/constants';
 import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import type { SecretValueType } from '../../../common/secret/type';
+import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 // Dynamic input field configuration
 export type CustomFieldConfigType = {
@@ -112,7 +113,8 @@ export type SelectedDatasetType = {
   avatar: string;
   name: string;
   vectorModel: EmbeddingModelItemType;
-  dataCount?: number
+  dataCount?: number;
+  datasetType?: `${DatasetTypeEnum}`;
 }[];
 
 /* http node */

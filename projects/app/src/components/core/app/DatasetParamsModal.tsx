@@ -52,6 +52,7 @@ const DatasetParamsModal = ({
   maxTokens,
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
+  generateSqlModel = '',
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
@@ -63,7 +64,7 @@ const DatasetParamsModal = ({
 }) => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
-  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
+  const { reRankModelList, llmModelList, embeddingModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -74,6 +75,12 @@ const DatasetParamsModal = ({
     })))();
   const reRankModelSelectList = (() =>
     reRankModelList.map((item) => ({
+      value: item.model,
+      label: item.name
+    })))();
+
+  const embeddingModelSelectList = (() =>
+    embeddingModelList.map((item) => ({
       value: item.model,
       label: item.name
     })))();
@@ -90,7 +97,10 @@ const DatasetParamsModal = ({
         similarity,
         datasetSearchUsingExtensionQuery,
         datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
-        datasetSearchExtensionBg
+        datasetSearchExtensionBg,
+        generateSqlModel: hasDatabaseKnowledge
+          ? generateSqlModel || defaultModels.embedding?.model
+          : ''
       }
     });
 
@@ -107,6 +117,7 @@ const DatasetParamsModal = ({
   const usingReRankWatch = watch('usingReRank');
   const reRankModelWatch = watch('rerankModel');
   const rerankWeightWatch = watch('rerankWeight');
+  const generateSqlModelWatch = watch('generateSqlModel');
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -158,20 +169,29 @@ const DatasetParamsModal = ({
         {hasDatabaseKnowledge && (
           <Flex mb={2} alignItems={'center'}>
             <FormLabel>
-              {t('dataset:search_model')}
+              {t('common:search_model')}
               <QuestionTip
                 ml={0.5}
                 label={
                   <>
-                    {t('dataset:search_model_desc')}
+                    {t('common:search_model_desc')}
                     <br />
-                    {t('dataset:search_model_tip')}
+                    {t('common:search_model_tip')}
                   </>
                 }
               />
             </FormLabel>
             <Box flex={['1 0 0', '0 0 380px']}>
-              <SelectAiModel flex={1} width={'100%'} ml={2} list={chatModelSelectList} />
+              <SelectAiModel
+                value={generateSqlModelWatch}
+                flex={1}
+                width={'100%'}
+                ml={2}
+                list={embeddingModelSelectList}
+                onChange={(e) => {
+                  setValue('generateSqlModel', e);
+                }}
+              />
             </Box>
           </Flex>
         )}
@@ -181,7 +201,7 @@ const DatasetParamsModal = ({
             <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4}>
               <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={'primary.600'} />
               <Box color="myGray.900" fontSize="16px" fontWeight="500">
-                {t('dataset:other_knowledge_base')}
+                {t('common:other_knowledge_base')}
               </Box>
             </HStack>
           </>

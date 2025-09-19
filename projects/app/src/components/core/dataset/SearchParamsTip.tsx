@@ -18,7 +18,8 @@ const SearchParamsTip = ({
   datasetSearchUsingExtensionQuery,
   queryExtensionModel,
   hasDatabaseKnowledge = false,
-  hasOtherKnowledge = true
+  hasOtherKnowledge = true,
+  generateSqlModel
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
@@ -29,6 +30,7 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
   hasDatabaseKnowledge?: boolean;
   hasOtherKnowledge?: boolean;
+  generateSqlModel?: string;
 }) => {
   const { t } = useTranslation();
   const { reRankModelList, llmModelList } = useSystemStore();
@@ -84,7 +86,9 @@ const SearchParamsTip = ({
                 )}
               </>
             )}
-            {hasDatabaseKnowledge && <Th fontSize={'mini'}>{t('dataset:database_search')}</Th>}
+            {hasDatabaseKnowledge && (
+              <Th fontSize={'mini'}>{t('common:core.dataset.search.Database search')}</Th>
+            )}
           </Tr>
         </Thead>
         <Tbody>
@@ -118,10 +122,9 @@ const SearchParamsTip = ({
                 {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
               </>
             )}
-            {/* TODO-lyx 待联调 */}
             {hasDatabaseKnowledge && (
               <Td pt={0} pb={2}>
-                {limit}
+                {generateSqlModel || '-'}
               </Td>
             )}
           </Tr>

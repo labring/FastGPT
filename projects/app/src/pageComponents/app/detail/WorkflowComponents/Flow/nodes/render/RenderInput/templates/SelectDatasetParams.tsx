@@ -59,7 +59,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
-    datasetSearchExtensionBg: ''
+    datasetSearchExtensionBg: '',
+    generateSqlModel: defaultModels.embedding?.model
   });
 
   const tokenLimit = useMemo(() => {
@@ -114,6 +115,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           searchMode={data.searchMode}
           similarity={data.similarity}
           limit={data.limit}
+          generateSqlModel={data.generateSqlModel}
           usingReRank={data.usingReRank}
           datasetSearchUsingExtensionQuery={data.datasetSearchUsingExtensionQuery}
           queryExtensionModel={data.datasetSearchExtensionModel}
