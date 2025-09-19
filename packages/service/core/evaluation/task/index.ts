@@ -37,14 +37,11 @@ export class EvaluationTaskService {
           {
             $eq: [
               {
-                $getField: {
-                  field: 'score',
-                  input: {
-                    $getField: {
-                      field: 'data',
-                      input: { $arrayElemAt: ['$evaluatorOutputs', index] }
-                    }
-                  }
+                $let: {
+                  vars: {
+                    evaluatorOutput: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                  },
+                  in: '$$evaluatorOutput.data.score'
                 }
               },
               null
@@ -54,14 +51,11 @@ export class EvaluationTaskService {
             $eq: [
               {
                 $type: {
-                  $getField: {
-                    field: 'score',
-                    input: {
-                      $getField: {
-                        field: 'data',
-                        input: { $arrayElemAt: ['$evaluatorOutputs', index] }
-                      }
-                    }
+                  $let: {
+                    vars: {
+                      evaluatorOutput: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                    },
+                    in: '$$evaluatorOutput.data.score'
                   }
                 }
               },
@@ -71,14 +65,11 @@ export class EvaluationTaskService {
           {
             $lt: [
               {
-                $getField: {
-                  field: 'score',
-                  input: {
-                    $getField: {
-                      field: 'data',
-                      input: { $arrayElemAt: ['$evaluatorOutputs', index] }
-                    }
-                  }
+                $let: {
+                  vars: {
+                    evaluatorOutput: { $arrayElemAt: ['$evaluatorOutputs', index] }
+                  },
+                  in: '$$evaluatorOutput.data.score'
                 }
               },
               threshold
@@ -88,6 +79,7 @@ export class EvaluationTaskService {
       };
     });
   }
+
   static async createEvaluation(
     params: CreateEvaluationParams & {
       teamId: string;
