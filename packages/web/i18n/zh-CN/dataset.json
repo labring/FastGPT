@@ -335,5 +335,11 @@
   "please_verify_data": "请核查最新数据。",
   "changes_detected": "发现",
   "new_columns_added_disabled": "个新增列（默认未启用），",
-  "columns_no_longer_exist": "个列已不存在，"
+  "columns_no_longer_exist": "个列已不存在，",
+  "comma": "，",
+  "check_latest_data": "，请核查最新数据。",
+  "config": "配置",
+  "refresh_failed": "刷新失败",
+  "unknown_error": "未知错误",
+   "no_data_available": "暂无数据"
 }

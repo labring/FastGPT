@@ -17,7 +17,8 @@ import {
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
-  putDatasetCollectionById
+  putDatasetCollectionById,
+  postDetectDatabaseChanges
 } from '@/web/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -126,6 +127,103 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       errorToast: t('common:create_failed')
     }
   );
+
+  const { runAsync: onDetectDatabaseChanges, loading: isDetecting } = useRequest2(
+    async () => {
+      const result = await postDetectDatabaseChanges({ datasetId: datasetDetail._id });
+      return result;
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  const handleRefreshDataSource = async () => {
+    try {
+      const result = await onDetectDatabaseChanges();
+      console.log(result.summary);
+
+      const toastId = toast({
+        position: 'bottom-right',
+        duration: null,
+        render: () => (
+          <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
+            <AlertIcon />
+            <Box flex={1} color={'myGray.900'}>
+              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
+              <AlertDescription fontSize={'14px'}>
+                {!(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) ? (
+                  t('dataset:no_data_changes')
+                ) : (
+                  <Box>
+                    {t('dataset:found')}
+                    {result.summary.modifiedTables > 0 && (
+                      <>
+                        {result.summary.modifiedTables} {t('dataset:tables_with_column_changes')}
+                        {result.summary.deletedTables > 0 && t('dataset:comma')}
+                      </>
+                    )}
+                    {result.summary.deletedTables > 0 && (
+                      <>
+                        {result.summary.deletedTables} {t('dataset:tables_not_exist')}
+                      </>
+                    )}
+                    {t('dataset:check_latest_data')}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      color="blue.500"
+                      p={0}
+                      ml={1}
+                      onClick={() => {
+                        toast.close(toastId);
+                        handleOpenConfigPage('edit');
+                      }}
+                    >
+                      {t('dataset:config')}
+                    </Button>
+                  </Box>
+                )}
+              </AlertDescription>
+            </Box>
+            <CloseButton
+              alignSelf="flex-start"
+              position="relative"
+              color={'black'}
+              right={-1}
+              top={-1}
+              onClick={() => toast.close(toastId)}
+            />
+          </Alert>
+        )
+      });
+    } catch (error: any) {
+      const toastId = toast({
+        position: 'bottom-right',
+        duration: null,
+        render: () => (
+          <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
+            <AlertIcon />
+            <Box flex={1} color={'myGray.900'}>
+              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_failed')}</AlertTitle>
+              <AlertDescription fontSize={'14px'}>
+                {error?.message || t('dataset:unknown_error')}
+              </AlertDescription>
+            </Box>
+            <CloseButton
+              alignSelf="flex-start"
+              position="relative"
+              color={'black'}
+              right={-1}
+              top={-1}
+              onClick={() => toast.close(toastId)}
+            />
+          </Alert>
+        )
+      });
+    }
+  };
 
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
   const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
@@ -494,28 +592,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      const toastId = toast({
-                        position: 'bottom-right',
-                        duration: null,
-                        render: () => (
-                          <Alert status="success" alignItems={'start'} variant="subtle">
-                            <AlertIcon />
-                            <Box flex={1}>
-                              <AlertTitle>{t('dataset:refresh_success')}</AlertTitle>
-                              <AlertDescription>{t('dataset:no_data_changes')}</AlertDescription>
-                            </Box>
-                            <CloseButton
-                              alignSelf="flex-start"
-                              position="relative"
-                              right={-1}
-                              top={-1}
-                              onClick={() => toast.close(toastId)}
-                            />
-                          </Alert>
-                        )
-                      });
-                    }}
+                    onClick={handleRefreshDataSource}
+                    isLoading={isDetecting}
                     leftIcon={<Icon name="common/retryLight" w={'18px'} />}
                   >
                     {t('dataset:refresh_datasource')}

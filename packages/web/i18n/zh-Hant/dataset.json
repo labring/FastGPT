@@ -314,5 +314,11 @@
   "please_verify_data": "請核查最新數據。",
   "changes_detected": "發現",
   "new_columns_added_disabled": "個新增列（默認未啟用），",
-  "columns_no_longer_exist": "個列已不存在，"
+  "columns_no_longer_exist": "個列已不存在，",
+  "comma": "，",
+  "check_latest_data": "，請核查最新數據。",
+  "config": "配置",
+  "refresh_failed": "刷新失敗",
+  "unknown_error": "未知錯誤",
+   "no_data_available": "暫無數據"
 }

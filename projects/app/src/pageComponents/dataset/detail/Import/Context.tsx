@@ -98,11 +98,13 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const {
     source = ImportDataSourceEnum.fileLocal,
     parentId,
-    mode
+    mode,
+    activeStep: urlActiveStep
   } = (router.query || {}) as {
     source: ImportDataSourceEnum;
     parentId?: string;
     mode: 'create' | 'edit';
+    activeStep?: string;
   };
 
   const datasetId = (router.query.datasetId || '') as string;
@@ -228,7 +230,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
 
-  const [tab, setTab] = useState<number>(0);
+  const [tab, setTab] = useState<number>(urlActiveStep ? Number(urlActiveStep) : 0);
 
   const contextValue = {
     importSource: source,

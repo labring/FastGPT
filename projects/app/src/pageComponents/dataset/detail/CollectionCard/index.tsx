@@ -72,8 +72,16 @@ const CollectionCard = () => {
     collectionId: string;
   }>();
 
-  const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    collections,
+    Pagination,
+    total,
+    getData,
+    isGetting,
+    pageNum,
+    pageSize,
+    handleOpenConfigPage
+  } = useContextSelector(CollectionPageContext, (v) => v);
 
   // Add file status icon
   const formatCollections = useMemo(
@@ -84,7 +92,8 @@ const CollectionCard = () => {
           if (collection.hasError) {
             return {
               statusText: t('common:core.dataset.collection.status.error'),
-              colorSchema: 'red'
+              colorSchema: 'red',
+              statusKey: 'error'
             };
           }
           if (collection.trainingAmount > 0) {
@@ -92,12 +101,14 @@ const CollectionCard = () => {
               statusText: t('common:dataset.collections.Collection Embedding', {
                 total: collection.trainingAmount
               }),
-              colorSchema: 'gray'
+              colorSchema: 'gray',
+              statusKey: 'processing'
             };
           }
           return {
             statusText: t('common:core.dataset.collection.status.active'),
-            colorSchema: 'green'
+            colorSchema: 'green',
+            statusKey: 'ready'
           };
         })();
 
@@ -231,10 +242,9 @@ const CollectionCard = () => {
             total={total}
             onUpdateCollection={onUpdateCollection}
             onTrainingStatesClick={(collectionId) => setTrainingStatesCollection({ collectionId })}
-            onDataConfigClick={(collectionId) => {
-              // TODO: 实现数据配置逻辑
-              console.log('数据配置', collectionId);
-            }}
+            onDataConfigClick={(databaseName, activeStep) =>
+              handleOpenConfigPage('edit', databaseName, activeStep)
+            }
             onRemoveClick={(collectionId) => {
               openDeleteConfirm(
                 () => onDelCollection([collectionId]),
