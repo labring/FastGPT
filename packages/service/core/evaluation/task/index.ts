@@ -305,6 +305,7 @@ export class EvaluationTaskService {
             metricNames: 1,
             statistics: 1,
             summaryConfigs: 1,
+            aggregateScore: 1,
             tmbId: 1
           }
         },
@@ -694,9 +695,10 @@ export class EvaluationTaskService {
       // Add evaluators data from parent evaluation
       const itemsWithEvaluators = items.map((item) => ({
         ...item,
-        evaluators: evaluation.evaluators.map((evaluator) => ({
+        evaluators: evaluation.evaluators.map((evaluator, index) => ({
           metric: evaluator.metric,
-          thresholdValue: evaluator.thresholdValue
+          thresholdValue: evaluator.thresholdValue,
+          weight: evaluation.summaryConfigs[index]?.weight
         }))
       }));
 
@@ -730,9 +732,10 @@ export class EvaluationTaskService {
       // Add evaluators data from parent evaluation
       const itemsWithEvaluators = items.map((item) => ({
         ...item,
-        evaluators: evaluation.evaluators.map((evaluator) => ({
+        evaluators: evaluation.evaluators.map((evaluator, index) => ({
           metric: evaluator.metric,
-          thresholdValue: evaluator.thresholdValue
+          thresholdValue: evaluator.thresholdValue,
+          weight: evaluation.summaryConfigs[index]?.weight
         }))
       }));
 
