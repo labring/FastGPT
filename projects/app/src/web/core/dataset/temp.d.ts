@@ -118,3 +118,20 @@ export type UpdateDatasetCollectionParams = {
   datasetId?: string;
   externalFileId?: string;
 };
+
+export type DatabaseSearchTestQuery = {
+  datasetId: string;
+};
+
+export type DatabaseSearchTestBody = {
+  query: string;
+  model?: string;
+};
+
+export type DatabaseSearchTestResponse = {
+  answer: string;
+  sql_result: string;
+  duration: string;
+  limit: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+};

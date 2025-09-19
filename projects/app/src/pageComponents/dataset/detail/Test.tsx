@@ -13,7 +13,7 @@ import {
   useSearchTestStore,
   type SearchTestStoreItemType
 } from '@/web/core/dataset/store/searchTest';
-import { postSearchText } from '@/web/core/dataset/api';
+import { postSearchText, postDatasetCollectionSearchTest } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
@@ -41,6 +41,8 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import { isEmpty } from 'lodash';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -65,7 +67,7 @@ type FormType = {
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useSystemStore();
+  const { defaultModels, llmModelList } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { pushDatasetTestItem } = useSearchTestStore();
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
@@ -135,6 +137,41 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
+  const { runAsync: onDatabaseTest, loading: databaseTestIsLoading } = useRequest2(
+    ({ inputText }: { inputText: string }) =>
+      postDatasetCollectionSearchTest({
+        datasetId,
+        query: inputText.trim(),
+        model: searchModel
+      }),
+    {
+      onSuccess(res: any) {
+        if (isEmpty(res) || !res.answer) {
+          return toast({
+            status: 'warning',
+            title: t('common:dataset.test.noResult')
+          });
+        }
+
+        const testItem: SearchTestStoreItemType = {
+          id: getNanoid(),
+          datasetId,
+          text: getValues('inputText').trim(),
+          time: new Date(),
+          results: res,
+          duration: res.duration || '0ms',
+          searchMode: DatasetSearchModeEnum.database,
+          usingReRank: false,
+          limit: res.limit,
+          similarity: 0,
+          queryExtensionModel: searchModel
+        };
+        pushDatasetTestItem(testItem);
+        setDatasetTestItem(testItem);
+      }
+    }
+  );
+
   const onSelectFile = async (files: File[]) => {
     const file = files[0];
     if (!file) return;
@@ -144,6 +181,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   useEffect(() => {
     setDatasetTestItem(undefined);
   }, [datasetId]);
+
+  const [searchModel, setSearchModel] = useState(llmModelList?.[0]?.name);
 
   return (
     <Box h={'100%'} display={['block', 'flex']}>
@@ -204,23 +243,19 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
             {datasetDetail.type === DatasetTypeEnum.database ? (
               <HStack>
-                <MySelect<'text' | 'file'>
+                <AIModelSelector
+                  _hover={{
+                    border: '1px solid',
+                    borderColor: 'primary.400'
+                  }}
                   size={'sm'}
-                  list={[
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon mr={2} name={'text'} w={'14px'} color={'primary.600'} />
-                          <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                            {t('common:core.dataset.test.Test Text')}
-                          </Box>
-                        </Flex>
-                      ),
-                      value: 'text'
-                    }
-                  ]}
-                  value={inputType}
-                  onChange={(e) => setInputType(e)}
+                  w={'200px'}
+                  value={searchModel}
+                  onChange={(e) => setSearchModel(e)}
+                  list={llmModelList.map((item) => ({
+                    label: item.name,
+                    value: item.model
+                  }))}
                 />
                 <QuestionTip
                   label={
@@ -309,11 +344,19 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <Flex justifyContent={'flex-end'}>
             <Button
               size={'sm'}
-              isLoading={textTestIsLoading}
+              isLoading={
+                datasetDetail.type === DatasetTypeEnum.database
+                  ? databaseTestIsLoading
+                  : textTestIsLoading
+              }
               isDisabled={inputType === 'file' && !selectFile}
               onClick={() => {
                 if (inputType === 'text') {
-                  handleSubmit((data) => onTextTest(data))();
+                  if (datasetDetail.type === DatasetTypeEnum.database) {
+                    handleSubmit((data) => onDatabaseTest({ inputText: data.inputText }))();
+                  } else {
+                    handleSubmit((data) => onTextTest(data))();
+                  }
                 } else {
                   // handleSubmit((data) => onFileTest(data))();
                 }
@@ -333,7 +376,11 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       </Box>
       {/* result show */}
       <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'} bg={'white'}>
-        <TestResults datasetTestItem={datasetTestItem} />
+        {datasetDetail.type === DatasetTypeEnum.database ? (
+          <TestResultDatabase datasetTestItem={datasetTestItem} />
+        ) : (
+          <TestResults datasetTestItem={datasetTestItem} />
+        )}
       </Box>
 
       {isOpenSelectMode && (
@@ -457,27 +504,28 @@ const TestResults = React.memo(function TestResults({
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
-
   return (
     <>
       {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
         <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
-          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-            <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
-            {t('common:core.dataset.test.Test params')}
-          </Flex>
-          <Box mt={3}>
-            <SearchParamsTip
-              searchMode={datasetTestItem.searchMode}
-              similarity={datasetTestItem.similarity}
-              limit={datasetTestItem.limit}
-              usingReRank={datasetTestItem.usingReRank}
-              datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
-              queryExtensionModel={datasetTestItem.queryExtensionModel}
-            />
-          </Box>
+          <>
+            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
+              <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
+              {t('common:core.dataset.test.Test params')}
+            </Flex>
+            <Box mt={3}>
+              <SearchParamsTip
+                searchMode={datasetTestItem.searchMode}
+                similarity={datasetTestItem.similarity}
+                limit={datasetTestItem.limit}
+                usingReRank={datasetTestItem.usingReRank}
+                datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
+                queryExtensionModel={datasetTestItem.queryExtensionModel}
+              />
+            </Box>
+          </>
 
           <Flex mt={5} mb={3} alignItems={'center'}>
             <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
@@ -493,6 +541,57 @@ const TestResults = React.memo(function TestResults({
                 <QuoteItem quoteItem={item} canViewSource canEditData />
               </Box>
             ))}
+          </Box>
+        </>
+      )}
+    </>
+  );
+});
+
+const TestResultDatabase = React.memo(function TestResultDatabase({
+  datasetTestItem
+}: {
+  datasetTestItem?: SearchTestStoreItemType;
+}) {
+  const { t } = useTranslation();
+  // TODO-lyx 临时规避，数据库搜索返回跟其他知识库不一致
+  const result = datasetTestItem?.results as unknown as { sql_result: string; answer: string };
+  const theme = useTheme();
+  return (
+    <>
+      {isEmpty(datasetTestItem) ? (
+        <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
+      ) : (
+        <>
+          <Flex mt={5} mb={3} alignItems={'center'}>
+            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
+              <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
+              {t('common:core.dataset.test.Test Result')}
+            </Flex>
+            <Box ml={2}>({datasetTestItem.duration})</Box>
+          </Flex>
+          <Box mt={1} gap={4}>
+            {/* SQL 语句展示 */}
+            <Box mb={4}>
+              <Box p={4} borderRadius={'12px'} bg={'myWhite.300'} border={theme.borders.sm}>
+                <Text fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
+                  {t('dataset:database_sql_query')}
+                </Text>
+                <Text fontSize={'sm'} color={'myGray.700'} whiteSpace={'pre-wrap'}>
+                  {result?.sql_result || '-'}
+                </Text>
+              </Box>
+            </Box>
+
+            {/* 检索结果展示 */}
+            <Box p={4} borderRadius={'12px'} bg={'myWhite.300'} border={theme.borders.sm}>
+              <Text fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
+                {t('dataset:search_result')}
+              </Text>
+              <Text fontSize={'sm'} color={'myGray.700'} lineHeight={'1.6'}>
+                {result?.answer || t('dataset:no_search_result')}
+              </Text>
+            </Box>
           </Box>
         </>
       )}

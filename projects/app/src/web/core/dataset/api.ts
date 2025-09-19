@@ -25,7 +25,11 @@ import type {
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
+import type {
+  DatabaseSearchTestResponse,
+  SearchTestProps,
+  SearchTestResponse
+} from '@/global/core/dataset/api.d';
 import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
@@ -84,6 +88,10 @@ import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type { GetConfigurationResponse } from '@/pages/api/core/dataset/database/getConfiguration';
 import type { DetectChangesResponse } from '@/pages/api/core/dataset/database/detectChanges';
 import type { CreateDatabaseCollectionsBody } from '@/pages/api/core/dataset/database/createCollections';
+import type {
+  DatabaseSearchTestQuery,
+  DatabaseSearchTestBody
+} from '@/pages/api/core/dataset/database/searchTest';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -328,8 +336,15 @@ export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
 /**
  * 搜索测试 (需要结合text2SQL微服务，确认数据口径)
  */
-export const postDatasetCollectionSearchTest = (collectionId: string) =>
-  POST(`/core/dataset/collection/searchTest`, { collectionId });
+export const postDatasetCollectionSearchTest = (
+  data: DatabaseSearchTestQuery & DatabaseSearchTestBody
+) => {
+  const { datasetId, ...body } = data;
+  return POST<DatabaseSearchTestResponse>(
+    `/core/dataset/database/searchTest?datasetId=${datasetId}`,
+    body
+  );
+};
 
 /**
  * 更新数据配置
