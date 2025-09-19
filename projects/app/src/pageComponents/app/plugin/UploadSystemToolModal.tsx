@@ -85,7 +85,7 @@ function UploadSystemToolModal({
         </Flex>
         <FileSelectorBox
           maxCount={1}
-          maxSize="10MB"
+          maxSize="50MB"
           fileType=".js"
           selectFiles={selectFiles}
           setSelectFiles={setSelectFiles}
