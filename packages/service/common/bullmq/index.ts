@@ -24,6 +24,7 @@ export enum QueueNames {
   evalDatasetDataSynthesize = 'evalDatasetDataSynthesize',
   evalTask = 'evalTask',
   evalTaskItem = 'evalTaskitem',
+  evaluationSummary = 'evaluationSummary',
   // abondoned
   websiteSync = 'websiteSync'
 }
