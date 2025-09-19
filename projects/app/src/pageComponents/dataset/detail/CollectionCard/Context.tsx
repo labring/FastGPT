@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { omit } from 'lodash';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -36,7 +37,11 @@ type CollectionPageContextType = {
   filterTags: string[];
   setFilterTags: Dispatch<SetStateAction<string[]>>;
   hasDatabaseConfig: boolean;
-  handleOpenConfigPage: (mode?: 'edit' | 'create', databaseName?: string) => void;
+  handleOpenConfigPage: (
+    mode?: 'edit' | 'create',
+    databaseName?: string,
+    activeStep?: number
+  ) => void;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -149,13 +154,18 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
   // database
   const hasDatabaseConfig = useMemo(() => !isEmpty(datasetDetail.databaseConfig), [datasetDetail]);
-  const handleOpenConfigPage = (mode: 'edit' | 'create' = 'create', databaseName?: string) => {
+  const handleOpenConfigPage = (
+    mode: 'edit' | 'create' = 'create',
+    databaseName?: string,
+    activeStep = 0
+  ) => {
     router.replace({
       query: {
-        ...router.query,
+        ...omit(router.query, ['databaseName']),
         currentTab: TabEnum.import,
         source: ImportDataSourceEnum.database,
         mode,
+        activeStep,
         ...(databaseName
           ? {
               databaseName

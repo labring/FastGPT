@@ -114,7 +114,7 @@ const DataBaseConfig = () => {
   if (!currentTable) {
     return (
       <Center h="400px">
-        <Text color="myGray.600">{t('dataset:no_tables_found')}</Text>
+        <Text color="myGray.600">{t('dataset:no_data_available')}</Text>
       </Center>
     );
   }
