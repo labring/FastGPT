@@ -27,6 +27,7 @@ import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/us
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { recalculateAllEvaluationItemAggregateScores } from '../task/processor';
+import { addSummaryTaskToQueue } from './queue';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
@@ -608,7 +609,7 @@ export class EvaluationSummaryService {
   // ===== Summary Generation Methods =====
 
   /**
-   * 生成多个指标的总结报告 - 异步触发，立即返回
+   * 生成多个指标的总结报告 - 使用BullMQ队列化处理，解决系统崩溃导致状态卡死问题
    */
   static async generateSummaryReports(evalId: string, metricIds: string[]): Promise<void> {
     try {
@@ -627,20 +628,8 @@ export class EvaluationSummaryService {
         }
       );
 
-      addLog.info(
-        '[EvaluationSummary] Updated metric scores and counts before generating summaries',
-        {
-          evalId
-        }
-      );
-
       // Validate metric ownership and find corresponding evaluator index
-      const evaluatorTasks: Array<{
-        metricId: string;
-        evaluatorIndex: number;
-        evaluator: any;
-      }> = [];
-
+      const validMetricIds: string[] = [];
       const skippedMetrics: Array<{
         metricId: string;
         metricName: string;
@@ -665,29 +654,10 @@ export class EvaluationSummaryService {
           return;
         }
 
-        // 检查该指标是否已经在生成中
+        // Get metric name for logging
         const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
-        const summaryConfig = evaluation.summaryConfigs[evaluatorIndex];
-        if (summaryConfig.summaryStatus === SummaryStatusEnum.generating) {
-          addLog.info('[EvaluationSummary] Metric is already generating, skipping', {
-            evalId,
-            metricId,
-            metricName,
-            currentStatus: summaryConfig.summaryStatus
-          });
-          skippedMetrics.push({
-            metricId,
-            metricName,
-            reason: 'Already generating'
-          });
-          return;
-        }
 
-        evaluatorTasks.push({
-          metricId,
-          evaluatorIndex,
-          evaluator: evaluation.evaluators[evaluatorIndex]
-        });
+        validMetricIds.push(metricId);
       });
 
       // 记录跳过的指标信息
@@ -703,7 +673,7 @@ export class EvaluationSummaryService {
         });
       }
 
-      if (evaluatorTasks.length === 0) {
+      if (validMetricIds.length === 0) {
         if (skippedMetrics.length > 0) {
           addLog.info('[EvaluationSummary] All metrics were skipped, no tasks to execute', {
             evalId,
@@ -715,29 +685,14 @@ export class EvaluationSummaryService {
         throw new Error(EvaluationErrEnum.summaryNoValidMetricsFound);
       }
 
-      // Immediately update all related evaluator status to generating (batch update)
-      const updateFields: Record<string, any> = {};
-      evaluatorTasks.forEach((task) => {
-        updateFields[`summaryConfigs.${task.evaluatorIndex}.summaryStatus`] =
-          SummaryStatusEnum.generating;
-      });
+      // 将任务添加到BullMQ队列中，让队列负责状态管理
+      await addSummaryTaskToQueue(evalId, validMetricIds);
 
-      await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateFields });
-
-      addLog.info('[EvaluationSummary] Status updated to generating, starting async processing', {
+      addLog.info('[EvaluationSummary] Task successfully added to queue', {
         evalId,
         totalRequested: metricIds.length,
-        validMetricsCount: evaluatorTasks.length,
-        skippedCount: skippedMetrics.length,
-        validMetrics: evaluatorTasks.map((task) => ({
-          metricId: task.metricId,
-          metricName: task.evaluator.metric.name
-        }))
-      });
-
-      // Execute report generation asynchronously, don't wait for results
-      setImmediate(() => {
-        this.executeAsyncSummaryGeneration(evaluation, evaluatorTasks);
+        validMetricsCount: validMetricIds.length,
+        skippedCount: skippedMetrics.length
       });
     } catch (error) {
       addLog.error('[EvaluationSummary] Report generation task creation failed', {
@@ -752,7 +707,7 @@ export class EvaluationSummaryService {
   /**
    * 异步执行报告生成 - 后台处理
    */
-  private static async executeAsyncSummaryGeneration(
+  static async executeAsyncSummaryGeneration(
     evaluation: EvaluationSchemaType,
     evaluatorTasks: Array<{
       metricId: string;
@@ -802,7 +757,7 @@ export class EvaluationSummaryService {
   /**
    * 生成单个指标的总结报告
    */
-  private static async generateSingleMetricSummary(
+  static async generateSingleMetricSummary(
     evaluation: EvaluationSchemaType,
     metricId: string,
     evaluatorIndex: number,
@@ -1314,7 +1269,7 @@ export class EvaluationSummaryService {
     const reason = item.matchingMetricResult?.data?.reason || '无评估原因';
 
     return `
-**评估原因**: ${reason}`;
+评估原因: ${reason}`;
   }
 
   /**
