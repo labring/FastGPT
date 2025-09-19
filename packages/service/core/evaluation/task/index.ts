@@ -742,7 +742,16 @@ export class EvaluationTaskService {
 
       const items = await MongoEvalItem.aggregate(aggregationPipeline);
 
-      return { items, total };
+      // Add evaluators data from parent evaluation
+      const itemsWithEvaluators = items.map((item) => ({
+        ...item,
+        evaluators: evaluation.evaluators.map((evaluator) => ({
+          metric: evaluator.metric,
+          thresholdValue: evaluator.thresholdValue
+        }))
+      }));
+
+      return { items: itemsWithEvaluators, total };
     } else {
       // Handle normal status filtering
       if (status !== undefined) {
@@ -769,7 +778,16 @@ export class EvaluationTaskService {
         MongoEvalItem.countDocuments(filter)
       ]);
 
-      return { items, total };
+      // Add evaluators data from parent evaluation
+      const itemsWithEvaluators = items.map((item) => ({
+        ...item,
+        evaluators: evaluation.evaluators.map((evaluator) => ({
+          metric: evaluator.metric,
+          thresholdValue: evaluator.thresholdValue
+        }))
+      }));
+
+      return { items: itemsWithEvaluators, total };
     }
   }
 

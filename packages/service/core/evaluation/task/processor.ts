@@ -597,15 +597,9 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
         targetCallParams: undefined
       };
 
-      // Initialize evaluatorOutputs array based on the evaluators schema definition
-      const evaluatorOutputs: MetricResult[] = evaluation.evaluators.map((evaluator) => ({
-        metricName: evaluator.metric.name
-      }));
-
       evalItems.push({
         evalId,
         dataItem: evaluationDataItem,
-        evaluatorOutputs,
         status: EvaluationStatusEnum.queuing,
         retry: maxRetries
       });
