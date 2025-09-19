@@ -11,13 +11,16 @@ export enum AppTypeEnum {
   simple = 'simple',
   workflow = 'advanced',
   plugin = 'plugin',
-  httpPlugin = 'httpPlugin',
-  toolSet = 'toolSet',
+  toolSet = 'toolSet', // 'mcp'
+  httpToolSet = 'httpToolSet',
   tool = 'tool',
-  hidden = 'hidden'
+  hidden = 'hidden',
+
+  // deprecated
+  httpPlugin = 'httpPlugin'
 }
 
-export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
+export const AppFolderTypeList = [AppTypeEnum.folder];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

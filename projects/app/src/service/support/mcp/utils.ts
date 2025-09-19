@@ -37,6 +37,8 @@ import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { HTTPClient } from '@fastgpt/service/core/app/http';
+import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 
 export const pluginNodes2InputSchema = (
   nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
@@ -123,7 +125,15 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
   const appList = await MongoApp.find(
     {
       _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+      type: {
+        $in: [
+          AppTypeEnum.simple,
+          AppTypeEnum.workflow,
+          AppTypeEnum.plugin,
+          AppTypeEnum.httpToolSet,
+          AppTypeEnum.httpPlugin
+        ]
+      }
     },
     { name: 1, intro: 1 }
   ).lean();
@@ -146,22 +156,39 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
   );
 
   // Compute mcp tools
-  const tools = versionList.map<Tool>((version, index) => {
-    const app = permissionAppList[index];
-    const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
+  const tools = versionList
+    .map<Tool | Tool[]>((version, index) => {
+      const app = permissionAppList[index];
+      const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
 
-    const isPlugin = !!version.nodes.find(
-      (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
-    );
+      // New HTTP tool set/http plugin: expand toolList to multiple tools
+      const httpToolSet = version.nodes?.[0]?.toolConfig?.httpToolSet;
+      const httpTools = httpToolSet?.toolList;
+      if (httpTools && Array.isArray(httpTools) && httpTools.length > 0) {
+        return httpTools.map<Tool>((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: {
+            type: 'object',
+            properties: tool.inputSchema?.properties || {},
+            required: (tool.inputSchema as any)?.required || []
+          }
+        }));
+      }
 
-    return {
-      name: mcpApp.toolName,
-      description: mcpApp.description,
-      inputSchema: isPlugin
-        ? pluginNodes2InputSchema(version.nodes)
-        : workflow2InputSchema(version.chatConfig)
-    };
-  });
+      const isPlugin = !!version.nodes.find(
+        (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
+      );
+
+      return {
+        name: mcpApp.toolName,
+        description: mcpApp.description,
+        inputSchema: isPlugin
+          ? pluginNodes2InputSchema(version.nodes)
+          : workflow2InputSchema(version.chatConfig)
+      };
+    })
+    .flat();
 
   return tools;
 };
@@ -296,17 +323,65 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
   // Get app list
   const appList = await MongoApp.find({
     _id: { $in: mcp.apps.map((app) => app.appId) },
-    type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+    type: {
+      $in: [
+        AppTypeEnum.simple,
+        AppTypeEnum.workflow,
+        AppTypeEnum.plugin,
+        AppTypeEnum.httpToolSet,
+        AppTypeEnum.httpPlugin
+      ]
+    }
   }).lean();
 
-  const app = appList.find((app) => {
+  let app = appList.find((app) => {
     const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
 
     return toolName === mcpApp.toolName;
   });
 
+  // fallback: match httpToolSet child tool by name
+  let httpMatch:
+    | {
+        url: string;
+        headerSecret?: any;
+        tool: { name: string; path?: string; method?: string; inputSchema?: any };
+      }
+    | undefined;
+
+  if (!app) {
+    for (const candidate of appList) {
+      const { nodes } = await getAppLatestVersion(candidate._id, candidate);
+      const httpToolSet = nodes?.[0]?.toolConfig?.httpToolSet ?? nodes?.[0]?.inputs?.[0]?.value;
+      const tool = httpToolSet?.toolList?.find((t: any) => t?.name === toolName);
+      if (tool) {
+        app = candidate as any;
+        httpMatch = { url: httpToolSet.url, headerSecret: httpToolSet.headerSecret, tool };
+        break;
+      }
+    }
+  }
+
   if (!app) {
     return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  // If matched http tool directly, call via HTTP client
+  if (httpMatch) {
+    const httpClient = new HTTPClient({
+      url: httpMatch.url,
+      headers: getSecretValue({ storeSecret: httpMatch.headerSecret })
+    });
+    const result = await httpClient.toolCallSimple(
+      toolName,
+      inputs,
+      httpMatch.tool.path,
+      httpMatch.tool.method || 'POST'
+    );
+    if ((result as any).isError) {
+      throw new Error((result as any).message || 'HTTP request failed');
+    }
+    return (result as any).content?.[0]?.text ?? JSON.stringify(result);
   }
 
   return await dispatchApp(app, inputs);

@@ -32,6 +32,7 @@ export type CreateAppBody = {
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
+  intro?: string;
   type?: AppTypeEnum;
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
@@ -40,7 +41,7 @@ export type CreateAppBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, type, modules, edges, chatConfig, utmParams } = req.body;
+  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, utmParams } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -62,6 +63,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     parentId,
     name,
     avatar,
+    intro,
     type,
     modules,
     edges,

@@ -7,14 +7,14 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
-import { getMCPTools, postUpdateMCPTools } from '@/web/core/app/api/plugin';
-import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
+import ParamsAuthConfig from '@/components/common/secret/ParamsAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { POST, GET, PUT, DELETE, PATCH, OTHER } from '../HTTPMethodComponents';
+import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const EditForm = ({
@@ -25,79 +25,49 @@ const EditForm = ({
   currentTool,
   setCurrentTool,
   headerSecret,
-  setHeaderSecret
+  setHeaderSecret,
+  createType
 }: {
   url: string;
   setUrl: (url: string) => void;
-  toolList: McpToolConfigType[];
-  setToolList: (toolList: McpToolConfigType[]) => void;
-  currentTool?: McpToolConfigType;
-  setCurrentTool: (tool: McpToolConfigType) => void;
+  toolList: HttpToolConfigType[];
+  setToolList: (toolList: HttpToolConfigType[]) => void;
+  currentTool?: HttpToolConfigType;
+  setCurrentTool: (tool: HttpToolConfigType) => void;
   headerSecret: StoreSecretValueType;
   setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
+  createType: 'batch' | 'manual';
 }) => {
   const { t } = useTranslation();
 
-  const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
+  const [toolDetail, setToolDetail] = useState<HttpToolConfigType | null>(null);
   const [toolParamEnabledMap, setToolParamEnabledMap] = useState<
     Record<string, Record<string, boolean>>
   >({});
-
-  const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
-    async (data: getMCPToolsBody) => await getMCPTools(data),
-    {
-      onSuccess: (res) => {
-        setToolList(res);
-        setCurrentTool(res[0]);
-      },
-      errorToast: t('app:MCP_tools_parse_failed')
-    }
-  );
 
   return (
     <>
       <Box p={6}>
         <Flex alignItems={'center'}>
-          <MyIcon name={'common/linkBlue'} w={'20px'} />
-          <FormLabel ml={2} flex={1}>
-            {t('app:MCP_tools_url')}
-          </FormLabel>
-          <HeaderAuthConfig
-            storeHeaderSecretConfig={headerSecret}
-            onUpdate={setHeaderSecret}
-            buttonProps={{
-              size: 'sm',
-              variant: 'grayGhost'
-            }}
-          />
-        </Flex>
-        <Flex alignItems={'center'} gap={2} mt={3}>
-          <Input
-            h={8}
-            placeholder={t('app:MCP_tools_url_placeholder')}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <Button
-            size={'sm'}
-            variant={'whitePrimary'}
-            h={8}
-            isLoading={isGettingTools}
-            onClick={() => {
-              runGetMCPTools({ url, headerSecret });
-            }}
-          >
-            {t('common:Parse')}
-          </Button>
-        </Flex>
-
-        <Flex alignItems={'center'} mt={6}>
           <MyIcon name={'common/list'} w={'20px'} color={'primary.600'} />
           <FormLabel ml={2} flex={1}>
-            {t('app:MCP_tools_list_with_number', {
+            {t('app:HTTP_tools_list_with_number', {
               total: toolList.length || 0
             })}
           </FormLabel>
+          <ParamsAuthConfig
+            storeHeaderSecretConfig={headerSecret}
+            onUpdate={setHeaderSecret}
+            buttonProps={{
+              padding: '8px 14px'
+            }}
+            onSaved={({ url: newUrl, toolList: newList }) => {
+              setUrl(newUrl || '');
+              setToolList(newList || []);
+              if (newList?.length) setCurrentTool(newList[0]);
+            }}
+            haveTool={toolList.length > 0}
+          />
         </Flex>
 
         <Box mt={3}>
@@ -132,26 +102,46 @@ const EditForm = ({
                   setCurrentTool(tool);
                 }}
               >
-                <Flex alignItems={'center'} py={2} px={3}>
-                  <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
-                    {index + 1 < 10 ? `0${index + 1}` : index + 1}
-                  </Box>
+                <Flex alignItems={'center'} py={3} px={3}>
                   <Box maxW={'full'} pl={2} position="relative" width="calc(100% - 30px)">
+                    <Flex alignItems="center" gap={2} mb={1}>
+                      <Box>{renderHttpMethod(tool.method)}</Box>
+                      <Box
+                        color={'myGray.900'}
+                        fontFamily={'PingFang SC'}
+                        fontSize={'14px'}
+                        fontStyle={'normal'}
+                        fontWeight={'400'}
+                        lineHeight={'20px'}
+                        letterSpacing={'0.25px'}
+                      >
+                        {tool.name}
+                      </Box>
+                      {/* line */}
+                      <Box w={'1px'} h={'12px'} bg={'myGray.250'}></Box>
+                      <Box
+                        color={'myGray.600'}
+                        fontFamily={'PingFang SC'}
+                        fontSize={'14px'}
+                        fontStyle={'normal'}
+                        fontWeight={'400'}
+                        lineHeight={'20px'}
+                        letterSpacing={'0.25px'}
+                      >
+                        {tool.path}
+                      </Box>
+                    </Flex>
                     <Box
-                      fontSize={'14px'}
-                      color={'myGray.900'}
-                      whiteSpace="nowrap"
                       overflow="hidden"
-                      textOverflow="ellipsis"
-                    >
-                      {tool.name}
-                    </Box>
-                    <Box
-                      fontSize={'12px'}
+                      whiteSpace="nowrap"
                       color={'myGray.500'}
-                      whiteSpace="nowrap"
-                      overflow="hidden"
                       textOverflow="ellipsis"
+                      fontFamily={'PingFang SC'}
+                      fontSize={'12px'}
+                      fontStyle={'normal'}
+                      fontWeight={'400'}
+                      lineHeight={'16px'}
+                      letterSpacing={'0.048px'}
                     >
                       {tool.description || t('app:tools_no_description')}
                     </Box>
@@ -178,7 +168,7 @@ const EditForm = ({
                     borderColor={'myGray.250'}
                     hoverBg={'rgba(51, 112, 255, 0.10)'}
                     hoverBorderColor={'primary.300'}
-                    tip={t('app:MCP_tools_detail')}
+                    tip={t('app:HTTP_tools_detail')}
                     onClick={(e) => {
                       e.stopPropagation();
                       setToolDetail(tool);
@@ -195,11 +185,6 @@ const EditForm = ({
         <ToolDetailModal
           tool={toolDetail}
           onClose={() => setToolDetail(null)}
-          url={url}
-          headerSecret={headerSecret}
-          toolList={toolList}
-          setToolList={setToolList}
-          setCurrentTool={setCurrentTool}
           paramEnabled={toolParamEnabledMap[toolDetail.name] || {}}
           setParamEnabled={(params) =>
             setToolParamEnabledMap((prev) => ({
@@ -218,29 +203,19 @@ export default React.memo(EditForm);
 const ToolDetailModal = ({
   tool,
   onClose,
-  url,
-  headerSecret,
-  toolList,
-  setToolList,
-  setCurrentTool,
   paramEnabled,
   setParamEnabled
 }: {
-  tool: McpToolConfigType;
+  tool: HttpToolConfigType;
   onClose: () => void;
-  url: string;
-  headerSecret: StoreSecretValueType;
-  toolList: McpToolConfigType[];
-  setToolList: (t: McpToolConfigType[]) => void;
-  setCurrentTool: (t: McpToolConfigType) => void;
   paramEnabled: Record<string, boolean>;
   setParamEnabled: (params: Record<string, boolean>) => void;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { runAsync: runUpdateMCPTools, loading: isUpdating } = useRequest2(
-    async (data: any) => await postUpdateMCPTools(data),
+  const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest2(
+    async (data: any) => await putUpdateHttpPlugin(data),
     {
       manual: true,
       successToast: t('common:update_success'),
@@ -253,14 +228,12 @@ const ToolDetailModal = ({
 
   React.useEffect(() => {
     const properties = tool.inputSchema?.properties || {};
-    // 只有当前工具的参数状态为空时才初始化
     if (Object.keys(paramEnabled).length === 0 && Object.keys(properties).length > 0) {
-      const next: Record<string, boolean> = {};
-      Object.keys(properties).forEach((key) => {
-        // 默认开启
-        next[key] = true;
+      const nextState: Record<string, boolean> = {};
+      Object.keys(properties).forEach((paramName) => {
+        nextState[paramName] = true;
       });
-      setParamEnabled(next);
+      setParamEnabled(nextState);
     }
   }, [tool, paramEnabled, setParamEnabled]);
 
@@ -273,8 +246,8 @@ const ToolDetailModal = ({
       onClose={onClose}
       w={'530px'}
     >
-      <ModalBody>
-        <Flex pb={6} borderBottom={'1px solid'} borderColor={'myGray.200'}>
+      <ModalBody pt={0}>
+        <Flex py={6} borderBottom={'1px solid'} borderColor={'myGray.200'}>
           <Avatar src={appDetail.avatar} borderRadius={'md'} w={'40px'} />
           <Box ml={'14px'}>
             <Box fontSize={'16px'} color={'myGray.900'}>
@@ -283,6 +256,27 @@ const ToolDetailModal = ({
             <Box fontSize={'12px'} color={'myGray.500'}>
               {tool.description}
             </Box>
+          </Box>
+        </Flex>
+
+        <Flex
+          py={'16px'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+          gap={2}
+          alignItems={'center'}
+        >
+          <Box>{renderHttpMethod(tool.method)}</Box>
+          <Box
+            color={'myGray.600'}
+            fontFamily={'PingFang SC'}
+            fontSize={'14px'}
+            fontStyle={'normal'}
+            fontWeight={'400'}
+            lineHeight={'20px'}
+            letterSpacing={'0.25px'}
+          >
+            {tool.path}
           </Box>
         </Flex>
 
@@ -364,32 +358,50 @@ const ToolDetailModal = ({
           )}
         </Box>
       </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+      <ModalFooter mx={'28px'} px={0} gap={3}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
         {Object.keys(tool.inputSchema.properties || {}).length > 0 && (
-          <Box pr={2}>
-            <Button
-              size={'md'}
-              isLoading={isUpdating}
-              onClick={() => {
-                runUpdateMCPTools({
-                  appId: appDetail._id,
-                  url,
-                  headerSecret,
-                  toolList,
-                  toolParamEnabledMap: {
-                    [tool.name]: paramEnabled
-                  }
-                } as any);
-              }}
-            >
-              {t('common:Confirm')}
-            </Button>
-          </Box>
+          <Button
+            size={'md'}
+            isLoading={isUpdating}
+            onClick={() => {
+              runUpdateHttpPlugin({
+                appId: appDetail._id,
+                name: appDetail.name,
+                avatar: appDetail.avatar,
+                intro: appDetail.intro,
+                toolParamEnabledMap: {
+                  [tool.name]: paramEnabled
+                }
+              });
+            }}
+          >
+            {t('common:Confirm')}
+          </Button>
         )}
       </ModalFooter>
     </MyModal>
   );
+};
+
+const renderHttpMethod = (method?: string) => {
+  if (!method) return null;
+
+  const methodUpper = method.toUpperCase();
+  switch (methodUpper) {
+    case 'GET':
+      return <GET />;
+    case 'POST':
+      return <POST />;
+    case 'PUT':
+      return <PUT />;
+    case 'DELETE':
+      return <DELETE />;
+    case 'PATCH':
+      return <PATCH />;
+    default:
+      return <OTHER>{methodUpper}</OTHER>;
+  }
 };

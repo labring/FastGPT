@@ -115,6 +115,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.simple]: t('app:type.Simple bot'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
+      [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
@@ -174,7 +175,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
 
             {(folderDetail
-              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+              ? folderDetail.permission.hasWritePer
               : userInfo?.team.permission.hasAppCreatePer) && (
               <MyMenu
                 size="md"
@@ -206,7 +207,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       },
                       {
                         icon: 'core/app/type/httpPluginFill',
-                        label: t('app:type.Http plugin'),
+                        label: t('app:type.Http tool set'),
                         description: t('app:type.Create http plugin tip'),
                         onClick: onOpenCreateHttpPlugin
                       },

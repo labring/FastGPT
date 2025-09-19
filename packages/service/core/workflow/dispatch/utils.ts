@@ -1,7 +1,11 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
@@ -18,11 +22,15 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -177,6 +185,8 @@ export const formatHttpError = (error: any) => {
  * @param edges
  * @returns
  */
+// rewrite runtime workflow
+// fish:!
 export const rewriteRuntimeWorkFlow = async ({
   nodes,
   edges,
@@ -197,7 +207,8 @@ export const rewriteRuntimeWorkFlow = async ({
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet ?? toolSetNode.inputs?.[0]?.value;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
     const pushEdges = (nodeId: string) => {
@@ -241,6 +252,37 @@ export const rewriteRuntimeWorkFlow = async ({
           ...newToolNode,
           name: `${toolSetNode.name}/${tool.name}`
         });
+        pushEdges(newToolNode.nodeId);
+      });
+    } else if (httpToolsetVal) {
+      const parentId = httpToolsetVal.toolId ?? toolSetNode.pluginId;
+      httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
+        const newToolNode: RuntimeNodeItemType = {
+          nodeId: `${parentId}${index}`,
+          name: `${toolSetNode.name}/${tool.name}`,
+          avatar: toolSetNode.avatar,
+          intro: tool.description,
+          flowNodeType: FlowNodeTypeEnum.tool,
+          toolConfig: {
+            httpTool: {
+              toolId: `${PluginSourceEnum.http}-${parentId}/${tool.name}`
+            }
+          },
+          inputs: jsonSchema2NodeInput(tool.inputSchema),
+          outputs: [
+            {
+              id: NodeOutputKeyEnum.rawResponse,
+              key: NodeOutputKeyEnum.rawResponse,
+              required: true,
+              label: 'Raw Response',
+              description: 'Tool raw response',
+              valueType: WorkflowIOValueTypeEnum.any,
+              type: FlowNodeOutputTypeEnum.static
+            }
+          ]
+        };
+
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     }

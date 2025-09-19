@@ -312,7 +312,10 @@ const ListItem = () => {
                                         type: 'grayBg' as MenuItemType,
                                         label: t('common:dataset.Edit Info'),
                                         onClick: () => {
-                                          if (app.type === AppTypeEnum.httpPlugin) {
+                                          if (
+                                            app.type === AppTypeEnum.httpToolSet ||
+                                            app.type === AppTypeEnum.httpPlugin
+                                          ) {
                                             setEditHttpPlugin({
                                               id: app._id,
                                               name: app.name,
@@ -330,8 +333,7 @@ const ListItem = () => {
                                           }
                                         }
                                       },
-                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
-                                      !(parentApp ? parentApp.permission : app.permission)
+                                      ...(!(parentApp ? parentApp.permission : app.permission)
                                         .hasManagePer
                                         ? []
                                         : [
@@ -358,8 +360,7 @@ const ListItem = () => {
                               : []),
                             ...(!app.permission?.hasWritePer ||
                             app.type === AppTypeEnum.toolSet ||
-                            app.type === AppTypeEnum.folder ||
-                            app.type === AppTypeEnum.httpPlugin
+                            app.type === AppTypeEnum.folder
                               ? []
                               : [
                                   {
