@@ -11,14 +11,10 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { getHTTPToolsBody } from '@/pages/api/support/http/client/getTools';
-import { getHTTPTools } from '@/web/core/app/api/plugin';
-// import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import ParamsAuthConfig from '@/components/common/secret/ParamsAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { useEffect } from 'react';
 import { POST, GET, PUT, DELETE, PATCH, OTHER } from '../HTTPMethodComponents';
-import { PAGES_DIR_ALIAS } from 'next/dist/lib/constants';
+import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const EditForm = ({
@@ -29,7 +25,8 @@ const EditForm = ({
   currentTool,
   setCurrentTool,
   headerSecret,
-  setHeaderSecret
+  setHeaderSecret,
+  createType
 }: {
   url: string;
   setUrl: (url: string) => void;
@@ -39,14 +36,14 @@ const EditForm = ({
   setCurrentTool: (tool: HttpToolConfigType) => void;
   headerSecret: StoreSecretValueType;
   setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
+  createType: 'batch' | 'manual';
 }) => {
   const { t } = useTranslation();
 
   const [toolDetail, setToolDetail] = useState<HttpToolConfigType | null>(null);
-
-  useEffect(() => {
-    console.log('toolList', toolList[0]);
-  }, [toolList]);
+  const [toolParamEnabledMap, setToolParamEnabledMap] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
   return (
     <>
@@ -184,16 +181,61 @@ const EditForm = ({
         </Box>
       </Box>
 
-      {toolDetail && <ToolDetailModal tool={toolDetail} onClose={() => setToolDetail(null)} />}
+      {toolDetail && (
+        <ToolDetailModal
+          tool={toolDetail}
+          onClose={() => setToolDetail(null)}
+          paramEnabled={toolParamEnabledMap[toolDetail.name] || {}}
+          setParamEnabled={(params) =>
+            setToolParamEnabledMap((prev) => ({
+              ...prev,
+              [toolDetail.name]: params
+            }))
+          }
+        />
+      )}
     </>
   );
 };
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: HttpToolConfigType; onClose: () => void }) => {
+const ToolDetailModal = ({
+  tool,
+  onClose,
+  paramEnabled,
+  setParamEnabled
+}: {
+  tool: HttpToolConfigType;
+  onClose: () => void;
+  paramEnabled: Record<string, boolean>;
+  setParamEnabled: (params: Record<string, boolean>) => void;
+}) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+
+  const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest2(
+    async (data: any) => await putUpdateHttpPlugin(data),
+    {
+      manual: true,
+      successToast: t('common:update_success'),
+      onSuccess: () => {
+        onClose();
+      },
+      errorToast: t('common:update_failed')
+    }
+  );
+
+  React.useEffect(() => {
+    const properties = tool.inputSchema?.properties || {};
+    if (Object.keys(paramEnabled).length === 0 && Object.keys(properties).length > 0) {
+      const nextState: Record<string, boolean> = {};
+      Object.keys(properties).forEach((paramName) => {
+        nextState[paramName] = true;
+      });
+      setParamEnabled(nextState);
+    }
+  }, [tool, paramEnabled, setParamEnabled]);
 
   return (
     <MyModal
@@ -259,8 +301,8 @@ const ToolDetailModal = ({ tool, onClose }: { tool: HttpToolConfigType; onClose:
         >
           <Box>{t('workflow:tool_params.params_description')}</Box>
           <Box display={'flex'} gap={1}>
-            {t('workflow:tool_response_description')}
-            <QuestionTip />
+            {t('workflow:field_used_as_tool_input')}
+            <QuestionTip label={t('workflow:tool_tip')} />
           </Box>
         </Flex>
 
@@ -304,7 +346,13 @@ const ToolDetailModal = ({ tool, onClose }: { tool: HttpToolConfigType; onClose:
                     {paramInfo.description}
                   </Box>
                 </Box>
-                <Switch isChecked={true} />
+                <Switch
+                  isChecked={!!paramEnabled[paramName]}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setParamEnabled({ ...paramEnabled, [paramName]: checked });
+                  }}
+                />
               </Box>
             )
           )}
@@ -314,9 +362,25 @@ const ToolDetailModal = ({ tool, onClose }: { tool: HttpToolConfigType; onClose:
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        <Button size={'md'} onClick={onClose}>
-          {t('common:Confirm')}
-        </Button>
+        {Object.keys(tool.inputSchema.properties || {}).length > 0 && (
+          <Button
+            size={'md'}
+            isLoading={isUpdating}
+            onClick={() => {
+              runUpdateHttpPlugin({
+                appId: appDetail._id,
+                name: appDetail.name,
+                avatar: appDetail.avatar,
+                intro: appDetail.intro,
+                toolParamEnabledMap: {
+                  [tool.name]: paramEnabled
+                }
+              });
+            }}
+          >
+            {t('common:Confirm')}
+          </Button>
+        )}
       </ModalFooter>
     </MyModal>
   );

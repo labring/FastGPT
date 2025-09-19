@@ -33,6 +33,10 @@ import type {
 import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 import type { RunHTTPToolBody } from '@/pages/api/support/http/client/runTool';
 import type { getHTTPToolsBody } from '@/pages/api/support/http/client/getTools';
+import type {
+  HttpGetChildrenQuery,
+  HttpGetChildrenResponse
+} from '@/pages/api/core/app/httpPlugin/getChildren';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 /* ============ team plugin ============== */
@@ -50,6 +54,17 @@ export const getTeamPlugTemplates = async (data?: {
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp
       }));
+      // handle http toolset
+    } else if (app.type === AppTypeEnum.httpToolSet || app.type === AppTypeEnum.httpPlugin) {
+      const children = await getHttpChildren({ id: data.parentId, searchKey: data.searchKey });
+      return children.map((item) => ({
+        id: item.id,
+        avatar: item.avatar,
+        name: item.name,
+        intro: item.description || '',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.teamApp
+      }));
     }
   }
   return getMyApps(data).then((res) =>
@@ -59,6 +74,7 @@ export const getTeamPlugTemplates = async (data?: {
       pluginId: app._id,
       isFolder:
         app.type === AppTypeEnum.folder ||
+        app.type === AppTypeEnum.httpToolSet ||
         app.type === AppTypeEnum.httpPlugin ||
         app.type === AppTypeEnum.toolSet,
       templateType: FlowNodeTemplateTypeEnum.teamApp,
@@ -67,7 +83,9 @@ export const getTeamPlugTemplates = async (data?: {
           ? FlowNodeTypeEnum.appModule
           : app.type === AppTypeEnum.toolSet
             ? FlowNodeTypeEnum.toolSet
-            : FlowNodeTypeEnum.pluginModule,
+            : app.type === AppTypeEnum.httpToolSet || app.type === AppTypeEnum.httpPlugin
+              ? FlowNodeTypeEnum.toolSet
+              : FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
       name: app.name,
       intro: app.intro,
@@ -146,3 +164,6 @@ export const getHTTPTools = (data: getHTTPToolsBody) =>
 
 export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST('/support/http/client/runTool', data, { timeout: 300000 });
+
+export const getHttpChildren = (data: HttpGetChildrenQuery) =>
+  GET<HttpGetChildrenResponse>('/core/app/httpPlugin/getChildren', data);

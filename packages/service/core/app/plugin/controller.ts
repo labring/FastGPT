@@ -199,7 +199,7 @@ export async function getChildAppPreviewNode({
             url: ''
           }
         };
-      } else if (item.type === AppTypeEnum.httpPlugin) {
+      } else if (item.type === AppTypeEnum.httpToolSet || item.type === AppTypeEnum.httpPlugin) {
         const children = await getHTTPChildren(item);
         version.nodes[0].toolConfig = {
           httpToolSet: {

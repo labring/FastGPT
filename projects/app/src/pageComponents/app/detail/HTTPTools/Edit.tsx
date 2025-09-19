@@ -18,7 +18,9 @@ const Edit = ({
   currentTool,
   setCurrentTool,
   headerSecret,
-  setHeaderSecret
+  setHeaderSecret,
+  createType,
+  customHeaders
 }: {
   url: string;
   setUrl: (url: string) => void;
@@ -28,6 +30,8 @@ const Edit = ({
   setCurrentTool: (tool: HttpToolConfigType) => void;
   headerSecret: StoreSecretValueType;
   setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
+  createType: 'batch' | 'manual';
+  customHeaders: Record<string, string>;
 }) => {
   const { isPc } = useSystem();
 
@@ -65,12 +69,18 @@ const Edit = ({
             setUrl={setUrl}
             headerSecret={headerSecret}
             setHeaderSecret={setHeaderSecret}
+            createType={createType}
           />
         </Box>
       </Flex>
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+          <ChatTest
+            currentTool={currentTool}
+            url={url}
+            headerSecret={headerSecret}
+            customHeaders={customHeaders}
+          />
         </Box>
       )}
     </MyBox>

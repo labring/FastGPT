@@ -57,6 +57,9 @@ export type NodeToolConfigType = {
     headerSecret?: StoreSecretValueType;
     toolList: HttpToolConfigType[];
   };
+  httpTool?: {
+    toolId: string;
+  };
   apiSchemaStr?: string;
 };
 

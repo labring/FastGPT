@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -12,9 +12,10 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
-import { getMCPTools } from '@/web/core/app/api/plugin';
+import { getMCPTools, postUpdateMCPTools } from '@/web/core/app/api/plugin';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const EditForm = ({
   url,
@@ -38,6 +39,9 @@ const EditForm = ({
   const { t } = useTranslation();
 
   const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
+  const [toolParamEnabledMap, setToolParamEnabledMap] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     async (data: getMCPToolsBody) => await getMCPTools(data),
@@ -187,16 +191,78 @@ const EditForm = ({
         </Box>
       </Box>
 
-      {toolDetail && <ToolDetailModal tool={toolDetail} onClose={() => setToolDetail(null)} />}
+      {toolDetail && (
+        <ToolDetailModal
+          tool={toolDetail}
+          onClose={() => setToolDetail(null)}
+          url={url}
+          headerSecret={headerSecret}
+          toolList={toolList}
+          setToolList={setToolList}
+          setCurrentTool={setCurrentTool}
+          paramEnabled={toolParamEnabledMap[toolDetail.name] || {}}
+          setParamEnabled={(params) =>
+            setToolParamEnabledMap((prev) => ({
+              ...prev,
+              [toolDetail.name]: params
+            }))
+          }
+        />
+      )}
     </>
   );
 };
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
+const ToolDetailModal = ({
+  tool,
+  onClose,
+  url,
+  headerSecret,
+  toolList,
+  setToolList,
+  setCurrentTool,
+  paramEnabled,
+  setParamEnabled
+}: {
+  tool: McpToolConfigType;
+  onClose: () => void;
+  url: string;
+  headerSecret: StoreSecretValueType;
+  toolList: McpToolConfigType[];
+  setToolList: (t: McpToolConfigType[]) => void;
+  setCurrentTool: (t: McpToolConfigType) => void;
+  paramEnabled: Record<string, boolean>;
+  setParamEnabled: (params: Record<string, boolean>) => void;
+}) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+
+  const { runAsync: runUpdateMCPTools, loading: isUpdating } = useRequest2(
+    async (data: any) => await postUpdateMCPTools(data),
+    {
+      manual: true,
+      successToast: t('common:update_success'),
+      onSuccess: () => {
+        onClose();
+      },
+      errorToast: t('common:update_failed')
+    }
+  );
+
+  React.useEffect(() => {
+    const properties = tool.inputSchema?.properties || {};
+    // 只有当前工具的参数状态为空时才初始化
+    if (Object.keys(paramEnabled).length === 0 && Object.keys(properties).length > 0) {
+      const next: Record<string, boolean> = {};
+      Object.keys(properties).forEach((key) => {
+        // 默认开启
+        next[key] = true;
+      });
+      setParamEnabled(next);
+    }
+  }, [tool, paramEnabled, setParamEnabled]);
 
   return (
     <MyModal
@@ -224,46 +290,105 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
           {t('common:Params')}
         </Box>
 
-        <Box mt={3}>
+        <Flex
+          justifyContent={'space-between'}
+          my={2}
+          py={'10px'}
+          px={3}
+          borderRadius={'6px'}
+          backgroundColor={'myGray.100'}
+          color={'myGray.600'}
+          fontFamily={'PingFang SC'}
+          fontSize={'12px'}
+          fontStyle={'normal'}
+          fontWeight={'500'}
+          lineHeight={'16px'}
+          letterSpacing={'0.5px'}
+        >
+          <Box>{t('workflow:tool_params.params_description')}</Box>
+          <Box display={'flex'} gap={1}>
+            {t('workflow:field_used_as_tool_input')}
+            <QuestionTip label={t('workflow:tool_tip')} />
+          </Box>
+        </Flex>
+
+        <Box mt={3} px={3}>
           {Object.entries(tool.inputSchema.properties || {}).map(
             ([paramName, paramInfo]: [string, any]) => (
-              <Box key={paramName} py={2} borderBottom={'1px solid'} borderColor={'myGray.150'}>
-                <Flex alignItems="center">
-                  {tool.inputSchema.required?.includes(paramName) && (
-                    <Box mr={1} color="red.500">
-                      *
+              <Box
+                key={paramName}
+                py={2}
+                borderBottom={'1px solid'}
+                borderColor={'myGray.150'}
+                display={'flex'}
+                justifyContent={'space-between'}
+                alignItems={'center'}
+              >
+                <Box>
+                  <Flex alignItems="center">
+                    {tool.inputSchema.required?.includes(paramName) && (
+                      <Box mr={1} color="red.500">
+                        *
+                      </Box>
+                    )}
+                    <Box fontSize="14px" color="myGray.900">
+                      {paramName}
                     </Box>
-                  )}
-                  <Box fontSize="14px" color="myGray.900">
-                    {paramName}
-                  </Box>
 
-                  <Box
-                    ml={1}
-                    fontSize={'12px'}
-                    color={'myGray.600'}
-                    px={1}
-                    bg={'myGray.25'}
-                    borderRadius={'sm'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                  >
-                    {paramInfo.type}
+                    <Box
+                      ml={1}
+                      fontSize={'12px'}
+                      color={'myGray.600'}
+                      px={1}
+                      bg={'myGray.25'}
+                      borderRadius={'sm'}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                    >
+                      {paramInfo.type}
+                    </Box>
+                  </Flex>
+                  <Box mt={1} fontSize="13px" color="myGray.600">
+                    {paramInfo.description}
                   </Box>
-                </Flex>
-
-                <Box mt={1} fontSize="13px" color="myGray.600">
-                  {paramInfo.description}
                 </Box>
+                <Switch
+                  isChecked={!!paramEnabled[paramName]}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setParamEnabled({ ...paramEnabled, [paramName]: checked });
+                  }}
+                />
               </Box>
             )
           )}
         </Box>
       </ModalBody>
       <ModalFooter>
-        <Button size={'md'} onClick={onClose}>
-          {t('common:Confirm')}
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+          {t('common:Close')}
         </Button>
+        {Object.keys(tool.inputSchema.properties || {}).length > 0 && (
+          <Box pr={2}>
+            <Button
+              size={'md'}
+              isLoading={isUpdating}
+              onClick={() => {
+                runUpdateMCPTools({
+                  appId: appDetail._id,
+                  url,
+                  headerSecret,
+                  toolList,
+                  toolParamEnabledMap: {
+                    [tool.name]: paramEnabled
+                  }
+                } as any);
+              }}
+            >
+              {t('common:Confirm')}
+            </Button>
+          </Box>
+        )}
       </ModalFooter>
     </MyModal>
   );

@@ -8,8 +8,10 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
+import { HTTPClient } from '../../../app/http';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
@@ -213,6 +215,48 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           moduleLogo: avatar
         },
         [DispatchNodeResponseKeyEnum.toolResponses]: result
+      };
+    } else if (toolConfig?.httpTool?.toolId) {
+      const { pluginId } = splitCombinePluginId(toolConfig.httpTool.toolId);
+      const [parentId, toolName] = pluginId.split('/');
+      const tool = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+
+      const { headerSecret, url, toolList } =
+        tool.nodes[0].toolConfig?.httpToolSet ?? tool.nodes[0].inputs[0].value;
+
+      const httpTool = toolList?.find((t: HttpToolConfigType) => t.name === toolName);
+      if (!httpTool) {
+        throw new Error(`HTTP tool ${toolName} not found`);
+      }
+
+      const httpClient = new HTTPClient({
+        url,
+        headers: getSecretValue({
+          storeSecret: headerSecret
+        })
+      });
+
+      const result = await httpClient.toolCallSimple(
+        toolName,
+        params,
+        httpTool.path,
+        httpTool.method || 'POST'
+      );
+
+      if (result.isError) {
+        throw new Error(result.message || 'HTTP request failed');
+      }
+
+      return {
+        data: { [NodeOutputKeyEnum.rawResponse]: result.content?.[0]?.text || result },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result.content?.[0]?.text || result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result.content?.[0]?.text || result
       };
     } else {
       // mcp tool (old version compatible)

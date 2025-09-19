@@ -37,10 +37,8 @@ import { type OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 
-// 添加EditHttpPluginProps类型定义
-export type EditHttpPluginProps = {
+export type EditHttpToolSetProps = {
   id?: string;
   avatar: string;
   name: string;
@@ -48,12 +46,7 @@ export type EditHttpPluginProps = {
   pluginData?: AppSchema['pluginData'];
 };
 
-// 新增：保存成功后的本地更新回调类型
 type OnSavedPayload = { url: string; toolList: HttpToolConfigType[] };
-
-// 组件 props（仅展示新增项，其他保持不变）
-// 如已有 Props 定义，请合并该字段
-// @ts-ignore 这里直接在组件内部通过 props?.onSaved 可选使用
 
 type HeaderSecretConfigType = {
   Bearer?: SecretValueType;
@@ -155,6 +148,33 @@ const getSecretType = (config: HeaderSecretConfigType): HeaderSecretTypeEnum => 
   return HeaderSecretTypeEnum.None;
 };
 
+// auth to store header secret
+const toStoreHeaderSecret = (
+  config: HeaderSecretConfigType,
+  type: HeaderSecretTypeEnum,
+  enabled: boolean
+): StoreSecretValueType => {
+  if (!enabled) return {};
+
+  if (type === HeaderSecretTypeEnum.Bearer && config.Bearer) {
+    return { Bearer: { secret: config.Bearer.secret || '', value: config.Bearer.value || '' } };
+  }
+  if (type === HeaderSecretTypeEnum.Basic && config.Basic) {
+    return { Basic: { secret: config.Basic.secret || '', value: config.Basic.value || '' } };
+  }
+  if (type === HeaderSecretTypeEnum.Custom && Array.isArray(config.customs)) {
+    return config.customs.reduce<StoreSecretValueType>((acc, item) => {
+      if (!item?.key) return acc;
+      acc[item.key] = {
+        secret: item.value?.secret || '',
+        value: item.value?.value || ''
+      };
+      return acc;
+    }, {});
+  }
+  return {};
+};
+
 const ParamsAuthConfig = ({
   storeHeaderSecretConfig,
   onUpdate,
@@ -171,11 +191,6 @@ const ParamsAuthConfig = ({
   haveTool?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-
-  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
-  const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
-
   const headerSecretList = [
     {
       label: t('common:auth_type.None'),
@@ -196,24 +211,35 @@ const ParamsAuthConfig = ({
   ];
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { toast } = useToast();
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+  const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
 
-  // 添加HttpPluginEditModal相关的状态
-  const [schemaUrl, setSchemaUrl] = useState('');
-  const [updateTrigger, setUpdateTrigger] = useState(false);
-  const [createType, setCreateType] = useState<'batch' | 'manual'>('batch');
+  const [schemaUrl, setSchemaUrl] = useState<string>('');
+  const [updateTrigger, setUpdateTrigger] = useState<boolean>(false);
   const [apiData, setApiData] = useState<OpenApiJsonSchema>({ pathData: [], serverPath: '' });
 
-  // fish! 这个值应该不能这样处理defaultValues,后续再看看
-  // 添加表单处理 - 用于HTTP插件创建
+  // custom headers key value
+  const [customHeaders, setCustomHeaders] = useState<{ key: string; value: string }[]>(() => {
+    try {
+      const kv = JSON.parse(watchHttpTool('pluginData.customHeaders') || '{}');
+      return Object.keys(kv).map((k) => ({ key: k, value: kv[k] }));
+    } catch {
+      return [];
+    }
+  });
+
+  // modal form data
   const {
-    register: httpPluginRegister,
-    setValue: setHttpPluginValue,
-    handleSubmit: handleHttpPluginSubmit,
-    watch: watchHttpPlugin
-  } = useForm<EditHttpPluginProps>({
+    register: httpToolRegister,
+    setValue: setHttpToolValue,
+    handleSubmit: handleHttpToolSubmit,
+    watch: watchHttpTool,
+    reset: resetHttpToolForm
+  } = useForm<EditHttpToolSetProps>({
     defaultValues: {
       avatar: '',
-      name: appDetail?.name || '', // 使用appDetail.name作为默认名称
+      name: appDetail?.name || '',
       intro: '',
       pluginData: {
         apiSchemaStr: '',
@@ -222,34 +248,66 @@ const ParamsAuthConfig = ({
     }
   });
 
-  const apiSchemaStr = watchHttpPlugin('pluginData.apiSchemaStr');
+  const apiSchemaStr = watchHttpTool('pluginData.apiSchemaStr');
 
-  // 添加useRequest hook
-  const { mutate: onUpdateHttpPlugin, isLoading: isUpdatingHttpPlugin } = useRequest({
-    mutationFn: async (data: EditHttpPluginProps) => {
-      // 检查用户是否输入了有效的apiSchemaStr
+  /* load api from url */
+  const { mutate: onClickUrlLoadApi, isLoading: isLoadingUrlApi } = useRequest({
+    mutationFn: async () => {
+      if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
+        return toast({
+          title: t('common:plugin.Invalid URL'),
+          status: 'warning'
+        });
+      }
+
+      const schema = await getApiSchemaByUrl(schemaUrl);
+      setHttpToolValue('pluginData.apiSchemaStr', JSON.stringify(schema, null, 2));
+    },
+    errorToast: t('common:plugin.Invalid Schema')
+  });
+
+  // validate apiSchemaStr
+  useEffect(() => {
+    (async () => {
+      if (!apiSchemaStr) {
+        return setApiData({ pathData: [], serverPath: '' });
+      }
+      try {
+        setApiData(await str2OpenApiSchema(apiSchemaStr));
+      } catch (err) {
+        toast({
+          status: 'warning',
+          title: t('common:plugin.Invalid Schema')
+        });
+        setApiData({ pathData: [], serverPath: '' });
+      }
+    })();
+  }, [apiSchemaStr, t, toast]);
+
+  const { mutate: onUpdateHttpTool, isLoading: isUpdatingHttpTool } = useRequest({
+    mutationFn: async (data: EditHttpToolSetProps) => {
       const userApiSchemaStr = data.pluginData?.apiSchemaStr;
       const hasValidApiSchema =
         userApiSchemaStr && userApiSchemaStr.trim() !== '' && userApiSchemaStr !== '{}';
-
-      // 现在的问题: 传入了apiSchemaStr,需要从apiSchemaStr中提取出serverPath字段,并且更新到modules[0].toolConfig.httpToolSet.url中
+      const authConfig: HeaderSecretConfigType = {
+        Bearer: BearerValue,
+        Basic: BasicValue,
+        customs: authHeaders
+      };
       return putUpdateHttpPlugin({
-        appId: appDetail?._id || '', // 使用当前应用的ID
+        appId: appDetail?._id || '',
         name: appDetail?.name || data.name,
         intro: data.intro,
         avatar: data.avatar,
         pluginData: {
-          // 如果用户输入了有效的apiSchemaStr，使用用户输入的值；否则使用占位符
-          apiSchemaStr:
-            createType === 'batch' ? (hasValidApiSchema ? userApiSchemaStr : '{}') : undefined,
+          apiSchemaStr: hasValidApiSchema ? userApiSchemaStr : '{}',
           customHeaders: data.pluginData?.customHeaders
-        }
+        },
+        headerSecret: toStoreHeaderSecret(authConfig, currentAuthType, authEnabled)
       });
     },
     onSuccess: async (_, variables) => {
       try {
-        //传url进来,url也需要更新
-        // 仅在有 schema 时进行本地列表更新
         const apiSchemaStr = variables?.pluginData?.apiSchemaStr || '';
         if (apiSchemaStr) {
           const schema = await str2OpenApiSchema(apiSchemaStr);
@@ -279,62 +337,23 @@ const ParamsAuthConfig = ({
               ]
             }
           }));
-          // @ts-ignore 由父组件在使用处透传 onSaved 实现本地 setUrl/setToolList
           onSaved?.({ url: schema.serverPath || '', toolList: list } as OnSavedPayload);
         }
       } catch {}
-
-      // 成功提示 & 校准
-      toast({ status: 'success' });
+      toast({ status: 'success', title: t('common:update_success') });
       reloadApp();
       onClose();
     },
-    successToast: t('common:update_success'),
     errorToast: t('common:update_failed')
   });
 
-  // 添加从URL加载API Schema的功能
-  const { mutate: onClickUrlLoadApi, isLoading: isLoadingUrlApi } = useRequest({
-    mutationFn: async () => {
-      if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
-        return toast({
-          title: t('common:plugin.Invalid URL'),
-          status: 'warning'
-        });
-      }
-
-      const schema = await getApiSchemaByUrl(schemaUrl);
-      setHttpPluginValue('pluginData.apiSchemaStr', JSON.stringify(schema, null, 2));
-    },
-    errorToast: t('common:plugin.Invalid Schema')
-  });
-
-  // 添加schema验证的useEffect
-  useEffect(() => {
-    (async () => {
-      if (!apiSchemaStr) {
-        return setApiData({ pathData: [], serverPath: '' });
-      }
-      try {
-        setApiData(await str2OpenApiSchema(apiSchemaStr));
-      } catch (err) {
-        toast({
-          status: 'warning',
-          title: t('common:plugin.Invalid Schema')
-        });
-        setApiData({ pathData: [], serverPath: '' });
-      }
-    })();
-  }, [apiSchemaStr, t, toast]);
-
-  const headerSecretValue: HeaderSecretConfigType = useMemo(() => {
+  // stored data to form data
+  const toFormHeaderSecret: HeaderSecretConfigType = useMemo(() => {
     if (!storeHeaderSecretConfig || Object.keys(storeHeaderSecretConfig).length === 0) {
       return {};
     }
-
     const entries = Object.entries(storeHeaderSecretConfig);
     const [key, value] = entries[0];
-
     if (
       entries.length === 1 &&
       (key === HeaderSecretTypeEnum.Bearer || key === HeaderSecretTypeEnum.Basic)
@@ -346,7 +365,6 @@ const ParamsAuthConfig = ({
         }
       };
     }
-
     return {
       customs: entries.map(([key, value]) => ({
         key,
@@ -358,65 +376,86 @@ const ParamsAuthConfig = ({
     };
   }, [storeHeaderSecretConfig]);
 
+  // auth
   const [currentAuthType, setCurrentAuthType] = useState<HeaderSecretTypeEnum>(
-    getSecretType(headerSecretValue)
+    getSecretType(toFormHeaderSecret)
   );
-
+  const [authEnabled, setAuthEnabled] = useState<boolean>(false);
   const [editingIndex, setEditingIndex] = useState<number>();
   const {
-    control,
     register: authRegister,
-    watch: watch,
+    watch: watchAuth,
     handleSubmit: authHandleSubmit,
-    reset
+    reset: resetAuthForm
   } = useForm<HeaderSecretConfigType>({
     defaultValues: {
-      Basic: headerSecretValue?.Basic || { secret: '', value: '' },
-      Bearer: headerSecretValue?.Bearer || { secret: '', value: '' },
-      customs: headerSecretValue?.customs || []
+      Basic: toFormHeaderSecret?.Basic || { secret: '', value: '' },
+      Bearer: toFormHeaderSecret?.Bearer || { secret: '', value: '' },
+      customs: toFormHeaderSecret?.customs || []
     }
   });
-  const {
-    fields: customHeaders,
-    append: appendHeader,
-    remove: removeHeader
-  } = useFieldArray({
-    control,
-    name: 'customs'
-  });
-  const BearerValue = watch('Bearer');
-  const BasicValue = watch('Basic');
 
-  // Add default custom
+  const BearerValue = watchAuth('Bearer');
+  const BasicValue = watchAuth('Basic');
+
+  const [authHeaders, setAuthHeaders] = useState<
+    { key: string; value: { secret: string; value: string } }[]
+  >(toFormHeaderSecret?.customs || []);
+
+  // add default auth header automatically
   useEffect(() => {
-    if (currentAuthType === HeaderSecretTypeEnum.Custom && customHeaders.length === 0) {
-      appendHeader({ key: '', value: { secret: '', value: '' } });
+    if (currentAuthType === HeaderSecretTypeEnum.Custom && authHeaders.length === 0) {
+      setAuthHeaders([{ key: '', value: { secret: '', value: '' } }]);
     }
-  }, [currentAuthType, customHeaders.length, appendHeader]);
+  }, [currentAuthType, authHeaders.length]);
 
-  const onSubmit = async (data: HeaderSecretConfigType) => {
-    if (!headerSecretValue) return;
-
-    const storeData: StoreSecretValueType = {};
-
-    if (currentAuthType === HeaderSecretTypeEnum.Bearer) {
-      storeData.Bearer = {
-        value: data.Bearer?.value || '',
-        secret: data.Bearer?.secret || ''
-      };
-    } else if (currentAuthType === HeaderSecretTypeEnum.Basic) {
-      storeData.Basic = {
-        value: data.Basic?.value || '',
-        secret: data.Basic?.secret || ''
-      };
-    } else if (currentAuthType === HeaderSecretTypeEnum.Custom) {
-      data.customs?.forEach((item) => {
-        storeData[item.key] = item.value;
+  // init modal data
+  const handleModalOpen = () => {
+    // restore http tool form
+    if (appDetail?.pluginData) {
+      resetHttpToolForm({
+        avatar: appDetail.avatar || '',
+        name: appDetail.name || '',
+        intro: appDetail.intro || '',
+        pluginData: {
+          apiSchemaStr:
+            appDetail.pluginData.apiSchemaStr === '{}' ? '' : appDetail.pluginData.apiSchemaStr,
+          customHeaders: appDetail.pluginData.customHeaders || '{"Authorization":"Bearer"}'
+        }
       });
+
+      // restore custom headers
+      try {
+        const kv = JSON.parse(appDetail.pluginData.customHeaders || '{}');
+        setCustomHeaders(Object.keys(kv).map((k) => ({ key: k, value: kv[k] })));
+      } catch {
+        setCustomHeaders([]);
+      }
     }
 
-    onUpdate(storeData);
-    onClose();
+    // restore auth form
+    resetAuthForm({
+      Basic: toFormHeaderSecret?.Basic || { secret: '', value: '' },
+      Bearer: toFormHeaderSecret?.Bearer || { secret: '', value: '' },
+      customs: toFormHeaderSecret?.customs || []
+    });
+
+    // restore auth headers
+    setAuthHeaders(toFormHeaderSecret?.customs || []);
+
+    // restore current auth type
+    setCurrentAuthType(getSecretType(toFormHeaderSecret));
+    const savedAuthEnabled = !!(
+      storeHeaderSecretConfig && Object.keys(storeHeaderSecretConfig).length > 0
+    );
+    setAuthEnabled(savedAuthEnabled);
+
+    // reset temporary state
+    setSchemaUrl('');
+    setEditingIndex(undefined);
+    setApiData({ pathData: [], serverPath: '' });
+
+    onOpen();
   };
 
   return (
@@ -426,7 +465,7 @@ const ParamsAuthConfig = ({
         borderRadius={'md'}
         {...buttonProps}
         leftIcon={<MyIcon name={haveTool ? 'change' : 'common/setting'} w={'18px'} h={'18px'} />}
-        onClick={onOpen}
+        onClick={handleModalOpen}
       >
         {haveTool ? t('common:Config') : t('common:Start_config')}
       </Button>
@@ -483,17 +522,17 @@ const ParamsAuthConfig = ({
                 </Box>
               </Box>
               <Textarea
-                {...httpPluginRegister('pluginData.apiSchemaStr')}
+                {...httpToolRegister('pluginData.apiSchemaStr')}
                 bg={'myWhite.600'}
                 rows={10}
                 mt={3}
                 onBlur={(e) => {
                   const content = e.target.value;
-                  // 总是更新值，即使是空值，这样表单状态能正确反映用户输入
-                  setHttpPluginValue('pluginData.apiSchemaStr', content || '');
+                  setHttpToolValue('pluginData.apiSchemaStr', content || '');
                 }}
               />
             </Box>
+            {/* import */}
 
             <>
               <Box
@@ -534,23 +573,20 @@ const ParamsAuthConfig = ({
                           <Td p={0} w={'150px'}>
                             <HttpInput
                               placeholder={t('common:core.module.http.Props name')}
-                              // value={item.key}
-                              // onBlur={(val) => {
-                              //   setCustomHeaders((prev) => {
-                              //     const newHeaders = prev.map((item, i) =>
-                              //       i === index ? { ...item, key: val } : item
-                              //     );
-                              //     setValue(
-                              //       'pluginData.customHeaders',
-                              //       '{\n' +
-                              //         newHeaders
-                              //           .map((item) => `"${item.key}":"${item.value}"`)
-                              //           .join(',\n') +
-                              //         '\n}'
-                              //     );
-                              //     return newHeaders;
-                              //   });
-                              // }}
+                              value={item.key}
+                              onBlur={(val) => {
+                                setCustomHeaders((prev) => {
+                                  const newHeaders = prev.map((h, i) =>
+                                    i === index ? { ...h, key: val } : h
+                                  );
+                                  const json =
+                                    '{\n' +
+                                    newHeaders.map((h) => `"${h.key}":"${h.value}"`).join(',\n') +
+                                    '\n}';
+                                  setHttpToolValue('pluginData.customHeaders', json);
+                                  return newHeaders;
+                                });
+                              }}
                               updateTrigger={updateTrigger}
                             />
                           </Td>
@@ -558,43 +594,37 @@ const ParamsAuthConfig = ({
                             <Box display={'flex'} alignItems={'center'}>
                               <HttpInput
                                 placeholder={t('common:core.module.http.Props value')}
-                                // value={item.value}
-                                // onBlur={(val) =>
-                                //   setCustomHeaders((prev) => {
-                                //     const newHeaders = prev.map((item, i) =>
-                                //       i === index ? { ...item, value: val } : item
-                                //     );
-                                //     setValue(
-                                //       'pluginData.customHeaders',
-                                //       '{\n' +
-                                //         newHeaders
-                                //           .map((item) => `"${item.key}":"${item.value}"`)
-                                //           .join(',\n') +
-                                //         '\n}'
-                                //     );
-                                //     return newHeaders;
-                                //   })
-                                // }
+                                value={item.value}
+                                onBlur={(val) =>
+                                  setCustomHeaders((prev) => {
+                                    const newHeaders = prev.map((h, i) =>
+                                      i === index ? { ...h, value: val } : h
+                                    );
+                                    const json =
+                                      '{\n' +
+                                      newHeaders.map((h) => `"${h.key}":"${h.value}"`).join(',\n') +
+                                      '\n}';
+                                    setHttpToolValue('pluginData.customHeaders', json);
+                                    return newHeaders;
+                                  })
+                                }
                               />
                               <MyIcon
                                 name={'delete'}
                                 cursor={'pointer'}
                                 _hover={{ color: 'red.600' }}
                                 w={'14px'}
-                                // onClick={() =>
-                                //   setCustomHeaders((prev) => {
-                                //     const newHeaders = prev.filter((val) => val.key !== item.key);
-                                //     setValue(
-                                //       'pluginData.customHeaders',
-                                //       '{\n' +
-                                //         newHeaders
-                                //           .map((item) => `"${item.key}":"${item.value}"`)
-                                //           .join(',\n') +
-                                //         '\n}'
-                                //     );
-                                //     return newHeaders;
-                                //   })
-                                // }
+                                onClick={() =>
+                                  setCustomHeaders((prev) => {
+                                    const newHeaders = prev.filter((h) => h.key !== item.key);
+                                    const json =
+                                      '{\n' +
+                                      newHeaders.map((h) => `"${h.key}":"${h.value}"`).join(',\n') +
+                                      '\n}';
+                                    setHttpToolValue('pluginData.customHeaders', json);
+                                    return newHeaders;
+                                  })
+                                }
                               />
                             </Box>
                           </Td>
@@ -605,23 +635,20 @@ const ParamsAuthConfig = ({
                           <HttpInput
                             placeholder={t('common:core.module.http.Add props')}
                             value={''}
-                            // updateTrigger={updateTrigger}
-                            // onBlur={(val) => {
-                            //   if (!val) return;
-                            //   setCustomHeaders((prev) => {
-                            //     const newHeaders = [...prev, { key: val, value: ' ' }];
-                            //     setValue(
-                            //       'pluginData.customHeaders',
-                            //       '{\n' +
-                            //         newHeaders
-                            //           .map((item) => `"${item.key}":"${item.value}"`)
-                            //           .join(',\n') +
-                            //         '\n}'
-                            //     );
-                            //     return newHeaders;
-                            //   });
-                            //   setUpdateTrigger((prev) => !prev);
-                            // }}
+                            updateTrigger={updateTrigger}
+                            onBlur={(val) => {
+                              if (!val) return;
+                              setCustomHeaders((prev) => {
+                                const newHeaders = [...prev, { key: val, value: '' }];
+                                const json =
+                                  '{\n' +
+                                  newHeaders.map((h) => `"${h.key}":"${h.value}"`).join(',\n') +
+                                  '\n}';
+                                setHttpToolValue('pluginData.customHeaders', json);
+                                return newHeaders;
+                              });
+                              setUpdateTrigger((prev) => !prev);
+                            }}
                           />
                         </Td>
                         <Td p={0}>
@@ -635,19 +662,153 @@ const ParamsAuthConfig = ({
                 </TableContainer>
               </Box>
             </>
-            <Box mt={6} display={'flex'} alignItems={'center'} gap={6}>
-              <Box
-                color={'myGray.900'}
-                fontFamily={'PingFang SC'}
-                fontSize={'14px'}
-                fontStyle={'normal'}
-                fontWeight={'500'}
-                lineHeight={'20px'}
-                letterSpacing={'0.1px'}
-              >
-                {t('common:enable_auth')}
+            <Box>
+              <Box mt={6} display={'flex'} alignItems={'center'} gap={6}>
+                <Box
+                  color={'myGray.900'}
+                  fontFamily={'PingFang SC'}
+                  fontSize={'14px'}
+                  fontStyle={'normal'}
+                  fontWeight={'500'}
+                  lineHeight={'20px'}
+                  letterSpacing={'0.1px'}
+                >
+                  {t('common:enable_auth')}
+                </Box>
+                <Switch
+                  isChecked={authEnabled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAuthEnabled(checked);
+                  }}
+                />
               </Box>
-              <Switch />
+              {authEnabled && (
+                <Box mt={'16px'}>
+                  <Box
+                    color={'myGray.900'}
+                    fontFamily={'PingFang SC'}
+                    fontSize={'14px'}
+                    fontStyle={'normal'}
+                    fontWeight={'500'}
+                    lineHeight={'20px'}
+                    letterSpacing={'0.1px'}
+                  >
+                    {t('common:auth_type')}
+                  </Box>
+                  <Box my={2}>
+                    <MySelect
+                      bg={'myGray.50'}
+                      value={currentAuthType}
+                      onChange={setCurrentAuthType}
+                      list={headerSecretList}
+                    />
+                  </Box>
+                  {currentAuthType !== HeaderSecretTypeEnum.None && (
+                    <>
+                      <Flex
+                        mb={2}
+                        gap={2}
+                        color={'myGray.900'}
+                        fontWeight={'medium'}
+                        fontSize={'14px'}
+                      >
+                        {currentAuthType === HeaderSecretTypeEnum.Custom && (
+                          <Box w={1 / 3}>{t('common:key')}</Box>
+                        )}
+                        <Box w={2 / 3}>{t('common:value')}</Box>
+                      </Flex>
+
+                      {currentAuthType === HeaderSecretTypeEnum.Bearer ||
+                      currentAuthType === HeaderSecretTypeEnum.Basic ? (
+                        <AuthValueDisplay
+                          key={currentAuthType}
+                          showInput={getShowInput({
+                            secretValue:
+                              currentAuthType === HeaderSecretTypeEnum.Bearer
+                                ? BearerValue
+                                : BasicValue,
+                            editingIndex,
+                            index: 0
+                          })}
+                          fieldName={`${currentAuthType}.value` as any}
+                          onEdit={setEditingIndex}
+                          register={authRegister}
+                        />
+                      ) : (
+                        <Box>
+                          {authHeaders.map((item, index) => (
+                            <Flex key={index} mb={2} align="center">
+                              <Input
+                                w={1 / 3}
+                                h={8}
+                                bg="myGray.50"
+                                placeholder="key"
+                                maxLength={64}
+                                value={item.key}
+                                onChange={(e) => {
+                                  const newValue = e.target.value;
+                                  setAuthHeaders((prev) =>
+                                    prev.map((h, i) => (i === index ? { ...h, key: newValue } : h))
+                                  );
+                                }}
+                              />
+                              <Box w={2 / 3} ml={2}>
+                                <Input
+                                  placeholder={'Value'}
+                                  bg={'myGray.50'}
+                                  h={8}
+                                  maxLength={200}
+                                  value={item.value.value}
+                                  onChange={(e) => {
+                                    const newValue = e.target.value;
+                                    setAuthHeaders((prev) =>
+                                      prev.map((h, i) =>
+                                        i === index
+                                          ? { ...h, value: { ...h.value, value: newValue } }
+                                          : h
+                                      )
+                                    );
+                                  }}
+                                />
+                              </Box>
+                              {authHeaders.length > 1 && (
+                                <IconButton
+                                  aria-label="Remove header"
+                                  icon={<MyIcon name="delete" w="16px" />}
+                                  size="sm"
+                                  variant="ghost"
+                                  color={'myGray.500'}
+                                  _hover={{ color: 'red.500' }}
+                                  isDisabled={authHeaders.length <= 1}
+                                  onClick={() =>
+                                    setAuthHeaders((prev) => prev.filter((_, i) => i !== index))
+                                  }
+                                />
+                              )}
+                            </Flex>
+                          ))}
+
+                          <Button
+                            leftIcon={<MyIcon name="common/addLight" w="16px" />}
+                            variant="whiteBase"
+                            minH={8}
+                            h={8}
+                            onClick={() =>
+                              setAuthHeaders((prev) => [
+                                ...prev,
+                                { key: '', value: { secret: '', value: '' } }
+                              ])
+                            }
+                          >
+                            {t('common:add_new')}
+                          </Button>
+                        </Box>
+                      )}
+                    </>
+                  )}
+                </Box>
+              )}
             </Box>
           </ModalBody>
           <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
@@ -657,8 +818,8 @@ const ParamsAuthConfig = ({
               </Button>
               <Button
                 isDisabled={apiData.pathData.length === 0}
-                onClick={handleHttpPluginSubmit((data) => onUpdateHttpPlugin(data))}
-                isLoading={isUpdatingHttpPlugin}
+                onClick={handleHttpToolSubmit((data) => onUpdateHttpTool(data))}
+                isLoading={isUpdatingHttpTool}
               >
                 {t('common:Save')}
               </Button>

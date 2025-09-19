@@ -13,6 +13,7 @@ export type RunHTTPToolBody = {
   params: Record<string, any>;
   toolPath?: string;
   method?: string;
+  customHeaders?: Record<string, string>;
 };
 
 export type RunHTTPToolResponse = any;
@@ -21,18 +22,17 @@ async function handler(
   req: ApiRequestProps<RunHTTPToolBody, RunHTTPToolQuery>,
   res: ApiResponseType<RunHTTPToolResponse>
 ): Promise<RunHTTPToolResponse> {
-  const { url, toolName, headerSecret, params, toolPath, method } = req.body;
-  console.log('url', url);
-  console.log('toolName', toolName);
-  console.log('toolPath', toolPath);
-  console.log('method', method);
-  console.log('headerSecret', headerSecret);
-  console.log('params', params);
+  const { url, toolName, headerSecret, params, toolPath, method, customHeaders } = req.body;
+
   const httpClient = new HTTPClient({
     url,
-    headers: getSecretValue({
-      storeSecret: headerSecret
-    })
+    headers: {
+      ...(customHeaders || {}),
+      // auth headers have higher priority
+      ...getSecretValue({
+        storeSecret: headerSecret
+      })
+    }
   });
 
   return httpClient.toolCallSimple(toolName, params, toolPath, method);

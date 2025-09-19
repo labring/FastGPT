@@ -75,7 +75,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       const formatType = (() => {
         if (!type || type === 'all') return undefined;
         if (type === AppTypeEnum.plugin)
-          return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
+          return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpToolSet];
 
         return [AppTypeEnum.folder, type];
       })();
