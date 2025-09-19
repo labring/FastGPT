@@ -8,12 +8,33 @@ import { TaskPageContext } from '@/web/core/evaluation/context/taskPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import FolderPath from '@/components/common/folder/Path';
 import type { EvaluationStatsResponse } from '@fastgpt/global/core/evaluation/api';
+import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 
 export enum TabEnum {
   allData = 'allData',
   questionData = 'questionData',
   errorData = 'errorData'
 }
+
+// 定义过滤参数类型
+export type TabFilterParams = {
+  status?: EvaluationStatusEnum;
+  belowThreshold?: boolean;
+};
+
+// 获取不同 tab 对应的过滤参数
+export const getTabFilterParams = (tab: TabEnum): TabFilterParams => {
+  switch (tab) {
+    case TabEnum.allData:
+      return {}; // 不过滤
+    case TabEnum.questionData:
+      return { belowThreshold: true }; // 低于阈值的数据
+    case TabEnum.errorData:
+      return { status: EvaluationStatusEnum.error }; // 错误状态的数据
+    default:
+      return {};
+  }
+};
 
 const NavBar = ({
   currentTab,
@@ -43,8 +64,8 @@ const NavBar = ({
       {
         labelKey: 'dashboard_evaluation:question_data_with_count',
         value: TabEnum.questionData,
-        count: statsData?.queuing || 0,
-        shouldShow: (statsData?.queuing || 0) > 0
+        count: statsData?.failed || 0,
+        shouldShow: (statsData?.failed || 0) > 0
       },
       {
         labelKey: 'dashboard_evaluation:error_data_with_count',

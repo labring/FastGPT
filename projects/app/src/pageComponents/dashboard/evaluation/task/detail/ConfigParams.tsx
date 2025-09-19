@@ -1,10 +1,8 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import {
   Box,
   Button,
   Flex,
-  Grid,
-  HStack,
   ModalBody,
   ModalFooter,
   Table,
@@ -24,142 +22,106 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getSummaryConfigDetail, postUpdateSummaryConfig } from '@/web/core/evaluation/task';
+import { CalculateMethodEnum, CaculateMethodMap } from '@fastgpt/global/core/evaluation/constants';
+import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
+import type {
+  UpdateSummaryConfigBody,
+  UpdateMetricConfigItem
+} from '@fastgpt/global/core/evaluation/summary/api';
 
-// 分数聚合方式枚举
-enum ScoreAggregationType {
-  Average = 'average',
-  Median = 'median'
-}
-
-// 评测维度类型
 interface EvaluationDimension {
-  id: string;
+  metricId: string;
   name: string;
-  description: string; // 维度描述
+  description: string;
   threshold: number;
   weight: number;
 }
 
-// 表单数据类型
 interface ConfigParamsForm {
-  aggregationType: ScoreAggregationType;
+  calculateType: CalculateMethodEnum;
   dimensions: EvaluationDimension[];
 }
-
-// TODO: 临时mock数据，待外部传入dimensions时移除
-const mockDimensions: EvaluationDimension[] = [
-  {
-    id: '1',
-    name: '回答准确度',
-    description: '评估回答内容的准确性和事实正确性',
-    threshold: 80,
-    weight: 30
-  },
-  {
-    id: '2',
-    name: '问题相关度',
-    description: '评估回答与问题的相关程度',
-    threshold: 80,
-    weight: 15
-  },
-  {
-    id: '3',
-    name: '回答创意性',
-    description: '评估回答的创新性和独特性',
-    threshold: 80,
-    weight: 10
-  },
-  {
-    id: '4',
-    name: '回答清晰度',
-    description: '评估回答的表达清晰度和可理解性',
-    threshold: 70,
-    weight: 10
-  },
-  {
-    id: '5',
-    name: '回答完整性',
-    description: '评估回答是否全面覆盖了问题的各个方面',
-    threshold: 75,
-    weight: 10
-  },
-  {
-    id: '6',
-    name: '语言流畅度',
-    description: '评估回答的语言表达流畅程度',
-    threshold: 70,
-    weight: 5
-  },
-  {
-    id: '7',
-    name: '逻辑连贯性',
-    description: '评估回答的逻辑结构和连贯性',
-    threshold: 75,
-    weight: 5
-  },
-  {
-    id: '8',
-    name: '专业术语使用',
-    description: '评估回答中专业术语使用的准确性和适当性',
-    threshold: 65,
-    weight: 5
-  },
-  {
-    id: '9',
-    name: '回答时效性',
-    description: '评估回答内容的时效性和最新程度',
-    threshold: 60,
-    weight: 5
-  },
-  {
-    id: '10',
-    name: '回答友好度',
-    description: '评估回答的语气和表达是否友好、易于接受',
-    threshold: 70,
-    weight: 5
-  }
-];
-
-// 默认表单数据
-const defaultForm: ConfigParamsForm = {
-  aggregationType: ScoreAggregationType.Average,
-  dimensions: mockDimensions
-};
-
-// 分数聚合方式选项
-const aggregationOptions = [
-  { value: ScoreAggregationType.Average, label: '平均值' },
-  { value: ScoreAggregationType.Median, label: '中位数' }
-];
 
 const ConfigParamsModal = ({
   isOpen,
   onClose,
   onConfirm,
-  defaultData = defaultForm,
-  dimensions // 外部传入的评测维度数据
+  evalTaskId
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: ConfigParamsForm) => void;
-  defaultData?: ConfigParamsForm;
-  dimensions?: EvaluationDimension[]; // 可选的外部维度数据
+  onConfirm?: () => void;
+  evalTaskId: string;
 }) => {
   const { t } = useTranslation();
 
-  // 使用外部传入的dimensions或默认数据
-  const formDefaultValues = useMemo(() => {
-    return {
-      ...defaultData,
-      dimensions: dimensions || defaultData.dimensions
-    };
-  }, [defaultData, dimensions]);
+  // 分数聚合方式选项
+  const aggregationOptions = useMemo(
+    () => [
+      {
+        value: CalculateMethodEnum.mean,
+        label: t(CaculateMethodMap[CalculateMethodEnum.mean].name)
+      },
+      {
+        value: CalculateMethodEnum.median,
+        label: t(CaculateMethodMap[CalculateMethodEnum.median].name)
+      }
+    ],
+    [t]
+  );
 
-  const { control, handleSubmit, watch, setValue } = useForm<ConfigParamsForm>({
-    defaultValues: formDefaultValues
+  const { control, handleSubmit, watch, setValue, reset } = useForm<ConfigParamsForm>({
+    defaultValues: {
+      calculateType: CalculateMethodEnum.mean,
+      dimensions: []
+    }
   });
 
   const watchedDimensions = watch('dimensions');
+
+  // 加载配置数据
+  const { run: loadConfigData, loading: loadingData } = useRequest2(
+    async () => {
+      if (!evalTaskId) return;
+
+      const configData = await getSummaryConfigDetail(evalTaskId);
+
+      // 转换数据格式
+      const dimensions: EvaluationDimension[] = configData.metricsConfig.map((metric) => {
+        // 优先使用内置维度的国际化名称和描述
+        const builtinInfo = getBuiltinDimensionInfo(metric.metricName);
+        const displayName = builtinInfo ? t(builtinInfo.name) : metric.metricName;
+        const description = builtinInfo ? t(builtinInfo.description) : metric.metricDescription;
+
+        return {
+          metricId: metric.metricId,
+          name: displayName,
+          description: description,
+          threshold: (metric.thresholdValue || 0.8) * 100, // 阈值乘以100转换为百分比显示
+          weight: metric.weight
+        };
+      });
+
+      // 重置表单数据
+      reset({
+        calculateType: configData.calculateType,
+        dimensions
+      });
+    },
+    {
+      errorToast: t('common:load_failed')
+    }
+  );
+
+  // 弹窗打开时加载数据
+  useEffect(() => {
+    if (isOpen) {
+      loadConfigData();
+    }
+  }, [isOpen, loadConfigData]);
 
   // 计算综合评分权重总和
   const totalWeight = useMemo(() => {
@@ -232,6 +194,34 @@ const ConfigParamsModal = ({
     [watchedDimensions, setValue]
   );
 
+  // 处理表单提交
+  const { run: handleFormSubmit, loading: submitting } = useRequest2(
+    async (data: ConfigParamsForm) => {
+      // 转换数据格式
+      const metricsConfig: UpdateMetricConfigItem[] = data.dimensions.map((dimension) => ({
+        metricId: dimension.metricId,
+        thresholdValue: dimension.threshold / 100, // 阈值除以100转换为0-1范围
+        weight: dimension.weight
+      }));
+
+      const updateData: UpdateSummaryConfigBody = {
+        evalId: evalTaskId,
+        calculateType: data.calculateType,
+        metricsConfig
+      };
+
+      await postUpdateSummaryConfig(updateData);
+    },
+    {
+      successToast: t('common:save_success'),
+      errorToast: t('common:save_failed'),
+      onSuccess: () => {
+        onConfirm?.();
+        onClose();
+      }
+    }
+  );
+
   return (
     <MyModal
       isOpen={isOpen}
@@ -241,6 +231,7 @@ const ConfigParamsModal = ({
       w={'100%'}
       maxW={['90vw', '800px']}
       isCentered
+      isLoading={loadingData}
     >
       <ModalBody>
         <VStack spacing={6} align="stretch">
@@ -256,7 +247,7 @@ const ConfigParamsModal = ({
               </Flex>
             </FormLabel>
             <Controller
-              name="aggregationType"
+              name="calculateType"
               control={control}
               render={({ field }) => (
                 <MySelect
@@ -307,7 +298,7 @@ const ConfigParamsModal = ({
                 </Thead>
                 <Tbody>
                   {watchedDimensions.map((dimension, index) => (
-                    <Tr key={dimension.id}>
+                    <Tr key={dimension.metricId}>
                       <Td>
                         <Flex alignItems="center">
                           <Text fontWeight="500" color="myGray.900" fontSize="14px">
@@ -418,10 +409,8 @@ const ConfigParamsModal = ({
         <Button
           variant="primary"
           isDisabled={showWeightColumn ? !isWeightValid : false}
-          onClick={handleSubmit((data) => {
-            onConfirm(data);
-            onClose();
-          })}
+          isLoading={submitting}
+          onClick={handleSubmit((data) => handleFormSubmit(data))}
         >
           {t('common:Confirm')}
         </Button>
