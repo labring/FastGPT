@@ -92,7 +92,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     processing: {
       label: t('dashboard_evaluation:data_generating'),
-      colorSchema: 'primary.600'
+      colorSchema: 'blue'
     }
   };
 
