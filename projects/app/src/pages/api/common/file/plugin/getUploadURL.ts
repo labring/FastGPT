@@ -19,13 +19,11 @@ async function handler(
     return Promise.reject('Filename is required');
   }
 
-  const presignedData = await PluginS3Service.generateUploadPresignedURL({
-    filepath: 'tools',
+  return PluginS3Service.generateUploadPresignedURL({
+    filepath: 'system/tools',
     contentType: mimeMap['.js'],
     filename
   });
-
-  return presignedData;
 }
 
 export default NextAPI(handler);

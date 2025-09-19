@@ -23,9 +23,3 @@ async function handler(
 }
 
 export default NextAPI(handler);
-
-export const config = {
-  api: {
-    bodyParser: true
-  }
-};

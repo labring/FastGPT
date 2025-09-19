@@ -1,41 +1,20 @@
 'use client';
+import UploadSystemToolModal from '@/pageComponents/app/plugin/UploadSystemToolModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-import {
-  Button,
-  useDisclosure,
-  ModalBody,
-  ModalFooter,
-  VStack,
-  HStack,
-  Link
-} from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import FileSelector, {
-  type SelectFileItemType
-} from '@/pageComponents/dataset/detail/components/FileSelector';
 import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
-import {
-  getPluginUploadPresignedURL,
-  postConfirmUpload,
-  postS3UploadFile,
-  postDeletePlugin
-} from '@/web/common/file/api';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { getSystemPlugTemplates, postDeletePlugin } from '@/web/core/app/api/plugin';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { Box, Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { getDocPath } from '@/web/common/system/doc';
 
 const SystemTools = () => {
   const { t } = useTranslation();
@@ -48,7 +27,6 @@ const SystemTools = () => {
   const isRoot = userInfo?.username === 'root';
 
   const [searchKey, setSearchKey] = useState('');
-  const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [deletingPlugins, setDeletingPlugins] = useState<Set<string>>(new Set());
 
   const {
@@ -58,57 +36,11 @@ const SystemTools = () => {
   } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  const handleCloseUploadModal = () => {
-    setSelectFiles([]);
-    onClose();
-  };
-
-  const { run: handlePluginUpload, loading: uploadLoading } = useRequest2(
-    async () => {
-      const file = selectFiles[0];
-
-      const presignedData = await getPluginUploadPresignedURL({
-        filename: file.name
-      });
-
-      const formData = new FormData();
-      Object.entries(presignedData.formData).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-      formData.append('file', file.file);
-
-      await postS3UploadFile(presignedData.uploadUrl, formData);
-
-      await postConfirmUpload({
-        objectName: presignedData.objectName
-      });
-
-      // await postUploadFileAndUrl(fileUrl);
-      await refreshPlugins({ parentId: null });
-    },
-    {
-      manual: true,
-      onSuccess: async () => {
-        toast({
-          title: t('common:import_success'),
-          status: 'success'
-        });
-
-        setSelectFiles([]);
-        onClose();
-        // null means all tools
-      },
-      onError: (error) => {
-        toast({
-          title: t('common:import_failed'),
-          description: error instanceof Error ? error.message : t('dataset:common.error.unKnow'),
-          status: 'error'
-        });
-      }
-    }
-  );
+  const {
+    isOpen: isOpenUploadPlugin,
+    onOpen: onOpenUploadPlugin,
+    onClose: onCloseUploadPlugin
+  } = useDisclosure();
 
   const handlePluginDelete = async (pluginId: string) => {
     setDeletingPlugins((prev) => new Set(prev).add(pluginId));
@@ -189,7 +121,9 @@ const SystemTools = () => {
                         placeholder={t('common:plugin.Search plugin')}
                       />
                     </Box>
-                    {isRoot && <Button onClick={onOpen}>{t('file:common:import_update')}</Button>}
+                    {isRoot && (
+                      <Button onClick={onOpenUploadPlugin}>{t('file:common:import_update')}</Button>
+                    )}
                   </Flex>
                 </Flex>
                 <Grid
@@ -216,71 +150,12 @@ const SystemTools = () => {
                 {filterPluginsByGroup.length === 0 && <EmptyTip />}
               </Box>
             </MyBox>
-            <MyModal
-              title={t('file:common.upload_system_tools')}
-              isOpen={isOpen}
-              onClose={handleCloseUploadModal}
-              iconSrc="core/app/type/plugin"
-              iconColor={'primary.600'}
-              h={'auto'}
-            >
-              <ModalBody>
-                <Flex justifyContent={'flex-end'} mb={3} fontSize={'sm'} fontWeight={500}>
-                  <Link
-                    display={'flex'}
-                    alignItems={'center'}
-                    gap={0.5}
-                    href={getDocPath('/docs/guide/plugins/upload_system_tool/')}
-                    color="primary.600"
-                    target="_blank"
-                  >
-                    <MyIcon name={'book'} w={'18px'} />
-                    {t('common:Instructions')}
-                  </Link>
-                </Flex>
-                <FileSelector
-                  maxCount={1}
-                  maxSize="10MB"
-                  fileType=".js"
-                  selectFiles={selectFiles}
-                  setSelectFiles={setSelectFiles}
-                />
-                {/* File render */}
-                {selectFiles.length > 0 && (
-                  <VStack mt={4} gap={2}>
-                    {selectFiles.map((item, index) => (
-                      <HStack key={index} w={'100%'}>
-                        <MyIcon name={item.icon as any} w={'1rem'} />
-                        <Box color={'myGray.900'}>{item.name}</Box>
-                        <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
-                          {item.size}
-                        </Box>
-                        <MyIconButton
-                          icon="delete"
-                          hoverColor="red.500"
-                          hoverBg="red.50"
-                          onClick={() => {
-                            setSelectFiles(selectFiles.filter((_, i) => i !== index));
-                          }}
-                        />
-                      </HStack>
-                    ))}
-                  </VStack>
-                )}
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="whiteBase" mr={2} onClick={handleCloseUploadModal}>
-                  {t('common:Close')}
-                </Button>
-                <Button
-                  onClick={handlePluginUpload}
-                  isDisabled={selectFiles.length === 0}
-                  isLoading={uploadLoading}
-                >
-                  {t('common:comfirm_import')}
-                </Button>
-              </ModalFooter>
-            </MyModal>
+            {isOpenUploadPlugin && (
+              <UploadSystemToolModal
+                onClose={onCloseUploadPlugin}
+                onSuccess={() => refreshPlugins({ parentId: null })}
+              />
+            )}
           </>
         );
       }}

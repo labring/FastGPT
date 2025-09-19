@@ -10,9 +10,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppSelect from '@/components/Select/AppSelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import FileSelector, {
-  type SelectFileItemType
-} from '@/pageComponents/dataset/detail/components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { Trans } from 'next-i18next';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';

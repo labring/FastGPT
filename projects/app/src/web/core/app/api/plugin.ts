@@ -1,4 +1,4 @@
-import { GET, POST } from '@/web/common/api/request';
+import { DELETE, GET, POST } from '@/web/common/api/request';
 import type { createHttpPluginBody } from '@/pages/api/core/app/httpPlugin/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpPlugin/update';
 import type {
@@ -33,6 +33,7 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
+import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -95,6 +96,17 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
+
+export const getPluginUploadPresignedURL = (data: { filename: string }) =>
+  GET<UploadPresignedURLResponse>('/common/file/plugin/getUploadURL', data);
+
+export const postConfirmUpload = (data: { objectName: string }) =>
+  GET<string>('/common/file/plugin/confirmUpload', data);
+
+export const postDeletePlugin = (toolId: string) =>
+  DELETE('/plugin/delete', {
+    toolId
+  });
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>

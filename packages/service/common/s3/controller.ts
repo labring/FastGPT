@@ -170,5 +170,5 @@ export class S3Service {
 }
 
 declare global {
-  var minioClient: Client;
+  var s3Client: Client;
 }
