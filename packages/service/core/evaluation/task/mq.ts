@@ -13,16 +13,24 @@ import {
 export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.evalTask, {
   defaultJobOptions: {
     attempts: 1, // The task queue does not retry, and errors are handled internally
-    removeOnComplete: 100,
-    removeOnFail: 100
+    removeOnComplete: {
+      count: 100
+    },
+    removeOnFail: {
+      count: 100
+    }
   }
 });
 
 export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.evalTaskItem, {
   defaultJobOptions: {
     attempts: 1, // Disable BullMQ retry, use manual retry mechanism instead
-    removeOnComplete: 500,
-    removeOnFail: 500
+    removeOnComplete: {
+      count: 500
+    },
+    removeOnFail: {
+      count: 500
+    }
   }
 });
 
