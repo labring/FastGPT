@@ -300,8 +300,6 @@ export const onOptimizePrompt = async ({
 };
 
 export const onOptimizeCode = async ({
-  codeType,
-  code,
   optimizerInput,
   model,
   conversationHistory = [],
@@ -312,8 +310,6 @@ export const onOptimizeCode = async ({
   await streamFetch({
     url: '/api/core/workflow/optimizeCode',
     data: {
-      codeType,
-      code,
       optimizerInput,
       model,
       conversationHistory

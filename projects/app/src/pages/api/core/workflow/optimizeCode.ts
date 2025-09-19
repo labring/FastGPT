@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
@@ -12,8 +11,6 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type OptimizeCodeBody = {
-  codeType: SandboxCodeTypeEnum;
-  code: string;
   optimizerInput: string;
   model: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
@@ -84,26 +81,9 @@ function main({paramName, paramRefer, paramType}) {
 `;
 };
 
-const getPromptNodeCopilotUserPrompt = (codeType: string, code: string, optimizerInput: string) => {
-  return `请严格遵循用户的需求，生成${codeType}代码: 
-  <当前代码>
-  ${code}
-  </当前代码>
-  <用户要求>
-  ${optimizerInput}
-  </用户要求>
-  `;
-};
-
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   try {
-    const {
-      codeType,
-      code: currentCode,
-      optimizerInput,
-      model,
-      conversationHistory = []
-    } = req.body;
+    const { optimizerInput, model, conversationHistory = [] } = req.body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -123,7 +103,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       ...conversationHistory,
       {
         role: 'user',
-        content: getPromptNodeCopilotUserPrompt(codeType, currentCode, optimizerInput)
+        content: optimizerInput
       }
     ];
 

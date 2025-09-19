@@ -33,8 +33,6 @@ import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
 
 export type OnOptimizeCodeProps = {
-  codeType: SandboxCodeTypeEnum;
-  code: string;
   optimizerInput: string;
   model: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
@@ -70,7 +68,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     }).filter((item) => item.parent.id !== nodeId);
   }, [nodeId, nodeList, edges, appDetail, t]);
 
-  const { codeType, code } = useMemo(() => {
+  const { codeType, code, dynamicInputs, dynamicOutputs } = useMemo(() => {
     const currentNode = nodeList.find((node) => node.nodeId === nodeId);
     const codeTypeInput = currentNode?.inputs?.find(
       (input) => input.key === NodeInputKeyEnum.codeType
@@ -78,9 +76,50 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     const codeInput = currentNode?.inputs?.find((input) => input.key === NodeInputKeyEnum.code);
     return {
       codeType: codeTypeInput?.value || SandboxCodeTypeEnum.js,
-      code: codeInput?.value || JS_TEMPLATE
+      code: codeInput?.value || JS_TEMPLATE,
+      dynamicInputs:
+        currentNode?.inputs?.filter(
+          (input) =>
+            !['system_addInputParam', 'codeType', NodeInputKeyEnum.code].includes(input.key)
+        ) || [],
+      dynamicOutputs:
+        currentNode?.outputs?.filter(
+          (output) => !['system_rawResponse', 'error', 'system_addOutputParam'].includes(output.key)
+        ) || []
     };
   }, [nodeList, nodeId]);
+
+  useEffect(() => {
+    if (conversationHistory.length === 0) {
+      const configMessage = {
+        role: 'user' as const,
+        content: t('app:copilot_config_message', {
+          codeType,
+          code,
+          inputs: dynamicInputs
+            .map((input) => {
+              const referenceInfo =
+                input.value && Array.isArray(input.value) && input.value.length === 2
+                  ? `[${input.value[0]}.${input.value[1]}]`
+                  : '';
+              return `- ${input.label} (${input.valueType}): ${referenceInfo}`;
+            })
+            .join('\n'),
+          outputs: dynamicOutputs
+            .map((output) => `- ${output.label} (${output.valueType})`)
+            .join('\n')
+        })
+      };
+
+      const confirmMessage = {
+        role: 'assistant' as const,
+        content: t('app:copilot_confirm_message')
+      };
+
+      const initialConversationHistory = [configMessage, confirmMessage];
+      setConversationHistory(initialConversationHistory);
+    }
+  }, [conversationHistory, codeType, code, dynamicInputs, dynamicOutputs, t]);
 
   const modelOptions = useMemo(() => {
     return llmModelList.map((model) => ({
@@ -146,8 +185,6 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
     let fullResponse = '';
 
     await onOptimizeCode({
-      codeType,
-      code,
       optimizerInput: processedInput,
       model: selectedModel,
       conversationHistory,
@@ -182,11 +219,6 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
         value: { ...codeInput, value: code }
       });
 
-      const dynamicInputs =
-        currentNode.inputs?.filter(
-          (input) =>
-            !['system_addInputParam', 'codeType', NodeInputKeyEnum.code].includes(input.key)
-        ) || [];
       dynamicInputs.forEach((input) => {
         onChangeNode({ nodeId, type: 'delInput', key: input.key });
       });
@@ -220,11 +252,6 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
           }
         });
       });
-
-      const dynamicOutputs =
-        currentNode.outputs?.filter(
-          (output) => !['system_rawResponse', 'error', 'system_addOutputParam'].includes(output.key)
-        ) || [];
       dynamicOutputs.forEach((output) => {
         onChangeNode({ nodeId, type: 'delOutput', key: output.key });
       });
