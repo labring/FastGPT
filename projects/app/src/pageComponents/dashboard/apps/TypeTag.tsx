@@ -32,6 +32,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#FFE4EE',
       color: '#E82F72'
     },
+    [AppTypeEnum.httpToolSet]: {
+      label: t('app:type.Http tool set'),
+      icon: 'core/app/type/httpPlugin',
+      bg: '#FFE4EE',
+      color: '#E82F72'
+    },
     [AppTypeEnum.toolSet]: {
       label: t('app:type.MCP tools'),
       icon: 'core/app/type/mcpTools',
