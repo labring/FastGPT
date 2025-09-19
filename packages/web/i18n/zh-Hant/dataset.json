@@ -320,5 +320,8 @@
   "config": "配置",
   "refresh_failed": "刷新失敗",
   "unknown_error": "未知錯誤",
-   "no_data_available": "暫無數據"
+   "no_data_available": "暫無數據",
+   "database_sql_query": "資料庫檢索的 SQL 語句",
+   "search_result": "檢索結果",
+   "no_search_result": "暫無檢索結果"
 }
