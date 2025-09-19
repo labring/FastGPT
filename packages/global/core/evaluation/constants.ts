@@ -76,4 +76,3 @@ export const MAX_MODEL_NAME_LENGTH = 100;
 export const MAX_USER_INPUT_LENGTH = 1000;
 export const MAX_OUTPUT_LENGTH = 4000;
 export const MAX_PROMPT_LENGTH = 4000;
-export const MAX_CSV_ROWS = 10000;

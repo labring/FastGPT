@@ -116,7 +116,6 @@
   "file_id_required": "文件 ID 是必需的",
   "file_must_be_csv": "文件必須是 CSV 文件",
   "csv_invalid_structure": "CSV 文件結構無效",
-  "csv_too_many_rows": "CSV 文件包含的行數過多（最多 10,000 行）",
   "csv_parsing_error": "CSV 解析錯誤",
   "csv_no_data_rows": "CSV 文件不包含數據行",
   "count_must_be_greater_than_zero": "計數必須大於零",
