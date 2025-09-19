@@ -101,7 +101,7 @@ export const getEvaluationStats = (evalId: string) => {
     evaluating: 2,
     queuing: 1,
     error: 2,
-    avgScore: 85.5
+    failed: 3
   } as EvaluationStatsResponse);
 
   // 真实接口调用（联调时启用）
