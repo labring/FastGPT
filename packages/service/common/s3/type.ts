@@ -1,17 +1,17 @@
+import type { ClientOptions } from 'minio';
+
 export type S3ServiceConfig = {
-  endpoint: string;
-  port: number;
-  useSSL: boolean;
-  accessKey: string;
-  secretKey: string;
   bucket: string;
-  customEndpoint?: string;
+  externalBaseURL?: string;
   /**
    * Unit: Byte
    */
   maxFileSize?: number;
+  /**
+   * for executing some init function for the s3 service
+   */
   initFunction?: () => Promise<any>;
-};
+} & ClientOptions;
 
 export type FileMetadataType = {
   fileId: string;

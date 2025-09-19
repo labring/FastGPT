@@ -21,10 +21,10 @@ export class S3Service {
   initFunction?: () => Promise<any>;
 
   constructor(config?: Partial<S3ServiceConfig>) {
-    this.config = { ...defualtS3Config, ...config };
+    this.config = { ...defualtS3Config, ...config } as S3ServiceConfig;
 
     this.client = new Client({
-      endPoint: this.config.endpoint,
+      endPoint: this.config.endPoint,
       port: this.config.port,
       useSSL: this.config.useSSL,
       accessKey: this.config.accessKey,
@@ -62,10 +62,10 @@ export class S3Service {
         ? `:${this.config.port}`
         : '';
 
-    const customEndpoint = this.config.customEndpoint;
-    return customEndpoint
-      ? `${customEndpoint}/${encodeURIComponent(filename)}`
-      : `${protocol}://${this.config.endpoint}${port}/${this.config.bucket}/${encodeURIComponent(filename)}`;
+    const externalBaseURL = this.config.externalBaseURL;
+    return externalBaseURL
+      ? `${externalBaseURL}/${encodeURIComponent(filename)}`
+      : `${protocol}://${this.config.endPoint}${port}/${this.config.bucket}/${encodeURIComponent(filename)}`;
   }
 
   uploadFile = async (fileBuffer: Buffer, originalFilename: string): Promise<FileMetadataType> => {
