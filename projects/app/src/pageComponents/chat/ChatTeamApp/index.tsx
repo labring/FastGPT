@@ -41,6 +41,7 @@ const MyApps = () => {
         [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
         [AppTypeEnum.plugin]: t('app:type.Plugin'),
         [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
+        [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
         [AppTypeEnum.folder]: t('common:Folder'),
         [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
         [AppTypeEnum.tool]: t('app:type.MCP tools'),

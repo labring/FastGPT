@@ -301,6 +301,7 @@
   "type.Http manual": "Create manually",
   "type.Http manual tip": "Create a single tool by curl or manually filling in parameters",
   "type.Http plugin": "HTTP Plugin",
+  "type.Http tool set": "HTTP Tool Set",
   "type.Import from json": "Import JSON",
   "type.Import from json tip": "Create applications directly through JSON configuration files",
   "type.Import from json_error": "Failed to get workflow data, please check the URL or manually paste the JSON data",

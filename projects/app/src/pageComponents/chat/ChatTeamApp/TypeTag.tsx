@@ -26,8 +26,14 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#D0F5EE',
       color: '#007E7C'
     },
+    [AppTypeEnum.httpPlugin]: {
+      label: t('account_team:type.Http plugin'),
+      icon: 'core/app/type/httpPlugin',
+      bg: '#FFE4EE',
+      color: '#E82F72'
+    },
     [AppTypeEnum.httpToolSet]: {
-      label: t('app:type.Http plugin'),
+      label: t('app:type.Http tool set'),
       icon: 'core/app/type/httpPlugin',
       bg: '#FFE4EE',
       color: '#E82F72'
