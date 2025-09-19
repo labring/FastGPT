@@ -58,14 +58,12 @@ type Props = FlowNodeItemType & {
     delete?: boolean;
   };
   customStyle?: FlexProps;
-  nodeButtons?: React.ReactNode[];
+  rtDoms?: React.ReactNode[];
 };
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
-
   const { toast } = useToast();
-
   const {
     children,
     avatar = LOGO_ICON,
@@ -86,14 +84,18 @@ const NodeCard = (props: Props) => {
     isFolded,
     customStyle,
     inputs,
-    nodeButtons
+    rtDoms
   } = props;
+
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
 
-  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const inputConfig = useMemo(
+    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
+    [inputs]
+  );
   const [
     isOpenToolParamConfigModal,
     { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
@@ -200,7 +202,7 @@ const NodeCard = (props: Props) => {
             </UseGuideModal>
           ]
         : []),
-      ...(nodeButtons ? nodeButtons : [])
+      ...(rtDoms ?? [])
     ];
 
     return (
@@ -284,10 +286,10 @@ const NodeCard = (props: Props) => {
               </Button>
               <Box flex={1} mr={1} />
               {showVersion && <NodeVersion node={node!} />}
-              {headerButtons.map((button, index) => (
+              {headerButtons.map((Node, index) => (
                 <React.Fragment key={index}>
                   {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
-                  {button}
+                  {Node}
                 </React.Fragment>
               ))}
               {!!error && (

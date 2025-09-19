@@ -16,6 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -25,78 +26,68 @@ const defaultInput: FlowNodeInputItemType = {
   label: ''
 };
 
-const DynamicInputs = (props: RenderInputProps) => {
-  const { item, inputs = [], nodeId } = props;
+const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const dynamicInputs = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
+  const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
+  const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
 
-  const onAddField = useCallback(
-    ({ data }: { data: FlowNodeInputItemType }) => {
-      if (!data.key) return;
-
-      const newInput: FlowNodeInputItemType = {
-        ...data,
-        required: true
-      };
-
-      onChangeNode({
-        nodeId,
-        type: 'addInput',
-        value: newInput
-      });
-    },
-    [nodeId, onChangeNode]
-  );
-
-  const Render = useMemo(() => {
-    return (
-      <Box borderBottom={'base'} pb={3}>
-        <HStack className="nodrag" cursor={'default'} position={'relative'}>
-          <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-            <Box>{item.label || t('workflow:custom_input')}</Box>
-            {item.description && <QuestionTip label={t(item.description as any)} />}
-          </HStack>
+  return (
+    <Box borderBottom={'base'} pb={3}>
+      <HStack className="nodrag" cursor={'default'} position={'relative'}>
+        <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
+          <Box>{item.label || t('workflow:custom_input')}</Box>
+          {item.description && <QuestionTip label={t(item.description as any)} />}
         </HStack>
-        {/* field render */}
-        <Box mt={2}>
-          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
-            <Flex flex={'1'}>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
-                {t('workflow:Variable_name')}
-              </Box>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
-                {t('app:reference_variable')}
-              </Box>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'140px'} px={3}>
-                {t('common:core.module.Data Type')}
-              </Box>
-            </Flex>
-            <Box w={6} />
-          </Flex>
-          {[...dynamicInputs, defaultInput].map((children) => (
-            <Box key={children.key} _notLast={{ mb: 1.5 }}>
-              <Reference {...props} inputChildren={children} />
+      </HStack>
+      {/* field render */}
+      <Box mt={2}>
+        <Flex alignItems={'center'} mb={2} gap={2} px={1}>
+          <Flex flex={'1'}>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+              {t('workflow:Variable_name')}
             </Box>
-          ))}
-        </Box>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
+              {t('app:reference_variable')}
+            </Box>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'140px'} px={3}>
+              {t('common:core.module.Data Type')}
+            </Box>
+          </Flex>
+          <Box w={6} />
+        </Flex>
+        {[...dynamicInputs, defaultInput].map((children) => (
+          <Box key={children.key} _notLast={{ mb: 1.5 }}>
+            <Reference
+              nodeId={nodeId}
+              existsKeys={existsKeys}
+              item={item}
+              inputChildren={children}
+              hasDynamicInputs={dynamicInputs.length > 0}
+            />
+          </Box>
+        ))}
       </Box>
-    );
-  }, [dynamicInputs, item, onAddField, props, t]);
-
-  return Render;
+    </Box>
+  );
 };
 
 export default React.memo(DynamicInputs);
 
 const Reference = ({
   inputChildren,
-  ...props
-}: RenderInputProps & {
+  nodeId,
+  existsKeys,
+  item,
+  hasDynamicInputs
+}: {
+  nodeId: string;
+  item: FlowNodeInputItemType;
+  existsKeys: string[];
   inputChildren: FlowNodeInputItemType;
+  hasDynamicInputs: boolean;
 }) => {
-  const { nodeId, inputs, item } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -123,7 +114,14 @@ const Reference = ({
     (label: string) => {
       setIsEditing(false);
       if (!label.trim()) return;
-      if (inputs?.find((input) => input.key === label)) return;
+      if (existsKeys.includes(label)) {
+        toast({
+          status: 'warning',
+          title: t('workflow:field_name_already_exists')
+        });
+        return;
+      }
+
       if (isEmptyItem && label) {
         const newInput: FlowNodeInputItemType = {
           ...defaultInput,
@@ -258,7 +256,7 @@ const Reference = ({
           />
         </Box>
       )}
-      {isEmptyItem && <Box w={6} />}
+      {isEmptyItem && hasDynamicInputs && <Box w={6} />}
     </Flex>
   );
 };

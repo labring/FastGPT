@@ -35,6 +35,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { nodeLafCustomInputConfig } from '@fastgpt/global/core/workflow/template/system/laf';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -334,7 +335,10 @@ const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const { commonInputs, isTool } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
 
   return (
     <>
