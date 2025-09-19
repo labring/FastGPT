@@ -15,11 +15,10 @@ async function handler(
   const { objectName } = req.query;
 
   // Verify file upload and get access URL
-  // const accessUrl = await confirmPresignedUpload(objectName, size);
-  const url = await PluginS3Service.getFile(objectName);
-
+  await PluginS3Service.getFile(objectName);
   await uploadSystemTool(objectName);
-  return url;
+
+  return {};
 }
 
 export default NextAPI(handler);

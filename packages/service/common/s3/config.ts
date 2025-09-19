@@ -7,5 +7,5 @@ export const defualtS3Config: S3ServiceConfig = {
   accessKey: process.env.S3_ACCESS_KEY || 'minioadmin',
   secretKey: process.env.S3_SECRET_KEY || 'minioadmin',
   bucket: process.env.S3_BUCKET || 'fastgpt',
-  customEndpoint: process.env.MINIO_CUSTOM_ENDPOINT
+  customEndpoint: process.env.S3_CUSTOM_ENDPOINT
 };

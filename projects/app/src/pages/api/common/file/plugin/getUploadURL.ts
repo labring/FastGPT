@@ -4,6 +4,7 @@ import { PluginS3Service } from '@fastgpt/service/common/s3';
 import { mimeMap } from '@fastgpt/service/common/s3/const';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
+import { UploadToolsS3Path } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export type getUploadURLQuery = {
   filename: string;
@@ -20,7 +21,7 @@ async function handler(
   }
 
   return PluginS3Service.generateUploadPresignedURL({
-    filepath: 'system/tools',
+    filepath: UploadToolsS3Path,
     contentType: mimeMap['.js'],
     filename
   });

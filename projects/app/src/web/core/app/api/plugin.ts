@@ -101,7 +101,7 @@ export const getPluginUploadPresignedURL = (data: { filename: string }) =>
   GET<UploadPresignedURLResponse>('/common/file/plugin/getUploadURL', data);
 
 export const postConfirmUpload = (data: { objectName: string }) =>
-  GET<string>('/common/file/plugin/confirmUpload', data);
+  GET('/common/file/plugin/confirmUpload', data);
 
 export const postDeletePlugin = (toolId: string) =>
   DELETE('/plugin/delete', {

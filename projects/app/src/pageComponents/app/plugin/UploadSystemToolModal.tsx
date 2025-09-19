@@ -21,7 +21,7 @@ function UploadSystemToolModal({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
-  const { run: handlePluginUpload, loading: uploadLoading } = useRequest2(
+  const { runAsync: handlePluginUpload, loading: uploadLoading } = useRequest2(
     async () => {
       const file = selectFiles[0];
 

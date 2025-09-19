@@ -62,7 +62,7 @@ export class S3Service {
         ? `:${this.config.port}`
         : '';
 
-    const customEndpoint = process.env.MINIO_CUSTOM_ENDPOINT;
+    const customEndpoint = this.config.customEndpoint;
     return customEndpoint
       ? `${customEndpoint}/${encodeURIComponent(filename)}`
       : `${protocol}://${this.config.endpoint}${port}/${this.config.bucket}/${encodeURIComponent(filename)}`;
@@ -167,8 +167,4 @@ export class S3Service {
       return Promise.reject(`Failed to getFile: ${objectName}: ${getErrText(error)}`);
     }
   };
-}
-
-declare global {
-  var s3Client: Client;
 }
