@@ -23,7 +23,7 @@ import type {
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';
-
+import type { CollectionStatusEnum } from 'core/dataset/collection/schema';
 export type ChunkSettingsType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;
 
@@ -75,47 +75,36 @@ export type ColumnSchemaType = {
   examples: string[];
   forbid: boolean;
   valueIndex: boolean;
-  
+
   // Database attributes
   isNullable?: boolean;
-  defaultValue?: string;
+  defaultValue?: string | null;
   isAutoIncrement?: boolean;
   isPrimaryKey?: boolean;
   isForeignKey?: boolean;
   relatedColumns?: string[];
-  
+
   // Extended metadata
   metadata?: Record<string, any>;
 };
 
-export type ForeignKeySchemaType = {
-  constrainedColumns: string[];
+export type ConstraintSchemaType = {
+  name: string;
+  column: string;
+};
+
+export type ForeignKeySchemaType = ConstraintSchemaType & {
   referredSchema: string | null;
   referredTable: string;
   referredColumns: string[];
 };
-
-export type IndexSchemaType = {
-  name: string;
-  columns: string[];
-  unique: boolean;
-  type: string;
-};
-
-export type ConstraintSchemaType = {
-  name: string;
-  type: string; // PRIMARY, FOREIGN, UNIQUE, CHECK
-  columns: string[];
-  definition: string;
-};
-
 export type TableSchemaType = {
   tableName: string;
   description: string;
+  exist: boolean;
   columns: Record<string, ColumnSchemaType>;
   foreignKeys: ForeignKeySchemaType[];
   primaryKeys: string[];
-  indexes: IndexSchemaType[];
   constraints: ConstraintSchemaType[];
   rowCount?: number;
   estimatedSize?: string;
@@ -196,7 +185,7 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
   // Parse settings
   customPdfParse?: boolean;
   trainingType: DatasetCollectionDataProcessModeEnum;
-  
+
   // Database table schema (for database type collections)
   tableSchema?: TableSchemaType;
 };

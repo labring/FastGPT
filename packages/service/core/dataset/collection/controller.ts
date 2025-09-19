@@ -37,7 +37,11 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
-import { DBDatasetVectorTableName,DBDatasetValueVectorTableName,DatasetVectorTableName } from '../../../common/vectorDB/constants';
+import {
+  DBDatasetVectorTableName,
+  DBDatasetValueVectorTableName,
+  DatasetVectorTableName
+} from '../../../common/vectorDB/constants';
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
@@ -275,7 +279,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     externalFileUrl,
     apiFileId,
     apiFileParentId,
-    tableSchema
+    tableSchema,
+    forbid
   } = props;
 
   const collectionTags = await createOrGetCollectionTags({
@@ -302,7 +307,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
         ...(externalFileUrl ? { externalFileUrl } : {}),
         ...(apiFileId ? { apiFileId } : {}),
         ...(apiFileParentId ? { apiFileParentId } : {}),
-        ...(tableSchema ? { tableSchema } : {})
+        ...(tableSchema ? { tableSchema } : {}),
+        forbid: forbid ?? false
       }
     ],
     { session, ordered: true }
@@ -417,9 +423,24 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DatasetVectorTableName}),
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DBDatasetVectorTableName}),
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds ,tableName:DBDatasetValueVectorTableName}),
+      deleteDatasetDataVector({
+        teamId,
+        datasetIds,
+        collectionIds,
+        tableName: DatasetVectorTableName
+      }),
+      deleteDatasetDataVector({
+        teamId,
+        datasetIds,
+        collectionIds,
+        tableName: DBDatasetVectorTableName
+      }),
+      deleteDatasetDataVector({
+        teamId,
+        datasetIds,
+        collectionIds,
+        tableName: DBDatasetValueVectorTableName
+      })
     ]);
 
     // delete collections
