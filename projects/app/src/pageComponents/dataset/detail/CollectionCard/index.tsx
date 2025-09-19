@@ -15,7 +15,7 @@ import {
   HStack,
   Button,
   Alert,
-  AlertIcon
+  Text
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
@@ -215,8 +215,10 @@ const CollectionCard = () => {
         {/* banner */}
         {isDatabase && (
           <Alert status="info" mb={4} borderRadius="md">
-            <AlertIcon />
-            <Box fontSize="sm">{t('dataset:database_structure_change_tip')}</Box>
+            <Flex fontSize="sm">
+              <MyIcon name="common/info" w={'1.25rem'} mr={2} color="primary.600" />
+              <Text color={'myGray.600'}>{t('dataset:database_structure_change_tip')}</Text>
+            </Flex>
           </Alert>
         )}
         {/* header */}

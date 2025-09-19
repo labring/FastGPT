@@ -1351,7 +1351,7 @@
   "zoomin_tip_mac": "Zoom out (⌘ -)",
   "zoomout_tip": "Zoom in (Ctrl +)",
   "zoomout_tip_mac": "Zoom in (⌘ +)",
-  "no_database_connection": "还没有连接数据库",
+  "no_database_connection": "还没有连接数据库，",
   "click_config_database": "点击配置数据库",
   "annotation_answer": "标注答案"
 }

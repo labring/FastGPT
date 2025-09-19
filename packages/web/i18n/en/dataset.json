@@ -298,5 +298,21 @@
   "database_search": "数据库检索",
   "description": "描述",
   "remove": "移除",
-  "confirm_remove_database_table": "确认移除该数据表及其所有数据配置？"
+  "confirm_remove_database_table": "确认移除该数据表及其所有数据配置？",
+  "data_source_refreshed": "数据源已刷新，",
+  "found": "发现",
+  "tables_with_column_changes": "{{modifiedTablesCount}} 个数据表存在列的变更，",
+  "tables_not_exist": " 个数据表已不存在，",
+  "please_check_latest_data": "请核查最新数据",
+  "has_unfilled_content": "存在未填写的内容",
+  "has_column_changes": "存在列的变更",
+  "connection_success": "连接成功",
+  "no_changes_detected": "未出现信息变更",
+  "tables_added": "新增 {{addedTables}} 个数据表",
+  "tables_modified": "{{modifiedTables}} 个数据表存在列的变更",
+  "tables_deleted": "{{deletedTables}} 个数据表已不存在",
+  "please_verify_data": "请核查最新数据。",
+  "changes_detected": "发现",
+  "new_columns_added_disabled": "个新增列（默认未启用），",
+  "columns_no_longer_exist": "个列已不存在，"
 }
