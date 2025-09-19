@@ -162,6 +162,7 @@ export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
   evaluators: Array<{
     metric: EvalMetricSchemaType; // Contains complete metric configuration
     thresholdValue?: number; // Threshold value for this evaluator
+    weight?: number;
   }>; // Array of evaluator configurations
 };
 
