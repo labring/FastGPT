@@ -15,59 +15,46 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { type CreateCollectionResponse } from '@/global/core/dataset/api.d';
-type Query = {
-  datasetId: string;
-};
-export type CreateDatabaseCollectionsBody = {
-  tables: Array<{
-    tableName: string;
-    description: string;
-    forbid: boolean;
-    columns: Record<
-      string,
-      {
-        columnName: string;
-        columnType: string;
-        description: string;
-        examples: string[];
-        forbid: boolean;
-        valueIndex: boolean;
-      }
-    >;
-    foreignKeys?: Array<{
-      constrainedColumns: string[];
-      referredSchema: string | null;
-      referredTable: string;
-      referredColumns: string[];
-    }>;
-    primaryKeys?: string[];
-  }>;
-};
+import type { DatasetSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import type {
+  CreateDatabaseCollectionsBody,
+  CreateDatabaseCollectionsResponse
+} from '@fastgpt/global/core/dataset/database/api';
+import {
+  RequestValidationDiagnosisError,
+  TableTransformer
+} from '@fastgpt/service/core/dataset/database/model/dataModel';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
-export type CreateDatabaseCollectionsResponse = {
-  collectionIds: string[];
-};
-
-async function handler(
-  req: ApiRequestProps<CreateDatabaseCollectionsBody, Query>
-): Promise<CreateDatabaseCollectionsResponse> {
-  const { tables } = req.body;
-  const { datasetId } = req.query;
-  try {
-    const { teamId, tmbId, dataset } = await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
+// Create collections and training tasks for database tables
+async function CreateDatabaseCollections(
+  teamId: string,
+  tmbId: string,
+  dataset: DatasetSchemaType,
+  { datasetId, tables }: CreateDatabaseCollectionsBody
+): Promise<Array<string>> {
+  const collectionIds: string[] = [];
+  const tableNames = tables.map((table) => table.tableName);
+  if (tables.length !== new Set(tableNames).size)
+    return Promise.reject(i18nT('database_client:tableNamesDuplicate'));
+  const mongoTable = await MongoDatasetCollection.find(
+    {
+      teamId,
+      tmbId,
       datasetId,
-      per: WritePermissionVal
-    });
-
-    const collectionIds: string[] = [];
-    const results: { insertLen: number }[] = [];
-
+      type: DatasetCollectionTypeEnum.table,
+      'tableSchema.tableName': { $in: tableNames }
+    },
+    'tableSchema.tableName'
+  ).lean();
+  if (mongoTable?.some((table) => tableNames.includes(table.tableSchema?.tableName ?? '')))
+    return Promise.reject(i18nT('database_client:tableNamesDuplicate'));
+  try {
     await mongoSessionRun(async (session) => {
       for (const table of tables) {
+        // convert to DBTable object: check table info
+        const dbTable = TableTransformer.fromPlainObject(table);
         const collection = await createOneCollection({
           teamId,
           tmbId,
@@ -76,33 +63,11 @@ async function handler(
           type: DatasetCollectionTypeEnum.table,
           name: table.tableName,
           trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
-          tableSchema: {
-            tableName: table.tableName,
-            description: table.description,
-            columns: Object.fromEntries(
-              Object.entries(table.columns).map(([name, col]) => [
-                name,
-                {
-                  columnName: col.columnName,
-                  columnType: col.columnType,
-                  description: col.description,
-                  examples: col.examples,
-                  forbid: col.forbid,
-                  valueIndex: col.valueIndex,
-                  isPrimaryKey: table.primaryKeys?.includes(name) || false,
-                  isForeignKey:
-                    table.foreignKeys?.some((fk) => fk.constrainedColumns.includes(name)) || false,
-                  relatedColumns: [],
-                  metadata: {}
-                }
-              ])
-            ),
-            foreignKeys: table.foreignKeys || [],
-            primaryKeys: table.primaryKeys || [],
-            indexes: [],
-            constraints: [],
+          tableSchema: TableTransformer.toPlainObject(dbTable, {
+            exist: table.exist ?? true,
             lastUpdated: new Date()
-          },
+          }) as TableSchemaType,
+          forbid: table.forbid,
           session
         });
 
@@ -132,23 +97,40 @@ async function handler(
         );
 
         collectionIds.push(collection._id);
-        addLog.info(
-          `Created database collection for table ${table.tableName}, training will be processed asynchronously`
-        );
       }
     });
-
-    addLog.info(
-      `Successfully created ${collectionIds.length} database collections for dataset ${datasetId}`
-    );
-
-    return {
-      collectionIds
-    };
-  } catch (err: any) {
-    addLog.error('Failed to create database collections', err);
-    return Promise.reject(err?.message || '创建数据库数据集失败');
+    return collectionIds;
+  } catch (error: any) {
+    if (error instanceof RequestValidationDiagnosisError) {
+      addLog.error('CreateDatabaseCollections error', error.message);
+      return Promise.reject(i18nT('database_client:illeagal_table_info'));
+    }
+    addLog.error('CreateDatabaseCollections error', error);
+    return Promise.reject(i18nT('dataset:error_create_datasetcollection'));
   }
+}
+
+async function handler(
+  req: ApiRequestProps<CreateDatabaseCollectionsBody, {}>
+): Promise<CreateDatabaseCollectionsResponse> {
+  const { datasetId, tables } = req.body;
+
+  const { teamId, tmbId, dataset } = await authDataset({
+    req,
+    authToken: true,
+    authApiKey: true,
+    datasetId,
+    per: WritePermissionVal
+  });
+
+  const collectionIds = await CreateDatabaseCollections(teamId, tmbId, dataset, {
+    datasetId,
+    tables
+  });
+
+  return {
+    collectionIds
+  };
 }
 
 export default NextAPI(handler);
