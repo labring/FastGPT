@@ -27,7 +27,7 @@ interface DatabaseListTableProps {
   total: number;
   onUpdateCollection: (params: { id: string; forbid: boolean }) => void;
   onTrainingStatesClick: (collectionId: string) => void;
-  onDataConfigClick: (collectionId: string) => void;
+  onDataConfigClick: (databaseName: string, activeStep: number) => void;
   onRemoveClick: (collectionId: string) => void;
 }
 
@@ -63,7 +63,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   {collection.name}
                 </Box>
               </Td>
-              <Td py={2}>{collection.name}</Td>
+              <Td py={2}>{collection.name} Mock-差描述字段</Td>
               <Td fontSize={'xs'} py={2} color={'myGray.500'}>
                 <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                 <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
@@ -128,16 +128,36 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                       </MenuButton>
                     }
                     menuList={[
+                      ...(collection.statusKey === 'ready'
+                        ? [
+                            {
+                              children: [
+                                {
+                                  label: t('dataset:data_config'),
+                                  icon: 'common/setting',
+                                  onClick: () => {
+                                    onDataConfigClick(collection.name, 1);
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        : []),
                       {
                         children: [
                           {
-                            label: t('dataset:data_config'),
-                            onClick: () => {
-                              onDataConfigClick(collection._id);
-                            }
-                          },
-                          {
-                            label: t('dataset:remove'),
+                            label: (
+                              <Flex alignItems={'center'}>
+                                <MyIcon
+                                  mr={1}
+                                  name={'delete'}
+                                  w={'0.9rem'}
+                                  _hover={{ color: 'red.600' }}
+                                />
+                                {t('dataset:remove')}
+                              </Flex>
+                            ),
+                            type: 'danger',
                             onClick: () => {
                               onRemoveClick(collection._id);
                             }

@@ -274,30 +274,39 @@ export const useDataBaseConfig = (
 
         setUITables(uiData);
 
-        // 找到第一个未删除的表作为默认选中
-        const firstAvailableTableIndex = uiData.findIndex(
-          (table) => table.status !== TableStatusEnum.delete
-        );
-        setCurrentTableIndex(firstAvailableTableIndex >= 0 ? firstAvailableTableIndex : 0);
+        // 检查地址栏中是否存在 databaseName 参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const databaseName = urlParams.get('databaseName');
+
+        let targetTableIndex = -1;
+
+        if (databaseName) {
+          // 查找匹配的表索引
+          targetTableIndex = uiData.findIndex(
+            (table) => table.tableName === databaseName && table.status !== TableStatusEnum.delete
+          );
+        }
+
+        // 如果没有找到指定的表或没有 databaseName 参数，则找到第一个未删除的表作为默认选中
+        if (targetTableIndex === -1) {
+          targetTableIndex = uiData.findIndex((table) => table.status !== TableStatusEnum.delete);
+        }
+
+        setCurrentTableIndex(targetTableIndex >= 0 ? targetTableIndex : 0);
 
         // 初始化表单数据
-        const firstAvailableTable =
-          uiData[firstAvailableTableIndex >= 0 ? firstAvailableTableIndex : 0];
-        if (firstAvailableTable) {
+        const targetTable = uiData[targetTableIndex >= 0 ? targetTableIndex : 0];
+        if (targetTable) {
           reset({
-            description: firstAvailableTable.description,
-            columns: firstAvailableTable.columns.filter(
-              (col) => col.status !== ColumnStatusEnum.delete
-            )
+            description: targetTable.description,
+            columns: targetTable.columns.filter((col) => col.status !== ColumnStatusEnum.delete)
           });
 
           // 标记初始化完成
           isInitializedRef.current = true;
           lastSyncDataRef.current = JSON.stringify({
-            description: firstAvailableTable.description,
-            columns: firstAvailableTable.columns.filter(
-              (col) => col.status !== ColumnStatusEnum.delete
-            )
+            description: targetTable.description,
+            columns: targetTable.columns.filter((col) => col.status !== ColumnStatusEnum.delete)
           });
         }
       } catch (error) {
