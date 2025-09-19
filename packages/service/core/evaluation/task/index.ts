@@ -1,4 +1,5 @@
 import { MongoEvaluation, MongoEvalItem } from './schema';
+import { MongoEvalDatasetData } from '../dataset/evalDatasetDataSchema';
 import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
@@ -63,22 +64,59 @@ export class EvaluationTaskService {
 
       const evaluationObject = evaluation[0].toObject();
 
+      // Load dataset and create evaluation items immediately
+      const dataItems = await MongoEvalDatasetData.find({
+        evalDatasetCollectionId: evaluationParams.evalDatasetCollectionId,
+        teamId
+      })
+        .session(session)
+        .lean();
+
+      if (dataItems.length === 0) {
+        throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
+      }
+
+      // Create evaluation items for each dataItem
+      const evalItems: Omit<EvaluationItemSchemaType, '_id'>[] = [];
+      for (const dataItem of dataItems) {
+        const evaluationDataItem = {
+          _id: dataItem._id,
+          userInput: dataItem.userInput,
+          expectedOutput: dataItem.expectedOutput,
+          context: dataItem.context,
+          targetCallParams: undefined
+        };
+
+        evalItems.push({
+          evalId: evaluationObject._id,
+          dataItem: evaluationDataItem,
+          status: EvaluationStatusEnum.queuing,
+          retry: 3
+        });
+      }
+
+      // Batch insert evaluation items within transaction
+      const insertedItems = await MongoEvalItem.insertMany(evalItems, { session });
+      addLog.debug(`[Evaluation] Created ${insertedItems.length} evaluation items`);
+
+      // Update evaluation statistics
+      await MongoEvaluation.updateOne(
+        { _id: evaluationObject._id },
+        {
+          $set: {
+            'statistics.totalItems': insertedItems.length
+          }
+        },
+        { session }
+      );
+
       // Auto-start the evaluation if autoStart is true
       if (autoStart) {
-        // Update status to evaluating within transaction
-        await MongoEvaluation.updateOne(
-          { _id: evaluationObject._id },
-          { $set: { status: EvaluationStatusEnum.evaluating } },
-          { session }
-        );
-
-        // Queue operation within transaction - if it fails, transaction will rollback
+        // Queue operation within transaction - processor will handle status updates
         await evaluationTaskQueue.add(`eval_task_${evaluationObject._id}`, {
           evalId: evaluationObject._id.toString()
         });
 
-        // Update status in returned object
-        evaluationObject.status = EvaluationStatusEnum.evaluating;
         addLog.debug(`[Evaluation] Task created and auto-started: ${evaluationObject._id}`);
       } else {
         addLog.debug(`[Evaluation] Task created: ${evaluationObject._id}`);
@@ -506,31 +544,28 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
     }
 
-    // Update status to processing and clear error message if restarting
-    const updateData: any = { status: EvaluationStatusEnum.evaluating };
-    const unsetData: any = {};
-
+    // Clear error message if restarting
+    const updateQuery: any = {};
     if (evaluation.status === EvaluationStatusEnum.error) {
-      unsetData.errorMessage = 1;
-      unsetData.finishTime = 1;
+      updateQuery.$unset = {
+        errorMessage: 1,
+        finishTime: 1
+      };
     }
 
-    const updateQuery: any = { $set: updateData };
-    if (Object.keys(unsetData).length > 0) {
-      updateQuery.$unset = unsetData;
-    }
-
-    // Use transaction to ensure atomicity between status update and queue submission
+    // Use transaction to ensure atomicity between cleanup and queue submission
     const startEval = async (session: ClientSession) => {
-      // Update status within transaction
-      const result = await MongoEvaluation.updateOne(
-        { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
-        updateQuery,
-        { session }
-      );
+      // Clear error state if needed, but leave status as queuing for processor to handle
+      if (Object.keys(updateQuery).length > 0) {
+        const result = await MongoEvaluation.updateOne(
+          { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
+          updateQuery,
+          { session }
+        );
 
-      if (result.matchedCount === 0) {
-        throw new Error(EvaluationErrEnum.evalTaskNotFound);
+        if (result.matchedCount === 0) {
+          throw new Error(EvaluationErrEnum.evalTaskNotFound);
+        }
       }
 
       // Queue operation within transaction - if it fails, transaction will rollback

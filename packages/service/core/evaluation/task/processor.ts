@@ -519,27 +519,42 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     // Report initial progress
     await job.updateProgress(0);
 
-    // Get evaluation task information
-    const evaluation = await MongoEvaluation.findById(evalId).lean();
+    // Update status to evaluating and get evaluation data in one atomic operation
+    const evaluation = await MongoEvaluation.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(evalId),
+        status: {
+          $in: [
+            EvaluationStatusEnum.queuing,
+            EvaluationStatusEnum.error // Allow restarting manually stopped tasks
+          ]
+        }
+      },
+      { $set: { status: EvaluationStatusEnum.evaluating } },
+      { returnDocument: 'after', lean: true }
+    );
+
+    // If the task cannot be updated, it's either already processing or in an invalid state
     if (!evaluation) {
-      addLog.warn(`[Evaluation] Evaluation task does not exist: ${evalId}`);
+      // Get current status for better error reporting
+      const currentEval = await MongoEvaluation.findById(evalId).select('status').lean();
+      if (!currentEval) {
+        addLog.warn(`[Evaluation] Task ${evalId} no longer exists, skipping`);
+      } else if (currentEval.status === EvaluationStatusEnum.evaluating) {
+        addLog.warn(
+          `[Evaluation] Task ${evalId} is already being processed by another worker, skipping`
+        );
+      } else {
+        addLog.warn(
+          `[Evaluation] Task ${evalId} is in state '${currentEval.status}', cannot process`
+        );
+      }
       return;
     }
 
-    // Load dataset
-    const dataItems = await MongoEvalDatasetData.find({
-      evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
-      teamId: evaluation.teamId
-    }).lean();
+    addLog.debug(`[Evaluation] Task status updated to evaluating: ${evalId}`);
 
-    // Report progress: dataset loaded
-    await job.updateProgress(20);
-
-    if (dataItems.length === 0) {
-      throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
-    }
-
-    // Validate target and evaluators configuration
+    // Validate target and evaluators configuration early
     if (!evaluation.target || !evaluation.target.type || !evaluation.target.config) {
       throw new Error(EvaluationErrEnum.evalTargetConfigInvalid);
     }
@@ -548,52 +563,69 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
       throw new Error(EvaluationErrEnum.evalEvaluatorsConfigInvalid);
     }
 
-    // Check if evaluation items already exist (reentrant handling)
+    // Report progress: validation completed
+    await job.updateProgress(20);
+
+    // Check if evaluation items already exist (created during task creation)
     const existingItems = await MongoEvalItem.find({ evalId }).lean();
     if (existingItems.length > 0) {
-      addLog.debug(`[Evaluation] Task already has ${existingItems.length} items, resuming...`);
+      // Normal path: items were created during task creation
+      addLog.debug(
+        `[Evaluation] Task already has ${existingItems.length} items, submitting to queue...`
+      );
 
-      // Re-submit unfinished items to queue
-      const pendingItems = existingItems.filter(
+      // Submit pending and retryable items to queue
+      const itemsToProcess = existingItems.filter(
         (item) =>
           item.status === EvaluationStatusEnum.queuing ||
           (item.status === EvaluationStatusEnum.error && item.retry > 0)
       );
 
-      if (pendingItems.length > 0) {
-        const jobs = pendingItems.map((item, index) => ({
-          name: `eval_item_${evalId}_resume_${index}`,
+      if (itemsToProcess.length > 0) {
+        const jobs = itemsToProcess.map((item, index) => ({
+          name: `eval_item_${evalId}_${index}`,
           data: {
             evalId,
             evalItemId: item._id.toString()
           },
           opts: {
-            delay: index * 100
+            delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
           }
         }));
 
         await evaluationItemQueue.addBulk(jobs);
-        addLog.debug(`[Evaluation] Resumed ${jobs.length} pending items`);
+        addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
+      } else {
+        addLog.debug(`[Evaluation] No items to process, all items are completed or failed`);
       }
+
+      // Report final progress
+      await job.updateProgress(100);
       return;
     }
 
-    // Create evaluation items for each dataItem (batch structure)
+    // Fallback: Create evaluation items if they don't exist (backward compatibility)
+    // This should rarely happen with the new flow
+    addLog.warn(`[Evaluation] No existing items found for evaluation ${evalId}, creating items...`);
+
+    // Load dataset only when we need to create items (rare case)
+    const dataItems = await MongoEvalDatasetData.find({
+      evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
+      teamId: evaluation.teamId
+    }).lean();
+
+    if (dataItems.length === 0) {
+      throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
+    }
+
+    // Create evaluation items for each dataItem
     const evalItems: Omit<EvaluationItemSchemaType, '_id'>[] = [];
     for (const dataItem of dataItems) {
-      // Extract only the necessary fields for evaluation execution
       const evaluationDataItem: EvaluationDataItemType = {
         _id: dataItem._id,
         userInput: dataItem.userInput,
         expectedOutput: dataItem.expectedOutput,
         context: dataItem.context,
-        // TODO: Handle targetCallParams population for evaluation data items
-        // The dataItems loaded from dataset only contain basic EvalDatasetDataSchemaType fields
-        // but evaluation items need EvaluationDataItemType (including targetCallParams).
-        // Need to:
-        // 1. Determine source of targetCallParams (evaluation config, dataset metadata, or default)
-        // 2. Transform dataItems to include targetCallParams before creating evaluation items
-        // 3. Consider caching strategy for targetCallParams if they are dynamic per evaluation
         targetCallParams: undefined
       };
 
@@ -613,10 +645,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
 
     // Batch insert evaluation items
     const insertedItems = await MongoEvalItem.insertMany(evalItems);
-    addLog.debug(`[Evaluation] Created ${insertedItems.length} batch evaluation items`);
-
-    // Report progress: items created
-    await job.updateProgress(80);
+    addLog.debug(`[Evaluation] Created ${insertedItems.length} evaluation items`);
 
     // Submit to evaluation item queue for concurrent processing
     const jobs = insertedItems.map((item, index) => ({
@@ -626,7 +655,7 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
         evalItemId: item._id.toString()
       },
       opts: {
-        delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
+        delay: index * 100
       }
     }));
 
@@ -905,6 +934,9 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
           aggregateScore: aggregateScore,
           status: EvaluationStatusEnum.completed,
           finishTime: new Date()
+        },
+        $unset: {
+          errorMessage: 1 // Clear any previous error message
         }
       }
     );
