@@ -146,7 +146,7 @@ export const transformChangesToUI = (
       columnType: column.columnType,
       description: column.description,
       examples: column.examples,
-      enabled: column.enabled,
+      enabled: !column.forbid,
       valueIndex: column.valueIndex,
       status: column.status
     }));
