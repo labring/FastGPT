@@ -50,12 +50,7 @@ export type StopEvaluationResponse = MessageResponse;
 
 // Get Evaluation Stats
 export type StatsEvaluationRequest = EvalIdQuery;
-export type EvaluationStatsResponse = {
-  total: number;
-  completed: number;
-  evaluating: number;
-  queuing: number;
-  error: number;
+export type EvaluationStatsResponse = EvaluationStatistics & {
   failed: number;
 };
 

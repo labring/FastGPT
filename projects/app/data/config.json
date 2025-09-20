@@ -16,6 +16,16 @@
       "key": "", // 自定义 PDF 解析服务密钥
       "doc2xKey": "", // doc2x 服务密钥
       "price": 0 // PDF 解析服务价格
+    },
+    "evalConfig": {
+      "taskConcurrency": 3,
+      "itemConcurrency": 10,
+      "itemMaxRetry": 3,
+      "defaultThreshold": 0.8,
+      "summaryConcurrency": 1,
+      "dataQualityConcurrency": 2,
+      "datasetDataSynthesizeConcurrency": 5,
+      "datasetSmartGenerateConcurrency": 2
     }
   }
 }

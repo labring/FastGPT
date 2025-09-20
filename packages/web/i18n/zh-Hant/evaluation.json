@@ -113,6 +113,7 @@
   "dataset_task_operation_failed": "任務操作失敗",
   "dataset_task_delete_failed": "數據集任務刪除失敗",
   "fetch_failed_tasks_error": "獲取失敗任務列表失敗",
+  "item_job_not_found": "未找到評估項作業",
   "file_id_required": "文件 ID 是必需的",
   "file_must_be_csv": "文件必須是 CSV 文件",
   "csv_invalid_structure": "CSV 文件結構無效",

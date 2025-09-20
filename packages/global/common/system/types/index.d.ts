@@ -142,6 +142,9 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+
+  // Evaluation configurations
+  evalConfig?: EvaluationConfigType;
 };
 
 export type customPdfParseType = {
@@ -150,6 +153,17 @@ export type customPdfParseType = {
   timeout?: number;
   doc2xKey?: string;
   price?: number;
+};
+
+export type EvaluationConfigType = {
+  taskConcurrency?: number;
+  itemConcurrency?: number;
+  itemMaxRetry?: number;
+  defaultThreshold?: number;
+  summaryConcurrency?: number;
+  dataQualityConcurrency?: number;
+  datasetDataSynthesizeConcurrency?: number;
+  datasetSmartGenerateConcurrency?: number;
 };
 
 export type LicenseDataType = {

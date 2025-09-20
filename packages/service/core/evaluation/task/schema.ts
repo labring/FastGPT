@@ -93,7 +93,9 @@ export const EvaluationEvaluatorSchema = new Schema(
   }
 );
 
-// Collection names
+/**
+ * MongoDB collection names
+ */
 export const EvaluationCollectionName = 'evals';
 export const EvalItemCollectionName = 'eval_items';
 
@@ -132,11 +134,6 @@ export const EvaluationTaskSchema = new Schema({
     ref: UsageCollectionName,
     required: true
   },
-  status: {
-    type: String,
-    enum: EvaluationStatusValues,
-    default: EvaluationStatusEnum.queuing
-  },
   createTime: {
     type: Date,
     required: true,
@@ -144,22 +141,7 @@ export const EvaluationTaskSchema = new Schema({
   },
   finishTime: Date,
   errorMessage: String,
-  // Statistical information
-  statistics: {
-    totalItems: {
-      type: Number,
-      default: 0
-    },
-    completedItems: {
-      type: Number,
-      default: 0
-    },
-    errorItems: {
-      type: Number,
-      default: 0
-    }
-  },
-  // Summary configuration for each evaluator (indexed by evaluator index)
+  // Summary configuration for each evaluator
   summaryConfigs: [
     {
       metricId: {
@@ -207,33 +189,36 @@ export const EvaluationTaskSchema = new Schema({
       _id: false
     }
   ],
-  // Weighted aggregate score calculated from multiple metrics
+  // Aggregate score from multiple metrics
   aggregateScore: {
     type: Number,
     default: 0
   }
 });
 
-// Optimized indexes for EvaluationTaskSchema based on actual query patterns
-EvaluationTaskSchema.index({ _id: 1, teamId: 1 }); // Primary lookup pattern: findOne/updateOne/deleteOne by _id and teamId
-EvaluationTaskSchema.index({ teamId: 1, createTime: -1 }); // Main listing query: team filtering + time sorting
-EvaluationTaskSchema.index({ teamId: 1, tmbId: 1, createTime: -1 }); // Permission filtering: team + creator + time sorting
-EvaluationTaskSchema.index({ teamId: 1, name: 1 }, { unique: true }); // Name uniqueness check within team
-EvaluationTaskSchema.index({ status: 1 }); // Queue processing and status-based operations
+/**
+ * Optimized indexes based on query patterns
+ */
+EvaluationTaskSchema.index({ _id: 1, teamId: 1 }); // Primary lookup
+EvaluationTaskSchema.index({ teamId: 1, createTime: -1 }); // Team listing with time sort
+EvaluationTaskSchema.index({ teamId: 1, tmbId: 1, createTime: -1 }); // Permission filtering
+EvaluationTaskSchema.index({ teamId: 1, name: 1 }, { unique: true }); // Name uniqueness
 
-// Atomic evaluation item: one dataItem + one target + one evaluator
+/**
+ * Evaluation item schema: atomic unit for evaluation
+ */
 export const EvaluationItemSchema = new Schema({
   evalId: {
     type: Schema.Types.ObjectId,
     ref: EvaluationCollectionName,
     required: true
   },
-  // Dependent component configurations
+  // Data item configuration
   dataItem: {
     type: Object,
     required: true
   },
-  // Execution results
+  // Execution results and outputs
   targetOutput: {
     type: Schema.Types.Mixed,
     default: {}
@@ -242,36 +227,40 @@ export const EvaluationItemSchema = new Schema({
     type: [Schema.Types.Mixed],
     default: []
   },
-  status: {
-    type: String,
-    enum: EvaluationStatusValues,
-    default: EvaluationStatusEnum.queuing
-  },
-  retry: {
-    type: Number,
-    default: 3
-  },
   finishTime: Date,
   errorMessage: String,
-  // Weighted aggregate score calculated from multiple evaluators
+  // Aggregate score from multiple evaluators
   aggregateScore: {
     type: Number,
     default: 0
+  },
+  // Metadata for optimization
+  metadata: {
+    status: {
+      type: String,
+      enum: EvaluationStatusValues,
+      default: EvaluationStatusEnum.queuing,
+      index: true // Index for status filtering
+    }
   }
 });
 
-// Optimized indexes for EvaluationItemSchema based on actual query patterns
-EvaluationItemSchema.index({ evalId: 1, status: 1 }); // Status-specific queries within evaluation (aggregation, filtering)
-EvaluationItemSchema.index({ evalId: 1, createTime: -1 }); // Listing items within evaluation with time sorting
-EvaluationItemSchema.index({ evalId: 1, status: 1, createTime: -1 }); // Status filtering + time sorting for pagination
-EvaluationItemSchema.index({ status: 1, retry: 1 }); // Queue processing: pending items with retry logic
+/**
+ * Evaluation item indexes for performance
+ */
+EvaluationItemSchema.index({ evalId: 1 }); // Basic queries
+EvaluationItemSchema.index({ evalId: 1, createTime: -1 }); // Time-sorted listing
 
-// Content search index for filtering by text content (used in listEvaluationItems)
+// Status filtering indexes
+EvaluationItemSchema.index({ evalId: 1, 'metadata.status': 1, createTime: -1 }); // Status with time
+EvaluationItemSchema.index({ evalId: 1, 'metadata.status': 1 }); // Status only
+
+// Text search index for content filtering
 EvaluationItemSchema.index({
   'dataItem.userInput': 'text',
   'dataItem.expectedOutput': 'text',
   'targetOutput.actualOutput': 'text'
-}); // Text search across user inputs, expected outputs, and actual outputs
+}); // Text search across inputs and outputs
 
 export const MongoEvaluation = getMongoModel<EvaluationSchemaType>(
   EvaluationCollectionName,

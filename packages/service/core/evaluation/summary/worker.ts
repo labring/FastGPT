@@ -96,7 +96,7 @@ export function initEvaluationSummaryWorker() {
       }
     },
     {
-      concurrency: Number(process.env.EVAL_SUMMARY_CONCURRENCY) || 1,
+      concurrency: global.systemEnv?.evalConfig?.summaryConcurrency || 1,
       removeOnComplete: {
         count: 0 // 完成后立即删除，允许重复提交相同jobId
       },

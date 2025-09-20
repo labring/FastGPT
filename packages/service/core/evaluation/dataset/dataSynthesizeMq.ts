@@ -27,9 +27,7 @@ export const evalDatasetDataSynthesizeQueue = getQueue<EvalDatasetDataSynthesize
   }
 );
 
-const concurrency = process.env.EVAL_DATASET_DATA_SYNTHESIZE_CONCURRENCY
-  ? Number(process.env.EVAL_DATASET_DATA_SYNTHESIZE_CONCURRENCY)
-  : 5;
+const concurrency = global.systemEnv?.evalConfig?.datasetDataSynthesizeConcurrency || 5;
 
 export const getEvalDatasetDataSynthesizeWorker = (
   processor: Processor<EvalDatasetDataSynthesizeData>
