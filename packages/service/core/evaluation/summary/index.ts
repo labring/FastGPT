@@ -399,18 +399,8 @@ export class EvaluationSummaryService {
       }
     }
 
-    // Check if weights have changed to determine if recalculation is needed
-    const hasWeightChanges = this.checkWeightChanges(evaluation, metricsConfig);
-
-    // Update configuration and recalculate if weights changed
-    if (hasWeightChanges) {
-      await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
-    } else {
-      // Only update configuration without recalculation (also use transaction for consistency)
-      await mongoSessionRun(async (session: ClientSession) => {
-        await this.updateConfigurationOnly(evalId, evaluation, metricsConfig, session);
-      });
-    }
+    // Always call updateConfigurationAndRecalculate, let it decide internally what to recalculate
+    await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
   }
 
   // Check if weights have changed by comparing current and new configurations
@@ -474,7 +464,7 @@ export class EvaluationSummaryService {
     });
   }
 
-  // Simplified method to update configuration and recalculate everything
+  // Update configuration and selectively recalculate based on what changed
   private static async updateConfigurationAndRecalculate(
     evalId: string,
     evaluation: EvaluationSchemaType,
@@ -485,6 +475,9 @@ export class EvaluationSummaryService {
       calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
+    // Check what has changed before starting transaction
+    const hasWeightChanges = this.checkWeightChanges(evaluation, metricsConfig);
+
     // Use transaction to ensure atomicity of configuration update and score recalculation
     await mongoSessionRun(async (session: ClientSession) => {
       const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
@@ -492,12 +485,14 @@ export class EvaluationSummaryService {
       // Update database configuration within transaction
       await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
 
-      // Get updated evaluation and recalculate everything within the same transaction
+      // Get updated evaluation and recalculate within the same transaction
       const updatedEvaluation = await MongoEvaluation.findById(evalId).session(session).lean();
       if (updatedEvaluation) {
-        addLog.info('[Evaluation] Configuration updated, recalculating all metrics', { evalId });
+        addLog.info('[Evaluation] Configuration updated, recalculating summary metrics', {
+          evalId
+        });
 
-        // Recalculate evaluation summary metrics and aggregate score
+        // Always recalculate evaluation summary metrics and aggregate score
         const calculatedData = await this.calculateMetricScores(updatedEvaluation);
         await this.updateSummaryConfigsScores(
           evalId,
@@ -506,8 +501,18 @@ export class EvaluationSummaryService {
           session
         );
 
-        // Recalculate all evaluation item aggregate scores since weights changed
-        await recalculateAllEvaluationItemAggregateScores(evalId, session);
+        // Only recalculate evaluation item aggregate scores if weights changed
+        if (hasWeightChanges) {
+          addLog.info('[Evaluation] Weight changes detected, recalculating item aggregate scores', {
+            evalId
+          });
+          await recalculateAllEvaluationItemAggregateScores(evalId, session);
+        } else {
+          addLog.info(
+            '[Evaluation] No weight changes, skipping item aggregate score recalculation',
+            { evalId }
+          );
+        }
       }
     });
   }
