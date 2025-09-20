@@ -226,10 +226,11 @@ const ConfigParamsModal = ({
     <MyModal
       isOpen={isOpen}
       onClose={onClose}
-      iconSrc="modal/setting"
+      iconSrc="common/settingLight"
+      iconColor={'blue.600'}
       title={t('dashboard_evaluation:config_params')}
       w={'100%'}
-      maxW={['90vw', '800px']}
+      maxW={['90vw', '600px']}
       isCentered
       isLoading={loadingData}
     >
@@ -238,13 +239,7 @@ const ConfigParamsModal = ({
           {/* 分数聚合方式 */}
           <Box>
             <FormLabel required mb={2}>
-              <Flex alignItems="center">
-                {t('dashboard_evaluation:score_aggregation_method')}
-                <QuestionTip
-                  label={t('dashboard_evaluation:score_aggregation_method_tip')}
-                  ml={1}
-                />
-              </Flex>
+              {t('dashboard_evaluation:score_aggregation_method')}
             </FormLabel>
             <Controller
               name="calculateType"

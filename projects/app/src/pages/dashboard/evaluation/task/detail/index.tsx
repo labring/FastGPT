@@ -165,7 +165,10 @@ const Detail = ({ taskId, currentTab }: Props) => {
   );
 
   // 空状态提示组件
-  const EmptyTipDom = useMemo(() => <EmptyTip text={t('暂无数据')} />, [t]);
+  const EmptyTipDom = useMemo(
+    () => <EmptyTip text={t('dashboard_evaluation:no_data_available')} />,
+    [t]
+  );
 
   // 使用滚动分页获取评估项列表
   const {
@@ -216,7 +219,9 @@ const Detail = ({ taskId, currentTab }: Props) => {
     const firstItem = evaluationItems[0];
     const evaluators = firstItem.evaluators || [];
 
-    const headers = [{ key: 'question', label: t('问题'), flex: 3 }];
+    const headers = [
+      { key: 'question', label: t('dashboard_evaluation:question_column'), flex: 3 }
+    ];
 
     if (evaluators.length < 3) {
       // 小于3个维度，显示每个维度名称
@@ -236,7 +241,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
       // 大于等于3个维度，只显示综合评分
       headers.push({
         key: 'totalScore',
-        label: t('综合评分'),
+        label: t('dashboard_evaluation:comprehensive_score_column'),
         flex: 1
       });
     }
@@ -323,10 +328,6 @@ const Detail = ({ taskId, currentTab }: Props) => {
   const handleSave = useCallback(
     async (data: any) => {
       if (!selectedItem) {
-        toast({
-          title: t('请先选择要编辑的数据项'),
-          status: 'warning'
-        });
         return;
       }
 
@@ -345,18 +346,14 @@ const Detail = ({ taskId, currentTab }: Props) => {
         onSavePopoverClose();
       } catch (error: any) {
         // 错误处理已在 Context 中完成
-        console.error('保存失败:', error);
+        console.error('save error:', error);
       }
     },
-    [selectedItem, modifyDataset, toast, t, onSavePopoverClose, updateItem, refreshEvaluationItems]
+    [selectedItem, modifyDataset, onSavePopoverClose, updateItem, refreshEvaluationItems]
   );
 
   const handleRefresh = useCallback(async () => {
     if (!selectedItem) {
-      toast({
-        title: t('请先选择要重试的数据项'),
-        status: 'warning'
-      });
       return;
     }
 
@@ -366,16 +363,12 @@ const Detail = ({ taskId, currentTab }: Props) => {
       await refreshEvaluationItems();
     } catch (error: any) {
       // 错误处理已在 Context 中完成
-      console.error('重试失败:', error);
+      console.error('retry error:', error);
     }
-  }, [selectedItem, toast, t, retryItem, refreshEvaluationItems]);
+  }, [selectedItem, retryItem, refreshEvaluationItems]);
 
   const handleDelete = useCallback(async () => {
     if (!selectedItem) {
-      toast({
-        title: t('请先选择要删除的数据项'),
-        status: 'warning'
-      });
       return;
     }
 
@@ -399,18 +392,9 @@ const Detail = ({ taskId, currentTab }: Props) => {
       resetForm();
     } catch (error: any) {
       // 错误处理已在 Context 中完成
-      console.error('删除失败:', error);
+      console.error('delete error:', error);
     }
-  }, [
-    selectedItem,
-    evaluationItems,
-    selectedIndex,
-    toast,
-    t,
-    resetForm,
-    deleteItem,
-    refreshEvaluationItems
-  ]);
+  }, [selectedItem, evaluationItems, selectedIndex, resetForm, deleteItem, refreshEvaluationItems]);
 
   const handleCancel = useCallback(() => {
     setEditing(false);
@@ -424,7 +408,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
       await exportItems('csv');
     } catch (error: any) {
       // 错误处理已在 Context 中完成
-      console.error('导出失败:', error);
+      console.error('export error:', error);
     }
   }, [exportItems]);
 
@@ -432,11 +416,18 @@ const Detail = ({ taskId, currentTab }: Props) => {
   const handleRetryFailed = useCallback(async () => {
     try {
       await retryFailedItems();
+      // 切换到全部数据标签页，useScrollPagination 会自动响应 currentTab 变化并刷新列表
+      router.replace({
+        query: {
+          taskId: taskId,
+          currentTab: TabEnum.allData
+        }
+      });
     } catch (error: any) {
       // 错误处理已在 Context 中完成
-      console.error('重试失败:', error);
+      console.error('retry error:', error);
     }
-  }, [retryFailedItems]);
+  }, [retryFailedItems, router, taskId]);
 
   // 刷新评分处理函数
   const handleRefreshScore = useCallback(async () => {
@@ -444,7 +435,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
       await generateSummary();
     } catch (error: any) {
       // 错误处理已在 Context 中完成
-      console.error('刷新评分失败:', error);
+      console.error('refresh error', error);
     }
   }, [generateSummary]);
 
@@ -456,24 +447,20 @@ const Detail = ({ taskId, currentTab }: Props) => {
   // 查看完整响应处理函数
   const handleViewFullResponse = useCallback(() => {
     if (!selectedItem) {
-      toast({
-        title: t('请先选择要查看的数据项'),
-        status: 'warning'
-      });
       return;
     }
 
     // 检查是否有必要的数据
     if (!selectedItem.targetOutput?.aiChatItemDataId) {
       toast({
-        title: t('该数据项暂无完整响应数据'),
+        title: 'dataId is Required',
         status: 'warning'
       });
       return;
     }
 
     onDetailedResponseOpen();
-  }, [selectedItem, toast, t, onDetailedResponseOpen]);
+  }, [selectedItem, toast, onDetailedResponseOpen]);
 
   // 处理配置参数确认
   const handleConfigParamsConfirm = useCallback(() => {
@@ -512,7 +499,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                 <Flex gap={2}>
                   <MyIcon name={'common/list'} w={5} color={'primary.600'} />
                   <Box fontSize={14} color={'myGray.900'} fontWeight={'medium'}>
-                    {t('数据（{{data}}）', {
+                    {t('dashboard_evaluation:data_with_count', {
                       data: statsData
                         ? statsData.completed !== statsData.total
                           ? `${statsData.completed}/${statsData.total}`
@@ -527,7 +514,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} />
                   </InputLeftElement>
                   <Input
-                    placeholder={t('搜索')}
+                    placeholder={t('dashboard_evaluation:search_placeholder')}
                     value={searchValue}
                     onChange={(e) => handleSearch(e.target.value)}
                     bg={'white'}
@@ -644,7 +631,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
 
                               if (output.status === MetricResultStatusEnum.Failed) {
                                 return {
-                                  content: t('异常'),
+                                  content: t('dashboard_evaluation:abnormal_status'),
                                   color: 'red.500'
                                 };
                               }
@@ -689,49 +676,52 @@ const Detail = ({ taskId, currentTab }: Props) => {
                             display={'flex'}
                             alignItems={'center'}
                             color={(() => {
-                              const hasFailedOutputs = evaluatorOutputs.some(
-                                (output) => output.status === MetricResultStatusEnum.Failed
-                              );
-                              const successOutputs = evaluatorOutputs.filter(
-                                (output) =>
-                                  output.status === MetricResultStatusEnum.Success &&
-                                  output.data?.score !== undefined
-                              );
-
-                              if (hasFailedOutputs) {
-                                return 'red.500';
-                              }
-
-                              if (successOutputs.length > 0) {
-                                // 计算综合得分和综合阈值
-                                let totalWeightedScore = 0;
-                                let totalWeightedThreshold = 0;
-                                let totalWeight = 0;
-
-                                evaluatorOutputs.forEach((output, outputIndex) => {
-                                  if (
+                              // 只有当外层状态为 completed 时才计算综合得分的颜色
+                              if (item.status === EvaluationStatusEnum.completed) {
+                                const hasFailedOutputs = evaluatorOutputs.some(
+                                  (output) => output.status === MetricResultStatusEnum.Failed
+                                );
+                                const successOutputs = evaluatorOutputs.filter(
+                                  (output) =>
                                     output.status === MetricResultStatusEnum.Success &&
                                     output.data?.score !== undefined
-                                  ) {
-                                    const evaluator = item.evaluators?.[outputIndex];
-                                    const weight = evaluator?.weight || 0;
-                                    const score = output.data.score;
-                                    const threshold = evaluator?.thresholdValue || 0.8;
+                                );
 
-                                    totalWeightedScore += (score * weight) / 100;
-                                    totalWeightedThreshold += (threshold * weight) / 100;
-                                    totalWeight += weight;
-                                  }
-                                });
-
-                                // 比较综合得分与综合阈值
-                                if (totalWeight > 0) {
-                                  return totalWeightedScore >= totalWeightedThreshold
-                                    ? 'myGray.600'
-                                    : 'yellow.600';
+                                if (hasFailedOutputs) {
+                                  return 'red.500';
                                 }
 
-                                return 'myGray.600';
+                                if (successOutputs.length > 0) {
+                                  // 计算综合得分和综合阈值
+                                  let totalWeightedScore = 0;
+                                  let totalWeightedThreshold = 0;
+                                  let totalWeight = 0;
+
+                                  evaluatorOutputs.forEach((output, outputIndex) => {
+                                    if (
+                                      output.status === MetricResultStatusEnum.Success &&
+                                      output.data?.score !== undefined
+                                    ) {
+                                      const evaluator = item.evaluators?.[outputIndex];
+                                      const weight = evaluator?.weight || 0;
+                                      const score = output.data.score;
+                                      const threshold = evaluator?.thresholdValue || 0.8;
+
+                                      totalWeightedScore += (score * weight) / 100;
+                                      totalWeightedThreshold += (threshold * weight) / 100;
+                                      totalWeight += weight;
+                                    }
+                                  });
+
+                                  // 比较综合得分与综合阈值
+                                  if (totalWeight > 0) {
+                                    return totalWeightedScore >= totalWeightedThreshold
+                                      ? 'myGray.600'
+                                      : 'yellow.600';
+                                  }
+
+                                  return 'myGray.600';
+                                }
                               }
 
                               // 使用外层状态确定颜色
@@ -745,49 +735,52 @@ const Detail = ({ taskId, currentTab }: Props) => {
                             })()}
                           >
                             {(() => {
-                              const successOutputs = evaluatorOutputs.filter(
-                                (output) =>
-                                  output.status === MetricResultStatusEnum.Success &&
-                                  output.data?.score !== undefined
-                              );
-                              const failedOutputs = evaluatorOutputs.filter(
-                                (output) => output.status === MetricResultStatusEnum.Failed
-                              );
-
-                              if (failedOutputs.length > 0) {
-                                return t('异常');
-                              }
-
-                              if (successOutputs.length > 0) {
-                                // 计算加权综合得分
-                                let totalWeightedScore = 0;
-                                let totalWeight = 0;
-
-                                evaluatorOutputs.forEach((output, outputIndex) => {
-                                  if (
+                              // 只有当外层状态为 completed 时才显示加权综合得分
+                              if (item.status === EvaluationStatusEnum.completed) {
+                                const successOutputs = evaluatorOutputs.filter(
+                                  (output) =>
                                     output.status === MetricResultStatusEnum.Success &&
                                     output.data?.score !== undefined
-                                  ) {
-                                    const evaluator = item.evaluators?.[outputIndex];
-                                    const weight = evaluator?.weight || 0;
-                                    const score = output.data.score;
+                                );
+                                const failedOutputs = evaluatorOutputs.filter(
+                                  (output) => output.status === MetricResultStatusEnum.Failed
+                                );
 
-                                    totalWeightedScore += (score * weight) / 100;
-                                    totalWeight += weight;
-                                  }
-                                });
-
-                                if (totalWeight > 0) {
-                                  return formatScoreToPercentage(totalWeightedScore);
+                                if (failedOutputs.length > 0) {
+                                  return t('dashboard_evaluation:abnormal_status');
                                 }
 
-                                // 如果没有权重信息，使用平均分作为兜底
-                                const totalScore = successOutputs.reduce(
-                                  (sum, output) => sum + (output.data?.score || 0),
-                                  0
-                                );
-                                const avgScore = totalScore / successOutputs.length;
-                                return formatScoreToPercentage(avgScore);
+                                if (successOutputs.length > 0) {
+                                  // 计算加权综合得分
+                                  let totalWeightedScore = 0;
+                                  let totalWeight = 0;
+
+                                  evaluatorOutputs.forEach((output, outputIndex) => {
+                                    if (
+                                      output.status === MetricResultStatusEnum.Success &&
+                                      output.data?.score !== undefined
+                                    ) {
+                                      const evaluator = item.evaluators?.[outputIndex];
+                                      const weight = evaluator?.weight || 0;
+                                      const score = output.data.score;
+
+                                      totalWeightedScore += (score * weight) / 100;
+                                      totalWeight += weight;
+                                    }
+                                  });
+
+                                  if (totalWeight > 0) {
+                                    return formatScoreToPercentage(totalWeightedScore);
+                                  }
+
+                                  // 如果没有权重信息，使用平均分作为兜底
+                                  const totalScore = successOutputs.reduce(
+                                    (sum, output) => sum + (output.data?.score || 0),
+                                    0
+                                  );
+                                  const avgScore = totalScore / successOutputs.length;
+                                  return formatScoreToPercentage(avgScore);
+                                }
                               }
 
                               // 使用外层状态
@@ -817,7 +810,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                 <Flex gap={2}>
                   <MyIcon name={'common/detail'} w={5} color={'primary.600'} />
                   <Box fontSize={14} color={'myGray.900'} fontWeight={'medium'}>
-                    {t('详情')}
+                    {t('dashboard_evaluation:detail_title')}
                   </Box>
                 </Flex>
 
@@ -842,7 +835,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                           <PopoverArrow />
                           <Flex alignItems="center" gap={4} mb={4}>
                             <Box fontSize="14px" color="myGray.900">
-                              {t('同时修改评测数据集')}
+                              {t('dashboard_evaluation:modify_dataset_simultaneously')}
                             </Box>
                             <Switch
                               isChecked={modifyDataset}
@@ -866,32 +859,44 @@ const Detail = ({ taskId, currentTab }: Props) => {
                       {/* 根据选中项状态动态显示按钮 */}
                       {selectedItem?.status === EvaluationStatusEnum.error && (
                         <>
-                          <IconButton
-                            aria-label="refresh"
-                            size={'mdSquare'}
-                            variant={'whitePrimary'}
-                            icon={<MyIcon name={'common/retryLight'} w={4} />}
-                            onClick={handleRefresh}
-                          />
-                          <IconButton
-                            aria-label="edit"
-                            size={'mdSquare'}
-                            variant={'whitePrimary'}
-                            icon={<MyIcon name={'edit'} w={4} />}
-                            onClick={handleEdit}
-                          />
+                          <MyTooltip
+                            label={t('dashboard_evaluation:retry_button')}
+                            offset={[0, 15]}
+                          >
+                            <IconButton
+                              aria-label="refresh"
+                              size={'mdSquare'}
+                              variant={'whitePrimary'}
+                              icon={<MyIcon name={'common/retryLight'} w={4} />}
+                              onClick={handleRefresh}
+                            />
+                          </MyTooltip>
+                          <MyTooltip label={t('dashboard_evaluation:edit_action')} offset={[0, 15]}>
+                            <IconButton
+                              aria-label="edit"
+                              size={'mdSquare'}
+                              variant={'whitePrimary'}
+                              icon={<MyIcon name={'edit'} w={4} />}
+                              onClick={handleEdit}
+                            />
+                          </MyTooltip>
                           <PopoverConfirm
-                            content={t('确认在当前任务中删除该数据？')}
+                            content={t('dashboard_evaluation:confirm_delete_data_in_task')}
                             type="delete"
-                            confirmText={t('删除')}
+                            confirmText={t('dashboard_evaluation:delete_action')}
                             onConfirm={handleDelete}
                             Trigger={
-                              <IconButton
-                                aria-label="delete"
-                                size={'mdSquare'}
-                                variant={'whiteDanger'}
-                                icon={<MyIcon name={'delete'} w={4} />}
-                              />
+                              <MyTooltip
+                                label={t('dashboard_evaluation:delete_action')}
+                                offset={[0, 15]}
+                              >
+                                <IconButton
+                                  aria-label="delete"
+                                  size={'mdSquare'}
+                                  variant={'whiteDanger'}
+                                  icon={<MyIcon name={'delete'} w={4} />}
+                                />
+                              </MyTooltip>
                             }
                           />
                         </>
@@ -904,20 +909,25 @@ const Detail = ({ taskId, currentTab }: Props) => {
                             variant={'whitePrimary'}
                             onClick={handleViewFullResponse}
                           >
-                            {t('查看完整响应')}
+                            {t('dashboard_evaluation:view_full_response')}
                           </Button>
                           <PopoverConfirm
-                            content={t('确认在当前任务中删除该数据？')}
+                            content={t('dashboard_evaluation:confirm_delete_data_in_task')}
                             type="delete"
-                            confirmText={t('删除')}
+                            confirmText={t('dashboard_evaluation:delete_action')}
                             onConfirm={handleDelete}
                             Trigger={
-                              <IconButton
-                                aria-label="delete"
-                                size={'mdSquare'}
-                                variant={'whiteDanger'}
-                                icon={<MyIcon name={'delete'} w={4} />}
-                              />
+                              <MyTooltip
+                                label={t('dashboard_evaluation:delete_action')}
+                                offset={[0, 15]}
+                              >
+                                <IconButton
+                                  aria-label="delete"
+                                  size={'mdSquare'}
+                                  variant={'whiteDanger'}
+                                  icon={<MyIcon name={'delete'} w={4} />}
+                                />
+                              </MyTooltip>
                             }
                           />
                         </>
@@ -1020,7 +1030,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     )}
 
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} pb={5}>
-                      <Box>{t('问题')}</Box>
+                      <Box>{t('dashboard_evaluation:question_field')}</Box>
                       {editing ? (
                         <Textarea {...register('question')} bg={'myGray.25'} mt={3} />
                       ) : (
@@ -1031,7 +1041,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     </Box>
 
                     <Box borderBottom={'1px solid'} borderColor={'myGray.200'} py={5}>
-                      <Box>{t('参考答案')}</Box>
+                      <Box>{t('dashboard_evaluation:reference_answer_field')}</Box>
                       {editing ? (
                         <Textarea {...register('expectedResponse')} bg={'myGray.25'} mt={3} />
                       ) : (
@@ -1043,9 +1053,10 @@ const Detail = ({ taskId, currentTab }: Props) => {
 
                     {!editing && (
                       <Box py={5}>
-                        <Box>{t('实际回答')}</Box>
+                        <Box>{t('dashboard_evaluation:actual_answer_field')}</Box>
                         <Box color={'myGray.900'} mt={3}>
-                          {selectedItem.targetOutput?.actualOutput || t('暂无回答')}
+                          {selectedItem.targetOutput?.actualOutput ||
+                            t('dashboard_evaluation:no_answer_available')}
                         </Box>
                       </Box>
                     )}
@@ -1072,20 +1083,18 @@ const Detail = ({ taskId, currentTab }: Props) => {
               <Flex alignItems={'center'} gap={0.5}>
                 <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'}>
                   {summaryData?.data && summaryData.data.length >= 3
-                    ? t('综合评分')
-                    : t('维度评分')}
+                    ? t('dashboard_evaluation:comprehensive_score_title')
+                    : t('dashboard_evaluation:dimension_score_title')}
                 </Box>
                 {summaryData?.data && summaryData.data.length >= 3 && (
                   <QuestionTip
-                    label={t(
-                      '按照指定权重计算测试数据全部维度的综合评分，可根据应用使用场景所关注的维度进行设置。'
-                    )}
+                    label={t('dashboard_evaluation:comprehensive_score_weight_description')}
                   />
                 )}
                 {/* 异常数据提示 */}
                 {statsData && statsData.error > 0 && statsData.error < statsData.total && (
                   <MyTooltip
-                    label={t('{{count}} 条数据执行异常，仅使用执行成功的数据来计算分数。', {
+                    label={t('dashboard_evaluation:error_data_calculation_notice', {
                       count: statsData.error
                     })}
                   >
@@ -1096,13 +1105,18 @@ const Detail = ({ taskId, currentTab }: Props) => {
 
               <Flex>
                 {!isQueuingOrEvaluating && (
-                  <IconButton
-                    aria-label="refresh score"
-                    size={'sm'}
-                    variant={'grayGhost'}
-                    icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
-                    onClick={handleRefreshScore}
-                  />
+                  <MyTooltip
+                    label={t('dashboard_evaluation:regenerate_summary_content')}
+                    offset={[0, 15]}
+                  >
+                    <IconButton
+                      aria-label="refresh score"
+                      size={'sm'}
+                      variant={'grayGhost'}
+                      icon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
+                      onClick={handleRefreshScore}
+                    />
+                  </MyTooltip>
                 )}
                 <IconButton
                   aria-label="score settings"
@@ -1117,7 +1131,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
             {/* 根据状态动态渲染内容 */}
             <Box mb={6}>
               {isQueuingOrEvaluating && (
-                <GradientBorderBox>
+                <GradientBorderBox py={8}>
                   <Flex flexDirection={'column'} alignItems={'center'} textAlign={'center'}>
                     {/* 加载动画 */}
                     <MyBox w={'16px'} h={'16px'} mb={3} isLoading={true} size={'sm'} />
@@ -1128,19 +1142,19 @@ const Detail = ({ taskId, currentTab }: Props) => {
                         if (evaluationDetail?.status) {
                           return `${t(EvaluationStatusMap[evaluationDetail.status].name)}...`;
                         }
-                        return t('处理中...');
+                        return t('dashboard_evaluation:processing_status');
                       })()}
                     </Box>
 
                     <Box color={'blue.600'} lineHeight={'1.5'}>
-                      {t('完成后可查看评测结果')}
+                      {t('dashboard_evaluation:view_results_after_completion')}
                     </Box>
                   </Flex>
                 </GradientBorderBox>
               )}
 
               {isAllDataFailed && (
-                <GradientBorderBox display={'flex'} alignItems={'center'} justifyContent={'center'}>
+                <GradientBorderBox py={8}>
                   <Flex flexDirection={'column'} alignItems={'center'} textAlign={'center'}>
                     <MyIcon name={'core/workflow/runError'} w={5} h={5} mb={4} color={'red.500'} />
                     <Box
@@ -1149,8 +1163,8 @@ const Detail = ({ taskId, currentTab }: Props) => {
                       lineHeight={'1.5'}
                       textAlign={'center'}
                     >
-                      <Box>{t('全部数据执行异常，')}</Box>
-                      <Box>{t('请查看异常数据中的详细原因，')}</Box>
+                      <Box>{t('dashboard_evaluation:all_data_execution_error')}</Box>
+                      <Box>{t('dashboard_evaluation:check_error_details')}</Box>
                       <Link
                         color={'red.600'}
                         textDecoration={'underline'}
@@ -1161,7 +1175,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                         onClick={handleRetryFailed}
                         cursor={'pointer'}
                       >
-                        {t('点击重试')}
+                        {t('dashboard_evaluation:click_to_retry')}
                       </Link>
                     </Box>
                   </Flex>

@@ -238,14 +238,14 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
         if (hasDatasetSearch && hasChatNode) {
           setRecommendedDimensionText(
-            t('评测应用包含知识库搜索和AI对话环节，已推荐使用 3 个维度进行评估')
+            t('dashboard_evaluation:app_with_search_and_chat_recommendation')
           );
           setShouldAutoExpand(false);
         } else if (hasChatNode) {
-          setRecommendedDimensionText(t('评测应用包含AI对话环节，已推荐使用 1 个维度进行评估'));
+          setRecommendedDimensionText(t('dashboard_evaluation:app_with_chat_recommendation'));
           setShouldAutoExpand(false);
         } else if (hasDatasetSearch) {
-          setRecommendedDimensionText(t('评测应用包含知识库搜索环节，已推荐使用 2 个维度进行评估'));
+          setRecommendedDimensionText(t('dashboard_evaluation:app_with_search_recommendation'));
           setShouldAutoExpand(false);
         } else {
           setRecommendedDimensionText('');
@@ -694,13 +694,13 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                         iconSize="48px"
                         text={
                           <Text fontSize="sm" color="myGray.500">
-                            {t('还没有添加评测维度，')}
+                            {t('dashboard_evaluation:no_dimensions_added')}
                             <Link
                               color="primary.600"
                               _hover={{ color: 'primary.700' }}
                               onClick={handleOpenManageDimension}
                             >
-                              {t('点击添加')}
+                              {t('dashboard_evaluation:click_to_add')}
                             </Link>
                           </Text>
                         }

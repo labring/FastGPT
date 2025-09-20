@@ -9,7 +9,6 @@ interface GradientBorderBoxProps extends BoxProps {
 const GradientBorderBox: React.FC<GradientBorderBoxProps> = ({ children, ...boxProps }) => {
   return (
     <Box
-      minH={'150px'}
       position={'relative'}
       p={4}
       borderRadius={'lg'}
