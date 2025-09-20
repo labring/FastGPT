@@ -13,7 +13,7 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
-  parentId: ParentIdType;
+  parentId?: ParentIdType;
 };
 
 async function handler(
@@ -37,12 +37,13 @@ async function handler(
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang),
       instructions: parseI18nString(plugin.userGuide ?? '', lang),
-      toolDescription: plugin.toolDescription
+      toolDescription: plugin.toolDescription,
+      toolSource: plugin.toolSource
     }))
     .filter((item) => {
       if (searchKey) {
-        const regx = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
-        return regx.test(String(item.name)) || regx.test(String(item.intro || ''));
+        const regex = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
+        return regex.test(String(item.name)) || regex.test(String(item.intro || ''));
       }
       return item.parentId === formatParentId;
     });

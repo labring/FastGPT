@@ -62,6 +62,7 @@
   "copilot_confirm_message": "The original configuration has been received to understand the current code structure and input and output parameters. \nPlease explain your optimization requirements.",
   "copy_one_app": "Create Duplicate",
   "core.app.QG.Switch": "Enable guess what you want to ask",
+  "core.module.template.System Tools": "System Tools",
   "core.dataset.import.Custom prompt": "Custom Prompt",
   "core.workflow.Copilot": "AI Generation",
   "create_by_curl": "By CURL",

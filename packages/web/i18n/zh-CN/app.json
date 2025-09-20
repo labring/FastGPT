@@ -63,6 +63,7 @@
   "copilot_confirm_message": "已接收到原始配置，了解当前代码结构和输入输出参数。请说明您的优化需求。",
   "copy_one_app": "创建副本",
   "core.app.QG.Switch": "启用猜你想问",
+  "core.module.template.System Tools": "系统工具",
   "core.dataset.import.Custom prompt": "自定义提示词",
   "core.workflow.Copilot": "AI 生成",
   "create_by_curl": "从 CURL 创建",
