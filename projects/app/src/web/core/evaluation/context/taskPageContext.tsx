@@ -209,9 +209,16 @@ export const TaskPageContextProvider = ({
   // 使用 useRequest2 优化各种请求
   const { runAsync: runLoadStats } = useRequest2(() => getEvaluationStats(taskId), {
     manual: true,
-    errorToast: t('dashboard_evaluation:request_failed'),
+    pollingInterval: 15000,
+    pollingWhenHidden: false,
+    pollingErrorRetryCount: 0,
+    errorToast: '',
     onBefore: () => {
-      updateLoading('stats', true);
+      // 只有首次加载时才显示loading状态，轮询时不显示
+      const isFirstLoad = !statsData;
+      if (isFirstLoad) {
+        updateLoading('stats', true);
+      }
       updateError('stats', null);
     },
     onSuccess: (data) => {
@@ -227,9 +234,16 @@ export const TaskPageContextProvider = ({
 
   const { runAsync: runLoadSummary } = useRequest2(() => getEvaluationSummary(taskId), {
     manual: true,
-    errorToast: t('dashboard_evaluation:request_failed'),
+    pollingInterval: 15000,
+    pollingWhenHidden: false,
+    pollingErrorRetryCount: 0,
+    errorToast: '',
     onBefore: () => {
-      updateLoading('summary', true);
+      // 只有首次加载时才显示loading状态，轮询时不显示
+      const isFirstLoad = !summaryData;
+      if (isFirstLoad) {
+        updateLoading('summary', true);
+      }
       updateError('summary', null);
     },
     onSuccess: (data) => {

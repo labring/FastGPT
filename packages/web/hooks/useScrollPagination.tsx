@@ -191,6 +191,7 @@ export function useScrollPagination<
     EmptyTip,
     showErrorToast = true,
     disabled = false,
+    pollingInterval,
 
     ...props
   }: {
@@ -201,6 +202,7 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
+    pollingInterval?: number;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -209,23 +211,29 @@ export function useScrollPagination<
   const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
-  const isEmpty = total === 0 && !isLoading;
+  const isEmpty = total === 0 && !isLoading && data.length === 0;
 
   const noMore = data.length >= total;
 
   const loadData = useLockFn(
     async ({
       init = false,
-      ScrollContainerRef
+      ScrollContainerRef,
+      silent = false
     }: {
       init?: boolean;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
+      silent?: boolean;
     } = {}) => {
       if (noMore && !init) return;
 
-      setTrue();
+      // 静默加载时不显示loading状态
+      if (!silent) {
+        setTrue();
+      }
 
-      if (init) {
+      // 静默加载时不清空现有数据，避免闪烁
+      if (init && !silent) {
         setData([]);
         setTotal(0);
       }
@@ -267,7 +275,8 @@ export function useScrollPagination<
           setData(newData);
         }
       } catch (error: any) {
-        if (showErrorToast) {
+        // 静默加载时不显示错误提示
+        if (showErrorToast && !silent) {
           toast({
             title: getErrText(error, t('common:core.chat.error.data_error')),
             status: 'error'
@@ -276,7 +285,9 @@ export function useScrollPagination<
         console.log(error);
       }
 
-      setFalse();
+      if (!silent) {
+        setFalse();
+      }
     }
   );
 
@@ -358,10 +369,15 @@ export function useScrollPagination<
   useRequest2(
     async () => {
       if (disabled) return;
-      loadData({ init: true });
+      // 有轮询间隔且已有数据时，使用静默加载
+      const silent = !!pollingInterval && data.length > 0;
+      loadData({ init: true, silent });
     },
     {
       manual: false,
+      pollingInterval: pollingInterval,
+      pollingWhenHidden: false,
+      pollingErrorRetryCount: 0,
       ...props
     }
   );
