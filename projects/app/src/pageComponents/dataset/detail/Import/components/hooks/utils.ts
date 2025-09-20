@@ -1,7 +1,22 @@
-import type { CreateDatabaseCollectionsBody, DBTableChange } from '@/web/core/dataset/temp.d';
-import { ColumnStatusEnum, TableStatusEnum } from '@/web/core/dataset/temp.d';
-import { GetConfigurationResponse, DetectChangesResponse } from '@/web/core/dataset/temp.d';
+import type {
+  CreateDatabaseCollectionsBody,
+  DBTableChange,
+  TableStatusEnum
+} from '@/web/core/dataset/temp.d';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import type {
+  DatabaseCollectionsTable,
+  DatabaseCollectionsBody,
+  DetectChangesResponse
+} from '@fastgpt/global/core/dataset/database/api';
+
+import type { ColumnSchemaType } from '@fastgpt/global/core/dataset/type';
+
+export enum StatusEnum {
+  add = 'add',
+  delete = 'delete',
+  available = 'available'
+}
 
 // 后端数据结构定义
 export interface BackendColumn {
@@ -28,17 +43,17 @@ export interface UIColumn {
   examples: string[];
   enabled: boolean;
   valueIndex: boolean;
-  status?: ColumnStatusEnum;
+  status: StatusEnum;
 }
 
-export interface UITableData {
+export type UITableData = Omit<DatabaseCollectionsTable, 'columns'> & {
   tableName: string;
   description: string;
   enabled: boolean;
-  columns: UIColumn[];
-  status?: TableStatusEnum;
+  columns: (ColumnSchemaType & { enabled: boolean; status: StatusEnum })[];
+  status: StatusEnum;
   hasColumnChanges: boolean;
-}
+};
 
 export interface TableInfo {
   tableData: UITableData;
@@ -97,29 +112,36 @@ export interface DatabaseFormData {
 }
 
 // 数据预处理函数：将后端数据转换为UI数据
-export const transformBackendToUI = (backendTables: BackendTableData[]): UITableData[] => {
+export const transformBackendToUI = (
+  backendTables: DatabaseCollectionsBody['tables']
+): UITableData[] => {
   return backendTables.map((table) => ({
+    ...table,
     tableName: table.tableName,
     description: table.description,
     enabled: !table.forbid,
-    status: TableStatusEnum.available,
+    status: StatusEnum.available,
     hasColumnChanges: false,
     columns: Object.values(table.columns).map((column) => ({
+      ...column,
       columnName: column.columnName,
       columnType: column.columnType,
       description: column.description,
       enabled: !column.forbid,
       examples: column.examples,
       valueIndex: column.valueIndex,
-      status: ColumnStatusEnum.available
+      status: StatusEnum.available
     }))
   }));
 };
 
 // 数据转换函数：将变更检测数据转换为UI数据
-export const transformChangesToUI = (backendTables: DBTableChange[]): UITableData[] => {
+export const transformChangesToUI = (
+  backendTables: DetectChangesResponse['tables']
+): UITableData[] => {
   return backendTables.map((table) => {
-    const columns = Object.values(table.columns).map((column) => ({
+    const columns = Object.values(table.columns).map((column: any) => ({
+      ...column,
       columnName: column.columnName,
       columnType: column.columnType,
       description: column.description,
@@ -131,10 +153,11 @@ export const transformChangesToUI = (backendTables: DBTableChange[]): UITableDat
 
     // 检查是否有列变更
     const hasColumnChanges = columns.some(
-      (col) => col.status === ColumnStatusEnum.add || col.status === ColumnStatusEnum.delete
+      (col) => col.status === StatusEnum.add || col.status === StatusEnum.delete
     );
 
     return {
+      ...table,
       tableName: table.tableName,
       description: table.description,
       enabled: table.enabled,
@@ -142,21 +165,23 @@ export const transformChangesToUI = (backendTables: DBTableChange[]): UITableDat
       status: table.status,
       hasColumnChanges
     };
-  });
+  }) as unknown as UITableData[];
 };
 
 // 数据转换函数：将UI数据转换为后端数据
-export const transformUIToBackend = (uiTables: UITableData[]): CreateDatabaseCollectionsBody => {
+export const transformUIToBackend = (uiTables: UITableData[]): DatabaseCollectionsBody => {
   return {
     tables: uiTables
       .filter((table) => table.enabled)
       .map((table) => ({
+        ...table,
         tableName: table.tableName,
         description: table.description,
-        forbid: !table.enabled,
+        forbid: table.forbid,
         columns: table.columns.reduce(
           (acc, column) => {
             acc[column.columnName] = {
+              ...column,
               columnName: column.columnName,
               columnType: column.columnType,
               description: column.description,
@@ -173,9 +198,7 @@ export const transformUIToBackend = (uiTables: UITableData[]): CreateDatabaseCol
 };
 
 // 数据转换函数：将表单数据转换为后端数据（保留用于兼容）
-export const transformFormDataToBackend = (
-  formData: DatabaseFormData
-): CreateDatabaseCollectionsBody => {
+export const transformFormDataToBackend = (formData: DatabaseFormData): DatabaseCollectionsBody => {
   return transformUIToBackend(formData.tables);
 };
 

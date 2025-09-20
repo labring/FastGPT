@@ -27,6 +27,10 @@ export type DatasetCollectionsListItemType = {
   dataAmount: number;
   trainingAmount: number;
   hasError?: boolean;
+
+  // For database type datasets, include table schema description
+  tableSchemaDescription?: string;
+  tableSchema?: DatasetCollectionSchemaType['tableSchema'];
 };
 
 /* ================= data ===================== */

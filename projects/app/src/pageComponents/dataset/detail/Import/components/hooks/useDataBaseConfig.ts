@@ -11,7 +11,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   postGetDatabaseConfiguration,
   postDetectDatabaseChanges,
-  postCreateDatabaseCollections
+  postCreateDatabaseCollections,
+  postUpdateDatasetCollectionConfigByDatabase
 } from '@/web/core/dataset/api';
 import type { DetectChangesResponse } from '@/web/core/dataset/temp.d';
 import type {
@@ -26,9 +27,9 @@ import {
   transformBackendToUI,
   transformChangesToUI,
   transformUIToBackend,
-  getProblematicTableNames
+  getProblematicTableNames,
+  StatusEnum
 } from './utils';
-import { TableStatusEnum, ColumnStatusEnum } from '@/web/core/dataset/temp.d';
 
 interface FormMethods {
   getValues: UseFormGetValues<CurrentTableFormData>;
@@ -81,8 +82,19 @@ export const useDataBaseConfig = (
     postCreateDatabaseCollections,
     {
       onSuccess: () => {
-        router.push(`/dataset/detail?datasetId=${datasetId}`);
+        router.push(`/dataset/detail?datasetId=${datasetId}&forceUpdate=true`);
       }
+    }
+  );
+
+  // 更新数据库配置
+  const { runAsync: updateDatabaseConfig, loading: isUpdating } = useRequest2(
+    postUpdateDatasetCollectionConfigByDatabase,
+    {
+      onSuccess: () => {
+        router.push(`/dataset/detail?datasetId=${datasetId}`);
+      },
+      successToast: t('common:update_success')
     }
   );
 
@@ -99,10 +111,15 @@ export const useDataBaseConfig = (
     return getConfigLoading || detectChangesLoading;
   }, [getConfigLoading, detectChangesLoading]);
 
+  // 动态计算提交按钮loading状态
+  const isSubmitting = useMemo(() => {
+    return isCreating || isUpdating;
+  }, [isCreating, isUpdating]);
+
   // 动态计算存在问题的表名（表已勾选且表描述为空或列启用但描述为空）
   const problematicTableNames = useMemo(() => {
     return getProblematicTableNames(uiTables);
-  }, [uiTables]);
+  }, [JSON.stringify(uiTables), uiTables]);
 
   // 计算当前表格的列变更信息
   const currentTableColumnChanges = useMemo<CurrentTableColumnChanges>(() => {
@@ -118,9 +135,9 @@ export const useDataBaseConfig = (
     const deletedColumnNames: string[] = [];
 
     currentTable.columns.forEach((column) => {
-      if (column.status === ColumnStatusEnum.add) {
+      if (column.status === StatusEnum.add) {
         addedColumnNames.push(column.columnName);
-      } else if (column.status === ColumnStatusEnum.delete) {
+      } else if (column.status === StatusEnum.delete) {
         deletedColumnNames.push(column.columnName);
       }
     });
@@ -152,20 +169,10 @@ export const useDataBaseConfig = (
 
     // 只有数据真正发生变化时才更新状态
     if (JSON.stringify(updatedTables[currentTableIndex]) !== JSON.stringify(newTableData)) {
-      updatedTables[currentTableIndex] = newTableData;
+      updatedTables[currentTableIndex] = newTableData as any;
       setUITables(updatedTables);
     }
   }, [currentTable, currentTableIndex, uiTables, getValues]);
-
-  // 同步uiTables到当前表单
-  const syncUITablesToCurrentForm = () => {
-    if (!currentTable) return;
-
-    reset({
-      description: currentTable.description,
-      columns: currentTable.columns.filter((col) => col.status !== ColumnStatusEnum.delete)
-    });
-  };
 
   // 初始化数据
   useEffect(() => {
@@ -173,104 +180,87 @@ export const useDataBaseConfig = (
       try {
         let uiData: UITableData[] = [];
 
-        // 首先获取数据配置
-        const configResult = await getConfiguration({ datasetId });
-        uiData = transformBackendToUI(configResult.tables);
-
         if (isEditMode) {
-          // 编辑模式：检测变更
+          // 编辑模式：只检测变更
           const changesResult = await detectChanges({ datasetId });
           if (changesResult.hasChanges) {
-            // 合并变更数据
+            // 直接使用变更数据
             const changesUIData = transformChangesToUI(changesResult.tables);
 
-            // 处理表格状态
-            uiData = uiData.map((originalTable) => {
-              const changedTable = changesUIData.find(
-                (t) => t.tableName === originalTable.tableName
-              );
-              if (changedTable) {
-                return {
-                  ...changedTable,
-                  // 新增表默认不勾选
-                  enabled:
-                    changedTable.status === TableStatusEnum.add ? false : changedTable.enabled,
-                  columns: changedTable.columns.map((col) => ({
-                    ...col,
-                    // 新增列默认不启用
-                    enabled: col.status === ColumnStatusEnum.add ? false : col.enabled
-                  }))
-                };
-              }
-              return originalTable;
-            });
-
-            // 添加新增的表
-            const newTables = changesUIData.filter(
-              (changedTable) =>
-                !uiData.some((originalTable) => originalTable.tableName === changedTable.tableName)
-            );
-
-            uiData = [
-              ...uiData,
-              ...newTables.map((table) => ({
-                ...table,
-                enabled: false, // 新增表默认不勾选
-                columns: table.columns.map((col) => ({
-                  ...col,
-                  enabled: col.status === ColumnStatusEnum.add ? false : col.enabled
-                }))
+            uiData = changesUIData.map((table) => ({
+              ...table,
+              // 新增表默认不勾选
+              enabled: table.status === StatusEnum.add ? false : table.enabled,
+              columns: table.columns.map((col) => ({
+                ...col,
+                // 新增列默认不启用
+                enabled: col.status === StatusEnum.add ? false : col.enabled
               }))
-            ];
+            }));
 
             setChangesSummary(changesResult.summary);
           }
+        } else {
+          // 创建模式：获取数据配置
+          const configResult = await getConfiguration({ datasetId });
+          uiData = transformBackendToUI(configResult.tables);
         }
 
-        // 计算表格变更汇总信息并设置hasColumnChanges字段
-        const modifiedTableNames: string[] = [];
-        const deletedTableNames: string[] = [];
-        const addedTableNames: string[] = [];
+        if (isEditMode) {
+          // 只有编辑模式才计算表格变更汇总信息并设置hasColumnChanges字段
+          const modifiedTableNames: string[] = [];
+          const deletedTableNames: string[] = [];
+          const addedTableNames: string[] = [];
 
-        uiData = uiData.map((table) => {
-          // 检查是否有列变更
-          const hasColumnChanges = table.columns.some(
-            (col) => col.status === ColumnStatusEnum.add || col.status === ColumnStatusEnum.delete
-          );
+          uiData = uiData.map((table) => {
+            // 检查是否有列变更
+            const hasColumnChanges = table.columns.some(
+              (col) => col.status === StatusEnum.add || col.status === StatusEnum.delete
+            );
 
-          if (table.status === TableStatusEnum.delete) {
-            deletedTableNames.push(table.tableName);
-          } else if (table.status === TableStatusEnum.add) {
-            addedTableNames.push(table.tableName);
-          } else if (hasColumnChanges) {
-            modifiedTableNames.push(table.tableName);
-          }
+            if (table.status === StatusEnum.delete) {
+              deletedTableNames.push(table.tableName);
+            } else if (table.status === StatusEnum.add) {
+              addedTableNames.push(table.tableName);
+            } else if (hasColumnChanges) {
+              modifiedTableNames.push(table.tableName);
+            }
 
-          return {
-            ...table,
-            hasColumnChanges
-          };
-        });
+            return {
+              ...table,
+              hasColumnChanges
+            };
+          });
 
-        setTableChangeSummary({
-          modifiedTables: {
-            count: modifiedTableNames.length,
-            tableNames: modifiedTableNames
-          },
-          deletedTables: {
-            count: deletedTableNames.length,
-            tableNames: deletedTableNames
-          },
-          addedTables: {
-            count: addedTableNames.length,
-            tableNames: addedTableNames
-          },
-          hasChanges:
-            modifiedTableNames.length > 0 ||
-            deletedTableNames.length > 0 ||
-            addedTableNames.length > 0,
-          hasBannerTip: modifiedTableNames.length > 0 || deletedTableNames.length > 0
-        });
+          setTableChangeSummary({
+            modifiedTables: {
+              count: modifiedTableNames.length,
+              tableNames: modifiedTableNames
+            },
+            deletedTables: {
+              count: deletedTableNames.length,
+              tableNames: deletedTableNames
+            },
+            addedTables: {
+              count: addedTableNames.length,
+              tableNames: addedTableNames
+            },
+            hasChanges:
+              modifiedTableNames.length > 0 ||
+              deletedTableNames.length > 0 ||
+              addedTableNames.length > 0,
+            hasBannerTip: modifiedTableNames.length > 0 || deletedTableNames.length > 0
+          });
+        } else {
+          // 创建模式：设置默认的表格变更汇总信息
+          setTableChangeSummary({
+            modifiedTables: { count: 0, tableNames: [] },
+            deletedTables: { count: 0, tableNames: [] },
+            addedTables: { count: 0, tableNames: [] },
+            hasChanges: false,
+            hasBannerTip: false
+          });
+        }
 
         setUITables(uiData);
 
@@ -283,13 +273,13 @@ export const useDataBaseConfig = (
         if (databaseName) {
           // 查找匹配的表索引
           targetTableIndex = uiData.findIndex(
-            (table) => table.tableName === databaseName && table.status !== TableStatusEnum.delete
+            (table) => table.tableName === databaseName && table.status !== StatusEnum.delete
           );
         }
 
         // 如果没有找到指定的表或没有 databaseName 参数，则找到第一个未删除的表作为默认选中
         if (targetTableIndex === -1) {
-          targetTableIndex = uiData.findIndex((table) => table.status !== TableStatusEnum.delete);
+          targetTableIndex = uiData.findIndex((table) => table.status !== StatusEnum.delete);
         }
 
         setCurrentTableIndex(targetTableIndex >= 0 ? targetTableIndex : 0);
@@ -299,14 +289,14 @@ export const useDataBaseConfig = (
         if (targetTable) {
           reset({
             description: targetTable.description,
-            columns: targetTable.columns.filter((col) => col.status !== ColumnStatusEnum.delete)
+            columns: targetTable.columns.filter((col) => col.status !== StatusEnum.delete)
           });
 
           // 标记初始化完成
           isInitializedRef.current = true;
           lastSyncDataRef.current = JSON.stringify({
             description: targetTable.description,
-            columns: targetTable.columns.filter((col) => col.status !== ColumnStatusEnum.delete)
+            columns: targetTable.columns.filter((col) => col.status !== StatusEnum.delete)
           });
         }
       } catch (error) {
@@ -364,7 +354,7 @@ export const useDataBaseConfig = (
       if (uiTables[index]) {
         const newFormData = {
           description: uiTables[index].description,
-          columns: uiTables[index].columns.filter((col) => col.status !== ColumnStatusEnum.delete)
+          columns: uiTables[index].columns.filter((col) => col.status !== StatusEnum.delete)
         };
         reset(newFormData);
         lastSyncDataRef.current = JSON.stringify(newFormData);
@@ -409,7 +399,6 @@ export const useDataBaseConfig = (
   const onSubmit = async (data: CurrentTableFormData) => {
     // 先同步当前表单数据
     syncCurrentTableToUITables();
-
     // 校验是否存在问题表
     if (problematicTableNames.length > 0) {
       // 找到第一个有问题的表的索引
@@ -427,10 +416,14 @@ export const useDataBaseConfig = (
 
     // 转换为后端格式
     const backendData = transformUIToBackend(uiTables);
-    console.log(backendData);
 
-    // 调用创建数据库知识库数据集接口
-    await createCollections({ datasetId, ...backendData });
+    if (isEditMode) {
+      // 编辑模式：调用更新数据库配置接口
+      await updateDatabaseConfig({ datasetId, ...backendData });
+    } else {
+      // 创建模式：调用创建数据库知识库数据集接口
+      await createCollections({ datasetId, ...backendData });
+    }
   };
 
   return {
@@ -441,6 +434,8 @@ export const useDataBaseConfig = (
     tableInfos,
     loading,
     isCreating,
+    isUpdating,
+    isSubmitting,
     changesSummary,
     problematicTableNames,
     tableChangeSummary,

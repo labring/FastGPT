@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { createContext } from 'use-context-selector';
 import {
   getAllTags,
@@ -87,6 +88,7 @@ export const DatasetPageContextProvider = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -181,6 +183,30 @@ export const DatasetPageContextProvider = ({
       refreshDeps: [datasetDetail.parentId]
     }
   );
+
+  // Handle forceUpdate URL parameter
+  useEffect(() => {
+    const handleForceUpdate = async () => {
+      if (router.query.forceUpdate === 'true' && datasetId) {
+        try {
+          await loadDatasetDetail(datasetId);
+        } finally {
+          // Remove forceUpdate parameter from URL
+          const { forceUpdate, ...restQuery } = router.query;
+          router.replace(
+            {
+              pathname: router.pathname,
+              query: restQuery
+            },
+            undefined,
+            { shallow: true }
+          );
+        }
+      }
+    };
+
+    handleForceUpdate();
+  }, [router.query.forceUpdate, datasetId, router, loadDatasetDetail]);
 
   const contextValue: DatasetPageContextType = {
     datasetId,
