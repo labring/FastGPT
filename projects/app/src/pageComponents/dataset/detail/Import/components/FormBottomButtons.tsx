@@ -22,7 +22,7 @@ import {
 } from '@/web/core/dataset/api';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type { DatabaseFormData } from './ConnectDatabaseForm';
-import type { DetectChangesResponse } from '@/pages/api/core/dataset/database/detectChanges';
+import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
 
 interface ConnectionTestResult {
   success: boolean;
