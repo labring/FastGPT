@@ -22,7 +22,7 @@ import {
 } from '@/web/core/dataset/api';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type { DatabaseFormData } from './ConnectDatabaseForm';
-import type { DetectChangesResponse } from '@/pages/api/core/dataset/database/detectChanges';
+import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
 
 interface ConnectionTestResult {
   success: boolean;
@@ -43,6 +43,7 @@ interface FormBottomButtonsProps {
   datasetId: string;
   onSuccess?: () => void;
   originalConfig?: DatabaseFormData;
+  beforeSubmit: (successCb: any) => void;
 }
 
 const iconMap = {
@@ -62,7 +63,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   formData,
   datasetId,
   onSuccess,
-  originalConfig
+  originalConfig,
+  beforeSubmit
 }) => {
   const { t } = useTranslation();
   const [showConnectionModal, setShowConnectionModal] = useState(false);
@@ -142,7 +144,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       onSuccess(res: any) {
         setConnectionTest({
           success: res?.success || false,
-          message: res?.message || t('连接成功')
+          message: res?.message || t('dataset:connection_success')
         });
       }
     }
@@ -161,9 +163,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         poolSize: data.poolSize
       };
 
-      // 如果只是连接池大小变更，不需要检测数据库变更
-      if (!isEditMode || isOnlyPoolSizeChange) {
-        return await updateDatasetConfig({
+      if (isModifyData) {
+        await updateDatasetConfig({
           id: datasetId,
           databaseConfig
         });
@@ -208,18 +209,21 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     }
   );
 
-  const handleConnectAndNext = useCallback(async () => {
-    if (!isEditMode || isOnlyPoolSizeChange) {
-      await onSubmitForm(formData);
-    } else if (hasKeyConfigChanges) {
-      setShowConnectionModal(true);
-      setConnectionStatus('loading');
-      setConnectionMessage('');
-      await onSubmitForm(formData);
-    }
+  const handleConnectAndNext = useCallback(
+    async (data: any) => {
+      if (!isEditMode || isOnlyPoolSizeChange) {
+        await onSubmitForm(formData);
+      } else if (hasKeyConfigChanges) {
+        setShowConnectionModal(true);
+        setConnectionStatus('loading');
+        setConnectionMessage('');
+        await onSubmitForm(formData);
+      }
 
-    !isEditMode && onSuccess?.();
-  }, [isEditMode, formData, onSubmitForm, isOnlyPoolSizeChange, hasKeyConfigChanges, onSuccess]);
+      !isEditMode && onSuccess?.();
+    },
+    [isEditMode, formData, onSubmitForm, isOnlyPoolSizeChange, hasKeyConfigChanges, onSuccess]
+  );
 
   const handleCloseModal = () => {
     setShowConnectionModal(false);
@@ -242,35 +246,33 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       case 'success':
         const getSubTitle = () => {
           if (!databaseChanges.hasChanges) {
-            return t('未出现信息变更');
+            return t('dataset:no_changes_detected');
           }
 
           const parts = [];
           if (databaseChanges.addedTables > 0) {
-            parts.push(
-              t('新增 {{addedTables}} 个数据表', { addedTables: databaseChanges.addedTables })
-            );
+            parts.push(t('dataset:tables_added', { addedTables: databaseChanges.addedTables }));
           }
           if (databaseChanges.modifiedTables > 0) {
             parts.push(
-              t('{{modifiedTables}} 个数据表存在列的变更', {
+              t('dataset:tables_modified', {
                 modifiedTables: databaseChanges.modifiedTables
               })
             );
           }
           if (databaseChanges.deletedTables > 0) {
             parts.push(
-              t('{{deletedTables}} 个数据表已不存在', {
+              t('dataset:tables_deleted', {
                 deletedTables: databaseChanges.deletedTables
               })
             );
           }
 
           if (parts.length > 0) {
-            parts.push(t('请核查最新数据。'));
+            parts.push(t('dataset:please_check_latest_data'));
           }
 
-          return t('发现') + parts.join('，');
+          return t('dataset:changes_detected') + parts.join('，');
         };
 
         return (
@@ -348,7 +350,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
               isLoading={isConnecting}
               disabled={isSubmitting || isConnecting}
               loadingText={t('dataset:connecting')}
-              onClick={testConnection}
+              onClick={() => beforeSubmit(testConnection)}
               px={3}
               mr={4}
             >
@@ -358,7 +360,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
               isLoading={isSubmitting}
               colorScheme="blue"
               disabled={isSubmitting || isConnecting || !isModifyData}
-              onClick={handleConnectAndNext}
+              onClick={() => beforeSubmit(handleConnectAndNext)}
               px={6}
             >
               {t('dataset:confirm')}
