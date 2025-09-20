@@ -36,7 +36,6 @@
   "payment_method": "支付方式",
   "payway_coupon": "兑换码",
   "rerank": "结果重排",
-  "generate_sql": "生成 SQL",
   "save": "保存",
   "save_failed": "保存异常",
   "save_success": "保存成功",

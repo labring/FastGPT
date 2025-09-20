@@ -2,14 +2,27 @@ import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { checkDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
+import { testDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { CheckConnectionBody } from '@fastgpt/global/core/dataset/database/api';
+type Query = {
+  datasetId: string;
+};
+export type CheckConnectionBody = {
+  databaseConfig: DatabaseConfig;
+};
 
-async function handler(req: ApiRequestProps<CheckConnectionBody, {}>): Promise<boolean> {
-  const { datasetId, databaseConfig } = req.body;
+export type CheckConnectionResponse = {
+  success: boolean;
+  message?: string;
+};
+
+async function handler(
+  req: ApiRequestProps<CheckConnectionBody, Query>
+): Promise<CheckConnectionResponse> {
+  const { datasetId } = req.query;
+  const { databaseConfig } = req.body;
 
   // 权限验证（如果提供了datasetId）
   if (!datasetId) {
@@ -22,7 +35,19 @@ async function handler(req: ApiRequestProps<CheckConnectionBody, {}>): Promise<b
     datasetId,
     per: WritePermissionVal
   });
-  return await checkDatabaseConnection(databaseConfig);
+
+  try {
+    const result = await testDatabaseConnection(databaseConfig);
+    return {
+      success: result,
+      message: result ? 'success' : 'failed'
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err
+    };
+  }
 }
 
 export default NextAPI(handler);

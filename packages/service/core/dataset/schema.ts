@@ -101,7 +101,7 @@ const DatasetSchema = new Schema({
   },
   agentModel: {
     type: String,
-    required: function (this: any) {
+    required: function(this: any) {
       return this.type !== DatasetTypeEnum.database;
     },
     default: 'gpt-4o-mini'
@@ -125,13 +125,13 @@ const DatasetSchema = new Schema({
   },
   databaseConfig: {
     type: {
-      client: {
+      client:{
         type: String,
         required: true
       },
-      version: {
+      version:{
         type: String,
-        default: '5.7.44'
+        default: "5.7.44"
       },
       host: {
         type: String,
@@ -153,10 +153,10 @@ const DatasetSchema = new Schema({
         type: String,
         required: true
       },
-      encrypt: {
+      encrypt:{
         type: Boolean,
-        default: false
-      },
+        default: true
+      },  
       poolSize: {
         type: Number,
         default: 20
