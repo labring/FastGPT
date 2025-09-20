@@ -31,10 +31,10 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
         {
           attempts: 1, // 不自动重试，由用户通过API主动重试
           removeOnComplete: {
-            count: 5
+            count: 0 // 完成后立即删除，允许重复提交相同jobId
           },
           removeOnFail: {
-            count: 10
+            count: 0 // 失败后立即删除，允许重新提交失败的任务
           },
           // 使用evalId + metricId作为jobId，防止重复任务
           jobId: `${evalId}_${metricId}`
@@ -43,12 +43,6 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
     );
 
     await Promise.all(addPromises);
-
-    addLog.info('[EvaluationSummary] Tasks added to queue successfully', {
-      evalId,
-      metricIds,
-      metricCount: metricIds.length
-    });
   } catch (error) {
     addLog.error('[EvaluationSummary] Failed to add tasks to queue', {
       evalId,
