@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Flex, Text, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import GradientBorderBox from './GradientBorderBox';
@@ -131,26 +130,31 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) =
       <Flex justify="center" align="center" mt={6} gap={4}>
         <IconButton
           aria-label="Previous"
-          icon={<ChevronLeftIcon />}
+          icon={<MyIcon name="common/leftArrowLight" w={3} h={3} />}
           size="sm"
           variant="ghost"
           isDisabled={currentIndex === 0}
           onClick={handlePrevious}
-          color={currentIndex === 0 ? 'myGray.300' : 'myGray.600'}
+          color={currentIndex === 0 ? 'myGray.300' : 'myGray.500'}
         />
 
-        <Text fontSize="14px" color="myGray.600">
-          {currentIndex + 1}/{data.length}
+        <Text fontSize="14px">
+          <Text as="span" color="blue.600">
+            {currentIndex + 1}
+          </Text>
+          <Text as="span" color="myGray.600">
+            /{data.length}
+          </Text>
         </Text>
 
         <IconButton
           aria-label="Next"
-          icon={<ChevronRightIcon />}
+          icon={<MyIcon name="common/rightArrow" w={3} h={3} />}
           size="sm"
           variant="ghost"
           isDisabled={currentIndex === data.length - 1}
           onClick={handleNext}
-          color={currentIndex === data.length - 1 ? 'myGray.300' : 'myGray.600'}
+          color={currentIndex === data.length - 1 ? 'myGray.300' : 'myGray.500'}
         />
       </Flex>
     </GradientBorderBox>
