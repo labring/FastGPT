@@ -25,9 +25,7 @@ export const evalDatasetDataQualityQueue = getQueue<EvalDatasetDataQualityData>(
   }
 );
 
-const concurrency = process.env.EVAL_DATA_QUALITY_CONCURRENCY
-  ? Number(process.env.EVAL_DATA_QUALITY_CONCURRENCY)
-  : 2;
+const concurrency = global.systemEnv?.evalConfig?.dataQualityConcurrency || 2;
 
 export const getEvalDatasetDataQualityWorker = (
   processor: Processor<EvalDatasetDataQualityData>

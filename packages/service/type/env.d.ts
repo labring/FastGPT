@@ -47,17 +47,6 @@ declare global {
       CHAT_LOG_SOURCE_ID_PREFIX?: string;
 
       NEXT_PUBLIC_BASE_URL: string;
-
-      // evaluations settings
-      EVAL_TASK_CONCURRENCY?: string;
-      EVAL_ITEM_CONCURRENCY?: string;
-      EVAL_ITEM_MAX_RETRY?: string;
-      EVALUATION_DEFAULT_THRESHOLD?: string;
-
-      // evalaution data settings
-      EVAL_DATA_QUALITY_CONCURRENCY?: string;
-      EVAL_DATASET_DATA_SYNTHESIZE_CONCURRENCY?: string;
-      EVAL_DATASET_SMART_GENERATE_CONCURRENCY?: string;
     }
   }
 }

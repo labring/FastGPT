@@ -962,17 +962,13 @@ export class EvaluationSummaryService {
     });
 
     try {
-      // Process evalId, ensure correct ObjectId format
-      const evalObjectId =
-        typeof evalId === 'string' && evalId.length === 24 ? new Types.ObjectId(evalId) : evalId;
-
       // Query successfully completed evaluation items for specific metric, sorted by score (low priority)
       // Note: evaluator.metric._id is stored as string, not ObjectId
       const pipeline = [
         {
           $match: {
-            evalId: evalObjectId,
-            status: EvalStatus.completed,
+            evalId: new Types.ObjectId(evalId),
+            'metadata.status': EvalStatus.completed,
             evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },

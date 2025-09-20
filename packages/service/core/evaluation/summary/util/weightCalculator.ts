@@ -37,13 +37,11 @@ export function calculateMetricWeights(metricCount: number): number[] {
  * @returns Default threshold value
  */
 function getDefaultThreshold(): number {
-  const threshold = process.env.EVALUATION_DEFAULT_THRESHOLD
-    ? Number(process.env.EVALUATION_DEFAULT_THRESHOLD)
-    : 0.8;
+  const threshold = global.systemEnv?.evalConfig?.defaultThreshold || 0.8;
   // Validate threshold is within valid range
   if (isNaN(threshold) || threshold < 0 || threshold > 1) {
     addLog.warn(
-      `[getDefaultThreshold] Invalid EVALUATION_DEFAULT_THRESHOLD value: ${process.env.EVALUATION_DEFAULT_THRESHOLD}. Using default: 0.8`
+      `[getDefaultThreshold] Invalid defaultThreshold value: ${threshold}. Using default: 0.8`
     );
     return 0.8;
   }
