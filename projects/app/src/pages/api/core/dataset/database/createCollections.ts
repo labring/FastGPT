@@ -59,7 +59,6 @@ async function CreateDatabaseCollections(
           teamId,
           tmbId,
           datasetId,
-          parentId: undefined,
           type: DatasetCollectionTypeEnum.table,
           name: table.tableName,
           trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
