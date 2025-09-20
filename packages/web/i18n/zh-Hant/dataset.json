@@ -303,7 +303,7 @@
 "found": "發現",
 "tables_with_column_changes": " {{modifiedTablesCount}} 個資料表存在欄位的變更，",
 "tables_not_exist": " 個資料表已不存在，",
-"please_check_latest_data": "請核查最新資料",
+"please_check_latest_data": "請核查最新資料。",
 "has_unfilled_content": "存在未填寫的內容",
 "has_column_changes": "存在欄位的變更",
 "connection_success": "連接成功",
@@ -316,12 +316,15 @@
   "new_columns_added_disabled": "個新增列（默認未啟用），",
   "columns_no_longer_exist": "個列已不存在，",
   "comma": "，",
-  "check_latest_data": "，請核查最新數據。",
+  "check_latest_data": "請核查最新數據。",
   "config": "配置",
   "refresh_failed": "刷新失敗",
   "unknown_error": "未知錯誤",
    "no_data_available": "暫無數據",
    "database_sql_query": "資料庫檢索的 SQL 語句",
    "search_result": "檢索結果",
-   "no_search_result": "暫無檢索結果"
+   "no_search_result": "暫無檢索結果",
+   "database_address_required": "資料庫地址不能為空",
+  "ip_format_invalid_range": "IP地址格式不正確，每段數值應在0-255之間",
+  "database_address_format_invalid": "資料庫地址格式不正確，請輸入有效的IP地址或域名"
 }
