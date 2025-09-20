@@ -14,7 +14,7 @@ import { addLog } from '../../../common/system/log';
 import { SummaryStatusEnum, PERFECT_SCORE } from '@fastgpt/global/core/evaluation/constants';
 import { getEvaluationSummaryTokenLimit } from '../utils/tokenLimiter';
 import { createChatCompletion } from '../../ai/config';
-import { getLLMModel } from '../../ai/model';
+import { getLLMModel, getEvaluationModel } from '../../ai/model';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -1141,7 +1141,7 @@ export class EvaluationSummaryService {
   }> {
     try {
       const llmModel = evaluator.runtimeConfig?.llm;
-      const modelData = llmModel ? getLLMModel(llmModel) : getLLMModel();
+      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
 
       const userPrompt = this.buildUserPrompt(data);
 
@@ -1211,7 +1211,7 @@ export class EvaluationSummaryService {
     if (!usage) return;
 
     try {
-      const modelData = llmModel ? getLLMModel(llmModel) : getLLMModel();
+      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
       const inputTokens = usage?.prompt_tokens || 0;
       const outputTokens = usage?.completion_tokens || 0;
       const totalTokens = inputTokens + outputTokens;
