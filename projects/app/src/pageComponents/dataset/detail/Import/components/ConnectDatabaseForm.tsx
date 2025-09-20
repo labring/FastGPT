@@ -23,6 +23,7 @@ import FormBottomButtons from './FormBottomButtons';
 import { databaseAddrValidator } from '../utils';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 export type DatabaseFormData = {
   client: DatabaseConfig['client'];
@@ -228,22 +229,13 @@ const ConnectDatabaseConfig = () => {
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dataset:connection_pool_size')}
           </FormLabel>
-          <Input
-            type="number"
-            placeholder="20"
-            bg="myGray.50"
-            {...register('poolSize', {
-              required: t('dataset:connection_pool_required'),
-              valueAsNumber: true,
-              min: {
-                value: 1,
-                message: t('dataset:connection_pool_min_error')
-              },
-              max: {
-                value: 100,
-                message: t('dataset:connection_pool_max_error')
-              }
-            })}
+          <MyNumberInput
+            size={'sm'}
+            min={1}
+            max={100}
+            step={1}
+            register={register}
+            name="poolSize"
           />
           {errors.poolSize && <FormErrorMessage>{errors.poolSize.message}</FormErrorMessage>}
         </FormControl>
@@ -252,6 +244,7 @@ const ConnectDatabaseConfig = () => {
           disabled={!isValid}
           formData={formData}
           datasetId={datasetId}
+          beforeSubmit={handleSubmit}
           onSuccess={handleSuccess}
           originalConfig={defaultValues}
         />

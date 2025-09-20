@@ -1,3 +1,4 @@
+import { i18nT } from '../../../../web/i18n/utils';
 import { type ErrType } from '../errorCode';
 
 /* database: 509000 */
@@ -10,42 +11,32 @@ export enum DatabaseErrEnum {
   clientDestroyError = 'databaseClientDestroyError',
   clientAlreadyExists = 'databaseClientAlreadyExists',
   clientNotFound = 'databaseClientNotFound',
-  
+
   // 连接相关错误
   authError = 'databaseAuthError',
-  nameError = 'databaseNameError',
-  addressError = 'databaseAddressError',
+  databaseNameError = 'databaseNameError',
+  databasePortError = 'databasePortError',
+  hostError = 'databaseHostError',
   checkError = 'databaseCheckError',
+  econnRefused = 'connectionRefused',
   connectionFailed = 'databaseConnectionFailed',
   connectionTimeout = 'databaseConnectionTimeout',
-  
+  connectionLost = 'databaseConnectionLost',
+
   // 数据库类型和支持错误
   notSupportType = 'databaseNotSupportType',
   notImplemented = 'databaseNotImplemented',
-  
+
   // API 请求和验证错误
   requestValidationError = 'databaseRequestValidationError',
   invalidTableName = 'databaseInvalidTableName',
   fetchInfoError = 'databaseFetchInfoError',
-  invalidConfig = 'databaseInvalidConfig',
-  
-  // 查询和操作错误
-  queryExecutionError = 'databaseQueryExecutionError',
-  tableNotFound = 'databaseTableNotFound',
-  columnNotFound = 'databaseColumnNotFound',
-  syntaxError = 'databaseSyntaxError',
-  
-  // Schema相关错误
-  schemaIntrospectionError = 'databaseSchemaIntrospectionError',
-  metadataError = 'databaseMetadataError'
+  dbConfigNotFound = 'databaseConfigNotFound',
+  opUnknownDatabaseError = 'opUnknownDatabaseError',
+  dativeServiceError = 'dativeServiceError'
 }
 
 const databaseErr = [
-  
-  {
-    statusText: DatabaseErrEnum.datasetParamsError,
-    message: 'core.database.error.not_support_dataset_type'
-  },
   // 客户端管理错误
   {
     statusText: DatabaseErrEnum.clientCreateError,
@@ -57,97 +48,81 @@ const databaseErr = [
   },
   {
     statusText: DatabaseErrEnum.clientDestroyError,
-    message: 'core.database.error.client_destroy_failed'
-  },
-  {
-    statusText: DatabaseErrEnum.clientAlreadyExists,
-    message: 'core.database.error.client_already_exists'
+    message: i18nT('database_client:client_destory_error')
   },
   {
     statusText: DatabaseErrEnum.clientNotFound,
-    message: 'core.database.error.client_not_found'
+    message: i18nT('database_client:client_not_found')
   },
-  
+
   // 连接错误
   {
     statusText: DatabaseErrEnum.authError,
-    message: 'core.database.error.auth_failed'
+    message: i18nT('database_client:authentication_failed')
   },
   {
-    statusText: DatabaseErrEnum.nameError,
-    message: 'core.database.error.database_not_found'
+    statusText: DatabaseErrEnum.databaseNameError,
+    message: i18nT('database_client:database_not_exist')
   },
   {
-    statusText: DatabaseErrEnum.addressError,
-    message: 'core.database.error.connection_address_failed'
+    statusText: DatabaseErrEnum.databasePortError,
+    message: i18nT('database_client:database_port_error')
+  },
+  {
+    statusText: DatabaseErrEnum.hostError,
+    message: i18nT('database_client:host_error')
+  },
+  {
+    statusText: DatabaseErrEnum.econnRefused,
+    message: i18nT('database_client:connection_refused')
   },
   {
     statusText: DatabaseErrEnum.checkError,
-    message: 'core.database.error.connection_check_failed'
+    message: i18nT('database_client:connection_check_error')
+  },
+  {
+    statusText: DatabaseErrEnum.connectionLost,
+    message: i18nT('database_client:connection_lost')
   },
   {
     statusText: DatabaseErrEnum.connectionFailed,
-    message: 'core.database.error.connection_failed'
+    message: i18nT('database_client:connection_failed')
   },
   {
     statusText: DatabaseErrEnum.connectionTimeout,
-    message: 'core.database.error.connection_timeout'
+    message: i18nT('database_client:connection_timeout')
   },
-  
+
   // 类型支持错误
   {
     statusText: DatabaseErrEnum.notSupportType,
-    message: 'core.database.error.database_type_not_supported'
+    message: i18nT('database_client:not_support_databaseType')
   },
   {
     statusText: DatabaseErrEnum.notImplemented,
-    message: 'core.database.error.feature_not_implemented'
+    message: i18nT('database_client:not_implemented_databaseType')
   },
-  
+
   // 请求验证错误
   {
-    statusText: DatabaseErrEnum.requestValidationError,
-    message: 'core.database.error.request_validation_failed'
-  },
-  {
     statusText: DatabaseErrEnum.invalidTableName,
-    message: 'core.database.error.invalid_table_name'
+    message: i18nT('database_client:invalid_table_name')
   },
   {
     statusText: DatabaseErrEnum.fetchInfoError,
-    message: 'core.database.error.fetch_info_failed'
+    message: i18nT('database_client:fetch_info_error')
   },
   {
-    statusText: DatabaseErrEnum.invalidConfig,
-    message: 'core.database.error.invalid_config'
-  },
-  
-  // 查询操作错误
-  {
-    statusText: DatabaseErrEnum.queryExecutionError,
-    message: 'core.database.error.query_execution_failed'
+    statusText: DatabaseErrEnum.dbConfigNotFound,
+    message: i18nT('database_client:database_config_not_found')
   },
   {
-    statusText: DatabaseErrEnum.tableNotFound,
-    message: 'core.database.error.table_not_found'
+    statusText: DatabaseErrEnum.opUnknownDatabaseError,
+    message: i18nT('database_client:op_unknown_database_error')
   },
   {
-    statusText: DatabaseErrEnum.columnNotFound,
-    message: 'core.database.error.column_not_found'
-  },
-  {
-    statusText: DatabaseErrEnum.syntaxError,
-    message: 'core.database.error.sql_syntax_error'
-  },
-  
-  // Schema错误
-  {
-    statusText: DatabaseErrEnum.schemaIntrospectionError,
-    message: 'core.database.error.schema_introspection_failed'
-  },
-  {
-    statusText: DatabaseErrEnum.metadataError,
-    message: 'core.database.error.metadata_error'
+    statusText: DatabaseErrEnum.dativeServiceError,
+    message: i18nT('database_client:dative_service_error')
   }
 ];
 

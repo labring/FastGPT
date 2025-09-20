@@ -70,51 +70,9 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   createTime?: Date;
   updateTime?: Date;
   tableSchema?: TableSchemaType;
+  forbid?: boolean;
 };
 
-export type UpdateConfigurationParams = {
-  databaseconfig?: {
-    type: {
-      client:{
-        type: String,
-        required: true
-      },
-      version:{
-        type: String,
-        default: "5.7.44"
-      },
-      host: {
-        type: String,
-        required: true
-      },
-      port: {
-        type: Number,
-        default: 3306
-      },
-      database: {
-        type: String,
-        required: true
-      },
-      user: {
-        type: String,
-        required: true
-      },
-      password: {
-        type: String,
-        required: true
-      },
-      encrypt:{
-        type: Boolean,
-        default: true
-      },  
-      poolSize: {
-        type: Number,
-        default: 20
-      }
-    }
-  },
-  
-}
 export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
   tags?: string[];

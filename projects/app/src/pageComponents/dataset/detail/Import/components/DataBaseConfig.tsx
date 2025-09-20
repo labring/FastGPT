@@ -35,9 +35,9 @@ import { useContextSelector } from 'use-context-selector';
 import { useDataBaseConfig } from './hooks/useDataBaseConfig';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import IconTip from '@fastgpt/web/components/common/MyTooltip/IconTip';
-import { ColumnStatusEnum, TableStatusEnum } from '@/web/core/dataset/temp.d';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { StatusEnum } from './hooks/utils';
 import type { CurrentTableFormData } from './hooks/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -68,7 +68,7 @@ const DataBaseConfig = () => {
     uiTables,
     tableInfos,
     loading,
-    isCreating,
+    isSubmitting,
     changesSummary,
     problematicTableNames,
     handleTableSelect,
@@ -94,15 +94,14 @@ const DataBaseConfig = () => {
     if (!currentTable) return [];
     return currentTable.columns.filter(
       (v) =>
-        v.status !== ColumnStatusEnum.delete &&
-        (!searchColumn || v.columnName.includes(searchColumn))
+        v.status !== StatusEnum.delete && (!searchColumn || v.columnName.includes(searchColumn))
     );
   }, [searchColumn, currentTable]);
 
   const showTables = useMemo(() => {
     return tableInfos.filter(
       (tableInfo) =>
-        tableInfo.tableData.status !== TableStatusEnum.delete &&
+        tableInfo.tableData.status !== StatusEnum.delete &&
         (!searchTable || tableInfo.tableData.tableName.includes(searchTable))
     );
   }, [searchTable, tableInfos]);
@@ -392,7 +391,7 @@ const DataBaseConfig = () => {
                     return (
                       <Tr key={column.columnName} borderRadius="0" _hover={{ bg: 'myGray.50' }}>
                         <Td maxW={'154px'} bg="white">
-                          {column.status === ColumnStatusEnum.add ? (
+                          {column.status === StatusEnum.add ? (
                             <Flex>
                               <MyTooltip
                                 shouldWrapChildren={false}
@@ -468,10 +467,10 @@ const DataBaseConfig = () => {
       <Flex justify="flex-end" mt={8}>
         <Button
           colorScheme="blue"
-          onClick={handleSubmit(onSubmit)}
+          onClick={() => onSubmit(getValues())}
           px={8}
           size="md"
-          isLoading={isCreating}
+          isLoading={isSubmitting}
         >
           {t('dataset:confirm')}
         </Button>
