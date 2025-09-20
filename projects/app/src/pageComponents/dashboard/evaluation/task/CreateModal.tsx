@@ -27,7 +27,7 @@ import ManageDimension, { type Dimension } from './ManageDimension';
 import AppSelect from '@/components/Select/AppSelect';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { getEvaluationDatasetList } from '@/web/core/evaluation/dataset';
+import { getEvaluationDatasetListV2 } from '@/web/core/evaluation/dataset';
 import { getEvaluationList, postCreateEvaluation } from '@/web/core/evaluation/task';
 import type { CreateEvaluationRequest } from '@fastgpt/global/core/evaluation/api';
 import type { EvalTarget, EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
@@ -302,6 +302,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
           description: metricDescription,
           type:
             dimension.type === 'builtin' ? EvalMetricTypeEnum.Builtin : EvalMetricTypeEnum.Custom,
+          prompt: dimension.prompt,
           userInputRequired: true,
           actualOutputRequired: true,
           expectedOutputRequired: true,
@@ -381,24 +382,24 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
   // 获取评测数据集列表
   const {
-    ScrollData: DatasetScrollData,
-    data: datasets,
-    isLoading: isLoadingDatasets,
-    refreshList: fetchDatasets
-  } = useScrollPagination(getEvaluationDatasetList, {
-    pageSize: 20,
-    params: {
-      searchKey: ''
-    }
-  });
+    data: evaluationDatasetList,
+    loading: isLoadingDatasets,
+    runAsync: fetchDatasets
+  } = useRequest2(getEvaluationDatasetListV2);
+
+  React.useEffect(() => {
+    fetchDatasets({});
+  }, [fetchDatasets]);
 
   // 转换数据集数据为下拉选项格式
   const datasetOptions = useMemo(() => {
-    return datasets.map((dataset) => ({
-      label: dataset.name,
-      value: dataset._id
-    }));
-  }, [datasets]);
+    return (evaluationDatasetList?.list || []).map(
+      (dataset: { _id: string; name: string; createTime: Date }) => ({
+        label: dataset.name,
+        value: dataset._id
+      })
+    );
+  }, [evaluationDatasetList]);
 
   const selectedDimensions = watchedValues.selectedDimensions || [];
 
@@ -443,7 +444,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const handleIntelligentGenerationConfirm = useCallback(
     (data: any, evalDatasetCollectionId?: string) => {
       onCloseIntelligentModal();
-      fetchDatasets();
+      fetchDatasets({});
       // 如果返回了数据集ID，自动选择新创建的数据集
       if (evalDatasetCollectionId) {
         setValue('evalDatasetCollectionId', evalDatasetCollectionId);
@@ -538,7 +539,6 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     list={datasetOptions}
                     onChange={(val) => setValue('evalDatasetCollectionId', val)}
                     isLoading={isLoadingDatasets}
-                    ScrollData={DatasetScrollData}
                   />
                 </Box>
                 <MyMenu
@@ -578,7 +578,12 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     }
                   ]}
                 />
-                <Button variant="whiteBase" size="md" flexShrink={0} onClick={fetchDatasets}>
+                <Button
+                  variant="whiteBase"
+                  size="md"
+                  flexShrink={0}
+                  onClick={() => fetchDatasets({})}
+                >
                   <MyIcon name="common/confirm/restoreTip" w="14px" />
                 </Button>
               </HStack>
