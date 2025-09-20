@@ -40,6 +40,7 @@ export interface Dimension {
   name: string;
   type: 'builtin' | 'custom';
   description: string;
+  prompt?: string;
   evaluationModel: string;
   indexModel?: string;
   llmRequired: boolean;
@@ -77,6 +78,7 @@ const transformMetricToDimension = (
     name,
     type: metric.type === 'builtin_metric' ? 'builtin' : 'custom',
     description,
+    prompt: metric.prompt,
     evaluationModel: metric.llmRequired ? defaultEvaluationModel || '' : '',
     indexModel: metric.embeddingRequired ? defaultEmbeddingModel || '' : '',
     llmRequired: metric.llmRequired ?? false,
@@ -279,6 +281,7 @@ const ManageDimension = ({
         // 如果在选中列表中，保持选中状态并使用已配置的模型
         return {
           ...dimension,
+          prompt: selectedDimension.prompt || dimension.prompt,
           evaluationModel: selectedDimension.evaluationModel || dimension.evaluationModel,
           indexModel: selectedDimension.indexModel || dimension.indexModel,
           isSelected: true
@@ -289,7 +292,7 @@ const ManageDimension = ({
   }, [metricListData, selectedDimensions, embeddingModelList, evalModelList, t]);
 
   // 同步转换后的维度数据到表单，保持已有的选择状态
-  useEffect(() => {
+  const syncDimensions = useCallback(() => {
     if (transformedDimensions.length > 0) {
       const currentDimensions = watchedDimensions;
 
@@ -322,7 +325,11 @@ const ManageDimension = ({
         replace(mergedDimensions);
       }
     }
-  }, [transformedDimensions, replace]);
+  }, [transformedDimensions, watchedDimensions, replace]);
+
+  useEffect(() => {
+    syncDimensions();
+  }, [syncDimensions]);
 
   // 处理维度选择
   const handleDimensionToggle = useCallback(
