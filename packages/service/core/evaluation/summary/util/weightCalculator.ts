@@ -83,8 +83,7 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
     summaryStatus: SummaryStatusEnum.pending,
     errorReason: '',
     completedItemCount: 0,
-    overThresholdItemCount: 0,
-    thresholdPassRate: 0
+    overThresholdItemCount: 0
   }));
 
   addLog.debug('[buildEvalDataConfig] Processed configuration:', {
