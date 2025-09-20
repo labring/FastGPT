@@ -65,6 +65,10 @@ export const useDataBaseConfig = (
 
   // 获取当前表
   const currentTable = useMemo(() => {
+    const data = uiTables[currentTableIndex];
+    if (data?.hasOwnProperty('exist')) {
+      return uiTables[currentTableIndex]?.exist ? uiTables[currentTableIndex] : null;
+    }
     return uiTables[currentTableIndex] || null;
   }, [uiTables, currentTableIndex]);
 
@@ -294,7 +298,7 @@ export const useDataBaseConfig = (
           });
         }
       } catch (error) {
-        console.error(t('dataset:init_data_failed'), error);
+        console.error('init_data_failed', error);
       }
     };
 
@@ -390,7 +394,7 @@ export const useDataBaseConfig = (
   };
 
   // 表单提交处理
-  const onSubmit = async (data: CurrentTableFormData) => {
+  const onSubmit = async () => {
     // 先同步当前表单数据
     syncCurrentTableToUITables();
     // 校验是否存在问题表

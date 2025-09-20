@@ -113,6 +113,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     [isOnlyPoolSizeChange, hasKeyConfigChanges, isEditMode]
   );
 
+  const formDataString = useMemo(() => JSON.stringify(formData), [formData]);
+
   React.useEffect(() => {
     if (connectionTest.message || connectionTest.success) {
       setConnectionTest({
@@ -120,7 +122,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         message: ''
       });
     }
-  }, [formData]);
+  }, [formDataString]);
 
   // 连接测试请求
   const { runAsync: testConnection, loading: isConnecting } = useRequest2(
@@ -143,10 +145,17 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     {
       onSuccess(res: any) {
         setConnectionTest({
-          success: res?.success || false,
-          message: res?.message || t('dataset:connection_success')
+          success: true,
+          message: t('dataset:connection_success')
         });
-      }
+      },
+      onError(res: any) {
+        setConnectionTest({
+          success: false,
+          message: t(res?.message) || t('dataset:connection_failed')
+        });
+      },
+      errorToast: ''
     }
   );
 
@@ -250,9 +259,6 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
           }
 
           const parts = [];
-          if (databaseChanges.addedTables > 0) {
-            parts.push(t('dataset:tables_added', { addedTables: databaseChanges.addedTables }));
-          }
           if (databaseChanges.modifiedTables > 0) {
             parts.push(
               t('dataset:tables_modified', {
@@ -333,7 +339,6 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
 
   const editModeBtns = useMemo(() => {
     const { icon, color } = iconMap[connectionTest.success ? 'success' : 'fail'];
-    console.log(connectionTest);
     return (
       <>
         <HStack justifyContent={'flex-end'}>
@@ -386,7 +391,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
             onClick={beforeSubmit(handleConnectAndNext)}
             isLoading={isSubmitting || isConnecting}
             loadingText={t('dataset:connecting')}
-            disabled={disabled || isSubmitting || isConnecting}
+            disabled={isSubmitting || isConnecting}
             size="md"
           >
             {t('dataset:connect_and_next')}

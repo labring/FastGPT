@@ -161,7 +161,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {result.summary.modifiedTables > 0 && (
                       <>
                         {result.summary.modifiedTables} {t('dataset:tables_with_column_changes')}
-                        {result.summary.deletedTables > 0 && t('dataset:comma')}
                       </>
                     )}
                     {result.summary.deletedTables > 0 && (

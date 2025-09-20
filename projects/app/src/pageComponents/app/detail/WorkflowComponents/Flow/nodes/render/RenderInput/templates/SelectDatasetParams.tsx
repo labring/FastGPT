@@ -60,7 +60,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: '',
-    generateSqlModel: defaultModels.embedding?.model
+    generateSqlModel: defaultModels.llm?.model
   });
 
   const tokenLimit = useMemo(() => {
