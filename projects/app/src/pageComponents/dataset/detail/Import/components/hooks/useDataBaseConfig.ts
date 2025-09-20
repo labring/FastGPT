@@ -183,75 +183,70 @@ export const useDataBaseConfig = (
         if (isEditMode) {
           // 编辑模式：只检测变更
           const changesResult = await detectChanges({ datasetId });
+          const changesUIData = transformChangesToUI(changesResult.tables);
+
+          uiData = changesUIData.map((table) => ({
+            ...table,
+            // 新增表默认不勾选
+            enabled: table.status === StatusEnum.add ? false : true,
+            columns: table.columns.map((col) => ({
+              ...col,
+              // 新增列默认不启用
+              enabled: col.status === StatusEnum.add ? false : col.enabled
+            }))
+          }));
+
+          setChangesSummary(changesResult.summary);
           if (changesResult.hasChanges) {
-            // 直接使用变更数据
-            const changesUIData = transformChangesToUI(changesResult.tables);
+            // 只有编辑模式才计算表格变更汇总信息并设置hasColumnChanges字段
+            const modifiedTableNames: string[] = [];
+            const deletedTableNames: string[] = [];
+            const addedTableNames: string[] = [];
 
-            uiData = changesUIData.map((table) => ({
-              ...table,
-              // 新增表默认不勾选
-              enabled: table.status === StatusEnum.add ? false : table.enabled,
-              columns: table.columns.map((col) => ({
-                ...col,
-                // 新增列默认不启用
-                enabled: col.status === StatusEnum.add ? false : col.enabled
-              }))
-            }));
+            uiData = uiData.map((table) => {
+              // 检查是否有列变更
+              const hasColumnChanges = table.columns.some(
+                (col) => col.status === StatusEnum.add || col.status === StatusEnum.delete
+              );
 
-            setChangesSummary(changesResult.summary);
+              if (table.status === StatusEnum.delete) {
+                deletedTableNames.push(table.tableName);
+              } else if (table.status === StatusEnum.add) {
+                addedTableNames.push(table.tableName);
+              } else if (hasColumnChanges) {
+                modifiedTableNames.push(table.tableName);
+              }
+
+              return {
+                ...table,
+                hasColumnChanges
+              };
+            });
+
+            setTableChangeSummary({
+              modifiedTables: {
+                count: modifiedTableNames.length,
+                tableNames: modifiedTableNames
+              },
+              deletedTables: {
+                count: deletedTableNames.length,
+                tableNames: deletedTableNames
+              },
+              addedTables: {
+                count: addedTableNames.length,
+                tableNames: addedTableNames
+              },
+              hasChanges:
+                modifiedTableNames.length > 0 ||
+                deletedTableNames.length > 0 ||
+                addedTableNames.length > 0,
+              hasBannerTip: modifiedTableNames.length > 0 || deletedTableNames.length > 0
+            });
           }
         } else {
           // 创建模式：获取数据配置
           const configResult = await getConfiguration({ datasetId });
           uiData = transformBackendToUI(configResult.tables);
-        }
-
-        if (isEditMode) {
-          // 只有编辑模式才计算表格变更汇总信息并设置hasColumnChanges字段
-          const modifiedTableNames: string[] = [];
-          const deletedTableNames: string[] = [];
-          const addedTableNames: string[] = [];
-
-          uiData = uiData.map((table) => {
-            // 检查是否有列变更
-            const hasColumnChanges = table.columns.some(
-              (col) => col.status === StatusEnum.add || col.status === StatusEnum.delete
-            );
-
-            if (table.status === StatusEnum.delete) {
-              deletedTableNames.push(table.tableName);
-            } else if (table.status === StatusEnum.add) {
-              addedTableNames.push(table.tableName);
-            } else if (hasColumnChanges) {
-              modifiedTableNames.push(table.tableName);
-            }
-
-            return {
-              ...table,
-              hasColumnChanges
-            };
-          });
-
-          setTableChangeSummary({
-            modifiedTables: {
-              count: modifiedTableNames.length,
-              tableNames: modifiedTableNames
-            },
-            deletedTables: {
-              count: deletedTableNames.length,
-              tableNames: deletedTableNames
-            },
-            addedTables: {
-              count: addedTableNames.length,
-              tableNames: addedTableNames
-            },
-            hasChanges:
-              modifiedTableNames.length > 0 ||
-              deletedTableNames.length > 0 ||
-              addedTableNames.length > 0,
-            hasBannerTip: modifiedTableNames.length > 0 || deletedTableNames.length > 0
-          });
-        } else {
           // 创建模式：设置默认的表格变更汇总信息
           setTableChangeSummary({
             modifiedTables: { count: 0, tableNames: [] },
@@ -261,7 +256,6 @@ export const useDataBaseConfig = (
             hasBannerTip: false
           });
         }
-
         setUITables(uiData);
 
         // 检查地址栏中是否存在 databaseName 参数

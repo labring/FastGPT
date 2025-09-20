@@ -43,7 +43,7 @@ interface FormBottomButtonsProps {
   datasetId: string;
   onSuccess?: () => void;
   originalConfig?: DatabaseFormData;
-  beforeSubmit: (successCb: any) => void;
+  beforeSubmit: (successCb: any) => any;
 }
 
 const iconMap = {
@@ -350,7 +350,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
               isLoading={isConnecting}
               disabled={isSubmitting || isConnecting}
               loadingText={t('dataset:connecting')}
-              onClick={() => beforeSubmit(testConnection)}
+              onClick={beforeSubmit(() => testConnection())}
               px={3}
               mr={4}
             >
@@ -360,7 +360,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
               isLoading={isSubmitting}
               colorScheme="blue"
               disabled={isSubmitting || isConnecting || !isModifyData}
-              onClick={() => beforeSubmit(handleConnectAndNext)}
+              onClick={beforeSubmit(handleConnectAndNext)}
               px={6}
             >
               {t('dataset:confirm')}
@@ -383,7 +383,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
           )}
           <Button
             colorScheme="blue"
-            onClick={handleConnectAndNext}
+            onClick={beforeSubmit(handleConnectAndNext)}
             isLoading={isSubmitting || isConnecting}
             loadingText={t('dataset:connecting')}
             disabled={disabled || isSubmitting || isConnecting}

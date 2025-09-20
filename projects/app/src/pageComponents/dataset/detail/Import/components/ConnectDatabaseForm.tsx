@@ -231,6 +231,7 @@ const ConnectDatabaseConfig = () => {
           </FormLabel>
           <MyNumberInput
             size={'sm'}
+            isRequired
             min={1}
             max={100}
             step={1}

@@ -98,6 +98,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                 <Switch
                   isChecked={!collection.forbid}
                   size={'sm'}
+                  disabled={collection.statusKey === 'notExist'}
                   onChange={(e) =>
                     onUpdateCollection({
                       id: collection._id,
