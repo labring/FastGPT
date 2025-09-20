@@ -102,6 +102,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
       }
       // 按照每个表的状态进行处理
       for (const table of tables) {
+        console.debug(`[applyChanges] table:${table.tableName}, status:${table.status}`);
         try {
           switch (table.status) {
             case StatusEnum.add: {
@@ -157,7 +158,6 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
             case StatusEnum.available: {
               // Check if table needs re-indexing
               const intersectCollection = mongoCollectionsMap.get(table.tableName);
-              console.debug('intersectCollection', intersectCollection);
               if (intersectCollection) {
                 let needsReindex = false;
 
@@ -173,42 +173,55 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
 
                 // Check column description changes
                 const intersectColumns =
-                  (intersectCollection.tableSchema?.columns as Record<string, ColumnSchemaType>) ||
-                  {};
+                  (intersectCollection.tableSchema?.columns as Map<string, ColumnSchemaType>) || {};
+                console.debug('[applyChanges] intersectColumns', intersectColumns);
                 for (const [colName, newCol] of Object.entries(table.columns) as [
                   string,
                   DBTableColumn
                 ][]) {
-                  const intersectCol = intersectColumns[colName];
+                  const intersectCol = intersectColumns.get(colName);
                   if (intersectCol && intersectCol.description !== newCol.description) {
+                    console.debug(`[applyChanges] column description change:
+                      ${colName}, 
+                      intersectCol:${intersectCol.description}, newCol:${newCol.description}`);
                     needsReindex = true;
                     break;
                   } else if (intersectCol && intersectCol.isPrimaryKey !== newCol.isPrimaryKey) {
+                    console.debug(`[applyChanges] column isPrimaryKey change:
+                      ${colName}, 
+                      intersectCol:${intersectCol.isPrimaryKey}, newCol:${newCol.isPrimaryKey}`);
                     needsReindex = true;
                     break;
                   } else if (intersectCol && intersectCol.isForeignKey !== newCol.isForeignKey) {
+                    console.debug(`[applyChanges] column isForeignKey change:
+                      ${colName}, 
+                      intersectCol:${intersectCol.isForeignKey}, newCol:${newCol.isForeignKey}`);
                     needsReindex = true;
                     break;
                   }
                 }
 
                 // Check for added/deleted columns
-                const intersectColNames = new Set(Object.keys(intersectColumns));
+                const intersectColNames = new Set(intersectColumns.keys());
                 const newColNames = new Set(Object.keys(table.columns));
-
+                console.debug('[applyChanges] intersectColNames', intersectColNames);
+                console.debug('[applyChanges] newColNames', newColNames);
                 if (
                   intersectColNames.size !== newColNames.size ||
                   [...intersectColNames].some((name) => !newColNames.has(name)) ||
                   [...newColNames].some((name) => !intersectColNames.has(name))
                 ) {
+                  console.debug(`[applyChanges] column added/deleted: ${table.tableName}`);
                   needsReindex = true;
                 }
 
                 // Check column forbid status inconsistency
                 if (hasColumnForbidInconsistency(intersectCollection, table)) {
+                  console.debug(
+                    `[applyChanges] column forbid status inconsistency: ${table.tableName}`
+                  );
                   needsReindex = true;
                 }
-                console.debug('needsReindex', needsReindex);
                 if (needsReindex) {
                   // Delete collection
                   await delCollection({

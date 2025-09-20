@@ -95,8 +95,8 @@ export type ConstraintSchemaType = {
 
 export type ForeignKeySchemaType = ConstraintSchemaType & {
   referredSchema: string | null;
-  referredTable: string;
-  referredColumns: string[];
+  referredTable: string | null;
+  referredColumns: string | null;
 };
 export type TableSchemaType = {
   tableName: string;

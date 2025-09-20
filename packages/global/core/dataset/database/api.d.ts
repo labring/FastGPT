@@ -1,6 +1,5 @@
-import type { ColumnSchemaType,TableSchemaType } from '../type';
-import {ConstraintSchemaType,ForeignKeySchemaType } from '../type';
-
+import type { ColumnSchemaType, TableSchemaType, DatabaseConfig } from '../type';
+import { ConstraintSchemaType, ForeignKeySchemaType } from '../type';
 /*-------API Request & Response Types-------*/
 
 export type CheckConnectionBody = {
@@ -9,13 +8,13 @@ export type CheckConnectionBody = {
 };
 
 /*-------Create Database Collections Type-------*/
-export type DatabaseCollectionsTable = Omit<TableSchemaType, "lastUpdated"> & {forbid: boolean};
+export type DatabaseCollectionsTable = Omit<TableSchemaType, 'lastUpdated'> & { forbid: boolean };
 
 export type DatabaseCollectionsBody = {
   tables: DatabaseCollectionsTable[];
 };
 
-export type CreateDatabaseCollectionsBody = DatabaseCollectionsBody & {datasetId: string}
+export type CreateDatabaseCollectionsBody = DatabaseCollectionsBody & { datasetId: string };
 
 export type CreateDatabaseCollectionsResponse = {
   collectionIds: string[];
@@ -28,15 +27,13 @@ export enum StatusEnum {
   available = 'available'
 }
 
+export type DBTableColumn = ColumnSchemaType & { status: StatusEnum };
 
-export type DBTableColumn  = ColumnSchemaType & {status: StatusEnum;}
-
-export type DBTableChange = Omit<TableSchemaType, "columns","lastUpdated"> & 
-{   
-    forbid: boolean;
-    status: StatusEnum; 
-    columns: Record<string, DBTableColumn>
-}
+export type DBTableChange = Omit<TableSchemaType, 'columns', 'lastUpdated'> & {
+  forbid: boolean;
+  status: StatusEnum;
+  columns: Record<string, DBTableColumn>;
+};
 
 export type DetectChangesQuery = {
   datasetId: string;
@@ -89,17 +86,17 @@ export type DativeCostraintKey = {
   column: string;
 };
 export type DativeForeignKey = DativeCostraintKey & {
-  referenced_schema: string;
-  referenced_table: string;
-  referenced_column: string;
+  referenced_schema: string | null;
+  referenced_table: string | null;
+  referenced_column: string | null;
 };
 export type DativeTableColumns = {
   name: string;
   type: string;
   comment: string;
   auto_increment: boolean;
-  nullable : boolean;
-  default : any;
+  nullable: boolean;
+  default: any;
   examples: Array<any>;
   enabled: boolean;
   value_index: boolean;
@@ -116,16 +113,16 @@ export type DativeTable = {
 };
 
 export type DativeSchema = {
-    name: string; // databaseName
-    comments?: string;
-    tables: Array<DativeTable>;
+  name: string; // databaseName
+  comments?: string;
+  tables: Array<DativeTable>;
 };
 
 // SQL Generation types
 export type SqlGenerationRequest = {
   source_config: {
-    type : string;
-    host: string; 
+    type: string;
+    host: string;
     port: number;
     username: string;
     password: string;
@@ -157,4 +154,3 @@ export type SqlGenerationResponse = {
   input_tokens: number;
   output_tokens: number;
 };
-

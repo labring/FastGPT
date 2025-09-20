@@ -4,6 +4,7 @@ import { addLog } from '../../../common/system/log';
 import { MysqlClient } from './model/mysql';
 import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
+import { i18nT } from '../../../../web/i18n/utils';
 
 export async function createDatabaseClient(config: DatabaseConfig): Promise<AsyncDB> {
   switch (config.client) {
@@ -49,6 +50,9 @@ export async function withDatabaseClient<T>(
     const result = await operation(dbClient);
 
     return result;
+  } catch (err) {
+    addLog.error(`Database operation failed`, err);
+    return Promise.reject(i18nT('database_client:op_unknown_database_error'));
   } finally {
     if (dbClient) {
       try {
@@ -76,7 +80,7 @@ export async function withDatabaseClientByConfig<T>(
     return result;
   } catch (err) {
     addLog.error(`Database operation failed`, err);
-    throw err;
+    return Promise.reject(i18nT('database_client:op_unknown_database_error'));
   } finally {
     if (dbClient) {
       try {

@@ -250,7 +250,7 @@ export abstract class AsyncDB {
               col,
               (fk as any).referencedSchema || null,
               fk.referencedTableName,
-              [fk.referencedColumnNames[idx]]
+              fk.referencedColumnNames[idx]
             )
         );
       });
