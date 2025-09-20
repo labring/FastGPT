@@ -85,9 +85,9 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
-import type { DatabaseCollectionsBody as GetConfigurationResponse } from '@fastgpt/global/core/dataset/database/api';
-import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
-import type { CreateDatabaseCollectionsBody } from '@fastgpt/global/core/dataset/database/api.d';
+import type { GetConfigurationResponse } from '@/pages/api/core/dataset/database/getConfiguration';
+import type { DetectChangesResponse } from '@/pages/api/core/dataset/database/detectChanges';
+import type { CreateDatabaseCollectionsBody } from '@/pages/api/core/dataset/database/createCollections';
 import type {
   DatabaseSearchTestQuery,
   DatabaseSearchTestBody

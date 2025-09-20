@@ -22,8 +22,7 @@ export const I18N_NAMESPACES = [
   'dashboard_mcp',
   'dashboard_evaluation',
   'evaluation',
-  'admin',
-  'database_client'
+  'admin'
 ];
 
 export const I18N_NAMESPACES_MAP = I18N_NAMESPACES.reduce(
