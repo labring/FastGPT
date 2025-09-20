@@ -129,7 +129,5 @@
   "upload": "上传",
   "variable_invisable_in_share": "自定义变量在免登录链接中不可见",
   "view_citations": "查看引用",
-  "web_site_sync": "Web站点同步",
-  "embedding_model_error": "向量模型出错，请核查模型配置信息",
-  "language_model_error":"请求大模型出错，请检查模型配置是否正确"
+  "web_site_sync": "Web站点同步"
 }

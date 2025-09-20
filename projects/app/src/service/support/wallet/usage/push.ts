@@ -305,7 +305,7 @@ export const pushGenerateSqlUsage = ({
   createUsage({
     teamId,
     tmbId,
-    appName: i18nT('account_bill:generate_sql'),
+    appName: 'core.app.Generate Sql',
     totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
