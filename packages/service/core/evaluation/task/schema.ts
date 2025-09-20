@@ -204,10 +204,6 @@ export const EvaluationTaskSchema = new Schema({
         type: Number,
         default: 0
       },
-      thresholdPassRate: {
-        type: Number,
-        default: 0
-      },
       _id: false
     }
   ],

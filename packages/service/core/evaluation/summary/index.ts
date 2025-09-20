@@ -26,8 +26,10 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
-import { recalculateAllEvaluationItemAggregateScores } from '../task/processor';
+import { recalculateAllEvaluationItemAggregateScores } from './util/aggregateScoreCalculator';
 import { addSummaryTaskToQueue } from './queue';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import type { ClientSession } from '../../../common/mongo';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
@@ -41,8 +43,9 @@ export class EvaluationSummaryService {
       errorReason?: string;
       completedItemCount: number;
       overThresholdItemCount: number;
-      thresholdPassRate: number;
+      underThresholdRate: number;
       threshold: number;
+      weight: number;
       customSummary: string;
     }>;
     aggregateScore: number;
@@ -56,11 +59,14 @@ export class EvaluationSummaryService {
       const summaryConfig = evaluation.summaryConfigs[index];
       const completedItemCount = summaryConfig.completedItemCount || 0;
       const overThresholdItemCount = summaryConfig.overThresholdItemCount || 0;
-      const thresholdPassRate = summaryConfig.thresholdPassRate || 0;
       const threshold = evaluator.thresholdValue || 0;
-
-      // Generate customSummary in format: "过阈值百分率(完成个数个)summary"
-      const customSummary = `${thresholdPassRate}%(${overThresholdItemCount}个)${summaryConfig.summary || ''}`;
+      const underThresholdRate =
+        completedItemCount > 0
+          ? Math.round(((completedItemCount - overThresholdItemCount) / completedItemCount) * 100)
+          : 0;
+      const underThresholdItemCount = completedItemCount - overThresholdItemCount;
+      // Generate customSummary in format: "(完成个数个)summary"
+      const customSummary = `${underThresholdRate}%(${underThresholdItemCount}个)${summaryConfig.summary || ''}`;
 
       return {
         metricId: metricId,
@@ -71,8 +77,9 @@ export class EvaluationSummaryService {
         errorReason: summaryConfig.errorReason,
         completedItemCount: completedItemCount, // Use pre-calculated count from MongoDB
         overThresholdItemCount: overThresholdItemCount, // Use pre-calculated count from MongoDB
-        thresholdPassRate: thresholdPassRate, // Use pre-calculated pass rate from MongoDB
+        underThresholdRate: underThresholdRate, // Percentage of items that failed the threshold (0-100)
         threshold: threshold, // Add threshold field
+        weight: summaryConfig.weight || 0, // Add weight field
         customSummary: customSummary // Add customSummary field with specified format
       };
     });
@@ -140,7 +147,6 @@ export class EvaluationSummaryService {
       weight: number;
       thresholdValue: number;
       aboveThresholdCount: number;
-      thresholdPassRate: number;
       totalCount: number;
     }>;
     aggregateScore: number;
@@ -216,7 +222,6 @@ export class EvaluationSummaryService {
         weight: number;
         thresholdValue: number;
         aboveThresholdCount: number;
-        thresholdPassRate: number;
         totalCount: number;
       }> = [];
 
@@ -241,9 +246,6 @@ export class EvaluationSummaryService {
             (score: number) => score >= (evaluator.thresholdValue || 0)
           ).length;
 
-          const thresholdPassRate =
-            stats.count > 0 ? Math.round((aboveThresholdCount / stats.count) * 10000) / 100 : 0;
-
           const weight = summaryConfig.weight;
 
           metricsData.push({
@@ -253,7 +255,6 @@ export class EvaluationSummaryService {
             weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount,
-            thresholdPassRate,
             totalCount: stats.count
           });
 
@@ -269,7 +270,6 @@ export class EvaluationSummaryService {
             weight: summaryConfig.weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
-            thresholdPassRate: 0,
             totalCount: 0
           });
         }
@@ -305,7 +305,6 @@ export class EvaluationSummaryService {
           weight: summaryConfig.weight,
           thresholdValue: evaluator.thresholdValue || 0,
           aboveThresholdCount: 0,
-          thresholdPassRate: 0,
           totalCount: 0
         };
       });
@@ -327,10 +326,10 @@ export class EvaluationSummaryService {
       weight: number;
       thresholdValue: number;
       aboveThresholdCount: number;
-      thresholdPassRate: number;
       totalCount: number;
     }>,
-    aggregateScore: number
+    aggregateScore: number,
+    session?: ClientSession
   ): Promise<void> {
     try {
       // Build update fields for each summaryConfig score
@@ -347,14 +346,13 @@ export class EvaluationSummaryService {
           updateFields[`summaryConfigs.${index}.completedItemCount`] = metricData.totalCount;
           updateFields[`summaryConfigs.${index}.overThresholdItemCount`] =
             metricData.aboveThresholdCount;
-          updateFields[`summaryConfigs.${index}.thresholdPassRate`] = metricData.thresholdPassRate;
         }
       });
 
       // Use pre-calculated aggregateScore
       updateFields['aggregateScore'] = aggregateScore;
 
-      await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateFields });
+      await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateFields }, { session });
 
       addLog.info('[Evaluation] Updated summaryConfigs scores, counts and aggregateScore', {
         evalId,
@@ -364,8 +362,7 @@ export class EvaluationSummaryService {
           metricId: m.metricId,
           score: m.metricScore,
           completedItemCount: m.totalCount,
-          overThresholdItemCount: m.aboveThresholdCount,
-          thresholdPassRate: m.thresholdPassRate
+          overThresholdItemCount: m.aboveThresholdCount
         }))
       });
     } catch (error) {
@@ -409,8 +406,10 @@ export class EvaluationSummaryService {
     if (hasWeightChanges) {
       await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
     } else {
-      // Only update configuration without recalculation
-      await this.updateConfigurationOnly(evalId, evaluation, metricsConfig);
+      // Only update configuration without recalculation (also use transaction for consistency)
+      await mongoSessionRun(async (session: ClientSession) => {
+        await this.updateConfigurationOnly(evalId, evaluation, metricsConfig, session);
+      });
     }
   }
 
@@ -461,12 +460,13 @@ export class EvaluationSummaryService {
       thresholdValue: number;
       weight?: number;
       calculateType?: CalculateMethodEnum;
-    }>
+    }>,
+    session?: ClientSession
   ): Promise<void> {
     const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
     // Update database configuration
-    await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap);
+    await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
 
     addLog.info('[Evaluation] Configuration updated without recalculation', {
       evalId,
@@ -485,27 +485,31 @@ export class EvaluationSummaryService {
       calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
-    const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
+    // Use transaction to ensure atomicity of configuration update and score recalculation
+    await mongoSessionRun(async (session: ClientSession) => {
+      const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
-    // Update database configuration
-    await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap);
+      // Update database configuration within transaction
+      await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
 
-    // Get updated evaluation and recalculate everything
-    const updatedEvaluation = await MongoEvaluation.findById(evalId).lean();
-    if (updatedEvaluation) {
-      addLog.info('[Evaluation] Configuration updated, recalculating all metrics', { evalId });
+      // Get updated evaluation and recalculate everything within the same transaction
+      const updatedEvaluation = await MongoEvaluation.findById(evalId).session(session).lean();
+      if (updatedEvaluation) {
+        addLog.info('[Evaluation] Configuration updated, recalculating all metrics', { evalId });
 
-      // Recalculate evaluation summary metrics and aggregate score
-      const calculatedData = await this.calculateMetricScores(updatedEvaluation);
-      await this.updateSummaryConfigsScores(
-        evalId,
-        calculatedData.metricsData,
-        calculatedData.aggregateScore
-      );
+        // Recalculate evaluation summary metrics and aggregate score
+        const calculatedData = await this.calculateMetricScores(updatedEvaluation);
+        await this.updateSummaryConfigsScores(
+          evalId,
+          calculatedData.metricsData,
+          calculatedData.aggregateScore,
+          session
+        );
 
-      // Recalculate all evaluation item aggregate scores since weights changed
-      await recalculateAllEvaluationItemAggregateScores(evalId);
-    }
+        // Recalculate all evaluation item aggregate scores since weights changed
+        await recalculateAllEvaluationItemAggregateScores(evalId, session);
+      }
+    });
   }
 
   // Update database configuration (evaluators and summaryConfigs)
@@ -518,7 +522,8 @@ export class EvaluationSummaryService {
       weight?: number;
       calculateType?: CalculateMethodEnum;
     }>,
-    configMap: Map<string, any>
+    configMap: Map<string, any>,
+    session?: ClientSession
   ): Promise<void> {
     // Update evaluators
     const updatedEvaluators = evaluation.evaluators.map((evaluator: any) => {
@@ -545,7 +550,8 @@ export class EvaluationSummaryService {
 
     await MongoEvaluation.updateOne(
       { _id: evalId },
-      { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } }
+      { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } },
+      { session }
     );
   }
 
