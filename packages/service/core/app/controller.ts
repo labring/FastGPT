@@ -1,6 +1,7 @@
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -55,13 +56,15 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
               return;
             }
             input.value = val
-              .map((dataset: { datasetId: string }) => ({
+              .map((dataset: any & { datasetType?: DatasetTypeEnum }) => ({
+                ...dataset,
                 datasetId: dataset.datasetId
               }))
               .filter((item) => !!item.datasetId);
           } else if (typeof val === 'object' && val !== null) {
             input.value = [
               {
+                ...(val as any & { datasetType?: DatasetTypeEnum }),
                 datasetId: val.datasetId
               }
             ];

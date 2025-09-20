@@ -91,7 +91,6 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
         (mongoCollection) =>
           !tables.some((table) => table.tableName === mongoCollection.tableSchema!.tableName)
       );
-
       if (collectionsToDelete.length > 0) {
         await delCollection({
           collections: collectionsToDelete,
@@ -101,9 +100,6 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
         });
         deletedTables = collectionsToDelete.length;
       }
-      console.debug('tables', tables[0].columns);
-
-      console.debug('mongoCollectionsMap', mongoCollectionsMap);
       // 按照每个表的状态进行处理
       for (const table of tables) {
         try {

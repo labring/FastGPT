@@ -2,6 +2,7 @@ import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
@@ -155,7 +156,10 @@ export async function rewriteAppWorkflowToDetail({
       node.inputs.forEach((item) => {
         if (item.key !== NodeInputKeyEnum.datasetSelectList) return;
 
-        const val = item.value as undefined | { datasetId: string }[] | { datasetId: string };
+        const val = item.value as
+          | undefined
+          | (any & { datasetType?: DatasetTypeEnum })[]
+          | (any & { datasetType?: DatasetTypeEnum });
 
         if (Array.isArray(val)) {
           item.value = val
@@ -172,7 +176,8 @@ export async function rewriteAppWorkflowToDetail({
                 datasetId: data.datasetId,
                 avatar: data.avatar,
                 name: data.name,
-                vectorModel: data.vectorModel
+                vectorModel: data.vectorModel,
+                datasetType: v.datasetType
               };
             })
             .filter(Boolean);
@@ -193,7 +198,8 @@ export async function rewriteAppWorkflowToDetail({
                 datasetId: data.datasetId,
                 avatar: data.avatar,
                 name: data.name,
-                vectorModel: data.vectorModel
+                vectorModel: data.vectorModel,
+                datasetType: val.datasetType
               }
             ];
           }
