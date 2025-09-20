@@ -49,10 +49,10 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) =
         return (
           <Box>
             <Text fontSize="12px" color="red.500" mb={1}>
-              {t('总结内容生成异常，点击重试')}
+              {t('dashboard_evaluation:summary_generation_error')}
             </Text>
             <Text fontSize="12px" color="red.500">
-              {t('报错信息：')}
+              {t('dashboard_evaluation:error_message_prefix')}
               {item.errorReason}
             </Text>
           </Box>
@@ -62,7 +62,7 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) =
           <Flex align="center" justify="center" gap="4px">
             <MyIcon name="gradientLoading" w="16px" h="16px" />
             <Text fontSize="12px" bgGradient="linear(to-b, #a1D580FF, #6b40E0D0)" bgClip="text">
-              {t('总结内容待生成')}
+              {t('dashboard_evaluation:summary_pending_generation')}
             </Text>
           </Flex>
         );
@@ -71,7 +71,7 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) =
           <Flex align="center" justify="center" gap="4px">
             <MyIcon name="gradientLoading" w="16px" h="16px" />
             <Text fontSize="12px" bgGradient="linear(to-b, #a1D580FF, #6b40E0D0)" bgClip="text">
-              {t('总结内容生成中')}
+              {t('dashboard_evaluation:summary_generating_content')}
             </Text>
           </Flex>
         );
@@ -84,7 +84,7 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) =
     const dimensionInfo = getBuiltinDimensionInfo(item.metricName);
     const dimensionName = t(dimensionInfo?.name) || item.metricName;
     const isExpected = item.metricScore >= item.threshold;
-    const title = `${dimensionName}${isExpected ? t('符合预期！') : t('低于预期分数！')}`;
+    const title = `${dimensionName}${isExpected ? t('dashboard_evaluation:meets_expectation') : t('dashboard_evaluation:below_expectation')}`;
 
     return (
       <Box key={index}>
