@@ -50,9 +50,11 @@ export interface EvaluatorSchema {
 
 // Statistics information for evaluation task
 export interface EvaluationStatistics {
-  totalItems: number;
-  completedItems: number;
-  errorItems: number;
+  total: number;
+  completed: number;
+  evaluating: number;
+  queuing: number;
+  error: number;
 }
 
 // Improved evaluation task types
@@ -67,7 +69,7 @@ export type EvaluationSchemaType = {
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
   summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
   usageId: string;
-  status: EvaluationStatusEnum;
+  status: EvaluationStatusEnum; // Computed real-time from job queues
   createTime: Date;
   finishTime?: Date;
   errorMessage?: string;
@@ -121,8 +123,7 @@ export type EvaluationItemSchemaType = {
   // Execution results
   targetOutput?: TargetOutput; // Actual output from target
   evaluatorOutputs?: MetricResult[]; // Results from multiple evaluators
-  status: EvaluationStatusEnum;
-  retry: number;
+  status: EvaluationStatusEnum; // Computed real-time from job queues
   finishTime?: Date;
   errorMessage?: string;
   aggregateScore?: number; // Weighted aggregate score calculated from multiple evaluators

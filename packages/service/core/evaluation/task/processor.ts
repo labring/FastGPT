@@ -7,7 +7,7 @@ import type {
   EvaluationItemSchemaType,
   EvaluationDataItemType
 } from '@fastgpt/global/core/evaluation/type';
-import { evaluationItemQueue, getEvaluationItemWorker, getEvaluationTaskWorker } from './mq';
+import { getEvaluationItemWorker, getEvaluationTaskWorker, addEvaluationItemJobs } from './mq';
 import { MongoEvaluation, MongoEvalItem } from './schema';
 import { MongoEvalDatasetData } from '../dataset/evalDatasetDataSchema';
 import { createTargetInstance } from '../target';
@@ -15,12 +15,13 @@ import { createEvaluatorInstance } from '../evaluator';
 import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
 import { calculateEvaluationItemAggregateScore } from '../summary/util/aggregateScoreCalculator';
+import { getBatchEvaluationItemStatus } from './statusCalculator';
+import { createEvaluationError } from './errors';
 
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
@@ -313,38 +314,34 @@ const finishEvaluationTask = async (evalId: string) => {
         `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
     );
 
-    // Calculate and save metric scores, then trigger async summary generation if task finished and has completed items
-    if (
-      (taskStatus === EvaluationStatusEnum.completed ||
-        taskStatus === EvaluationStatusEnum.error) &&
-      completedCount > 0
-    ) {
+    // Calculate metric scores and trigger summary generation for completed tasks
+    if (completedCount > 0) {
       try {
         // First, calculate and save metric scores to MongoDB
         await EvaluationSummaryService.calculateAndSaveMetricScores(evalId);
 
-        // Get current evaluation to extract metric IDs and check summary status
+        // Check which metrics need summary generation
         const currentEvaluation = await MongoEvaluation.findById(
           evalId,
           'evaluators summaryConfigs'
         ).lean();
 
         if (currentEvaluation?.evaluators && currentEvaluation.evaluators.length > 0) {
-          // Filter metrics that have empty summaries
+          // Find metrics with empty summaries
           const metricsNeedingSummary: string[] = [];
 
           currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
             const metricId = evaluator.metric._id.toString();
             const summaryConfig = currentEvaluation.summaryConfigs[index];
 
-            // Check if summary is empty or null
+            // Check if summary is empty
             if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
               metricsNeedingSummary.push(metricId);
             }
           });
 
           if (metricsNeedingSummary.length > 0) {
-            // Trigger async summary generation only for metrics with empty summaries (fire and forget)
+            // Trigger async summary generation for metrics with empty summaries
             setImmediate(() => {
               EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary).catch(
                 (error) => {
@@ -356,534 +353,382 @@ const finishEvaluationTask = async (evalId: string) => {
               );
             });
 
-            addLog.info(
+            addLog.debug(
               `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}, taskStatus: ${taskStatus}`
             );
           } else {
-            addLog.info(
+            addLog.debug(
               `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}, taskStatus: ${taskStatus}`
             );
           }
         }
       } catch (summaryError) {
-        // Don't affect main task completion flow, just log the error
+        // Log error without affecting main completion flow
         addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
           error: summaryError instanceof Error ? summaryError.message : String(summaryError)
         });
       }
     }
   } catch (error) {
-    addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, error);
+    addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, {
+      error: getErrText(error)
+    });
 
-    // When error occurs, mark task as error status
+    // Save error info to database
     try {
       await MongoEvaluation.updateOne(
         { _id: new Types.ObjectId(evalId) },
         {
           $set: {
-            status: EvaluationStatusEnum.error,
             finishTime: new Date(),
             errorMessage: `System error occurred while completing task: ${error instanceof Error ? error.message : 'Unknown error'}`
           }
         }
       );
     } catch (updateError) {
-      addLog.error(`[Evaluation] Failed to update task error status: ${evalId}`, updateError);
+      addLog.warn(`[Evaluation] Failed to update task error info: ${evalId}`, {
+        updateError: getErrText(updateError)
+      });
     }
-  } finally {
-    await lock.release();
   }
 };
 
-// Handle evaluation item error
-const handleEvalItemError = async (evalItemId: string, evalId: string, error: any) => {
-  let errorMessage = getErrText(error);
-  let stage = 'Unknown';
-
-  // Extract stage and error information from structured errors
-  if (error instanceof EvaluationStageError) {
-    stage = error.stage;
-    errorMessage = `[${stage}] ${error.message}`;
-  }
-
-  // Get current evaluation item
-  const evalItem = await MongoEvalItem.findById(evalItemId, 'retry evalId');
-  if (!evalItem) {
-    addLog.error(`[Evaluation] Evaluation item does not exist: ${evalItemId}`);
-    return;
-  }
-
-  const isRetriable = isRetriableError(error);
-  const currentRetryCount = evalItem.retry || 0;
-  const newRetryCount = isRetriable ? Math.max(currentRetryCount - 1, 0) : 0;
-  const shouldRetry = isRetriable && newRetryCount > 0;
-  const newStatus = shouldRetry ? EvaluationStatusEnum.queuing : EvaluationStatusEnum.error;
-
-  // Build retry attempt info for logging
-  const retryAttempt = maxRetries - currentRetryCount + 1;
-
-  const updateData: any = {
-    retry: newRetryCount,
-    errorMessage,
-    status: newStatus,
-    finishTime: newStatus === EvaluationStatusEnum.error ? new Date() : undefined
-  };
-
-  await MongoEvalItem.updateOne({ _id: new Types.ObjectId(evalItemId) }, updateData);
-
-  // Re-enqueue for retry with improved job naming
-  if (shouldRetry) {
-    const retryDelay = Math.min(1000 * Math.pow(2, maxRetries - newRetryCount), 30000); // Exponential backoff
-    await evaluationItemQueue.add(
-      `eval_item_${evalItemId}_retry_${retryAttempt}`,
-      {
-        evalId,
-        evalItemId
-      },
-      {
-        delay: retryDelay
-      }
-    );
-
-    addLog.debug(
-      `[Evaluation] Item requeued for retry: ${evalItemId}, stage: ${stage}, remaining: ${newRetryCount}, delay: ${retryDelay}ms`
-    );
-  } else {
-    addLog.error(
-      `[Evaluation] Item failed permanently: ${evalItemId}, stage: ${stage}, retriable: ${isRetriable}`,
-      error instanceof EvaluationStageError ? error.originalError || error : error
-    );
-  }
-};
-
-// Evaluation task processor
+/**
+ * Process evaluation task: validate config and submit items to queue
+ */
 const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   const { evalId } = job.data;
 
-  addLog.debug(`[Evaluation] Start processing evaluation task: ${evalId}`);
+  // Report progress
+  await job.updateProgress(0);
 
-  try {
-    // Report initial progress
-    await job.updateProgress(0);
+  // Get evaluation data
+  const evaluation = await MongoEvaluation.findById(evalId).lean();
 
-    // Update status to evaluating and get evaluation data in one atomic operation
-    const evaluation = await MongoEvaluation.findOneAndUpdate(
-      {
-        _id: new Types.ObjectId(evalId),
-        status: {
-          $in: [
-            EvaluationStatusEnum.queuing,
-            EvaluationStatusEnum.error // Allow restarting manually stopped tasks
-          ]
-        }
-      },
-      { $set: { status: EvaluationStatusEnum.evaluating } },
-      { returnDocument: 'after', lean: true }
-    );
-
-    // If the task cannot be updated, it's either already processing or in an invalid state
-    if (!evaluation) {
-      // Get current status for better error reporting
-      const currentEval = await MongoEvaluation.findById(evalId).select('status').lean();
-      if (!currentEval) {
-        addLog.warn(`[Evaluation] Task ${evalId} no longer exists, skipping`);
-      } else if (currentEval.status === EvaluationStatusEnum.evaluating) {
-        addLog.warn(
-          `[Evaluation] Task ${evalId} is already being processed by another worker, skipping`
-        );
-      } else {
-        addLog.warn(
-          `[Evaluation] Task ${evalId} is in state '${currentEval.status}', cannot process`
-        );
-      }
-      return;
-    }
-
-    addLog.debug(`[Evaluation] Task status updated to evaluating: ${evalId}`);
-
-    // Validate target and evaluators configuration early
-    if (!evaluation.target || !evaluation.target.type || !evaluation.target.config) {
-      throw new Error(EvaluationErrEnum.evalTargetConfigInvalid);
-    }
-
-    if (!evaluation.evaluators || evaluation.evaluators.length === 0) {
-      throw new Error(EvaluationErrEnum.evalEvaluatorsConfigInvalid);
-    }
-
-    // Report progress: validation completed
-    await job.updateProgress(20);
-
-    // Check if evaluation items already exist (created during task creation)
-    const existingItems = await MongoEvalItem.find({ evalId }).lean();
-    if (existingItems.length > 0) {
-      // Normal path: items were created during task creation
-      addLog.debug(
-        `[Evaluation] Task already has ${existingItems.length} items, submitting to queue...`
-      );
-
-      // Submit pending and retryable items to queue
-      const itemsToProcess = existingItems.filter(
-        (item) =>
-          item.status === EvaluationStatusEnum.queuing ||
-          (item.status === EvaluationStatusEnum.error && item.retry > 0)
-      );
-
-      if (itemsToProcess.length > 0) {
-        const jobs = itemsToProcess.map((item, index) => ({
-          name: `eval_item_${evalId}_${index}`,
-          data: {
-            evalId,
-            evalItemId: item._id.toString()
-          },
-          opts: {
-            delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
-          }
-        }));
-
-        await evaluationItemQueue.addBulk(jobs);
-        addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
-      } else {
-        addLog.debug(`[Evaluation] No items to process, all items are completed or failed`);
-      }
-
-      // Report final progress
-      await job.updateProgress(100);
-      return;
-    }
-
-    // Fallback: Create evaluation items if they don't exist (backward compatibility)
-    // This should rarely happen with the new flow
-    addLog.warn(`[Evaluation] No existing items found for evaluation ${evalId}, creating items...`);
-
-    // Load dataset only when we need to create items (rare case)
-    const dataItems = await MongoEvalDatasetData.find({
-      evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
-      teamId: evaluation.teamId
-    }).lean();
-
-    if (dataItems.length === 0) {
-      throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
-    }
-
-    // Create evaluation items for each dataItem
-    const evalItems: Omit<EvaluationItemSchemaType, '_id'>[] = [];
-    for (const dataItem of dataItems) {
-      const evaluationDataItem: EvaluationDataItemType = {
-        _id: dataItem._id,
-        userInput: dataItem.userInput,
-        expectedOutput: dataItem.expectedOutput,
-        context: dataItem.context,
-        targetCallParams: undefined
-      };
-
-      evalItems.push({
-        evalId,
-        dataItem: evaluationDataItem,
-        status: EvaluationStatusEnum.queuing,
-        retry: maxRetries
-      });
-    }
-
-    // Batch insert evaluation items
-    const insertedItems = await MongoEvalItem.insertMany(evalItems);
-    addLog.debug(`[Evaluation] Created ${insertedItems.length} evaluation items`);
-
-    // Submit to evaluation item queue for concurrent processing
-    const jobs = insertedItems.map((item, index) => ({
-      name: `eval_item_${evalId}_${index}`,
-      data: {
-        evalId,
-        evalItemId: item._id.toString()
-      },
-      opts: {
-        delay: index * 100
-      }
-    }));
-
-    await evaluationItemQueue.addBulk(jobs);
-
-    // Report final progress
-    await job.updateProgress(100);
-
-    addLog.debug(
-      `[Evaluation] Task decomposition completed: ${evalId}, submitted ${jobs.length} evaluation items to queue`
-    );
-  } catch (error) {
-    addLog.error(`[Evaluation] Task processing failed: ${evalId}`, error);
-
-    // Mark task as failed
-    await MongoEvaluation.updateOne(
-      { _id: new Types.ObjectId(evalId) },
-      {
-        $set: {
-          errorMessage: getErrText(error),
-          status: EvaluationStatusEnum.error,
-          finishTime: new Date()
-        }
-      }
-    );
+  // Skip if task doesn't exist
+  if (!evaluation) {
+    addLog.warn(`[Evaluation] Task ${evalId} no longer exists, skipping`);
+    return;
   }
+
+  addLog.debug(`[Evaluation] Task ${evalId} now evaluating`);
+
+  // Validate target and evaluators configuration
+  if (!evaluation.target || !evaluation.target.type || !evaluation.target.config) {
+    throw createEvaluationError(EvaluationErrEnum.evalTargetConfigInvalid, 'ResourceCheck');
+  }
+
+  if (!evaluation.evaluators || evaluation.evaluators.length === 0) {
+    throw createEvaluationError(EvaluationErrEnum.evalEvaluatorsConfigInvalid, 'ResourceCheck');
+  }
+
+  // Report validation progress
+  await job.updateProgress(20);
+
+  // Check if evaluation items already exist
+  const existingItems = await MongoEvalItem.find({ evalId }).lean();
+  if (existingItems.length > 0) {
+    // Items exist, submit to queue
+    const itemIds = existingItems.map((item) => item._id.toString());
+    const statusMap = await getBatchEvaluationItemStatus(itemIds);
+
+    const itemsToProcess = existingItems.filter((item) => {
+      const realTimeStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
+      // Only process items in queuing status
+      return realTimeStatus === EvaluationStatusEnum.queuing;
+    });
+
+    if (itemsToProcess.length > 0) {
+      const jobs = itemsToProcess.map((item, index) => ({
+        data: {
+          evalId,
+          evalItemId: item._id.toString()
+        },
+        delay: index * 100 // Small delay to avoid overwhelming system
+      }));
+
+      await addEvaluationItemJobs(jobs);
+      addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
+    }
+
+    // Report completion
+    await job.updateProgress(100);
+    return;
+  }
+
+  // Fallback: Create evaluation items if they don't exist
+  addLog.warn(`[Evaluation] No existing items found for evaluation ${evalId}, creating items...`);
+
+  // Load dataset to create items
+  const dataItems = await MongoEvalDatasetData.find({
+    evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
+    teamId: evaluation.teamId
+  }).lean();
+
+  if (dataItems.length === 0) {
+    throw createEvaluationError(EvaluationErrEnum.evalDatasetLoadFailed, 'ResourceCheck');
+  }
+
+  // Create evaluation items
+  const evalItems: Omit<EvaluationItemSchemaType, '_id' | 'status'>[] = [];
+  for (const dataItem of dataItems) {
+    const evaluationDataItem: EvaluationDataItemType = {
+      _id: dataItem._id,
+      userInput: dataItem.userInput,
+      expectedOutput: dataItem.expectedOutput,
+      context: dataItem.context,
+      targetCallParams: undefined
+    };
+
+    evalItems.push({
+      evalId,
+      dataItem: evaluationDataItem
+    });
+  }
+
+  // Insert evaluation items
+  const insertedItems = await MongoEvalItem.insertMany(evalItems);
+
+  // Submit items to queue
+  const jobs = insertedItems.map((item, index) => ({
+    data: {
+      evalId,
+      evalItemId: item._id.toString()
+    },
+    delay: index * 100
+  }));
+
+  await addEvaluationItemJobs(jobs);
+
+  // Report completion
+  await job.updateProgress(100);
+
+  addLog.debug(
+    `[Evaluation] Task decomposition completed: ${evalId}, submitted ${jobs.length} evaluation items to queue`
+  );
 };
 
-// Evaluation item processor
+/**
+ * Process evaluation item: execute target and evaluators
+ */
 const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
   const { evalId, evalItemId } = job.data;
 
   addLog.debug(`[Evaluation] Start processing evaluation item: ${evalItemId}`);
 
+  // Report progress
+  await job.updateProgress(0);
+
+  // Get evaluation item
+  const evalItem = await MongoEvalItem.findById(evalItemId);
+  if (!evalItem) {
+    throw createEvaluationError(EvaluationErrEnum.evalItemNotFound, 'ResourceCheck');
+  }
+
+  // Get evaluation for AI points check and configuration
+  const evaluation = await MongoEvaluation.findById(
+    evalId,
+    'teamId tmbId usageId target evaluators'
+  );
+  if (!evaluation) {
+    throw createEvaluationError(EvaluationErrEnum.evalTaskNotFound, 'ResourceCheck');
+  }
+
+  // Check AI points availability
   try {
-    // Report initial progress
-    await job.updateProgress(0);
+    await checkTeamAIPoints(evaluation.teamId);
+  } catch (error) {
+    throw createEvaluationError(error, 'ResourceCheck');
+  }
 
-    // Get evaluation item information
-    const evalItem = await MongoEvalItem.findById(evalItemId);
-    if (!evalItem) {
-      throw new EvaluationStageError(
-        EvaluationStageEnum.ResourceCheck,
-        getErrText(EvaluationErrEnum.evalItemNotFound),
-        false // Resource not found errors are not retriable
-      );
-    }
+  // Initialize outputs and check for existing results
+  let targetOutput: TargetOutput | undefined = undefined;
+  let evaluatorOutputs: MetricResult[] = [];
 
-    // Check if item is already completed (reentrant handling)
-    if (evalItem.status === EvaluationStatusEnum.completed) {
-      addLog.debug(`[Evaluation] Item already completed: ${evalItemId}`);
-      return;
-    }
+  // Resume from checkpoint if results exist
+  if (evalItem.targetOutput?.actualOutput) {
+    addLog.debug(`[Evaluation] Resuming targetOutput from evalItem: ${evalItemId}`);
+    targetOutput = evalItem.targetOutput;
+  }
+  if (evalItem.evaluatorOutputs && evalItem.evaluatorOutputs.length > 0) {
+    addLog.debug(`[Evaluation] Resuming evaluatorOutputs from evalItem: ${evalItemId}`);
+    evaluatorOutputs = evalItem.evaluatorOutputs;
+  }
 
-    // Get evaluation information for AI Points check and target/evaluators config
-    const evaluation = await MongoEvaluation.findById(
-      evalId,
-      'teamId tmbId usageId target evaluators'
-    );
-    if (!evaluation) {
-      throw new EvaluationStageError(
-        EvaluationStageEnum.ResourceCheck,
-        getErrText(EvaluationErrEnum.evalTaskNotFound),
-        false // Resource not found errors are not retriable
-      );
-    }
+  if (!targetOutput && !evaluatorOutputs.length) {
+    addLog.debug(`[Evaluation] Starting evaluation item from scratch: ${evalItemId}`);
+  }
 
-    // Check AI Points
+  // Report setup progress
+  await job.updateProgress(10);
+
+  // Execute evaluation target if needed
+  if (!targetOutput || !targetOutput.actualOutput) {
     try {
-      await checkTeamAIPoints(evaluation.teamId);
-    } catch (error) {
-      throw new EvaluationStageError(
-        EvaluationStageEnum.ResourceCheck,
-        getErrText(error),
-        false // AI Point errors are not retriable
-      );
-    }
-
-    // Initialize outputs - check for existing results first for resume capability
-    let targetOutput: TargetOutput | undefined = undefined;
-    let evaluatorOutputs: MetricResult[] = [];
-
-    // Resume from checkpoint only if in evaluating status
-    if (evalItem.status === EvaluationStatusEnum.evaluating) {
-      if (evalItem.targetOutput?.actualOutput) {
-        addLog.debug(`[Evaluation] Resuming targetOutput from evalItem: ${evalItemId}`);
-        targetOutput = evalItem.targetOutput;
-      }
-      if (evalItem.evaluatorOutputs && evalItem.evaluatorOutputs.length > 0) {
-        addLog.debug(`[Evaluation] Resuming evaluatorOutputs from evalItem: ${evalItemId}`);
-        evaluatorOutputs = evalItem.evaluatorOutputs;
-      }
-    } else {
-      // For queuing or error status, always start from scratch
-      addLog.debug(
-        `[Evaluation] Starting/restarting item from scratch: ${evalItemId}, status: ${evalItem.status}`
-      );
-    }
-
-    // Update status to processing
-    await MongoEvalItem.updateOne(
-      { _id: new Types.ObjectId(evalItemId) },
-      { $set: { status: EvaluationStatusEnum.evaluating } }
-    );
-
-    // Report progress: setup completed
-    await job.updateProgress(10);
-
-    // 1. Call evaluation target (if not already done)
-    if (!targetOutput || !targetOutput.actualOutput) {
-      try {
-        const targetInstance = await createTargetInstance(evaluation.target, { validate: false });
-        targetOutput = await targetInstance.execute({
-          userInput: evalItem.dataItem.userInput,
-          context: evalItem.dataItem.context,
-          targetCallParams: evalItem.dataItem.targetCallParams
-        });
-
-        // Save target output as checkpoint with chat information
-        await MongoEvalItem.updateOne(
-          { _id: new Types.ObjectId(evalItemId) },
-          {
-            $set: {
-              targetOutput: targetOutput
-            }
-          }
-        );
-
-        // Report progress: target execution completed
-        await job.updateProgress(30);
-
-        // Record usage from target call
-        if (targetOutput.usage) {
-          const totalPoints = targetOutput.usage.reduce(
-            (sum: number, item: any) => sum + (item.totalPoints || 0),
-            0
-          );
-          const inputTokens = targetOutput.usage.reduce(
-            (sum: number, item: any) => sum + (item.inputTokens || 0),
-            0
-          );
-          const outputTokens = targetOutput.usage.reduce(
-            (sum: number, item: any) => sum + (item.outputTokens || 0),
-            0
-          );
-          await createMergedEvaluationUsage({
-            evalId,
-            teamId: evaluation.teamId,
-            tmbId: evaluation.tmbId,
-            usageId: evaluation.usageId,
-            totalPoints,
-            type: 'target',
-            inputTokens,
-            outputTokens
-          });
-        }
-
-        if (!targetOutput.actualOutput) {
-          throw new Error(EvaluationErrEnum.evalTargetOutputRequired);
-        }
-      } catch (error) {
-        // Normalize target execution error
-        const retriable = isTargetExecutionRetriable(error);
-        const errorMessage = getErrText(error) || 'Target execution failed';
-
-        throw new EvaluationStageError(
-          EvaluationStageEnum.TaskExecute,
-          errorMessage,
-          retriable,
-          error
-        );
-      }
-    }
-
-    // 2. Execute evaluators (batch processing - only execute missing ones)
-    // Ensure evaluatorOutputs array matches the length of evaluators
-    while (evaluatorOutputs.length < evaluation.evaluators.length) {
-      const evaluatorIndex = evaluatorOutputs.length;
-      evaluatorOutputs.push({
-        metricName: evaluation.evaluators[evaluatorIndex].metric.name
+      const targetInstance = await createTargetInstance(evaluation.target, { validate: false });
+      targetOutput = await targetInstance.execute({
+        userInput: evalItem.dataItem.userInput,
+        context: evalItem.dataItem.context,
+        targetCallParams: evalItem.dataItem.targetCallParams
       });
-    }
 
-    const errors: Array<{ evaluatorName: string; error: string }> = [];
+      // Save target output as checkpoint
+      await MongoEvalItem.updateOne(
+        { _id: new Types.ObjectId(evalItemId) },
+        {
+          $set: {
+            targetOutput: targetOutput
+          }
+        }
+      );
 
-    // Execute only missing evaluators
-    for (let i = 0; i < evaluation.evaluators.length; i++) {
-      const evaluator = evaluation.evaluators[i];
-      const existingOutput = evaluatorOutputs[i];
+      // Report target execution progress
+      await job.updateProgress(30);
 
-      // Skip if this evaluator already has a valid result
-      if (existingOutput?.data?.score !== undefined) {
-        continue;
-      }
-
-      try {
-        const evaluatorInstance = await createEvaluatorInstance(evaluator, {
-          validate: false
-        });
-
-        const evaluatorOutput = await evaluatorInstance.evaluate({
-          userInput: evalItem.dataItem.userInput,
-          expectedOutput: evalItem.dataItem.expectedOutput,
-          actualOutput: targetOutput.actualOutput,
-          context: evalItem.dataItem.context,
-          retrievalContext: targetOutput.retrievalContext
-        });
-
+      // Record target usage
+      if (targetOutput.usage) {
+        const totalPoints = targetOutput.usage.reduce(
+          (sum: number, item: any) => sum + (item.totalPoints || 0),
+          0
+        );
+        const inputTokens = targetOutput.usage.reduce(
+          (sum: number, item: any) => sum + (item.inputTokens || 0),
+          0
+        );
+        const outputTokens = targetOutput.usage.reduce(
+          (sum: number, item: any) => sum + (item.outputTokens || 0),
+          0
+        );
         await createMergedEvaluationUsage({
           evalId,
           teamId: evaluation.teamId,
           tmbId: evaluation.tmbId,
           usageId: evaluation.usageId,
-          totalPoints: evaluatorOutput.totalPoints || 0,
-          inputTokens:
-            evaluatorOutput.usages?.reduce((sum, usage) => sum + (usage.promptTokens || 0), 0) || 0,
-          outputTokens:
-            evaluatorOutput.usages?.reduce(
-              (sum, usage) => sum + (usage.completionTokens || 0),
-              0
-            ) || 0,
-          type: 'metric'
+          totalPoints,
+          type: 'target',
+          inputTokens,
+          outputTokens
         });
+      }
 
-        // Record error but continue processing
-        if (evaluatorOutput.status !== MetricResultStatusEnum.Success || evaluatorOutput.error) {
-          const errorMessage = evaluatorOutput.error || 'Evaluator execution failed';
-          const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
-          errors.push({ evaluatorName, error: errorMessage });
-        }
+      if (!targetOutput.actualOutput) {
+        throw new Error(EvaluationErrEnum.evalTargetOutputRequired);
+      }
+    } catch (error) {
+      // Use BullMQ error type for retry handling
+      throw createEvaluationError(error, 'TargetExecute', {
+        evalId,
+        evalItemId
+      });
+    }
+  }
 
-        // Update the specific position in the array
-        evaluatorOutputs[i] = evaluatorOutput;
+  // Execute evaluators (only missing ones)
+  while (evaluatorOutputs.length < evaluation.evaluators.length) {
+    const evaluatorIndex = evaluatorOutputs.length;
+    evaluatorOutputs.push({
+      metricName: evaluation.evaluators[evaluatorIndex].metric.name
+    });
+  }
 
-        // Save progress after each evaluator (checkpoint for resume)
-        await MongoEvalItem.updateOne(
-          { _id: new Types.ObjectId(evalItemId) },
-          { $set: { evaluatorOutputs: evaluatorOutputs } }
-        );
+  const errors: Array<{ evaluatorName: string; error: string }> = [];
 
-        // Report progress: evaluator completed
-        const completedEvaluators = evaluatorOutputs.filter(
-          (output) => output?.data?.score !== undefined
-        ).length;
-        const evaluatorProgress = 30 + (60 * completedEvaluators) / evaluation.evaluators.length;
-        await job.updateProgress(Math.round(evaluatorProgress));
-      } catch (error) {
-        // Handle individual evaluator error
-        const errorMessage = getErrText(error) || 'Evaluator execution failed';
+  // Process each evaluator
+  for (let i = 0; i < evaluation.evaluators.length; i++) {
+    const evaluator = evaluation.evaluators[i];
+    const existingOutput = evaluatorOutputs[i];
+
+    // Skip if evaluator already has valid successful result
+    if (
+      existingOutput?.data?.score !== undefined &&
+      existingOutput?.status === MetricResultStatusEnum.Success
+    ) {
+      continue;
+    }
+
+    try {
+      const evaluatorInstance = await createEvaluatorInstance(evaluator, {
+        validate: false
+      });
+
+      const evaluatorOutput = await evaluatorInstance.evaluate({
+        userInput: evalItem.dataItem.userInput,
+        expectedOutput: evalItem.dataItem.expectedOutput,
+        actualOutput: targetOutput.actualOutput,
+        context: evalItem.dataItem.context,
+        retrievalContext: targetOutput.retrievalContext
+      });
+
+      await createMergedEvaluationUsage({
+        evalId,
+        teamId: evaluation.teamId,
+        tmbId: evaluation.tmbId,
+        usageId: evaluation.usageId,
+        totalPoints: evaluatorOutput.totalPoints || 0,
+        inputTokens:
+          evaluatorOutput.usages?.reduce((sum, usage) => sum + (usage.promptTokens || 0), 0) || 0,
+        outputTokens:
+          evaluatorOutput.usages?.reduce((sum, usage) => sum + (usage.completionTokens || 0), 0) ||
+          0,
+        type: 'metric'
+      });
+
+      // Record error and continue
+      if (evaluatorOutput.status !== MetricResultStatusEnum.Success || evaluatorOutput.error) {
+        const errorMessage = evaluatorOutput.error || 'Evaluator execution failed';
         const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
         errors.push({ evaluatorName, error: errorMessage });
       }
-    }
 
-    // After all evaluators, check if there were any errors
-    if (errors.length > 0) {
-      const aggregatedError = new EvaluatorAggregatedError(errors);
-      throw new EvaluationStageError(
-        EvaluationStageEnum.EvaluatorExecute,
-        aggregatedError.message,
-        aggregatedError.retriable,
-        aggregatedError
+      // Update evaluator output
+      evaluatorOutputs[i] = evaluatorOutput;
+
+      // Save evaluator progress
+      await MongoEvalItem.updateOne(
+        { _id: new Types.ObjectId(evalItemId) },
+        { $set: { evaluatorOutputs: evaluatorOutputs } }
       );
+
+      // Report evaluator progress
+      const completedEvaluators = evaluatorOutputs.filter(
+        (output) => output?.data?.score !== undefined
+      ).length;
+      const evaluatorProgress = 30 + (60 * completedEvaluators) / evaluation.evaluators.length;
+      await job.updateProgress(Math.round(evaluatorProgress));
+    } catch (error) {
+      // Handle evaluator error
+      const errorMessage = getErrText(error) || 'Evaluator execution failed';
+      const evaluatorName = evaluator.metric.name || `Evaluator ${i + 1}`;
+      errors.push({ evaluatorName, error: errorMessage });
     }
+  }
 
-    // 3. Calculate aggregate score for this evaluation item
-    const aggregateScore = await calculateEvaluationItemAggregateScore(evalItemId);
+  // Check for evaluator errors
+  if (errors.length > 0) {
+    const errorMessage = `Evaluator errors: ${errors.map((e) => `${e.evaluatorName}: ${e.error}`).join('; ')}`;
+    const aggregatedError = new Error(errorMessage);
+    // Use BullMQ error type
+    throw createEvaluationError(aggregatedError, 'EvaluatorExecute', {
+      evalId,
+      evalItemId
+    });
+  }
 
-    // 4. Store results including aggregateScore
-    await MongoEvalItem.updateOne(
-      { _id: new Types.ObjectId(evalItemId) },
-      {
-        $set: {
-          targetOutput: targetOutput,
-          evaluatorOutputs: evaluatorOutputs,
-          aggregateScore: aggregateScore,
-          status: EvaluationStatusEnum.completed,
-          finishTime: new Date()
-        },
-        $unset: {
-          errorMessage: 1 // Clear any previous error message
-        }
+  // Calculate aggregate score
+  const aggregateScore = await calculateEvaluationItemAggregateScore(evalItemId);
+
+  // Store final results
+  await MongoEvalItem.updateOne(
+    { _id: new Types.ObjectId(evalItemId) },
+    {
+      $set: {
+        aggregateScore: aggregateScore
       }
-    );
+    }
+  );
 
-    // Report final progress
-    await job.updateProgress(100);
+  // Report completion
+  await job.updateProgress(100);
 
     const scores = evaluatorOutputs
       .map((output) => output?.data?.score)
@@ -923,5 +768,7 @@ export const initEvalTaskItemWorker = () => {
   return getEvaluationItemWorker(evaluationItemProcessor);
 };
 
-// Export for testing
-export { evaluationTaskProcessor, evaluationItemProcessor, finishEvaluationTask };
+/**
+ * Export processors for testing
+ */
+export { evaluationTaskProcessor, evaluationItemProcessor };

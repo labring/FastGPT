@@ -12,11 +12,13 @@ import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
-  evaluationTaskQueue,
-  evaluationItemQueue,
   removeEvaluationTaskJob,
   removeEvaluationItemJobs,
-  removeEvaluationItemJobsByItemId
+  removeEvaluationItemJobsByItemId,
+  addEvaluationTaskJob,
+  addEvaluationItemJob,
+  checkEvaluationTaskJobActive,
+  evaluationItemQueue
 } from './mq';
 import { createEvaluationUsage } from '../../../support/wallet/usage/controller';
 import { addLog } from '../../../common/system/log';
@@ -107,8 +109,7 @@ export interface BatchUpdateResponse {
 
 export class EvaluationTaskService {
   /**
-   * Build evaluator fail checks for MongoDB aggregation pipeline
-   * Used by both getEvaluationStats and listEvaluationItems for consistency
+   * Build evaluator failure checks for MongoDB aggregation
    */
   private static buildEvaluatorFailChecks(evaluators: any[]) {
     return evaluators.map((evaluator, index) => {
@@ -169,7 +170,7 @@ export class EvaluationTaskService {
   ): Promise<EvaluationSchemaType> {
     const { teamId, tmbId, ...evaluationParams } = params;
 
-    // Create usage record
+    // Create evaluation usage record
     const { billId } = await createEvaluationUsage({
       teamId,
       tmbId,
@@ -200,7 +201,14 @@ export class EvaluationTaskService {
     if (!evaluation) {
       throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
-    return evaluation;
+
+    // Get real-time status from job queues
+    const status = await getEvaluationTaskStatus(evalId);
+
+    return {
+      ...evaluation,
+      status
+    };
   }
 
   static async updateEvaluation(
@@ -219,7 +227,7 @@ export class EvaluationTaskService {
 
   static async deleteEvaluation(evalId: string, teamId: string): Promise<void> {
     const del = async (session: ClientSession) => {
-      // Remove related tasks from queue to prevent further processing
+      // Remove tasks from queue to prevent further processing
       const [taskCleanupResult, itemCleanupResult] = await Promise.all([
         removeEvaluationTaskJob(evalId, {
           forceCleanActiveJobs: true,
@@ -239,7 +247,7 @@ export class EvaluationTaskService {
         itemCleanup: itemCleanupResult
       });
 
-      // Delete all evaluation items for this evaluation task
+      // Delete all evaluation items
       await MongoEvalItem.deleteMany({ evalId: new Types.ObjectId(evalId) }, { session });
 
       const result = await MongoEvaluation.deleteOne(
@@ -275,7 +283,7 @@ export class EvaluationTaskService {
     const limit = pageSize;
     const sort = { createTime: -1 as const };
 
-    // If not owner, filter by accessible resources
+    // Filter by accessible resources if not owner
     let finalFilter = filter;
     if (!isOwner && accessibleIds) {
       finalFilter = {
@@ -343,7 +351,6 @@ export class EvaluationTaskService {
             name: 1,
             createTime: 1,
             finishTime: 1,
-            status: 1,
             errorMessage: 1,
             avgScore: 1,
             datasetName: 1,
@@ -358,7 +365,6 @@ export class EvaluationTaskService {
               }
             },
             metricNames: 1,
-            statistics: 1,
             summaryConfigs: 1,
             aggregateScore: 1,
             tmbId: 1
@@ -368,15 +374,30 @@ export class EvaluationTaskService {
         { $skip: skip },
         { $limit: limit }
       ]),
-      // Get total count using the same aggregation pipeline (without pagination)
+      // Get total count without pagination
       MongoEvaluation.aggregate([...aggregationPipeline, { $count: 'total' }]).then(
         (result) => result[0]?.total || 0
       )
     ]);
 
-    // Return raw data - permissions will be handled in API layer
+    // Get real-time status and statistics
+    const evaluationsWithStatus = await Promise.all(
+      evaluations.map(async (evaluation) => {
+        const [status, statistics] = await Promise.all([
+          getEvaluationTaskStatus(evaluation._id.toString()),
+          getEvaluationTaskStats(evaluation._id.toString())
+        ]);
+        return {
+          ...evaluation,
+          status,
+          statistics
+        };
+      })
+    );
+
+    // Return data (permissions handled in API layer)
     return {
-      list: evaluations,
+      list: evaluationsWithStatus,
       total
     };
   }
@@ -446,11 +467,9 @@ export class EvaluationTaskService {
           },
           evaluators: 1,
           usageId: 1,
-          status: 1,
           createTime: 1,
           finishTime: 1,
-          errorMessage: 1,
-          statistics: 1
+          errorMessage: 1
         }
       }
     ]);
@@ -495,9 +514,17 @@ export class EvaluationTaskService {
   static async startEvaluation(evalId: string, teamId: string): Promise<void> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
-    // Check if task can be started/restarted
+    // Check if task can be started using job status
+    const isJobActive = await checkEvaluationTaskJobActive(evalId);
+
+    if (isJobActive) {
+      throw new Error('Evaluation task is already running');
+    }
+
+    // Let BullMQ handle most scenarios
     const canStart =
       evaluation.status === EvaluationStatusEnum.queuing ||
+      evaluation.status === EvaluationStatusEnum.completed ||
       (evaluation.status === EvaluationStatusEnum.error &&
         evaluation.errorMessage === 'Manually stopped');
 
@@ -505,53 +532,34 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
     }
 
-    // Clear error message if restarting
-    const updateQuery: any = {};
-    if (evaluation.status === EvaluationStatusEnum.error) {
-      updateQuery.$unset = {
-        errorMessage: 1,
-        finishTime: 1
-      };
-    }
+    await addEvaluationTaskJob({
+      evalId: evalId
+    });
 
-    // Use transaction to ensure atomicity between cleanup and queue submission
-    const startEval = async (session: ClientSession) => {
-      // Clear error state if needed, but leave status as queuing for processor to handle
-      if (Object.keys(updateQuery).length > 0) {
-        const result = await MongoEvaluation.updateOne(
-          { _id: new Types.ObjectId(evalId), teamId: new Types.ObjectId(teamId) },
-          updateQuery,
-          { session }
-        );
-
-        if (result.matchedCount === 0) {
-          throw new Error(EvaluationErrEnum.evalTaskNotFound);
-        }
-      }
-
-      // Queue operation within transaction - if it fails, transaction will rollback
-      await evaluationTaskQueue.add(`eval_task_${evalId}`, {
-        evalId: evalId
-      });
-    };
-
-    await mongoSessionRun(startEval);
-
-    const action = evaluation.status === EvaluationStatusEnum.error ? 'restarted' : 'started';
+    const action =
+      evaluation.status === EvaluationStatusEnum.error
+        ? 'restarted'
+        : evaluation.status === EvaluationStatusEnum.completed
+          ? 'restarted'
+          : 'started';
     addLog.debug(`[Evaluation] Task ${action}: ${evalId}`);
   }
 
   static async stopEvaluation(evalId: string, teamId: string): Promise<void> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
+    // Check if task is running using job status
+    const isJobActive = await checkEvaluationTaskJobActive(evalId);
+
     if (
+      !isJobActive &&
       ![EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evaluation.status)
     ) {
       throw new Error(EvaluationErrEnum.evalOnlyRunningCanStop);
     }
 
     const stopEval = async (session: ClientSession) => {
-      // Remove related tasks from queue
+      // Remove tasks from queue
       const [taskCleanupResult, itemCleanupResult] = await Promise.all([
         removeEvaluationTaskJob(evalId, {
           forceCleanActiveJobs: true,
@@ -571,12 +579,11 @@ export class EvaluationTaskService {
         itemCleanup: itemCleanupResult
       });
 
-      // Update status to error (manually stopped)
+      // Set error state for manual stop
       await MongoEvaluation.updateOne(
         { _id: new Types.ObjectId(evalId) },
         {
           $set: {
-            status: EvaluationStatusEnum.error,
             finishTime: new Date(),
             errorMessage: 'Manually stopped'
           }
@@ -584,15 +591,13 @@ export class EvaluationTaskService {
         { session }
       );
 
-      // Stop all related evaluation items
+      // Mark evaluation items as manually stopped
       await MongoEvalItem.updateMany(
         {
-          evalId: new Types.ObjectId(evalId),
-          status: { $in: [EvaluationStatusEnum.queuing, EvaluationStatusEnum.evaluating] }
+          evalId: new Types.ObjectId(evalId)
         },
         {
           $set: {
-            status: EvaluationStatusEnum.error,
             errorMessage: 'Manually stopped',
             finishTime: new Date()
           }
@@ -612,9 +617,15 @@ export class EvaluationTaskService {
   ): Promise<EvaluationStatsResponse> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
-    // Build dynamic expressions for checking if each evaluator output fails threshold
+    // Get real-time status from job queues
+    const basicStats = await getEvaluationTaskStats(evalId);
+
+    // Calculate failed count using threshold checks
     const evaluators = evaluation.evaluators || [];
-    const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
+    let failedCount = 0;
+
+    if (evaluators.length > 0) {
+      const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
 
     const pipeline = [
       { $match: { evalId: evaluation._id } },
@@ -669,7 +680,9 @@ export class EvaluationTaskService {
     };
   }
 
-  // ========================= Evaluation Item Related APIs =========================
+  /**
+   * Evaluation Item Management
+   */
 
   static async listEvaluationItems(
     evalId: string,
@@ -685,120 +698,147 @@ export class EvaluationTaskService {
     } = {}
   ): Promise<{ items: EvaluationItemDisplayType[]; total: number }> {
     const evaluation = await this.getEvaluation(evalId, teamId);
-
     const { status, belowThreshold, userInput, expectedOutput, actualOutput } = options;
 
-    // Build query conditions
-    const filter: any = { evalId: evaluation._id };
+    // Build aggregation pipeline
+    const pipeline = this.buildEvaluationItemsPipeline(
+      evaluation,
+      { status, belowThreshold, userInput, expectedOutput, actualOutput },
+      offset,
+      pageSize
+    );
 
-    // Handle special belowThreshold filter
+    try {
+      const [dataResult, countResult] = await Promise.all([
+        MongoEvalItem.aggregate(pipeline.dataPipeline),
+        MongoEvalItem.aggregate(pipeline.countPipeline)
+      ]);
+
+      const total = countResult[0]?.total || 0;
+      const items = dataResult.map((item) => ({
+        ...item,
+        _id: String(item._id),
+        // Add evaluator info
+        evaluators: evaluation.evaluators.map((evaluator) => ({
+          metric: evaluator.metric,
+          thresholdValue: evaluator.thresholdValue
+        }))
+      }));
+
+      return { items, total };
+    } catch (error) {
+      console.error('Failed to list evaluation items', {
+        evalId,
+        options,
+        offset,
+        pageSize,
+        error
+      });
+      throw new Error('Failed to list evaluation items');
+    }
+  }
+
+  /**
+   * Build aggregation pipeline for evaluation items listing
+   */
+  private static buildEvaluationItemsPipeline(
+    evaluation: any,
+    filters: {
+      status?: EvaluationStatusEnum;
+      belowThreshold?: boolean;
+      userInput?: string;
+      expectedOutput?: string;
+      actualOutput?: string;
+    },
+    offset: number,
+    pageSize: number
+  ) {
+    const { status, belowThreshold, userInput, expectedOutput, actualOutput } = filters;
+
+    // Base match conditions
+    const matchConditions: Record<string, any> = {
+      evalId: evaluation._id
+    };
+
+    // Use metadata.status for status filtering
+    if (status !== undefined) {
+      matchConditions['metadata.status'] = status;
+    }
+
+    // Add text search conditions
+    const searchConditions: any[] = [];
+    if (userInput && typeof userInput === 'string' && userInput.trim().length > 0) {
+      searchConditions.push({
+        'dataItem.userInput': { $regex: new RegExp(userInput.trim(), 'i') }
+      });
+    }
+    if (expectedOutput && typeof expectedOutput === 'string' && expectedOutput.trim().length > 0) {
+      searchConditions.push({
+        'dataItem.expectedOutput': { $regex: new RegExp(expectedOutput.trim(), 'i') }
+      });
+    }
+    if (actualOutput && typeof actualOutput === 'string' && actualOutput.trim().length > 0) {
+      searchConditions.push({
+        'targetOutput.actualOutput': { $regex: new RegExp(actualOutput.trim(), 'i') }
+      });
+    }
+
+    if (searchConditions.length > 0) {
+      matchConditions.$and = searchConditions;
+    }
+
+    // Build pipeline stages
+    const commonPipeline: any[] = [{ $match: matchConditions }];
+
+    // Add status field using metadata.status
+    commonPipeline.push({
+      $addFields: {
+        status: '$metadata.status'
+      }
+    });
+
+    // Add threshold filter if specified
     if (belowThreshold) {
-      // Filter for completed items that have at least one failed evaluator (same logic as getEvaluationStats)
-      filter.status = EvaluationStatusEnum.completed;
-
-      // Build dynamic expressions for checking if each evaluator output fails threshold (same as getEvaluationStats)
       const evaluators = evaluation.evaluators || [];
-      const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
-
-      // Build aggregation pipeline to filter items that have any failed evaluators
-      const aggregationPipeline: any[] = [
-        { $match: filter },
-        {
+      if (evaluators.length > 0) {
+        const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
+        commonPipeline.push({
           $addFields: {
-            // Add a field to check if this item has any failed evaluators (same logic as getEvaluationStats)
             hasFailedEvaluator:
               evaluatorFailChecks.length > 0 ? { $or: evaluatorFailChecks } : false
           }
-        },
-        {
-          $match: {
-            hasFailedEvaluator: true
-          }
-        }
-      ];
-
-      // Add other filters
-      if (userInput) {
-        aggregationPipeline.push({
-          $match: { 'dataItem.userInput': { $regex: userInput, $options: 'i' } }
+        });
+        commonPipeline.push({
+          $match: { hasFailedEvaluator: true }
         });
       }
-
-      if (expectedOutput) {
-        aggregationPipeline.push({
-          $match: { 'dataItem.expectedOutput': { $regex: expectedOutput, $options: 'i' } }
-        });
-      }
-
-      if (actualOutput) {
-        aggregationPipeline.push({
-          $match: { 'targetOutput.actualOutput': { $regex: actualOutput, $options: 'i' } }
-        });
-      }
-
-      // Get total count
-      const totalPipeline = [...aggregationPipeline, { $count: 'total' }];
-      const totalResult = await MongoEvalItem.aggregate(totalPipeline);
-      const total = totalResult.length > 0 ? totalResult[0].total : 0;
-
-      // Get paginated results
-      aggregationPipeline.push(
-        { $sort: { createTime: -1 } },
-        { $skip: offset },
-        { $limit: pageSize }
-      );
-
-      const items = await MongoEvalItem.aggregate(aggregationPipeline);
-
-      // Add evaluators data from parent evaluation
-      const itemsWithEvaluators = items.map((item) => ({
-        ...item,
-        evaluators: evaluation.evaluators.map((evaluator, index) => ({
-          metric: evaluator.metric,
-          thresholdValue: evaluator.thresholdValue,
-          weight: evaluation.summaryConfigs[index]?.weight
-        }))
-      }));
-
-      return { items: itemsWithEvaluators, total };
-    } else {
-      // Handle normal status filtering
-      if (status !== undefined) {
-        filter.status = status;
-      }
-
-      if (userInput) {
-        filter['dataItem.userInput'] = { $regex: userInput, $options: 'i' };
-      }
-
-      if (expectedOutput) {
-        filter['dataItem.expectedOutput'] = { $regex: expectedOutput, $options: 'i' };
-      }
-
-      if (actualOutput) {
-        filter['targetOutput.actualOutput'] = { $regex: actualOutput, $options: 'i' };
-      }
-
-      const skip = offset;
-      const limit = pageSize;
-
-      const [items, total] = await Promise.all([
-        MongoEvalItem.find(filter).sort({ createTime: -1 }).skip(skip).limit(limit).lean(),
-        MongoEvalItem.countDocuments(filter)
-      ]);
-
-      // Add evaluators data from parent evaluation
-      const itemsWithEvaluators = items.map((item) => ({
-        ...item,
-        evaluators: evaluation.evaluators.map((evaluator, index) => ({
-          metric: evaluator.metric,
-          thresholdValue: evaluator.thresholdValue,
-          weight: evaluation.summaryConfigs[index]?.weight
-        }))
-      }));
-
-      return { items: itemsWithEvaluators, total };
     }
+
+    // Data pipeline
+    const dataPipeline = [
+      ...commonPipeline,
+      { $sort: { createTime: -1 } },
+      { $skip: offset },
+      { $limit: pageSize },
+      {
+        $project: {
+          _id: 1,
+          evalId: 1,
+          dataItem: 1,
+          targetOutput: 1,
+          evaluatorOutputs: 1,
+          status: 1,
+          createTime: 1,
+          updateTime: 1,
+          errorMessage: 1
+        }
+      }
+    ];
+
+    // Count pipeline
+    const countPipeline = [...commonPipeline, { $count: 'total' }];
+
+    return { dataPipeline, countPipeline };
   }
 
   static async getEvaluationItem(
@@ -813,12 +853,17 @@ export class EvaluationTaskService {
 
     await this.getEvaluation(item.evalId, teamId);
 
-    return item;
+    // Get real-time status
+    const status = await getEvaluationItemStatus(itemId);
+
+    return {
+      ...item,
+      status
+    };
   }
 
   /**
-   * Build MongoDB update object with dot notation for evaluation data item updates
-   * @private
+   * Build MongoDB update object for evaluation data items
    */
   private static buildEvaluationDataItemUpdateObject(updates: {
     userInput?: string;
@@ -846,7 +891,6 @@ export class EvaluationTaskService {
 
   /**
    * Update evaluation item with data item fields
-   * Unified method for API layers to update evaluation items
    */
   static async updateEvaluationItem(
     itemId: string,
@@ -858,9 +902,10 @@ export class EvaluationTaskService {
     },
     teamId: string
   ): Promise<void> {
-    await this.getEvaluationItem(itemId, teamId);
+    const item = await this.getEvaluationItem(itemId, teamId);
+    const evaluation = await this.getEvaluation(item.evalId, teamId);
 
-    // Build MongoDB update object with dot notation
+    // Build MongoDB update object
     const updateObj = this.buildEvaluationDataItemUpdateObject(updates);
     if (Object.keys(updateObj).length === 0) {
       return;
@@ -875,30 +920,27 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalItemNotFound);
     }
 
-    // If actual update occurred, re-queue the item for evaluation
+    // Re-queue item if updated
     if (result.modifiedCount > 0) {
       // Get the updated item to determine the evalId
       const updatedItem = await MongoEvalItem.findById(itemId, 'evalId');
       if (updatedItem) {
-        // Reset evaluation results and re-queue
+        // Reset results and re-queue
+        const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
+          metricName: evaluator.metric.name
+        }));
+
         await MongoEvalItem.updateOne(
           { _id: new Types.ObjectId(itemId) },
           {
             $set: {
-              status: EvaluationStatusEnum.queuing,
-              retry: 3
-            },
-            $unset: {
-              targetOutput: 1,
-              evaluatorOutputs: 1,
-              finishTime: 1,
-              errorMessage: 1
+              targetOutput: {},
+              evaluatorOutputs
             }
           }
         );
-
         // Re-submit to evaluation queue
-        await evaluationItemQueue.add(`eval_item_update_${itemId}`, {
+        await addEvaluationItemJob({
           evalId: updatedItem.evalId.toString(),
           evalItemId: itemId
         });
@@ -911,7 +953,7 @@ export class EvaluationTaskService {
   static async deleteEvaluationItem(itemId: string, teamId: string): Promise<void> {
     await this.getEvaluationItem(itemId, teamId);
 
-    // Remove related jobs from queue before deleting the item
+    // Remove jobs from queue before deleting
     const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
       forceCleanActiveJobs: true,
       retryAttempts: 3,
@@ -935,92 +977,35 @@ export class EvaluationTaskService {
   static async retryEvaluationItem(itemId: string, teamId: string): Promise<void> {
     const item = await this.getEvaluationItem(itemId, teamId);
 
-    // Only completed evaluation items without errors cannot be retried
-    if (item.status === EvaluationStatusEnum.completed) {
-      throw new Error(EvaluationErrEnum.evalOnlyFailedCanRetry);
+    // Find the failed job for this item by searching through failed jobs
+    const failedJobs = await evaluationItemQueue.getJobs(['failed']);
+    const job = failedJobs.find((j) => j.data.evalItemId === itemId);
+
+    if (!job) {
+      throw new Error(EvaluationErrEnum.evalItemJobNotFound);
     }
 
-    // Check if item is in error status or retryable status
-    if (
-      item.status !== EvaluationStatusEnum.error &&
-      item.status !== EvaluationStatusEnum.queuing
-    ) {
-      throw new Error(EvaluationErrEnum.evalItemNoErrorToRetry);
-    }
+    // Retry the job directly (active event will clear error state automatically)
+    await job.retry();
 
-    // Get evaluation to access evaluators for proper evaluatorOutputs initialization
-    const evaluation = await this.getEvaluation(item.evalId, teamId);
-
-    // Remove existing jobs for this item to prevent duplicates
-    const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
-      forceCleanActiveJobs: true,
-      retryAttempts: 3,
-      retryDelay: 200
-    });
-
-    addLog.debug('Queue cleanup completed for evaluation item retry', {
+    addLog.info('Evaluation item retried successfully', {
       itemId,
-      cleanup: cleanupResult
+      evalId: item.evalId,
+      teamId
     });
-
-    // Use transaction for atomic status update and queue submission
-    const retryItem = async (session: ClientSession) => {
-      // Initialize evaluatorOutputs based on evaluators schema definition
-      const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
-        metricName: evaluator.metric.name
-      }));
-
-      // Update status within transaction
-      const result = await MongoEvalItem.updateOne(
-        { _id: new Types.ObjectId(itemId) },
-        {
-          $set: {
-            status: EvaluationStatusEnum.queuing,
-            retry: Math.max(item.retry || 0, 1), // Ensure at least 1 retry chance
-            targetOutput: {},
-            evaluatorOutputs
-          },
-          $unset: {
-            finishTime: 1,
-            errorMessage: 1
-          }
-        },
-        { session }
-      );
-
-      if (result.matchedCount === 0) {
-        throw new Error(EvaluationErrEnum.evalItemNotFound);
-      }
-
-      // Queue operation within transaction - if it fails, transaction will rollback
-      await evaluationItemQueue.add(`eval_item_retry_${itemId}`, {
-        evalId: item.evalId,
-        evalItemId: itemId
-      });
-    };
-
-    await mongoSessionRun(retryItem);
-
-    addLog.debug(`[Evaluation] Evaluation item reset to queuing status and resubmitted: ${itemId}`);
   }
 
   static async retryFailedItems(evalId: string, teamId: string): Promise<number> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
+    await this.getEvaluation(evalId, teamId); // Validate evalId and teamId
 
-    const retryItems = async (session: ClientSession): Promise<number> => {
-      // Find items that need to be retried
-      const itemsToRetry = await MongoEvalItem.find(
-        {
-          evalId: evaluation._id,
-          status: EvaluationStatusEnum.error
-        },
-        '_id',
-        { session }
-      ).lean();
+    // Get all failed jobs for this evaluation
+    const failedJobs = await evaluationItemQueue.getJobs(['failed']);
+    const evaluationFailedJobs = failedJobs.filter((job) => job.data.evalId === evalId);
 
-      if (itemsToRetry.length === 0) {
-        return 0;
-      }
+    if (evaluationFailedJobs.length === 0) {
+      addLog.warn('No failed jobs found to retry for evaluation', { evalId });
+      return 0;
+    }
 
       // Clean up existing jobs for all items that will be retried to prevent duplicates
       const itemIds = itemsToRetry.map((item) => item._id.toString());
@@ -1192,6 +1177,10 @@ export class EvaluationTaskService {
 
     const total = items.length;
 
+    // Get real-time status for all items
+    const itemIds = items.map((item) => item._id.toString());
+    const statusMap = await getBatchEvaluationItemStatus(itemIds);
+
     if (format === 'json') {
       const results = items.map((item) => ({
         itemId: item._id,
@@ -1199,7 +1188,7 @@ export class EvaluationTaskService {
         expectedOutput: item.dataItem?.expectedOutput,
         actualOutput: item.targetOutput?.actualOutput,
         scores: item.evaluatorOutputs?.map((output) => output?.data?.score) || [],
-        status: item.status,
+        status: statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed,
         targetOutput: item.targetOutput,
         evaluatorOutputs: item.evaluatorOutputs,
         errorMessage: item.errorMessage,
@@ -1246,6 +1235,8 @@ export class EvaluationTaskService {
           }
         });
 
+        const itemStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
+
         const row = [
           item._id.toString(),
           `"${(item.dataItem?.userInput || '').replace(/"/g, '""')}"`,
@@ -1256,7 +1247,7 @@ export class EvaluationTaskService {
             const score = metricScoreMap.get(metricName);
             return score !== undefined ? score : '';
           }),
-          item.status || '',
+          itemStatus || '',
           `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
           item.finishTime || ''
         ];

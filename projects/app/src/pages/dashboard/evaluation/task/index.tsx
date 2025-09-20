@@ -120,7 +120,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     // 1. 当状态为error且所有项目都失败时，显示红色的"异常"
     if (
       task.status === EvaluationStatusEnum.error &&
-      task.statistics?.errorItems === task.statistics?.totalItems
+      task.statistics?.error === task.statistics?.total
     ) {
       return <Box color={'red.600'}>{t('dashboard_evaluation:error')}</Box>;
     }
@@ -244,23 +244,23 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                       <Box color={'myGray.600'}>{t(EvaluationStatusMap[task.status]?.name)}</Box>
                     )}
                     {task.status === EvaluationStatusEnum.completed &&
-                    task.statistics?.completedItems === task.statistics?.totalItems ? (
+                    task.statistics?.completed === task.statistics?.total ? (
                       <Box color={'green.600'}>{t(EvaluationStatusMap[task.status]?.name)}</Box>
                     ) : (
                       task.status !== EvaluationStatusEnum.queuing && (
                         <HStack spacing={1}>
                           <Box>
                             <Box as="span" color={'myGray.900'}>
-                              {task.statistics?.completedItems || 0}
+                              {task.statistics?.completed || 0}
                             </Box>
                             <Box as="span" color={'myGray.600'}>
-                              /{task.statistics?.totalItems || 0}
+                              /{task.statistics?.total || 0}
                             </Box>
                           </Box>
-                          {task.statistics?.errorItems && task.statistics.errorItems > 0 && (
+                          {task.statistics?.error && task.statistics.error > 0 && (
                             <MyTooltip
                               label={t('dashboard_evaluation:error_data_tooltip', {
-                                count: task.statistics.errorItems
+                                count: task.statistics.error
                               })}
                             >
                               <MyIcon name={'common/info'} w={'14px'} color={'red.600'} />
@@ -304,7 +304,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                         {
                           label: '',
                           children: [
-                            ...(task.statistics?.errorItems && task.statistics.errorItems > 0
+                            ...(task.statistics?.error && task.statistics.error > 0
                               ? [
                                   {
                                     icon: 'common/retryLight',
