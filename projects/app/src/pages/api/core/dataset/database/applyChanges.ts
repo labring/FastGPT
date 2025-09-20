@@ -3,7 +3,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -17,68 +17,26 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import type { ColumnStatusEnum } from './detectChanges';
-import { TableStatusEnum } from './detectChanges';
 import {
   createOneCollection,
   delCollection
 } from '@fastgpt/service/core/dataset/collection/controller';
-
-export type TableColumn = {
-  columnName: string;
-  columnType: string;
-  description: string;
-  examples: string[];
-  status: ColumnStatusEnum;
-  forbid: boolean;
-  valueIndex: boolean;
-};
-
-export type DBTableProp = {
-  tableName: string;
-  description: string;
-  forbid: boolean;
-  columns: Record<string, TableColumn>;
-  foreignKeys?: Array<{
-    constrainedColumns: string[];
-    referredSchema: string | null;
-    referredTable: string;
-    referredColumns: string[];
-  }>;
-  primaryKeys?: string[];
-  status: TableStatusEnum;
-};
-
-export type ApplyChangesQuery = {
-  datasetId: string;
-};
-
-export type ApplyChangesBody = {
-  tables: Array<DBTableProp>;
-};
-
-export type ApplyChangesResponse = {
-  success: boolean;
-  processedItems: {
-    deletedTables: number;
-    updatedTables: number;
-    addedTables: number;
-    affectedDataRecords: number;
-  };
-  errors: Array<{
-    type: 'table' | 'column' | 'data';
-    target: string;
-    error: string;
-  }>;
-  taskId?: string;
-};
+import type {
+  DBTableChange,
+  DBTableColumn,
+  ApplyChangesBody,
+  ApplyChangesResponse
+} from '@fastgpt/global/core/dataset/database/api.d';
+import { StatusEnum } from '@fastgpt/global/core/dataset/database/api.d';
+import { TableTransformer } from '@fastgpt/service/core/dataset/database/model/dataModel';
+import type { ColumnSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
 
 // Check if column forbid status is inconsistent between database and collection
-function hasColumnForbidInconsistency(existingTable: any, newTable: DBTableProp): boolean {
+function hasColumnForbidInconsistency(existingTable: any, newTable: DBTableChange): boolean {
   const existingColumns = existingTable?.tableSchema?.columns || {};
   const newColumns = newTable.columns;
 
-  for (const [colName, newCol] of Object.entries(newColumns)) {
+  for (const [colName, newCol] of Object.entries(newColumns) as [string, DBTableColumn][]) {
     const existingCol = existingColumns.get
       ? existingColumns.get(colName)
       : existingColumns[colName];
@@ -90,11 +48,8 @@ function hasColumnForbidInconsistency(existingTable: any, newTable: DBTableProp)
   return false;
 }
 
-async function handler(
-  req: ApiRequestProps<ApplyChangesBody, ApplyChangesQuery>
-): Promise<ApplyChangesResponse> {
-  const { datasetId } = req.query;
-  const { tables } = req.body;
+async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<ApplyChangesResponse> {
+  const { datasetId, tables }: { datasetId: string; tables: Array<DBTableChange> } = req.body;
 
   // 权限验证
   const { teamId, tmbId, dataset } = await authDataset({
@@ -118,28 +73,44 @@ async function handler(
   try {
     await mongoSessionRun(async (session) => {
       // Get existing collections for this dataset
-      const existingCollections = await MongoDatasetCollection.find({
+      const mongoCollections = await MongoDatasetCollection.find({
         datasetId,
         type: DatasetCollectionTypeEnum.table
       }).session(session);
 
       // Create a map for quick lookup
-      const existingCollectionsMap = new Map<string, any>();
-      existingCollections.forEach((coll) => {
+      const mongoCollectionsMap = new Map<string, any>();
+      mongoCollections.forEach((coll) => {
         if (coll.tableSchema?.tableName) {
-          existingCollectionsMap.set(coll.tableSchema.tableName, coll);
+          mongoCollectionsMap.set(coll.tableSchema.tableName, coll);
         }
       });
 
-      // Process each table according to its status
+      // Delete tables which in mongo but not in tables
+      const collectionsToDelete = mongoCollections.filter(
+        (mongoCollection) =>
+          !tables.some((table) => table.tableName === mongoCollection.tableSchema!.tableName)
+      );
+
+      if (collectionsToDelete.length > 0) {
+        await delCollection({
+          collections: collectionsToDelete,
+          delImg: true,
+          delFile: true,
+          session
+        });
+        deletedTables = collectionsToDelete.length;
+      }
+      console.debug('tables', tables[0].columns);
+
+      console.debug('mongoCollectionsMap', mongoCollectionsMap);
+      // 按照每个表的状态进行处理
       for (const table of tables) {
         try {
           switch (table.status) {
-            case TableStatusEnum.add: {
+            case StatusEnum.add: {
               // Create new collection and training task
-              if (table.forbid) continue; // Skip forbidden tables
-
-              const collection = await MongoDatasetCollection.create(
+              const [collection] = await MongoDatasetCollection.create(
                 [
                   {
                     teamId,
@@ -149,34 +120,10 @@ async function handler(
                     type: DatasetCollectionTypeEnum.table,
                     name: table.tableName,
                     forbid: table.forbid,
-                    tableSchema: {
-                      tableName: table.tableName,
-                      description: table.description,
-                      columns: new Map(
-                        Object.entries(table.columns).map(([name, col]) => [
-                          name,
-                          {
-                            columnName: col.columnName,
-                            columnType: col.columnType,
-                            description: col.description,
-                            examples: col.examples,
-                            forbid: col.forbid,
-                            valueIndex: col.valueIndex,
-                            isNullable: true,
-                            isAutoIncrement: false,
-                            isPrimaryKey: false,
-                            isForeignKey: false,
-                            relatedColumns: [],
-                            metadata: {}
-                          }
-                        ])
-                      ),
-                      foreignKeys: [],
-                      primaryKeys: [],
-                      indexes: [],
-                      constraints: [],
-                      lastUpdated: new Date()
-                    }
+                    tableSchema: TableTransformer.toPlainObject(
+                      TableTransformer.fromPlainObject(table),
+                      { exist: true, lastUpdated: new Date() }
+                    ) as TableSchemaType
                   }
                 ],
                 { session }
@@ -199,7 +146,7 @@ async function handler(
                     teamId,
                     tmbId,
                     datasetId,
-                    collectionId: collection[0]._id,
+                    collectionId: collection._id,
                     billId,
                     mode: TrainingModeEnum.databaseSchema,
                     retryCount: 5
@@ -211,81 +158,70 @@ async function handler(
               addedTables++;
               break;
             }
-
-            case TableStatusEnum.delete: {
-              // Delete collection and related data
-              const existingCollection = existingCollectionsMap.get(table.tableName);
-              if (existingCollection) {
-                // Delete collection
-                await mongoSessionRun((session) =>
-                  delCollection({
-                    collections: [existingCollection],
-                    delImg: true,
-                    delFile: true,
-                    session
-                  })
-                );
-                // Delete related training data
-                await MongoDatasetTraining.deleteMany(
-                  { collectionId: existingCollection._id },
-                  { session }
-                );
-                deletedTables++;
-              }
-              break;
-            }
-
-            case TableStatusEnum.available: {
+            case StatusEnum.available: {
               // Check if table needs re-indexing
-              const existingCollection = existingCollectionsMap.get(table.tableName);
-              if (existingCollection) {
+              const intersectCollection = mongoCollectionsMap.get(table.tableName);
+              console.debug('intersectCollection', intersectCollection);
+              if (intersectCollection) {
                 let needsReindex = false;
 
                 // Check table description change
-                if (existingCollection.tableSchema?.description !== table.description) {
+                if (intersectCollection.tableSchema?.description !== table.description) {
+                  console.debug(
+                    'table description change',
+                    intersectCollection.tableSchema?.description,
+                    table.description
+                  );
                   needsReindex = true;
                 }
 
                 // Check column description changes
-                const existingColumns = existingCollection.tableSchema?.columns || {};
-                for (const [colName, newCol] of Object.entries(table.columns)) {
-                  const existingCol = existingColumns.get
-                    ? existingColumns.get(colName)
-                    : existingColumns[colName];
-                  if (existingCol && existingCol.description !== newCol.description) {
+                const intersectColumns =
+                  (intersectCollection.tableSchema?.columns as Record<string, ColumnSchemaType>) ||
+                  {};
+                for (const [colName, newCol] of Object.entries(table.columns) as [
+                  string,
+                  DBTableColumn
+                ][]) {
+                  const intersectCol = intersectColumns[colName];
+                  if (intersectCol && intersectCol.description !== newCol.description) {
+                    needsReindex = true;
+                    break;
+                  } else if (intersectCol && intersectCol.isPrimaryKey !== newCol.isPrimaryKey) {
+                    needsReindex = true;
+                    break;
+                  } else if (intersectCol && intersectCol.isForeignKey !== newCol.isForeignKey) {
                     needsReindex = true;
                     break;
                   }
                 }
 
                 // Check for added/deleted columns
-                const existingColNames = new Set(Object.keys(existingColumns));
+                const intersectColNames = new Set(Object.keys(intersectColumns));
                 const newColNames = new Set(Object.keys(table.columns));
 
                 if (
-                  existingColNames.size !== newColNames.size ||
-                  [...existingColNames].some((name) => !newColNames.has(name)) ||
-                  [...newColNames].some((name) => !existingColNames.has(name))
+                  intersectColNames.size !== newColNames.size ||
+                  [...intersectColNames].some((name) => !newColNames.has(name)) ||
+                  [...newColNames].some((name) => !intersectColNames.has(name))
                 ) {
                   needsReindex = true;
                 }
 
                 // Check column forbid status inconsistency
-                if (hasColumnForbidInconsistency(existingCollection, table)) {
+                if (hasColumnForbidInconsistency(intersectCollection, table)) {
                   needsReindex = true;
                 }
-
+                console.debug('needsReindex', needsReindex);
                 if (needsReindex) {
                   // Delete collection
-                  await mongoSessionRun((session) =>
-                    delCollection({
-                      collections: [existingCollection],
-                      delImg: true,
-                      delFile: true,
-                      session
-                    })
-                  );
-
+                  await delCollection({
+                    collections: [intersectCollection],
+                    delImg: true,
+                    delFile: true,
+                    session
+                  });
+                  console.debug('Delete collection', intersectCollection);
                   const collection = await createOneCollection({
                     teamId,
                     tmbId,
@@ -294,35 +230,11 @@ async function handler(
                     type: DatasetCollectionTypeEnum.table,
                     name: table.tableName,
                     trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
-                    tableSchema: {
-                      tableName: table.tableName,
-                      description: table.description,
-                      columns: Object.fromEntries(
-                        Object.entries(table.columns).map(([name, col]) => [
-                          name,
-                          {
-                            columnName: col.columnName,
-                            columnType: col.columnType,
-                            description: col.description,
-                            examples: col.examples,
-                            forbid: col.forbid,
-                            valueIndex: col.valueIndex,
-                            isPrimaryKey: table.primaryKeys?.includes(name) || false,
-                            isForeignKey:
-                              table.foreignKeys?.some((fk) =>
-                                fk.constrainedColumns.includes(name)
-                              ) || false,
-                            relatedColumns: [],
-                            metadata: {}
-                          }
-                        ])
-                      ),
-                      foreignKeys: table.foreignKeys || [],
-                      primaryKeys: table.primaryKeys || [],
-                      indexes: [],
-                      constraints: [],
-                      lastUpdated: new Date()
-                    },
+                    tableSchema: TableTransformer.toPlainObject(
+                      TableTransformer.fromPlainObject(table),
+                      { exist: true, lastUpdated: new Date() }
+                    ) as TableSchemaType,
+                    forbid: table.forbid,
                     session
                   });
                   // Create new training task
@@ -380,10 +292,6 @@ async function handler(
         }
       });
     })();
-
-    addLog.info(
-      `Successfully processed database changes for dataset ${datasetId}: ${addedTables} added, ${deletedTables} deleted, ${updatedTables} updated`
-    );
 
     return {
       success: true,

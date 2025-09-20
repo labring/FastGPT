@@ -35,6 +35,10 @@ import { formatDatasetDataValue } from '../data/controller';
 import { DBDatasetValueVectorTableName, DBDatasetVectorTableName } from '../../../common/vectorDB/constants';
 import { MongoDataset } from '../schema';
 import { addLog } from '../../../common/system/log';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { i18nT } from '../../../../web/i18n/utils';
+import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
+import type { DativeForeignKey, DativeTable, DativeTableColumns, SqlGenerationRequest, SqlGenerationResponse } from '@fastgpt/global/core/dataset/database/api';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -1076,7 +1080,7 @@ export const SearchDatabaseData = async (
       teamId
     });
 
-    addLog.info(`Database embed recall completed. Found ${Object.keys(schema).length} tables.`);
+    addLog.debug(`Database embed recall completed. Found ${Object.keys(schema).length} tables.`);
     addLog.debug('Schema results:', schema);
 
     return {
@@ -1084,11 +1088,7 @@ export const SearchDatabaseData = async (
       tokens: totalTokens
     };
   } catch (error) {
-    addLog.error('Database embed recall error', error);
-    return {
-      schema: {},
-      tokens: 0
-    };
+    return Promise.reject(i18nT('chat:embedding_model_error'));
   }
 };
 
@@ -1194,7 +1194,7 @@ const mergeAndGetSchema = async ({
     .select('_id datasetId name')
     .lean();
 
-  const collectionMap = new Map(collections.map(col => [String(col._id), col]));
+  const collectionMap = new Map(collections.map(coll => [String(coll._id), coll]));
 
   // Process column description results
   for (const result of columnDescriptionRecallResList) {
@@ -1238,53 +1238,10 @@ const mergeAndGetSchema = async ({
 };
 
 
-// SQL Generation types
-export type SqlGenerationRequest = {
-  source_config: {
-    type : string,
-    host: string,  
-    port: number,
-    username: string,
-    password: string,
-    db_name: string
-  }
-  generate_sql_llm: {
-    model: string,
-    api_key?: string,
-    base_url?: string
-  };
-  evaluate_sql_llm: {
-    model: string,
-    api_key?: string,
-    base_url?: string
-  };
-  query: string;
-  result_num_limit: number;
-  retrieved_metadata: {
-    name: string;
-    columns: Record<string, {
-      name: string;
-      type: string;
-      description: string;
-    }>;
-  };
-  evidence?: string;
-};
-
-export type SqlGenerationResponse = {
-  answer: string;
-  sql: string;
-  sql_res: {
-    data: any[];
-    columns: string[];
-  };
-  input_tokens: number;
-  output_tokens: number;
-};
-
 
 /**
- * Generate SQL and execute query using Python service
+ * Generate SQL and execute query with Dative Plugin
+ * 
  */
 export const generateAndExecuteSQL = async ({
   datasetId,
@@ -1309,12 +1266,11 @@ export const generateAndExecuteSQL = async ({
     };
   };
 }): Promise<SqlGenerationResponse | null> => {
-  try {
     // Get dataset and database config
     const dataset = await MongoDataset.findById(datasetId).lean();
     if (!dataset?.databaseConfig) {
       addLog.warn('No database config found for dataset', { datasetId });
-      return null;
+      return Promise.reject(DatabaseErrEnum.dbConfigNotFound);
     }
 
     const dbConfig: any = dataset.databaseConfig;
@@ -1333,32 +1289,51 @@ export const generateAndExecuteSQL = async ({
       teamId
     }).lean();
 
+    // Collections Changes during Sql Generation
     if (!collections || collections.length === 0) {
       addLog.warn('No collections found for tables', { tableNames });
-      return null;
+      return Promise.reject(`${ tableNames } not found or has been deleted`);
     }
 
     // Build table schemas for Python service
-    const retrievedMetadata = collections
-      .filter(collection => collection.tableSchema?.columns)
-      .map(collection => {
-        const columns: Record<string, { name: string; type: string; description: string }> = {};
-        if (collection.tableSchema?.columns) {
-          Object.entries(collection.tableSchema.columns).forEach((col: any) => {
-            columns[col.tableName] = {
-              name: col.colName,
-              type: col.type || 'varchar',
-              description: col.description || ''
-            };
-          });
-        }
+    const retrievedMetadata = collections.map(collection => {
+      // columns: Record<string, DativeTableColumns>
+      const columns: Record<string, DativeTableColumns> = {};
+      if (collection.tableSchema?.columns) {
+        Object.values(collection.tableSchema.columns).forEach(col => {
+          columns[col.columnName] = {
+            name: col.columnName,
+            type: col.columnType,
+            comment: col.description,
+            auto_increment: col.isAutoIncrement || false,
+            nullable: col.isNullable || false,
+            default: col.defaultValue || null,
+            examples: col.examples || [],
+            enabled: !(collection.forbid),
+            value_index: col.valueIndex || false
+          };
+        });
+      }
 
-        return {
-          name: collection.name,
-          columns,
-          score: schema[collection.name]?.score || 0
-        };
-      });
+      const foreign_keys: DativeForeignKey[] = collection.tableSchema?.foreignKeys.forEach((fk) =>({
+          referenced_schema: fk.referredSchema,
+          referenced_table: fk.referredTable,
+          referenced_column: fk.referredColumns
+      })) || []
+
+      const table: DativeTable = {
+        name: collection.name,
+        ns_name: "",
+        comment: collection.tableSchema?.description || "",
+        columns,
+        primary_keys: collection.tableSchema?.primaryKeys || [],
+        foreign_keys: foreign_keys,
+        enable: !(collection.forbid),
+        score: schema[collection.name]?.score || 0
+      };
+    
+      return table;
+    });
 
     if (retrievedMetadata.length === 0) {
       addLog.warn('No valid table schemas found');
@@ -1375,7 +1350,7 @@ export const generateAndExecuteSQL = async ({
     const llmModelData = getLLMModel(generate_sql_llm.model);
     if (!llmModelData) {
       addLog.error(`Invalid LLM model specified for SQL generation ${generate_sql_llm.model}`);
-      return null;
+      return Promise.reject(`Invalid LLM model specified for SQL generation ${generate_sql_llm.model}`);
     }
     // Update request payload to include all table schemas
     const requestPayload: SqlGenerationRequest = {
@@ -1392,52 +1367,35 @@ export const generateAndExecuteSQL = async ({
       query,
       result_num_limit: limit,
       retrieved_metadata: {
-        name: retrievedMetadata[0].name, // Primary table name
-        columns: retrievedMetadata.reduce((acc, table) => {
-          // Merge all table columns with table prefix to avoid conflicts
-          Object.entries(table.columns).forEach(([colName, colInfo]) => {
-            acc[`${table.name}.${colName}`] = {
-              name: colName,
-              type: colInfo.type,
-              description: `${table.name}表 - ${colInfo.description}`
-            };
-          });
-          return acc;
-        }, {} as Record<string, { name: string; type: string; description: string }>)
+        name: dbConfig.database, // DatabaseName
+        comments: '',
+        tables: retrievedMetadata
       }
     };
-
-    addLog.info('Calling Python SQL generation service', {
-      url: `${dativeUrl}/api/v1/data_source/query_by_nl`,
-      tables: retrievedMetadata.map(t => t.name),
-      primaryTable: retrievedMetadata[0].name,
-      query
-    });
-
-    // Call Python service
-    const response = await fetch(`${dativeUrl}/api/v1/data_source/query_by_nl`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestPayload)
-    });
-
+    let response: Response ;
+    
+    try {
+          response = await fetch(`${dativeUrl}/api/v1/data_source/query_by_nl`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestPayload)
+          });
+    } catch (error: any) {
+          addLog.error('Error connecting to Dative service', error);
+          return Promise.reject(DatabaseErrEnum.dativeServiceError);
+    }
     if (!response.ok) {
       const errorText = await response.text();
-      addLog.error('Python SQL service error', {
-        status: response.status,
+      addLog.error('[generateAndExecuteSQL]:', {
+        status: response.status,  
         statusText: response.statusText,
         error: errorText
       });
-      return null;
+      return Promise.reject(i18nT('chat:language_model_error'));
     }
 
     const result: SqlGenerationResponse = await response.json();
     return result;
-
-  } catch (error) {
-    addLog.error('SQL generation failed', error);
-    return null;
-  }
 };

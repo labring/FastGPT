@@ -320,6 +320,7 @@
   "database_config_updated": "数据库配置已更新",
   "data_index_column_description": "SQL字段描述索引",
   "data_index_column_value":"SQL字段示例值索引",
+  "error_create_datasetcollection": "创建数据集失败，请联系管理员",
   "data_source_refreshed": "数据源已刷新，",
   "found": "发现",
   "tables_with_column_changes": " {{modifiedTablesCount}} 个数据表存在列的变更，",
