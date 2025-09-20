@@ -64,7 +64,7 @@ const DatasetParamsModal = ({
 }) => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
-  const { reRankModelList, llmModelList, embeddingModelList, defaultModels } = useSystemStore();
+  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -75,12 +75,6 @@ const DatasetParamsModal = ({
     })))();
   const reRankModelSelectList = (() =>
     reRankModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
-
-  const embeddingModelSelectList = (() =>
-    embeddingModelList.map((item) => ({
       value: item.model,
       label: item.name
     })))();
@@ -98,9 +92,7 @@ const DatasetParamsModal = ({
         datasetSearchUsingExtensionQuery,
         datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
         datasetSearchExtensionBg,
-        generateSqlModel: hasDatabaseKnowledge
-          ? generateSqlModel || defaultModels.embedding?.model
-          : ''
+        generateSqlModel: hasDatabaseKnowledge ? generateSqlModel || defaultModels.llm?.model : ''
       }
     });
 
@@ -187,7 +179,7 @@ const DatasetParamsModal = ({
                 flex={1}
                 width={'100%'}
                 ml={2}
-                list={embeddingModelSelectList}
+                list={chatModelSelectList}
                 onChange={(e) => {
                   setValue('generateSqlModel', e);
                 }}

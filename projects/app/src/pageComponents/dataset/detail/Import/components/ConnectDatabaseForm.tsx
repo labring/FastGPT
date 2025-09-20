@@ -242,7 +242,6 @@ const ConnectDatabaseConfig = () => {
         </FormControl>
         <FormBottomButtons
           isEditMode={isEditMode}
-          disabled={!isValid}
           formData={formData}
           datasetId={datasetId}
           beforeSubmit={handleSubmit}

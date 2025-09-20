@@ -311,10 +311,10 @@ const DataBaseConfig = () => {
               <MyTooltip w={'100%'} label={errors.description?.message || ''}>
                 <MyInput
                   {...register('description', {
-                    required: currentTable?.enabled,
+                    required: currentTable?.enabled ? true : false,
                     validate: (value) => {
                       if (!currentTable?.enabled) return true;
-                      return value?.trim();
+                      return value?.trim() ? true : false;
                     }
                   })}
                   placeholder={t('dataset:table_description_placeholder')}
@@ -434,10 +434,10 @@ const DataBaseConfig = () => {
                           >
                             <MyInput
                               {...register(`columns.${originalIndex}.description`, {
-                                required: currentTable?.enabled && column.enabled,
+                                required: currentTable?.enabled && column.enabled ? true : false,
                                 validate: (value) => {
                                   if (!currentTable?.enabled || !column.enabled) return true;
-                                  return value?.trim();
+                                  return value?.trim() ? true : false;
                                 }
                               })}
                               size="sm"
@@ -467,7 +467,7 @@ const DataBaseConfig = () => {
       <Flex justify="flex-end" mt={8}>
         <Button
           colorScheme="blue"
-          onClick={() => onSubmit(getValues())}
+          onClick={handleSubmit(onSubmit)}
           px={8}
           size="md"
           isLoading={isSubmitting}

@@ -138,7 +138,7 @@ export async function getServerSideProps(context: any) {
     props: {
       currentTab,
       datasetId,
-      ...(await serviceSideProps(context, ['dataset', 'file', 'user']))
+      ...(await serviceSideProps(context, ['dataset', 'file', 'user', 'database_client']))
     }
   };
 }
