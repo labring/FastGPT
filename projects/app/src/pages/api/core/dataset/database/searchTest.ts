@@ -16,23 +16,13 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-
-export type DatabaseSearchTestQuery = {
-  datasetId: string;
-};
-
-export type DatabaseSearchTestBody = {
-  query: string;
-  model?: string;
-};
+import type { DatabaseSearchTestBody } from '@fastgpt/global/core/dataset/database/api';
 
 async function handler(
-  req: ApiRequestProps<DatabaseSearchTestBody, DatabaseSearchTestQuery>
+  req: ApiRequestProps<DatabaseSearchTestBody, {}>
 ): Promise<DatabaseSearchTestResponse> {
-  const { datasetId } = req.query;
-
   // 未选择model时使用默认模型
-  const { query, model = getDefaultLLMModel().name } = req.body;
+  const { datasetId, query, model = getDefaultLLMModel().name } = req.body;
 
   // auth dataset role
   const { dataset, teamId, tmbId, apikey } = await authDataset({
@@ -61,11 +51,6 @@ async function handler(
     datasetIds: [datasetId]
   });
   if (schema) {
-    addLog.info('Dataset Search - Database Search Result', {
-      datasetId,
-      tokens: embeddingTokens,
-      schemaTables: Object.keys(schema).length
-    });
     const start = Date.now();
     const generateSqlResult = await generateAndExecuteSQL({
       datasetId,
@@ -77,13 +62,6 @@ async function handler(
       evaluate_sql_llm: { model: model ?? getDefaultLLMModel().name }
     });
     if (generateSqlResult) {
-      addLog.info('Dataset Search - SQL Generation Success', {
-        datasetId,
-        sql: generateSqlResult.sql.substring(0, 100) + '...',
-        dataCount: generateSqlResult.sql_res.data.length,
-        inputTokens: generateSqlResult.input_tokens,
-        outputTokens: generateSqlResult.output_tokens
-      });
       const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
       const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
         teamId,
