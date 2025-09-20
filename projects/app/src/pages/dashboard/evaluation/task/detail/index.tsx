@@ -181,7 +181,9 @@ const Detail = ({ taskId, currentTab }: Props) => {
     pageSize: 20,
     params: scrollParams,
     refreshDeps: [searchValue, taskId, currentTab],
-    EmptyTip: EmptyTipDom
+    EmptyTip: EmptyTipDom,
+    pollingInterval: 15000,
+    errorToast: ''
   });
 
   const handleSearch = useCallback(
@@ -211,6 +213,36 @@ const Detail = ({ taskId, currentTab }: Props) => {
     },
     [totalItems]
   );
+
+  // 计算加权综合阈值
+  const aggregateThreshold = useMemo(() => {
+    if (!summaryData?.data || summaryData.data.length === 0) {
+      return 0.8; // 默认阈值
+    }
+
+    // 计算加权综合阈值
+    let totalWeightedThreshold = 0;
+    let totalWeight = 0;
+
+    summaryData.data.forEach((item) => {
+      const weight = item.weight || 0;
+      const threshold = item.threshold || 0.8;
+
+      totalWeightedThreshold += (threshold * weight) / 100;
+      totalWeight += weight;
+    });
+
+    // 如果总权重为0，使用平均阈值作为兜底
+    if (totalWeight === 0) {
+      const totalThreshold = summaryData.data.reduce(
+        (sum, item) => sum + (item.threshold || 0.8),
+        0
+      );
+      return totalThreshold / summaryData.data.length;
+    }
+
+    return totalWeightedThreshold;
+  }, [summaryData]);
 
   // 动态计算表头
   const tableHeaders = useMemo(() => {
@@ -1190,9 +1222,8 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     summaryData?.aggregateScore !== undefined && (
                       <Box mb={5}>
                         <Flex justifyContent={'center'}>
-                          {/* TODO: threshold */}
                           <ScoreDashboard
-                            threshold={formatScoreToPercentage(0.8)}
+                            threshold={formatScoreToPercentage(aggregateThreshold)}
                             actualScore={formatScoreToPercentage(summaryData.aggregateScore)}
                           />
                         </Flex>
