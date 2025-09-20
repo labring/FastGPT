@@ -38,7 +38,6 @@ export interface SummaryConfig {
   errorReason: string;
   completedItemCount: number; // Count of completed evaluation items
   overThresholdItemCount: number; // Count of items with scores above threshold
-  thresholdPassRate: number; // Percentage of items that passed the threshold (0-100)
 }
 
 // Evaluator configuration type
