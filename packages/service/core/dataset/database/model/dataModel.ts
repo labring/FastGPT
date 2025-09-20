@@ -1,26 +1,15 @@
-import type {ColumnType} from "typeorm";
-import { truncateText } from "./utils";
-import type { DatabaseCollectionsTable } from "@fastgpt/global/core/dataset/database/api";
-import type { ColumnSchemaType } from "@fastgpt/global/core/dataset/type";
+import type {ValueTransformer, DataSource, ColumnType} from "typeorm";
 
 export class RequestValidationDiagnosisError extends Error {
 }
 
 export class TableColumn {
-    columnName: string;
-    columnType: ColumnType;
-    description: string;
-    examples: Array<string>;
-    forbid: boolean;
-    valueIndex: boolean;
-
-    // Database attributes
-    isNullable?: boolean;
-    defaultValue?: string | null;
-    isAutoIncrement?: boolean;
-    isPrimaryKey?: boolean;
-    isForeignKey?: boolean;
-    relatedColumns?: string[];
+    public columnName: string;
+    public columnType: ColumnType;
+    private _description: string = "";
+    public examples: Array<string>;
+    public forbid: boolean;
+    public value_index: boolean;
 
     constructor(
         columnName: string,
@@ -29,176 +18,229 @@ export class TableColumn {
         forbid: boolean = true,
         value_index: boolean = true,
         examples: Array<string> = [],
-        isNullable: boolean = true,
-        defaultValue?: string | null,
-        isAutoIncrement: boolean = false,
-        isPrimaryKey: boolean = false,
-        isForeignKey: boolean = false,
-        relatedColumns?: string[],
     ) {
         this.columnName = columnName;
         this.columnType = columnType;
         this.description = description; // 会触发 setter 校验
         this.examples = examples;
         this.forbid = forbid;
-        this.valueIndex = value_index;
-        // Database constraints
-        this.isNullable = isNullable;
-        this.defaultValue = defaultValue;
-        this.isAutoIncrement = isAutoIncrement;
-        this.isPrimaryKey = isPrimaryKey;
-        this.isForeignKey = isForeignKey;
-        this.relatedColumns = relatedColumns;
+        this.value_index = value_index;
+    }
+
+    set description(value: string) {
+        if (value.length > 1024) {
+            throw new Error("字段描述长度不能超过1024个字符.");
+        }
+        this._description = value;
+    }
+
+    get description(): string {
+        return this._description;
     }
 }
 
 
-export class TableConstraint {
-    name: string // constraint name
-    column: string // constrained column
+export class TableColumnTransformer implements ValueTransformer {
+
+    to(entityValue: TableColumn | null): any {
+        if (!entityValue) return null;
+        return {
+            columnName: entityValue.columnName,
+            columnType: entityValue.columnType,
+            description: entityValue.description,
+            examples: entityValue.examples,
+            forbid: entityValue.forbid,
+            value_index: entityValue.value_index,
+        };
+    }
+
+
+    from(databaseValue: any): TableColumn | null {
+        if (!databaseValue) return null;
+        return new TableColumn(
+            databaseValue.columnName,
+            databaseValue.columnType,
+            databaseValue.description,
+            databaseValue.forbid,
+            databaseValue.value_index,
+            databaseValue.examples
+        );
+    }
+}
+
+export class TableForeignKey {
+    constrained_columns: Array<string>
+    referred_schema: string | null
+    referred_table: string
+    referred_columns: Array<string>
+
+    constructor(
+        constrained_columns: Array<string>,
+        referred_schema: string | null,
+        referred_table: string,
+        referred_columns: Array<string>
+    ) {
+        this.constrained_columns = constrained_columns;
+        this.referred_schema = referred_schema
+        this.referred_table = referred_table
+        this.referred_columns = referred_columns
+    }
+}
+
+export class TableIndex {
+    name: string
+    columns: Array<string>
+    isUnique: boolean
+    isPrimary: boolean
+    type: string
 
     constructor(
         name: string,
-        column: string,
+        columns: Array<string>,
+        isUnique: boolean = false,
+        isPrimary: boolean = false,
+        type: string = 'btree'
     ) {
         this.name = name;
-        this.column = column;
+        this.columns = columns;
+        this.isUnique = isUnique;
+        this.isPrimary = isPrimary;
+        this.type = type;
     }
 }
 
-export class TableForeignKey extends TableConstraint{
-    referredSchema: string | null
-    referredTable: string
-    referredColumns: Array<string>
+export class TableConstraint {
+    name: string
+    type: 'unique' | 'check' | 'foreign_key' | 'primary_key'
+    columns: Array<string>
+    definition?: string
+
     constructor(
-        name: string, // constraint name
-        column: string, // constrained column
-        referredSchema: string | null,
-        referredTable: string,
-        referredColumns: Array<string>
+        name: string,
+        type: 'unique' | 'check' | 'foreign_key' | 'primary_key',
+        columns: Array<string>,
+        definition?: string
     ) {
-        super(name, column)
-        this.referredSchema = referredSchema
-        this.referredTable = referredTable
-        this.referredColumns = referredColumns
+        this.name = name;
+        this.type = type;
+        this.columns = columns;
+        this.definition = definition;
     }
 }
 
 export class TableKeyInfo {
     columns: Map<string, TableColumn>;
-    foreignKeys: Array<TableForeignKey>;
-    primaryKeys: Array<string>;
+    foreign_keys: Array<TableForeignKey>;
+    primary_keys: Array<string>;
 
     constructor(
         columns: Map<string, TableColumn>,
-        foreignKeys: Array<TableForeignKey>,
-        primaryKeys: Array<string>
+        foreign_keys: Array<TableForeignKey>,
+        primary_keys: Array<string>
     ) {
         this.columns = columns;
-        this.foreignKeys = foreignKeys;
-        this.primaryKeys = primaryKeys;
+        this.foreign_keys = foreign_keys;
+        this.primary_keys = primary_keys;
     }
 }
 
 export class DBTable extends TableKeyInfo {
-    tableName: string;
-    description: string;
+    private _name: string = "";
+    private _description: string = "";
     forbid: boolean;
+    indexes: Array<TableIndex>;
     constraints: Array<TableConstraint>;
     rowCount?: number;
     estimatedSize?: string;
 
     constructor(
-        tableName: string,
-        description: string,
+        name: string,
+        description: string = "",
         forbid: boolean = true,
         columns: Map<string, TableColumn>,
-        foreignKeys: Array<TableForeignKey>,
-        primaryKeys: Array<string>,
+        foreign_keys: Array<TableForeignKey>,
+        primary_keys: Array<string>,
+        indexes: Array<TableIndex> = [],
         constraints: Array<TableConstraint> = []
     ) {
-        super(columns, foreignKeys, primaryKeys)
-        this.tableName = tableName
+        super(columns, foreign_keys, primary_keys)
+        this.name = name
         this.description = description
         this.forbid = forbid
+        this.indexes = indexes;
         this.constraints = constraints;
     }
 
-
-}
-
-export class TableColumnTransformer {
-
-    /**
-     * Convert TableColumn Object to plain object
-     * @param tableColumn TableColumn Object
-     * @returns plain object
-     */
-    static toPlainObject(tableColumn: TableColumn): any {
-        if (!tableColumn) return null;
-        console.debug('[TableColumnTransformer toPlainObject] tableColumn', tableColumn.defaultValue);
-        return {
-            columnName: tableColumn.columnName,
-            columnType: String(tableColumn.columnType),
-            description: tableColumn.description,
-            examples: tableColumn.examples,
-            forbid: tableColumn.forbid,
-            valueIndex: tableColumn.valueIndex, 
-            // Database attributes
-            isNullable: tableColumn.isNullable,
-            defaultValue: tableColumn.defaultValue,
-            isAutoIncrement: tableColumn.isAutoIncrement,
-            isPrimaryKey: tableColumn.isPrimaryKey,
-            isForeignKey: tableColumn.isForeignKey,
-            relatedColumns: tableColumn.relatedColumns
-        };
+    set name(value: string) {
+        if (!value) {
+            throw new RequestValidationDiagnosisError("表名不能为空.")
+        }
+        if (value.length > 100) {
+            throw new RequestValidationDiagnosisError("表名长度不能超过100个字符.")
+        }
+        this._name = value
     }
 
-    static fromPlainObject(col:ColumnSchemaType): TableColumn {
-        return new TableColumn(
-            col.columnName,
-            col.columnType as ColumnType,
-            col.description,
-            col.forbid,
-            col.valueIndex,
-            col.examples,
-            col.isNullable,
-            col.defaultValue,
-            col.isAutoIncrement,
-            col.isPrimaryKey,
-            col.isForeignKey,
-            col.relatedColumns
+    get name() {
+        return this._name
+    }
+
+    set description(value: string) {
+        if (value.length > 1024) {
+            throw new Error("字段描述长度不能超过1024个字符.");
+        }
+        this._description = value
+    }
+
+    get description() {
+        return this._description
+    }
+}
+
+
+export class DBIntrospector {
+    constructor(private readonly dataSource: DataSource) {}
+
+    async aget_table_info(
+        tableName: string,
+        getExamples: boolean = false
+    ): Promise<DBTable> {
+        const metadata = this.dataSource.getMetadata(tableName);
+
+        // 表注释
+        const tableComment = metadata.tableMetadataArgs?.comment ?? "";
+
+        // 收集字段
+        const columns = new Map<string, TableColumn>();
+        for (const col of metadata.columns) {
+            const name = col.propertyName;
+            const type = col.type as ColumnType;
+            const comment = col.comment ?? "";
+
+            columns.set(name, new TableColumn(name, type, comment));
+        }
+
+        // 主键
+        const primaryKeys = metadata.primaryColumns.map((col) => col.propertyName);
+
+        // 外键
+        const foreignKeys: TableForeignKey[] = metadata.foreignKeys.map((fk) =>
+            new TableForeignKey(
+                fk.columns.map((c) => c.propertyName),
+                fk.referencedEntityMetadata.schema ?? null,
+                fk.referencedEntityMetadata.tableName,
+                fk.referencedColumns.map((c) => c.propertyName),
+            )
         );
-    }
-}
 
-export class TableTransformer {
-    static toPlainObject(table: DBTable,extra: Record<string, any> = {}): any {
-        const columnObj : Record<string, ColumnSchemaType> = {};
-        table.columns.forEach((value, key) => {
-            columnObj[key] = TableColumnTransformer.toPlainObject(value);
-        });
-        
-        return {
-            tableName: table.tableName,
-            description: table.description,
-            columns: columnObj,
-            foreignKeys: table.foreignKeys,
-            primaryKeys: table.primaryKeys,
-            constraints: table.constraints,
-            ...extra
-        };
-    }
 
-    static fromPlainObject(table: DatabaseCollectionsTable): DBTable {
         return new DBTable(
-            table.tableName,
-            table.description,
-            table.forbid,
-            new Map(Object.entries(table.columns).map(([key, value]) => [key, TableColumnTransformer.fromPlainObject(value)])),
-            table.foreignKeys,
-            table.primaryKeys,
-            table.constraints
+            tableName,
+            tableComment,
+            false,
+            columns,
+            foreignKeys,
+            primaryKeys
         );
     }
 }

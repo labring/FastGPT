@@ -3,7 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -15,7 +15,6 @@ import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/t
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 async function handler(
   req: NextApiRequest
@@ -41,20 +40,13 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Get dataset type to check if it's database
-  const dataset = await MongoDataset.findById(datasetId).select('type').lean();
-  const isDatabaseDataset = dataset?.type === DatasetTypeEnum.database;
-
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {
-          $or: [
-            { name: new RegExp(`${replaceRegChars(searchText)}`, 'i') },
-            { 'tableSchema.description': new RegExp(`${replaceRegChars(searchText)}`, 'i') }
-          ]
+          name: new RegExp(`${replaceRegChars(searchText)}`, 'i')
         }
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
@@ -75,8 +67,7 @@ async function handler(
     fileId: 1,
     rawLink: 1,
     tags: 1,
-    externalFileId: 1,
-    ...(isDatabaseDataset ? { tableSchema: 1 } : {})
+    externalFileId: 1
   };
 
   // not count data amount
@@ -104,10 +95,7 @@ async function handler(
           indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
-          permission,
-          ...(isDatabaseDataset && item.tableSchema
-            ? { tableSchemaDescription: item.tableSchema.description }
-            : {})
+          permission
         }))
       ),
       total: await MongoDatasetCollection.countDocuments(match)
@@ -184,10 +172,7 @@ async function handler(
         trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       hasError: trainingAmount.find((amount) => String(amount._id) === String(item._id))?.hasError,
-      permission,
-      ...(isDatabaseDataset && item.tableSchema
-        ? { tableSchemaDescription: item.tableSchema.description }
-        : {})
+      permission
     }))
   );
 

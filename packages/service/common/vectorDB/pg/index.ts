@@ -41,7 +41,7 @@ export class PgVectorCtrl {
             vector VECTOR(1536) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
-            column_des_index VARCHAR(1024) NOT NULL,
+            column_des_index VARCHAR(100) NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -56,7 +56,7 @@ export class PgVectorCtrl {
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
-            column_val_index VARCHAR(1024) NOT NULL,
+            column_val_index VARCHAR(100) NOT NULL,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -79,7 +79,7 @@ export class PgVectorCtrl {
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DBDatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
       );
       await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_create_time_index ON ${DBDatasetVectorTableName} USING btree(createtime);`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_team_index ON ${DBDatasetVectorTableName} USING btree(team_id);`
       );
 
       // ColumnValueIndex
@@ -125,7 +125,9 @@ export class PgVectorCtrl {
       datasetId,
       collectionId,
       vectors,
+      retry = 3,
       tableName = DatasetVectorTableName,
+      table_des_index,
       column_des_index,
       column_val_index
     } = props;
@@ -269,7 +271,7 @@ export class PgVectorCtrl {
     } = props;
     let index: string = '';
     if (tableName == DBDatasetVectorTableName) index = 'column_des_index';
-    if (tableName == DBDatasetValueVectorTableName) index = 'column_val_index';
+    if (tableName == DBDatasetValueVectorTableName) index = 'column_value_index';
 
     try {
       // Build forbid collection filter
@@ -284,8 +286,8 @@ export class PgVectorCtrl {
           SET LOCAL hnsw.iterative_scan = relaxed_order;
           WITH relaxed_results AS MATERIALIZED (
             SELECT id, collection_id,
-                   ${index} as index_field,
-                   vector <=> '[${vector}]' AS score
+                   ${tableName === DBDatasetVectorTableName ? 'column_des_index' : 'column_val_index'} as index_field,
+                   vector <#> '[${vector}]' AS score
               FROM ${tableName}
               WHERE team_id = '${teamId}'
                 AND dataset_id IN (${datasetIds.map((id: string) => `'${String(id)}'`).join(',')})

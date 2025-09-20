@@ -7,7 +7,6 @@ import type { DatasetPermission } from '@fastgpt/global/support/permission/datas
 
 /* ================= collection ===================== */
 export type DatasetCollectionsListItemType = {
-  tableSchemaDescription: DatasetCollectionSchemaType['tableSchema']['description'];
   _id: string;
   parentId?: DatasetCollectionSchemaType['parentId'];
   tmbId: DatasetCollectionSchemaType['tmbId'];
@@ -28,9 +27,6 @@ export type DatasetCollectionsListItemType = {
   dataAmount: number;
   trainingAmount: number;
   hasError?: boolean;
-
-  // For database type datasets, include table schema description
-  tableSchemaDescription?: string;
 };
 
 /* ================= data ===================== */
