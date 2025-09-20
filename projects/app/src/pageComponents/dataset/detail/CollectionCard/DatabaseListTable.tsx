@@ -63,7 +63,15 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   {collection.name}
                 </Box>
               </Td>
-              <Td py={2}>{collection.name} Mock-差描述字段</Td>
+              <Td maxW={'290px'} py={2}>
+                <MyTooltip
+                  shouldWrapChildren={false}
+                  placement={'auto'}
+                  label={collection.tableSchema?.description}
+                >
+                  {collection.tableSchema?.description}
+                </MyTooltip>
+              </Td>
               <Td fontSize={'xs'} py={2} color={'myGray.500'}>
                 <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                 <Box>{formatTime2YMDHM(collection.updateTime)}</Box>

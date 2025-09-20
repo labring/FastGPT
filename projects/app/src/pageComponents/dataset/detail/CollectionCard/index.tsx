@@ -89,6 +89,13 @@ const CollectionCard = () => {
       collections.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
         const status = (() => {
+          if (collection.tableSchema?.hasOwnProperty('exist') && !collection.tableSchema.exist) {
+            return {
+              statusText: t('common:table_not_exist'),
+              colorSchema: 'gray',
+              statusKey: 'notExist'
+            };
+          }
           if (collection.hasError) {
             return {
               statusText: t('common:core.dataset.collection.status.error'),
