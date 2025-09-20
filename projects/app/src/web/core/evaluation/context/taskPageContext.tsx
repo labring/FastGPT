@@ -209,7 +209,7 @@ export const TaskPageContextProvider = ({
   // 使用 useRequest2 优化各种请求
   const { runAsync: runLoadStats } = useRequest2(() => getEvaluationStats(taskId), {
     manual: true,
-    errorToast: t('获取统计信息失败'),
+    errorToast: t('dashboard_evaluation:request_failed'),
     onBefore: () => {
       updateLoading('stats', true);
       updateError('stats', null);
@@ -227,7 +227,7 @@ export const TaskPageContextProvider = ({
 
   const { runAsync: runLoadSummary } = useRequest2(() => getEvaluationSummary(taskId), {
     manual: true,
-    errorToast: t('获取评估总结失败'),
+    errorToast: t('dashboard_evaluation:request_failed'),
     onBefore: () => {
       updateLoading('summary', true);
       updateError('summary', null);
@@ -245,7 +245,7 @@ export const TaskPageContextProvider = ({
 
   const { runAsync: runLoadEvaluationDetail } = useRequest2(() => getEvaluationDetail(taskId), {
     manual: true,
-    errorToast: t('获取任务详情失败'),
+    errorToast: t('dashboard_evaluation:request_failed'),
     onBefore: () => {
       updateLoading('detail', true);
       updateError('detail', null);
@@ -265,8 +265,8 @@ export const TaskPageContextProvider = ({
     (itemId: string) => deleteEvaluationItem(itemId),
     {
       manual: true,
-      successToast: t('删除成功'),
-      errorToast: t('删除失败')
+      successToast: t('dashboard_evaluation:delete_success'),
+      errorToast: t('dashboard_evaluation:delete_failed')
     }
   );
 
@@ -274,8 +274,8 @@ export const TaskPageContextProvider = ({
     (itemId: string) => postRetryEvaluationItem({ evalItemId: itemId }),
     {
       manual: true,
-      successToast: t('重试请求已提交'),
-      errorToast: t('重试失败')
+      successToast: t('dashboard_evaluation:retry_request_submitted'),
+      errorToast: t('dashboard_evaluation:retry_failed')
     }
   );
 
@@ -283,8 +283,8 @@ export const TaskPageContextProvider = ({
     (data: UpdateEvaluationItemRequest) => putUpdateEvaluationItem(data),
     {
       manual: true,
-      successToast: t('保存成功'),
-      errorToast: t('保存失败')
+      successToast: t('dashboard_evaluation:save_success'),
+      errorToast: t('dashboard_evaluation:save_failed')
     }
   );
 
@@ -292,7 +292,7 @@ export const TaskPageContextProvider = ({
     () => postRetryFailedEvaluationItems({ evalId: taskId }),
     {
       manual: true,
-      errorToast: t('重试失败')
+      errorToast: t('dashboard_evaluation:retry_failed')
     }
   );
 
@@ -300,8 +300,8 @@ export const TaskPageContextProvider = ({
     (params: { evalId: string; metricIds: string[] }) => postGenerateSummary(params),
     {
       manual: true,
-      successToast: t('总结生成请求已提交'),
-      errorToast: t('生成总结失败')
+      successToast: t('dashboard_evaluation:summary_generation_request_submitted'),
+      errorToast: t('dashboard_evaluation:generate_summary_failed')
     }
   );
 
@@ -310,7 +310,7 @@ export const TaskPageContextProvider = ({
       getExportEvaluationItems(params.evalId, params.format),
     {
       manual: true,
-      errorToast: t('导出失败')
+      errorToast: t('dashboard_evaluation:export_failed')
     }
   );
 
@@ -325,7 +325,7 @@ export const TaskPageContextProvider = ({
         setTaskDetail(data);
         return data;
       } catch (error: any) {
-        const errorMsg = error.message || t('common:load_failed');
+        const errorMsg = error.message || t('dashboard_evaluation:load_failed');
         updateError('taskDetail', errorMsg);
         throw error;
       } finally {
@@ -350,15 +350,18 @@ export const TaskPageContextProvider = ({
     await runLoadEvaluationDetail();
   }, [runLoadEvaluationDetail]);
 
-  // 加载所有数据
+  // 加载所有数据 - 分两个阶段：优先加载基础数据，再加载详细数据
   const loadAllData = useCallback(
     async (taskDetailData?: EvaluationDisplayType) => {
-      // 如果已经有任务详情数据，就复用它，否则重新加载
+      // 第一阶段：优先并行加载基础数据（stats 和 detail）
       const loadDetailPromise = taskDetailData
         ? Promise.resolve().then(() => setEvaluationDetail(taskDetailData))
         : loadEvaluationDetail();
 
-      await Promise.all([loadStats(), loadSummary(), loadDetailPromise]);
+      await Promise.all([loadStats(), loadDetailPromise]);
+
+      // 第二阶段：加载详细数据（summary）
+      await loadSummary();
     },
     [loadStats, loadSummary, loadEvaluationDetail]
   );
@@ -415,7 +418,7 @@ export const TaskPageContextProvider = ({
     // 显示具体重试数量的成功提示
     if (result?.retryCount !== undefined) {
       toast({
-        title: t('重试请求已提交，共重试 {{count}} 项', { count: result.retryCount }),
+        title: t('dashboard_evaluation:retry_request_submitted'),
         status: 'success'
       });
     }
@@ -444,7 +447,7 @@ export const TaskPageContextProvider = ({
 
         // 手动显示成功提示，因为下载成功后才算真正成功
         toast({
-          title: t('导出成功'),
+          title: t('dashboard_evaluation:export_success'),
           status: 'success'
         });
       } catch (error) {
@@ -460,7 +463,7 @@ export const TaskPageContextProvider = ({
     // 从 summaryData 中提取 metricIds
     if (!summaryData?.data || summaryData.data.length === 0) {
       toast({
-        title: t('暂无评估数据，无法生成总结'),
+        title: t('dashboard_evaluation:no_dimension_data_cannot_generate_summary'),
         status: 'warning'
       });
       return;
