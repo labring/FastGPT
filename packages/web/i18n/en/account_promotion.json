@@ -1,13 +1,13 @@
 {
   "amount": "Amount",
   "cashback_ratio": "Cashback rate",
-  "cashback_ratio_description": "You will receive a balance reward proportionate to your friend's top-up amount.",
+  "cashback_ratio_description": "You will receive a balance reward based on your friend's top-up amount.",
   "copy_invite_link": "Copy invitation link",
   "earnings": "Income (￥)",
   "invite_url": "Invitation link",
   "invite_url_tip": "Friends who register through this link will be permanently linked to your account. Each time they top up, you will receive a balance reward.\nIf they register with a mobile number, you will get an immediate 5 CNY bonus.\nAll rewards are credited to your default team account.",
   "no_invite_records": "No data available.",
   "time": "Time",
-  "total_invited": "Total invites",
+  "total_invited": "Invitees",
   "type": "Type"
 }

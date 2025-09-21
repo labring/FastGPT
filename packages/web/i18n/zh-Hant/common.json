@@ -1349,11 +1349,11 @@
   "zoomout_tip_mac": "放大  ⌘  +",
   "no_database_connection": "還沒有連接數據庫，",
   "click_config_database": "點擊配置數據庫",
-   "annotation_answer": "標註答案",
-   "core.dataset.search.Database search": "資料庫檢索",
-   "search_model": "檢索模型",
-"search_model_desc": "用於生成可在資料庫中檢索的SQL語句，並進行檢索與匯總，生成可用於對話的文字。",
-"search_model_tip": "使用非推理模型、參數量大的模型效果更佳。",
-"other_knowledge_base": "其他知識庫",
-   "table_not_exist": "不存在"
+  "annotation_answer": "標註答案",
+  "core.dataset.search.Database search": "資料庫檢索",
+  "search_model": "檢索模型",
+  "search_model_desc": "用於生成可在資料庫中檢索的SQL語句，並進行檢索與匯總，生成可用於對話的文字。",
+  "search_model_tip": "使用非推理模型、參數量大的模型效果更佳。",
+  "other_knowledge_base": "其他知識庫",
+  "table_not_exist": "不存在"
 }
