@@ -1,76 +1,67 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Box, Flex, Button, ModalBody, Input, Textarea, ModalFooter } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { HttpPluginImgUrl } from '@fastgpt/global/common/file/image/constants';
-import { postCreateHttpPlugin } from '@/web/core/app/api/plugin';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { postCreateHttpTools } from '@/web/core/app/api/plugin';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import { useRouter } from 'next/router';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
-export type EditHttpPluginProps = {
+export type HttpToolsType = {
   id?: string;
   avatar: string;
   name: string;
   intro?: string;
-  pluginData?: AppSchema['pluginData'];
-};
-export const defaultHttpPlugin: EditHttpPluginProps = {
-  avatar: HttpPluginImgUrl,
-  name: '',
-  intro: '',
-  pluginData: {
-    apiSchemaStr: '',
-    customHeaders: '{"Authorization":"Bearer"}'
-  }
+  baseUrl?: string;
+  apiSchemaStr?: string;
+  customHeaders?: string;
+  headerSecret?: StoreSecretValueType;
 };
 
-const HttpPluginEditModal = ({
-  defaultPlugin = defaultHttpPlugin,
-  onClose
-}: {
-  defaultPlugin?: EditHttpPluginProps;
-  onClose: () => void;
-}) => {
+const defaultHttpTools: HttpToolsType = {
+  avatar: HttpPluginImgUrl,
+  name: '',
+  intro: ''
+};
+
+const HttpPluginCreateModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+  const router = useRouter();
 
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
 
-  const [createType, setCreateType] = useState<'batch' | 'manual'>('batch');
-
-  const { register, setValue, handleSubmit, watch } = useForm<EditHttpPluginProps>({
-    defaultValues: defaultPlugin
+  const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
+    defaultValues: defaultHttpTools
   });
   const avatar = watch('avatar');
   const nameValue = watch('name');
 
-  const { mutate: onCreate, isLoading: isCreating } = useRequest({
-    mutationFn: async (data: EditHttpPluginProps) => {
-      return postCreateHttpPlugin({
+  const { runAsync: onCreate, loading: isCreating } = useRequest2(
+    async (data: HttpToolsType) => {
+      return postCreateHttpTools({
         parentId,
         name: data.name,
         intro: data.intro,
-        avatar: data.avatar,
-        pluginData: {
-          apiSchemaStr: createType === 'batch' ? '{}' : '',
-          customHeaders: data.pluginData?.customHeaders || '{"Authorization":"Bearer"}'
-        }
+        avatar: data.avatar
       });
     },
-    onSuccess() {
-      loadMyApps();
-      onClose();
-    },
-    successToast: t('common:create_success'),
-    errorToast: t('common:create_failed')
-  });
+    {
+      onSuccess(id: string) {
+        router.push(`/app/detail?appId=${id}`);
+        loadMyApps();
+        onClose();
+      },
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
+    }
+  );
 
   const {
     File,
@@ -88,8 +79,7 @@ const HttpPluginEditModal = ({
         onClose={onClose}
         iconSrc="core/app/type/httpPluginFill"
         title={t('common:plugin.Import Plugin')}
-        w={['90vw', '600px']}
-        maxH={['90vh', '80vh']}
+        w={['90vw', '530px']}
         position={'relative'}
       >
         <ModalBody flex={'0 1 auto'} overflow={'auto'} pb={0} px={9}>
@@ -132,7 +122,7 @@ const HttpPluginEditModal = ({
               />
             </>
           </>
-          <>
+          {/* <>
             <Box display={'flex'} alignItems={'center'} py={1} gap={'281px'} mt={6}>
               <Box color={'myGray.800'} fontWeight={'bold'}>
                 {t('common:plugin.Create Type')}
@@ -157,7 +147,6 @@ const HttpPluginEditModal = ({
               </Box>
             </Box>
             <Box mt={2}>
-              {/* 现在还没有更新功能，所以不支持更改 */}
               <LeftRadio
                 list={[
                   {
@@ -178,7 +167,7 @@ const HttpPluginEditModal = ({
                 activeBg={'white'}
               />
             </Box>
-          </>
+          </> */}
         </ModalBody>
 
         <ModalFooter my={6} py={0} px={9}>
@@ -207,4 +196,4 @@ const HttpPluginEditModal = ({
   );
 };
 
-export default HttpPluginEditModal;
+export default HttpPluginCreateModal;

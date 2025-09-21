@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex, ModalBody, ModalFooter, Switch, useDisclosure } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -11,39 +11,35 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import ParamsAuthConfig from '@/components/common/secret/ParamsAuthConfig';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { POST, GET, PUT, DELETE, PATCH, OTHER } from '../HTTPMethodComponents';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import ConfigModal from './ConfigModal';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const EditForm = ({
-  url,
-  setUrl,
-  toolList,
-  setToolList,
   currentTool,
   setCurrentTool,
+  toolList,
   headerSecret,
-  setHeaderSecret,
-  createType
+  customHeaders,
+  apiSchemaStr
 }: {
-  url: string;
-  setUrl: (url: string) => void;
-  toolList: HttpToolConfigType[];
-  setToolList: (toolList: HttpToolConfigType[]) => void;
   currentTool?: HttpToolConfigType;
-  setCurrentTool: (tool: HttpToolConfigType) => void;
-  headerSecret: StoreSecretValueType;
-  setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
-  createType: 'batch' | 'manual';
+  setCurrentTool?: (tool: HttpToolConfigType) => void;
+  toolList?: HttpToolConfigType[];
+  headerSecret?: StoreSecretValueType;
+  customHeaders?: string;
+  apiSchemaStr?: string;
 }) => {
   const { t } = useTranslation();
 
   const [toolDetail, setToolDetail] = useState<HttpToolConfigType | null>(null);
-  const [toolParamEnabledMap, setToolParamEnabledMap] = useState<
-    Record<string, Record<string, boolean>>
-  >({});
+
+  const {
+    onOpen: onOpenConfigModal,
+    isOpen: isOpenConfigModal,
+    onClose: onCloseConfigModal
+  } = useDisclosure();
 
   return (
     <>
@@ -52,26 +48,27 @@ const EditForm = ({
           <MyIcon name={'common/list'} w={'20px'} color={'primary.600'} />
           <FormLabel ml={2} flex={1}>
             {t('app:HTTP_tools_list_with_number', {
-              total: toolList.length || 0
+              total: toolList?.length || 0
             })}
           </FormLabel>
-          <ParamsAuthConfig
-            storeHeaderSecretConfig={headerSecret}
-            onUpdate={setHeaderSecret}
-            buttonProps={{
-              padding: '8px 14px'
-            }}
-            onSaved={({ url: newUrl, toolList: newList }) => {
-              setUrl(newUrl || '');
-              setToolList(newList || []);
-              if (newList?.length) setCurrentTool(newList[0]);
-            }}
-            haveTool={toolList.length > 0}
-          />
+          <Button
+            px={'2'}
+            leftIcon={
+              <MyIcon
+                name={toolList?.length && toolList.length > 0 ? 'change' : 'common/setting'}
+                w={'18px'}
+              />
+            }
+            onClick={onOpenConfigModal}
+          >
+            {toolList?.length && toolList.length > 0
+              ? t('common:Config')
+              : t('common:Start_config')}
+          </Button>
         </Flex>
 
         <Box mt={3}>
-          {toolList.map((tool, index) => {
+          {toolList?.map((tool, index) => {
             return (
               <MyBox
                 key={tool.name}
@@ -99,7 +96,7 @@ const EditForm = ({
                 }}
                 cursor={'pointer'}
                 onClick={() => {
-                  setCurrentTool(tool);
+                  setCurrentTool?.(tool);
                 }}
               >
                 <Flex alignItems={'center'} py={3} px={3}>
@@ -108,23 +105,16 @@ const EditForm = ({
                       <Box>{renderHttpMethod(tool.method)}</Box>
                       <Box
                         color={'myGray.900'}
-                        fontFamily={'PingFang SC'}
                         fontSize={'14px'}
-                        fontStyle={'normal'}
-                        fontWeight={'400'}
                         lineHeight={'20px'}
                         letterSpacing={'0.25px'}
                       >
                         {tool.name}
                       </Box>
-                      {/* line */}
                       <Box w={'1px'} h={'12px'} bg={'myGray.250'}></Box>
                       <Box
                         color={'myGray.600'}
-                        fontFamily={'PingFang SC'}
                         fontSize={'14px'}
-                        fontStyle={'normal'}
-                        fontWeight={'400'}
                         lineHeight={'20px'}
                         letterSpacing={'0.25px'}
                       >
@@ -136,10 +126,7 @@ const EditForm = ({
                       whiteSpace="nowrap"
                       color={'myGray.500'}
                       textOverflow="ellipsis"
-                      fontFamily={'PingFang SC'}
                       fontSize={'12px'}
-                      fontStyle={'normal'}
-                      fontWeight={'400'}
                       lineHeight={'16px'}
                       letterSpacing={'0.048px'}
                     >
@@ -181,17 +168,15 @@ const EditForm = ({
         </Box>
       </Box>
 
+      {isOpenConfigModal && <ConfigModal onClose={onCloseConfigModal} />}
       {toolDetail && (
         <ToolDetailModal
           tool={toolDetail}
           onClose={() => setToolDetail(null)}
-          paramEnabled={toolParamEnabledMap[toolDetail.name] || {}}
-          setParamEnabled={(params) =>
-            setToolParamEnabledMap((prev) => ({
-              ...prev,
-              [toolDetail.name]: params
-            }))
-          }
+          toolList={toolList || []}
+          apiSchemaStr={apiSchemaStr || ''}
+          headerSecret={headerSecret || {}}
+          customHeaders={customHeaders || '{}'}
         />
       )}
     </>
@@ -203,16 +188,31 @@ export default React.memo(EditForm);
 const ToolDetailModal = ({
   tool,
   onClose,
-  paramEnabled,
-  setParamEnabled
+  toolList,
+  apiSchemaStr,
+  headerSecret,
+  customHeaders
 }: {
   tool: HttpToolConfigType;
   onClose: () => void;
-  paramEnabled: Record<string, boolean>;
-  setParamEnabled: (params: Record<string, boolean>) => void;
+  toolList: HttpToolConfigType[];
+  apiSchemaStr: string;
+  headerSecret: StoreSecretValueType;
+  customHeaders: string;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
+
+  const [enabledParams, setEnabledParams] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    Object.entries(tool.inputSchema.properties || {}).forEach(([key, value]) => {
+      if (value['x-tool-description'] !== '') {
+        initial.add(key);
+      }
+    });
+    return initial;
+  });
 
   const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest2(
     async (data: any) => await putUpdateHttpPlugin(data),
@@ -221,21 +221,11 @@ const ToolDetailModal = ({
       successToast: t('common:update_success'),
       onSuccess: () => {
         onClose();
+        reloadApp();
       },
       errorToast: t('common:update_failed')
     }
   );
-
-  React.useEffect(() => {
-    const properties = tool.inputSchema?.properties || {};
-    if (Object.keys(paramEnabled).length === 0 && Object.keys(properties).length > 0) {
-      const nextState: Record<string, boolean> = {};
-      Object.keys(properties).forEach((paramName) => {
-        nextState[paramName] = true;
-      });
-      setParamEnabled(nextState);
-    }
-  }, [tool, paramEnabled, setParamEnabled]);
 
   return (
     <MyModal
@@ -269,7 +259,6 @@ const ToolDetailModal = ({
           <Box>{renderHttpMethod(tool.method)}</Box>
           <Box
             color={'myGray.600'}
-            fontFamily={'PingFang SC'}
             fontSize={'14px'}
             fontStyle={'normal'}
             fontWeight={'400'}
@@ -292,7 +281,6 @@ const ToolDetailModal = ({
           borderRadius={'6px'}
           backgroundColor={'myGray.100'}
           color={'myGray.600'}
-          fontFamily={'PingFang SC'}
           fontSize={'12px'}
           fontStyle={'normal'}
           fontWeight={'500'}
@@ -347,10 +335,18 @@ const ToolDetailModal = ({
                   </Box>
                 </Box>
                 <Switch
-                  isChecked={!!paramEnabled[paramName]}
+                  isChecked={enabledParams.has(paramName)}
                   onChange={(e) => {
                     const checked = e.target.checked;
-                    setParamEnabled({ ...paramEnabled, [paramName]: checked });
+                    setEnabledParams((prev) => {
+                      const next = new Set(prev);
+                      if (checked) {
+                        next.add(paramName);
+                      } else {
+                        next.delete(paramName);
+                      }
+                      return next;
+                    });
                   }}
                 />
               </Box>
@@ -367,14 +363,32 @@ const ToolDetailModal = ({
             size={'md'}
             isLoading={isUpdating}
             onClick={() => {
+              const updatedTool = {
+                ...tool,
+                inputSchema: {
+                  ...tool.inputSchema,
+                  properties: Object.fromEntries(
+                    Object.entries(tool.inputSchema.properties || {}).map(([key, value]) => [
+                      key,
+                      {
+                        ...value,
+                        'x-tool-description': enabledParams.has(key) ? value.description || key : ''
+                      }
+                    ])
+                  )
+                }
+              };
+
+              const updatedToolList = toolList.map((item) =>
+                item.name === tool.name ? updatedTool : item
+              );
+
               runUpdateHttpPlugin({
                 appId: appDetail._id,
-                name: appDetail.name,
-                avatar: appDetail.avatar,
-                intro: appDetail.intro,
-                toolParamEnabledMap: {
-                  [tool.name]: paramEnabled
-                }
+                toolList: updatedToolList,
+                apiSchemaStr,
+                headerSecret,
+                customHeaders
               });
             }}
           >
@@ -386,22 +400,40 @@ const ToolDetailModal = ({
   );
 };
 
+const HTTP_METHOD_STYLES = {
+  GET: { background: '#EDFBF3', color: '#039855' },
+  POST: { background: '#FFFAEB', color: '#DC6803' },
+  PUT: { background: '#F0FBFF', color: '#219BF4' },
+  DELETE: { background: '#FEF2F2', color: '#F04438' },
+  PATCH: { background: '#F0EEFF', color: '#6F5DD7' },
+  DEFAULT: { background: '#F0EEFF', color: '#6F5DD7' }
+};
+
+const HttpMethodBadge = ({ method }: { method: string }) => {
+  const methodUpper = method.toUpperCase();
+  const style =
+    HTTP_METHOD_STYLES[methodUpper as keyof typeof HTTP_METHOD_STYLES] ||
+    HTTP_METHOD_STYLES.DEFAULT;
+
+  return (
+    <Box
+      display="inline-flex"
+      padding="2px 4px"
+      justifyContent="center"
+      alignItems="center"
+      borderRadius="4px"
+      fontSize="12px"
+      fontWeight="500"
+      lineHeight="16px"
+      letterSpacing="0.5px"
+      {...style}
+    >
+      {methodUpper}
+    </Box>
+  );
+};
+
 const renderHttpMethod = (method?: string) => {
   if (!method) return null;
-
-  const methodUpper = method.toUpperCase();
-  switch (methodUpper) {
-    case 'GET':
-      return <GET />;
-    case 'POST':
-      return <POST />;
-    case 'PUT':
-      return <PUT />;
-    case 'DELETE':
-      return <DELETE />;
-    case 'PATCH':
-      return <PATCH />;
-    default:
-      return <OTHER>{methodUpper}</OTHER>;
-  }
+  return <HttpMethodBadge method={method} />;
 };

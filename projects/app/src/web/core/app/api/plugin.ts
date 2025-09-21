@@ -1,6 +1,6 @@
-import { DELETE, GET, POST } from '@/web/common/api/request';
-import type { createHttpPluginBody } from '@/pages/api/core/app/httpPlugin/create';
-import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpPlugin/update';
+import { GET, POST, DELETE } from '@/web/common/api/request';
+import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
+import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
@@ -30,14 +30,9 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
-import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
-import type { RunHTTPToolBody } from '@/pages/api/support/http/client/runTool';
-import type { getHTTPToolsBody } from '@/pages/api/support/http/client/getTools';
-import type {
-  HttpGetChildrenQuery,
-  HttpGetChildrenResponse
-} from '@/pages/api/core/app/httpPlugin/getChildren';
-import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { RunHTTPToolBody } from '@/pages/api/core/app/httpTools/runTool';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -51,15 +46,18 @@ export const getTeamPlugTemplates = async (data?: {
       const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
       return children.map((item) => ({
         ...item,
+        intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp
       }));
       // handle http toolset
-    } else if (app.type === AppTypeEnum.httpToolSet || app.type === AppTypeEnum.httpPlugin) {
-      const children = await getHttpChildren({ id: data.parentId, searchKey: data.searchKey });
-      return children.map((item) => ({
-        id: item.id,
-        avatar: item.avatar,
+    } else if (app.type === AppTypeEnum.httpToolSet) {
+      const toolList = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet)
+        ?.toolConfig?.httpToolSet?.toolList;
+      if (!toolList) return [];
+      return toolList.map((item) => ({
+        id: `${PluginSourceEnum.http}-${app._id}/${item.name}`,
+        avatar: app.avatar,
         name: item.name,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
@@ -81,11 +79,9 @@ export const getTeamPlugTemplates = async (data?: {
       flowNodeType:
         app.type === AppTypeEnum.workflow
           ? FlowNodeTypeEnum.appModule
-          : app.type === AppTypeEnum.toolSet
+          : app.type === AppTypeEnum.toolSet || app.type === AppTypeEnum.httpToolSet
             ? FlowNodeTypeEnum.toolSet
-            : app.type === AppTypeEnum.httpToolSet || app.type === AppTypeEnum.httpPlugin
-              ? FlowNodeTypeEnum.toolSet
-              : FlowNodeTypeEnum.pluginModule,
+            : FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
       name: app.name,
       intro: app.intro,
@@ -142,28 +138,20 @@ export const postRunMCPTool = (data: RunMCPToolBody) =>
 export const getMcpChildren = (data: McpGetChildrenmQuery) =>
   GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', data);
 
-/* ============ http plugin ============== */
-export const postCreateHttpPlugin = (data: createHttpPluginBody) =>
-  POST('/core/app/httpPlugin/create', data);
-
-export const putUpdateHttpPlugin = (body: UpdateHttpPluginBody) =>
-  POST('/core/app/httpPlugin/update', body);
-
+/* ============ http tools ============== */
 export const getApiSchemaByUrl = (url: string) =>
   POST<Object>(
-    '/core/app/httpPlugin/getApiSchemaByUrl',
+    '/core/app/httpTools/getApiSchemaByUrl',
     { url },
     {
       timeout: 30000
     }
   );
 
-/* ============ http tools ============== */
-export const getHTTPTools = (data: getHTTPToolsBody) =>
-  POST<HttpToolConfigType[]>('/support/http/client/getTools', data);
+export const postCreateHttpTools = (data: createHttpToolsBody) =>
+  POST<string>('/core/app/httpTools/create', data);
 
-export const postRunHTTPTool = (data: RunHTTPToolBody) =>
-  POST('/support/http/client/runTool', data, { timeout: 300000 });
+export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
+  POST('/core/app/httpTools/update', data);
 
-export const getHttpChildren = (data: HttpGetChildrenQuery) =>
-  GET<HttpGetChildrenResponse>('/core/app/httpPlugin/getChildren', data);
+export const postRunHTTPTool = (data: RunHTTPToolBody) => POST('/core/app/httpTools/runTool', data);

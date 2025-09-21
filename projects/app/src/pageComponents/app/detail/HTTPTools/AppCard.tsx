@@ -7,7 +7,6 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
-import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import TagsEditModal from '../TagsEditModal';
 
 const AppCard = () => {

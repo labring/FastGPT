@@ -5,7 +5,7 @@ import type { FlowNodeInputItemType } from '../workflow/type/io';
 type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
 export type JsonSchemaPropertiesItemType = {
   description?: string;
-  toolDescription?: string;
+  'x-tool-description'?: string;
   type: SchemaInputValueType;
   enum?: string[];
   minimum?: number;
@@ -80,7 +80,7 @@ export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeI
     label: key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: value.toolDescription ?? value.description ?? key,
+    toolDescription: value['x-tool-description'] ?? value.description ?? key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));

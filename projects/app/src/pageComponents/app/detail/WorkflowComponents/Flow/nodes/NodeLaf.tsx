@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getApiSchemaByUrl } from '@/web/core/app/api/plugin';
-import { getType, str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
+import { getType, str2OpenApiSchema } from '@fastgpt/global/core/app/httpTools/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';

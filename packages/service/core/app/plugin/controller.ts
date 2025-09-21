@@ -43,10 +43,9 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpPlugin/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
-import { getHTTPChildren } from '../http';
 import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
@@ -196,16 +195,8 @@ export async function getChildAppPreviewNode({
           mcpToolSet: {
             toolId: pluginId,
             toolList: children,
-            url: ''
-          }
-        };
-      } else if (item.type === AppTypeEnum.httpToolSet || item.type === AppTypeEnum.httpPlugin) {
-        const children = await getHTTPChildren(item);
-        version.nodes[0].toolConfig = {
-          httpToolSet: {
-            toolId: pluginId,
-            toolList: children,
-            url: ''
+            url: '',
+            headerSecret: {}
           }
         };
       }
@@ -286,7 +277,7 @@ export async function getChildAppPreviewNode({
         if (toolConfig?.toolList) {
           return toolConfig.toolList.find((item) => item.name === toolName);
         }
-        return (await getHTTPChildren(item)).find((item) => item.name === toolName);
+        return undefined;
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
@@ -300,7 +291,7 @@ export async function getChildAppPreviewNode({
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
-                name: tool.name
+                name: `${item.name}/${tool.name}`
               },
               avatar: item.avatar,
               parentId: item._id

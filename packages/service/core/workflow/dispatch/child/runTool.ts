@@ -8,7 +8,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
-import { HTTPClient } from '../../../app/http';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
@@ -22,6 +21,7 @@ import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
+import { runHTTPTool } from '../../../app/http';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -36,7 +36,7 @@ type RunToolProps = ModuleDispatchProps<{
 
 type RunToolResponse = DispatchNodeResultType<
   {
-    [NodeOutputKeyEnum.rawResponse]?: any; // MCP Tool
+    [NodeOutputKeyEnum.rawResponse]?: any;
     [key: string]: any;
   },
   Record<string, any>
@@ -218,33 +218,32 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     } else if (toolConfig?.httpTool?.toolId) {
       const { pluginId } = splitCombinePluginId(toolConfig.httpTool.toolId);
-      const [parentId, toolName] = pluginId.split('/');
-      const tool = await getAppVersionById({
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const toolset = await getAppVersionById({
         appId: parentId,
         versionId: version
       });
 
-      const { headerSecret, url, toolList } =
-        tool.nodes[0].toolConfig?.httpToolSet ?? tool.nodes[0].inputs[0].value;
+      const { headerSecret, baseUrl, toolList, customHeaders } =
+        toolset.nodes[0].toolConfig?.httpToolSet ?? toolset.nodes[0].inputs[0].value;
 
-      const httpTool = toolList?.find((t: HttpToolConfigType) => t.name === toolName);
+      const httpTool = toolList?.find((tool: HttpToolConfigType) => tool.name === toolName);
       if (!httpTool) {
         throw new Error(`HTTP tool ${toolName} not found`);
       }
 
-      const httpClient = new HTTPClient({
-        url,
-        headers: getSecretValue({
-          storeSecret: headerSecret
-        })
-      });
-
-      const result = await httpClient.toolCallSimple(
-        toolName,
+      const result = await runHTTPTool({
+        baseUrl: baseUrl || '',
+        toolPath: httpTool.path,
+        method: httpTool.method || 'POST',
         params,
-        httpTool.path,
-        httpTool.method || 'POST'
-      );
+        headerSecret,
+        customHeaders: customHeaders
+          ? typeof customHeaders === 'string'
+            ? JSON.parse(customHeaders)
+            : customHeaders
+          : undefined
+      });
 
       if (result.isError) {
         throw new Error(result.message || 'HTTP request failed');

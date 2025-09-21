@@ -3,10 +3,8 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 /* 获取应用详情 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -23,34 +21,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     per: ReadPermissionVal
   });
 
-  const rawApp = await MongoApp.findOne({ _id: appId }).lean();
-
-  if (!rawApp) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
-  const finalApp = {
-    ...rawApp,
-    permission: app.permission
-  };
-
   await rewriteAppWorkflowToDetail({
-    nodes: finalApp.modules || [],
+    nodes: app.modules || [],
     teamId,
-    ownerTmbId: finalApp.tmbId || '',
+    ownerTmbId: app.tmbId || '',
     isRoot,
     lang: getLocale(req)
   });
 
-  if (!finalApp.permission.hasWritePer) {
+  if (!app.permission.hasWritePer) {
     return {
-      ...finalApp,
+      ...app,
       modules: [],
       edges: []
     };
   }
 
-  return finalApp;
+  return app;
 }
 
 export default NextAPI(handler);

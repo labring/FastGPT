@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Grid, Flex, IconButton, HStack } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -17,7 +17,7 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
-import { AppDefaultRoleVal, AppRoleList } from '@fastgpt/global/support/permission/app/constant';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -29,7 +29,6 @@ import AppTypeTag from './TypeTag';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
-import type { EditHttpPluginProps } from './HttpPluginEditModal';
 import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -38,7 +37,6 @@ import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
@@ -56,7 +54,6 @@ const ListItem = () => {
     useContextSelector(AppListContext, (v) => v);
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
-  const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
 
   const editPerApp = useMemo(
@@ -312,28 +309,16 @@ const ListItem = () => {
                                         type: 'grayBg' as MenuItemType,
                                         label: t('common:dataset.Edit Info'),
                                         onClick: () => {
-                                          if (
-                                            app.type === AppTypeEnum.httpToolSet ||
-                                            app.type === AppTypeEnum.httpPlugin
-                                          ) {
-                                            setEditHttpPlugin({
-                                              id: app._id,
-                                              name: app.name,
-                                              avatar: app.avatar,
-                                              intro: app.intro,
-                                              pluginData: app.pluginData
-                                            });
-                                          } else {
-                                            setEditedApp({
-                                              id: app._id,
-                                              avatar: app.avatar,
-                                              name: app.name,
-                                              intro: app.intro
-                                            });
-                                          }
+                                          setEditedApp({
+                                            id: app._id,
+                                            avatar: app.avatar,
+                                            name: app.name,
+                                            intro: app.intro
+                                          });
                                         }
                                       },
-                                      ...(!(parentApp ? parentApp.permission : app.permission)
+                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
+                                      !(parentApp ? parentApp.permission : app.permission)
                                         .hasManagePer
                                         ? []
                                         : [
@@ -459,12 +444,6 @@ const ListItem = () => {
             refreshDeps: [editPerApp.inheritPermission]
           }}
           onClose={() => setEditPerAppId(undefined)}
-        />
-      )}
-      {!!editHttpPlugin && (
-        <HttpEditModal
-          defaultPlugin={editHttpPlugin}
-          onClose={() => setEditHttpPlugin(undefined)}
         />
       )}
       <MoveConfirmModal />

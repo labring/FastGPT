@@ -41,26 +41,6 @@ async function handler(
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
-  const patchedToolList: McpToolConfigType[] = toolList.map((tool) => {
-    const properties = (tool.inputSchema?.properties || {}) as Record<string, any>;
-    const patchedProps = Object.fromEntries(
-      Object.entries(properties).map(([k, v]) => {
-        const prop = { ...(v as any) };
-        if (prop?.description && !('toolDescription' in prop)) {
-          prop.toolDescription = prop.description;
-        }
-        return [k, prop];
-      })
-    );
-    return {
-      ...tool,
-      inputSchema: {
-        ...tool.inputSchema,
-        properties: patchedProps
-      }
-    };
-  });
-
   const mcpToolsId = await mongoSessionRun(async (session) => {
     const mcpToolsId = await onCreateApp({
       name,
@@ -72,7 +52,7 @@ async function handler(
       modules: [
         getMCPToolSetRuntimeNode({
           url,
-          toolList: patchedToolList,
+          toolList,
           name,
           avatar,
           headerSecret: formatedHeaderAuth,

@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import styles from '../SimpleApp/styles.module.scss';
 import { cardStyles } from '../constants';
 import AppCard from './AppCard';
@@ -8,34 +8,34 @@ import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-const Edit = ({
-  url,
-  setUrl,
-  toolList,
-  setToolList,
-  currentTool,
-  setCurrentTool,
-  headerSecret,
-  setHeaderSecret,
-  createType,
-  customHeaders
-}: {
-  url: string;
-  setUrl: (url: string) => void;
-  toolList: HttpToolConfigType[];
-  setToolList: (toolList: HttpToolConfigType[]) => void;
-  currentTool?: HttpToolConfigType;
-  setCurrentTool: (tool: HttpToolConfigType) => void;
-  headerSecret: StoreSecretValueType;
-  setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
-  createType: 'batch' | 'manual';
-  customHeaders: Record<string, string>;
-}) => {
+const Edit = () => {
   const { isPc } = useSystem();
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const toolSetData = useMemo(() => {
+    const toolSetNode = appDetail.modules.find(
+      (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
+    );
+    return toolSetNode?.toolConfig?.httpToolSet;
+  }, [appDetail.modules]);
 
-  console.log('edit', toolList);
+  const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
+    toolSetData?.toolList?.[0]
+  );
+  const baseUrl = toolSetData?.baseUrl ?? '';
+  const toolList = toolSetData?.toolList ?? [];
+  const apiSchemaStr = toolSetData?.apiSchemaStr ?? '';
+  const headerSecret = toolSetData?.headerSecret ?? {};
+  const customHeaders = useMemo(() => {
+    try {
+      return JSON.parse(toolSetData?.customHeaders || '{}') || {};
+    } catch {
+      return {};
+    }
+  }, [appDetail.pluginData?.customHeaders]);
 
   return (
     <MyBox
@@ -61,15 +61,12 @@ const Edit = ({
 
         <Box mt={4} {...cardStyles} flex={'1 0 0'} overflow={'auto'} boxShadow={'2'}>
           <EditForm
-            toolList={toolList}
-            setToolList={setToolList}
             currentTool={currentTool}
             setCurrentTool={setCurrentTool}
-            url={url}
-            setUrl={setUrl}
+            toolList={toolList}
+            apiSchemaStr={apiSchemaStr}
             headerSecret={headerSecret}
-            setHeaderSecret={setHeaderSecret}
-            createType={createType}
+            customHeaders={customHeaders}
           />
         </Box>
       </Flex>
@@ -77,7 +74,7 @@ const Edit = ({
         <Box flex={'2 0 0'} w={0} mb={3}>
           <ChatTest
             currentTool={currentTool}
-            url={url}
+            baseUrl={baseUrl}
             headerSecret={headerSecret}
             customHeaders={customHeaders}
           />

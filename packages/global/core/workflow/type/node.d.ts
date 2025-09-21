@@ -53,14 +53,15 @@ export type NodeToolConfigType = {
   };
   httpToolSet?: {
     toolId: string;
-    url: string;
-    headerSecret?: StoreSecretValueType;
+    baseUrl: string;
     toolList: HttpToolConfigType[];
+    apiSchemaStr: string;
+    customHeaders: string;
+    headerSecret?: StoreSecretValueType;
   };
   httpTool?: {
     toolId: string;
   };
-  apiSchemaStr?: string;
 };
 
 export type FlowNodeCommonType = {

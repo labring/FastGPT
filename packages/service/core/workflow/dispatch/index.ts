@@ -208,6 +208,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   const startTime = Date.now();
 
   await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges, lang: data.lang });
+  console.log(runtimeNodes, `runtimeNodes`);
 
   const isDebugMode = data.mode === 'debug';
 

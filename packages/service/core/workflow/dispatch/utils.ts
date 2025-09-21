@@ -22,9 +22,7 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
@@ -185,8 +183,6 @@ export const formatHttpError = (error: any) => {
  * @param edges
  * @returns
  */
-// rewrite runtime workflow
-// fish:!
 export const rewriteRuntimeWorkFlow = async ({
   nodes,
   edges,
@@ -255,32 +251,17 @@ export const rewriteRuntimeWorkFlow = async ({
         pushEdges(newToolNode.nodeId);
       });
     } else if (httpToolsetVal) {
-      const parentId = httpToolsetVal.toolId ?? toolSetNode.pluginId;
+      const parentId = toolSetNode.pluginId || '';
       httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
-        const newToolNode: RuntimeNodeItemType = {
-          nodeId: `${parentId}${index}`,
-          name: `${toolSetNode.name}/${tool.name}`,
-          avatar: toolSetNode.avatar,
-          intro: tool.description,
-          flowNodeType: FlowNodeTypeEnum.tool,
-          toolConfig: {
-            httpTool: {
-              toolId: `${PluginSourceEnum.http}-${parentId}/${tool.name}`
-            }
+        const newToolNode = getHTTPToolRuntimeNode({
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
           },
-          inputs: jsonSchema2NodeInput(tool.inputSchema),
-          outputs: [
-            {
-              id: NodeOutputKeyEnum.rawResponse,
-              key: NodeOutputKeyEnum.rawResponse,
-              required: true,
-              label: 'Raw Response',
-              description: 'Tool raw response',
-              valueType: WorkflowIOValueTypeEnum.any,
-              type: FlowNodeOutputTypeEnum.static
-            }
-          ]
-        };
+          nodeId: `${parentId}${index}`,
+          avatar: toolSetNode.avatar,
+          parentId
+        });
 
         nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);

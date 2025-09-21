@@ -16,6 +16,7 @@ import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { SourceMemberType } from '../../support/user/type';
 import type { JSONSchemaInputType } from './jsonschema';
+import { StoreSecretValueType } from '../../common/secret/type';
 
 export type AppSchema = {
   _id: string;
@@ -124,8 +125,8 @@ export type HttpToolConfigType = {
   name: string;
   description: string;
   inputSchema: JSONSchemaInputType;
-  path?: string;
-  method?: string;
+  path: string;
+  method: string;
 };
 
 /* app chat config type */

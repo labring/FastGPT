@@ -61,8 +61,6 @@ const AppDetail = () => {
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
             {appDetail.type === AppTypeEnum.httpToolSet && <HTTPTools />}
-            {/* httpPlugin is deprecated */}
-            {appDetail.type === AppTypeEnum.httpPlugin && <HTTPTools />}
           </>
         )}
       </Box>

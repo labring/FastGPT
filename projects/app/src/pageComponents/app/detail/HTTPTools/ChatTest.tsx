@@ -18,17 +18,16 @@ import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/js
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { ButtonProps } from '@chakra-ui/react';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 
 const ChatTest = ({
   currentTool,
-  url,
+  baseUrl,
   headerSecret,
   customHeaders
 }: {
   currentTool?: HttpToolConfigType;
-  url: string;
+  baseUrl: string;
   headerSecret: StoreSecretValueType;
   customHeaders: Record<string, string>;
 }) => {
@@ -38,26 +37,12 @@ const ChatTest = ({
 
   const form = useForm();
   const { handleSubmit, reset } = form;
-  const [isInputSelected, setIsInputSelected] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'input' | 'output'>('input');
 
-  const buttonProps: ButtonProps = {
-    fontFamily: 'PingFang SC',
-    fontSize: '16px',
-    fontStyle: 'normal',
-    fontWeight: '500',
-    lineHeight: '24px',
-    letterSpacing: '0.15px',
-    cursor: 'pointer'
-  };
-  const selectedButtonProps: ButtonProps = {
-    borderBottom: '2px solid',
-    borderColor: '#3370FF',
-    pb: '6px',
-    color: 'myGray.900'
-  };
-  const unselectedButtonProps: ButtonProps = {
-    color: '#A4A4A4'
-  };
+  const tabList = [
+    { label: t('common:Input'), value: 'input' as const },
+    { label: t('common:Output'), value: 'output' as const }
+  ];
 
   useEffect(() => {
     reset({});
@@ -68,27 +53,10 @@ const ChatTest = ({
     async (data: Record<string, any>) => {
       if (!currentTool) return;
 
-      // Format type
-      Object.entries(currentTool?.inputSchema.properties || {}).forEach(
-        ([paramName, paramInfo]) => {
-          const valueType = getNodeInputTypeFromSchemaInputType({
-            type: paramInfo.type,
-            arrayItems: paramInfo.items
-          });
-          if (data[paramName] !== undefined) {
-            data[paramName] = valueTypeFormat(data[paramName], valueType);
-          }
-        }
-      );
-      console.log('setIsInputSelected 1', isInputSelected);
-      setIsInputSelected(false);
-      console.log('setIsInputSelected 2', isInputSelected);
-
       return await postRunHTTPTool({
+        baseUrl,
         params: data,
-        url,
         headerSecret,
-        toolName: currentTool.name,
         toolPath: currentTool.path,
         method: currentTool.method,
         customHeaders: customHeaders
@@ -99,6 +67,7 @@ const ChatTest = ({
         try {
           const resStr = JSON.stringify(res, null, 2);
           setOutput(resStr);
+          setActiveTab('output');
         } catch (error) {
           console.error(error);
         }
@@ -126,25 +95,17 @@ const ChatTest = ({
           <Box flex={1} />
         </Flex>
 
-        <Box px={[2, 5]} display={'flex'} gap={'20px'} mb={6}>
-          <Box
-            {...(isInputSelected ? selectedButtonProps : unselectedButtonProps)}
-            {...buttonProps}
-            onClick={() => setIsInputSelected(true)}
-          >
-            {t('common:Input')}
-          </Box>
-          <Box
-            {...(isInputSelected ? unselectedButtonProps : selectedButtonProps)}
-            {...buttonProps}
-            onClick={() => output !== '' && setIsInputSelected(false)}
-            isDisabled={output === ''}
-          >
-            {t('common:Output')}
-          </Box>
+        <Box px={[2, 5]} mb={6}>
+          <LightRowTabs
+            list={tabList}
+            value={activeTab}
+            onChange={(value) => {
+              setActiveTab(value);
+            }}
+          />
         </Box>
 
-        {isInputSelected ? (
+        {activeTab === 'input' ? (
           <Box flex={1} px={[2, 5]} overflow={'auto'}>
             {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 && (
               <>
@@ -204,12 +165,12 @@ const ChatTest = ({
 
 const Render = ({
   currentTool,
-  url,
+  baseUrl,
   headerSecret,
   customHeaders
 }: {
   currentTool?: HttpToolConfigType;
-  url: string;
+  baseUrl: string;
   headerSecret: StoreSecretValueType;
   customHeaders: Record<string, string>;
 }) => {
@@ -235,7 +196,7 @@ const Render = ({
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest
           currentTool={currentTool}
-          url={url}
+          baseUrl={baseUrl}
           headerSecret={headerSecret}
           customHeaders={customHeaders}
         />

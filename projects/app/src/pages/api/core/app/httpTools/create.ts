@@ -9,65 +9,55 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { createHttpToolRuntimeNode } from '@fastgpt/global/core/app/httpPlugin/utils';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 
-export type createHttpPluginQuery = {};
+export type createHttpToolsQuery = {};
 
-export type createHttpPluginBody = Omit<
-  CreateAppBody,
-  'type' | 'modules' | 'edges' | 'chatConfig'
-> & {
-  pluginData: AppSchema['pluginData'];
-};
-
-export type createHttpPluginResponse = {};
+export type createHttpToolsBody = Omit<CreateAppBody, 'type' | 'modules' | 'edges' | 'chatConfig'>;
 
 async function handler(
-  req: ApiRequestProps<createHttpPluginBody, createHttpPluginQuery>,
-  res: ApiResponseType<createHttpPluginResponse>
-): Promise<createHttpPluginResponse> {
-  const { name, avatar, intro, pluginData, parentId } = req.body;
+  req: ApiRequestProps<createHttpToolsBody, createHttpToolsQuery>,
+  res: ApiResponseType<string>
+): Promise<string> {
+  const { name, avatar, intro, parentId } = req.body;
 
   const { teamId, tmbId, userId } = parentId
-    ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
+    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   await checkTeamAppLimit(teamId);
 
-  const httpPluginId = await mongoSessionRun(async (session) => {
-    const httpPluginId = await onCreateApp({
+  const httpToolsetId = await mongoSessionRun(async (session) => {
+    const httpToolsetId = await onCreateApp({
+      parentId,
       name,
       avatar,
       intro,
-      parentId,
       teamId,
       tmbId,
       type: AppTypeEnum.httpToolSet,
       modules: [
-        createHttpToolRuntimeNode({
+        getHTTPToolSetRuntimeNode({
           name,
-          avatar,
-          headerSecret: pluginData?.customHeaders
+          avatar
         })
       ],
-      pluginData,
       session
     });
 
-    return httpPluginId;
+    return httpToolsetId;
   });
 
   pushTrack.createApp({
     type: AppTypeEnum.httpToolSet,
-    appId: httpPluginId,
+    appId: httpToolsetId,
     uid: userId,
     teamId,
     tmbId
   });
 
-  return {};
+  return httpToolsetId;
 }
 
 export default NextAPI(handler);
