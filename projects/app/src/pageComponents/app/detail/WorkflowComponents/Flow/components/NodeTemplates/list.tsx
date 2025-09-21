@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Accordion,
   AccordionButton,
@@ -222,7 +222,7 @@ const NodeTemplateList = ({
     manual: false
   });
 
-  const handleAddNode = useMemoizedFn(
+  const handleAddNode = useCallback(
     async ({
       template,
       position
@@ -333,17 +333,57 @@ const NodeTemplateList = ({
       } catch (error) {
         console.error('Failed to create node template:', error);
       }
-    }
+    },
+    [computedNewNodeName, handleParams?.nodeId, nodeList, onAddNode, t, toast]
   );
 
-  const formatTemplatesArray = useMemoizedFn(
-    (
-      type: TemplateTypeEnum,
-      templates: NodeTemplateListItemType[]
-    ): { list: NodeTemplateListType; label: string }[] => {
-      const data = (() => {
-        if (type === TemplateTypeEnum.basic) {
-          const map = workflowSystemNodeTemplateList.reduce<
+  const formatTemplatesArrayData = useMemo(() => {
+    const data = (() => {
+      if (templateType === TemplateTypeEnum.basic) {
+        const map = workflowSystemNodeTemplateList.reduce<
+          Record<
+            string,
+            {
+              list: NodeTemplateListItemType[];
+              label: string;
+            }
+          >
+        >((acc, item) => {
+          acc[item.type] = {
+            list: [],
+            label: t(item.label)
+          };
+          return acc;
+        }, {});
+
+        templates.forEach((item) => {
+          if (map[item.templateType]) {
+            map[item.templateType].list.push({
+              ...item,
+              name: t(item.name as any),
+              intro: t(item.intro as any)
+            });
+          }
+        });
+
+        return [
+          {
+            label: '',
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
+          }
+        ];
+      }
+
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        console.log(pluginGroups, 222);
+        return pluginGroups.map((group) => {
+          const map = group.groupTypes.reduce<
             Record<
               string,
               {
@@ -352,9 +392,9 @@ const NodeTemplateList = ({
               }
             >
           >((acc, item) => {
-            acc[item.type] = {
+            acc[item.typeId] = {
               list: [],
-              label: t(item.label)
+              label: t(parseI18nString(item.typeName, i18n.language))
             };
             return acc;
           }, {});
@@ -363,88 +403,40 @@ const NodeTemplateList = ({
             if (map[item.templateType]) {
               map[item.templateType].list.push({
                 ...item,
-                name: t(item.name as any),
-                intro: t(item.intro as any)
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro, i18n.language))
               });
             }
           });
+          return {
+            label: group.groupName,
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
+          };
+        });
+      }
 
-          return [
+      // Team apps
+      return [
+        {
+          label: '',
+          list: [
             {
+              type: '',
               label: '',
-              list: Object.entries(map)
-                .map(([type, { list, label }]) => ({
-                  type,
-                  label,
-                  list
-                }))
-                .filter((item) => item.list.length > 0)
+              list: templates
             }
-          ];
+          ]
         }
-
-        if (type === TemplateTypeEnum.systemPlugin) {
-          return pluginGroups.map((group) => {
-            const map = group.groupTypes.reduce<
-              Record<
-                string,
-                {
-                  list: NodeTemplateListItemType[];
-                  label: string;
-                }
-              >
-            >((acc, item) => {
-              acc[item.typeId] = {
-                list: [],
-                label: t(parseI18nString(item.typeName, i18n.language))
-              };
-              return acc;
-            }, {});
-
-            templates.forEach((item) => {
-              if (map[item.templateType]) {
-                map[item.templateType].list.push({
-                  ...item,
-                  name: t(parseI18nString(item.name, i18n.language)),
-                  intro: t(parseI18nString(item.intro, i18n.language))
-                });
-              }
-            });
-            return {
-              label: group.groupName,
-              list: Object.entries(map)
-                .map(([type, { list, label }]) => ({
-                  type,
-                  label,
-                  list
-                }))
-                .filter((item) => item.list.length > 0)
-            };
-          });
-        }
-
-        // Team apps
-        return [
-          {
-            label: '',
-            list: [
-              {
-                type: '',
-                label: '',
-                list: templates
-              }
-            ]
-          }
-        ];
-      })();
-      return data.filter(({ list }) => list.length > 0);
-    }
-  );
-
-  const formatTemplatesArrayData = useMemo(
-    () => formatTemplatesArray(templateType, templates),
-    [templateType, templates, formatTemplatesArray]
-  );
+      ];
+    })();
+    return data.filter(({ list }) => list.length > 0);
+  }, [templateType, templates, t, pluginGroups, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (
