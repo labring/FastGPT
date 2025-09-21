@@ -11,19 +11,25 @@ import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { type SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { postDeletePlugin } from '@/web/core/app/api/plugin';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const PluginCard = ({
   item,
   groups,
-  onDelete
+  refreshTools
 }: {
   item: NodeTemplateListItemType;
   groups: SystemToolGroupSchemaType[];
-  onDelete?: (id: string) => Promise<void>;
+  refreshTools: () => any;
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [isHovered, setIsHovered] = useState(false);
+
+  const { userInfo } = useUserStore();
+  const isRoot = userInfo?.username === 'root';
 
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete',
@@ -37,15 +43,12 @@ const PluginCard = ({
 
   const isUploadedPlugin = item.toolSource === 'uploaded';
 
-  const handleDelete = async () => {
-    if (onDelete && item.id) {
-      await onDelete(item.id);
+  const { runAsync: handleDelete } = useRequest2(postDeletePlugin, {
+    successToast: t('common:delete_success'),
+    onSuccess() {
+      refreshTools();
     }
-  };
-
-  const handleDeleteClick = () => {
-    openConfirm(handleDelete)();
-  };
+  });
 
   return (
     <MyBox
@@ -70,18 +73,18 @@ const PluginCard = ({
       }}
     >
       {/* Delete button with centered confirmation modal */}
-      {isUploadedPlugin && (
+      {isUploadedPlugin && isRoot && (
         <MyIconButton
           icon="delete"
           position="absolute"
           bottom={3}
           right={4}
-          color="blue.500"
+          color="red.500"
           aria-label={t('common:Delete')}
           zIndex={1}
           opacity={isHovered ? 1 : 0}
           pointerEvents={isHovered ? 'auto' : 'none'}
-          onClick={handleDeleteClick}
+          onClick={openConfirm(() => handleDelete(item.id))}
         />
       )}
 

@@ -4,9 +4,10 @@ export const PluginS3Service = (() => {
   if (!global.pluginS3Service) {
     global.pluginS3Service = new S3Service({
       bucket: process.env.S3_PLUGIN_BUCKET,
-      maxFileSize: 10 * 1024 * 1024 // 10MB
+      maxFileSize: 50 * 1024 * 1024 // 50MB
     });
   }
+
   return global.pluginS3Service;
 })();
 

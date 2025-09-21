@@ -19,8 +19,8 @@ function UploadSystemToolModal({
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
+
   const { runAsync: handlePluginUpload, loading: uploadLoading } = useRequest2(
     async () => {
       const file = selectFiles[0];
@@ -43,25 +43,14 @@ function UploadSystemToolModal({
     },
     {
       manual: true,
+      successToast: t('common:import_success'),
       onSuccess: async () => {
-        toast({
-          title: t('common:import_success'),
-          status: 'success'
-        });
-
-        setSelectFiles([]);
         onSuccess();
         onClose();
-      },
-      onError: (error) => {
-        toast({
-          title: t('common:import_failed'),
-          description: error instanceof Error ? error.message : t('dataset:common.error.unKnow'),
-          status: 'error'
-        });
       }
     }
   );
+
   return (
     <MyModal
       title={t('file:common.upload_system_tools')}

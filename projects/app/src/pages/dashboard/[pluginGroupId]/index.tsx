@@ -11,14 +11,12 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 
 const SystemTools = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { type, pluginGroupId } = router.query as { type?: string; pluginGroupId?: string };
   const { isPc } = useSystem();
@@ -27,47 +25,20 @@ const SystemTools = () => {
   const isRoot = userInfo?.username === 'root';
 
   const [searchKey, setSearchKey] = useState('');
-  const [deletingPlugins, setDeletingPlugins] = useState<Set<string>>(new Set());
 
   const {
     data: plugins = [],
     loading: isLoading,
-    runAsync: refreshPlugins
+    runAsync: refreshTools
   } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
+
   const {
     isOpen: isOpenUploadPlugin,
     onOpen: onOpenUploadPlugin,
     onClose: onCloseUploadPlugin
   } = useDisclosure();
-
-  const handlePluginDelete = async (pluginId: string) => {
-    setDeletingPlugins((prev) => new Set(prev).add(pluginId));
-
-    try {
-      await postDeletePlugin(pluginId);
-      toast({
-        title: t('common:delete_success'),
-        status: 'success'
-      });
-
-      // null means all tools
-      await refreshPlugins({ parentId: null });
-    } catch (error) {
-      Promise.reject(error);
-      toast({
-        title: t('common:delete_failed'),
-        status: 'error'
-      });
-    } finally {
-      setDeletingPlugins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(pluginId);
-        return newSet;
-      });
-    }
-  };
 
   const currentPlugins = useMemo(() => {
     return plugins
@@ -118,7 +89,7 @@ const SystemTools = () => {
                       <SearchInput
                         value={searchKey}
                         onChange={(e) => setSearchKey(e.target.value)}
-                        placeholder={t('common:plugin.Search plugin')}
+                        placeholder={t('common:search_tool')}
                       />
                     </Box>
                     {isRoot && (
@@ -143,7 +114,7 @@ const SystemTools = () => {
                       key={item.id}
                       item={item}
                       groups={pluginGroups}
-                      onDelete={isRoot ? handlePluginDelete : undefined}
+                      refreshTools={() => refreshTools({ parentId: null })}
                     />
                   ))}
                 </Grid>
@@ -153,7 +124,7 @@ const SystemTools = () => {
             {isOpenUploadPlugin && (
               <UploadSystemToolModal
                 onClose={onCloseUploadPlugin}
-                onSuccess={() => refreshPlugins({ parentId: null })}
+                onSuccess={() => refreshTools({ parentId: null })}
               />
             )}
           </>

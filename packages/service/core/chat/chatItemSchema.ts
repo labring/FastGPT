@@ -88,7 +88,7 @@ const ChatItemSchema = new Schema({
   get chat logs; 
   close custom feedback; 
 */
-ChatItemSchema.index({ appId: 'hashed', chatId: 1, dataId: 1 }, { unique: true });
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { unique: true });
 // timer, clear history
 ChatItemSchema.index({ teamId: 1, time: -1 });
 

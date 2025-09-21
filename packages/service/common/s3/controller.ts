@@ -42,7 +42,7 @@ export class S3Service {
   public async init() {
     if (!this.initialized) {
       if (!(await this.client.bucketExists(this.config.bucket))) {
-        addLog.info(`Creating bucket: ${this.config.bucket}`);
+        addLog.debug(`Creating bucket: ${this.config.bucket}`);
         await this.client.makeBucket(this.config.bucket);
       }
 
@@ -64,7 +64,7 @@ export class S3Service {
 
     const externalBaseURL = this.config.externalBaseURL;
     return externalBaseURL
-      ? `${externalBaseURL}/${encodeURIComponent(filename)}`
+      ? `${externalBaseURL}/${this.config.bucket}/${encodeURIComponent(filename)}`
       : `${protocol}://${this.config.endPoint}${port}/${this.config.bucket}/${encodeURIComponent(filename)}`;
   }
 
@@ -156,15 +156,13 @@ export class S3Service {
   };
 
   getFile = async (objectName: string): Promise<string> => {
-    try {
-      const stat = await this.client.statObject(this.config.bucket, objectName);
-      if (stat.size > 0) {
-        const accessUrl = this.generateDownloadUrl(objectName);
-        return accessUrl;
-      }
-      return Promise.reject(`File ${objectName} not found`);
-    } catch (error) {
-      return Promise.reject(`Failed to getFile: ${objectName}: ${getErrText(error)}`);
+    const stat = await this.client.statObject(this.config.bucket, objectName);
+
+    if (stat.size > 0) {
+      const accessUrl = this.generateDownloadUrl(objectName);
+      return accessUrl;
     }
+
+    return Promise.reject(`File ${objectName} not found`);
   };
 }

@@ -10,7 +10,7 @@ export type SystemCacheDataType = {
 
 type SystemCacheType = {
   [K in SystemCacheKeyEnum]: {
-    syncKey: string;
+    versionKey: string;
     data: SystemCacheDataType[K];
     refreshFunc: () => Promise<SystemCacheDataType[K]>;
   };
