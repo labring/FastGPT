@@ -250,7 +250,6 @@ const NodeTemplateList = ({
             return Promise.reject(e);
           }
         })();
-        console.log(templateNode);
 
         const defaultValueMap: Record<string, any> = {
           [NodeInputKeyEnum.userChatInput]: undefined,

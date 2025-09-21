@@ -94,7 +94,6 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest2(
     async (data: HttpToolsType) => {
       const toolList = await apiSchemaStr2ToolList(apiData.pathData);
-      console.log(data);
 
       return putUpdateHttpPlugin({
         appId: appDetail._id,
