@@ -123,7 +123,9 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
   const appList = await MongoApp.find(
     {
       _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+      type: {
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+      }
     },
     { name: 1, intro: 1 }
   ).lean();
@@ -296,7 +298,9 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
   // Get app list
   const appList = await MongoApp.find({
     _id: { $in: mcp.apps.map((app) => app.appId) },
-    type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+    type: {
+      $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+    }
   }).lean();
 
   const app = appList.find((app) => {
