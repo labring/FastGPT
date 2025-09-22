@@ -12,6 +12,10 @@ const EmptyCollectionTip = () => {
   const onOpenWebsiteModal = useContextSelector(CollectionPageContext, (v) => v.onOpenWebsiteModal);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const hasDatabaseConfig = useContextSelector(CollectionPageContext, (v) => v.hasDatabaseConfig);
+  const handleOpenConfigPage = useContextSelector(
+    CollectionPageContext,
+    (v) => v.handleOpenConfigPage
+  );
 
   return (
     <>
@@ -58,7 +62,11 @@ const EmptyCollectionTip = () => {
             !hasDatabaseConfig ? (
               <Flex>
                 {t('common:no_database_connection')}
-                <Box textDecoration={'underline'} cursor={'pointer'} onClick={onOpenWebsiteModal}>
+                <Box
+                  textDecoration={'underline'}
+                  cursor={'pointer'}
+                  onClick={() => handleOpenConfigPage('create')}
+                >
                   {t('common:click_config_database')}
                 </Box>
               </Flex>

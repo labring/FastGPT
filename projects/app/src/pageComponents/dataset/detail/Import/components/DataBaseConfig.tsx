@@ -41,6 +41,7 @@ import { StatusEnum } from './hooks/utils';
 import type { CurrentTableFormData } from './hooks/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const DataBaseConfig = () => {
   const { t } = useTranslation();
@@ -64,17 +65,12 @@ const DataBaseConfig = () => {
 
   const {
     currentTable,
-    currentTableIndex,
-    uiTables,
     tableInfos,
     loading,
     isSubmitting,
-    changesSummary,
     problematicTableNames,
     handleTableSelect,
     handleChangeTab,
-    handleChangeTableDesc,
-    handleChangeColumnData,
     handleColumnToggle,
     onSubmit,
     currentTableColumnChanges,
@@ -112,9 +108,16 @@ const DataBaseConfig = () => {
 
   if (!currentTable) {
     return (
-      <Center h="400px">
-        <Text color="myGray.600">{t('dataset:no_data_available')}</Text>
-      </Center>
+      <Flex px={7} flexDirection={'column'} h="100%">
+        <Flex flex={'1 0 0'} gap={4} minH={0} h={0} alignItems={'center'}>
+          <EmptyTip flex={1} text={t('dataset:no_data_in_database')} />
+        </Flex>
+        <Flex justify="flex-end" mt={8}>
+          <Button colorScheme="blue" disabled={true} px={8} size="md">
+            {t('dataset:confirm')}
+          </Button>
+        </Flex>
+      </Flex>
     );
   }
 
