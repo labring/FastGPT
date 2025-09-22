@@ -320,6 +320,13 @@ export function form2AppWorkflow(
           ...Input_Template_UserChatInput,
           toolDescription: i18nT('workflow:content_to_search'),
           value: question
+        },
+        {
+          key: NodeInputKeyEnum.generateSqlModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: i18nT('common:search_model'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.generateSqlModel
         }
       ],
       outputs: DatasetSearchModule.outputs

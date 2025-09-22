@@ -1357,5 +1357,6 @@
   "search_model_tip": "Larger non-reasoning models generally generate better results.",
   "other_knowledge_base": "Other knowledge bases",
   "database_search": "Database search",
-  "table_not_exist": "Not exist"
+  "table_not_exist": "Not exist",
+   "core.app.workflow.search_knowledge.database": "数据库"
 }

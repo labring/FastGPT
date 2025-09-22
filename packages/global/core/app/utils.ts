@@ -138,6 +138,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionBg
       );
+      defaultAppForm.dataset.generateSqlModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.generateSqlModel
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||
