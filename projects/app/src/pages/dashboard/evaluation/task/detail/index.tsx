@@ -85,6 +85,10 @@ const Detail = ({ taskId, currentTab }: Props) => {
   const retryFailedItems = useContextSelector(TaskPageContext, (v) => v.retryFailedItems);
   const exportItems = useContextSelector(TaskPageContext, (v) => v.exportItems);
   const generateSummary = useContextSelector(TaskPageContext, (v) => v.generateSummary);
+  const generateSummaryForMetrics = useContextSelector(
+    TaskPageContext,
+    (v) => v.generateSummaryForMetrics
+  );
 
   // 本地状态（UI 相关）
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -1252,7 +1256,12 @@ const Detail = ({ taskId, currentTab }: Props) => {
                   {/* 使用 EvaluationSummaryCard 组件展示维度总结 */}
                   {summaryData?.data && (
                     <Box mt={4}>
-                      <EvaluationSummaryCard data={summaryData.data} />
+                      <EvaluationSummaryCard
+                        data={summaryData.data}
+                        onRetryGeneration={(metricIds) =>
+                          generateSummaryForMetrics({ evalId: taskId, metricIds })
+                        }
+                      />
                     </Box>
                   )}
                 </>
