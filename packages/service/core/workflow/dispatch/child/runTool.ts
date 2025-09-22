@@ -235,7 +235,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         throw new Error(`HTTP tool ${toolName} not found`);
       }
 
-      const result = await runHTTPTool({
+      const { data, errorMsg } = await runHTTPTool({
         baseUrl: baseUrl,
         toolPath: httpTool.path,
         method: httpTool.method,
@@ -248,13 +248,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           : undefined
       });
 
+      if (errorMsg) {
+        if (catchError) {
+          return {
+            error: { [NodeOutputKeyEnum.errorText]: errorMsg },
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolRes: errorMsg,
+              moduleLogo: avatar
+            },
+            [DispatchNodeResponseKeyEnum.toolResponses]: errorMsg
+          };
+        }
+        throw new Error(errorMsg);
+      }
+
       return {
-        data: { [NodeOutputKeyEnum.rawResponse]: result, ...result.data },
+        data: { [NodeOutputKeyEnum.rawResponse]: data, ...(typeof data === 'object' ? data : {}) },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolRes: result,
+          toolRes: data,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result
+        [DispatchNodeResponseKeyEnum.toolResponses]: data
       };
     } else {
       // mcp tool (old version compatible)

@@ -30,7 +30,7 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
-import type { RunHTTPToolBody } from '@/pages/api/core/app/httpTools/runTool';
+import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 
@@ -153,4 +153,5 @@ export const postCreateHttpTools = (data: createHttpToolsBody) =>
 export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
   POST('/core/app/httpTools/update', data);
 
-export const postRunHTTPTool = (data: RunHTTPToolBody) => POST('/core/app/httpTools/runTool', data);
+export const postRunHTTPTool = (data: RunHTTPToolBody) =>
+  POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);

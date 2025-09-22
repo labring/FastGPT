@@ -1,6 +1,8 @@
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSecretValue } from '../../common/secret/utils';
 import axios from 'axios';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -11,10 +13,10 @@ export type RunHTTPToolParams = {
   customHeaders?: Record<string, string>;
 };
 
-export type RunHTTPToolResult = {
-  data: any;
-  message?: string;
-};
+export type RunHTTPToolResult = RequireOnlyOne<{
+  data?: any;
+  errorMsg?: string;
+}>;
 
 export async function runHTTPTool({
   baseUrl,
@@ -31,7 +33,7 @@ export async function runHTTPTool({
       ...(headerSecret ? getSecretValue({ storeSecret: headerSecret }) : {})
     };
 
-    const response = await axios({
+    const { data } = await axios({
       method: method.toUpperCase(),
       baseURL: baseUrl.startsWith('https://') ? baseUrl : `https://${baseUrl}`,
       url: toolPath,
@@ -45,12 +47,12 @@ export async function runHTTPTool({
     });
 
     return {
-      data: response.data
+      data
     };
   } catch (error: any) {
+    console.log(error);
     return {
-      data: {},
-      message: error.response?.data?.message || error.message
+      errorMsg: getErrText(error)
     };
   }
 }

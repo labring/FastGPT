@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { RunHTTPToolResult } from '@fastgpt/service/core/app/http';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
 
 export type RunHTTPToolQuery = {};
@@ -14,7 +15,7 @@ export type RunHTTPToolBody = {
   headerSecret?: StoreSecretValueType;
 };
 
-export type RunHTTPToolResponse = any;
+export type RunHTTPToolResponse = RunHTTPToolResult;
 
 async function handler(
   req: ApiRequestProps<RunHTTPToolBody, RunHTTPToolQuery>,
