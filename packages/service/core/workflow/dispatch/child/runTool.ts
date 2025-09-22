@@ -224,7 +224,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         versionId: version
       });
       const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
-      if (!toolSetData) {
+      if (!toolSetData || typeof toolSetData !== 'object') {
         throw new Error('HTTP tool set not found');
       }
 
