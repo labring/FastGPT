@@ -19,12 +19,19 @@ import { countGptMessagesTokens } from '../../../common/string/tiktoken';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { loadRequestMessages } from '../../chat/utils';
-import { evalSummaryTemplate, goodExample, badExample } from '@fastgpt/global/core/ai/prompt/eval';
+import {
+  problemAnalysisTemplate,
+  strengthAnalysisTemplate,
+  goodExample,
+  badExample
+} from '@fastgpt/global/core/ai/prompt/eval';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { createMergedEvaluationUsage } from '../utils/usage';
+import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { recalculateAllEvaluationItemAggregateScores } from './util/aggregateScoreCalculator';
 import { addSummaryTaskToQueue } from './queue';
@@ -1072,7 +1079,8 @@ export class EvaluationSummaryService {
       const selectedExample = isAllPerfect ? goodExample : badExample;
 
       // Calculate base template tokens (excluding specific data)
-      const baseTemplate = evalSummaryTemplate
+      const selectedTemplate = isAllPerfect ? strengthAnalysisTemplate : problemAnalysisTemplate;
+      const baseTemplate = selectedTemplate
         .replace('{example}', selectedExample)
         .replace('{evaluation_result_for_single_metric}', '');
 
@@ -1162,7 +1170,7 @@ export class EvaluationSummaryService {
         body: {
           model: llmModel,
           messages: requestMessages,
-          temperature: 0.3,
+          temperature: 1e-7,
           max_tokens: 1000,
           stream: false
         },
@@ -1216,14 +1224,13 @@ export class EvaluationSummaryService {
       const outputTokens = usage?.completion_tokens || 0;
       const totalTokens = inputTokens + outputTokens;
 
-      // Convert tokens to points
-      const totalPoints = modelData
-        ? Math.ceil(
-            (inputTokens * (modelData.inputPrice || 0) +
-              outputTokens * (modelData.outputPrice || 0)) /
-              1000
-          )
-        : 0;
+      // Convert tokens to points using standard utility function
+      const { totalPoints } = formatModelChars2Points({
+        model: llmModel || modelData?.model || '',
+        inputTokens,
+        outputTokens,
+        modelType: (modelData?.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
+      });
 
       // Use unified evaluation usage recording
       await createMergedEvaluationUsage({
@@ -1257,14 +1264,18 @@ export class EvaluationSummaryService {
    * 构建用户提示词
    */
   private static buildUserPrompt(data: any[]): string {
-    // Select appropriate example type
-    const selectedExample = this.selectExampleType(data);
+    // Check if all scores are perfect to determine which template to use
+    const isAllPerfect = this.isAllPerfectScores(data);
+
+    // Select appropriate template and example based on data quality
+    const selectedTemplate = isAllPerfect ? strengthAnalysisTemplate : problemAnalysisTemplate;
+    const selectedExample = isAllPerfect ? goodExample : badExample;
 
     // Format evaluation data
     const evaluationResult = data.map((item) => this.formatDataItemForPrompt(item)).join('\n\n');
 
     // Render template variables
-    return evalSummaryTemplate
+    return selectedTemplate
       .replace('{example}', selectedExample)
       .replace('{evaluation_result_for_single_metric}', evaluationResult);
   }
