@@ -15,8 +15,7 @@ import type { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { SourceMemberType } from '../../support/user/type';
-import type { JSONSchemaInputType } from './jsonschema';
-import { StoreSecretValueType } from '../../common/secret/type';
+import type { JSONSchemaInputType, JSONSchemaOutputType } from './jsonschema';
 
 export type AppSchema = {
   _id: string;
@@ -125,6 +124,7 @@ export type HttpToolConfigType = {
   name: string;
   description: string;
   inputSchema: JSONSchemaInputType;
+  outputSchema: JSONSchemaOutputType;
   path: string;
   method: string;
 };

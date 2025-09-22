@@ -28,8 +28,9 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import type { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpTools/type';
-import { str2OpenApiSchema, apiSchemaStr2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
+import { pathData2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 
 const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -93,7 +94,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   );
   const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest2(
     async (data: HttpToolsType) => {
-      const toolList = await apiSchemaStr2ToolList(apiData.pathData);
+      const toolList = await pathData2ToolList(apiData.pathData);
 
       return putUpdateHttpPlugin({
         appId: appDetail._id,

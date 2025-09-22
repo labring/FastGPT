@@ -291,6 +291,7 @@ export async function getChildAppPreviewNode({
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema,
                 name: `${item.name}/${tool.name}`
               },
               avatar: item.avatar,
