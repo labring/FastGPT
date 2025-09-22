@@ -178,21 +178,23 @@ export const transformUIToBackend = (uiTables: UITableData[]): DatabaseCollectio
         tableName: table.tableName,
         description: table.description,
         forbid: table.forbid,
-        columns: table.columns.reduce(
-          (acc, column) => {
-            acc[column.columnName] = {
-              ...column,
-              columnName: column.columnName,
-              columnType: column.columnType,
-              description: column.description,
-              examples: column.examples,
-              forbid: !column.enabled,
-              valueIndex: column.valueIndex
-            };
-            return acc;
-          },
-          {} as Record<string, BackendColumn>
-        )
+        columns: table.columns
+          .filter((column) => column.status !== StatusEnum.delete)
+          .reduce(
+            (acc, column) => {
+              acc[column.columnName] = {
+                ...column,
+                columnName: column.columnName,
+                columnType: column.columnType,
+                description: column.description,
+                examples: column.examples,
+                forbid: !column.enabled,
+                valueIndex: column.valueIndex
+              };
+              return acc;
+            },
+            {} as Record<string, BackendColumn>
+          )
       }))
   };
 };

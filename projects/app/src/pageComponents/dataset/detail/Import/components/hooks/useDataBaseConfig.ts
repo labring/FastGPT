@@ -348,11 +348,11 @@ export const useDataBaseConfig = (
       // 切换到新表
       setCurrentTableIndex(index);
 
-      // 同步新表数据到表单（过滤掉删除的列）
+      // 同步新表数据到表单,已删除的列数据提交时过滤
       if (uiTables[index]) {
         const newFormData = {
           description: uiTables[index].description,
-          columns: uiTables[index].columns.filter((col) => col.status !== StatusEnum.delete)
+          columns: uiTables[index].columns
         };
         reset(newFormData);
         lastSyncDataRef.current = JSON.stringify(newFormData);
