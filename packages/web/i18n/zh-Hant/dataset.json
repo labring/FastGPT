@@ -349,5 +349,6 @@
   "confirm_update_database_config": "確認更新資料庫配置？",
   "confirm_create_database_config": "確認創建資料庫配置？",
   "database_config_updated": "資料庫配置已更新",
-  "data_index_column_description": "SQL欄位描述索引"
+  "data_index_column_description": "SQL欄位描述索引",
+   "no_data_in_database": "該數據庫中沒有數據"
 }
