@@ -19,7 +19,6 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
-import { calculateEvaluationItemAggregateScore } from '../summary/util/aggregateScoreCalculator';
 import { getBatchEvaluationItemStatus } from './statusCalculator';
 import { createEvaluationError } from './errors';
 
@@ -98,16 +97,28 @@ export const finishEvaluationTask = async (evalId: string) => {
 
     const taskStatus = errorCount > 0 ? EvaluationStatusEnum.error : EvaluationStatusEnum.completed;
 
+    // Check if there are any successful evaluatorOutputs, regardless of overall item status
+    const itemsWithSuccessfulOutputs = await MongoEvalItem.countDocuments({
+      evalId: new Types.ObjectId(evalId),
+      evaluatorOutputs: {
+        $elemMatch: {
+          status: 'success',
+          'data.score': { $exists: true, $ne: null }
+        }
+      }
+    });
+
     addLog.debug(
       `[Evaluation] Task status calculated: ${evalId}, realTimeStatus: ${taskStatus}, total: ${totalCount}, ` +
-        `success: ${completedCount}, failed: ${errorCount}, pending: ${pendingCount}`
+        `success: ${completedCount}, failed: ${errorCount}, pending: ${pendingCount}, itemsWithSuccessfulOutputs: ${itemsWithSuccessfulOutputs}`
     );
 
-    // Calculate metric scores and trigger summary generation for completed tasks
-    if (completedCount > 0) {
+    // Calculate metric scores and trigger summary generation
+
+    if (completedCount > 0 || itemsWithSuccessfulOutputs > 0) {
       try {
-        // First, calculate and save metric scores to MongoDB
-        await EvaluationSummaryService.calculateAndSaveMetricScores(evalId);
+        // Scores are now calculated in real-time when getEvaluationSummary is called
+        // No need to pre-calculate and save scores
 
         // Check which metrics need summary generation
         const currentEvaluation = await MongoEvaluation.findById(
@@ -503,28 +514,8 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     });
   }
 
-  // Calculate aggregate score
-  const aggregateScore = await calculateEvaluationItemAggregateScore(evalItemId);
-
-  // Store final results
-  await MongoEvalItem.updateOne(
-    { _id: new Types.ObjectId(evalItemId) },
-    {
-      $set: {
-        aggregateScore: aggregateScore
-      }
-    }
-  );
-
-  // Report completion
+  // Report final progress
   await job.updateProgress(100);
-
-  const scores = evaluatorOutputs
-    .map((output) => output?.data?.score)
-    .filter((score) => score !== undefined);
-  addLog.debug(
-    `[Evaluation] Evaluation item completed: ${evalItemId}, scores: [${scores.join(', ')}], aggregateScore: ${aggregateScore}`
-  );
 };
 
 /**

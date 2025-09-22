@@ -161,10 +161,6 @@ export const EvaluationTaskSchema = new Schema({
         enum: CaculateMethodValues,
         required: true
       },
-      score: {
-        type: Number,
-        default: 0
-      },
       summary: {
         type: String,
         default: ''
@@ -178,22 +174,9 @@ export const EvaluationTaskSchema = new Schema({
         type: String,
         default: ''
       },
-      completedItemCount: {
-        type: Number,
-        default: 0
-      },
-      overThresholdItemCount: {
-        type: Number,
-        default: 0
-      },
       _id: false
     }
-  ],
-  // Aggregate score from multiple metrics
-  aggregateScore: {
-    type: Number,
-    default: 0
-  }
+  ]
 });
 
 /**
@@ -229,11 +212,6 @@ export const EvaluationItemSchema = new Schema({
   },
   finishTime: Date,
   errorMessage: String,
-  // Aggregate score from multiple evaluators
-  aggregateScore: {
-    type: Number,
-    default: 0
-  },
   // Metadata for optimization
   metadata: {
     status: {

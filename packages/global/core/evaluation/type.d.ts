@@ -32,12 +32,9 @@ export interface SummaryConfig {
   metricName: string; // Metric name for display
   weight: number;
   calculateType: CalculateMethodEnum;
-  score: number; // Calculated score based on successful items with scores
   summary: string;
   summaryStatus: SummaryStatusEnum;
   errorReason: string;
-  completedItemCount: number; // Count of completed evaluation items
-  overThresholdItemCount: number; // Count of items with scores above threshold
 }
 
 // Evaluator configuration type
@@ -74,7 +71,6 @@ export type EvaluationSchemaType = {
   finishTime?: Date;
   errorMessage?: string;
   statistics?: EvaluationStatistics;
-  aggregateScore?: number; // Weighted aggregate score calculated from multiple metrics
 };
 
 /**
@@ -126,7 +122,10 @@ export type EvaluationItemSchemaType = {
   status: EvaluationStatusEnum; // Computed real-time from job queues
   finishTime?: Date;
   errorMessage?: string;
-  aggregateScore?: number; // Weighted aggregate score calculated from multiple evaluators
+  // Metadata for optimization
+  metadata?: {
+    status: EvaluationStatusEnum;
+  };
 };
 
 // Evaluation target input/output types
@@ -151,11 +150,20 @@ export type EvaluationWithPerType = EvaluationSchemaType & {
 
 // ===== Display Types =====
 
-export type EvaluationDisplayType = EvaluationWithPerType & {
+// Extended SummaryConfig for display purposes (includes runtime calculated fields)
+export interface SummaryConfigDisplay extends SummaryConfig {
+  score: number; // Real-time calculated metric score
+  completedItemCount: number; // Real-time calculated completed items count
+  overThresholdItemCount: number; // Real-time calculated over threshold items count
+}
+
+export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryConfigs'> & {
   evalDatasetCollectionName?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
+  summaryConfigs: SummaryConfigDisplay[]; // Use extended version for display
+  aggregateScore?: number; // Real-time calculated aggregate score
 };
 
 export type EvaluationItemDisplayType = EvaluationItemSchemaType & {
