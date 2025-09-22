@@ -33,6 +33,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -72,6 +73,31 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const { llmModelList, defaultModels } = useSystemStore();
+
+  const knowledgeTypeConfig = useMemo(() => {
+    return {
+      hasDatabaseKnowledge: selectDatasets.some(
+        (item) => item.datasetType === DatasetTypeEnum.database
+      ),
+      hasOtherKnowledge: selectDatasets.some(
+        (item) => item.datasetType !== DatasetTypeEnum.database
+      )
+    };
+  }, [selectDatasets]);
+
+  useEffect(() => {
+    if (knowledgeTypeConfig.hasDatabaseKnowledge && defaultModels.llm?.model) {
+      setAppForm((prevForm) => {
+        return {
+          ...prevForm,
+          dataset: {
+            ...prevForm.dataset,
+            generateSqlModel: defaultModels.llm?.model
+          }
+        };
+      });
+    }
+  }, [knowledgeTypeConfig.hasDatabaseKnowledge, defaultModels.llm?.model]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -263,6 +289,8 @@ const EditForm = ({
                 usingReRank={appForm.dataset.usingReRank}
                 datasetSearchUsingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
                 queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                generateSqlModel={appForm.dataset.generateSqlModel}
+                {...knowledgeTypeConfig}
               />
             </Box>
           )}
@@ -451,6 +479,8 @@ const EditForm = ({
           {...appForm.dataset}
           maxTokens={tokenLimit}
           onClose={onCloseDatasetParams}
+          generateSqlModel={appForm.dataset.generateSqlModel}
+          {...knowledgeTypeConfig}
           onSuccess={(e) => {
             setAppForm((state) => ({
               ...state,
