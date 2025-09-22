@@ -16,7 +16,10 @@ import {
   checkTeamEvalDatasetDataLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
-import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import {
+  addEvalDatasetDataQualityJob,
+  checkEvalDatasetDataQualityQueueHealth
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type EvalDatasetDataCreateQuery = {};
@@ -144,6 +147,10 @@ async function handler(
     await checkTeamAIPoints(teamId);
   }
 
+  if (enableQualityEvaluation) {
+    await checkEvalDatasetDataQualityQueueHealth();
+  }
+
   const dataId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetData.create(
       [
@@ -160,7 +167,7 @@ async function handler(
           createFrom: EvalDatasetDataCreateFromEnum.manual,
           qualityMetadata: {
             ...(enableQualityEvaluation
-              ? {}
+              ? { status: EvalDatasetDataQualityStatusEnum.queuing }
               : { status: EvalDatasetDataQualityStatusEnum.unevaluated })
           }
         }

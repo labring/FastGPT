@@ -160,14 +160,28 @@ describe('EvalDatasetData List API', () => {
 
       const result = await handler_test(req as any);
 
-      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
-          { $sort: { createTime: -1 } },
-          { $skip: expectedSkip },
-          { $limit: expectedLimit }
-        ])
-      );
+      expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith([
+        { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
+        { $sort: { createTime: 1 } },
+        { $skip: expectedSkip },
+        { $limit: expectedLimit },
+        {
+          $project: {
+            _id: 1,
+            actualOutput: 1,
+            context: 1,
+            createFrom: 1,
+            createTime: 1,
+            expectedOutput: 1,
+            qualityMetadata: 1,
+            qualityResult: 1,
+            retrievalContext: 1,
+            synthesisMetadata: 1,
+            updateTime: 1,
+            userInput: 1
+          }
+        }
+      ]);
 
       if (pageNum === undefined) {
         expect(result.total).toBe(2);
@@ -478,7 +492,7 @@ describe('EvalDatasetData List API', () => {
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith([
         { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
-        { $sort: { createTime: -1 } },
+        { $sort: { createTime: 1 } },
         { $skip: 0 },
         { $limit: 10 },
         {
@@ -585,7 +599,7 @@ describe('EvalDatasetData List API', () => {
       await handler_test(req as any);
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith(
-        expect.arrayContaining([{ $sort: { createTime: -1 } }])
+        expect.arrayContaining([{ $sort: { createTime: 1 } }])
       );
     });
   });
@@ -882,7 +896,7 @@ describe('EvalDatasetData List API', () => {
 
       expect(mockMongoEvalDatasetData.aggregate).toHaveBeenCalledWith([
         { $match: { evalDatasetCollectionId: new Types.ObjectId(validCollectionId) } },
-        { $sort: { createTime: -1 } },
+        { $sort: { createTime: 1 } },
         { $skip: 0 },
         { $limit: 10 },
         {

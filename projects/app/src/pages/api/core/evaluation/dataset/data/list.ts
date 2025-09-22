@@ -113,7 +113,7 @@ async function handler(
  */
 const buildPipeline = (match: Record<string, any>, offset: number, pageSize: number) => [
   { $match: match },
-  { $sort: { createTime: -1 as const } },
+  { $sort: { createTime: 1 as const } },
   { $skip: offset },
   { $limit: pageSize },
   {

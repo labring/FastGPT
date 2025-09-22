@@ -28,3 +28,15 @@ export class UserError extends Error {
     this.name = 'UserError';
   }
 }
+
+export class FileUploadError extends UserError {
+  code: string;
+  details?: Record<string, any>;
+
+  constructor(code: string, message: string, details?: Record<string, any>) {
+    super(message);
+    this.name = 'FileUploadError';
+    this.code = code;
+    this.details = details;
+  }
+}

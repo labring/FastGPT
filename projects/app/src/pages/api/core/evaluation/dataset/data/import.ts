@@ -8,7 +8,11 @@ import {
   EvalDatasetDataQualityStatusEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/dataset/api';
-import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import {
+  addEvalDatasetDataQualityJob,
+  checkEvalDatasetDataQualityQueueHealth
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
@@ -227,7 +231,7 @@ async function handler(
       datasetCollection = await getExistingCollection(collectionId);
       await validateCollectionAccess(datasetCollection, teamId);
     } else {
-      // Mode 2: Create new collection
+      // Mode 2: Create new collection (will be created after CSV validation)
       await validateNewCollectionParams(name, description);
 
       const authResult = await authenticateNewCollection(req);
@@ -237,15 +241,8 @@ async function handler(
       await checkTeamEvalDatasetLimit(teamId);
       await validateCollectionName(teamId, name!);
 
-      const collectionResult = await createNewCollection(
-        teamId,
-        tmbId,
-        name!,
-        description,
-        evaluationModel
-      );
-      datasetCollection = collectionResult.datasetCollection;
-      targetCollectionId = collectionResult.targetCollectionId;
+      datasetCollection = null;
+      targetCollectionId = '';
     }
 
     // Check AI points if quality evaluation is enabled
@@ -260,68 +257,98 @@ async function handler(
     for (const file of files) {
       const fs = require('fs');
 
-      // Validate file path to prevent directory traversal attacks
-      const safePath = validateFilePath(file.path);
-      const rawText = fs.readFileSync(safePath, 'utf8');
+      try {
+        // Validate file path to prevent directory traversal attacks
+        const safePath = validateFilePath(file.path);
+        const rawText = fs.readFileSync(safePath, 'utf8');
 
-      const csvRows = parseCSVContent(rawText);
+        const csvRows = parseCSVContent(rawText);
 
-      if (csvRows.length === 0) {
-        continue; // Skip empty files
+        if (csvRows.length === 0) {
+          continue; // Skip empty files
+        }
+
+        totalRows += csvRows.length;
+
+        // Convert CSV rows to dataset records
+        const evalDatasetRecords = csvRows.map((row) => {
+          // Validate required fields exist
+          if (!row.user_input || typeof row.user_input !== 'string') {
+            throw new Error(`Invalid or missing user_input in CSV row`);
+          }
+          if (!row.expected_output || typeof row.expected_output !== 'string') {
+            throw new Error(`Invalid or missing expected_output in CSV row`);
+          }
+
+          let contextArray: string[] = [];
+          let retrievalContextArray: string[] = [];
+
+          if (row.context !== undefined && row.context) {
+            try {
+              const parsed = JSON.parse(row.context);
+              if (Array.isArray(parsed)) {
+                contextArray = parsed.filter((item) => typeof item === 'string');
+              } else if (typeof parsed === 'string') {
+                contextArray = [parsed];
+              }
+            } catch (jsonError) {
+              contextArray = [row.context];
+            }
+          }
+
+          if (row.retrieval_context !== undefined && row.retrieval_context) {
+            try {
+              const parsed = JSON.parse(row.retrieval_context);
+              if (Array.isArray(parsed)) {
+                retrievalContextArray = parsed.filter((item) => typeof item === 'string');
+              } else if (typeof parsed === 'string') {
+                retrievalContextArray = [parsed];
+              }
+            } catch (jsonError) {
+              retrievalContextArray = [row.retrieval_context];
+            }
+          }
+
+          try {
+            const record = {
+              teamId,
+              tmbId,
+              evalDatasetCollectionId: targetCollectionId,
+              [EvalDatasetDataKeyEnum.UserInput]: row.user_input,
+              [EvalDatasetDataKeyEnum.ExpectedOutput]: row.expected_output,
+              [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
+              [EvalDatasetDataKeyEnum.Context]: contextArray,
+              [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
+              qualityMetadata: {
+                ...(enableQualityEvaluation
+                  ? { status: EvalDatasetDataQualityStatusEnum.queuing }
+                  : { status: EvalDatasetDataQualityStatusEnum.unevaluated })
+              },
+              createFrom: EvalDatasetDataCreateFromEnum.fileImport
+            };
+
+            if (!record[EvalDatasetDataKeyEnum.UserInput]?.trim()) {
+              throw new Error(`Empty user_input field in CSV row`);
+            }
+            if (!record[EvalDatasetDataKeyEnum.ExpectedOutput]?.trim()) {
+              throw new Error(`Empty expected_output field in CSV row`);
+            }
+            return record;
+          } catch (recordError) {
+            throw new Error(
+              `Invalid record data: ${recordError instanceof Error ? recordError.message : 'Unknown error'}`
+            );
+          }
+        });
+
+        allEvalDatasetRecords.push(...evalDatasetRecords);
+      } catch (error) {
+        addLog.error('Error during CSV import:', {
+          fileName: file.originalname || file.filename,
+          error
+        });
+        return Promise.reject(EvaluationErrEnum.csvParsingError);
       }
-
-      totalRows += csvRows.length;
-
-      // Convert CSV rows to dataset records
-      const evalDatasetRecords = csvRows.map((row) => {
-        let contextArray: string[] = [];
-        let retrievalContextArray: string[] = [];
-
-        if (row.context !== undefined && row.context) {
-          try {
-            const parsed = JSON.parse(row.context);
-            if (Array.isArray(parsed)) {
-              contextArray = parsed.filter((item) => typeof item === 'string');
-            } else if (typeof parsed === 'string') {
-              contextArray = [parsed];
-            }
-          } catch {
-            contextArray = [row.context];
-          }
-        }
-
-        if (row.retrieval_context !== undefined && row.retrieval_context) {
-          try {
-            const parsed = JSON.parse(row.retrieval_context);
-            if (Array.isArray(parsed)) {
-              retrievalContextArray = parsed.filter((item) => typeof item === 'string');
-            } else if (typeof parsed === 'string') {
-              retrievalContextArray = [parsed];
-            }
-          } catch {
-            retrievalContextArray = [row.retrieval_context];
-          }
-        }
-
-        return {
-          teamId,
-          tmbId,
-          evalDatasetCollectionId: targetCollectionId,
-          [EvalDatasetDataKeyEnum.UserInput]: row.user_input,
-          [EvalDatasetDataKeyEnum.ExpectedOutput]: row.expected_output,
-          [EvalDatasetDataKeyEnum.ActualOutput]: row.actual_output || '',
-          [EvalDatasetDataKeyEnum.Context]: contextArray,
-          [EvalDatasetDataKeyEnum.RetrievalContext]: retrievalContextArray,
-          qualityMetadata: {
-            ...(enableQualityEvaluation
-              ? {}
-              : { status: EvalDatasetDataQualityStatusEnum.unevaluated })
-          },
-          createFrom: EvalDatasetDataCreateFromEnum.fileImport
-        };
-      });
-
-      allEvalDatasetRecords.push(...evalDatasetRecords);
     }
 
     // Validate total row count
@@ -329,11 +356,32 @@ async function handler(
       return Promise.reject(EvaluationErrEnum.csvNoDataRows);
     }
 
+    if (!collectionId) {
+      const collectionResult = await createNewCollection(
+        teamId,
+        tmbId,
+        name!,
+        description,
+        evaluationModel
+      );
+      datasetCollection = collectionResult.datasetCollection;
+      targetCollectionId = collectionResult.targetCollectionId;
+
+      allEvalDatasetRecords = allEvalDatasetRecords.map((record) => ({
+        ...record,
+        evalDatasetCollectionId: targetCollectionId
+      }));
+    }
+
+    if (enableQualityEvaluation) {
+      await checkEvalDatasetDataQualityQueueHealth();
+    }
+
     // Insert all records
     const insertedRecords = await mongoSessionRun(async (session) => {
       return await MongoEvalDatasetData.insertMany(allEvalDatasetRecords, {
         session,
-        ordered: false
+        ordered: true
       });
     });
 
@@ -361,11 +409,9 @@ async function handler(
     })();
 
     return 'success';
-  } catch (error: any) {
-    if (error.message && typeof error.message === 'string') {
-      return Promise.reject(EvaluationErrEnum.csvParsingError);
-    }
-    throw error;
+  } catch (error) {
+    addLog.error('API Eval Dataset Import From File error:', error);
+    return Promise.reject(error);
   } finally {
     removeFilesByPaths(filePaths);
   }

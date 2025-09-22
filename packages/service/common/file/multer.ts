@@ -2,9 +2,19 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import path from 'path';
 import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { bucketNameMap } from '@fastgpt/global/common/file/constants';
+import {
+  bucketNameMap,
+  DEFAULT_FILE_UPLOAD_LIMITS,
+  FileUploadErrorEnum
+} from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, FileUploadError } from '@fastgpt/global/common/error/utils';
+import {
+  validateFileUpload,
+  getEffectiveUploadLimits,
+  formatUploadLimitsMessage,
+  type FileUploadLimits
+} from './uploadValidation';
 
 export type FileType = {
   fieldname: string;
@@ -18,14 +28,24 @@ export type FileType = {
 
 /* 
   maxSize: File max size (MB)
+  customLimits: Custom upload limits configuration
 */
-export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
-  maxSize *= 1024 * 1024;
+export const getUploadModel = ({
+  maxSize = DEFAULT_FILE_UPLOAD_LIMITS.MAX_FILE_SIZE_MB,
+  customLimits
+}: {
+  maxSize?: number;
+  customLimits?: FileUploadLimits;
+} = {}) => {
+  const limits = getEffectiveUploadLimits(customLimits);
+  const effectiveMaxSize = Math.min(maxSize, limits.maxFileSizeMB);
+  const maxSizeBytes = effectiveMaxSize * 1024 * 1024;
 
   class UploadModel {
     uploaderSingle = multer({
       limits: {
-        fieldSize: maxSize
+        fileSize: maxSizeBytes,
+        fieldSize: maxSizeBytes
       },
       preservePath: true,
       storage: multer.diskStorage({
@@ -56,6 +76,15 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
         // @ts-ignore
         this.uploaderSingle(req, res, (error) => {
           if (error) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+              return reject(
+                new FileUploadError(
+                  FileUploadErrorEnum.FILE_TOO_LARGE,
+                  `File exceeds the maximum file size limit of ${effectiveMaxSize}MB`,
+                  { maxSizeMB: effectiveMaxSize }
+                )
+              );
+            }
             return reject(error);
           }
 
@@ -68,11 +97,23 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           // @ts-ignore
           const file = req.file as FileType;
 
+          if (!file) {
+            return reject(new UserError('No file uploaded'));
+          }
+
+          // Validate single file
+          const decodedFile = {
+            ...file,
+            originalname: decodeURIComponent(file.originalname)
+          };
+
+          const validation = validateFileUpload([decodedFile], customLimits);
+          if (!validation.isValid) {
+            return reject(validation.errors[0]);
+          }
+
           resolve({
-            file: {
-              ...file,
-              originalname: decodeURIComponent(file.originalname)
-            },
+            file: decodedFile,
             bucketName,
             metadata: (() => {
               if (!req.body?.metadata) return {};
@@ -97,7 +138,9 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
 
     uploaderMultiple = multer({
       limits: {
-        fieldSize: maxSize
+        fileSize: maxSizeBytes,
+        files: limits.maxFileCount,
+        fieldSize: maxSizeBytes
       },
       preservePath: true,
       storage: multer.diskStorage({
@@ -113,7 +156,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           }
         }
       })
-    }).array('file', global.feConfigs?.uploadFileMaxSize);
+    }).array('file', limits.maxFileCount);
     async getUploadFiles<T = any>(req: NextApiRequest, res: NextApiResponse) {
       return new Promise<{
         files: FileType[];
@@ -122,18 +165,67 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
         // @ts-ignore
         this.uploaderMultiple(req, res, (error) => {
           if (error) {
-            console.log(error);
+            console.log('File upload error:', error);
+
+            if (error.code === 'LIMIT_FILE_SIZE') {
+              return reject(
+                new FileUploadError(
+                  FileUploadErrorEnum.FILE_TOO_LARGE,
+                  `File exceeds the maximum file size limit of ${effectiveMaxSize}MB`,
+                  { maxSizeMB: effectiveMaxSize }
+                )
+              );
+            }
+            if (error.code === 'LIMIT_FILE_COUNT') {
+              return reject(
+                new FileUploadError(
+                  FileUploadErrorEnum.TOO_MANY_FILES,
+                  `File count exceeds the limit, maximum ${limits.maxFileCount} files supported`,
+                  { maxFileCount: limits.maxFileCount }
+                )
+              );
+            }
+            if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+              return reject(
+                new FileUploadError(
+                  FileUploadErrorEnum.TOO_MANY_FILES,
+                  `File count exceeds the limit, maximum ${limits.maxFileCount} files supported`,
+                  { maxFileCount: limits.maxFileCount }
+                )
+              );
+            }
+
             return reject(error);
           }
 
           // @ts-ignore
           const files = req.files as FileType[];
 
+          if (!files || files.length === 0) {
+            return reject(new UserError('No files uploaded'));
+          }
+
+          // Decode filenames and validate all files
+          const decodedFiles = files.map((file) => ({
+            ...file,
+            originalname: decodeURIComponent(file.originalname)
+          }));
+
+          const validation = validateFileUpload(decodedFiles, customLimits);
+          if (!validation.isValid) {
+            // Return the first error, but include information about all errors
+            const errorMessage = validation.errors.map((err) => err.message).join('; ');
+            return reject(
+              new FileUploadError(validation.errors[0].code, errorMessage, {
+                errors: validation.errors,
+                totalErrors: validation.errors.length,
+                limits: formatUploadLimitsMessage(limits)
+              })
+            );
+          }
+
           resolve({
-            files: files.map((file) => ({
-              ...file,
-              originalname: decodeURIComponent(file.originalname)
-            })),
+            files: validation.validFiles,
             data: (() => {
               if (!req.body?.data) return {};
               try {
