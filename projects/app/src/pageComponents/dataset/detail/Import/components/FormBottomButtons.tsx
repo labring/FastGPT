@@ -214,7 +214,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       onError(error) {
         setConnectionStatus('error');
         setConnectionMessage(error.message || t('dataset:connection_failed'));
-      }
+      },
+      errorToast: ''
     }
   );
 
@@ -244,9 +245,16 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     switch (connectionStatus) {
       case 'loading':
         return (
-          <VStack h={'100%'} justifyContent={'center'}>
-            <Spinner size="lg" color="blue.500" thickness="4px" w={'48px'} h={'48px'} />
-            <Text fontSize="sm" color="myGray.600">
+          <VStack h={'100%'} justifyContent={'center'} alignItems={'center'}>
+            <Spinner
+              size="lg"
+              emptyColor="gray.200"
+              color="blue.500"
+              thickness="4px"
+              w={'48px'}
+              h={'48px'}
+            />
+            <Text fontSize="12px" color="myGray.500">
               {t('dataset:reconnecting')}
             </Text>
           </VStack>
@@ -258,41 +266,47 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
             return t('dataset:no_changes_detected');
           }
 
-          const parts = [];
-          if (databaseChanges.modifiedTables > 0) {
-            parts.push(
+          const { modifiedTables, deletedTables } = databaseChanges;
+
+          // 既有列变更又有表删除
+          if (modifiedTables > 0 && deletedTables > 0) {
+            return (
+              t('dataset:tables_modified_and_deleted', {
+                modifiedTables,
+                deletedTables
+              }) + t('dataset:please_check_latest_data')
+            );
+          }
+
+          // 只有列变更
+          if (modifiedTables > 0) {
+            return (
               t('dataset:tables_modified', {
-                modifiedTables: databaseChanges.modifiedTables
-              })
+                modifiedTables
+              }) + t('dataset:please_check_latest_data')
             );
           }
-          if (databaseChanges.deletedTables > 0) {
-            parts.push(
+
+          // 只有表删除
+          if (deletedTables > 0) {
+            return (
               t('dataset:tables_deleted', {
-                deletedTables: databaseChanges.deletedTables
-              })
+                deletedTables
+              }) + t('dataset:please_check_latest_data')
             );
           }
-
-          if (parts.length > 0) {
-            parts.push(t('dataset:please_check_latest_data'));
-          }
-
-          return t('dataset:changes_detected') + parts.join('，');
         };
 
         return (
           <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
-            <Flex direction="column" h={'70px'} w="317px">
+            <Flex direction="column" w="317px">
               <Flex mb={1} w={'100%'}>
-                <Circle size="20px" bg="green.500" color="white" mt={0.5}>
-                  <MyIcon name="check" w="12px" h="12px" />
-                </Circle>
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900" ml={1}>
+                <MyIcon name="core/workflow/runSuccess" w={6} h={6} mr={3} />
+                <Box fontSize="16px" fontWeight="medium" color="myGray.900">
                   {t('dataset:reconnect_success')}
                 </Box>
               </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={6}>
+              <Text fontSize="14px" color="myGray.600" pl={9}>
                 {getSubTitle()}
                 {databaseChanges.hasChanges && (
                   <Text
@@ -316,17 +330,15 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       case 'error':
         return (
           <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
-            <Flex direction="column" h={'70px'} w="317px">
+            <Flex direction="column" w="317px">
               <Flex mb={1} w={'100%'}>
-                <Circle size="20px" bg="red.500" color="white" mt={0.5}>
-                  <CloseIcon boxSize={2.5} />
-                </Circle>
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900" ml={1}>
+                <MyIcon name="core/workflow/runError" w={6} h={6} mr={3} />
+                <Box fontSize="16px" fontWeight="medium" color="myGray.900">
                   {t('dataset:connection_failed')}
                 </Box>
               </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={6}>
-                {t('dataset:auth_failed')}
+              <Text fontSize="14px" color="myGray.600" pl={9}>
+                {t(connectionMessage)}
               </Text>
             </Flex>
           </ModalBody>
@@ -344,8 +356,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         <HStack justifyContent={'flex-end'}>
           {connectionTest.message && (
             <>
-              <MyIcon w="16px" h="16px" name={icon as any} color={color} />
-              <Box>{connectionTest.message}</Box>
+              <MyIcon w={6} h={6} name={icon as any} color={color} />
+              <Box color="black">{connectionTest.message}</Box>
             </>
           )}
           <Flex>
@@ -382,8 +394,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         <HStack justifyContent={'flex-end'}>
           {!connectionTest.success && connectionTest.message && (
             <>
-              <MyIcon w="16px" h="16px" name="common/circleAlert" />
-              <Box>{connectionTest.message}</Box>
+              <MyIcon w={4} h={4} name="common/circleAlert" />
+              <Box color="black">{connectionTest.message}</Box>
             </>
           )}
           <Button
@@ -411,7 +423,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
           isOpen={showConnectionModal}
           onClose={connectionStatus === 'loading' ? undefined : handleCloseModal}
           title={t('dataset:reconnect_database')}
-          iconSrc="/imgs/modal/database.svg"
+          iconSrc="core/dataset/datasetLight"
+          iconColor="primary.600"
           size="md"
           w="500px"
           h="300px"

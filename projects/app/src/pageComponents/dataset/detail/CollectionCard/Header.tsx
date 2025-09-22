@@ -50,6 +50,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
@@ -139,17 +140,47 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     }
   );
 
+  const getTips = (data: DetectChangesResponse) => {
+    const { summary } = data;
+    if (summary?.modifiedTables > 0 && summary?.deletedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_modified_and_deleted', {
+            modifiedTables: summary.modifiedTables,
+            deletedTables: summary.deletedTables
+          })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+    if (summary?.modifiedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_with_column_changes', { modifiedTablesCount: summary.modifiedTables })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+    if (summary?.deletedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_not_exist', { delTablesCount: summary.deletedTables })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+  };
+
   const handleRefreshDataSource = async () => {
     try {
       const result = await onDetectDatabaseChanges();
-      console.log(result.summary);
 
       const toastId = toast({
         position: 'bottom-right',
         duration: null,
         render: () => (
           <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
-            <AlertIcon />
+            <AlertIcon w={6} h={6} />
             <Box flex={1} color={'myGray.900'}>
               <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
               <AlertDescription fontSize={'14px'}>
@@ -157,18 +188,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                   t('dataset:no_data_changes')
                 ) : (
                   <Box>
-                    {t('dataset:found')}
-                    {result.summary.modifiedTables > 0 && (
-                      <>
-                        {result.summary.modifiedTables} {t('dataset:tables_with_column_changes')}
-                      </>
-                    )}
-                    {result.summary.deletedTables > 0 && (
-                      <>
-                        {result.summary.deletedTables} {t('dataset:tables_not_exist')}
-                      </>
-                    )}
-                    {t('dataset:check_latest_data')}
+                    {getTips(result)}
                     <Button
                       variant="link"
                       size="sm"
@@ -203,11 +223,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         duration: null,
         render: () => (
           <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
-            <AlertIcon />
+            <Box mr={3}>
+              <MyIcon name="core/workflow/runError" w={6} h={6}></MyIcon>
+            </Box>
             <Box flex={1} color={'myGray.900'}>
               <AlertTitle fontWeight={'md'}>{t('dataset:refresh_failed')}</AlertTitle>
               <AlertDescription fontSize={'14px'}>
-                {error?.message || t('dataset:unknown_error')}
+                {t(error?.message) || t('dataset:unknown_error')}
               </AlertDescription>
             </Box>
             <CloseButton

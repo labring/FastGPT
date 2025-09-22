@@ -77,8 +77,8 @@ const DataBaseConfig = () => {
     handleChangeColumnData,
     handleColumnToggle,
     onSubmit,
-    tableChangeSummary,
-    currentTableColumnChanges
+    currentTableColumnChanges,
+    tableChangeSummary
   } = useDataBaseConfig(datasetId, isEditMode, { getValues, setValue, watch, reset });
 
   const [searchColumn, setSearchColumn] = useState('');
@@ -118,6 +118,72 @@ const DataBaseConfig = () => {
     );
   }
 
+  const getTableBanner = () => {
+    if (!(isEditMode && tableChangeSummary.hasBannerTip)) return '';
+    const { modifiedTables, deletedTables } = tableChangeSummary;
+    if (modifiedTables?.count > 0 && deletedTables?.count > 0) {
+      return (
+        <>
+          <Text>
+            {t('dataset:tables_with_column_changes', {
+              modifiedTablesCount: modifiedTables.count
+            })}
+          </Text>
+          <MyTooltip
+            label={
+              <>
+                {deletedTables.tableNames.map((v) => (
+                  <Text color={'gray.900'} key={v}>
+                    {v}
+                  </Text>
+                ))}
+              </>
+            }
+          >
+            <Link mx={'4px'} color={'primary.600'}>
+              {deletedTables.count}
+            </Link>
+          </MyTooltip>
+          {t('dataset:tables_no_longer_exist_comma')}
+        </>
+      );
+    }
+    if (modifiedTables?.count > 0) {
+      return (
+        <>
+          <Text>
+            {t('dataset:tables_with_column_changes', {
+              modifiedTablesCount: modifiedTables.count
+            })}
+          </Text>
+        </>
+      );
+    }
+    if (deletedTables?.count > 0) {
+      return (
+        <>
+          {t('dataset:found')}
+          <MyTooltip
+            label={
+              <>
+                {deletedTables.tableNames.map((v) => (
+                  <Text color={'gray.900'} key={v}>
+                    {v}
+                  </Text>
+                ))}
+              </>
+            }
+          >
+            <Link mx={'4px'} color={'primary.600'}>
+              {deletedTables.count}
+            </Link>
+          </MyTooltip>
+          {t('dataset:tables_no_longer_exist_comma')}
+        </>
+      );
+    }
+  };
+
   return (
     <Flex px={7} flexDirection={'column'} h="100%">
       {/* Edit Mode Warning Banner */}
@@ -126,32 +192,7 @@ const DataBaseConfig = () => {
           <Flex alignItems={'center'} fontSize="sm">
             <MyIcon name="common/info" w={4} h={4} color={'yellow.500'} mr={2} />
             <Text>{t('dataset:data_source_refreshed')}</Text>
-            <Text>{t('dataset:found')}</Text>
-            {tableChangeSummary.modifiedTables.count > 0 && (
-              <Text>
-                {t('dataset:tables_with_column_changes', {
-                  modifiedTablesCount: tableChangeSummary.modifiedTables.count
-                })}
-              </Text>
-            )}
-            {tableChangeSummary.deletedTables.count > 0 && (
-              <Text>
-                <MyTooltip
-                  label={
-                    <>
-                      {tableChangeSummary.deletedTables.tableNames.map((v) => (
-                        <Text color={'gray.900'} key={v}>
-                          {v}
-                        </Text>
-                      ))}
-                    </>
-                  }
-                >
-                  <Link>{tableChangeSummary.deletedTables.count}</Link>
-                </MyTooltip>
-                {t('dataset:tables_not_exist')}
-              </Text>
-            )}
+            {getTableBanner()}
             <Text>{t('dataset:please_check_latest_data')}</Text>
           </Flex>
         </Alert>
@@ -258,22 +299,10 @@ const DataBaseConfig = () => {
                 <MyIcon name="common/info" w={4} h={4} mr={2} color={'yellow.500'} />
                 <Text>{t('dataset:found')}</Text>
                 {currentTableColumnChanges.addedColumns.count > 0 && (
-                  <Text>
-                    <MyTooltip
-                      label={
-                        <>
-                          {currentTableColumnChanges.addedColumns.columnNames.map((v) => (
-                            <Text color={'gray.900'} key={v}>
-                              {v}
-                            </Text>
-                          ))}
-                        </>
-                      }
-                    >
-                      <Link>{currentTableColumnChanges.addedColumns.count}</Link>
-                    </MyTooltip>
-                    {t('dataset:new_columns_added_disabled')}
-                  </Text>
+                  <>
+                    <Text mx={'4px'}>{currentTableColumnChanges.addedColumns.count}</Text>
+                    <Text>{t('dataset:new_columns_added_disabled')}</Text>
+                  </>
                 )}
                 {currentTableColumnChanges.deletedColumns.count > 0 && (
                   <Text>
@@ -286,7 +315,13 @@ const DataBaseConfig = () => {
                         </>
                       }
                     >
-                      <Link>{currentTableColumnChanges.deletedColumns.count}</Link>
+                      <Link
+                        mr={'4px'}
+                        ml={currentTableColumnChanges.addedColumns.count > 0 ? '0px' : '4px'}
+                        color={'primary.600'}
+                      >
+                        {currentTableColumnChanges.deletedColumns.count}
+                      </Link>
                     </MyTooltip>
                     {t('dataset:columns_no_longer_exist')}
                   </Text>

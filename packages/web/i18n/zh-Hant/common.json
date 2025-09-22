@@ -1355,5 +1355,6 @@
   "search_model_desc": "用於生成可在資料庫中檢索的SQL語句，並進行檢索與匯總，生成可用於對話的文字。",
   "search_model_tip": "使用非推理模型、參數量大的模型效果更佳。",
   "other_knowledge_base": "其他知識庫",
-  "table_not_exist": "不存在"
+  "table_not_exist": "不存在",
+  "core.app.workflow.search_knowledge.database": "資料庫"
 }
