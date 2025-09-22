@@ -402,7 +402,7 @@ const renderHttpMethod = (method?: string) => {
 
   const HTTP_METHOD_STYLES = {
     GET: { bg: 'green.50', color: 'green.600' },
-    POST: { bg: 'yello.50', color: 'yellow.600' },
+    POST: { bg: 'yellow.50', color: 'yellow.600' },
     PUT: { bg: 'blue.50', color: 'blue.600' },
     DELETE: { bg: 'red.50', color: 'red.600' },
     PATCH: { bg: 'adora.50', color: 'adora.600' },
