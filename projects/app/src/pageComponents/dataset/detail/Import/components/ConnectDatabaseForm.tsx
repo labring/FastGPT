@@ -1,7 +1,7 @@
 /**
  * @file 连接数据库配置表单
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -24,6 +24,7 @@ import { databaseAddrValidator } from '../utils';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import MyInput from '@/components/MyInput';
 
 export type DatabaseFormData = {
   client: DatabaseConfig['client'];
@@ -45,6 +46,7 @@ const ConnectDatabaseConfig = () => {
   const setCurrentTab = useContextSelector(DatasetImportContext, (v) => v.setTab);
   const isEditMode = useContextSelector(DatasetImportContext, (v) => v.isEditMode);
   const datasetId = useContextSelector(DatasetImportContext, (v) => v.datasetId);
+  const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
   const databaseConfig = useContextSelector(
     DatasetPageContext,
     (v) => v.datasetDetail?.databaseConfig
@@ -65,16 +67,37 @@ const ConnectDatabaseConfig = () => {
     handleSubmit,
     watch,
     getValues,
+    reset,
     formState: { errors, isValid }
   } = useForm<DatabaseFormData>({
     defaultValues
   });
 
+  // 页面加载时重新执行一次loadDatasetDetail
+  useEffect(() => {
+    if (loadDatasetDetail) {
+      loadDatasetDetail(datasetId).then((res) => {
+        const databaseConfig = res.databaseConfig;
+        const defaultValues = {
+          client: databaseConfig?.client || 'mysql',
+          host: databaseConfig?.host || '',
+          port: databaseConfig?.port || 3306,
+          database: databaseConfig?.database || '',
+          user: databaseConfig?.user || '',
+          password: databaseConfig?.password || '',
+          poolSize: databaseConfig?.poolSize || 20
+        };
+        reset(defaultValues);
+      });
+    }
+  }, []);
+
   const formData = watch();
 
-  const handleSuccess = () => {
-    console.log(goToNext);
-    !isEditMode ? goToNext() : setCurrentTab(1);
+  const handleSuccess = async (isGoNext = true) => {
+    if (isGoNext) {
+      !isEditMode ? goToNext() : setCurrentTab(1);
+    }
   };
 
   return (
@@ -213,7 +236,18 @@ const ConnectDatabaseConfig = () => {
           <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
             {t('dataset:database_password')}
           </FormLabel>
-          <Input
+          <MyInput
+            rightIcon={
+              <>
+                <MyIcon
+                  cursor={'pointer'}
+                  onClick={() => setShowPassword((e) => !e)}
+                  name={showPassword ? 'visible' : 'invisible'}
+                  w={4}
+                  h={4}
+                ></MyIcon>
+              </>
+            }
             type={showPassword ? 'text' : 'password'}
             placeholder={t('dataset:password_placeholder')}
             bg="myGray.50"

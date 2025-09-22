@@ -349,5 +349,6 @@
   "ip_format_invalid_range": "IP地址格式不正确，每段数值应在0-255之间",
   "database_address_format_invalid": "数据库地址格式不正确，请输入有效的IP地址或域名",
    "tables_modified_and_deleted": "发现 {{modifiedTables}} 个数据表存在列的变更，{{deletedTables}} 个数据表已不存在，",
-   "tables_no_longer_exist_comma": "个数据表已不存在，"
+   "tables_no_longer_exist_comma": "个数据表已不存在，",
+   "no_data_in_database": "该数据库中没有数据"
 }

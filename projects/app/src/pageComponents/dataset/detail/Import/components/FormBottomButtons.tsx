@@ -1,16 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  ModalBody,
-  VStack,
-  Text,
-  Spinner,
-  Circle
-} from '@chakra-ui/react';
-import { CloseIcon } from '@chakra-ui/icons';
+import { Box, Button, Flex, HStack, ModalBody, VStack, Text, Spinner } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -23,6 +12,7 @@ import {
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type { DatabaseFormData } from './ConnectDatabaseForm';
 import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 interface ConnectionTestResult {
   success: boolean;
@@ -41,7 +31,7 @@ interface FormBottomButtonsProps {
   disabled?: boolean;
   formData: DatabaseFormData;
   datasetId: string;
-  onSuccess?: () => void;
+  onSuccess?: (isGoNext?: boolean) => void;
   originalConfig?: DatabaseFormData;
   beforeSubmit: (successCb: any) => any;
 }
@@ -115,6 +105,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
 
   const formDataString = useMemo(() => JSON.stringify(formData), [formData]);
 
+  const { toast } = useToast();
+
   React.useEffect(() => {
     if (connectionTest.message || connectionTest.success) {
       setConnectionTest({
@@ -122,6 +114,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         message: ''
       });
     }
+    connectionMessage && setConnectionMessage('');
   }, [formDataString]);
 
   // 连接测试请求
@@ -172,12 +165,10 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         poolSize: data.poolSize
       };
 
-      if (isModifyData) {
-        await updateDatasetConfig({
-          id: datasetId,
-          databaseConfig
-        });
-      }
+      await updateDatasetConfig({
+        id: datasetId,
+        databaseConfig
+      });
 
       // 如果有关键配置变更，需要检测数据库变更
       if (hasKeyConfigChanges) {
@@ -186,10 +177,13 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     },
     {
       onSuccess(res: DetectChangesResponse | undefined) {
+        onSuccess?.(!isEditMode);
         if (!res) {
-          if (isOnlyPoolSizeChange) {
-            // 只是连接池变更，直接成功回调
-            onSuccess?.();
+          if (isOnlyPoolSizeChange || !isModifyData) {
+            toast({
+              title: t('common:save_success'),
+              status: 'success'
+            });
             return;
           }
           setConnectionStatus('success');
@@ -219,21 +213,15 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     }
   );
 
-  const handleConnectAndNext = useCallback(
-    async (data: any) => {
-      if (!isEditMode || isOnlyPoolSizeChange) {
-        await onSubmitForm(formData);
-      } else if (hasKeyConfigChanges) {
-        setShowConnectionModal(true);
-        setConnectionStatus('loading');
-        setConnectionMessage('');
-        await onSubmitForm(formData);
-      }
+  const handleConnectAndNext = async (data: any) => {
+    if (hasKeyConfigChanges && isEditMode) {
+      setShowConnectionModal(true);
+      setConnectionStatus('loading');
+      setConnectionMessage('');
+    }
 
-      !isEditMode && onSuccess?.();
-    },
-    [isEditMode, formData, onSubmitForm, isOnlyPoolSizeChange, hasKeyConfigChanges, onSuccess]
-  );
+    await onSubmitForm(formData);
+  };
 
   const handleCloseModal = () => {
     setShowConnectionModal(false);
@@ -376,7 +364,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
             <Button
               isLoading={isSubmitting}
               colorScheme="blue"
-              disabled={isSubmitting || isConnecting || !isModifyData}
+              disabled={isSubmitting || isConnecting}
               onClick={beforeSubmit(handleConnectAndNext)}
               px={6}
             >
@@ -392,10 +380,10 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
     return (
       <>
         <HStack justifyContent={'flex-end'}>
-          {!connectionTest.success && connectionTest.message && (
+          {connectionMessage && (
             <>
               <MyIcon w={4} h={4} name="common/circleAlert" />
-              <Box color="black">{connectionTest.message}</Box>
+              <Box color="black">{t(connectionMessage)}</Box>
             </>
           )}
           <Button

@@ -47,7 +47,7 @@ const SearchParamsTip = ({
 
   const generateSqlModelName = useMemo(
     () => (generateSqlModel ? getWebLLMModel(generateSqlModel)?.name : undefined),
-    [generateSqlModel, llmModelList]
+    [generateSqlModel]
   );
 
   const onlyDatabase = useMemo(
