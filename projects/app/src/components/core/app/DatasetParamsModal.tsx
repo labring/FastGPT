@@ -154,7 +154,7 @@ const DatasetParamsModal = ({
           <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4}>
             <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={'primary.600'} />
             <Box color="myGray.900" fontSize="16px" fontWeight="500">
-              {t('dataset:database')}
+              {t('common:core.app.workflow.search_knowledge.database')}
             </Box>
           </HStack>
         )}
