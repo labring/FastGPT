@@ -423,8 +423,8 @@ const DataBaseConfig = () => {
                 </Thead>
                 <Tbody>
                   {showColumns.map((column) => {
-                    const originalIndex = currentTable.columns.findIndex(
-                      (c) => c.columnName === column.columnName
+                    const originalIndex = getValues('columns').findIndex(
+                      (c) => c?.columnName === column.columnName
                     );
                     return (
                       <Tr key={column.columnName} borderRadius="0" _hover={{ bg: 'myGray.50' }}>
