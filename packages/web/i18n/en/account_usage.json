@@ -58,5 +58,6 @@
   "usage_detail": "Usage details",
   "user_type": "Type",
   "wecom": "WeCom",
-  "evaluation_summary_generation": "Generate summary"
+  "evaluation_summary_generation": "Generate summary",
+  "generate_answer": "生成应用回答"
 }
