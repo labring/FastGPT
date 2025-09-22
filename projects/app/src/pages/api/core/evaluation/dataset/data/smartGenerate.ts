@@ -4,7 +4,10 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
-import { addEvalDatasetDataSynthesizeJob } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
+import {
+  addEvalDatasetDataSynthesizeJob,
+  checkEvalDatasetDataSynthesizeQueueHealth
+} from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
@@ -131,7 +134,7 @@ async function handler(
   }
 
   // Handle collection - either get existing or create new
-  let evalDatasetCollection;
+  let evalDatasetCollection: any;
   if (collectionId) {
     // Mode 1: Use existing collection
     evalDatasetCollection = await MongoEvalDatasetCollection.findById(collectionId);
@@ -142,7 +145,7 @@ async function handler(
       return Promise.reject(EvaluationErrEnum.evalInsufficientPermission);
     }
   } else {
-    // Mode 2: Create new collection
+    // Mode 2: Create new collection (will be created later after data validation)
 
     // Check evaluation dataset limit
     await checkTeamEvalDatasetLimit(teamId);
@@ -155,27 +158,8 @@ async function handler(
       return Promise.reject(EvaluationErrEnum.evalDuplicateDatasetName);
     }
 
-    const defaultEvaluationModel = getDefaultEvaluationModel();
-    const evaluationModelToUse = intelligentGenerationModel || defaultEvaluationModel?.model;
-
-    const collectionData = await mongoSessionRun(async (session) => {
-      const [collection] = await MongoEvalDatasetCollection.create(
-        [
-          {
-            teamId,
-            tmbId,
-            name: name!.trim(),
-            description: (description || '').trim(),
-            evaluationModel: evaluationModelToUse
-          }
-        ],
-        { session, ordered: true }
-      );
-      return collection;
-    });
-
-    evalDatasetCollection = collectionData;
-    targetCollectionId = String(collectionData._id);
+    evalDatasetCollection = null;
+    targetCollectionId = '';
   }
 
   const totalDataCount = await MongoDatasetData.countDocuments({
@@ -256,7 +240,7 @@ async function handler(
         const evalData: Partial<EvalDatasetDataSchemaType> = {
           teamId,
           tmbId,
-          evalDatasetCollectionId: targetCollectionId,
+          evalDatasetCollectionId: targetCollectionId || '',
           [EvalDatasetDataKeyEnum.UserInput]: sample.q,
           [EvalDatasetDataKeyEnum.ExpectedOutput]: sample.a,
           [EvalDatasetDataKeyEnum.ActualOutput]: '',
@@ -280,9 +264,46 @@ async function handler(
         synthesizeJobs.push({
           dataId: sample._id.toString(),
           intelligentGenerationModel,
-          evalDatasetCollectionId: targetCollectionId
+          evalDatasetCollectionId: targetCollectionId || ''
         });
       }
+    }
+
+    if (synthesizeJobs.length > 0) {
+      await checkEvalDatasetDataSynthesizeQueueHealth();
+    }
+
+    // Create collection now that we have confirmed valid data to process
+    if (!collectionId) {
+      const defaultEvaluationModel = getDefaultEvaluationModel();
+      const evaluationModelToUse = intelligentGenerationModel || defaultEvaluationModel?.model;
+
+      const collectionData = await mongoSessionRun(async (session) => {
+        const [collection] = await MongoEvalDatasetCollection.create(
+          [
+            {
+              teamId,
+              tmbId,
+              name: name!.trim(),
+              description: (description || '').trim(),
+              evaluationModel: evaluationModelToUse
+            }
+          ],
+          { session, ordered: true }
+        );
+        return collection;
+      });
+
+      evalDatasetCollection = collectionData;
+      targetCollectionId = String(collectionData._id);
+
+      // Update evalDatasetCollectionId in all prepared data
+      completeQAPairs.forEach((data) => {
+        data.evalDatasetCollectionId = targetCollectionId;
+      });
+      synthesizeJobs.forEach((job) => {
+        job.evalDatasetCollectionId = targetCollectionId;
+      });
     }
 
     // Direct insert complete Q&A pairs
