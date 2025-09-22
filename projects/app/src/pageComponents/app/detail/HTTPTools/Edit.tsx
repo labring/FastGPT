@@ -64,6 +64,7 @@ const Edit = () => {
             currentTool={currentTool}
             setCurrentTool={setCurrentTool}
             toolList={toolList}
+            baseUrl={baseUrl}
             apiSchemaStr={apiSchemaStr}
             headerSecret={headerSecret}
             customHeaders={customHeaders}

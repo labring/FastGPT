@@ -15,11 +15,13 @@ import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ConfigModal from './ConfigModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 
 const EditForm = ({
   currentTool,
   setCurrentTool,
   toolList,
+  baseUrl,
   headerSecret,
   customHeaders,
   apiSchemaStr
@@ -27,6 +29,7 @@ const EditForm = ({
   currentTool?: HttpToolConfigType;
   setCurrentTool?: (tool: HttpToolConfigType) => void;
   toolList?: HttpToolConfigType[];
+  baseUrl?: string;
   headerSecret?: StoreSecretValueType;
   customHeaders?: string;
   apiSchemaStr?: string;
@@ -174,6 +177,7 @@ const EditForm = ({
           tool={toolDetail}
           onClose={() => setToolDetail(null)}
           toolList={toolList || []}
+          baseUrl={baseUrl || ''}
           apiSchemaStr={apiSchemaStr || ''}
           headerSecret={headerSecret || {}}
           customHeaders={customHeaders || '{}'}
@@ -189,6 +193,7 @@ const ToolDetailModal = ({
   tool,
   onClose,
   toolList,
+  baseUrl,
   apiSchemaStr,
   headerSecret,
   customHeaders
@@ -196,6 +201,7 @@ const ToolDetailModal = ({
   tool: HttpToolConfigType;
   onClose: () => void;
   toolList: HttpToolConfigType[];
+  baseUrl: string;
   apiSchemaStr: string;
   headerSecret: StoreSecretValueType;
   customHeaders: string;
@@ -215,7 +221,7 @@ const ToolDetailModal = ({
   });
 
   const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest2(
-    async (data: any) => await putUpdateHttpPlugin(data),
+    async (data: UpdateHttpPluginBody) => await putUpdateHttpPlugin(data),
     {
       manual: true,
       successToast: t('common:update_success'),
@@ -383,6 +389,7 @@ const ToolDetailModal = ({
               runUpdateHttpPlugin({
                 appId: appDetail._id,
                 toolList: updatedToolList,
+                baseUrl,
                 apiSchemaStr,
                 headerSecret,
                 customHeaders
