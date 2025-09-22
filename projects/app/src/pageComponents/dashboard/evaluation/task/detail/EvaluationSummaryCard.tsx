@@ -1,102 +1,125 @@
-import React, { useState } from 'react';
-import { Box, Flex, Text, IconButton } from '@chakra-ui/react';
+import React, { useState, useCallback } from 'react';
+import { Box, Flex, Text, IconButton, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import GradientBorderBox from './GradientBorderBox';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
-
-interface EvaluationSummaryData {
-  metricName: string;
-  metricScore: number;
-  threshold: number;
-  summaryStatus: string;
-  customSummary?: string;
-  errorReason?: string;
-}
+import type { EvaluationSummaryResponse } from '@fastgpt/global/core/evaluation/summary/api';
 
 interface EvaluationSummaryCardProps {
-  data: EvaluationSummaryData[];
+  data: EvaluationSummaryResponse['data'];
+  onRetryGeneration?: (metricIds: string[]) => Promise<void>;
 }
 
-const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({ data }) => {
+const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({
+  data,
+  onRetryGeneration
+}) => {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
+  const handlePrevious = useCallback(() => {
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+  }, []);
 
-  const handleNext = () => {
-    if (currentIndex < data.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => Math.min(data.length - 1, prev + 1));
+  }, [data.length]);
 
-  const renderSummaryContent = (item: EvaluationSummaryData) => {
-    switch (item.summaryStatus) {
-      case SummaryStatusEnum.completed:
+  const handleRetryGeneration = useCallback(
+    async (item: EvaluationSummaryResponse['data'][0]) => {
+      if (!item.metricId || !onRetryGeneration) return;
+
+      await onRetryGeneration([item.metricId]);
+    },
+    [onRetryGeneration]
+  );
+
+  const renderSummaryContent = useCallback(
+    (item: EvaluationSummaryResponse['data'][0]) => {
+      const { summaryStatus, customSummary, errorReason } = item;
+
+      if (summaryStatus === SummaryStatusEnum.completed) {
         return (
           <Text fontSize="12px" color="myGray.600" lineHeight="1.5">
-            {item.customSummary}
+            {customSummary}
           </Text>
         );
-      case SummaryStatusEnum.failed:
+      }
+
+      if (summaryStatus === SummaryStatusEnum.failed) {
         return (
           <Box>
             <Text fontSize="12px" color="red.500" mb={1}>
               {t('dashboard_evaluation:summary_generation_error')}
+              <Link
+                color="red.600"
+                textDecoration="underline"
+                _hover={{ color: 'red.700' }}
+                onClick={() => handleRetryGeneration(item)}
+                ml={1}
+              >
+                {t('dashboard_evaluation:click_to_retry')}
+              </Link>
             </Text>
             <Text fontSize="12px" color="red.500">
               {t('dashboard_evaluation:error_message_prefix')}
-              {item.errorReason}
+              {errorReason}
             </Text>
           </Box>
         );
-      case SummaryStatusEnum.pending:
+      }
+
+      if (
+        summaryStatus === SummaryStatusEnum.pending ||
+        summaryStatus === SummaryStatusEnum.generating
+      ) {
+        const statusText =
+          summaryStatus === SummaryStatusEnum.pending
+            ? t('dashboard_evaluation:summary_pending_generation')
+            : t('dashboard_evaluation:summary_generating_content');
+
         return (
           <Flex align="center" justify="center" gap="4px">
             <MyIcon name="gradientLoading" w="16px" h="16px" />
             <Text fontSize="12px" bgGradient="linear(to-b, #a1D580FF, #6b40E0D0)" bgClip="text">
-              {t('dashboard_evaluation:summary_pending_generation')}
+              {statusText}
             </Text>
           </Flex>
         );
-      case SummaryStatusEnum.generating:
-        return (
-          <Flex align="center" justify="center" gap="4px">
-            <MyIcon name="gradientLoading" w="16px" h="16px" />
-            <Text fontSize="12px" bgGradient="linear(to-b, #a1D580FF, #6b40E0D0)" bgClip="text">
-              {t('dashboard_evaluation:summary_generating_content')}
+      }
+
+      return null;
+    },
+    [t, handleRetryGeneration]
+  );
+
+  const renderSingleDimension = useCallback(
+    (item: EvaluationSummaryResponse['data'][0], index: number) => {
+      const dimensionInfo = getBuiltinDimensionInfo(item.metricName);
+      const dimensionName = t(dimensionInfo?.name) || item.metricName;
+      const isExpected = item.metricScore >= item.threshold;
+      const expectationText = isExpected
+        ? t('dashboard_evaluation:meets_expectation')
+        : t('dashboard_evaluation:below_expectation');
+      const title = `${dimensionName}${expectationText}`;
+
+      return (
+        <Box key={index}>
+          <Flex align="center" mb={1}>
+            <MyImage src="/imgs/avatar/summaryAvatar.svg" alt="summary avatar" w="40px" h="40px" />
+            <Text fontSize="14px" fontWeight="medium" color="myGray.900">
+              {title}
             </Text>
           </Flex>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderSingleDimension = (item: EvaluationSummaryData, index: number) => {
-    const dimensionInfo = getBuiltinDimensionInfo(item.metricName);
-    const dimensionName = t(dimensionInfo?.name) || item.metricName;
-    const isExpected = item.metricScore >= item.threshold;
-    const title = `${dimensionName}${isExpected ? t('dashboard_evaluation:meets_expectation') : t('dashboard_evaluation:below_expectation')}`;
-
-    return (
-      <Box key={index}>
-        <Flex align="center" mb={1}>
-          <MyImage src="/imgs/avatar/summaryAvatar.svg" alt="summary avatar" w="40px" h="40px" />
-          <Text fontSize="14px" fontWeight="medium" color="myGray.900">
-            {title}
-          </Text>
-        </Flex>
-        {renderSummaryContent(item)}
-      </Box>
-    );
-  };
+          {renderSummaryContent(item)}
+        </Box>
+      );
+    },
+    [t, renderSummaryContent]
+  );
 
   if (data.length === 0) {
     return null;
