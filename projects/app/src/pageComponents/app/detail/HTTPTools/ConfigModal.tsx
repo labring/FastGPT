@@ -141,7 +141,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
       onClose={onClose}
       iconSrc={'common/setting'}
       iconColor={'primary.600'}
-      title={t('common:Params_config')}
+      title={t('app:Params_config')}
       w={600}
     >
       <ModalBody px={9}>

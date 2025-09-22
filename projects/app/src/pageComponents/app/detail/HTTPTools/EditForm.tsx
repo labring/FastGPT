@@ -64,9 +64,7 @@ const EditForm = ({
             }
             onClick={onOpenConfigModal}
           >
-            {toolList?.length && toolList.length > 0
-              ? t('common:Config')
-              : t('common:Start_config')}
+            {toolList?.length && toolList.length > 0 ? t('common:Config') : t('app:Start_config')}
           </Button>
         </Flex>
 
@@ -293,7 +291,7 @@ const ToolDetailModal = ({
           <Box>{t('workflow:tool_params.params_description')}</Box>
           <Box display={'flex'} gap={1}>
             {t('workflow:field_used_as_tool_input')}
-            <QuestionTip label={t('workflow:tool_tip')} />
+            <QuestionTip label={t('app:tool_tip')} />
           </Box>
         </Flex>
 

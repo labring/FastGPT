@@ -52,8 +52,7 @@ export const getTeamPlugTemplates = async (data?: {
       }));
       // handle http toolset
     } else if (app.type === AppTypeEnum.httpToolSet) {
-      const toolList = app.modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet)
-        ?.toolConfig?.httpToolSet?.toolList;
+      const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
       if (!toolList) return [];
       return toolList.map((item) => ({
         id: `${PluginSourceEnum.http}-${app._id}/${item.name}`,

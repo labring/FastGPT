@@ -208,7 +208,6 @@
   "tool_params.params_name_placeholder": "name/age/sql",
   "tool_params.tool_params_result": "Parameter configuration results",
   "tool_raw_response_description": "The original response of the tool",
-  "tool_tip": "When executed as a tool, is this field used as a tool response result?",
   "trigger_after_application_completion": "Will be triggered after the application is fully completed",
   "unFoldAll": "Expand all",
   "update_link_error": "Error updating link",

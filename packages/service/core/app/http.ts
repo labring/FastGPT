@@ -1,4 +1,3 @@
-import { addLog } from '../../common/system/log';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSecretValue } from '../../common/secret/utils';
 import axios from 'axios';
@@ -13,11 +12,7 @@ export type RunHTTPToolParams = {
 };
 
 export type RunHTTPToolResult = {
-  content: Array<{
-    type: string;
-    text: string;
-  }>;
-  isError: boolean;
+  data: any;
   message?: string;
 };
 
@@ -50,20 +45,12 @@ export async function runHTTPTool({
     });
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
-        }
-      ],
-      isError: false
+      data: response.data
     };
   } catch (error: any) {
-    addLog.error(`[HTTP Tool] Failed to call tool:`, error);
     return {
-      content: [],
-      isError: true,
-      message: error.response?.data?.message || error.message || 'HTTP request failed'
+      data: {},
+      message: error.response?.data?.message || error.message
     };
   }
 }

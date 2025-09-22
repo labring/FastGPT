@@ -1,12 +1,14 @@
 import { getNanoid } from '../../../common/string/tools';
 import type { PathDataType } from './type';
 import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
-import { FlowNodeTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import { type HttpToolConfigType } from '../type';
 import { PluginSourceEnum } from '../plugin/constants';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../jsonschema';
 import { type StoreSecretValueType } from '../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../jsonschema';
+import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
+import { i18nT } from '../../../../web/i18n/utils';
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -69,7 +71,18 @@ export const getHTTPToolRuntimeNode = ({
       }
     },
     inputs: jsonSchema2NodeInput(tool.inputSchema),
-    outputs: jsonSchema2NodeOutput(tool.outputSchema),
+    outputs: [
+      ...jsonSchema2NodeOutput(tool.outputSchema),
+      {
+        id: NodeOutputKeyEnum.rawResponse,
+        key: NodeOutputKeyEnum.rawResponse,
+        required: true,
+        label: i18nT('workflow:raw_response'),
+        description: i18nT('workflow:tool_raw_response_description'),
+        valueType: WorkflowIOValueTypeEnum.any,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ],
     name: tool.name,
     version: ''
   };

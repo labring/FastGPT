@@ -1,11 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import {
-  NodeOutputKeyEnum,
-  VariableInputEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
@@ -204,7 +200,7 @@ export const rewriteRuntimeWorkFlow = async ({
     nodeIdsToRemove.add(toolSetNode.nodeId);
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
     const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
-    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet ?? toolSetNode.inputs?.[0]?.value;
+    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
     const pushEdges = (nodeId: string) => {

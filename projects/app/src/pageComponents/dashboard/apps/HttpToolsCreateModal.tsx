@@ -78,7 +78,7 @@ const HttpPluginCreateModal = ({ onClose }: { onClose: () => void }) => {
         isOpen
         onClose={onClose}
         iconSrc="core/app/type/httpPluginFill"
-        title={t('common:plugin.Import Plugin')}
+        title={t('app:create_http_toolset')}
         w={['90vw', '530px']}
         position={'relative'}
       >

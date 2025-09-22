@@ -223,9 +223,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         appId: parentId,
         versionId: version
       });
+      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
+      if (!toolSetData) {
+        throw new Error('HTTP tool set not found');
+      }
 
-      const { headerSecret, baseUrl, toolList, customHeaders } =
-        toolset.nodes[0].toolConfig?.httpToolSet ?? toolset.nodes[0].inputs[0].value;
+      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
 
       const httpTool = toolList?.find((tool: HttpToolConfigType) => tool.name === toolName);
       if (!httpTool) {
@@ -233,9 +236,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       const result = await runHTTPTool({
-        baseUrl: baseUrl || '',
+        baseUrl: baseUrl,
         toolPath: httpTool.path,
-        method: httpTool.method || 'POST',
+        method: httpTool.method,
         params,
         headerSecret,
         customHeaders: customHeaders
@@ -245,17 +248,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           : undefined
       });
 
-      if (result.isError) {
-        throw new Error(result.message || 'HTTP request failed');
-      }
-
       return {
-        data: { [NodeOutputKeyEnum.rawResponse]: result.content?.[0]?.text || result },
+        data: { [NodeOutputKeyEnum.rawResponse]: result, ...result.data },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolRes: result.content?.[0]?.text || result,
+          toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result.content?.[0]?.text || result
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     } else {
       // mcp tool (old version compatible)
