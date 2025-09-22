@@ -44,6 +44,10 @@ export type NodeToolConfigType = {
       toolId: string;
       name: string;
       description: string;
+      enabled: boolean;
+      selectedVersionId: string;
+      storedVersions: Array<string>;
+      type: 'deprecated' | 'invalid';
     }[];
   };
 };

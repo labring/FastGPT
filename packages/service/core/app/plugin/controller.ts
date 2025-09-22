@@ -159,11 +159,13 @@ export const getSystemPluginByIdAndVersionId = async (
 export async function getChildAppPreviewNode({
   appId,
   versionId,
-  lang = 'en'
+  lang = 'en',
+  toolConfig
 }: {
   appId: string;
   versionId?: string;
   lang?: localeType;
+  toolConfig?: NodeToolConfigType;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombinePluginId(appId);
 
@@ -305,13 +307,24 @@ export async function getChildAppPreviewNode({
               ? {
                   systemToolSet: {
                     toolId: app.id,
-                    toolList: children
-                      .filter((item) => item.isActive !== false)
-                      .map((item) => ({
-                        toolId: item.id,
-                        name: parseI18nString(item.name, lang),
-                        description: parseI18nString(item.intro, lang)
-                      }))
+                    toolList:
+                      toolConfig?.systemToolSet?.toolList.filter(
+                        (item) => item.type !== 'deprecated'
+                      ) ??
+                      children
+                        .filter((item) => item.isActive !== false)
+                        .map((item) => {
+                          const storedVersions = item.versionList?.map((v) => v.value) ?? [];
+                          return {
+                            toolId: item.id,
+                            name: parseI18nString(item.name, lang),
+                            description: parseI18nString(item.intro, lang),
+                            enabled: item.isActive ?? true,
+                            selectedVersionId: '',
+                            storedVersions: storedVersions,
+                            type: 'invalid'
+                          };
+                        })
                   }
                 }
               : { systemTool: { toolId: app.id } })

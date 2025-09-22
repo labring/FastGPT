@@ -101,6 +101,7 @@ export const storeNode2FlowNode = ({
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
+    toolConfig: template.toolConfig ?? storeNode.toolConfig,
     version: template.version || storeNode.version,
     catchError: storeNode.catchError ?? template.catchError,
     // template 中的输入必须都有
@@ -758,7 +759,25 @@ export const compareSnapshot = (
           intro: node.data.intro,
           avatar: node.data.avatar,
           version: node.data.version,
-          isFolded: node.data.isFolded
+          isFolded: node.data.isFolded,
+          ...(node.data.toolConfig && {
+            toolConfig: {
+              ...(node.data.toolConfig.systemToolSet && {
+                systemToolSet: {
+                  toolId: node.data.toolConfig.systemToolSet.toolId,
+                  toolList: node.data.toolConfig.systemToolSet.toolList.map((tool: any) => ({
+                    toolId: tool.toolId,
+                    name: tool.name,
+                    description: tool.description,
+                    enabled: tool.enabled ?? true,
+                    selectedVersionId: tool.selectedVersionId ?? '',
+                    storedVersions: tool.storedVersions ?? [],
+                    type: tool.type ?? 'invalid'
+                  }))
+                }
+              })
+            }
+          })
         }
       }));
   };
