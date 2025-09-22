@@ -3,7 +3,7 @@ import UploadSystemToolModal from '@/pageComponents/app/plugin/UploadSystemToolM
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getSystemPlugTemplates, postDeletePlugin } from '@/web/core/app/api/plugin';
+import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';

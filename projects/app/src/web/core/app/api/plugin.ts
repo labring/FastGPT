@@ -33,6 +33,7 @@ import type {
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
+import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -110,17 +111,6 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
 
-export const getPluginUploadPresignedURL = (data: { filename: string }) =>
-  GET<UploadPresignedURLResponse>('/common/file/plugin/getUploadURL', data);
-
-export const postConfirmUpload = (data: { objectName: string }) =>
-  GET('/common/file/plugin/confirmUpload', data);
-
-export const postDeletePlugin = (toolId: string) =>
-  DELETE('/plugin/delete', {
-    toolId
-  });
-
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
   POST('/core/app/mcpTools/create', data);
@@ -147,11 +137,7 @@ export const getApiSchemaByUrl = (url: string) =>
     }
   );
 
-export const postCreateHttpTools = (data: createHttpToolsBody) =>
-  POST<string>('/core/app/httpTools/create', data);
-
-export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
-  POST('/core/app/httpTools/update', data);
-
-export const postRunHTTPTool = (data: RunHTTPToolBody) =>
-  POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
+export const pluginClient = createClient({
+  baseUrl: '/api/plugin',
+  token: ''
+});
