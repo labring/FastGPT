@@ -425,7 +425,6 @@ const HttpMethodBadge = ({ method }: { method: string }) => {
       fontSize="12px"
       fontWeight="500"
       lineHeight="16px"
-      letterSpacing="0.5px"
       {...style}
     >
       {methodUpper}

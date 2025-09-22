@@ -151,16 +151,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
             justifyContent={'space-between'}
             display={'flex'}
           >
-            <Box
-              my={'auto'}
-              color={'myGray.900'}
-              fontFamily={'PingFang SC'}
-              fontSize={'14px'}
-              fontStyle={'normal'}
-              fontWeight={'500'}
-              lineHeight={'20px'}
-              letterSpacing={'0.1px'}
-            >
+            <Box my={'auto'} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
               OpenAPI Schema
             </Box>
 

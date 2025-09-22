@@ -32,7 +32,7 @@ import type {
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import type { RunHTTPToolBody } from '@/pages/api/core/app/httpTools/runTool';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
+import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {

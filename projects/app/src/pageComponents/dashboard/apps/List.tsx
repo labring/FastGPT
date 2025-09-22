@@ -345,7 +345,9 @@ const ListItem = () => {
                               : []),
                             ...(!app.permission?.hasWritePer ||
                             app.type === AppTypeEnum.toolSet ||
-                            app.type === AppTypeEnum.folder
+                            app.type === AppTypeEnum.folder ||
+                            app.type === AppTypeEnum.httpToolSet ||
+                            app.type === AppTypeEnum.httpPlugin
                               ? []
                               : [
                                   {
