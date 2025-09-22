@@ -31,7 +31,8 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamAIPoints: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
-  addEvalDatasetDataQualityJob: vi.fn()
+  addEvalDatasetDataQualityJob: vi.fn(),
+  checkEvalDatasetDataQualityQueueHealth: vi.fn()
 }));
 
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
@@ -39,7 +40,10 @@ import {
   checkTeamEvalDatasetDataLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
-import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import {
+  addEvalDatasetDataQualityJob,
+  checkEvalDatasetDataQualityQueueHealth
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 const mockAuthEvaluationDatasetDataCreate = vi.mocked(authEvaluationDatasetDataCreate);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
@@ -48,6 +52,9 @@ const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockCheckTeamEvalDatasetDataLimit = vi.mocked(checkTeamEvalDatasetDataLimit);
 const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
+const mockCheckEvalDatasetDataQualityQueueHealth = vi.mocked(
+  checkEvalDatasetDataQualityQueueHealth
+);
 
 describe('EvalDatasetData Create API', () => {
   const validTeamId = 'team123';
@@ -87,6 +94,8 @@ describe('EvalDatasetData Create API', () => {
     mockMongoEvalDatasetData.countDocuments.mockResolvedValue(0);
     mockCheckTeamEvalDatasetDataLimit.mockResolvedValue(undefined);
     mockCheckTeamAIPoints.mockResolvedValue(undefined);
+    mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
+    mockCheckEvalDatasetDataQualityQueueHealth.mockResolvedValue(undefined);
   };
 
   // Helper function for validation test cases
@@ -460,7 +469,7 @@ describe('EvalDatasetData Create API', () => {
       mockAddEvalDatasetDataQualityJob.mockResolvedValue(undefined);
       await handler_test(req as any);
 
-      expectDataCreation(createExpectedDataObject({ qualityMetadata: {} }));
+      expectDataCreation(createExpectedDataObject({ qualityMetadata: { status: 'queuing' } }));
     });
 
     it('should set qualityStatus when quality evaluation is disabled', async () => {

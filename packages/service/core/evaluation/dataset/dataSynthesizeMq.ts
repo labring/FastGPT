@@ -1,6 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { addLog } from '../../../common/system/log';
+import { checkBullMQHealth } from './dataQualityMq';
 import {
   createJobCleaner,
   type JobCleanupResult,
@@ -86,4 +87,8 @@ export const removeEvalDatasetDataSynthesizeJobsRobust = async (
   });
 
   return result;
+};
+
+export const checkEvalDatasetDataSynthesizeQueueHealth = (): Promise<void> => {
+  return checkBullMQHealth(evalDatasetDataSynthesizeQueue, 'synthesis');
 };
