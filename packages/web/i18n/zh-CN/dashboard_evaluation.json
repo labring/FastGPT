@@ -329,7 +329,7 @@
   "click_to_add": "点击添加",
   "meets_expectation": "符合预期！",
   "below_expectation": "低于预期分数！",
-  "summary_generation_error": "总结内容生成异常，点击重试",
+  "summary_generation_error": "总结内容生成异常，",
   "error_message_prefix": "报错信息：",
   "summary_pending_generation": "总结内容待生成",
   "summary_generating_content": "总结内容生成中",
