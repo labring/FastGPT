@@ -18,7 +18,10 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
-import { addEvalDatasetDataQualityJob } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
+import {
+  addEvalDatasetDataQualityJob,
+  checkEvalDatasetDataQualityQueueHealth
+} from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
@@ -46,7 +49,8 @@ vi.mock(
   }
 );
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
-  addEvalDatasetDataQualityJob: vi.fn()
+  addEvalDatasetDataQualityJob: vi.fn(),
+  checkEvalDatasetDataQualityQueueHealth: vi.fn()
 }));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
@@ -63,6 +67,9 @@ const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
+const mockCheckEvalDatasetDataQualityQueueHealth = vi.mocked(
+  checkEvalDatasetDataQualityQueueHealth
+);
 
 // Mock global.llmModelMap
 beforeEach(() => {
@@ -171,6 +178,7 @@ describe('EvalDatasetData Import API', () => {
     mockGetDefaultEvaluationModel.mockReturnValue({ model: 'gpt-3.5-turbo' });
     mockRemoveFilesByPaths.mockResolvedValue(undefined);
     mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
+    mockCheckEvalDatasetDataQualityQueueHealth.mockResolvedValue(undefined);
   });
 
   describe('Parameter Validation', () => {
@@ -449,7 +457,7 @@ describe('EvalDatasetData Import API', () => {
         ]),
         expect.objectContaining({
           session: {},
-          ordered: false
+          ordered: true
         })
       );
 
@@ -603,7 +611,7 @@ describe('EvalDatasetData Import API', () => {
       const req = { body: {} };
       const res = {};
 
-      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationCSVParsingError');
+      await expect(handler_test(req as any, res as any)).rejects.toThrow('Database error');
       expect(mockRemoveFilesByPaths).toHaveBeenCalledWith(['/tmp/test1.csv', '/tmp/test2.csv']);
     });
   });
