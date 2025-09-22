@@ -250,7 +250,7 @@
   "model_change_notice": "更改模型后将对后续评测的任务生效。",
   "evaluation_model": "评测模型",
   "select_evaluation_model": "请选择评测模型",
-   "evaluation_abnormal": "评测异常",
+  "evaluation_abnormal": "评测异常",
   "error_message": "报错信息",
   "file_parse_error": "文件解析异常",
   "delete_file": "删除文件",

@@ -352,6 +352,14 @@
   "files_cascader_select_first": "請先選擇知識庫",
   "files_cascader_dataset_empty": "該知識庫資料集為空",
   "select_join_location": "選擇加入位置",
-  "no_data_for_smart_generate": "該知識庫中沒有可用於智能生成的數據"
-
+  "no_data_for_smart_generate": "該知識庫中沒有可用於智能生成的數據",
+  "logs_bad_feedback": "點踩",
+  "logs_source_count": "渠道用戶",
+  "logs_timespan_day": "按日",
+  "logs_timespan_month": "按月",
+  "logs_timespan_quarter": "按季",
+  "logs_timespan_week": "按週",
+  "logs_total_avg_duration": "平均時長",
+  "logs_total_feedback": "共 {{goodFeedBack}} 讚 ｜ 共 {{badFeedBack}} 踩",
+  "logs_user_callback": "用戶回饋"
 }

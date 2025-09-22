@@ -1033,7 +1033,7 @@
   "search_tool": "Tool name",
   "secret_key": "Secret key",
   "secret_tips": "The value will not be shown in plain text after it is saved.",
-  "select_count_num": "{{num}} item selected",	  
+  "select_count_num": "{{num}} item selected",
   "select_file_failed": "File Selection Failed",
   "select_reference_variable": "Select variable",
   "select_template": "Select template",
@@ -1157,7 +1157,7 @@
   "support.wallet.moduleName.qa": "Q&A generation",
   "support.wallet.noBill": "No data available.",
   "support.wallet.no_invoice": "No data available.",
- "support.wallet.subscription.AI points": "Credits",
+  "support.wallet.subscription.AI points": "Credits",
   "support.wallet.subscription.AI points click to read tip": "Model calls consume credits (similar to tokens). Click to view detailed billing rules.",
   "support.wallet.subscription.AI points usage": "Credit usage",
   "support.wallet.subscription.AI points usage tip": "Model calls consume credits. For details, refer to the billing standard above.",
@@ -1358,5 +1358,12 @@
   "other_knowledge_base": "Other knowledge bases",
   "database_search": "Database search",
   "table_not_exist": "Not exist",
-   "core.app.workflow.search_knowledge.database": "数据库"
+  "core.app.workflow.search_knowledge.database": "数据库",
+  "core.chat.logs.evaluation": "评估测试",
+  "support.wallet.subscription.eval_items_count": "单次评测数据条数: {{count}} 条",
+  "core.dataset.table": "数据表",
+  "core.dataset.search.mode.database": "数据库知识库检索",
+  "core.dataset.search.mode.database desc": "使用向量检索查找数据库中可能相关的表和列",
+  "core.dataset.training.databaseSchema mode": "数据库结构",
+  "core.dataset.import.databaseSchema Tip": "对数据库中的表信息进行自动处理，使其更利于检索，以提高SQL生成的准确率"
 }

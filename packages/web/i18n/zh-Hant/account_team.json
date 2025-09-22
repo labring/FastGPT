@@ -325,5 +325,11 @@
   "log_create_evaluation_metric": "【{{name}}】創建了名為【{{metricName}}】的評測維度",
   "log_delete_evaluation_metric": "【{{name}}】删除了名為【{{metricName}}】的評測維度",
   "log_update_evaluation_metric": "【{{name}}】更新了名為【{{metricName}}】的評測維度",
-  "log_debug_evaluation_metric": "【{{name}}】調試了名為【{{metricName}}】的評測維度"
+  "log_debug_evaluation_metric": "【{{name}}】調試了名為【{{metricName}}】的評測維度",
+  "permission_evaluationCreate_Tip": "可以創建評估任務、評估指標和評估數據集",
+  "create_evaluation": "創建應用評測",
+  "export_evaluation": "導出應用評測數據",
+  "log_create_evaluation": "【{{name}}】創建了名為【{{appName}}】的【{{appType}}】的批量評測",
+  "log_export_evaluation": "【{{name}}】導出了名為【{{appName}}】的【{{appType}}】的評測數據",
+  "permission_evaluationCreate": "創建評估"
 }

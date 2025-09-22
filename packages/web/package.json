@@ -1,6 +1,10 @@
 {
   "name": "@fastgpt/web",
   "version": "1.0.0",
+  "scripts": {
+    "check-i18n": "node ../../scripts/i18n/checkI18nCompleteness.js",
+    "fix-i18n": "node ../../scripts/i18n/checkI18nCompleteness.js --fix"
+  },
   "dependencies": {
     "@chakra-ui/anatomy": "2.2.1",
     "@chakra-ui/icons": "2.1.1",

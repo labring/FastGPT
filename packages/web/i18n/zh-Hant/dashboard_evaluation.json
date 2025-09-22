@@ -364,5 +364,12 @@
   "export_failed": "導出失敗",
   "load_failed": "加載失敗",
   "export_success": "導出成功",
-  "no_dimension_data_cannot_generate_summary": "暫無維度數據，無法生成總結"
+  "no_dimension_data_cannot_generate_summary": "暫無維度數據，無法生成總結",
+  "detail": "詳情",
+  "eval_file_check_error": "評測文件校驗失敗",
+  "stauts": "狀態",
+  "task_name": "任務名稱",
+  "Task_name": "任務名",
+  "click_to_download_template": "點擊下載該應用的 CSV 模板",
+  "evaluation_created": "評測任務創建成功"
 }

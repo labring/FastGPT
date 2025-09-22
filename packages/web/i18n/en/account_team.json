@@ -326,5 +326,10 @@
   "user_team_invite_member": "Invite member",
   "user_team_leave_team": "Leave team",
   "user_team_leave_team_failed": "Failed to leave the team.",
-  "waiting": "Pending"
+  "waiting": "Pending",
+  "create_evaluation": "创建应用评测",
+  "export_evaluation": "导出应用评测数据",
+  "log_create_evaluation": "【{{name}}】创建了名为【{{appName}}】的【{{appType}}】的批量评测",
+  "log_export_evaluation": "【{{name}}】导出了名为【{{appName}}】的【{{appType}}】的评测数据",
+  "permission_evaluationCreate": "创建评估"
 }

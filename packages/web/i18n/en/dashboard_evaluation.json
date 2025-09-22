@@ -181,7 +181,6 @@
   "custom_dimension": "Custom",
   "config_params": "Settings",
   "score_aggregation_method": "Score aggregation",
-  "score_aggregation_method_tip": "Select a method to aggregate the scores for multiple metrics.",
   "evaluation_dimensions": "Metrics",
   "dimension": "Metric",
   "judgment_threshold": "Threshold",
@@ -356,7 +355,7 @@
   "click_to_retry": "点击重试",
   "comprehensive_score_weight_description": "按照指定权重计算测试数据全部维度的综合评分，可根据应用使用场景所关注的维度进行设置。",
   "no_data_available": "暂无数据",
-  "question_column": "问题", 
+  "question_column": "问题",
   "comprehensive_score_column": "综合评分",
   "error_info_column": "异常信息",
   "request_failed": "请求失败",
@@ -369,5 +368,8 @@
   "export_failed": "导出失败",
   "load_failed": "加载失败",
   "export_success": "导出成功",
-  "no_dimension_data_cannot_generate_summary": "暂无维度数据，无法生成总结"
+  "no_dimension_data_cannot_generate_summary": "暂无维度数据，无法生成总结",
+  "Task_name": "任务名",
+  "click_to_download_template": "点击下载该应用的 CSV 模板",
+  "evaluation_created": "评测任务创建成功"
 }
