@@ -201,10 +201,10 @@
       background-color: #4a90e2;
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
       transition: background-color 0.3s;
     }
 
@@ -231,7 +231,8 @@
     .copy-success {
       position: fixed;
       top: 20px;
-      right: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background-color: #5cb85c;
       color: white;
       padding: 10px 20px;
@@ -239,6 +240,17 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       display: none;
       z-index: 1001;
+    }
+
+    /* 特殊处理白色填充的图标 */
+    .icon-card[data-name="core/app/headphones"] .icon-container svg path,
+    .icon-card[data-name="core/chat/setting/share"] .icon-container svg path {
+      fill: black !important;
+    }
+
+    /* 模态框中的特殊处理 */
+    .modal-icon svg path[fill="white"] {
+      fill: black !important;
     }
   </style>
 </head>
@@ -278,7 +290,7 @@
       <div class="modal-icon" id="modalIcon"></div>
       <div class="modal-name" id="modalName"></div>
       <div class="modal-path" id="modalPath"></div>
-      <button class="copy-button" id="copyButton">复制路径</button>
+      <button class="copy-button" id="copyButton">复制名称</button>
       <button class="close-button" id="closeButton">关闭</button>
     </div>
   </div>
@@ -552,11 +564,11 @@
         }
       });
 
-      // 复制路径按钮
+      // 复制名称按钮
       const copyButton = document.getElementById('copyButton');
       copyButton.addEventListener('click', () => {
-        const path = document.getElementById('modalPath').textContent;
-        copyToClipboard(path);
+        const name = document.getElementById('modalName').textContent;
+        copyToClipboard(name);
       });
     }
 
