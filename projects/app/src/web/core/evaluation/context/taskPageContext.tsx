@@ -72,6 +72,7 @@ type TaskPageContextType = {
   refreshAllData: () => Promise<void>;
   refreshStats: () => Promise<void>;
   refreshEvaluationItems: () => Promise<void>;
+  loadSummary: () => Promise<void>;
 
   // 数据操作方法
   deleteItem: (itemId: string) => Promise<void>;
@@ -80,6 +81,7 @@ type TaskPageContextType = {
   retryFailedItems: () => Promise<void>;
   exportItems: (format?: string) => Promise<void>;
   generateSummary: () => Promise<void>;
+  generateSummaryForMetrics: (params: { evalId: string; metricIds: string[] }) => Promise<void>;
 
   // 搜索方法
   setSearchValue: (value: string) => void;
@@ -138,6 +140,9 @@ const defaultContextValue: TaskPageContextType = {
   refreshEvaluationItems: async (): Promise<void> => {
     throw new Error('Function not implemented.');
   },
+  loadSummary: async (): Promise<void> => {
+    throw new Error('Function not implemented.');
+  },
   deleteItem: async (itemId: string): Promise<void> => {
     throw new Error('Function not implemented.');
   },
@@ -154,6 +159,12 @@ const defaultContextValue: TaskPageContextType = {
     throw new Error('Function not implemented.');
   },
   generateSummary: async (): Promise<void> => {
+    throw new Error('Function not implemented.');
+  },
+  generateSummaryForMetrics: async (params: {
+    evalId: string;
+    metricIds: string[];
+  }): Promise<void> => {
     throw new Error('Function not implemented.');
   },
   setSearchValue: (value: string): void => {
@@ -472,7 +483,17 @@ export const TaskPageContextProvider = ({
     [taskId, taskDetail?.name, t, toast, runExportItems]
   );
 
-  // 生成总结报告
+  // 生成总结报告（为指定的 metricIds）
+  const generateSummaryForMetrics = useCallback(
+    async (params: { evalId: string; metricIds: string[] }) => {
+      await runGenerateSummary(params);
+      // 刷新总结数据
+      await loadSummary();
+    },
+    [runGenerateSummary, loadSummary]
+  );
+
+  // 生成总结报告（为所有维度）
   const generateSummary = useCallback(async () => {
     // 从 summaryData 中提取 metricIds
     if (!summaryData?.data || summaryData.data.length === 0) {
@@ -485,14 +506,11 @@ export const TaskPageContextProvider = ({
 
     const metricIds = summaryData.data.map((item) => item.metricId);
 
-    await runGenerateSummary({
+    await generateSummaryForMetrics({
       evalId: taskId,
       metricIds
     });
-
-    // 刷新总结数据
-    await loadSummary();
-  }, [taskId, summaryData, t, toast, runGenerateSummary, loadSummary]);
+  }, [taskId, summaryData, t, toast, generateSummaryForMetrics]);
 
   const contextValue: TaskPageContextType = {
     taskId,
@@ -511,12 +529,14 @@ export const TaskPageContextProvider = ({
     refreshAllData,
     refreshStats,
     refreshEvaluationItems,
+    loadSummary,
     deleteItem,
     retryItem,
     updateItem,
     retryFailedItems,
     exportItems,
     generateSummary,
+    generateSummaryForMetrics,
     setSearchValue,
     setEvaluationItems,
     setTotalItems,
