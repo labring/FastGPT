@@ -1328,7 +1328,6 @@ export const generateAndExecuteSQL = async ({
         referenced_table: fk.referredTable,
         referenced_column: fk.referredColumns
       })) || [];
-
     const table: DativeTable = {
       name: collection.name,
       ns_name: '',

@@ -46,9 +46,9 @@ const ConstraintSchema = new Schema(
 // Foreign Key Schema
 const ForeignKeySchema = new Schema(
   {
-    referredSchema: { type: String, default: null },
+    referredSchema: { type: String },
     referredTable: { type: String, required: true },
-    referredColumns: { type: String, default: null }
+    referredColumns: { type: String, required: true }
   },
   { _id: false }
 ).add(ConstraintSchema);

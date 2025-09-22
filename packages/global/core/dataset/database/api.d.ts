@@ -86,9 +86,9 @@ export type DativeCostraintKey = {
   column: string;
 };
 export type DativeForeignKey = DativeCostraintKey & {
-  referenced_schema: string | null;
-  referenced_table: string | null;
-  referenced_column: string | null;
+  referenced_schema: string;
+  referenced_table: string;
+  referenced_column: string;
 };
 export type DativeTableColumns = {
   name: string;

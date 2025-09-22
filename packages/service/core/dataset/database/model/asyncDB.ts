@@ -237,7 +237,6 @@ export abstract class AsyncDB {
             .map((fk) => fk.referencedColumnNames)
             .flat()
         );
-        console.debug('[aget_table_info]', tableColumn);
         columns.set(col.name, tableColumn);
       }
 
@@ -248,7 +247,7 @@ export abstract class AsyncDB {
             new TableForeignKey(
               fk.name || '',
               col,
-              (fk as any).referencedSchema || null,
+              (fk as any).referencedSchema,
               fk.referencedTableName,
               fk.referencedColumnNames[idx]
             )

@@ -62,15 +62,15 @@ export class TableConstraint {
 }
 
 export class TableForeignKey extends TableConstraint {
-  referredSchema: string | null;
-  referredTable: string | null;
-  referredColumns: string | null;
+  referredSchema: string;
+  referredTable: string;
+  referredColumns: string;
   constructor(
     name: string, // constraint name
     column: string, // constrained column
-    referredSchema: string | null,
-    referredTable: string | null,
-    referredColumns: string | null
+    referredSchema: string,
+    referredTable: string,
+    referredColumns: string
   ) {
     super(name, column);
     this.referredSchema = referredSchema;

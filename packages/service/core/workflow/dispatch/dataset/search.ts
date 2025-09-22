@@ -180,7 +180,6 @@ export async function dispatchDatasetSearch(
     };
     // Database search for database datasets - search each dataset individually and generate SQL
     if (databaseDatasetIds.length > 0) {
-      // if ((!generateSqlModel)) return getNodeErrResponse({error: new Error('no Generate-Sql Model Select')});
       // Process each database dataset sequentially
       await Promise.all(
         datasetIds.map(async (datasetId) => {
