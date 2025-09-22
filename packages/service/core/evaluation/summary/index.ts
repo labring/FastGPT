@@ -33,7 +33,7 @@ import { createMergedEvaluationUsage } from '../utils/usage';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
-import { recalculateAllEvaluationItemAggregateScores } from './util/aggregateScoreCalculator';
+import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { addSummaryTaskToQueue } from './queue';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { ClientSession } from '../../../common/mongo';
@@ -60,12 +60,20 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-    // Build return data using pre-calculated values from MongoDB summaryConfigs
+    // Real-time calculate metric scores
+    const calculatedData = await this.calculateMetricScores(evaluation);
+
+    // Build return data using real-time calculated values
     const data = evaluation.evaluators.map((evaluator, index) => {
       const metricId = evaluator.metric._id.toString();
       const summaryConfig = evaluation.summaryConfigs[index];
-      const completedItemCount = summaryConfig.completedItemCount || 0;
-      const overThresholdItemCount = summaryConfig.overThresholdItemCount || 0;
+
+      // Find calculated metric data
+      const metricData = calculatedData.metricsData.find((m) => m.metricId === metricId);
+      const completedItemCount = metricData?.totalCount || 0;
+      const overThresholdItemCount = metricData?.aboveThresholdCount || 0;
+      const metricScore = metricData?.metricScore || 0;
+
       const threshold = evaluator.thresholdValue || 0;
       const underThresholdRate =
         completedItemCount > 0
@@ -78,12 +86,12 @@ export class EvaluationSummaryService {
       return {
         metricId: metricId,
         metricName: evaluator.metric.name,
-        metricScore: summaryConfig.score || 0, // Use pre-calculated score from MongoDB
+        metricScore: metricScore, // Use real-time calculated score
         summary: summaryConfig.summary,
         summaryStatus: summaryConfig.summaryStatus,
         errorReason: summaryConfig.errorReason,
-        completedItemCount: completedItemCount, // Use pre-calculated count from MongoDB
-        overThresholdItemCount: overThresholdItemCount, // Use pre-calculated count from MongoDB
+        completedItemCount: completedItemCount, // Use real-time calculated count
+        overThresholdItemCount: overThresholdItemCount, // Use real-time calculated count
         underThresholdRate: underThresholdRate, // Percentage of items that failed the threshold (0-100)
         threshold: threshold, // Add threshold field
         weight: summaryConfig.weight || 0, // Add weight field
@@ -91,62 +99,29 @@ export class EvaluationSummaryService {
       };
     });
 
-    // Use stored aggregateScore if available, otherwise calculate from pre-calculated scores
-    let aggregateScore = evaluation.aggregateScore;
-
-    if (aggregateScore === undefined || aggregateScore === null) {
-      let totalWeightedScore = 0;
-      let totalWeight = 0;
-
-      evaluation.summaryConfigs.forEach((summaryConfig) => {
-        const score = summaryConfig.score || 0;
-        const weight = summaryConfig.weight || 0;
-        totalWeightedScore += score * weight;
-        totalWeight += weight;
-      });
-
-      aggregateScore =
-        totalWeight > 0 ? Math.round((totalWeightedScore / totalWeight) * 100) / 100 : 0;
-    }
-
     return {
       data,
-      aggregateScore
+      aggregateScore: calculatedData.aggregateScore
     };
   }
 
-  // Calculate and save metric scores to MongoDB summaryConfigs
-  static async calculateAndSaveMetricScores(evalId: string): Promise<void> {
-    try {
-      const evaluation = await MongoEvaluation.findById(evalId).lean();
-      if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
-
-      // Use the existing calculateMetricScores method to get calculated scores
-      const calculatedData = await this.calculateMetricScores(evaluation);
-
-      // Update the calculated scores to database
-      await this.updateSummaryConfigsScores(
-        evalId,
-        calculatedData.metricsData,
-        calculatedData.aggregateScore
-      );
-
-      addLog.info('[Evaluation] Metric scores calculated and saved to MongoDB', {
-        evalId,
-        metricsCount: calculatedData.metricsData.length,
-        aggregateScore: calculatedData.aggregateScore
-      });
-    } catch (error) {
-      addLog.error('[Evaluation] Failed to calculate and save metric scores', {
-        evalId,
-        error
-      });
-      // Don't throw error to avoid affecting main flow
-    }
+  // This method is no longer needed as scores are calculated in real-time
+  // Keeping for backward compatibility but will be deprecated
+  static async calculateAndSaveMetricScores(
+    evalId: string,
+    session?: any // 支持在事务中调用
+  ): Promise<void> {
+    addLog.warn(
+      '[Evaluation] calculateAndSaveMetricScores is deprecated, scores are now calculated in real-time',
+      {
+        evalId
+      }
+    );
+    // No-op: scores are calculated in real-time when getEvaluationSummary is called
   }
 
   // Real-time calculation of metricScore and aggregateScore (pure calculation, no database updates)
-  private static async calculateMetricScores(evaluation: EvaluationSchemaType): Promise<{
+  static async calculateMetricScores(evaluation: EvaluationSchemaType): Promise<{
     metricsData: Array<{
       metricId: string;
       metricName: string;
@@ -161,47 +136,104 @@ export class EvaluationSummaryService {
     try {
       const evalId = new Types.ObjectId(evaluation._id);
 
-      // MongoDB aggregation pipeline - compatible with older MongoDB versions
+      // Check if evaluation has required fields
+      if (!evaluation.evaluators || !Array.isArray(evaluation.evaluators)) {
+        addLog.warn('[calculateMetricScores] Evaluation has no evaluators', {
+          evalId: evaluation._id
+        });
+        return {
+          metricsData: [],
+          aggregateScore: 0
+        };
+      }
+
+      if (!evaluation.summaryConfigs || !Array.isArray(evaluation.summaryConfigs)) {
+        addLog.warn('[calculateMetricScores] Evaluation has no summaryConfigs', {
+          evalId: evaluation._id
+        });
+        return {
+          metricsData: [],
+          aggregateScore: 0
+        };
+      }
+
+      // MongoDB aggregation pipeline - Calculate both successful scores and total completed count per metric
       const pipeline = [
-        // Step 1: Filter successful evaluation items that have evaluator outputs
+        // Step 1: Filter evaluation items that have evaluator outputs
         {
           $match: {
             evalId: evalId,
-            status: EvalStatus.completed,
             evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },
-        // Step 2: Unwind the evaluatorOutputs array to process each metric result separately
+        // Step 2: Add fields to find matching metric results
         {
-          $unwind: '$evaluatorOutputs'
-        },
-        // Step 3: Filter only results with valid scores
-        {
-          $match: {
-            'evaluatorOutputs.data.score': { $exists: true, $ne: null }
+          $addFields: {
+            // Create an array of metric results for easier processing
+            metricResults: {
+              $map: {
+                input: '$evaluatorOutputs',
+                as: 'output',
+                in: {
+                  metricName: '$$output.metricName',
+                  status: '$$output.status',
+                  score: '$$output.data.score',
+                  hasValidScore: {
+                    $and: [
+                      { $eq: ['$$output.status', MetricResultStatusEnum.Success] },
+                      { $ne: ['$$output.data.score', null] }
+                    ]
+                  }
+                }
+              }
+            }
           }
+        },
+        // Step 3: Unwind the metric results
+        {
+          $unwind: '$metricResults'
         },
         // Step 4: Group by metric name and calculate statistics
         {
           $group: {
-            _id: '$evaluatorOutputs.metricName',
-            scores: { $push: '$evaluatorOutputs.data.score' },
-            avgScore: { $avg: '$evaluatorOutputs.data.score' },
-            count: { $sum: 1 },
-            metricName: { $first: '$evaluatorOutputs.metricName' }
+            _id: '$metricResults.metricName',
+            // Collect all valid scores for this metric
+            successfulScores: {
+              $push: {
+                $cond: ['$metricResults.hasValidScore', '$metricResults.score', '$$REMOVE']
+              }
+            },
+            // Count unique evaluation items that have this metric (regardless of success/failure)
+            uniqueItemIds: {
+              $addToSet: '$_id'
+            },
+            metricName: { $first: '$metricResults.metricName' }
+          }
+        },
+        // Step 5: Calculate final statistics
+        {
+          $addFields: {
+            avgScore: {
+              $cond: [
+                { $gt: [{ $size: '$successfulScores' }, 0] },
+                { $avg: '$successfulScores' },
+                0
+              ]
+            },
+            successCount: { $size: '$successfulScores' },
+            totalCompletedCount: { $size: '$uniqueItemIds' }
           }
         }
       ];
 
       const metricsStats = await MongoEvalItem.aggregate(pipeline as any);
-      addLog.info(`mongo实时计算结果为${JSON.stringify(metricsStats)}`);
 
       // Calculate median for each statistic (since different evaluators may have different calculation methods)
       const processedStats = metricsStats.map((stats) => {
         let medianScore = 0;
 
-        if (stats.scores && stats.scores.length > 0) {
-          const sortedScores = [...stats.scores].sort((a, b) => a - b);
+        if (stats.successfulScores && stats.successfulScores.length > 0) {
+          const sortedScores = [...stats.successfulScores].sort((a, b) => a - b);
           const length = sortedScores.length;
 
           if (length % 2 === 0) {
@@ -242,14 +274,21 @@ export class EvaluationSummaryService {
         const summaryConfig = evaluation.summaryConfigs[index];
 
         if (stats) {
-          // Select score based on current evaluator's calculation method
-          const metricScore =
+          // Select score based on current evaluator's calculation method with NaN protection
+          let rawScore =
             summaryConfig.calculateType === CalculateMethodEnum.median
-              ? Math.round(stats.medianScore * 100) / 100
-              : Math.round(stats.avgScore * 100) / 100;
+              ? stats.medianScore
+              : stats.avgScore;
 
-          // Calculate threshold statistics
-          const aboveThresholdCount = stats.scores.filter(
+          // Ensure score is valid number
+          if (isNaN(rawScore) || rawScore === null || rawScore === undefined) {
+            rawScore = 0;
+          }
+
+          const metricScore = Math.round(rawScore * 100) / 100;
+
+          // Calculate threshold statistics - count successful scores that meet threshold
+          const aboveThresholdCount = stats.successfulScores.filter(
             (score: number) => score >= (evaluator.thresholdValue || 0)
           ).length;
 
@@ -262,7 +301,7 @@ export class EvaluationSummaryService {
             weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount,
-            totalCount: stats.count
+            totalCount: stats.totalCompletedCount
           });
 
           // Accumulate weighted scores
@@ -270,27 +309,30 @@ export class EvaluationSummaryService {
           totalWeight += weight;
         } else {
           // Metrics with no data
+          const weight = summaryConfig.weight;
+
           metricsData.push({
             metricId: metricId,
             metricName: evaluator.metric.name,
             metricScore: 0,
-            weight: summaryConfig.weight,
+            weight: weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
             totalCount: 0
           });
+
+          // Accumulate weighted scores for metrics with no data (score = 0)
+          totalWeightedScore += 0 * weight;
+          totalWeight += weight;
         }
       });
 
-      // Calculate aggregate score
-      const aggregateScore =
-        totalWeight > 0 ? Math.round((totalWeightedScore / totalWeight) * 100) / 100 : 0;
-
-      addLog.info('[Evaluation] Metric calculation completed', {
-        evalId: evaluation._id.toString(),
-        metricsCount: metricsData.length,
-        aggregateScore
-      });
+      // Calculate aggregate score with NaN protection
+      let aggregateScore = 0;
+      if (totalWeight > 0 && !isNaN(totalWeightedScore) && !isNaN(totalWeight)) {
+        const rawScore = totalWeightedScore / totalWeight;
+        aggregateScore = isNaN(rawScore) ? 0 : Math.round(rawScore * 100) / 100;
+      }
 
       return {
         metricsData,
@@ -323,68 +365,8 @@ export class EvaluationSummaryService {
     }
   }
 
-  // Update summaryConfigs scores and aggregateScore together based on calculated metric scores
-  private static async updateSummaryConfigsScores(
-    evalId: string,
-    metricsData: Array<{
-      metricId: string;
-      metricName: string;
-      metricScore: number;
-      weight: number;
-      thresholdValue: number;
-      aboveThresholdCount: number;
-      totalCount: number;
-    }>,
-    aggregateScore: number,
-    session?: ClientSession
-  ): Promise<void> {
-    try {
-      // Build update fields for each summaryConfig score
-      const updateFields: Record<string, any> = {};
-
-      const evaluation = await MongoEvaluation.findById(evalId).lean();
-      if (!evaluation) return;
-
-      // Build update fields using pre-calculated data
-      evaluation.summaryConfigs.forEach((summaryConfig, index) => {
-        const metricData = metricsData.find((m) => m.metricId === summaryConfig.metricId);
-        if (metricData) {
-          updateFields[`summaryConfigs.${index}.score`] = metricData.metricScore;
-          updateFields[`summaryConfigs.${index}.completedItemCount`] = metricData.totalCount;
-          updateFields[`summaryConfigs.${index}.overThresholdItemCount`] =
-            metricData.aboveThresholdCount;
-        }
-      });
-
-      // Use pre-calculated aggregateScore
-      updateFields['aggregateScore'] = aggregateScore;
-
-      await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateFields }, { session });
-
-      addLog.info('[Evaluation] Updated summaryConfigs scores, counts and aggregateScore', {
-        evalId,
-        updatedFieldsCount: Object.keys(updateFields).length,
-        aggregateScore,
-        scores: metricsData.map((m) => ({
-          metricId: m.metricId,
-          score: m.metricScore,
-          completedItemCount: m.totalCount,
-          overThresholdItemCount: m.aboveThresholdCount
-        }))
-      });
-    } catch (error) {
-      addLog.error(
-        '[Evaluation] Failed to update summaryConfigs scores, counts and aggregateScore',
-        {
-          evalId,
-          error
-        }
-      );
-      // Don't throw error to avoid affecting main calculation flow
-    }
-  }
-
   // Update evaluation summary configuration (threshold, weight, calculation method)
+  // 使用MongoDB事务保证配置更新的原子性
   static async updateEvaluationSummaryConfig(
     evalId: string,
     metricsConfig: Array<{
@@ -394,6 +376,12 @@ export class EvaluationSummaryService {
       calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
+    addLog.info('[Evaluation] Starting configuration update', {
+      evalId,
+      metricsCount: metricsConfig.length
+    });
+
+    // 检查基本参数有效性
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
@@ -406,165 +394,50 @@ export class EvaluationSummaryService {
       }
     }
 
-    // Always call updateConfigurationAndRecalculate, let it decide internally what to recalculate
-    await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
-  }
-
-  // Check if weights have changed by comparing current and new configurations
-  private static checkWeightChanges(
-    evaluation: EvaluationSchemaType,
-    metricsConfig: Array<{
-      metricId: string;
-      thresholdValue: number;
-      weight?: number;
-      calculateType?: CalculateMethodEnum;
-    }>
-  ): boolean {
-    const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
-
-    // Check each current summary config for weight changes
-    for (let index = 0; index < evaluation.summaryConfigs.length; index++) {
-      const currentSummaryConfig = evaluation.summaryConfigs[index];
-      const metricId = evaluation.evaluators[index].metric._id.toString();
-      const newConfig = configMap.get(metricId);
-
-      if (newConfig && newConfig.weight !== undefined) {
-        // Compare current weight with new weight
-        const currentWeight = currentSummaryConfig.weight || 0;
-        const newWeight = newConfig.weight || 0;
-
-        if (currentWeight !== newWeight) {
-          addLog.info('[Evaluation] Weight change detected', {
-            metricId,
-            currentWeight,
-            newWeight
-          });
-          return true;
-        }
-      }
-    }
-
-    addLog.info('[Evaluation] No weight changes detected, skipping recalculation');
-    return false;
-  }
-
-  // Update configuration only without recalculation (for threshold and calculateType changes)
-  private static async updateConfigurationOnly(
-    evalId: string,
-    evaluation: EvaluationSchemaType,
-    metricsConfig: Array<{
-      metricId: string;
-      thresholdValue: number;
-      weight?: number;
-      calculateType?: CalculateMethodEnum;
-    }>,
-    session?: ClientSession
-  ): Promise<void> {
-    const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
-
-    // Update database configuration
-    await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
-
-    addLog.info('[Evaluation] Configuration updated without recalculation', {
-      evalId,
-      metricCount: metricsConfig.length
-    });
-  }
-
-  // Update configuration and selectively recalculate based on what changed
-  private static async updateConfigurationAndRecalculate(
-    evalId: string,
-    evaluation: EvaluationSchemaType,
-    metricsConfig: Array<{
-      metricId: string;
-      thresholdValue: number;
-      weight?: number;
-      calculateType?: CalculateMethodEnum;
-    }>
-  ): Promise<void> {
-    // Check what has changed before starting transaction
-    const hasWeightChanges = this.checkWeightChanges(evaluation, metricsConfig);
-
-    // Use transaction to ensure atomicity of configuration update and score recalculation
+    // 使用事务更新配置
     await mongoSessionRun(async (session: ClientSession) => {
       const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
-      // Update database configuration within transaction
-      await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
+      // 更新evaluators
+      const updatedEvaluators = evaluation.evaluators.map((evaluator: any) => {
+        const config = configMap.get(evaluator.metric._id.toString());
+        return config ? { ...evaluator, thresholdValue: config.thresholdValue } : evaluator;
+      });
 
-      // Get updated evaluation and recalculate within the same transaction
-      const updatedEvaluation = await MongoEvaluation.findById(evalId).session(session).lean();
-      if (updatedEvaluation) {
-        addLog.info('[Evaluation] Configuration updated, recalculating summary metrics', {
-          evalId
-        });
+      // 更新summaryConfigs
+      const updatedSummaryConfigs = evaluation.summaryConfigs.map(
+        (summaryConfig: any, index: number) => {
+          const metricId = evaluation.evaluators[index].metric._id.toString();
+          const config = configMap.get(metricId);
 
-        // Always recalculate evaluation summary metrics and aggregate score
-        const calculatedData = await this.calculateMetricScores(updatedEvaluation);
-        await this.updateSummaryConfigsScores(
-          evalId,
-          calculatedData.metricsData,
-          calculatedData.aggregateScore,
-          session
-        );
-
-        // Only recalculate evaluation item aggregate scores if weights changed
-        if (hasWeightChanges) {
-          addLog.info('[Evaluation] Weight changes detected, recalculating item aggregate scores', {
-            evalId
-          });
-          await recalculateAllEvaluationItemAggregateScores(evalId, session);
-        } else {
-          addLog.info(
-            '[Evaluation] No weight changes, skipping item aggregate score recalculation',
-            { evalId }
-          );
+          if (config) {
+            return {
+              ...summaryConfig,
+              ...(config.weight !== undefined && { weight: config.weight }),
+              ...(config.calculateType !== undefined && { calculateType: config.calculateType })
+            };
+          }
+          return summaryConfig;
         }
-      }
-    });
-  }
+      );
 
-  // Update database configuration (evaluators and summaryConfigs)
-  private static async updateDatabaseConfig(
-    evalId: string,
-    evaluation: EvaluationSchemaType,
-    metricsConfig: Array<{
-      metricId: string;
-      thresholdValue: number;
-      weight?: number;
-      calculateType?: CalculateMethodEnum;
-    }>,
-    configMap: Map<string, any>,
-    session?: ClientSession
-  ): Promise<void> {
-    // Update evaluators
-    const updatedEvaluators = evaluation.evaluators.map((evaluator: any) => {
-      const config = configMap.get(evaluator.metric._id.toString());
-      return config ? { ...evaluator, thresholdValue: config.thresholdValue } : evaluator;
+      await MongoEvaluation.updateOne(
+        { _id: evalId },
+        { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } },
+        { session }
+      );
+
+      addLog.info('[Evaluation] Configuration updated successfully', {
+        evalId,
+        evaluatorsCount: updatedEvaluators.length,
+        summaryConfigsCount: updatedSummaryConfigs.length
+      });
     });
 
-    // Update summaryConfigs
-    const updatedSummaryConfigs = evaluation.summaryConfigs.map(
-      (summaryConfig: any, index: number) => {
-        const metricId = evaluation.evaluators[index].metric._id.toString();
-        const config = configMap.get(metricId);
-
-        if (config) {
-          return {
-            ...summaryConfig,
-            ...(config.weight !== undefined && { weight: config.weight }),
-            ...(config.calculateType !== undefined && { calculateType: config.calculateType })
-          };
-        }
-        return summaryConfig;
-      }
-    );
-
-    await MongoEvaluation.updateOne(
-      { _id: evalId },
-      { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } },
-      { session }
-    );
+    addLog.info('[Evaluation] Configuration update completed successfully', {
+      evalId,
+      metricsCount: metricsConfig.length
+    });
   }
 
   // Get evaluation summary configuration details
@@ -803,14 +676,7 @@ export class EvaluationSummaryService {
           evalId,
           metricId
         });
-        await this.updateSummaryResult(
-          evalId,
-          evaluatorIndex,
-          SummaryStatusEnum.failed,
-          '',
-          'No matching evaluation data found, cannot generate summary report'
-        );
-        return;
+        throw new Error('No matching evaluation data found, cannot generate summary report');
       }
 
       // 2. Token control and content preparation
@@ -969,13 +835,18 @@ export class EvaluationSummaryService {
     });
 
     try {
+      // Get evaluation to check metric count
+      const evaluation = await MongoEvaluation.findById(evalId).lean();
+      if (!evaluation) {
+        throw new Error('Evaluation not found');
+      }
+
       // Query successfully completed evaluation items for specific metric, sorted by score (low priority)
       // Note: evaluator.metric._id is stored as string, not ObjectId
       const pipeline = [
         {
           $match: {
             evalId: new Types.ObjectId(evalId),
-            'metadata.status': EvalStatus.completed,
             evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },
@@ -988,7 +859,12 @@ export class EvaluationSummaryService {
                   $filter: {
                     input: '$evaluatorOutputs',
                     as: 'output',
-                    cond: { $eq: ['$$output.metricName', evaluator.metric.name] }
+                    cond: {
+                      $and: [
+                        { $eq: ['$$output.metricName', evaluator.metric.name] },
+                        { $eq: ['$$output.status', MetricResultStatusEnum.Success] }
+                      ]
+                    }
                   }
                 },
                 0
@@ -1035,6 +911,41 @@ export class EvaluationSummaryService {
         totalCount: results.length,
         belowThresholdCount: results.filter((item) => item.isBelowThreshold).length
       });
+
+      // Check if metric count >= 3 and all data items have abnormal status
+      if (evaluation.evaluators.length >= 3) {
+        // Query all eval items for this evaluation to check metadata.status
+        const allEvalItems = await MongoEvalItem.find(
+          {
+            evalId: new Types.ObjectId(evalId)
+          },
+          {
+            'metadata.status': 1
+          }
+        ).lean();
+
+        const allItemsAbnormal =
+          allEvalItems.length > 0 &&
+          allEvalItems.every((item) => item.metadata?.status === EvalStatus.error);
+
+        if (allItemsAbnormal) {
+          addLog.warn(
+            '[EvaluationSummary] All data items have abnormal status when metric count >= 3, throwing exception',
+            {
+              evalId,
+              metricId,
+              metricName: evaluator.metric.name,
+              metricCount: evaluation.evaluators.length,
+              totalItems: allEvalItems.length,
+              abnormalStatuses: allEvalItems.map((item) => item.metadata?.status)
+            }
+          );
+          //web not show summary while metric count >= 3 and all eval_item error,so cannel generate
+          throw new Error(
+            'All related data items have error status when metric count >= 3, summary generation skipped'
+          );
+        }
+      }
 
       return {
         filteredData: results,
@@ -1172,12 +1083,6 @@ export class EvaluationSummaryService {
         },
         modelData
       });
-      addLog.info('[EvaluationSummary] LLM request messages', {
-        messages: JSON.stringify(messages, null, 2)
-      });
-      addLog.info('[EvaluationSummary] LLM response', {
-        response: JSON.stringify(response, null, 2)
-      });
 
       if (isStreamResponse) {
         throw new Error(EvaluationErrEnum.summaryStreamResponseNotSupported);
@@ -1185,14 +1090,6 @@ export class EvaluationSummaryService {
 
       const summary = response.choices[0]?.message?.content || '生成总结失败';
       const usage = response.usage;
-
-      addLog.info('[EvaluationSummary] Extracted summary', {
-        summary: summary,
-        summaryLength: summary.length
-      });
-      addLog.info('[EvaluationSummary] Extracted usage', {
-        usage: usage
-      });
 
       return { summary, usage };
     } catch (error) {
