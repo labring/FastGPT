@@ -58,5 +58,6 @@
   "unit_code_void": "統一信用代碼格式錯誤",
   "update": "更新",
   "yes": "是",
-  "yuan": "{{amount}}元"
+  "yuan": "{{amount}}元",
+  "generate_sql": "產生 SQL"
 }
