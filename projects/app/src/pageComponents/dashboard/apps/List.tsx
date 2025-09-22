@@ -37,12 +37,14 @@ import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const ListItem = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
+  const { toast } = useToast();
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
@@ -309,6 +311,12 @@ const ListItem = () => {
                                         type: 'grayBg' as MenuItemType,
                                         label: t('common:dataset.Edit Info'),
                                         onClick: () => {
+                                          if (app.type === AppTypeEnum.httpPlugin) {
+                                            toast({
+                                              title: t('app:type.Http plugin_deprecated'),
+                                              status: 'warning'
+                                            });
+                                          }
                                           setEditedApp({
                                             id: app._id,
                                             avatar: app.avatar,

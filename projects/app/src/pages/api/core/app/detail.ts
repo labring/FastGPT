@@ -22,9 +22,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   await rewriteAppWorkflowToDetail({
-    nodes: app.modules || [],
+    nodes: app.modules,
     teamId,
-    ownerTmbId: app.tmbId || '',
+    ownerTmbId: app.tmbId,
     isRoot,
     lang: getLocale(req)
   });

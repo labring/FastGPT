@@ -301,6 +301,7 @@
   "type.Http manual": "手動創建",
   "type.Http manual tip": "通過 curl 或手動填寫參數創建單個工具",
   "type.Http plugin": "HTTP 外掛",
+  "type.Http plugin_deprecated": "HTTP 插件已廢棄，如需配置 Openapi Schema，請使用 HTTP 工具集",
   "type.Http tool set": "HTTP 工具集",
   "type.Import from json": "匯入 JSON 設定",
   "type.Import from json tip": "透過 JSON 設定文件，直接建立應用",

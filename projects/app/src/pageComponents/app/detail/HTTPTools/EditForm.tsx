@@ -144,7 +144,7 @@ const EditForm = ({
                   gap={2}
                   display="none"
                   _groupHover={{ display: 'flex' }}
-                  background="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
+                  bg="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
                   paddingLeft="20px"
                 >
                   <MyIconButton
@@ -279,13 +279,10 @@ const ToolDetailModal = ({
           py={'10px'}
           px={3}
           borderRadius={'6px'}
-          backgroundColor={'myGray.100'}
+          bg={'myGray.100'}
           color={'myGray.600'}
           fontSize={'12px'}
-          fontStyle={'normal'}
           fontWeight={'500'}
-          lineHeight={'16px'}
-          letterSpacing={'0.5px'}
         >
           <Box>{t('workflow:tool_params.params_description')}</Box>
           <Box display={'flex'} gap={1}>
@@ -400,16 +397,18 @@ const ToolDetailModal = ({
   );
 };
 
-const HTTP_METHOD_STYLES = {
-  GET: { background: '#EDFBF3', color: '#039855' },
-  POST: { background: '#FFFAEB', color: '#DC6803' },
-  PUT: { background: '#F0FBFF', color: '#219BF4' },
-  DELETE: { background: '#FEF2F2', color: '#F04438' },
-  PATCH: { background: '#F0EEFF', color: '#6F5DD7' },
-  DEFAULT: { background: '#F0EEFF', color: '#6F5DD7' }
-};
+const renderHttpMethod = (method?: string) => {
+  if (!method) return null;
 
-const HttpMethodBadge = ({ method }: { method: string }) => {
+  const HTTP_METHOD_STYLES = {
+    GET: { bg: 'green.50', color: 'green.600' },
+    POST: { bg: 'yello.50', color: 'yellow.600' },
+    PUT: { bg: 'blue.50', color: 'blue.600' },
+    DELETE: { bg: 'red.50', color: 'red.600' },
+    PATCH: { bg: 'adora.50', color: 'adora.600' },
+    DEFAULT: { bg: 'adora.50', color: 'adora.600' }
+  };
+
   const methodUpper = method.toUpperCase();
   const style =
     HTTP_METHOD_STYLES[methodUpper as keyof typeof HTTP_METHOD_STYLES] ||
@@ -430,9 +429,4 @@ const HttpMethodBadge = ({ method }: { method: string }) => {
       {methodUpper}
     </Box>
   );
-};
-
-const renderHttpMethod = (method?: string) => {
-  if (!method) return null;
-  return <HttpMethodBadge method={method} />;
 };

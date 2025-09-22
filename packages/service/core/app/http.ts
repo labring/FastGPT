@@ -1,6 +1,3 @@
-import type { AppSchema } from '@fastgpt/global/core/app/type';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { MongoApp } from './schema';
 import { addLog } from '../../common/system/log';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSecretValue } from '../../common/secret/utils';
@@ -41,7 +38,8 @@ export async function runHTTPTool({
 
     const response = await axios({
       method: method.toUpperCase(),
-      url: `https://${baseUrl}${toolPath}`,
+      baseURL: baseUrl.startsWith('https://') ? baseUrl : `https://${baseUrl}`,
+      url: toolPath,
       headers,
       data: params,
       params,
