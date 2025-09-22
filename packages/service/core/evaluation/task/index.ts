@@ -365,6 +365,7 @@ export class EvaluationTaskService {
               }
             },
             metricNames: 1,
+            evaluators: 1, // Add evaluators field for real-time calculation
             summaryConfigs: 1,
             aggregateScore: 1,
             tmbId: 1
@@ -396,8 +397,56 @@ export class EvaluationTaskService {
     );
 
     // Return data (permissions handled in API layer)
+    // Calculate real-time scores for each evaluation
+    const evaluationsWithRealTimeScores = await Promise.all(
+      evaluationsWithStatus.map(async (evaluation) => {
+        try {
+          // Calculate real-time metric scores and aggregate score
+          const calculatedData = await EvaluationSummaryService.calculateMetricScores(evaluation);
+
+          // Update summaryConfigs with real-time calculated values
+          const updatedSummaryConfigs = evaluation.summaryConfigs.map((summaryConfig: any) => {
+            const metricData = calculatedData.metricsData.find(
+              (m) => m.metricId === summaryConfig.metricId
+            );
+            return {
+              ...summaryConfig,
+              score: metricData?.metricScore || 0,
+              completedItemCount: metricData?.totalCount || 0,
+              overThresholdItemCount: metricData?.aboveThresholdCount || 0
+            };
+          });
+
+          return {
+            ...evaluation,
+            summaryConfigs: updatedSummaryConfigs,
+            aggregateScore: calculatedData.aggregateScore
+          };
+        } catch (error) {
+          addLog.error('[listEvaluations] Failed to calculate real-time scores', {
+            evalId: evaluation._id,
+            error
+          });
+          // Return evaluation with default score values if calculation fails
+          const defaultSummaryConfigs = evaluation.summaryConfigs.map((summaryConfig: any) => ({
+            ...summaryConfig,
+            score: 0,
+            completedItemCount: 0,
+            overThresholdItemCount: 0
+          }));
+
+          return {
+            ...evaluation,
+            summaryConfigs: defaultSummaryConfigs,
+            aggregateScore: 0
+          };
+        }
+      })
+    );
+
+    // Return data with real-time scores - permissions will be handled in API layer
     return {
-      list: evaluationsWithStatus,
+      list: evaluationsWithRealTimeScores,
       total
     };
   }
@@ -466,6 +515,7 @@ export class EvaluationTaskService {
             }
           },
           evaluators: 1,
+          summaryConfigs: 1,
           usageId: 1,
           createTime: 1,
           finishTime: 1,
@@ -722,7 +772,9 @@ export class EvaluationTaskService {
         evaluators: evaluation.evaluators.map((evaluator) => ({
           metric: evaluator.metric,
           thresholdValue: evaluator.thresholdValue
-        }))
+        })),
+        // Add summary configs
+        summaryConfigs: evaluation.summaryConfigs
       }));
 
       return { items, total };
