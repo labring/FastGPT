@@ -30,6 +30,7 @@ import type {
 import { StatusEnum } from '@fastgpt/global/core/dataset/database/api.d';
 import { TableTransformer } from '@fastgpt/service/core/dataset/database/model/dataModel';
 import type { ColumnSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
+import { ta } from 'date-fns/locale';
 
 // Check if column forbid status is inconsistent between database and collection
 function hasColumnForbidInconsistency(existingTable: any, newTable: DBTableChange): boolean {
@@ -85,11 +86,16 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
           mongoCollectionsMap.set(coll.tableSchema.tableName, coll);
         }
       });
-
-      // Delete tables which in mongo but not in tables
+      console.debug(
+        '[applyChanges] ',
+        mongoCollections.map((coll) => coll.name)
+      );
+      console.debug(
+        '[applyChanges] ',
+        tables.map((t) => t.tableName)
+      );
       const collectionsToDelete = mongoCollections.filter(
-        (mongoCollection) =>
-          !tables.some((table) => table.tableName === mongoCollection.tableSchema!.tableName)
+        (mongoCollection) => !tables.some((table) => table.tableName === mongoCollection.name)
       );
       if (collectionsToDelete.length > 0) {
         await delCollection({

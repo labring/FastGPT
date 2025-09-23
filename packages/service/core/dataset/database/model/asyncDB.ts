@@ -247,7 +247,7 @@ export abstract class AsyncDB {
             new TableForeignKey(
               fk.name || '',
               col,
-              (fk as any).referencedSchema,
+              fk.referencedSchema || fk.referencedDatabase || this.config.database,
               fk.referencedTableName,
               fk.referencedColumnNames[idx]
             )
