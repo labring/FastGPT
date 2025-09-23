@@ -30,15 +30,6 @@ export const HttpNode468: FlowNodeTemplateType = {
   courseUrl: '/docs/introduction/guide/dashboard/workflow/http/',
   inputs: [
     {
-      ...Input_Template_DynamicInput,
-      description: i18nT('common:core.module.input.description.HTTP Dynamic Input'),
-      customInputConfig: {
-        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
-        showDescription: false,
-        showDefaultValue: true
-      }
-    },
-    {
       key: NodeInputKeyEnum.httpMethod,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       valueType: WorkflowIOValueTypeEnum.string,
