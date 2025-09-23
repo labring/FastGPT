@@ -10,6 +10,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 /* 
   检查chat的权限：
@@ -208,17 +209,35 @@ export const authCollectionInChat = async ({
   appId: string;
   chatId: string;
   chatItemDataId: string;
-}): Promise<{
-  chatItem: { time: Date; responseData?: ChatHistoryItemResType[] };
-}> => {
+}) => {
   try {
+    // 1. 使用 citeCollectionIds 字段来判断
+    const chatItems = await MongoChatItem.find(
+      {
+        appId,
+        chatId,
+        obj: ChatRoleEnum.AI
+      },
+      'citeCollectionIds'
+    )
+      .sort({ _id: -1 })
+      .limit(50)
+      .lean();
+    const citeCollectionIds = new Set(
+      chatItems.map((item) => ('citeCollectionIds' in item ? item.citeCollectionIds : [])).flat()
+    );
+    if (collectionIds.every((id) => citeCollectionIds.has(id))) {
+      return;
+    }
+
+    // Adapt <=4.13.0
     const chatItem = (await MongoChatItem.findOne(
       {
         appId,
         chatId,
         dataId: chatItemDataId
       },
-      'time responseData'
+      'responseData'
     ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
 
     if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
@@ -240,9 +259,7 @@ export const authCollectionInChat = async ({
     );
 
     if (collectionIds.every((id) => quoteListSet.has(id))) {
-      return {
-        chatItem
-      };
+      return;
     }
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

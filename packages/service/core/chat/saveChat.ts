@@ -16,6 +16,7 @@ import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = {
   chatId: string;
@@ -49,20 +50,24 @@ const formatAiContent = ({
 }) => {
   const { responseData, ...aiResponse } = aiContent;
 
+  const citeCollectionIds = new Set<string>();
+
   const nodeResponses = responseData?.map((responseItem) => {
     if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
       return {
         ...responseItem,
-        quoteList: responseItem.quoteList.map((quote: any) => ({
-          id: quote.id,
-          chunkIndex: quote.chunkIndex,
-          datasetId: quote.datasetId,
-          collectionId: quote.collectionId,
-          sourceId: quote.sourceId,
-          sourceName: quote.sourceName,
-          score: quote.score,
-          tokens: quote.tokens
-        }))
+        quoteList: responseItem.quoteList.map((quote) => {
+          citeCollectionIds.add(quote.collectionId);
+          return {
+            id: quote.id,
+            chunkIndex: quote.chunkIndex,
+            datasetId: quote.datasetId,
+            collectionId: quote.collectionId,
+            sourceId: quote.sourceId,
+            sourceName: quote.sourceName,
+            score: quote.score
+          };
+        })
       };
     }
     return responseItem;
@@ -72,9 +77,11 @@ const formatAiContent = ({
     aiResponse: {
       ...aiResponse,
       durationSeconds,
-      errorMsg
+      errorMsg,
+      citeCollectionIds: Array.from(citeCollectionIds)
     },
-    nodeResponses
+    nodeResponses,
+    citeCollectionIds
   };
 };
 
@@ -123,7 +130,11 @@ export async function saveChat({
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const { aiResponse, nodeResponses } = formatAiContent({ aiContent, durationSeconds, errorMsg });
+    const { aiResponse, nodeResponses } = formatAiContent({
+      aiContent,
+      durationSeconds,
+      errorMsg
+    });
     const processedContent = [userContent, aiResponse];
 
     await mongoSessionRun(async (session) => {
@@ -264,20 +275,16 @@ export async function saveChat({
 }
 
 export const updateInteractiveChat = async ({
+  teamId,
   chatId,
+
   appId,
-  userInteractiveVal,
-  aiResponse,
-  newVariables,
-  durationSeconds
-}: {
-  chatId: string;
-  appId: string;
-  userInteractiveVal: string;
-  aiResponse: AIChatItemType & { dataId?: string };
-  newVariables?: Record<string, any>;
-  durationSeconds: number;
-}) => {
+  userContent,
+  aiContent,
+  variables,
+  durationSeconds,
+  errorMsg
+}: Props) => {
   if (!chatId) return;
 
   const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
@@ -298,17 +305,23 @@ export const updateInteractiveChat = async ({
   }
 
   const parsedUserInteractiveVal = (() => {
+    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
     try {
       return JSON.parse(userInteractiveVal);
     } catch (err) {
       return userInteractiveVal;
     }
   })();
+  const { aiResponse, nodeResponses } = formatAiContent({
+    aiContent,
+    durationSeconds,
+    errorMsg
+  });
 
   let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
 
   if (finalInteractive.type === 'userSelect') {
-    finalInteractive.params.userSelectedVal = userInteractiveVal;
+    finalInteractive.params.userSelectedVal = parsedUserInteractiveVal;
   } else if (
     finalInteractive.type === 'userInput' &&
     typeof parsedUserInteractiveVal === 'object'
@@ -330,15 +343,13 @@ export const updateInteractiveChat = async ({
       ? [...chatItem.customFeedbacks, ...aiResponse.customFeedbacks]
       : aiResponse.customFeedbacks;
   }
-
-  if (aiResponse.responseData) {
-    chatItem.responseData = chatItem.responseData
-      ? mergeChatResponseData([...chatItem.responseData, ...aiResponse.responseData])
-      : aiResponse.responseData;
-  }
-
   if (aiResponse.value) {
     chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
+  }
+  if (aiResponse.citeCollectionIds) {
+    chatItem.citeCollectionIds = chatItem.citeCollectionIds
+      ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
+      : aiResponse.citeCollectionIds;
   }
 
   chatItem.durationSeconds = chatItem.durationSeconds
@@ -354,7 +365,7 @@ export const updateInteractiveChat = async ({
       },
       {
         $set: {
-          variables: newVariables,
+          variables,
           updateTime: new Date()
         }
       },
@@ -362,5 +373,36 @@ export const updateInteractiveChat = async ({
         session
       }
     );
+
+    // Create chat item respones
+    if (nodeResponses) {
+      // Merge
+      const lastResponse = await MongoChatItemResponse.findOneAndDelete({
+        appId,
+        chatId,
+        chatItemDataId: chatItem.dataId
+      })
+        .sort({
+          _id: -1
+        })
+        .lean()
+        .session(session);
+
+      const newResponses = lastResponse?.data
+        ? // @ts-ignore
+          mergeChatResponseData([lastResponse?.data, ...nodeResponses])
+        : nodeResponses;
+
+      await MongoChatItemResponse.create(
+        newResponses.map((item) => ({
+          teamId,
+          appId,
+          chatId,
+          chatItemDataId: chatItem.dataId,
+          data: item
+        })),
+        { session, ordered: true, ...writePrimary }
+      );
+    }
   });
 };

@@ -416,7 +416,6 @@
   "core.chat.response.module query": "问题/检索词",
   "core.chat.response.module similarity": "相似度",
   "core.chat.response.module temperature": "温度",
-  "core.chat.response.module time": "运行时长",
   "core.chat.response.plugin output": "插件输出值",
   "core.chat.response.search using reRank": "结果重排",
   "core.chat.response.text output": "文本输出",

@@ -104,6 +104,10 @@ export type AIChatItemType = {
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
 
+  durationSeconds?: number;
+  errorMsg?: string;
+  citeCollectionIds?: string[];
+
   // @deprecated 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
 };
@@ -122,8 +126,6 @@ export type ChatItemSchema = ChatItemMergeType & {
   tmbId: string;
   appId: string;
   time: Date;
-  durationSeconds?: number;
-  errorMsg?: string;
 };
 
 export type AdminFbkType = {

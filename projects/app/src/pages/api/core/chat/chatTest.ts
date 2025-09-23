@@ -223,32 +223,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
+    const params = {
+      chatId,
+      appId: app._id,
+      teamId,
+      tmbId: tmbId,
+      nodes,
+      appChatConfig: chatConfig,
+      variables: newVariables,
+      isUpdateUseTime: false, // owner update use time
+      newTitle,
+      source: ChatSourceEnum.test,
+      userContent: userQuestion,
+      aiContent: aiResponse,
+      durationSeconds
+    };
 
     if (isInteractiveRequest) {
-      await updateInteractiveChat({
-        chatId,
-        appId: app._id,
-        userInteractiveVal,
-        aiResponse,
-        newVariables,
-        durationSeconds
-      });
+      await updateInteractiveChat(params);
     } else {
-      await saveChat({
-        chatId,
-        appId: app._id,
-        teamId,
-        tmbId: tmbId,
-        nodes,
-        appChatConfig: chatConfig,
-        variables: newVariables,
-        isUpdateUseTime: false, // owner update use time
-        newTitle,
-        source: ChatSourceEnum.test,
-        userContent: userQuestion,
-        aiContent: aiResponse,
-        durationSeconds
-      });
+      await saveChat(params);
     }
   } catch (err: any) {
     res.status(500);

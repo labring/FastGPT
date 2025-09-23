@@ -60,6 +60,8 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
+
+  // Field memory
   memories: Object,
   errorMsg: String,
   userGoodFeedback: String,
@@ -74,8 +76,8 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-
   durationSeconds: Number,
+  citeCollectionIds: [String],
 
   // @deprecated
   [DispatchNodeResponseKeyEnum.nodeResponse]: Array

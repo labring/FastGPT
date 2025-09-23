@@ -220,38 +220,32 @@ export const mergeChatResponseData = (
     return item;
   });
 
-  let lastResponse: ChatHistoryItemResType | undefined = undefined;
-  let hasMerged = false;
+  const result: ChatHistoryItemResType[] = [];
+  const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  const firstPassResult = responseWithMergedPlugins.reduce<ChatHistoryItemResType[]>(
-    (acc, curr) => {
-      if (
-        lastResponse &&
-        lastResponse.mergeSignId &&
-        curr.mergeSignId === lastResponse.mergeSignId
-      ) {
-        const concatResponse: ChatHistoryItemResType = {
-          ...curr,
-          runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
-          totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
-          childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-          toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])],
-          loopDetail: [...(lastResponse.loopDetail || []), ...(curr.loopDetail || [])],
-          pluginDetail: [...(lastResponse.pluginDetail || []), ...(curr.pluginDetail || [])]
-        };
-        hasMerged = true;
-        return [...acc.slice(0, -1), concatResponse];
-      } else {
-        lastResponse = curr;
-        return [...acc, curr];
+  for (const item of responseWithMergedPlugins) {
+    if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
+      // Merge with existing item
+      const existingIndex = mergeMap.get(item.mergeSignId)!;
+      const existing = result[existingIndex];
+
+      result[existingIndex] = {
+        ...item,
+        runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
+        totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
+        childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
+        toolDetail: [...(existing.toolDetail || []), ...(item.toolDetail || [])],
+        loopDetail: [...(existing.loopDetail || []), ...(item.loopDetail || [])],
+        pluginDetail: [...(existing.pluginDetail || []), ...(item.pluginDetail || [])]
+      };
+    } else {
+      // Add new item
+      result.push(item);
+      if (item.mergeSignId) {
+        mergeMap.set(item.mergeSignId, result.length - 1);
       }
-    },
-    []
-  );
-
-  if (hasMerged && firstPassResult.length > 1) {
-    return mergeChatResponseData(firstPassResult);
+    }
   }
 
-  return firstPassResult;
+  return result;
 };
