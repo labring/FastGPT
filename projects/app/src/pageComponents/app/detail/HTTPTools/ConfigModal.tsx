@@ -42,7 +42,6 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
 
   const [schemaUrl, setSchemaUrl] = useState<string>('');
   const [updateTrigger, setUpdateTrigger] = useState<boolean>(false);
-  const [apiData, setApiData] = useState<OpenApiJsonSchema>({ pathData: [], serverPath: '' });
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
@@ -98,6 +97,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   );
   const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest2(
     async (data: HttpToolsType) => {
+      const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);
 
       return putUpdateHttpPlugin({
@@ -118,26 +118,14 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
         onClose();
         reloadApp();
       },
-      errorToast: t('common:update_failed')
-    }
-  );
-
-  useEffect(() => {
-    (async () => {
-      if (!apiSchemaStr) {
-        return setApiData({ pathData: [], serverPath: '' });
-      }
-      try {
-        setApiData(await str2OpenApiSchema(apiSchemaStr));
-      } catch (err) {
+      onError: (err) => {
         toast({
           status: 'warning',
           title: t('common:plugin.Invalid Schema')
         });
-        setApiData({ pathData: [], serverPath: '' });
       }
-    })();
-  }, [apiSchemaStr, t, toast]);
+    }
+  );
 
   return (
     <MyModal
@@ -319,6 +307,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
               const storeData = headerValue2StoreHeader(data);
               setValue('headerSecret', storeData);
             }}
+            fontWeight="normal"
           />
         </Box>
       </ModalBody>
@@ -329,7 +318,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
             {t('common:Close')}
           </Button>
           <Button
-            isDisabled={apiData.pathData.length === 0}
+            isDisabled={!apiSchemaStr}
             onClick={handleSubmit((data) => onUpdateHttpTool(data))}
             isLoading={isUpdatingHttpTool}
           >

@@ -97,10 +97,12 @@ export const getSecretType = (config: HeaderSecretConfigType): HeaderSecretTypeE
 
 const HeaderAuthForm = ({
   headerSecretValue,
-  onChange
+  onChange,
+  fontWeight = 'medium'
 }: {
   headerSecretValue: HeaderSecretConfigType;
   onChange: (secret: HeaderSecretConfigType) => void;
+  fontWeight?: string;
 }) => {
   const { t } = useTranslation();
   const headerSecretList = [
@@ -132,7 +134,7 @@ const HeaderAuthForm = ({
 
   return (
     <>
-      <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
+      <Box fontSize={'14px'} fontWeight={fontWeight} color={'myGray.900'} mb={2}>
         {t('common:auth_type')}
       </Box>
       <MySelect
@@ -154,7 +156,7 @@ const HeaderAuthForm = ({
         list={headerSecretList}
       />
       {currentAuthType !== HeaderSecretTypeEnum.None && (
-        <Flex my={2} gap={2} color={'myGray.900'} fontWeight={'medium'} fontSize={'14px'}>
+        <Flex my={2} gap={2} color={'myGray.900'} fontWeight={fontWeight} fontSize={'14px'}>
           {currentAuthType === HeaderSecretTypeEnum.Custom && (
             <Box w={1 / 3}>{t('common:key')}</Box>
           )}
