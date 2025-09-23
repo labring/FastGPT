@@ -26,7 +26,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
+import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import type { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpTools/type';
 import { pathData2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -47,7 +47,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
     const toolSetNode = appDetail.modules.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    return toolSetNode?.toolConfig?.httpToolSet ?? toolSetNode?.inputs[0].value;
+    return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.modules]);
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
@@ -183,12 +183,13 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
             })}
             bg={'myWhite.600'}
             rows={10}
+            minH={40}
             mt={3}
           />
         </Box>
 
         <Box mt={6} mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
-          {t('common:core.plugin.Custom headers')}
+          {t('app:request_headers')}
         </Box>
         <Box
           mt={1}
@@ -295,7 +296,7 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
                   </Td>
                   <Td p={0}>
                     <Box display={'flex'} alignItems={'center'}>
-                      <HttpInput />
+                      <HttpInput placeholder={t('common:core.module.http.Add_props_value')} />
                     </Box>
                   </Td>
                 </Tr>
@@ -308,18 +309,10 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
           {t('common:auth_config')}
         </Box>
         <Box mt={2}>
-          <HeaderAuthConfig
+          <HeaderAuthForm
             storeHeaderSecretConfig={headerSecret}
             onUpdate={(data) => {
               setValue('headerSecret', data);
-            }}
-            buttonProps={{
-              variant: 'whiteBase',
-              borderColor: 'myGray.200',
-              _hover: {
-                borderColor: 'primary.300',
-                bg: 'primary.50'
-              }
             }}
           />
         </Box>

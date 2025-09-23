@@ -619,6 +619,7 @@
   "core.module.extract.Required Description": "Even if the field cannot be extracted, it will be returned using the default value",
   "core.module.extract.Target field": "Target Field",
   "core.module.http.Add props": "Add Parameter",
+  "core.module.http.Add_props_value": "Add parameter values",
   "core.module.http.AppId": "App ID",
   "core.module.http.ChatId": "Current Chat ID",
   "core.module.http.Current time": "Current Time",
