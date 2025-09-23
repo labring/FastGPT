@@ -15,7 +15,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { addDays } from 'date-fns';
 
-/* 
+/*
   check dataset.files data. If there is no match in dataset.collections, delete it
   可能异常情况:
   1. 上传了文件，未成功创建集合
@@ -65,7 +65,7 @@ export async function checkInvalidDatasetFiles(start: Date, end: Date) {
   addLog.info(`Clear invalid dataset files finish, remove ${deleteFileAmount} files`);
 }
 
-/* 
+/*
   Remove 7 days ago chat files
 */
 export const removeExpiredChatFiles = async () => {
@@ -96,7 +96,7 @@ export const removeExpiredChatFiles = async () => {
   addLog.info(`Remove expired chat files finish, remove ${deleteFileAmount} files`);
 };
 
-/* 
+/*
   检测无效的 Mongo 数据
   异常情况：
   1. 训练过程删除知识库，可能导致还会有新的数据继续插入，导致无效。
@@ -145,16 +145,20 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
             datasetId: item.datasetId,
             collectionId: item.collectionId
           });
-          await MongoDatasetDataText.deleteMany({
-            teamId: item.teamId,
-            datasetId: item.datasetId,
-            collectionId: item.collectionId
-          });
-          await deleteDatasetDataVector({
-            teamId: item.teamId,
-            datasetIds: [item.datasetId],
-            collectionIds: [item.collectionId]
-          });
+
+          await Promise.all([
+            MongoDatasetDataText.deleteMany({
+              teamId: item.teamId,
+              datasetId: item.datasetId,
+              collectionId: item.collectionId
+            }),
+            deleteDatasetDataVector({
+              teamId: item.teamId,
+              datasetIds: [item.datasetId],
+              collectionIds: [item.collectionId]
+            })
+          ]);
+
           await MongoDatasetData.deleteMany({
             teamId: item.teamId,
             datasetId: item.datasetId,

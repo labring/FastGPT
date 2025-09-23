@@ -5,42 +5,6 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
 
-export const pushQAUsage = async ({
-  teamId,
-  tmbId,
-  model,
-  inputTokens,
-  outputTokens,
-  billId
-}: {
-  teamId: string;
-  tmbId: string;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  billId: string;
-}) => {
-  // 计算价格
-  const { totalPoints } = formatModelChars2Points({
-    model,
-    modelType: ModelTypeEnum.llm,
-    inputTokens,
-    outputTokens
-  });
-
-  concatUsage({
-    billId,
-    teamId,
-    tmbId,
-    totalPoints,
-    inputTokens,
-    outputTokens,
-    listIndex: 1
-  });
-
-  return { totalPoints };
-};
-
 export const pushGenerateVectorUsage = ({
   billId,
   teamId,
@@ -71,7 +35,6 @@ export const pushGenerateVectorUsage = ({
   deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
-    modelType: ModelTypeEnum.embedding,
     model,
     inputTokens
   });
@@ -83,7 +46,6 @@ export const pushGenerateVectorUsage = ({
         extensionModelName: ''
       };
     const { totalPoints, modelName } = formatModelChars2Points({
-      modelType: ModelTypeEnum.llm,
       model: extensionModel,
       inputTokens: extensionInputTokens,
       outputTokens: extensionOutputTokens
@@ -100,7 +62,6 @@ export const pushGenerateVectorUsage = ({
         deepSearchModelName: ''
       };
     const { totalPoints, modelName } = formatModelChars2Points({
-      modelType: ModelTypeEnum.llm,
       model: deepSearchModel,
       inputTokens: deepSearchInputTokens,
       outputTokens: deepSearchOutputTokens
@@ -181,19 +142,18 @@ export const pushQuestionGuideUsage = ({
   const { totalPoints, modelName } = formatModelChars2Points({
     inputTokens,
     outputTokens,
-    model,
-    modelType: ModelTypeEnum.llm
+    model
   });
 
   createUsage({
     teamId,
     tmbId,
-    appName: 'core.app.Question Guide',
+    appName: i18nT('common:core.app.Question Guide'),
     totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
       {
-        moduleName: 'core.app.Question Guide',
+        moduleName: i18nT('common:core.app.Question Guide'),
         amount: totalPoints,
         model: modelName,
         inputTokens,
@@ -220,8 +180,7 @@ export const pushAudioSpeechUsage = ({
 }) => {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    inputTokens: charsLength,
-    modelType: ModelTypeEnum.tts
+    inputTokens: charsLength
   });
 
   createUsage({
@@ -257,7 +216,6 @@ export const pushWhisperUsage = ({
   const { totalPoints, modelName } = formatModelChars2Points({
     model: whisperModel.model,
     inputTokens: duration,
-    modelType: ModelTypeEnum.stt,
     multiple: 60
   });
 
@@ -295,8 +253,7 @@ export const pushRerankUsage = ({
 }) => {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    inputTokens,
-    modelType: ModelTypeEnum.rerank
+    inputTokens
   });
 
   createUsage({

@@ -9,14 +9,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { lastChatAppId } = useChatStore();
+  const { lastChatAppId, lastPane } = useChatStore();
+
   const navbarList = useMemo(
     () => [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}`,
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
         activeLink: ['/chat'],
         unread: 0
       },
@@ -30,7 +31,9 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/app/detail',
           '/dashboard/templateMarket',
           '/dashboard/[pluginGroupId]',
-          '/dashboard/mcpServer'
+          '/dashboard/mcpServer',
+          '/dashboard/evaluation',
+          '/dashboard/evaluation/create'
         ],
         unread: 0
       },
@@ -61,7 +64,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread
       }
     ],
-    [t, lastChatAppId, unread]
+    [t, lastChatAppId, lastPane, unread]
   );
 
   return (
@@ -95,6 +98,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                 })}
             onClick={() => {
               if (item.link === router.asPath) return;
+              if (item.link.startsWith('/chat')) {
+                window.open(item.link, '_blank');
+                return;
+              }
               router.push(item.link);
             }}
           >

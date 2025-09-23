@@ -2,6 +2,11 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import fs from 'fs';
 import path from 'path';
 
+export const getFileMaxSize = () => {
+  const mb = global.feConfigs?.uploadFileMaxSize || 1000;
+  return mb * 1024 * 1024;
+};
+
 export const removeFilesByPaths = (paths: string[]) => {
   paths.forEach((path) => {
     fs.unlink(path, (err) => {

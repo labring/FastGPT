@@ -8,23 +8,20 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsc && shx chmod +x dist/*.js",
-    "dev": "nodemon --watch src --ext ts,json --exec \"npm run dev:run\"",
-    "dev:run": "tsc && node dist/index.js",
+    "build": "bun build src/index.ts --outdir=dist --target=node && chmod +x dist/index.js",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
     "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.10.2",
-    "axios": "^1.8.2",
+    "@fastgpt/global": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "chalk": "^5.3.0",
     "dayjs": "^1.11.7",
     "dotenv": "^16.5.0",
     "express": "^4.21.2"
   },
   "devDependencies": {
-    "@types/express": "^5.0.1",
-    "nodemon": "^3.1.9",
-    "shx": "^0.3.4",
-    "typescript": "^5.6.2"
+    "@types/express": "^5.0.1"
   }
 }

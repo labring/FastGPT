@@ -17,11 +17,12 @@ import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum
+  DatasetStatusEnum,
+  ApiDatasetTypeMap
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
-import ParentPath from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import dynamic from 'next/dynamic';
 
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
@@ -36,6 +37,8 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
+const BackupImportModal = dynamic(() => import('./BackupImportModal'));
+const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t } = useTranslation();
@@ -54,7 +57,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     getData,
     pageNum,
     onOpenWebsiteModal,
-    openWebSyncConfirm
+    openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
@@ -75,6 +78,18 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     isOpen: isOpenFileSourceSelector,
     onOpen: onOpenFileSourceSelector,
     onClose: onCloseFileSourceSelector
+  } = useDisclosure();
+  // Backup import modal
+  const {
+    isOpen: isOpenBackupImportModal,
+    onOpen: onOpenBackupImportModal,
+    onClose: onCloseBackupImportModal
+  } = useDisclosure();
+  // Template import modal
+  const {
+    isOpen: isOpenTemplateImportModal,
+    onOpen: onOpenTemplateImportModal,
+    onClose: onCloseTemplateImportModal
   } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest2(
@@ -102,7 +117,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
       <HStack flex={1}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
-          <ParentPath
+          <FolderPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
               parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
@@ -229,8 +244,38 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     {
                       label: (
                         <Flex>
+                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Text collection')}
+                        </Flex>
+                      ),
+                      onClick: onOpenFileSourceSelector
+                    },
+                    ...(feConfigs?.isPlus
+                      ? [
+                          {
+                            label: (
+                              <Flex>
+                                <MyIcon name={'image'} mr={2} w={'20px'} />
+                                {t('dataset:core.dataset.Image collection')}
+                              </Flex>
+                            ),
+                            onClick: () =>
+                              router.replace({
+                                query: {
+                                  ...router.query,
+                                  currentTab: TabEnum.import,
+                                  source: ImportDataSourceEnum.imageDataset
+                                }
+                              })
+                          }
+                        ]
+                      : []),
+
+                    {
+                      label: (
+                        <Flex>
                           <MyIcon name={'core/dataset/manualCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Manual collection')}
+                          {t('dataset:empty_collection')}
                         </Flex>
                       ),
                       onClick: () => {
@@ -240,31 +285,28 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                             onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
                         });
                       }
+                    }
+                  ]
+                },
+                {
+                  children: [
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'common/layer'} w={'20px'} mr={2} />
+                          {t('dataset:template_dataset')}
+                        </Flex>
+                      ),
+                      onClick: onOpenTemplateImportModal
                     },
                     {
                       label: (
                         <Flex>
-                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Text collection')}
+                          <MyIcon name={'backup'} mr={2} w={'20px'} />
+                          {t('dataset:backup_dataset')}
                         </Flex>
                       ),
-                      onClick: onOpenFileSourceSelector
-                    },
-                    {
-                      label: (
-                        <Flex>
-                          <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'20px'} />
-                          {t('common:core.dataset.Table collection')}
-                        </Flex>
-                      ),
-                      onClick: () =>
-                        router.replace({
-                          query: {
-                            ...router.query,
-                            currentTab: TabEnum.import,
-                            source: ImportDataSourceEnum.csvTable
-                          }
-                        })
+                      onClick: onOpenBackupImportModal
                     }
                   ]
                 }
@@ -283,10 +325,10 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       >
                         {t('dataset:params_config')}
                       </Button>
-                      {!hasTrainingData && (
+                      {!hasTrainingData && feConfigs?.isPlus && (
                         <Button
                           variant={'whitePrimary'}
-                          onClick={openWebSyncConfirm}
+                          onClick={openDatasetSyncConfirm}
                           leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
                         >
                           {t('dataset:immediate_sync')}
@@ -411,34 +453,91 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             />
           )}
           {/* apiDataset */}
-          {(datasetDetail?.type === DatasetTypeEnum.apiDataset ||
-            datasetDetail?.type === DatasetTypeEnum.feishu ||
-            datasetDetail?.type === DatasetTypeEnum.yuque) && (
-            <Flex
-              px={3.5}
-              py={2}
-              borderRadius={'sm'}
-              cursor={'pointer'}
-              bg={'primary.500'}
-              overflow={'hidden'}
-              color={'white'}
-              onClick={() =>
-                router.replace({
-                  query: {
-                    ...router.query,
-                    currentTab: TabEnum.import,
-                    source: ImportDataSourceEnum.apiDataset
-                  }
-                })
-              }
-            >
-              <Flex h={'20px'} alignItems={'center'}>
-                <MyIcon name={'common/folderImport'} mr={2} w={'18px'} h={'18px'} color={'white'} />
-              </Flex>
-              <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
-                {t('dataset:add_file')}
-              </Box>
-            </Flex>
+          {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
+            <>
+              {datasetDetail.status === DatasetStatusEnum.active && (
+                <HStack gap={2}>
+                  <Flex
+                    px={3.5}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    bg={'primary.500'}
+                    overflow={'hidden'}
+                    color={'white'}
+                    onClick={() =>
+                      router.replace({
+                        query: {
+                          ...router.query,
+                          currentTab: TabEnum.import,
+                          source: ImportDataSourceEnum.apiDataset
+                        }
+                      })
+                    }
+                  >
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('dataset:add_file')}
+                    </Box>
+                  </Flex>
+                  {!hasTrainingData && feConfigs?.isPlus && (
+                    <Button
+                      variant={'whitePrimary'}
+                      onClick={openDatasetSyncConfirm}
+                      leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
+                    >
+                      {t('dataset:immediate_sync')}
+                    </Button>
+                  )}
+                </HStack>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.syncing && (
+                <MyTag
+                  colorSchema="purple"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.syncing')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.waiting && (
+                <MyTag
+                  colorSchema="gray"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.waiting')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.error && (
+                <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                  <HStack spacing={1}>
+                    <Box>{t('dataset:status_error')}</Box>
+                    <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                  </HStack>
+                </MyTag>
+              )}
+            </>
           )}
         </Box>
       )}
@@ -469,8 +568,27 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           name={editFolderData.name}
         />
       )}
-      <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
+      <EditCreateVirtualFileModal
+        iconSrc={'modal/manualDataset'}
+        closeBtnText={t('common:Cancel')}
+      />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
+      {isOpenBackupImportModal && (
+        <BackupImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseBackupImportModal}
+        />
+      )}
+      {isOpenTemplateImportModal && (
+        <TemplateImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseTemplateImportModal}
+        />
+      )}
     </MyBox>
   );
 };

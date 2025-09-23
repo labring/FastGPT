@@ -12,7 +12,6 @@ import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ContextProps = {
-  showRouteToAppDetail: boolean;
   showRouteToDatasetDetail: boolean;
   isShowReadRawSource: boolean;
   isResponseDetail: boolean;
@@ -20,6 +19,7 @@ type ContextProps = {
   showNodeStatus: boolean;
 };
 type ChatBoxDataType = {
+  chatId?: string;
   appId: string;
   title?: string;
   userAvatar?: string;
@@ -34,13 +34,13 @@ type ChatBoxDataType = {
   };
 };
 
+// 知识库引用相关 type
 export type GetQuoteDataBasicProps = {
   appId: string;
   chatId: string;
   chatItemDataId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 };
-// 获取单个集合引用
 export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
   quoteId?: string;
   collectionId: string;
@@ -54,10 +54,16 @@ export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
   sourceName?: string;
 };
 export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
-
 export type QuoteDataType = {
   rawSearch: SearchDataResponseItemType[];
   metadata: GetQuoteProps;
+};
+export type OnOpenCiteModalProps = {
+  collectionId?: string;
+  sourceId?: string;
+  sourceName?: string;
+  datasetId?: string;
+  quoteId?: string;
 };
 
 type ChatItemContextType = {
@@ -74,8 +80,8 @@ type ChatItemContextType = {
   setChatBoxData: React.Dispatch<React.SetStateAction<ChatBoxDataType>>;
   isPlugin: boolean;
 
-  quoteData?: QuoteDataType;
-  setQuoteData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
+  datasetCiteData?: QuoteDataType;
+  setCiteModalData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
   isVariableVisible: boolean;
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
 } & ContextProps;
@@ -98,8 +104,8 @@ export const ChatItemContext = createContext<ChatItemContextType>({
     throw new Error('Function not implemented.');
   },
 
-  quoteData: undefined,
-  setQuoteData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
+  datasetCiteData: undefined,
+  setCiteModalData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
     throw new Error('Function not implemented.');
   },
   isVariableVisible: true,
@@ -113,7 +119,6 @@ export const ChatItemContext = createContext<ChatItemContextType>({
 */
 const ChatItemContextProvider = ({
   children,
-  showRouteToAppDetail,
   showRouteToDatasetDetail,
   isShowReadRawSource,
   isResponseDetail,
@@ -124,7 +129,6 @@ const ChatItemContextProvider = ({
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
-  const [quoteData, setQuoteData] = useState<QuoteDataType>();
   const [isVariableVisible, setIsVariableVisible] = useState(true);
 
   const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>({
@@ -138,32 +142,40 @@ const ChatItemContextProvider = ({
 
   const resetVariables = useCallback(
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
-      const { variables, variableList = [] } = props || {};
+      const { variables = {}, variableList = [] } = props || {};
 
-      let newVariableValue: Record<string, any> = {};
-      if (variables) {
-        variableList.forEach((item) => {
-          newVariableValue[item.key] = variables[item.key];
-        });
-      } else {
-        variableList.forEach((item) => {
-          newVariableValue[item.key] = item.defaultValue;
-        });
-      }
+      variableList.forEach((item) => {
+        if (variables[item.key] === undefined) {
+          variables[item.key] = item.defaultValue;
+        }
+      });
 
-      variablesForm.setValue('variables', newVariableValue);
+      const values = variablesForm.getValues();
+      variablesForm.reset({
+        ...values,
+        variables
+      });
     },
     [variablesForm]
   );
 
   const clearChatRecords = useCallback(() => {
-    const data = variablesForm.getValues();
-    for (const key in data.variables) {
-      variablesForm.setValue(`variables.${key}`, '');
-    }
+    const variables = chatBoxData?.app?.chatConfig?.variables || [];
+    const values = variablesForm.getValues();
+
+    variables.forEach((item) => {
+      if (item.defaultValue !== undefined) {
+        values.variables[item.key] = item.defaultValue;
+      } else {
+        values.variables[item.key] = '';
+      }
+    });
+    variablesForm.reset(values);
 
     ChatBoxRef.current?.restartChat?.();
-  }, [variablesForm]);
+  }, [chatBoxData?.app?.chatConfig?.variables, variablesForm]);
+
+  const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 
   const contextValue = useMemo(() => {
     return {
@@ -176,15 +188,14 @@ const ChatItemContextProvider = ({
       setPluginRunTab,
       resetVariables,
       clearChatRecords,
-      showRouteToAppDetail,
       showRouteToDatasetDetail,
       isShowReadRawSource,
       isResponseDetail,
       // isShowFullText,
       showNodeStatus,
 
-      quoteData,
-      setQuoteData,
+      datasetCiteData,
+      setCiteModalData,
       isVariableVisible,
       setIsVariableVisible
     };
@@ -195,14 +206,13 @@ const ChatItemContextProvider = ({
     pluginRunTab,
     resetVariables,
     clearChatRecords,
-    showRouteToAppDetail,
     showRouteToDatasetDetail,
     isShowReadRawSource,
     isResponseDetail,
     // isShowFullText,
     showNodeStatus,
-    quoteData,
-    setQuoteData,
+    datasetCiteData,
+    setCiteModalData,
     isVariableVisible,
     setIsVariableVisible
   ]);

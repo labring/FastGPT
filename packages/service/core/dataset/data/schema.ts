@@ -37,9 +37,10 @@ const DatasetDataSchema = new Schema({
     required: true
   },
   a: {
-    type: String,
-    default: ''
+    type: String
   },
+  imageId: String,
+  imageDescMap: Object,
   history: {
     type: [
       {
@@ -101,12 +102,14 @@ try {
   });
   // Recall vectors after data matching
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
-  DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
 
   // 为查询 initJieba 字段不存在的数据添加索引
   DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });
+
+  // Cron clear invalid data
+  DatasetDataSchema.index({ updateTime: 1 });
 } catch (error) {
   console.log(error);
 }

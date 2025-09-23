@@ -13,16 +13,13 @@ const ChatQuoteList = ({
   metadata: GetQuoteProps;
   onClose: () => void;
 }) => {
-  return (
-    <>
-      {'collectionId' in metadata && (
-        <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />
-      )}
-      {'collectionIdList' in metadata && (
-        <QuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />
-      )}
-    </>
-  );
+  if ('collectionId' in metadata) {
+    return <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />;
+  } else if ('collectionIdList' in metadata) {
+    return <QuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />;
+  }
+
+  return null;
 };
 
 export default ChatQuoteList;

@@ -9,7 +9,6 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
@@ -20,7 +19,6 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { getWorkflowGlobalVariables } from './utils';
 import type { TFunction } from 'next-i18next';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -38,8 +36,8 @@ export const getGlobalVariableNode = ({
     id: FlowNodeTypeEnum.globalVariable,
     templateType: FlowNodeTemplateTypeEnum.other,
     flowNodeType: FlowNodeTypeEnum.emptyNode,
-    sourceHandle: getHandleConfig(false, false, false, false),
-    targetHandle: getHandleConfig(false, false, false, false),
+    showSourceHandle: false,
+    showTargetHandle: false,
     avatar: 'core/workflow/template/variable',
     name: t('common:core.module.Variable'),
     intro: '',
@@ -231,7 +229,6 @@ type V1WorkflowType = {
 
   // runTime field
   isEntry?: boolean;
-  pluginType?: `${PluginTypeEnum}`;
   parentId?: string;
 };
 export const v1Workflow2V2 = (
@@ -267,7 +264,7 @@ export const v1Workflow2V2 = (
       [FlowTypeEnum.pluginInput]: FlowNodeTypeEnum.pluginInput,
       [FlowTypeEnum.pluginOutput]: FlowNodeTypeEnum.pluginOutput,
       [FlowTypeEnum.queryExtension]: FlowNodeTypeEnum.queryExtension,
-      [FlowTypeEnum.tools]: FlowNodeTypeEnum.tools,
+      [FlowTypeEnum.tools]: FlowNodeTypeEnum.agent,
       [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool,
       [FlowTypeEnum.lafModule]: FlowNodeTypeEnum.lafModule
     };
@@ -408,7 +405,6 @@ export const v1Workflow2V2 = (
       intro: node.intro,
       showStatus: node.showStatus,
       pluginId,
-      pluginType: node.pluginType,
       parentId: node.parentId,
       version: '481',
 

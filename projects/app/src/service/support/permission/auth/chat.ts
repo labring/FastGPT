@@ -1,8 +1,4 @@
-import {
-  type AIChatItemType,
-  type ChatHistoryItemResType,
-  type ChatSchema
-} from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType, type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
@@ -12,6 +8,7 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getFlatAppResponses } from '@/global/core/chat/utils';
 
 /* 
   检查chat的权限：
@@ -54,7 +51,7 @@ export async function authChatCrud({
   teamId: string;
   tmbId: string;
   uid: string;
-  chat?: ChatSchema;
+  chat?: ChatSchemaType;
   responseDetail: boolean;
   showNodeStatus: boolean;
   showRawSource: boolean;
@@ -152,7 +149,7 @@ export async function authChatCrud({
     per: ReadPermissionVal
   });
 
-  if (!chatId)
+  if (!chatId) {
     return {
       teamId,
       tmbId,
@@ -161,9 +158,10 @@ export async function authChatCrud({
 
       authType
     };
+  }
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
-  if (!chat)
+  if (!chat) {
     return {
       teamId,
       tmbId,
@@ -171,9 +169,10 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
-  if (permission.hasManagePer)
+  if (permission.hasReadChatLogPer) {
     return {
       teamId,
       tmbId,
@@ -182,7 +181,9 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
-  if (String(tmbId) === String(chat.tmbId))
+  }
+
+  if (String(tmbId) === String(chat.tmbId)) {
     return {
       teamId,
       tmbId,
@@ -191,6 +192,7 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
@@ -221,18 +223,7 @@ export const authCollectionInChat = async ({
     if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
 
     // 找 responseData 里，是否有该文档 id
-    const responseData = chatItem.responseData || [];
-    const flatResData: ChatHistoryItemResType[] =
-      responseData
-        ?.map((item) => {
-          return [
-            item,
-            ...(item.pluginDetail || []),
-            ...(item.toolDetail || []),
-            ...(item.loopDetail || [])
-          ];
-        })
-        .flat() || [];
+    const flatResData = getFlatAppResponses(chatItem.responseData || []);
 
     const quoteListSet = new Set(
       flatResData

@@ -13,17 +13,22 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     return db;
   }
 
+  const RemoveListeners = () => {
+    db.connection.removeAllListeners('error');
+    db.connection.removeAllListeners('disconnected');
+  };
+
   console.log('MongoDB start connect');
   try {
     // Remove existing listeners to prevent duplicates
-    db.connection.removeAllListeners('error');
-    db.connection.removeAllListeners('disconnected');
+    RemoveListeners();
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
       console.log('mongo error', error);
       try {
         if (db.connection.readyState !== 0) {
+          RemoveListeners();
           await db.disconnect();
           await delay(1000);
           await connectMongo(db, url);
@@ -34,6 +39,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
       console.log('mongo disconnected');
       try {
         if (db.connection.readyState !== 0) {
+          RemoveListeners();
           await db.disconnect();
           await delay(1000);
           await connectMongo(db, url);

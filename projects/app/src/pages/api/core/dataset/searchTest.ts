@@ -14,7 +14,9 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
-
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
   const {
     datasetId,
@@ -130,6 +132,17 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       totalPoints: embeddingTotalPoints + reRankTotalPoints
     });
   }
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.SEARCH_TEST,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 
   return {
     list: searchRes,

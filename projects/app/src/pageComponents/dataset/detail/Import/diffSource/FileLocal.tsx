@@ -1,14 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { type ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button } from '@chakra-ui/react';
-import FileSelector from '../components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { uploadFile2DB } from '@/web/common/file/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -33,14 +39,16 @@ export default React.memo(FileLocal);
 
 const SelectFile = React.memo(function SelectFile() {
   const { t } = useTranslation();
+
   const { goToNext, sources, setSources } = useContextSelector(DatasetImportContext, (v) => v);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>(
     sources.map((source) => ({
       isUploading: false,
       ...source
     }))
   );
-  const [uploading, setUploading] = useState(false);
   const successFiles = useMemo(() => selectFiles.filter((item) => !item.errorMsg), [selectFiles]);
 
   useEffect(() => {
@@ -53,15 +61,90 @@ const SelectFile = React.memo(function SelectFile() {
     goToNext();
   }, [goToNext]);
 
+  const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
+    async (files: SelectFileItemType[]) => {
+      {
+        await Promise.all(
+          files.map(async ({ fileId, file }) => {
+            try {
+              const { fileId: uploadFileId } = await uploadFile2DB({
+                file,
+                bucketName: BucketNameEnum.dataset,
+                data: {
+                  datasetId
+                },
+                percentListen: (e) => {
+                  setSelectFiles((state) =>
+                    state.map((item) =>
+                      item.id === fileId
+                        ? {
+                            ...item,
+                            uploadedFileRate: item.uploadedFileRate
+                              ? Math.max(e, item.uploadedFileRate)
+                              : e
+                          }
+                        : item
+                    )
+                  );
+                }
+              });
+              setSelectFiles((state) =>
+                state.map((item) =>
+                  item.id === fileId
+                    ? {
+                        ...item,
+                        dbFileId: uploadFileId,
+                        isUploading: false,
+                        uploadedFileRate: 100
+                      }
+                    : item
+                )
+              );
+            } catch (error) {
+              setSelectFiles((state) =>
+                state.map((item) =>
+                  item.id === fileId
+                    ? {
+                        ...item,
+                        isUploading: false,
+                        errorMsg: getErrText(error)
+                      }
+                    : item
+                )
+              );
+            }
+          })
+        );
+      }
+    },
+    {
+      onBefore([files]) {
+        setSelectFiles((state) => {
+          return [
+            ...state,
+            ...files.map<ImportSourceItemType>((selectFile) => {
+              const { fileId, file } = selectFile;
+
+              return {
+                id: fileId,
+                createStatus: 'waiting',
+                file,
+                sourceName: file.name,
+                sourceSize: formatFileSize(file.size),
+                icon: getFileIcon(file.name),
+                isUploading: true,
+                uploadedFileRate: 0
+              };
+            })
+          ];
+        });
+      }
+    }
+  );
+
   return (
     <Box>
-      <FileSelector
-        fileType={fileType}
-        selectFiles={selectFiles}
-        setSelectFiles={setSelectFiles}
-        onStartSelect={() => setUploading(true)}
-        onFinishSelect={() => setUploading(false)}
-      />
+      <FileSelector fileType={fileType} selectFiles={selectFiles} onSelectFiles={onSelectFiles} />
 
       {/* render files */}
       <RenderUploadFiles files={selectFiles} setFiles={setSelectFiles} />

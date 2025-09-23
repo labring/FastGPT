@@ -26,8 +26,6 @@ data:
           "usedInToolCall": true,
           "toolChoice": true,
           "functionCall": false,
-          "customCQPrompt": "",
-          "customExtractPrompt": "",
           "defaultSystemChatPrompt": "",
           "defaultConfig": {}
         },
@@ -47,8 +45,6 @@ data:
           "usedInToolCall": true,
           "toolChoice": true,
           "functionCall": false,
-          "customCQPrompt": "",
-          "customExtractPrompt": "",
           "defaultSystemChatPrompt": "",
           "defaultConfig": {}
         },
@@ -68,8 +64,6 @@ data:
           "usedInToolCall": true,
           "toolChoice": true,
           "functionCall": false,
-          "customCQPrompt": "",
-          "customExtractPrompt": "",
           "defaultSystemChatPrompt": "",
           "defaultConfig": {}
         },
@@ -89,8 +83,6 @@ data:
           "usedInToolCall": false,
           "toolChoice": true,
           "functionCall": false,
-          "customCQPrompt": "",
-          "customExtractPrompt": "",
           "defaultSystemChatPrompt": "",
           "defaultConfig": {}
         }

@@ -6,18 +6,22 @@ export enum WorkerNameEnum {
   readFile = 'readFile',
   htmlStr2Md = 'htmlStr2Md',
   countGptMessagesTokens = 'countGptMessagesTokens',
-  systemPluginRun = 'systemPluginRun'
+  systemPluginRun = 'systemPluginRun',
+  text2Chunks = 'text2Chunks'
 }
 
 export const getSafeEnv = () => {
   return {
     LOG_LEVEL: process.env.LOG_LEVEL,
     STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
-    NODE_ENV: process.env.NODE_ENV
+    NODE_ENV: process.env.NODE_ENV,
+    HTTP_PROXY: process.env.HTTP_PROXY,
+    HTTPS_PROXY: process.env.HTTPS_PROXY,
+    NO_PROXY: process.env.NO_PROXY
   };
 };
 
-export const getWorker = (name: WorkerNameEnum) => {
+export const getWorker = (name: `${WorkerNameEnum}`) => {
   const workerPath = path.join(process.cwd(), '.next', 'server', 'worker', `${name}.js`);
   return new Worker(workerPath, {
     env: getSafeEnv()
@@ -69,7 +73,7 @@ type WorkerResponse<T = any> = {
   data: T;
 };
 
-/* 
+/*
   多线程任务管理
   * 全局只需要创建一个示例
   * 可以设置最大常驻线程（不会被销毁），线程满了后，后续任务会等待执行。
@@ -129,7 +133,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     // addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
-      /* 
+      /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
       */
       this.runTask({
@@ -194,6 +198,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     if (item) {
       item.reject?.('error');
       clearTimeout(item.timeoutId);
+      item.worker.removeAllListeners();
       item.worker.terminate();
     }
 

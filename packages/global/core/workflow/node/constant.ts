@@ -1,5 +1,5 @@
-import { WorkflowIOValueTypeEnum } from '../constants';
 import { i18nT } from '../../../../web/i18n/utils';
+import { WorkflowIOValueTypeEnum } from '../constants';
 export enum FlowNodeInputTypeEnum { // render ui
   reference = 'reference', // reference to other node output
   input = 'input', // one line input
@@ -30,7 +30,10 @@ export enum FlowNodeInputTypeEnum { // render ui
   hidden = 'hidden',
   custom = 'custom',
 
-  fileSelect = 'fileSelect'
+  fileSelect = 'fileSelect',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
+  password = 'password'
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -94,11 +97,21 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
     icon: 'core/workflow/inputType/file'
+  },
+  [FlowNodeInputTypeEnum.timePointSelect]: {
+    icon: 'core/workflow/inputType/timePointSelect'
+  },
+  [FlowNodeInputTypeEnum.timeRangeSelect]: {
+    icon: 'core/workflow/inputType/timeRangeSelect'
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    icon: 'core/workflow/inputType/password'
   }
 };
 
 export enum FlowNodeOutputTypeEnum {
   hidden = 'hidden',
+  error = 'error',
   source = 'source',
   static = 'static',
   dynamic = 'dynamic'
@@ -109,6 +122,8 @@ export enum FlowNodeTypeEnum {
   systemConfig = 'userGuide',
   pluginConfig = 'pluginConfig',
   globalVariable = 'globalVariable',
+  comment = 'comment',
+
   workflowStart = 'workflowStart',
   chatNode = 'chatNode',
 
@@ -125,7 +140,7 @@ export enum FlowNodeTypeEnum {
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  tools = 'tools',
+  agent = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
   lafModule = 'lafModule',
@@ -140,7 +155,6 @@ export enum FlowNodeTypeEnum {
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',
-  comment = 'comment',
   tool = 'tool',
   toolSet = 'toolSet'
 }
@@ -218,7 +232,6 @@ export const FlowValueTypeMap: Record<
 };
 
 export const EDGE_TYPE = 'default';
-export const defaultNodeVersion = '481';
 
 export const chatHistoryValueDesc = `{
   obj: System | Human | AI;
@@ -236,3 +249,10 @@ export const datasetQuoteValueDesc = `{
 export const datasetSelectValueDesc = `{
   datasetId: string;
 }[]`;
+
+export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
+  [FlowNodeTypeEnum.pluginModule]: true,
+  [FlowNodeTypeEnum.appModule]: true,
+  [FlowNodeTypeEnum.tool]: true,
+  [FlowNodeTypeEnum.toolSet]: true
+};

@@ -6,12 +6,19 @@
  *
  */
 
-import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
-import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
+import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
+import type {
+  ListItemEditorNode,
+  ListEditorNode,
+  ParagraphEditorNode,
+  EditorState,
+  ListItemInfo
+} from './type';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
   editor: LexicalEditor,
@@ -175,31 +182,148 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
   return [removePlainTextTransform, removeReverseNodeTransform];
 }
 
-export function textToEditorState(text = '') {
-  const paragraph = typeof text === 'string' ? text?.split('\n') : [''];
+// text to editor state
+const parseTextLine = (line: string) => {
+  const trimmed = line.trimStart();
+  const indentLevel = Math.floor((line.length - trimmed.length) / 2);
+
+  const bulletMatch = trimmed.match(/^- (.*)$/);
+  if (bulletMatch) {
+    return { type: 'bullet', text: bulletMatch[1], indent: indentLevel };
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)\. (.*)$/);
+  if (numberMatch) {
+    return {
+      type: 'number',
+      text: numberMatch[2],
+      indent: indentLevel,
+      numberValue: parseInt(numberMatch[1])
+    };
+  }
+
+  return { type: 'paragraph', text: trimmed, indent: indentLevel };
+};
+
+const buildListStructure = (items: ListItemInfo[]) => {
+  const result: ListEditorNode[] = [];
+
+  let i = 0;
+  while (i < items.length) {
+    const currentListType = items[i].type;
+    const currentIndent = items[i].indent;
+    const currentListItems: ListItemEditorNode[] = [];
+
+    // Collect consecutive items of the same type
+    while (i < items.length && items[i].type === currentListType) {
+      const listItem: ListItemEditorNode = {
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: items[i].text,
+            type: 'text' as const,
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'listitem' as const,
+        version: 1,
+        value: items[i].numberValue || 1
+      };
+
+      // Collect nested items
+      const nestedItems: ListItemInfo[] = [];
+      let j = i + 1;
+      while (j < items.length && items[j].indent > currentIndent) {
+        nestedItems.push(items[j]);
+        j++;
+      }
+
+      // recursively build nested lists and add them to the current item's children
+      if (nestedItems.length > 0) {
+        const nestedLists = buildListStructure(nestedItems);
+        listItem.children.push(...nestedLists);
+      }
+
+      currentListItems.push(listItem);
+      i = j;
+    }
+
+    result.push({
+      children: currentListItems,
+      direction: 'ltr',
+      format: '',
+      indent: 0,
+      type: 'list' as const,
+      version: 1,
+      listType: currentListType,
+      start: 1,
+      tag: currentListType === 'bullet' ? 'ul' : ('ol' as const)
+    });
+  }
+
+  return result;
+};
+
+export const textToEditorState = (text = '') => {
+  const lines = text.split('\n');
+  const children: Array<ParagraphEditorNode | ListEditorNode> = [];
+
+  let i = 0;
+  while (i < lines.length) {
+    const parsed = parseTextLine(lines[i]);
+
+    if (parsed.type === 'paragraph') {
+      children.push({
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: parsed.text,
+            type: 'text',
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: parsed.indent,
+        type: 'paragraph',
+        version: 1
+      });
+      i++;
+    } else {
+      const listItems: ListItemInfo[] = [];
+
+      while (i < lines.length) {
+        const currentParsed = parseTextLine(lines[i]);
+        if (currentParsed.type === 'paragraph') {
+          break;
+        }
+        listItems.push({
+          type: currentParsed.type as 'bullet' | 'number',
+          text: currentParsed.text,
+          indent: currentParsed.indent,
+          numberValue: currentParsed.numberValue
+        });
+        i++;
+      }
+
+      // build nested lists and add to children
+      const lists = buildListStructure(listItems) as ListEditorNode[];
+      children.push(...lists);
+    }
+  }
 
   return JSON.stringify({
     root: {
-      children: paragraph.map((p) => {
-        return {
-          children: [
-            {
-              detail: 0,
-              format: 0,
-              mode: 'normal',
-              style: '',
-              text: p,
-              type: 'text',
-              version: 1
-            }
-          ],
-          direction: 'ltr',
-          format: '',
-          indent: 0,
-          type: 'paragraph',
-          version: 1
-        };
-      }),
+      children: children,
       direction: 'ltr',
       format: '',
       indent: 0,
@@ -207,57 +331,9 @@ export function textToEditorState(text = '') {
       version: 1
     }
   });
-}
-
-export function editorStateToText(editor: LexicalEditor) {
-  const editorStateTextString: string[] = [];
-  const paragraphs = editor.getEditorState().toJSON().root.children;
-  paragraphs.forEach((paragraph: any) => {
-    const children = paragraph.children;
-    const paragraphText: string[] = [];
-    children.forEach((child: any) => {
-      if (child.type === 'linebreak') {
-        paragraphText.push(`
-`);
-      } else if (child.text) {
-        paragraphText.push(child.text);
-      } else if (child.type === 'variableLabel') {
-        paragraphText.push(child.variableKey);
-      } else if (child.type === 'Variable') {
-        paragraphText.push(child.variableKey);
-      }
-    });
-    editorStateTextString.push(paragraphText.join(''));
-  });
-  return editorStateTextString.join(`
-`);
-}
-
-const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
-export const getVars = (value: string) => {
-  if (!value) return [];
-  // .filter((item) => {
-  //   return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
-  // })
-  const keys =
-    value
-      .match(varRegex)
-      ?.map((item) => {
-        return item.replace('{{', '').replace('}}', '');
-      })
-      .filter((key) => key.length <= 10) || [];
-  const keyObj: Record<string, boolean> = {};
-  // remove duplicate keys
-  const res: string[] = [];
-  keys.forEach((key) => {
-    if (keyObj[key]) return;
-
-    keyObj[key] = true;
-    res.push(key);
-  });
-  return res;
 };
 
+// menu text match
 export type MenuTextMatch = {
   leadOffset: number;
   matchingString: string;
@@ -292,3 +368,103 @@ export function useBasicTypeaheadTriggerMatch(
     [maxLength, minLength, trigger]
   );
 }
+
+// editor state to text
+const processListItem = ({
+  listItem,
+  listType,
+  index,
+  indentLevel
+}: {
+  listItem: ListItemEditorNode;
+  listType: 'bullet' | 'number';
+  index: number;
+  indentLevel: number;
+}) => {
+  const results = [];
+
+  const itemText: string[] = [];
+  const nestedLists: ListEditorNode[] = [];
+
+  // Separate text and nested lists
+  listItem.children.forEach((child) => {
+    if (child.type === 'linebreak') {
+      itemText.push('\n');
+    } else if (child.type === 'text') {
+      itemText.push(child.text);
+    } else if (child.type === 'tab') {
+      itemText.push('  ');
+    } else if (child.type === 'variableLabel' || child.type === 'Variable') {
+      itemText.push(child.variableKey);
+    } else if (child.type === 'list') {
+      nestedLists.push(child);
+    }
+  });
+
+  // Add prefix and indent
+  const itemTextString = itemText.join('').trim();
+  const indent = '    '.repeat(indentLevel);
+  const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
+  results.push(indent + prefix + itemTextString);
+
+  // Handle nested lists
+  nestedLists.forEach((nestedList) => {
+    const nestedResults = processList({
+      list: nestedList,
+      indentLevel: indentLevel + 1
+    });
+    results.push(...nestedResults);
+  });
+
+  return results;
+};
+const processList = ({ list, indentLevel = 0 }: { list: ListEditorNode; indentLevel?: number }) => {
+  const results: string[] = [];
+
+  list.children.forEach((listItem, index: number) => {
+    if (listItem.type === 'listitem') {
+      const itemResults = processListItem({
+        listItem,
+        listType: list.listType,
+        index,
+        indentLevel
+      });
+      results.push(...itemResults);
+    }
+  });
+
+  return results;
+};
+export const editorStateToText = (editor: LexicalEditor) => {
+  const editorStateTextString: string[] = [];
+  const editorState = editor.getEditorState().toJSON() as EditorState;
+  const paragraphs = editorState.root.children;
+
+  paragraphs.forEach((paragraph) => {
+    if (paragraph.type === 'list') {
+      const listResults = processList({ list: paragraph });
+      editorStateTextString.push(...listResults);
+    } else if (paragraph.type === 'paragraph') {
+      const children = paragraph.children;
+      const paragraphText: string[] = [];
+
+      const indentSpaces = '  '.repeat(paragraph.indent || 0);
+
+      children.forEach((child) => {
+        if (child.type === 'linebreak') {
+          paragraphText.push('\n');
+        } else if (child.type === 'text') {
+          paragraphText.push(child.text);
+        } else if (child.type === 'tab') {
+          paragraphText.push('  ');
+        } else if (child.type === 'variableLabel' || child.type === 'Variable') {
+          paragraphText.push(child.variableKey);
+        }
+      });
+
+      const finalText = paragraphText.join('');
+      editorStateTextString.push(indentSpaces + finalText);
+    }
+  });
+  return editorStateTextString.join('\n');
+};

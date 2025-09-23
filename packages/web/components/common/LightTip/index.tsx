@@ -3,8 +3,10 @@ import { Box, HStack, Icon, type StackProps } from '@chakra-ui/react';
 
 const LightTip = ({
   text,
+  icon = 'common/info',
   ...props
 }: {
+  icon?: string;
   text: string;
 } & StackProps) => {
   return (
@@ -17,7 +19,7 @@ const LightTip = ({
       fontSize={'sm'}
       {...props}
     >
-      <Icon name="common/info" w="1rem" />
+      <Icon name={icon} w="1rem" />
       <Box>{text}</Box>
     </HStack>
   );

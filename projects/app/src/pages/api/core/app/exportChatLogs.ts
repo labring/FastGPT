@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { addDays } from 'date-fns';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import dayjs from 'dayjs';
@@ -15,17 +14,22 @@ import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const formatJsonString = (data: any) => {
-  return JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
+  if (data == null) return '';
+  return JSON.stringify(data).replace(/\n/g, '\\n');
 };
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
   sourcesMap: Record<string, { label: string }>;
+  logKeys: AppLogKeysEnum[];
 };
 
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
@@ -34,17 +38,23 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date(),
     sources,
-    logTitle,
-
+    tmbIds,
+    chatSearch,
     title,
-    sourcesMap
+    sourcesMap,
+    logKeys = []
   } = req.body;
 
   if (!appId) {
     throw new Error('缺少参数');
   }
 
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId, tmbId, app } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: AppReadChatLogPerVal
+  });
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
@@ -77,10 +87,12 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       $lte: new Date(dateEnd)
     },
     ...(sources && { source: { $in: sources } }),
-    ...(logTitle && {
+    ...(tmbIds && { tmbId: { $in: tmbIds } }),
+    ...(chatSearch && {
       $or: [
-        { title: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } }
+        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
       ]
     })
   };
@@ -92,14 +104,92 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     [
       { $match: where },
       {
-        $sort: {
-          userBadFeedbackCount: -1,
-          userGoodFeedbackCount: -1,
-          customFeedbacksCount: -1,
-          updateTime: -1
-        }
+        $sort: { updateTime: -1 }
       },
       { $limit: 50000 },
+      {
+        $lookup: {
+          from: ChatItemCollectionName,
+          let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                messageCount: { $sum: 1 },
+                goodFeedback: {
+                  $sum: {
+                    $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
+                  }
+                },
+                badFeedback: {
+                  $sum: {
+                    $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
+                  }
+                },
+                customFeedback: {
+                  $sum: {
+                    $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
+                  }
+                },
+                adminMark: {
+                  $sum: {
+                    $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
+                  }
+                },
+                totalResponseTime: {
+                  $sum: {
+                    $cond: [{ $eq: ['$obj', 'AI'] }, { $ifNull: ['$durationSeconds', 0] }, 0]
+                  }
+                },
+                aiMessageCount: {
+                  $sum: {
+                    $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
+                  }
+                },
+                errorCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $gt: [
+                          {
+                            $size: {
+                              $filter: {
+                                input: { $ifNull: ['$responseData', []] },
+                                as: 'item',
+                                cond: { $ne: [{ $ifNull: ['$$item.errorText', null] }, null] }
+                              }
+                            }
+                          },
+                          0
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                totalPoints: {
+                  $sum: {
+                    $reduce: {
+                      input: { $ifNull: ['$responseData', []] },
+                      initialValue: 0,
+                      in: { $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }] }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          as: 'chatItemsData'
+        }
+      },
       {
         $lookup: {
           from: ChatItemCollectionName,
@@ -131,6 +221,33 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       },
       {
         $addFields: {
+          messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
+          userGoodFeedbackCount: {
+            $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
+          },
+          userBadFeedbackCount: {
+            $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
+          },
+          customFeedbacksCount: {
+            $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
+          },
+          markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+          averageResponseTime: {
+            $cond: [
+              {
+                $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
+              },
+              {
+                $divide: [
+                  { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
+                  { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+                ]
+              },
+              0
+            ]
+          },
+          errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
+          totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] },
           userGoodFeedbackItems: {
             $filter: {
               input: '$chatitems',
@@ -178,14 +295,22 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           title: 1,
           customTitle: 1,
           source: 1,
-          time: '$updateTime',
-          messageCount: { $size: '$chatitems' },
+          updateTime: 1,
+          createTime: 1,
+          messageCount: 1,
+          userGoodFeedbackCount: 1,
+          userBadFeedbackCount: 1,
+          customFeedbacksCount: 1,
+          markCount: 1,
+          averageResponseTime: 1,
+          errorCount: 1,
+          totalPoints: 1,
+          outLinkUid: 1,
+          tmbId: 1,
           userGoodFeedbackItems: 1,
           userBadFeedbackItems: 1,
           customFeedbackItems: 1,
           markItems: 1,
-          outLinkUid: 1,
-          tmbId: 1,
           chatDetails: 1
         }
       }
@@ -203,64 +328,67 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
   write(`\uFEFF${title}`);
 
   cursor.on('data', (doc) => {
-    const time = dayjs(doc.time.toISOString()).format('YYYY-MM-DD HH:mm:ss');
+    const createdTime = doc.createTime
+      ? dayjs(doc.createTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      : '';
+    const lastConversationTime = doc.updateTime
+      ? dayjs(doc.updateTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
-    const title = doc.customTitle || doc.title;
+    const titleStr = doc.customTitle || doc.title || '';
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
-    const tmbContact = teamMemberWithContact.find(
-      (member) => String(member.memberId) === String(doc.tmbId)
-    )?.contact;
 
-    const messageCount = doc.messageCount;
-    const userGoodFeedbackItems = doc.userGoodFeedbackItems || [];
-    const userBadFeedbackItems = doc.userBadFeedbackItems || [];
-    const customFeedbackItems = doc.customFeedbackItems || [];
-    const markItems = doc.markItems || [];
-    const chatDetails = doc.chatDetails.map(
-      (chat: { id: string; value: AIChatItemValueItemType[] }) => {
-        return chat.value.map((item) => {
-          if ([ChatItemValueTypeEnum.text, ChatItemValueTypeEnum.reasoning].includes(item.type)) {
-            return item;
-          }
-          if (item.type === ChatItemValueTypeEnum.tool) {
-            const newTools = item.tools?.map((tool) => {
-              const { functionName, toolAvatar, ...rest } = tool;
-              return {
-                ...rest
-              };
-            });
+    const valueMap: Record<string, () => any> = {
+      [AppLogKeysEnum.SOURCE]: () => source,
+      [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
+      [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
+      [AppLogKeysEnum.USER]: () => tmbName || '-',
+      [AppLogKeysEnum.TITLE]: () => titleStr,
+      [AppLogKeysEnum.SESSION_ID]: () => doc.id || '-',
+      [AppLogKeysEnum.MESSAGE_COUNT]: () => doc.messageCount,
+      [AppLogKeysEnum.FEEDBACK]: () => {
+        const goodItems = (doc.userGoodFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.userGoodFeedback
+        }));
+        const badItems = (doc.userBadFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.userBadFeedback
+        }));
+        return formatJsonString({ good: goodItems, bad: badItems });
+      },
+      [AppLogKeysEnum.CUSTOM_FEEDBACK]: () => {
+        const customItems = (doc.customFeedbackItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedbacks: item.customFeedbacks || []
+        }));
+        return formatJsonString(customItems);
+      },
+      [AppLogKeysEnum.ANNOTATED_COUNT]: () => {
+        const markItems = (doc.markItems || []).map((item: any) => ({
+          chatItemId: item._id,
+          feedback: item.adminFeedback
+        }));
+        return formatJsonString(markItems);
+      },
+      [AppLogKeysEnum.RESPONSE_TIME]: () =>
+        doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
+      [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
+      [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
+      chatDetails: () => formatJsonString(doc.chatDetails || [])
+    };
 
-            return {
-              ...item,
-              tools: newTools
-            };
-          }
-          if (item.type === ChatItemValueTypeEnum.interactive) {
-            const newInteractive = {
-              type: item.interactive?.type,
-              params: item.interactive?.params
-            };
+    const row = [...logKeys, 'chatDetails']
+      .map((key) => {
+        const getter = valueMap[key];
+        const val = getter ? getter() : '';
+        return sanitizeCsvField(val ?? '');
+      })
+      .join(',');
 
-            return {
-              ...item,
-              interactive: newInteractive
-            };
-          }
-        });
-      }
-    );
-
-    const userGoodFeedbackItemsStr = formatJsonString(userGoodFeedbackItems);
-    const userBadFeedbackItemsStr = formatJsonString(userBadFeedbackItems);
-    const customFeedbackItemsStr = formatJsonString(customFeedbackItems);
-    const markItemsStr = formatJsonString(markItems);
-    const chatDetailsStr = formatJsonString(chatDetails);
-
-    const res = `\n"${time}","${source}","${tmbName}","${tmbContact}","${title}","${messageCount}","${userGoodFeedbackItemsStr}","${userBadFeedbackItemsStr}","${customFeedbackItemsStr}","${markItemsStr}","${chatDetailsStr}"`;
-
-    write(res);
+    write(`\n${row}`);
   });
 
   cursor.on('end', () => {
@@ -273,6 +401,18 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     res.status(500);
     res.end();
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(

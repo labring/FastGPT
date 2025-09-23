@@ -5,23 +5,17 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  type APIFileServer,
-  type FeishuServer,
-  type YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import { getDocPath } from '@/web/common/system/doc';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 
 export type EditAPIDatasetInfoFormType = {
   id: string;
-  apiServer?: APIFileServer;
-  yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
+  apiDatasetServer?: ApiDatasetServerType;
 };
 
 const EditAPIDatasetInfoModal = ({
@@ -60,7 +54,7 @@ const EditAPIDatasetInfoModal = ({
   return (
     <MyModal isOpen onClose={onClose} w={'450px'} iconSrc="modal/edit" title={title}>
       <ModalBody>
-        {datasetTypeCourseMap[type] && (
+        {DatasetTypeMap[type]?.courseUrl && (
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={500}>
               {t('dataset:apidataset_configuration')}
@@ -71,7 +65,7 @@ const EditAPIDatasetInfoModal = ({
               color={'primary.600'}
               fontSize={'sm'}
               cursor={'pointer'}
-              onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
+              onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
             >
               <MyIcon name={'book'} w={4} mr={0.5} />
               {t('common:Instructions')}

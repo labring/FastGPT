@@ -1,7 +1,8 @@
-import type { LLMModelItemType } from '../../ai/model.d';
+import type { EmbeddingModelItemType, LLMModelItemType } from '../../ai/model.d';
 import type { LLMModelTypeEnum } from '../../ai/constants';
 import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
+import type { SecretValueType } from '../../../common/secret/type';
 
 // Dynamic input field configuration
 export type CustomFieldConfigType = {
@@ -9,11 +10,6 @@ export type CustomFieldConfigType = {
 
   // reference
   selectValueTypeList?: WorkflowIOValueTypeEnum[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
-
-  // showIsToolParam?: boolean; // 是否作为工具参数
-
-  // showRequired?: boolean;
-  // defaultRequired?: boolean;
 
   showDefaultValue?: boolean;
   showDescription?: boolean;
@@ -29,6 +25,7 @@ export type InputComponentPropsType = {
   step?: number; // slider
   max?: number; // slider, number input
   min?: number; // slider, number input
+  precision?: number; // number input
 
   defaultValue?: string;
 
@@ -36,6 +33,17 @@ export type InputComponentPropsType = {
 
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
+};
+export type InputConfigType = {
+  key: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  inputType: 'input' | 'numberInput' | 'secret' | 'switch' | 'select';
+  value?: SecretValueType;
+
+  // Selector
+  list?: { label: string; value: string }[];
 };
 
 export type FlowNodeInputItemType = InputComponentPropsType & {
@@ -52,6 +60,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   required?: boolean;
   enum?: string;
 
+  inputList?: InputConfigType[]; // when key === 'system_input_config', this field is used
+
   toolDescription?: string; // If this field is not empty, it is entered as a tool
 
   // render components params
@@ -63,6 +73,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   canSelectFile?: boolean;
   canSelectImg?: boolean;
   maxFiles?: number;
+
+  deprecated?: boolean;
 };
 
 export type FlowNodeOutputItemType = {
@@ -86,8 +98,25 @@ export type FlowNodeOutputItemType = {
 
   // component params
   customFieldConfig?: CustomFieldConfigType;
+
+  deprecated?: boolean;
 };
 
+// Field value type
 export type ReferenceItemValueType = [string, string | undefined];
 export type ReferenceArrayValueType = ReferenceItemValueType[];
 export type ReferenceValueType = ReferenceItemValueType | ReferenceArrayValueType;
+
+export type SelectedDatasetType = {
+  datasetId: string;
+  avatar: string;
+  name: string;
+  vectorModel: EmbeddingModelItemType;
+}[];
+
+/* http node */
+export type HttpParamAndHeaderItemType = {
+  key: string;
+  type: string;
+  value: string;
+};

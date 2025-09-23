@@ -23,7 +23,7 @@ const More = () => {
           {
             icon: 'common/courseLight',
             label: t('common:core.app.tool_label.doc'),
-            link: getDocPath('/docs/intro')
+            link: getDocPath('/docs/introduction')
           }
         ]
       : []),

@@ -2,10 +2,15 @@ import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
-export function getCollectionIcon(
-  type: DatasetCollectionTypeEnum = DatasetCollectionTypeEnum.file,
-  name = ''
-) {
+export function getCollectionIcon({
+  type = DatasetCollectionTypeEnum.file,
+  name = '',
+  sourceId
+}: {
+  type?: DatasetCollectionTypeEnum;
+  name?: string;
+  sourceId?: string;
+}) {
   if (type === DatasetCollectionTypeEnum.folder) {
     return 'common/folderFill';
   }
@@ -15,7 +20,10 @@ export function getCollectionIcon(
   if (type === DatasetCollectionTypeEnum.virtual) {
     return 'file/fill/manual';
   }
-  return getFileIcon(name);
+  if (type === DatasetCollectionTypeEnum.images) {
+    return 'core/dataset/imageFill';
+  }
+  return getSourceNameIcon({ sourceName: name, sourceId });
 }
 export function getSourceNameIcon({
   sourceName,
@@ -40,5 +48,6 @@ export function getSourceNameIcon({
 export const predictDataLimitLength = (mode: TrainingModeEnum, data: any[]) => {
   if (mode === TrainingModeEnum.qa) return data.length * 20;
   if (mode === TrainingModeEnum.auto) return data.length * 5;
+  if (mode === TrainingModeEnum.image) return data.length * 2;
   return data.length;
 };

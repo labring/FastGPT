@@ -45,12 +45,14 @@ export type FastGPTFeConfigsType = {
   show_workorder?: boolean;
   show_emptyChat?: boolean;
   isPlus?: boolean;
+  hideChatCopyrightSetting?: boolean;
   register_method?: ['email' | 'phone' | 'sync'];
   login_method?: ['email' | 'phone']; // Attention: login method is diffrent with oauth
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
   mcpServerProxyEndpoint?: string;
+  chineseRedirectUrl?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;
@@ -64,6 +66,16 @@ export type FastGPTFeConfigsType = {
   show_coupon?: boolean;
   concatMd?: string;
 
+  show_dataset_feishu?: boolean;
+  show_dataset_yuque?: boolean;
+  show_publish_feishu?: boolean;
+  show_publish_dingtalk?: boolean;
+  show_publish_wecom?: boolean;
+  show_publish_offiaccount?: boolean;
+
+  show_dataset_enhance?: boolean;
+  show_batch_eval?: boolean;
+
   concatMd?: string;
   docUrl?: string;
   openAPIDocUrl?: string;
@@ -73,7 +85,6 @@ export type FastGPTFeConfigsType = {
   customSharePageDomain?: string;
 
   systemTitle?: string;
-  systemDescription?: string;
   scripts?: { [key: string]: string }[];
   favicon?: string;
 
@@ -100,6 +111,7 @@ export type FastGPTFeConfigsType = {
 
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
+  evalFileMaxLines?: number;
 
   // Compute by systemEnv.customPdfParse
   showCustomPdfParse?: boolean;
@@ -121,8 +133,10 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  hnswEfSearch: number;
   tokenWorkers: number; // token count max worker
+
+  hnswEfSearch: number;
+  hnswMaxScanTuples: number;
 
   oneapiUrl?: string;
   chatApiKey?: string;
@@ -135,4 +149,22 @@ export type customPdfParseType = {
   key?: string;
   doc2xKey?: string;
   price?: number;
+};
+
+export type LicenseDataType = {
+  startTime: string;
+  expiredTime: string;
+  company: string;
+  description?: string; // 描述
+  hosts?: string[]; // 管理端有效域名
+  maxUsers?: number; // 最大用户数，不填默认不上限
+  maxApps?: number; // 最大应用数，不填默认不上限
+  maxDatasets?: number; // 最大数据集数，不填默认不上限
+  functions: {
+    sso: boolean;
+    pay: boolean;
+    customTemplates: boolean;
+    datasetEnhance: boolean;
+    batchEval: boolean;
+  };
 };

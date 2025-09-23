@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import { type PluginGroupSchemaType, type TGroupType } from './type';
+import { type SystemToolGroupSchemaType, type TGroupType } from './type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_plugin_groups';
@@ -29,7 +29,7 @@ const PluginGroupSchema = new Schema({
 
 PluginGroupSchema.index({ groupId: 1 }, { unique: true });
 
-export const MongoPluginGroups = getMongoModel<PluginGroupSchemaType>(
+export const MongoToolGroups = getMongoModel<SystemToolGroupSchemaType>(
   collectionName,
   PluginGroupSchema
 );

@@ -16,7 +16,6 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["projects/app/src/*"],
       "@fastgpt/*": ["packages/*"],
       "@test": ["test/*"]
     }

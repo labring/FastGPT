@@ -1,0 +1,5 @@
+{
+  "title": "外部调用 FastGPT",
+  "description": "外部应用通过多种方式调用 FastGPT 功能的教程",
+  "pages": ["openapi", "feishu", "dingtalk", "wecom", "official_account"]
+}

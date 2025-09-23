@@ -1,41 +1,14 @@
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 
 const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
   if (type === DatasetTypeEnum.folder) return null;
   const { t } = useTranslation();
-  const DatasetListTypeMap = useMemo(() => {
-    return {
-      [DatasetTypeEnum.dataset]: {
-        icon: 'core/dataset/commonDatasetOutline',
-        label: t('dataset:common_dataset')
-      },
-      [DatasetTypeEnum.websiteDataset]: {
-        icon: 'core/dataset/websiteDatasetOutline',
-        label: t('dataset:website_dataset')
-      },
-      [DatasetTypeEnum.externalFile]: {
-        icon: 'core/dataset/externalDatasetOutline',
-        label: t('dataset:external_file')
-      },
-      [DatasetTypeEnum.apiDataset]: {
-        icon: 'core/dataset/externalDatasetOutline',
-        label: t('dataset:api_file')
-      },
-      [DatasetTypeEnum.feishu]: {
-        icon: 'core/dataset/feishuDatasetOutline',
-        label: t('dataset:feishu_dataset')
-      },
-      [DatasetTypeEnum.yuque]: {
-        icon: 'core/dataset/yuqueDatasetOutline',
-        label: t('dataset:yuque_dataset')
-      }
-    };
-  }, [t]);
-  const item = DatasetListTypeMap[type] || DatasetListTypeMap['dataset'];
+
+  const item = DatasetTypeMap[type] || DatasetTypeMap['dataset'];
 
   return (
     <Flex
@@ -50,7 +23,7 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
     >
       <MyIcon name={item.icon as any} w={'0.8rem'} color={'myGray.400'} />
       <Box fontSize={'mini'} ml={1}>
-        {item.label}
+        {t(item.label)}
       </Box>
     </Flex>
   );

@@ -32,7 +32,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowNodeAndConnection,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 
@@ -195,7 +195,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('app:all_apps')}
+            rootName={t('common:All')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
@@ -246,7 +246,7 @@ const Header = ({
                     const { nodes: storeNodes, edges: storeEdges } = form2AppWorkflow(appForm, t);
 
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
-                    const edges = storeEdges.map((item) => storeEdgesRenderEdge({ edge: item }));
+                    const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
                     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 

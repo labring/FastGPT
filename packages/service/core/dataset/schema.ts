@@ -1,10 +1,12 @@
 import { getMongoModel, Schema } from '../../common/mongo';
 import {
   ChunkSettingModeEnum,
+  ChunkTriggerConfigTypeEnum,
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetTypeEnum,
-  DatasetTypeMap
+  DatasetTypeMap,
+  ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   TeamCollectionName,
@@ -15,12 +17,23 @@ import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 export const DatasetCollectionName = 'datasets';
 
 export const ChunkSettings = {
-  imageIndex: Boolean,
-  autoIndexes: Boolean,
   trainingType: {
     type: String,
     enum: Object.values(DatasetCollectionDataProcessModeEnum)
   },
+
+  chunkTriggerType: {
+    type: String,
+    enum: Object.values(ChunkTriggerConfigTypeEnum)
+  },
+  chunkTriggerMinSize: Number,
+
+  dataEnhanceCollectionName: Boolean,
+
+  imageIndex: Boolean,
+  autoIndexes: Boolean,
+  indexPrefixTitle: Boolean,
+
   chunkSettingMode: {
     type: String,
     enum: Object.values(ChunkSettingModeEnum)
@@ -29,6 +42,12 @@ export const ChunkSettings = {
     type: String,
     enum: Object.values(DataChunkSplitModeEnum)
   },
+  paragraphChunkAIMode: {
+    type: String,
+    enum: Object.values(ParagraphChunkAIModeEnum)
+  },
+  paragraphChunkDeep: Number,
+  paragraphChunkMinSize: Number,
   chunkSize: Number,
   chunkSplitter: String,
 
@@ -109,20 +128,21 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
-  apiServer: Object,
-  feishuServer: Object,
-  yuqueServer: Object,
+
+  apiDatasetServer: Object,
 
   // abandoned
   autoSync: Boolean,
-  externalReadUrl: {
-    type: String
-  },
-  defaultPermission: Number
+  externalReadUrl: String,
+  defaultPermission: Number,
+  apiServer: Object,
+  feishuServer: Object,
+  yuqueServer: Object
 });
 
 try {
   DatasetSchema.index({ teamId: 1 });
+  DatasetSchema.index({ type: 1 });
 } catch (error) {
   console.log(error);
 }

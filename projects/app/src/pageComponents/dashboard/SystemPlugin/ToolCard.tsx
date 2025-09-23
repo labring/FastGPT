@@ -6,22 +6,23 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { type SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 const PluginCard = ({
   item,
   groups
 }: {
   item: NodeTemplateListItemType;
-  groups: PluginGroupSchemaType[];
+  groups: SystemToolGroupSchemaType[];
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
-    return foundType ? foundType.typeName : acc;
+    return foundType ? parseI18nString(foundType.typeName, i18n.language) : acc;
   }, undefined);
 
   return (

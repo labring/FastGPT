@@ -22,6 +22,14 @@ export const setBdVId = (bdVid?: string) => {
   sessionStorage.setItem('bd_vid', bdVid);
 };
 
+export const getMsclkid = () => {
+  return sessionStorage.getItem('msclkid') || undefined;
+};
+export const setMsclkid = (msclkid?: string) => {
+  if (!msclkid) return;
+  sessionStorage.setItem('msclkid', msclkid);
+};
+
 export const getUtmWorkflow = () => {
   return localStorage.getItem('utm_workflow') || undefined;
 };
@@ -60,6 +68,10 @@ export const getFastGPTSem = () => {
 };
 export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
   if (!fastgptSem) return;
+
+  const validEntries = Object.entries(fastgptSem).filter(([_, value]) => !!value);
+  if (validEntries.length === 0) return;
+
   localStorage.setItem('fastgpt_sem', JSON.stringify(fastgptSem));
 };
 export const removeFastGPTSem = () => {
@@ -77,4 +89,17 @@ export const setSourceDomain = (sourceDomain?: string) => {
 
   if (!formatSourceDomain || getSourceDomain()) return;
   sessionStorage.setItem('sourceDomain', formatSourceDomain);
+};
+
+export const setCouponCode = (couponCode?: string) => {
+  if (!couponCode) return;
+  localStorage.setItem('couponCode', couponCode);
+};
+
+export const getCouponCode = () => {
+  return localStorage.getItem('couponCode') || undefined;
+};
+
+export const removeCouponCode = () => {
+  localStorage.removeItem('couponCode');
 };

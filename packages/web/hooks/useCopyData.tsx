@@ -1,8 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
 import { useCallback } from 'react';
-import { hasHttps } from '../common/system/utils';
-import { isProduction } from '@fastgpt/global/common/system/constants';
 import MyModal from '../components/common/MyModal';
 import React from 'react';
 import { Box, ModalBody } from '@chakra-ui/react';
@@ -26,7 +24,7 @@ export const useCopyData = () => {
       data = data.trim();
 
       try {
-        if ((hasHttps() || !isProduction) && navigator.clipboard) {
+        if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(data);
           if (title) {
             toast({
@@ -36,13 +34,13 @@ export const useCopyData = () => {
             });
           }
         } else {
-          throw new Error('');
+          throw new Error('Clipboard is not supported');
         }
       } catch (error) {
         setCopyContent(data);
       }
     },
-    [t, toast]
+    [setCopyContent, t, toast]
   );
 
   return {

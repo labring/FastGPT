@@ -1,0 +1,15 @@
+{
+  "title": "知识库",
+  "description": "知识库的基础原理、搜索方案、Web站点同步和外部文件知识库的使用方法。",
+  "pages": [
+    "RAG",
+    "dataset_engine",
+    "collection_tags",
+    "api_dataset",
+    "lark_dataset",
+    "yuque_dataset",
+    "websync",
+    "third_dataset",
+    "template"
+  ]
+}

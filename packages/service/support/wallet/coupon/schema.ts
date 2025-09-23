@@ -2,6 +2,8 @@ import { addDays } from 'date-fns';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
+import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { CouponTypeEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
 
 export const couponCollectionName = 'team_sub_coupons';
 
@@ -10,6 +12,12 @@ const CouponSchema = new Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: Object.values(CouponTypeEnum)
+  },
+  price: Number,
+  description: String,
   subscriptions: {
     type: [Object],
     required: true
@@ -17,6 +25,10 @@ const CouponSchema = new Schema({
   redeemedAt: {
     type: Date,
     default: undefined
+  },
+  redeemedTeamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName
   },
   expiredAt: {
     type: Date,

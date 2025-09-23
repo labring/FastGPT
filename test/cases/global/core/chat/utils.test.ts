@@ -116,7 +116,7 @@ describe('addStatisticalDataToHistoryItem', () => {
         },
         {
           ...mockResponseData,
-          moduleType: FlowNodeTypeEnum.tools,
+          moduleType: FlowNodeTypeEnum.agent,
           runningTime: 1,
           toolDetail: [
             {
@@ -176,7 +176,7 @@ describe('addStatisticalDataToHistoryItem', () => {
           ],
           loopDetail: [
             {
-              moduleType: FlowNodeTypeEnum.tools,
+              moduleType: FlowNodeTypeEnum.agent,
               runningTime: 0.3
             }
           ]

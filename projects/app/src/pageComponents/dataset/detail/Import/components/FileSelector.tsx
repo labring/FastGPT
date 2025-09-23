@@ -7,15 +7,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
-import { useContextSelector } from 'use-context-selector';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type SelectFileItemType = {
   fileId: string;
@@ -26,23 +19,18 @@ export type SelectFileItemType = {
 const FileSelector = ({
   fileType,
   selectFiles,
-  setSelectFiles,
-  onStartSelect,
-  onFinishSelect,
+  onSelectFiles,
   ...props
 }: {
   fileType: string;
   selectFiles: ImportSourceItemType[];
-  setSelectFiles: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
-  onStartSelect: () => void;
-  onFinishSelect: () => void;
+  onSelectFiles: (e: SelectFileItemType[]) => any;
 } & FlexProps) => {
   const { t } = useTranslation();
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
-  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
   const maxCount = feConfigs?.uploadFileMaxAmount || 1000;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
 
@@ -65,90 +53,6 @@ const FileSelector = ({
     'i'
   );
 
-  const { runAsync: onSelectFile, loading: isLoading } = useRequest2(
-    async (files: SelectFileItemType[]) => {
-      {
-        await Promise.all(
-          files.map(async ({ fileId, file }) => {
-            try {
-              const { fileId: uploadFileId } = await uploadFile2DB({
-                file,
-                bucketName: BucketNameEnum.dataset,
-                data: {
-                  datasetId
-                },
-                percentListen: (e) => {
-                  setSelectFiles((state) =>
-                    state.map((item) =>
-                      item.id === fileId
-                        ? {
-                            ...item,
-                            uploadedFileRate: item.uploadedFileRate
-                              ? Math.max(e, item.uploadedFileRate)
-                              : e
-                          }
-                        : item
-                    )
-                  );
-                }
-              });
-              setSelectFiles((state) =>
-                state.map((item) =>
-                  item.id === fileId
-                    ? {
-                        ...item,
-                        dbFileId: uploadFileId,
-                        isUploading: false,
-                        uploadedFileRate: 100
-                      }
-                    : item
-                )
-              );
-            } catch (error) {
-              setSelectFiles((state) =>
-                state.map((item) =>
-                  item.id === fileId
-                    ? {
-                        ...item,
-                        isUploading: false,
-                        errorMsg: getErrText(error)
-                      }
-                    : item
-                )
-              );
-            }
-          })
-        );
-      }
-    },
-    {
-      onBefore([files]) {
-        onStartSelect();
-        setSelectFiles((state) => {
-          const formatFiles = files.map<ImportSourceItemType>((selectFile) => {
-            const { fileId, file } = selectFile;
-
-            return {
-              id: fileId,
-              createStatus: 'waiting',
-              file,
-              sourceName: file.name,
-              sourceSize: formatFileSize(file.size),
-              icon: getFileIcon(file.name),
-              isUploading: true,
-              uploadedFileRate: 0
-            };
-          });
-          const results = formatFiles.concat(state).slice(0, maxCount);
-          return results;
-        });
-      },
-      onFinally() {
-        onFinishSelect();
-      }
-    }
-  );
-
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {
       if (selectFiles.length + files.length > maxCount) {
@@ -160,7 +64,7 @@ const FileSelector = ({
       }
       // size check
       if (!maxSize) {
-        return onSelectFile(files);
+        return onSelectFiles(files);
       }
       const filterFiles = files.filter((item) => item.file.size <= maxSize);
 
@@ -171,9 +75,9 @@ const FileSelector = ({
         });
       }
 
-      return onSelectFile(filterFiles);
+      return onSelectFiles(filterFiles);
     },
-    [t, maxCount, maxSize, onSelectFile, selectFiles.length, toast]
+    [t, maxCount, maxSize, onSelectFiles, selectFiles.length, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -249,13 +153,6 @@ const FileSelector = ({
       }
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
-      let isErr = files.some((item) => item.type === '');
-      if (isErr) {
-        return toast({
-          title: t('file:upload_error_description'),
-          status: 'error'
-        });
-      }
 
       fileList.push(
         ...files
@@ -278,7 +175,6 @@ const FileSelector = ({
 
   return (
     <MyBox
-      isLoading={isLoading}
       display={'flex'}
       flexDirection={'column'}
       alignItems={'center'}

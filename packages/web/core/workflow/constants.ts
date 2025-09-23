@@ -1,85 +1,42 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../i18n/utils';
-import type { PluginGroupSchemaType, TGroupType } from '../../../service/core/app/plugin/type';
+import type { SystemToolGroupSchemaType } from '../../../service/core/app/plugin/type';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 
-export const workflowNodeTemplateList = [
+export const workflowSystemNodeTemplateList: {
+  type: string;
+  label: string;
+}[] = [
   {
     type: FlowNodeTemplateTypeEnum.systemInput,
-    label: i18nT('common:core.module.template.System input module'),
-    list: []
+    label: i18nT('common:core.module.template.System input module')
   },
   {
     type: FlowNodeTemplateTypeEnum.ai,
-    label: i18nT('common:core.module.template.AI function'),
-    list: []
+    label: i18nT('common:core.module.template.AI function')
   },
-  {
-    type: FlowNodeTemplateTypeEnum.search,
-    label: i18nT('common:core.workflow.template.Search'),
-    list: []
-  },
+
   {
     type: FlowNodeTemplateTypeEnum.interactive,
-    label: i18nT('common:core.workflow.template.Interactive'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.multimodal,
-    label: i18nT('common:core.workflow.template.Multimodal'),
-    list: []
+    label: i18nT('common:core.workflow.template.Interactive')
   },
   {
     type: FlowNodeTemplateTypeEnum.tools,
-    label: i18nT('common:core.module.template.Tool module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.communication,
-    label: i18nT('common:workflow.template.communication'),
-    list: []
+    label: i18nT('app:tool_type_tools')
   },
   {
     type: FlowNodeTemplateTypeEnum.other,
-    label: i18nT('common:Other'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.teamApp,
-    label: '',
-    list: []
+    label: i18nT('common:Other')
   }
 ];
 
-export const systemPluginTemplateList: TGroupType[] = [
-  {
-    typeId: FlowNodeTemplateTypeEnum.tools,
-    typeName: i18nT('common:navbar.Tools')
-  },
-  {
-    typeId: FlowNodeTemplateTypeEnum.search,
-    typeName: i18nT('common:Search')
-  },
-  {
-    typeId: FlowNodeTemplateTypeEnum.multimodal,
-    typeName: i18nT('common:core.workflow.template.Multimodal')
-  },
-  {
-    typeId: FlowNodeTemplateTypeEnum.communication,
-    typeName: i18nT('common:workflow.template.communication')
-  },
-  {
-    typeId: FlowNodeTemplateTypeEnum.other,
-    typeName: i18nT('common:Other')
-  }
-];
-export const defaultGroup: PluginGroupSchemaType = {
+export const defaultGroup: SystemToolGroupSchemaType = {
   groupId: 'systemPlugin',
   groupAvatar: 'core/app/type/pluginLight',
   groupName: i18nT('common:core.module.template.System Plugin'),
   groupOrder: 0,
-  groupTypes: systemPluginTemplateList
+  groupTypes: [] // from getPluginGroups
 };
 
 export const defaultTemplateTypes: TemplateTypeSchemaType[] = [

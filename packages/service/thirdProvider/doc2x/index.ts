@@ -37,14 +37,14 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     if (typeof err === 'string') {
       return Promise.reject({ message: `[Doc2x] ${err}` });
     }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: `[Doc2x] ${err.message}` });
-    }
     if (typeof err.data === 'string') {
       return Promise.reject({ message: `[Doc2x] ${err.data}` });
     }
     if (err?.response?.data) {
       return Promise.reject({ message: `[Doc2x] ${getErrText(err?.response?.data)}` });
+    }
+    if (typeof err.message === 'string') {
+      return Promise.reject({ message: `[Doc2x] ${err.message}` });
     }
 
     addLog.error('[Doc2x] Unknown error', err);
@@ -78,7 +78,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       code,
       msg,
       data: preupload_data
-    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', null, 'POST');
+    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', {}, 'POST');
     if (!['ok', 'success'].includes(code)) {
       return Promise.reject(`[Doc2x] Failed to get pre-upload URL: ${msg}`);
     }
@@ -86,16 +86,17 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     const uid = preupload_data.uid;
 
     // 2. Upload file to pre-signed URL with binary stream
-    const blob = new Blob([fileBuffer], { type: 'application/pdf' });
     const response = await axios
-      .put(upload_url, blob, {
+      .put(upload_url, fileBuffer, {
         headers: {
-          'Content-Type': 'application/pdf'
+          'Content-Type': 'application/pdf',
+          'Content-Length': fileBuffer.length.toString()
         }
       })
       .catch((error) => {
         return Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
       });
+
     if (response.status !== 200) {
       return Promise.reject(
         `[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`
@@ -139,17 +140,27 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
           // Finifsh
           if (result_data.status === 'success') {
+            const cleanedText = result_data.result.pages
+              .map((page) => page.md)
+              .join('')
+              .replace(/\\[\(\)]/g, '$')
+              .replace(/\\[\[\]]/g, '$$')
+              .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
+              .replace(/<!-- Media -->/g, '')
+              .replace(/<!-- Footnote -->/g, '')
+              .replace(/<!-- Meanless:[\s\S]*?-->/g, '')
+              .replace(/<!-- figureText:[\s\S]*?-->/g, '')
+              .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
+              .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
+            const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
+            if (remainingTags) {
+              addLog.warn(`[Doc2x] Remaining dirty tags after cleaning:`, {
+                count: remainingTags.length,
+                tags: remainingTags.slice(0, 3)
+              });
+            }
             return {
-              text: result_data.result.pages
-                .map((page) => page.md)
-                .join('')
-                .replace(/\\[\(\)]/g, '$')
-                .replace(/\\[\[\]]/g, '$$')
-                .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
-                .replace(/<!-- Media -->/g, '')
-                .replace(/<!-- Footnote -->/g, '')
-                .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
-                .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}'),
+              text: cleanedText,
               pages: result_data.result.pages.length
             };
           }

@@ -24,13 +24,7 @@ type AppPropsWithLayout = AppProps & {
 };
 
 // 哪些路由有自定义 Head
-const routesWithCustomHead = [
-  '/chat',
-  '/chat/share',
-  'chat/team',
-  '/app/detail/',
-  '/dataset/detail'
-];
+const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail/', '/dataset/detail'];
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -59,11 +53,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
       {showHead && (
         <NextHead
           title={title}
-          desc={
-            feConfigs?.systemDescription ||
-            process.env.SYSTEM_DESCRIPTION ||
-            `${title}${t('app:intro')}`
-          }
+          desc={process.env.SYSTEM_DESCRIPTION || t('common:system_intro', { title })}
           icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
         />
       )}
@@ -81,4 +71,5 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
   );
 }
 
+// @ts-ignore
 export default appWithTranslation(App);

@@ -18,10 +18,12 @@ type Response = DispatchNodeResultType<{
 export const dispatchLoopStart = async (props: Props): Promise<Response> => {
   const { params } = props;
   return {
+    data: {
+      [NodeOutputKeyEnum.loopStartInput]: params.loopStartInput,
+      [NodeOutputKeyEnum.loopStartIndex]: params.loopStartIndex
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       loopInputValue: params.loopStartInput
-    },
-    [NodeOutputKeyEnum.loopStartInput]: params.loopStartInput,
-    [NodeOutputKeyEnum.loopStartIndex]: params.loopStartIndex
+    }
   };
 };

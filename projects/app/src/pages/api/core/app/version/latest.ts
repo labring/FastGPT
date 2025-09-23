@@ -31,13 +31,16 @@ async function handler(
     per: WritePermissionVal
   });
 
+  const version = await getAppLatestVersion(req.query.appId, app);
+
   await rewriteAppWorkflowToDetail({
-    nodes: app.modules,
+    nodes: version.nodes,
     teamId,
-    isRoot
+    isRoot,
+    ownerTmbId: app.tmbId
   });
 
-  return getAppLatestVersion(req.query.appId, app);
+  return version;
 }
 
 export default NextAPI(handler);

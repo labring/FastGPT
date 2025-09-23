@@ -11,6 +11,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
@@ -49,6 +50,7 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -81,7 +83,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(edges)) {
       throw new Error('Edges is not array');
     }
-    const chatMessages = GPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats({ messages });
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
     /* user auth */
@@ -129,7 +131,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId,
         offset: 0,
         limit,
-        field: `dataId obj value nodeOutputs`
+        field: `dataId obj value memories`
       }),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables'),
       // auth balance
@@ -162,40 +164,44 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const { flowResponses, assistantResponses, newVariables, flowUsages, durationSeconds } =
-      await dispatchWorkFlow({
-        res,
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        timezone,
-        externalProvider,
-        uid: tmbId,
+    const {
+      flowResponses,
+      assistantResponses,
+      system_memories,
+      newVariables,
+      flowUsages,
+      durationSeconds
+    } = await dispatchWorkFlow({
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      timezone,
+      externalProvider,
+      uid: tmbId,
 
-        runningAppInfo: {
-          id: appId,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        runningUserInfo: {
-          teamId,
-          tmbId
-        },
+      runningAppInfo: {
+        id: appId,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig,
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        version: 'v2',
-        responseDetail: true
-      });
+      chatId,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      version: 'v2',
+      responseDetail: true
+    });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -222,6 +228,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
+      memories: system_memories,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
 

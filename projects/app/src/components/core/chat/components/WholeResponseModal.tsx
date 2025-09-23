@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -18,6 +17,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -41,7 +41,7 @@ export const WholeResponseContent = ({
   dataId?: string;
   chatTime?: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
@@ -88,6 +88,9 @@ export const WholeResponseContent = ({
         if (isObject) {
           return `~~~json\n${JSON.stringify(value, null, 2)}`;
         }
+        if (typeof value === 'string') {
+          return t(value);
+        }
         return `${value}`;
       }, [isObject, value]);
 
@@ -115,7 +118,7 @@ export const WholeResponseContent = ({
         </RowRender>
       );
     },
-    [RowRender]
+    [RowRender, t]
   );
 
   return activeModule ? (
@@ -176,6 +179,7 @@ export const WholeResponseContent = ({
           value={activeModule?.contextTotalLen}
         />
         <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
         <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
       </>
       {/* ai chat */}
@@ -300,7 +304,7 @@ export const WholeResponseContent = ({
         <Row label={t('chat:query_extension_result')} value={`${activeModule?.extensionResult}`} />
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
-            label={t('common:core.chat.response.module quoteList')}
+            label={t('chat:search_results')}
             rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}
@@ -458,7 +462,7 @@ const SideTabItem = ({
   value: string;
   index: number;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   if (!sideBarItem) return null;
 
@@ -613,7 +617,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
   const flattedResponse = useMemo(() => {
@@ -821,7 +825,7 @@ const WholeResponseModal = ({
   dataId: string;
   chatTime: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest2(

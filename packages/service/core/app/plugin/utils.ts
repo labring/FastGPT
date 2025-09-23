@@ -1,9 +1,9 @@
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
-import { splitCombinePluginId } from './controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 
-/* 
+/*
   Plugin points calculation:
   1. 系统插件/商业版插件：
     - 有错误：返回 0
@@ -20,7 +20,7 @@ export const computedPluginUsage = async ({
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {
-  const { source } = await splitCombinePluginId(plugin.id);
+  const { source } = splitCombinePluginId(plugin.id);
   const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   if (source !== PluginSourceEnum.personal) {

@@ -1,9 +1,8 @@
 import { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type {
-  SystemPluginTemplateItemType,
-  WorkflowTemplateBasicType
-} from '@fastgpt/global/core/workflow/type';
+import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export type SystemPluginConfigSchemaType = {
   pluginId: string;
@@ -12,29 +11,39 @@ export type SystemPluginConfigSchemaType = {
   currentCost: number;
   hasTokenFee: boolean;
   isActive: boolean;
-  pluginOrder: number;
-  inputConfig?: SystemPluginTemplateItemType['inputConfig'];
+  pluginOrder?: number;
+  systemKeyCost?: number;
 
   customConfig?: {
     name: string;
     avatar: string;
     intro?: string;
+    toolDescription?: string;
     version: string;
     weight?: number;
-    workflow: WorkflowTemplateBasicType;
     templateType: string;
     associatedPluginId: string;
     userGuide: string;
     author?: string;
   };
+  inputListVal?: Record<string, any>;
+
+  // @deprecated
+  inputConfig?: {
+    // Render config input form. Find the corresponding node and replace the variable directly
+    key: string;
+    label: string;
+    description: string;
+    value?: string;
+  }[];
 };
 
 export type TGroupType = {
-  typeName: string;
+  typeName: I18nStringStrictType | string;
   typeId: string;
 };
 
-export type PluginGroupSchemaType = {
+export type SystemToolGroupSchemaType = {
   groupId: string;
   groupAvatar: string;
   groupName: string;

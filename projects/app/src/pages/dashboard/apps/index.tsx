@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
+'use client';
+import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -16,7 +17,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { delAppById, resumeInheritPer } from '@/web/core/app/api';
-import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -26,13 +27,14 @@ import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal'
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -55,8 +57,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     isFetchingApps,
     folderDetail,
     refetchFolderDetail,
-    searchKey,
-    setSearchKey
+    setSearchKey,
+    searchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -93,7 +95,11 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
   const { runAsync: onDeleFolder } = useRequest2(delAppById, {
-    onSuccess() {
+    onSuccess(data) {
+      data.forEach((appId) => {
+        localStorage.removeItem(`app_log_keys_${appId}`);
+      });
+
       router.replace({
         query: {
           parentId: folderDetail?.parentId
@@ -112,35 +118,11 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
-      [AppTypeEnum.tool]: t('app:type.MCP tools')
+      [AppTypeEnum.tool]: t('app:type.MCP tools'),
+      [AppTypeEnum.hidden]: t('app:type.hidden')
     };
     return map[appType] || map['all'];
   }, [appType, t]);
-  const RenderSearchInput = useMemo(
-    () => (
-      <InputGroup maxW={['auto', '250px']} position={'relative'}>
-        <MyIcon
-          position={'absolute'}
-          zIndex={10}
-          name={'common/searchLight'}
-          w={'1rem'}
-          color={'myGray.600'}
-          left={2.5}
-          top={'50%'}
-          transform={'translateY(-50%)'}
-        />
-        <Input
-          value={searchKey}
-          onChange={(e) => setSearchKey(e.target.value)}
-          placeholder={t('app:search_app')}
-          maxLength={30}
-          pl={8}
-          bg={'white'}
-        />
-      </InputGroup>
-    ),
-    [searchKey, setSearchKey, t]
-  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -181,7 +163,15 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
             <Box flex={1} />
 
-            {isPc && RenderSearchInput}
+            {isPc && (
+              <SearchInput
+                maxW={['auto', '250px']}
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('app:search_app')}
+                maxLength={30}
+              />
+            )}
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
@@ -252,7 +242,19 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
           </Flex>
 
-          {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
+          {!isPc && (
+            <Box mt={2}>
+              {
+                <SearchInput
+                  maxW={['auto', '250px']}
+                  value={searchKey}
+                  onChange={(e) => setSearchKey(e.target.value)}
+                  placeholder={t('app:search_app')}
+                  maxLength={30}
+                />
+              }
+            </Box>
+          )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
             <List />
@@ -261,7 +263,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
         {/* Folder slider */}
         {!!folderDetail && isPc && (
-          <Box pt={[4, 6]} pr={[4, 6]}>
+          <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
               refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
@@ -281,9 +283,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
+                defaultRole: ReadRoleVal,
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                permissionList: AppPermissionList,
+                roleList: AppRoleList,
                 onUpdateCollaborators: (props) =>
                   postUpdateAppCollaborators({
                     ...props,

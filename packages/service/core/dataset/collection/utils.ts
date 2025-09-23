@@ -1,11 +1,9 @@
 import { MongoDatasetCollection } from './schema';
-import { type ClientSession } from '../../../common/mongo';
+import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import {
-  type CollectionWithDatasetType,
-  type DatasetCollectionSchemaType
-} from '@fastgpt/global/core/dataset/type';
+import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionSyncResultEnum,
@@ -159,9 +157,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     return {
       type: DatasetSourceReadTypeEnum.apiFile,
       sourceId,
-      apiServer: dataset.apiServer,
-      feishuServer: dataset.feishuServer,
-      yuqueServer: dataset.yuqueServer
+      apiDatasetServer: dataset.apiDatasetServer
     };
   })();
 
@@ -177,74 +173,76 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
-  if (collection.hashRawText && hashRawText === collection.hashRawText) {
-    return DatasetCollectionSyncResultEnum.sameRaw;
+  if (collection.hashRawText && hashRawText !== collection.hashRawText) {
+    await mongoSessionRun(async (session) => {
+      // Delete old collection
+      await delCollection({
+        collections: [collection],
+        delImg: false,
+        delFile: false,
+        session
+      });
+
+      // Create new collection
+      await createCollectionAndInsertData({
+        session,
+        dataset,
+        rawText: rawText,
+        createCollectionParams: {
+          ...collection,
+          name: title || collection.name,
+          updateTime: new Date(),
+          tags: await collectionTagsToTagLabel({
+            datasetId: collection.datasetId,
+            tags: collection.tags
+          })
+        }
+      });
+    });
+
+    return DatasetCollectionSyncResultEnum.success;
+  } else if (collection.name !== title) {
+    await MongoDatasetCollection.updateOne({ _id: collection._id }, { $set: { name: title } });
+    return DatasetCollectionSyncResultEnum.success;
   }
-
-  await mongoSessionRun(async (session) => {
-    // Delete old collection
-    await delCollection({
-      collections: [collection],
-      delImg: false,
-      delFile: false,
-      session
-    });
-
-    // Create new collection
-    await createCollectionAndInsertData({
-      session,
-      dataset,
-      rawText: rawText,
-      createCollectionParams: {
-        teamId: collection.teamId,
-        tmbId: collection.tmbId,
-        name: title || collection.name,
-        datasetId: collection.datasetId,
-        parentId: collection.parentId,
-        type: collection.type,
-
-        trainingType: collection.trainingType,
-        chunkSize: collection.chunkSize,
-        chunkSplitter: collection.chunkSplitter,
-        qaPrompt: collection.qaPrompt,
-
-        fileId: collection.fileId,
-        rawLink: collection.rawLink,
-        externalFileId: collection.externalFileId,
-        externalFileUrl: collection.externalFileUrl,
-        apiFileId: collection.apiFileId,
-
-        hashRawText,
-        rawTextLength: rawText.length,
-
-        metadata: collection.metadata,
-
-        tags: collection.tags,
-        createTime: collection.createTime,
-        updateTime: new Date()
-      }
-    });
-  });
-
-  return DatasetCollectionSyncResultEnum.success;
+  return DatasetCollectionSyncResultEnum.sameRaw;
 };
 
 /* 
   QA: 独立进程
   Chunk: Image Index -> Auto index -> chunk index
 */
-export const getTrainingModeByCollection = (collection: {
-  trainingType: DatasetCollectionSchemaType['trainingType'];
-  autoIndexes?: DatasetCollectionSchemaType['autoIndexes'];
-  imageIndex?: DatasetCollectionSchemaType['imageIndex'];
+export const getTrainingModeByCollection = ({
+  trainingType,
+  autoIndexes,
+  imageIndex
+}: {
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
+  imageIndex?: boolean;
 }) => {
-  if (collection.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
+    global.feConfigs?.isPlus
+  ) {
+    return TrainingModeEnum.imageParse;
+  }
+
+  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
     return TrainingModeEnum.qa;
   }
-  if (collection.imageIndex && global.feConfigs?.isPlus) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    imageIndex &&
+    global.feConfigs?.isPlus
+  ) {
     return TrainingModeEnum.image;
   }
-  if (collection.autoIndexes && global.feConfigs?.isPlus) {
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    autoIndexes &&
+    global.feConfigs?.isPlus
+  ) {
     return TrainingModeEnum.auto;
   }
   return TrainingModeEnum.chunk;

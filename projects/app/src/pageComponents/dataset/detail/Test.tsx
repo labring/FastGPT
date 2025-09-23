@@ -30,8 +30,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -108,7 +107,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         }
 
         const testItem: SearchTestStoreItemType = {
-          id: nanoid(),
+          id: getNanoid(),
           datasetId,
           text: getValues('inputText').trim(),
           time: new Date(),
@@ -122,12 +121,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         };
         pushDatasetTestItem(testItem);
         setDatasetTestItem(testItem);
-      },
-      onError(err) {
-        toast({
-          title: getErrText(err),
-          status: 'error'
-        });
       }
     }
   );
@@ -171,7 +164,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <MySelect<'text' | 'file'>
               size={'sm'}
-              w={'150px'}
               list={[
                 {
                   label: (
@@ -457,7 +449,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource />
+                <QuoteItem quoteItem={item} canViewSource canEditData />
               </Box>
             ))}
           </Box>

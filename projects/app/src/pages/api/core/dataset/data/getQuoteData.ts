@@ -8,11 +8,13 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
 
 export type GetQuoteDataResponse = {
   collection: DatasetCollectionSchemaType;
   q: string;
-  a: string;
+  a?: string;
 };
 
 export type GetQuoteDataProps =
@@ -46,7 +48,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
       const datasetData = await MongoDatasetData.findById(dataId);
       if (!datasetData) {
-        return Promise.reject('Can not find the data');
+        return Promise.reject(i18nT('common:data_not_found'));
       }
 
       const [collection, { responseDetail }] = await Promise.all([
@@ -77,8 +79,13 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
       return {
         collection,
-        q: datasetData.q,
-        a: datasetData.a
+        ...formatDatasetDataValue({
+          teamId: datasetData.teamId,
+          datasetId: datasetData.datasetId,
+          q: datasetData.q,
+          a: datasetData.a,
+          imageId: datasetData.imageId
+        })
       };
     } else {
       const { datasetData, collection } = await authDatasetData({
@@ -90,8 +97,13 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       });
       return {
         collection,
-        q: datasetData.q,
-        a: datasetData.a
+        ...formatDatasetDataValue({
+          teamId: datasetData.teamId,
+          datasetId: datasetData.datasetId,
+          q: datasetData.q,
+          a: datasetData.a,
+          imageId: datasetData.imageId
+        })
       };
     }
   })();

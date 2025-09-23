@@ -18,7 +18,6 @@ import {
   GridItem,
   type BoxProps
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
@@ -35,18 +34,14 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { type ChannelLogUsageType } from '@/global/aiproxy/type';
+import type { ChannelLogListItemType } from '@/global/aiproxy/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-type LogDetailType = {
-  id: number;
-  request_id: string;
+type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
   model: React.JSX.Element;
   duration: number;
   request_at: string;
-  code: number;
-  usage?: ChannelLogUsageType;
-  endpoint: string;
 
   retry_times?: number;
   content?: string;
@@ -54,8 +49,9 @@ type LogDetailType = {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
+  const { getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
@@ -108,7 +104,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, i18n.language);
 
         return {
           order: provider.order,
@@ -125,7 +121,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       },
       ...res
     ];
-  }, [systemModelList, t]);
+  }, [getModelProvider, i18n.language, systemModelList, t]);
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
@@ -148,10 +144,10 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
 
       const model = systemModelList.find((model) => model.model === item.model);
-      const provider = getModelProvider(model?.provider);
+      const provider = getModelProvider(model?.provider, i18n.language);
 
       return {
-        id: item.id,
+        ...item,
         channelName: channelName || item.channel,
         model: (
           <HStack>
@@ -161,14 +157,10 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         duration: durationSecond,
         request_at: formatTime2YMDHMS(item.request_at),
-        code: item.code,
-        usage: item.usage,
-        request_id: item.request_id,
-        endpoint: item.endpoint,
-        content: item.content
+        ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, systemModelList]);
+  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 
@@ -194,7 +186,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <DateRangePicker
               defaultDate={filterProps.dateRange}
               dateRange={filterProps.dateRange}
-              position="bottom"
               onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
             />
           </Box>
@@ -299,7 +290,6 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { t } = useTranslation();
   const { data: detailData } = useRequest2(
     async () => {
-      console.log(data);
       if (data.code === 200) return data;
       try {
         const res = await getLogDetail(data.id);
@@ -367,18 +357,26 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Container>{detailData?.request_id}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>Request IP</Title>
+              <Container>{detailData?.ip}</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:channel_status')}</Title>
               <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
               </Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>Endpoint</Title>
               <Container>{detailData?.endpoint}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:channel_name')}</Title>
               <Container>{detailData?.channelName}</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>{t('account_model:model')}</Title>
+              <Container>{detailData?.model}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:request_at')}</Title>
@@ -389,8 +387,10 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Container>{detailData?.duration.toFixed(2)}s</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:model')}</Title>
-              <Container>{detailData?.model}</Container>
+              <Title flex={'0 0 150px'}>{t('account_model:model_ttfb_time')}</Title>
+              <Container>
+                {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
+              </Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">
               <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>

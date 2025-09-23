@@ -51,4 +51,21 @@ export type ChannelLogListItemType = {
   endpoint: string;
   content?: string;
   retry_times?: number;
+  ttfb_milliseconds?: number;
+  ip: string;
+};
+
+export type DashboardDataItemType = {
+  channel_id?: number;
+  model: string;
+  request_count?: number;
+  used_amount?: number;
+  exception_count?: number;
+  total_time_milliseconds?: number;
+  total_ttfb_milliseconds?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  max_rpm?: number;
+  max_tpm?: number;
 };

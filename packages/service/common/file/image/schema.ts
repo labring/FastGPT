@@ -23,6 +23,12 @@ try {
   ImageSchema.index({ type: 1 });
   // delete related img
   ImageSchema.index({ teamId: 1, 'metadata.relatedId': 1 });
+
+  // Cron clear invalid img
+  ImageSchema.index(
+    { createTime: 1 },
+    { partialFilterExpression: { 'metadata.relatedId': { $exists: true } } }
+  );
 } catch (error) {
   console.log(error);
 }

@@ -56,16 +56,16 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
     }
   };
 
-  // @ts-ignore
-  const loadingTask = pdfjs.getDocument(buffer.buffer);
+  // Create a completely new ArrayBuffer to avoid SharedArrayBuffer transferList issues
+  const uint8Array = new Uint8Array(buffer.byteLength);
+  uint8Array.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
+  const loadingTask = pdfjs.getDocument({ data: uint8Array });
   const doc = await loadingTask.promise;
 
-  // Avoid OOM.
-  let result = '';
   const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
-  for (let i = 0; i < pageArr.length; i++) {
-    result += await readPDFPage(doc, i + 1);
-  }
+  const result = (
+    await Promise.all(pageArr.map(async (page) => await readPDFPage(doc, page)))
+  ).join('');
 
   loadingTask.destroy();
 

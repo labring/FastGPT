@@ -1,3 +1,4 @@
+'use client';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
@@ -26,9 +27,10 @@ const BillAndInvoice = () => {
 
   return (
     <AccountContainer>
-      <Box p={['1rem', '2rem']}>
+      <Flex h={'100%'} flexDirection={'column'} p={['2', '4']}>
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
+            py={1}
             list={[
               { label: t('account_bill:bill_record'), value: InvoiceTabEnum.bill },
               {
@@ -60,7 +62,7 @@ const BillAndInvoice = () => {
             </Button>
           )}
         </Flex>
-        <Box h={'100%'}>
+        <Box flex={'1 0 0'} h={0} overflow={'auto'}>
           {invoiceTab === InvoiceTabEnum.bill && <BillTable />}
           {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable />}
           {invoiceTab === InvoiceTabEnum.invoiceHeader && <InvoiceHeaderForm />}
@@ -72,7 +74,7 @@ const BillAndInvoice = () => {
             }}
           />
         )}
-      </Box>
+      </Flex>
     </AccountContainer>
   );
 };

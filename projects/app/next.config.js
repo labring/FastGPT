@@ -11,6 +11,35 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+  async headers() {
+    return [
+      {
+        source: '/((?!chat/share$).*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=(self), microphone=(self), camera=(self)'
+          }
+        ],
+      }
+    ];
+  },
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
@@ -42,6 +71,7 @@ const nextConfig = {
 
     if (isServer) {
       config.externals.push('@node-rs/jieba');
+
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
@@ -50,11 +80,7 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              ...getWorkerConfig(),
-              'worker/systemPluginRun': path.resolve(
-                process.cwd(),
-                '../../packages/plugins/runtime/worker.ts'
-              )
+              ...getWorkerConfig()
             };
           }
         };
@@ -85,7 +111,7 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      "tiktoken",
+      'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true

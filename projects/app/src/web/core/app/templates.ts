@@ -143,8 +143,7 @@ export const emptyTemplates: Record<
               FlowNodeInputTypeEnum.reference
             ],
             label: 'core.module.input.label.aiModel',
-            valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-4o-mini'
+            valueType: WorkflowIOValueTypeEnum.string
           },
           {
             key: 'temperature',

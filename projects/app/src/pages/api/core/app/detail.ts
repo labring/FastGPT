@@ -3,8 +3,9 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { checkNode } from '@/service/core/app/utils';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
+
 /* 获取应用详情 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -23,7 +24,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   await rewriteAppWorkflowToDetail({
     nodes: app.modules,
     teamId,
-    isRoot
+    ownerTmbId: app.tmbId,
+    isRoot,
+    lang: getLocale(req)
   });
 
   if (!app.permission.hasWritePer) {
@@ -34,12 +37,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     };
   }
 
-  return {
-    ...app,
-    modules: await Promise.all(
-      app.modules.map((node) => checkNode({ node, ownerTmbId: app.tmbId }))
-    )
-  };
+  return app;
 }
 
 export default NextAPI(handler);

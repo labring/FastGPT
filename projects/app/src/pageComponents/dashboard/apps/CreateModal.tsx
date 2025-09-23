@@ -305,7 +305,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               w={'560px'}
               h={'260px'}
               bg={'myGray.50'}
-              {...register('curlContent')}
+              {...register('curlContent', { required: true })}
             />
           </Box>
         )}
@@ -315,6 +315,11 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
+        {currentCreateType === 'curl' && (
+          <Button variant={'primary'} onClick={handleSubmit((data) => onclickCreate(data))}>
+            {t('common:Confirm')}
+          </Button>
+        )}
       </ModalFooter>
 
       <File

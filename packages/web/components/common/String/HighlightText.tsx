@@ -1,17 +1,26 @@
 import { Box } from '@chakra-ui/react';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 const HighlightText = ({
   rawText,
   matchText,
-  color = 'primary.600'
+  color = 'primary.600',
+  mode = 'text'
 }: {
   rawText: string;
   matchText: string;
   color?: string;
+  mode?: 'text' | 'bg';
 }) => {
-  const regex = new RegExp(`(${matchText})`, 'gi');
-  const parts = rawText.split(regex);
+  const { parts } = useMemo(() => {
+    const regx = new RegExp(`(${matchText})`, 'gi');
+    const parts = rawText.split(regx);
+
+    return {
+      regx,
+      parts
+    };
+  }, [rawText, matchText]);
 
   return (
     <Box>
@@ -28,7 +37,17 @@ const HighlightText = ({
         }
 
         return (
-          <Box as="span" key={index} color={highLight ? color : 'inherit'}>
+          <Box
+            as="span"
+            key={index}
+            {...(mode === 'bg'
+              ? {
+                  bg: highLight ? color : 'transparent'
+                }
+              : {
+                  color: highLight ? color : 'inherit'
+                })}
+          >
             {part}
           </Box>
         );
@@ -37,4 +56,4 @@ const HighlightText = ({
   );
 };
 
-export default HighlightText;
+export default React.memo(HighlightText);

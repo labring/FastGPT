@@ -1,9 +1,10 @@
 import { useBoolean } from 'ahooks';
 
 export const useRefresh = () => {
-  const [_, { toggle }] = useBoolean();
+  const [refreshSign, { toggle }] = useBoolean();
 
   return {
-    refresh: toggle
+    refresh: toggle,
+    refreshSign
   };
 };

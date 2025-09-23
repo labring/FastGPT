@@ -1,47 +1,37 @@
-import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDataset/controller';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type {
-  APIFileItem,
-  APIFileServer,
-  YuqueServer,
-  FeishuServer
-} from '@fastgpt/global/core/dataset/apiDataset';
-import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import { type NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import type {
+  ApiDatasetServerType,
+  APIFileItemType
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export type GetApiDatasetCataLogProps = {
-  searchKey?: string;
   parentId?: ParentIdType;
-  yuqueServer?: YuqueServer;
-  feishuServer?: FeishuServer;
-  apiServer?: APIFileServer;
+  apiDatasetServer?: ApiDatasetServerType;
 };
 
-export type GetApiDatasetCataLogResponse = APIFileItem[];
+export type GetApiDatasetCataLogResponse = APIFileItemType[];
 
 async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
+  let { searchKey = '', parentId = null, apiDatasetServer } = req.body;
 
   await authCert({ req, authToken: true });
 
-  const data = await (async () => {
-    if (apiServer) {
-      return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
+  // Remove basePath from apiDatasetServer
+  Object.values(apiDatasetServer).forEach((server: any) => {
+    if (server.basePath) {
+      delete server.basePath;
     }
-    if (feishuServer || yuqueServer) {
-      return getProApiDatasetFileListRequest({
-        feishuServer,
-        yuqueServer,
-        parentId
-      });
-    }
-    return Promise.reject(DatasetErrEnum.noApiServer);
-  })();
+  });
 
-  return data.filter((item: APIFileItem) => item.hasChild === true);
+  const data = await (
+    await getApiDatasetRequest(apiDatasetServer)
+  ).listFiles({ parentId, searchKey });
+
+  return data?.filter((item: APIFileItemType) => item.hasChild === true) || [];
 }
 
 export default NextAPI(handler);

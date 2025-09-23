@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import './init.js';
+import './init';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 
-import { callTool, getTools } from './api/fastgpt.js';
-import { addLog } from './utils/log.js';
-import { getErrText } from './utils/error.js';
+import { callTool, getTools } from './api/fastgpt';
+import { addLog } from './utils/log';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const app = express();
 

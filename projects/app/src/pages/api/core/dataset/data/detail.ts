@@ -1,21 +1,26 @@
-import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type Response = {
   id: string;
   q: string;
   a: string;
+  imageId?: string;
   source: string;
 };
 
-async function handler(req: NextApiRequest) {
-  const { id: dataId } = req.query as {
-    id: string;
-  };
+async function handler(
+  req: ApiRequestProps<
+    {},
+    {
+      id: string;
+    }
+  >
+) {
+  const { id: dataId } = req.query;
 
-  // 凭证校验
   const { datasetData } = await authDatasetData({
     req,
     authToken: true,

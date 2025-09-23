@@ -21,6 +21,7 @@ async function handler(req: ApiRequestProps<getTrainingErrorBody, {}>) {
   const { collection } = await authDatasetCollection({
     req,
     authToken: true,
+    authApiKey: true,
     collectionId,
     per: ReadPermissionVal
   });

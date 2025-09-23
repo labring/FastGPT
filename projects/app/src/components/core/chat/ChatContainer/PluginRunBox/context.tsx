@@ -22,6 +22,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -50,7 +51,7 @@ const PluginRunContextProvider = ({
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -157,14 +158,14 @@ const PluginRunContextProvider = ({
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            variablesForm.setValue('variables', variables);
+            resetVariables({ variables });
           }
 
           return item;
         })
       );
     },
-    [setChatRecords, variablesForm]
+    [setChatRecords, resetVariables]
   );
 
   const isChatting = useMemo(
@@ -258,7 +259,7 @@ const PluginRunContextProvider = ({
             const responseData = mergeChatResponseData(item.responseData || []);
             if (responseData[responseData.length - 1]?.error) {
               toast({
-                title: t(responseData[responseData.length - 1].error?.message),
+                title: t(getErrText(responseData[responseData.length - 1].error)),
                 status: 'error'
               });
             }

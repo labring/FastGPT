@@ -10,6 +10,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataCollectionName } from '../data/schema';
 
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
@@ -54,16 +55,6 @@ const TrainingDataSchema = new Schema({
     default: 5
   },
 
-  model: {
-    // ai model
-    type: String,
-    required: true
-  },
-  prompt: {
-    // qa split prompt
-    type: String,
-    default: ''
-  },
   q: {
     type: String,
     default: ''
@@ -72,6 +63,8 @@ const TrainingDataSchema = new Schema({
     type: String,
     default: ''
   },
+  imageId: String,
+  imageDescMap: Object,
   chunkIndex: {
     type: Number,
     default: 0
@@ -82,7 +75,8 @@ const TrainingDataSchema = new Schema({
     default: 0
   },
   dataId: {
-    type: Schema.Types.ObjectId
+    type: Schema.Types.ObjectId,
+    ref: DatasetDataCollectionName
   },
   indexes: {
     type: [
@@ -92,8 +86,7 @@ const TrainingDataSchema = new Schema({
           enum: Object.values(DatasetDataIndexTypeEnum)
         },
         text: {
-          type: String,
-          required: true
+          type: String
         }
       }
     ],
@@ -112,6 +105,12 @@ TrainingDataSchema.virtual('dataset', {
 TrainingDataSchema.virtual('collection', {
   ref: DatasetColCollectionName,
   localField: 'collectionId',
+  foreignField: '_id',
+  justOne: true
+});
+TrainingDataSchema.virtual('data', {
+  ref: DatasetDataCollectionName,
+  localField: 'dataId',
   foreignField: '_id',
   justOne: true
 });

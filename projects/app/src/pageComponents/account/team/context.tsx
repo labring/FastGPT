@@ -13,7 +13,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useRouter } from 'next/router';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));

@@ -1,3 +1,4 @@
+'use client';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 
 import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';
@@ -73,7 +74,7 @@ const SystemTools = () => {
                   <SearchInput
                     value={searchKey}
                     onChange={(e) => setSearchKey(e.target.value)}
-                    placeholder={t('common:plugin.Search plugin')}
+                    placeholder={t('common:search_tool')}
                   />
                 </Box>
               </Flex>

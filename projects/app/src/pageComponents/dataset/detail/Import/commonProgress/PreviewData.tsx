@@ -28,8 +28,6 @@ const PreviewData = () => {
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
-  const chunkSize = useContextSelector(DatasetImportContext, (v) => v.chunkSize);
-  const chunkOverlapRatio = useContextSelector(DatasetImportContext, (v) => v.chunkOverlapRatio);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
@@ -37,13 +35,16 @@ const PreviewData = () => {
   const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
       if (!previewFile) return { chunks: [], total: 0 };
+
+      const chunkData = processParamsForm.getValues();
+
       if (importSource === ImportDataSourceEnum.fileCustom) {
         const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkSize,
+          chunkSize: chunkData.chunkSize,
           maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
-          overlapRatio: chunkOverlapRatio,
+          overlapRatio: 0.2,
           customReg: chunkSplitter ? [chunkSplitter] : []
         });
         return {
@@ -64,19 +65,12 @@ const PreviewData = () => {
           previewFile.externalFileUrl ||
           previewFile.apiFileId ||
           '',
+        externalFileId: previewFile.externalFileId,
 
-        customPdfParse: processParamsForm.getValues('customPdfParse'),
-
-        trainingType: processParamsForm.getValues('trainingType'),
-        chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
-        chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
-        chunkSize,
-        chunkSplitter: processParamsForm.getValues('chunkSplitter'),
-        overlapRatio: chunkOverlapRatio,
-
+        ...chunkData,
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: importSource === ImportDataSourceEnum.csvTable,
-        externalFileId: previewFile.externalFileId
+        customPdfParse: processParamsForm.getValues('customPdfParse'),
+        overlapRatio: 0.2
       });
     },
     {
@@ -119,7 +113,17 @@ const PreviewData = () => {
                   bg: 'primary.50 !important'
                 })}
                 _notLast={{ mb: 3 }}
-                onClick={() => setPreviewFile(source)}
+                onClick={() => {
+                  if (source.apiFile?.type === 'folder') {
+                    toast({
+                      status: 'warning',
+                      title: t('dataset:preview_chunk_folder_warning')
+                    });
+                    return;
+                  } else {
+                    setPreviewFile(source);
+                  }
+                }}
               >
                 <MyIcon name={source.icon as any} w={'1.25rem'} />
                 <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>

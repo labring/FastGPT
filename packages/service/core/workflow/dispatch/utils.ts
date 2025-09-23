@@ -1,7 +1,9 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -9,11 +11,18 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { MongoApp } from '../../../core/app/schema';
+import { getMCPChildren } from '../../../core/app/mcp';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -82,14 +91,14 @@ export const filterToolNodeIdByEdges = ({
 
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
+  // Select reference history
+  if (Array.isArray(history)) return history;
 
-  const systemHistories = histories.filter((item) => item.obj === ChatRoleEnum.System);
-
-  const filterHistories = (() => {
-    if (typeof history === 'number') return histories.slice(-(history * 2));
-    if (Array.isArray(history)) return history;
-    return [];
-  })();
+  // history is number
+  const systemHistoryIndex = histories.findIndex((item) => item.obj !== ChatRoleEnum.System);
+  const systemHistories = histories.slice(0, systemHistoryIndex);
+  const chatHistories = histories.slice(systemHistoryIndex);
+  const filterHistories = chatHistories.slice(-(history * 2));
 
   return [...systemHistories, ...filterHistories];
 };
@@ -108,9 +117,12 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 /* remove system variable */
 export const removeSystemVariable = (
   variables: Record<string, any>,
-  removeObj: Record<string, string> = {}
+  removeObj: Record<string, string> = {},
+  userVariablesConfigs: VariableItemType[] = []
 ) => {
   const copyVariables = { ...variables };
+
+  // Delete system variables
   delete copyVariables.userId;
   delete copyVariables.appId;
   delete copyVariables.chatId;
@@ -118,13 +130,25 @@ export const removeSystemVariable = (
   delete copyVariables.histories;
   delete copyVariables.cTime;
 
-  // delete external provider workflow variables
+  // Delete special variables
   Object.keys(removeObj).forEach((key) => {
     delete copyVariables[key];
   });
 
+  // Encrypt password variables
+  userVariablesConfigs.forEach((item) => {
+    const val = copyVariables[item.key];
+    if (item.type === VariableInputEnum.password && typeof val === 'string') {
+      copyVariables[item.key] = {
+        value: '',
+        secret: encryptSecret(val)
+      };
+    }
+  });
+
   return copyVariables;
 };
+
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
     userId: variables.userId,
@@ -147,10 +171,21 @@ export const formatHttpError = (error: any) => {
   };
 };
 
-export const rewriteRuntimeWorkFlow = (
-  nodes: RuntimeNodeItemType[],
-  edges: RuntimeEdgeItemType[]
-) => {
+/**
+ * ToolSet node will be replaced by Children Tool Nodes.
+ * @param nodes
+ * @param edges
+ * @returns
+ */
+export const rewriteRuntimeWorkFlow = async ({
+  nodes,
+  edges,
+  lang
+}: {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+  lang?: localeType;
+}) => {
   const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
   if (toolSetNodes.length === 0) {
@@ -161,26 +196,53 @@ export const rewriteRuntimeWorkFlow = (
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolList =
-      toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
-    const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
+    const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
-
-    for (const tool of toolList) {
-      const newToolNode = getMCPToolRuntimeNode({ avatar: toolSetNode.avatar, tool, url });
-
-      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
-
+    const pushEdges = (nodeId: string) => {
       for (const inEdge of incomingEdges) {
         edges.push({
           source: inEdge.source,
-          target: newToolNode.nodeId,
+          target: nodeId,
           sourceHandle: inEdge.sourceHandle,
           targetHandle: 'selectedTools',
           status: inEdge.status
         });
       }
+    };
+
+    // systemTool
+    if (systemToolId) {
+      const children = await getSystemToolRunTimeNodeFromSystemToolset({
+        toolSetNode,
+        lang
+      });
+      children.forEach((node) => {
+        nodes.push(node);
+        pushEdges(node.nodeId);
+      });
+    } else if (mcpToolsetVal) {
+      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+      if (!app) continue;
+      const toolList = await getMCPChildren(app);
+
+      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      toolList.forEach((tool, index) => {
+        const newToolNode = getMCPToolRuntimeNode({
+          avatar: toolSetNode.avatar,
+          tool,
+          // New ?? Old
+          parentId
+        });
+        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
+
+        nodes.push({
+          ...newToolNode,
+          name: `${toolSetNode.name}/${tool.name}`
+        });
+        pushEdges(newToolNode.nodeId);
+      });
     }
   }
 
@@ -195,4 +257,31 @@ export const rewriteRuntimeWorkFlow = (
       edges.splice(i, 1);
     }
   }
+};
+
+export const getNodeErrResponse = ({
+  error,
+  customErr,
+  customNodeResponse
+}: {
+  error: any;
+  customErr?: Record<string, any>;
+  customNodeResponse?: Record<string, any>;
+}) => {
+  const errorText = getErrText(error);
+
+  return {
+    error: {
+      [NodeOutputKeyEnum.errorText]: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      errorText,
+      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      error: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    }
+  };
 };

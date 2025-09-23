@@ -17,7 +17,7 @@ import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/co
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import MemberManager from '../../MemberManager';
 import {
   getCollaboratorList,
@@ -29,6 +29,7 @@ import dynamic from 'next/dynamic';
 import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
@@ -55,10 +56,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const vlmModel = watch('vlmModel');
 
-  const { ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('common:core.dataset.Delete Confirm'),
-    type: 'delete'
-  });
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
     title: t('common:action_confirm'),
     content: t('dataset:confirm_to_rebuild_embedding_tip'),
@@ -315,12 +312,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      apiServer: datasetDetail.apiServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.apiServer?.baseUrl}</Box>
+              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.apiServer?.baseUrl}</Box>
             </Box>
           </>
         )}
@@ -340,12 +337,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      yuqueServer: datasetDetail.yuqueServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.yuqueServer?.userId}</Box>
+              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.yuqueServer?.userId}</Box>
             </Box>
           </>
         )}
@@ -365,12 +362,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      feishuServer: datasetDetail.feishuServer
+                      apiDatasetServer: datasetDetail.apiDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.feishuServer?.folderToken}</Box>
+              <Box fontSize={'mini'}>
+                {datasetDetail.apiDatasetServer?.feishuServer?.folderToken}
+              </Box>
             </Box>
           </>
         )}
@@ -382,9 +381,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box>
             <MemberManager
               managePer={{
+                defaultRole: ReadRoleVal,
                 permission: datasetDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(datasetId),
-                permissionList: DatasetPermissionList,
+                roleList: DatasetRoleList,
                 onUpdateCollaborators: (body) =>
                   postUpdateDatasetCollaborators({
                     ...body,
@@ -414,7 +414,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </>
       )}
 
-      <ConfirmDelModal />
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />
       {editedDataset && (
@@ -440,9 +439,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           onEdit={(data) =>
             updateDataset({
               id: datasetId,
-              apiServer: data.apiServer,
-              yuqueServer: data.yuqueServer,
-              feishuServer: data.feishuServer
+              apiDatasetServer: data.apiDatasetServer
             })
           }
         />

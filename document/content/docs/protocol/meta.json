@@ -1,0 +1,7 @@
+{
+  "title": "协议",
+  "root": true,
+  "description": "协议",
+  "pages": ["open-source", "terms", "privacy"],
+  "order": 3
+}

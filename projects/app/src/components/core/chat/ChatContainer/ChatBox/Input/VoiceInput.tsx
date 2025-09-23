@@ -6,8 +6,7 @@ import React, {
   useCallback,
   useState,
   forwardRef,
-  useImperativeHandle,
-  useMemo
+  useImperativeHandle
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -16,14 +15,18 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
+import { isMobile } from '@fastgpt/web/common/system/utils';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
+  getVoiceInputState: () => { isSpeaking: boolean; isTransCription: boolean };
 }
 
 type VoiceInputProps = {
-  onSendMessage: (params: { text: string; files?: any[]; autoTTSResponse?: boolean }) => void;
-  resetInputVal: (val: { text: string }) => void;
+  handleSend: (val: string) => void;
+  resetInputVal: (val: string) => void;
+  mobilePreSpeak: boolean;
+  setMobilePreSpeak: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 // PC voice input
@@ -39,38 +42,104 @@ const PCVoiceInput = ({
   const { t } = useTranslation();
 
   return (
-    <HStack h={'100%'} px={4}>
-      <Box fontSize="sm" color="myGray.500" flex={'1 0 0'}>
-        {t('common:core.chat.Speaking')}
-      </Box>
-      <canvas
-        ref={canvasRef}
-        style={{
-          height: '10px',
-          width: '100px',
-          background: 'white'
-        }}
-      />
-      <Box fontSize="sm" color="myGray.500" whiteSpace={'nowrap'}>
-        {speakingTimeString}
-      </Box>
-      <MyTooltip label={t('common:core.chat.Cancel Speak')}>
-        <MyIconButton
-          name={'core/chat/cancelSpeak'}
-          h={'22px'}
-          w={'22px'}
-          onClick={() => stopSpeak(true)}
+    <Box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg="rgba(255, 255, 255, 0.3)"
+      backdropFilter="blur(8px)"
+      borderRadius="xxl"
+      zIndex={10}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      flexDirection="column"
+    >
+      {/* Center Waveform Area */}
+      <Flex
+        position="absolute"
+        top="50%"
+        left="0"
+        right="0"
+        transform="translateY(-80%)"
+        alignItems="center"
+        justifyContent="center"
+        direction="column"
+        gap={1}
+        w="100%"
+      >
+        <Box fontSize="sm" color="myGray.600" fontWeight="500">
+          {t('common:core.chat.Speaking')}
+        </Box>
+        <canvas
+          ref={canvasRef}
+          style={{
+            height: '32px',
+            width: '90%',
+            background: 'transparent'
+          }}
         />
-      </MyTooltip>
-      <MyTooltip label={t('common:core.chat.Finish Speak')}>
-        <MyIconButton
-          name={'core/chat/finishSpeak'}
-          h={'22px'}
-          w={'22px'}
-          onClick={() => stopSpeak(false)}
-        />
-      </MyTooltip>
-    </HStack>
+      </Flex>
+
+      {/* Action Buttons - Bottom */}
+      <Flex position="absolute" right={4} bottom={3.5} alignItems="center" gap={2} h={9}>
+        {/* Time Display */}
+        <Box
+          fontSize="sm"
+          color="myGray.600"
+          mr={2}
+          bg="rgba(255, 255, 255, 0.9)"
+          px={2}
+          py={1}
+          borderRadius="md"
+          fontWeight="500"
+        >
+          {speakingTimeString}
+        </Box>
+
+        {/* Cancel Button */}
+        <MyTooltip label={t('common:core.chat.Cancel Speak')}>
+          <Flex
+            w={9}
+            h={9}
+            alignItems="center"
+            justifyContent="center"
+            border="sm"
+            borderRadius="lg"
+            cursor="pointer"
+            bg="rgba(255, 255, 255, 0.95)"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
+            _hover={{ bg: 'white', transform: 'scale(1.05)' }}
+            transition="all 0.2s"
+            onClick={() => stopSpeak(true)}
+          >
+            <MyIcon name={'close'} w={5} h={5} color={'myGray.500'} />
+          </Flex>
+        </MyTooltip>
+
+        {/* Confirm Button */}
+        <MyTooltip label={t('common:core.chat.Finish Speak')}>
+          <Flex
+            w={9}
+            h={9}
+            alignItems="center"
+            justifyContent="center"
+            border="sm"
+            borderRadius="lg"
+            cursor="pointer"
+            bg="rgba(255, 255, 255, 0.95)"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
+            _hover={{ bg: 'white', transform: 'scale(1.05)' }}
+            transition="all 0.2s"
+            onClick={() => stopSpeak(false)}
+          >
+            <MyIcon name={'check'} w={5} h={5} color={'myGray.500'} />
+          </Flex>
+        </MyTooltip>
+      </Flex>
+    </Box>
   );
 };
 
@@ -119,9 +188,9 @@ const MobileVoiceInput = ({
       const currentY = touch.pageY;
       const deltaY = startYRef.current - currentY;
 
-      if (deltaY > 90) {
+      if (deltaY > 60) {
         setIsCancel(true);
-      } else if (deltaY <= 90) {
+      } else if (deltaY <= 60) {
         setIsCancel(false);
       }
     },
@@ -156,8 +225,8 @@ const MobileVoiceInput = ({
             transform={'translateY(-50%)'}
             zIndex={5}
             name={'core/chat/backText'}
-            h={'22px'}
-            w={'22px'}
+            h={6}
+            w={6}
             onClick={onCloseSpeak}
           />
         </MyTooltip>
@@ -165,9 +234,10 @@ const MobileVoiceInput = ({
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
-        h="100%"
         flex="1 0 0"
-        bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'white'}
+        bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'rgba(255, 255, 255, 0.95)'}
+        backdropFilter={!isSpeaking ? 'blur(4px)' : 'none'}
+        borderRadius="xxl"
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchStart={handleTouchStart}
@@ -198,10 +268,10 @@ const MobileVoiceInput = ({
           left={0}
           right={0}
           bottom={maskBottom}
-          h={'200px'}
+          h={'48px'}
           bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
         >
-          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={'10px'}>
+          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={2.5}>
             {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
           </Box>
         </Flex>
@@ -211,14 +281,14 @@ const MobileVoiceInput = ({
 };
 
 const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
-  ({ onSendMessage, resetInputVal }, ref) => {
+  ({ handleSend, resetInputVal, mobilePreSpeak, setMobilePreSpeak }, ref) => {
     const { t } = useTranslation();
+    const isMobileDevice = isMobile();
     const { isPc } = useSystem();
 
     const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
     const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
     const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
-    const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const {
@@ -231,8 +301,6 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       renderAudioGraphMobile,
       stream
     } = useSpeech({ appId, ...outLinkAuthData });
-
-    const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
 
     // Canvas render
     useEffect(() => {
@@ -264,10 +332,10 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
           return;
         }
 
-        if (isPc) {
-          renderAudioGraphPc(analyser, canvas);
-        } else {
+        if (isMobileDevice) {
           renderAudioGraphMobile(analyser, canvas);
+        } else {
+          renderAudioGraphPc(analyser, canvas);
         }
         animationFrameId = window.requestAnimationFrame(renderCurve);
       };
@@ -282,32 +350,30 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         source.disconnect();
         analyser.disconnect();
       };
-    }, [stream, canvasRef, renderAudioGraphPc, renderAudioGraphMobile, isPc]);
+    }, [stream, canvasRef, renderAudioGraphPc, renderAudioGraphMobile, isMobileDevice]);
 
     const onStartSpeak = useCallback(() => {
       const finishWhisperTranscription = (text: string) => {
         if (!text) return;
         if (whisperConfig?.autoSend) {
-          onSendMessage({
-            text,
-            autoTTSResponse
-          });
+          handleSend(text);
         } else {
-          resetInputVal({ text });
+          resetInputVal(text);
         }
       };
       startSpeak(finishWhisperTranscription);
-    }, [autoTTSResponse, onSendMessage, resetInputVal, startSpeak, whisperConfig?.autoSend]);
+    }, [handleSend, resetInputVal, startSpeak, whisperConfig?.autoSend]);
 
     const onSpeach = useCallback(() => {
-      if (isPc) {
-        onStartSpeak();
-      } else {
+      if (isMobileDevice) {
         setMobilePreSpeak(true);
+      } else {
+        onStartSpeak();
       }
-    }, [isPc, onStartSpeak]);
+    }, [isMobileDevice, onStartSpeak, setMobilePreSpeak]);
     useImperativeHandle(ref, () => ({
-      onSpeak: onSpeach
+      onSpeak: onSpeach,
+      getVoiceInputState: () => ({ isSpeaking: isSpeaking || mobilePreSpeak, isTransCription })
     }));
 
     if (!whisperConfig?.open) return null;
@@ -322,22 +388,22 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         left={0}
         right={0}
         bottom={0}
-        bg="white"
+        bg="transparent"
         zIndex={5}
         borderRadius={isPc ? 'md' : ''}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {isPc ? (
-          <PCVoiceInput
-            speakingTimeString={speakingTimeString}
-            stopSpeak={stopSpeak}
-            canvasRef={canvasRef}
-          />
-        ) : (
+        {isMobileDevice ? (
           <MobileVoiceInput
             isSpeaking={isSpeaking}
             onStartSpeak={onStartSpeak}
             onCloseSpeak={() => setMobilePreSpeak(false)}
+            stopSpeak={stopSpeak}
+            canvasRef={canvasRef}
+          />
+        ) : (
+          <PCVoiceInput
+            speakingTimeString={speakingTimeString}
             stopSpeak={stopSpeak}
             canvasRef={canvasRef}
           />
@@ -346,15 +412,17 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         {isTransCription && (
           <Flex
             position={'absolute'}
+            borderRadius="xxl"
             top={0}
             bottom={0}
             left={0}
             right={0}
             pl={5}
             alignItems={'center'}
-            bg={'white'}
+            bg={'rgba(255, 255, 255, 0.95)'}
+            backdropFilter="blur(4px)"
             color={'primary.500'}
-            zIndex={6}
+            zIndex={15}
           >
             <Spinner size={'sm'} mr={4} />
             {t('common:core.chat.Converting to text')}

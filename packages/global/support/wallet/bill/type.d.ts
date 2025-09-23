@@ -50,3 +50,16 @@ export type InvoiceSchemaType = {
   finishTime?: Date;
   file?: Buffer;
 } & InvoiceType;
+
+export type AIPointsPriceOption = {
+  type: 'points';
+  points: number;
+};
+
+export type DatasetPriceOption = {
+  type: 'dataset';
+  size: number;
+  month: number;
+};
+
+export type PriceOption = AIPointsPriceOption | DatasetPriceOption;

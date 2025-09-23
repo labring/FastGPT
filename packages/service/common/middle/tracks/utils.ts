@@ -10,7 +10,7 @@ import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.info('Push tracks', {
+  addLog.debug('Push tracks', {
     event,
     ...data
   });
@@ -65,5 +65,13 @@ export const pushTrack = {
         }
       });
     } catch (error) {}
+  },
+  runSystemTool: (
+    data: PushTrackCommonType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }
+  ) => {
+    return createTrack({
+      event: TrackEnum.runSystemTool,
+      data
+    });
   }
 };

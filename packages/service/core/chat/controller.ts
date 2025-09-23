@@ -1,10 +1,10 @@
-import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export async function getChatItems({
   appId,
@@ -29,28 +29,8 @@ export async function getChatItems({
   ]);
   histories.reverse();
 
-  histories.forEach((item) => {
-    // @ts-ignore
-    item.value = adaptStringValue(item.value);
-  });
-
   return { histories, total };
 }
-
-/* Temporary adaptation for old conversation records */
-export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
-  if (typeof value === 'string') {
-    return [
-      {
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: value
-        }
-      }
-    ];
-  }
-  return value;
-};
 
 export const addCustomFeedbacks = async ({
   appId,
@@ -93,7 +73,8 @@ export const deleteChatFiles = async ({
   chatIdList?: string[];
   appId?: string;
 }) => {
-  if (!appId && !chatIdList) return Promise.reject('appId or chatIdList is required');
+  if (!appId && !chatIdList)
+    return Promise.reject(new UserError('appId or chatIdList is required'));
 
   const appChatIdList = await (async () => {
     if (appId) {

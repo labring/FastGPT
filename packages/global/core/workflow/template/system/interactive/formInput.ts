@@ -11,19 +11,17 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
 
 export const FormInputNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.formInput,
   templateType: FlowNodeTemplateTypeEnum.interactive,
   flowNodeType: FlowNodeTypeEnum.formInput,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/formInput',
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,
-  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.description,

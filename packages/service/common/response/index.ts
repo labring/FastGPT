@@ -2,8 +2,9 @@ import type { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
-import { clearCookie } from '../../support/permission/controller';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { clearCookie } from '../../support/permission/auth/common';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -31,7 +32,8 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-    addLog.error(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
+    // Bussiness Side Error
+    addLog.info(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
 
     res.status(code);
 
@@ -58,7 +60,11 @@ export const jsonRes = <T = any>(
       msg = error?.error?.message;
     }
 
-    addLog.error(`Api response error: ${url}, ${msg}`, error);
+    if (error instanceof UserError) {
+      addLog.info(`Request error: ${url}, ${msg}`);
+    } else {
+      addLog.error(`System unexpected error: ${url}, ${msg}`, error);
+    }
   }
 
   res.status(code).json({

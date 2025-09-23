@@ -5,9 +5,12 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
-import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -20,6 +23,10 @@ import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -111,7 +118,7 @@ export const onCreateApp = async ({
   session?: ClientSession;
 }) => {
   const create = async (session: ClientSession) => {
-    const [{ _id: appId }] = await MongoApp.create(
+    const [app] = await MongoApp.create(
       [
         {
           ...parseParentIdInMongo(parentId),
@@ -125,12 +132,13 @@ export const onCreateApp = async ({
           chatConfig,
           type,
           version: 'v2',
-          pluginData,
-          'pluginData.nodeVersion': defaultNodeVersion
+          pluginData
         }
       ],
       { session, ordered: true }
     );
+
+    const appId = app._id;
 
     if (!AppFolderTypeList.includes(type!)) {
       await MongoAppVersion.create(
@@ -150,6 +158,26 @@ export const onCreateApp = async ({
         { session, ordered: true }
       );
     }
+
+    await MongoResourcePermission.insertOne({
+      teamId,
+      tmbId,
+      resourceId: app._id,
+      permission: OwnerRoleVal,
+      resourceType: PerResourceTypeEnum.app
+    });
+
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.CREATE_APP,
+        params: {
+          appName: name!,
+          appType: getI18nAppType(type!)
+        }
+      });
+    })();
 
     await refreshSourceAvatar(avatar, undefined, session);
 

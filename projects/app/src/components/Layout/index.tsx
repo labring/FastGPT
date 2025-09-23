@@ -15,6 +15,7 @@ import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkorderButton from './WorkorderButton';
+import { useCheckCoupon } from './hooks/checkCoupon';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -46,7 +47,6 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
-  '/chat/team': true,
   '/app/edit': true,
   '/chat': true,
   '/tools/price': true,
@@ -57,8 +57,8 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login': true,
   '/login/provider': true,
   '/login/fastlogin': true,
+  '/chat': true,
   '/chat/share': true,
-  '/chat/team': true,
   '/tools/price': true,
   '/price': true
 };
@@ -74,6 +74,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
+
+  useCheckCoupon();
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,

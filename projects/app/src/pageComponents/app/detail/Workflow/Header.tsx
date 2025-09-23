@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../WorkflowComponents/context';
+import { WorkflowContext, type WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -25,10 +25,10 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SaveButton from './components/SaveButton';
 import PublishHistories from '../PublishHistoriesSlider';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
+import SaveButton from '../Workflow/components/SaveButton';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -149,10 +149,12 @@ const Header = () => {
             p={0.5}
             borderRadius={'sm'}
           >
-            <MyIcon
-              name={'common/leftArrowLight'}
-              w={6}
-              cursor={'pointer'}
+            <IconButton
+              icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
+              aria-label={''}
+              size={'xs'}
+              w={'1rem'}
+              variant={'ghost'}
               onClick={isSaved ? onBack : onOpenBackConfirm}
             />
           </Box>
@@ -187,6 +189,7 @@ const Header = () => {
                 size={'sm'}
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 variant={'whitePrimary'}
+                flexShrink={0}
                 onClick={() => {
                   const data = flowData2StoreDataAndCheck();
                   if (data) {
@@ -219,8 +222,8 @@ const Header = () => {
     t,
     loading,
     onClickSave,
-    flowData2StoreDataAndCheck,
     setShowHistoryModal,
+    flowData2StoreDataAndCheck,
     setWorkflowTestData
   ]);
 
@@ -228,7 +231,7 @@ const Header = () => {
     <>
       {Render}
       {showHistoryModal && isV2Workflow && currentTab === TabEnum.appEdit && (
-        <PublishHistories
+        <PublishHistories<WorkflowSnapshotsType>
           onClose={() => {
             setShowHistoryModal(false);
           }}

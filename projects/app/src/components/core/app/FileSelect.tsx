@@ -17,7 +17,6 @@ import { useTranslation } from 'next-i18next';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
-import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
@@ -25,6 +24,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
 const FileSelect = ({
   forbidVision = false,

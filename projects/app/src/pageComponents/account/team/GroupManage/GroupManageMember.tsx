@@ -124,7 +124,7 @@ function GroupEditModal({
   const handleToggleSelect = (memberId: string) => {
     if (
       myRole === 'owner' &&
-      memberId === groupMembers.find((item) => item.role === 'owner')?.tmbId
+      memberId === groupMembers.find((item) => item.groupRole === 'owner')?.tmbId
     ) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),
@@ -216,8 +216,10 @@ function GroupEditModal({
             </MemberScrollData>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
-            <Box mt={2}>{t('common:chosen') + ': ' + selected.length}</Box>
-            <GroupScrollData mt={3} flex={'1 0 0'} h={0}>
+            <Box mt={2} mb={3}>
+              {t('common:chosen') + ': ' + selected.length}
+            </Box>
+            <GroupScrollData flex={'1 0 0'} h={0}>
               {selected.map((member) => {
                 return (
                   <HStack

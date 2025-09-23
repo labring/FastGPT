@@ -8,7 +8,7 @@ import type {
   ChatStatusEnum
 } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import type { NodeOutputKeyEnum } from '../workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchema, VariableItemType } from '../app/type';
 import { AppChatConfigType } from '../app/type';
@@ -18,19 +18,23 @@ import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
+import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 
-export type ChatSchema = {
+export type ChatSchemaType = {
   _id: string;
   chatId: string;
   userId: string;
   teamId: string;
   tmbId: string;
   appId: string;
+  createTime: Date;
   updateTime: Date;
   title: string;
   customTitle: string;
   top: boolean;
   source: `${ChatSourceEnum}`;
+  sourceName?: string;
+
   shareId?: string;
   outLinkUid?: string;
 
@@ -41,7 +45,7 @@ export type ChatSchema = {
   metadata?: Record<string, any>;
 };
 
-export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
+export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
   appId: AppSchema;
 };
 
@@ -92,6 +96,7 @@ export type AIChatItemValueItemType = {
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
+  memories?: Record<string, any>;
   userGoodFeedback?: string;
   userBadFeedback?: string;
   customFeedbacks?: string[];
@@ -112,6 +117,7 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   appId: string;
   time: Date;
   durationSeconds?: number;
+  errorMsg?: string;
 };
 
 export type AdminFbkType = {
@@ -127,6 +133,7 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
+  toolCiteLinks?: ToolCiteLinksType[];
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
@@ -143,9 +150,9 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   responseData?: ChatHistoryItemResType[];
   time?: Date;
   durationSeconds?: number;
+  errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
-
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
   apps: AppType[];
@@ -192,6 +199,10 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 
+export type ToolCiteLinksType = {
+  name: string;
+  url: string;
+};
 /* dispatch run time */
 export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];

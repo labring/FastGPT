@@ -14,6 +14,8 @@ import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
+import { writePrimary } from '../../common/mongo/utils';
 
 type Props = {
   chatId: string;
@@ -32,6 +34,7 @@ type Props = {
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
   metadata?: Record<string, any>;
   durationSeconds: number; //s
+  errorMsg?: string;
 };
 
 export async function saveChat({
@@ -50,6 +53,7 @@ export async function saveChat({
   outLinkUid,
   content,
   durationSeconds,
+  errorMsg,
   metadata = {}
 }: Props) {
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
@@ -104,14 +108,15 @@ export async function saveChat({
         return {
           ...item,
           [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          durationSeconds
+          durationSeconds,
+          errorMsg
         };
       }
       return item;
     });
 
     await mongoSessionRun(async (session) => {
-      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.create(
         processedContent.map((item) => ({
           chatId,
           teamId,
@@ -119,7 +124,7 @@ export async function saveChat({
           appId,
           ...item
         })),
-        { session }
+        { session, ordered: true, ...writePrimary }
       );
 
       await MongoChat.updateOne(
@@ -148,7 +153,8 @@ export async function saveChat({
         },
         {
           session,
-          upsert: true
+          upsert: true,
+          ...writePrimary
         }
       );
 
@@ -160,10 +166,75 @@ export async function saveChat({
       });
     });
 
-    if (isUpdateUseTime) {
-      await MongoApp.findByIdAndUpdate(appId, {
-        updateTime: new Date()
+    try {
+      const userId = String(outLinkUid || tmbId);
+      const now = new Date();
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+
+      const aiResponse = processedContent.find((item) => item.obj === ChatRoleEnum.AI);
+      const errorCount = aiResponse?.responseData?.some((item) => item.errorText) ? 1 : 0;
+      const totalPoints =
+        aiResponse?.responseData?.reduce(
+          (sum: number, item: any) => sum + (item.totalPoints || 0),
+          0
+        ) || 0;
+
+      const hasHistoryChat = await MongoAppChatLog.exists({
+        teamId,
+        appId,
+        userId,
+        createTime: { $lt: now }
       });
+
+      await MongoAppChatLog.updateOne(
+        {
+          teamId,
+          appId,
+          chatId,
+          updateTime: { $gte: fifteenMinutesAgo }
+        },
+        {
+          $inc: {
+            chatItemCount: 1,
+            errorCount,
+            totalPoints,
+            totalResponseTime: durationSeconds
+          },
+          $set: {
+            updateTime: now,
+            sourceName
+          },
+          $setOnInsert: {
+            appId,
+            teamId,
+            chatId,
+            userId,
+            source,
+            createTime: now,
+            goodFeedbackCount: 0,
+            badFeedbackCount: 0,
+            isFirstChat: !hasHistoryChat
+          }
+        },
+        {
+          upsert: true,
+          ...writePrimary
+        }
+      );
+    } catch (error) {
+      addLog.error('update chat log error', error);
+    }
+
+    if (isUpdateUseTime) {
+      await MongoApp.updateOne(
+        { _id: appId },
+        {
+          updateTime: new Date()
+        },
+        {
+          ...writePrimary
+        }
+      ).catch();
     }
   } catch (error) {
     addLog.error(`update chat history error`, error);

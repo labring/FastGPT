@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
-import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -19,6 +18,9 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import InputRender from '@/components/core/app/formRender';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -38,12 +40,9 @@ const RenderInput = () => {
   const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = variablesForm;
+  const { llmModelList } = useSystemStore();
+
+  const { control, handleSubmit, reset } = variablesForm;
 
   /* ===> Global files(abandon) */
   const fileCtrl = useFieldArray({
@@ -68,8 +67,6 @@ const RenderInput = () => {
     appId,
     chatId
   });
-  const isDisabledInput = histories.length > 0;
-
   useRequest2(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
@@ -168,6 +165,7 @@ const RenderInput = () => {
   const [uploading, setUploading] = useState(false);
 
   const fileUploading = uploading || hasFileUploading;
+  const isDisabledInput = fileUploading || histories.length > 0;
 
   return (
     <Box>
@@ -222,33 +220,65 @@ const RenderInput = () => {
           return true;
         })
         .map((input) => {
+          const inputType = input.renderTypeList[0];
+          const inputKey = `variables.${input.key}` as const;
+
           return (
-            <Controller
-              key={`variables.${input.key}`}
-              control={control}
-              name={`variables.${input.key}`}
-              rules={{
-                validate: (value) => {
-                  if (!input.required) return true;
-                  if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                    return value !== undefined;
+            <Box _notLast={{ mb: 4 }} key={inputKey}>
+              {inputType !== FlowNodeInputTypeEnum.fileSelect && (
+                <Flex alignItems={'center'} mb={1}>
+                  {input.required && <Box color={'red.500'}>*</Box>}
+                  <FormLabel>{input.label}</FormLabel>
+                  {input.description && <QuestionTip ml={1} label={input.description} />}
+                  {inputType === FlowNodeInputTypeEnum.customVariable && (
+                    <Flex
+                      color={'primary.600'}
+                      bg={'primary.100'}
+                      px={2}
+                      py={1}
+                      gap={1}
+                      ml={2}
+                      fontSize={'mini'}
+                      rounded={'sm'}
+                    >
+                      <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                      {t('chat:variable_invisable_in_share')}
+                    </Flex>
+                  )}
+                </Flex>
+              )}
+              <Controller
+                key={inputKey}
+                control={control}
+                name={inputKey}
+                rules={{
+                  validate: (value) => {
+                    if (!input.required) return true;
+                    if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+                      return value !== undefined;
+                    }
+                    return !!value;
                   }
-                  return !!value;
-                }
-              }}
-              render={({ field: { onChange, value } }) => {
-                return (
-                  <RenderPluginInput
-                    value={value}
-                    onChange={onChange}
-                    isDisabled={isDisabledInput}
-                    isInvalid={errors && Object.keys(errors).includes(input.key)}
-                    input={input}
-                    setUploading={setUploading}
-                  />
-                );
-              }}
-            />
+                }}
+                render={({ field: { onChange, value }, fieldState: { error } }) => {
+                  return (
+                    <InputRender
+                      {...input}
+                      key={inputKey}
+                      value={value}
+                      onChange={onChange}
+                      isDisabled={isDisabledInput}
+                      isInvalid={!!error}
+                      setUploading={setUploading}
+                      inputType={nodeInputTypeToInputType(input.renderTypeList)}
+                      form={variablesForm}
+                      fieldName={inputKey}
+                      modelList={llmModelList}
+                    />
+                  );
+                }}
+              />
+            </Box>
           );
         })}
       {/* Run Button */}

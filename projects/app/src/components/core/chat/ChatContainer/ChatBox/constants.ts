@@ -17,3 +17,12 @@ export enum FeedbackTypeEnum {
   admin = 'admin',
   hidden = 'hidden'
 }
+
+export enum ChatTypeEnum {
+  test = 'test',
+  chat = 'chat',
+  log = 'log',
+  share = 'share',
+  team = 'team',
+  home = 'home'
+}

@@ -2,6 +2,12 @@ import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'rea
 import { createContext } from 'use-context-selector';
 import { useLocalStorageState } from 'ahooks';
 import { type SetState } from 'ahooks/lib/createUseStorageState';
+import type { OnConnectStartParams } from 'reactflow';
+
+type handleParamsType = OnConnectStartParams & {
+  popoverPosition: { x: number; y: number };
+  addNodePosition: { x: number; y: number };
+};
 
 type WorkflowEventContextType = {
   mouseInCanvas: boolean;
@@ -11,7 +17,7 @@ type WorkflowEventContextType = {
   hoverEdgeId?: string;
   setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
   workflowControlMode?: 'drag' | 'select';
-  setWorkflowControlMode: (value?: SetState<'drag' | 'select'> | undefined) => void;
+  setWorkflowControlMode: (value: SetState<'drag' | 'select'>) => void;
   menu: {
     top: number;
     left: number;
@@ -20,6 +26,8 @@ type WorkflowEventContextType = {
   // version history
   showHistoryModal: boolean;
   setShowHistoryModal: React.Dispatch<React.SetStateAction<boolean>>;
+  handleParams: handleParamsType | null;
+  setHandleParams: React.Dispatch<React.SetStateAction<handleParamsType | null>>;
 };
 
 export const WorkflowEventContext = createContext<WorkflowEventContextType>({
@@ -32,7 +40,7 @@ export const WorkflowEventContext = createContext<WorkflowEventContextType>({
     throw new Error('Function not implemented.');
   },
   workflowControlMode: 'drag',
-  setWorkflowControlMode: function (value?: SetState<'drag' | 'select'> | undefined): void {
+  setWorkflowControlMode: function (value: SetState<'drag' | 'select'>): void {
     throw new Error('Function not implemented.');
   },
   menu: null,
@@ -42,6 +50,10 @@ export const WorkflowEventContext = createContext<WorkflowEventContextType>({
   showHistoryModal: false,
   setShowHistoryModal: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
+  },
+  handleParams: null,
+  setHandleParams: function (value: React.SetStateAction<handleParamsType | null>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -49,6 +61,8 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
   // Watch mouse in canvas
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  const [handleParams, setHandleParams] = useState<handleParamsType | null>(null);
+
   useEffect(() => {
     const handleMouseInCanvas = (e: MouseEvent) => {
       setMouseInCanvas(true);
@@ -62,7 +76,7 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
       reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
     };
-  }, [reactFlowWrapper?.current, setMouseInCanvas]);
+  }, [setMouseInCanvas]);
 
   // Watch hover node
   const [hoverNodeId, setHoverNodeId] = useState<string>();
@@ -82,7 +96,7 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
   /* Version histories */
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  const contextValue = useMemo(
+  const contextValue = useMemo<WorkflowEventContextType>(
     () => ({
       mouseInCanvas,
       reactFlowWrapper,
@@ -95,7 +109,9 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       menu,
       setMenu,
       showHistoryModal,
-      setShowHistoryModal
+      setShowHistoryModal,
+      handleParams,
+      setHandleParams
     }),
     [
       mouseInCanvas,
@@ -108,7 +124,9 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       menu,
       setMenu,
       showHistoryModal,
-      setShowHistoryModal
+      setShowHistoryModal,
+      handleParams,
+      setHandleParams
     ]
   );
   return (

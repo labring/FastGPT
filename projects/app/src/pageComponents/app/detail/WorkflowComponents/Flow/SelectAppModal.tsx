@@ -56,7 +56,7 @@ const SelectAppModal = ({
       <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'} position={'relative'}>
         <SelectOneResource
           value={selectedApp?.id}
-          onSelect={(id) => setSelectedApp(id ? { id } : undefined)}
+          onSelect={(item) => setSelectedApp(item ? { id: item.id } : undefined)}
           server={getAppList}
         />
       </ModalBody>

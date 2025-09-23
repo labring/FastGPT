@@ -5,29 +5,53 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getMyApps } from '../api';
+import { getAppDetailById, getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
-import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetPathProps,
+  ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type {
+  getToolVersionListProps,
+  getToolVersionResponse
+} from '@/pages/api/core/app/plugin/getVersionList';
+import type {
+  McpGetChildrenmQuery,
+  McpGetChildrenmResponse
+} from '@/pages/api/core/app/mcpTools/getChildren';
 
 /* ============ team plugin ============== */
-export const getTeamPlugTemplates = (data?: ListAppBody) =>
-  getMyApps(data).then((res) =>
+export const getTeamPlugTemplates = async (data?: {
+  parentId?: ParentIdType;
+  searchKey?: string;
+}) => {
+  if (data?.parentId) {
+    // handle get mcptools
+    const app = await getAppDetailById(data.parentId);
+    if (app.type === AppTypeEnum.toolSet) {
+      const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
+      return children.map((item) => ({
+        ...item,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.teamApp
+      }));
+    }
+  }
+  return getMyApps(data).then((res) =>
     res.map((app) => ({
       tmbId: app.tmbId,
       id: app._id,
@@ -47,21 +71,19 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       name: app.name,
       intro: app.intro,
       showStatus: false,
-      version: app.pluginData?.nodeVersion || defaultNodeVersion,
+      version: app.pluginData?.nodeVersion,
       isTool: true,
       sourceMember: app.sourceMember
     }))
   );
+};
 
 /* ============ system plugin ============== */
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
-export const getPluginGroups = () => {
-  return useSystemStore.getState()?.feConfigs?.isPlus
-    ? GET<PluginGroupSchemaType[]>('/proApi/core/app/plugin/getPluginGroups')
-    : Promise.resolve([defaultGroup]);
-};
+export const getPluginGroups = () =>
+  GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
@@ -71,6 +93,9 @@ export const getSystemPluginPaths = (data: GetPathProps) => {
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
 
+export const getToolVersionList = (data: getToolVersionListProps) =>
+  POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
+
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
   POST('/core/app/mcpTools/create', data);
@@ -79,9 +104,13 @@ export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);
 
 export const getMCPTools = (data: getMCPToolsBody) =>
-  POST<ToolType[]>('/support/mcp/client/getTools', data);
+  POST<McpToolConfigType[]>('/support/mcp/client/getTools', data);
 
-export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
+export const postRunMCPTool = (data: RunMCPToolBody) =>
+  POST('/support/mcp/client/runTool', data, { timeout: 300000 });
+
+export const getMcpChildren = (data: McpGetChildrenmQuery) =>
+  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', data);
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

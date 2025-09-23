@@ -1,40 +1,28 @@
-import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React from 'react';
+import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import React, { useMemo, useCallback } from 'react';
 import { editorStateToText } from './utils';
+import type { EditorProps } from './Editor';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { EditorState, LexicalEditor } from 'lexical';
-import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
-import { useCallback } from 'react';
+import type { FormPropsType } from './type';
 
 const PromptEditor = ({
   showOpenModal = true,
-  variables = [],
-  variableLabels = [],
   value,
   onChange,
   onBlur,
-  minH,
-  maxH,
-  maxLength,
-  placeholder,
   title,
-  bg = 'white'
-}: {
-  showOpenModal?: boolean;
-  variables?: EditorVariablePickerType[];
-  variableLabels?: EditorVariableLabelPickerType[];
-  value?: string;
-  onChange?: (text: string) => void;
-  onBlur?: (text: string) => void;
-  minH?: number;
-  maxH?: number;
-  maxLength?: number;
-  placeholder?: string;
-  title?: string;
-  bg?: string;
-}) => {
+  isDisabled,
+  ...props
+}: FormPropsType &
+  EditorProps & {
+    title?: string;
+    isDisabled?: boolean;
+    onChange?: (text: string) => void;
+    onBlur?: (text: string) => void;
+  }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
 
@@ -45,43 +33,73 @@ const PromptEditor = ({
     },
     [onChange]
   );
+
   const onBlurInput = useCallback(
     (editor: LexicalEditor) => {
-      const text = editorStateToText(editor);
-      onBlur?.(text);
+      if (onBlur) {
+        const text = editorStateToText(editor);
+        onBlur(text);
+      }
     },
     [onBlur]
   );
 
+  const formattedValue = useMemo(() => {
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+
+    if (value === undefined || value === null) {
+      return '';
+    }
+
+    return String(value || '');
+  }, [value]);
+
   return (
     <>
-      <Editor
-        showOpenModal={showOpenModal}
-        onOpenModal={onOpen}
-        variables={variables}
-        variableLabels={variableLabels}
-        minH={minH}
-        maxH={maxH}
-        maxLength={maxLength}
-        value={value}
-        onChange={onChangeInput}
-        onBlur={onBlurInput}
-        placeholder={placeholder}
-        bg={bg}
-      />
-      <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
+      <Box position="relative">
+        <Editor
+          {...props}
+          showOpenModal={showOpenModal}
+          onOpenModal={onOpen}
+          value={formattedValue}
+          onChange={onChangeInput}
+          onChangeText={onChange}
+          onBlur={onBlurInput}
+        />
+        {isDisabled && (
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg="rgba(255, 255, 255, 0.4)"
+            borderRadius="md"
+            zIndex={1}
+            cursor="not-allowed"
+          />
+        )}
+      </Box>
+
+      <MyModal
+        isOpen={isOpen}
+        onClose={onClose}
+        iconSrc="modal/edit"
+        title={title || t('common:Edit')}
+        w={'full'}
+      >
         <ModalBody>
           <Editor
+            {...props}
             minH={400}
             maxH={400}
-            maxLength={maxLength}
             showOpenModal={false}
-            variables={variables}
-            variableLabels={variableLabels}
             value={value}
             onChange={onChangeInput}
+            onChangeText={onChange}
             onBlur={onBlurInput}
-            placeholder={placeholder}
           />
         </ModalBody>
         <ModalFooter>
@@ -93,4 +111,5 @@ const PromptEditor = ({
     </>
   );
 };
+
 export default React.memo(PromptEditor);

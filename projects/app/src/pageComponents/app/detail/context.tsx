@@ -3,7 +3,6 @@ import {
   type ReactNode,
   type SetStateAction,
   useCallback,
-  useEffect,
   useMemo,
   useState
 } from 'react';
@@ -22,7 +21,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
@@ -148,7 +146,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
     () => getAppLatestVersion({ appId }),
     {
-      manual: false
+      manual: !appDetail?.permission?.hasWritePer,
+      refreshDeps: [appDetail?.permission?.hasWritePer]
     }
   );
 
@@ -163,6 +162,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
     try {
+      if (!appDetail.permission.hasWritePer) return;
       await postPublishApp(appId, data);
       setAppDetail((state) => ({
         ...state,
@@ -188,7 +188,11 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       return delAppById(appDetail._id);
     },
     {
-      onSuccess() {
+      onSuccess(data) {
+        data.forEach((appId) => {
+          localStorage.removeItem(`app_log_keys_${appId}`);
+        });
+
         router.replace(`/dashboard/apps`);
       },
       successToast: t('common:delete_success'),
@@ -204,16 +208,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       )(),
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
-
-  // check app unExist error
-  useEffect(() => {
-    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
-      toast({
-        title: t('app:app.error.unExist_app'),
-        status: 'error'
-      });
-    }
-  }, [appDetail.modules, t, toast]);
 
   const contextValue: AppContextType = useMemo(
     () => ({

@@ -32,6 +32,21 @@ const SendCodeAuthModal = ({
     runAsync: getCaptcha
   } = useRequest2(() => getCaptchaPic(username), { manual: false });
 
+  const onSubmit = async ({ code }: { code: string }) => {
+    await onSendCode({ username, captcha: code });
+    onClose();
+  };
+
+  const onError = (err: any) => {
+    console.log(err);
+  };
+
+  const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (e.key.toLowerCase() !== 'enter') return;
+    handleSubmit(onSubmit, onError)();
+  };
+
   return (
     <MyModal isOpen={true}>
       <ModalBody pt={8}>
@@ -55,25 +70,17 @@ const SendCodeAuthModal = ({
           />
         </Skeleton>
 
-        <Input placeholder={t('common:support.user.captcha_placeholder')} {...register('code')} />
+        <Input
+          placeholder={t('common:support.user.captcha_placeholder')}
+          {...register('code')}
+          onKeyDown={handleEnterKeyDown}
+        />
       </ModalBody>
       <ModalFooter gap={2}>
         <Button isLoading={onSending} variant={'whiteBase'} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button
-          isLoading={onSending}
-          onClick={handleSubmit(
-            ({ code }) => {
-              return onSendCode({ username, captcha: code }).then(() => {
-                onClose();
-              });
-            },
-            (err) => {
-              console.log(err);
-            }
-          )}
-        >
+        <Button isLoading={onSending} onClick={handleSubmit(onSubmit, onError)}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>

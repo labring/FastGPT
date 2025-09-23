@@ -20,7 +20,14 @@ export const useWorkflowUtils = () => {
     }) => {
       const nodeLength = nodeList.filter((node) => {
         if (node.flowNodeType === flowNodeType) {
-          if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+          if (
+            [
+              FlowNodeTypeEnum.pluginModule,
+              FlowNodeTypeEnum.appModule,
+              FlowNodeTypeEnum.toolSet,
+              FlowNodeTypeEnum.tool
+            ].includes(flowNodeType)
+          ) {
             return node.pluginId === pluginId;
           } else {
             return true;

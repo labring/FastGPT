@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -19,6 +18,8 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 type NodeDebugResponseProps = {
   nodeId: string;
@@ -97,13 +98,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
   const response = debugResult?.response;
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:core.workflow.Confirm stop debug')
-  });
-  const onStop = () => {
-    openConfirm(onStopNodeDebug)();
-  };
-
   const interactive = debugResult?.workflowInteractiveResponse;
   const onNextInteractive = useCallback(
     (userContent: string) => {
@@ -133,11 +127,9 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         }
       ];
 
-      const lastInteractive = getLastInteractiveValue(mockHistory);
       onNextNodeDebug({
         ...workflowDebugData,
-        // Rewrite runtimeEdges
-        runtimeEdges: storeEdges2RuntimeEdges(workflowDebugData.runtimeEdges, lastInteractive),
+        runtimeEdges: workflowDebugData.runtimeEdges,
         query: updatedQuery,
         history: mockHistory
       });
@@ -195,22 +187,28 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             <Box fontWeight={'bold'} flex={'1'}>
               {t('common:core.workflow.debug.Run result')}
             </Box>
-            {workflowDebugData?.nextRunNodes.length !== 0 && (
-              <Button
-                size={'sm'}
-                leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}
-                variant={'whiteDanger'}
-                onClick={onStop}
-              >
-                {t('common:core.workflow.Stop debug')}
-              </Button>
+            {workflowDebugData?.entryNodeIds.length !== 0 && (
+              <PopoverConfirm
+                Trigger={
+                  <Button
+                    size={'sm'}
+                    leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}
+                    variant={'whiteDanger'}
+                  >
+                    {t('common:core.workflow.Stop debug')}
+                  </Button>
+                }
+                placement={'top'}
+                content={t('common:core.workflow.Confirm stop debug')}
+                onConfirm={onStopNodeDebug}
+              />
             )}
             {!interactive && (
               <>
                 {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
                   !debugResult.isExpired &&
-                  workflowDebugData?.nextRunNodes &&
-                  workflowDebugData.nextRunNodes.length > 0 && (
+                  workflowDebugData?.entryNodeIds &&
+                  workflowDebugData.entryNodeIds.length > 0 && (
                     <Button
                       ml={2}
                       size={'sm'}
@@ -221,8 +219,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                       {t('common:next_step')}
                     </Button>
                   )}
-                {workflowDebugData?.nextRunNodes &&
-                  workflowDebugData?.nextRunNodes.length === 0 && (
+                {workflowDebugData?.entryNodeIds &&
+                  workflowDebugData?.entryNodeIds.length === 0 && (
                     <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
                       {t('common:core.workflow.debug.Done')}
                     </Button>
@@ -266,7 +264,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           )}
         </Card>
       )}
-      <ConfirmModal />
     </>
   ) : null;
 };

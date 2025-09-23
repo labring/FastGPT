@@ -42,7 +42,7 @@ export const cheerioToHtml = ({
       }
     }
   });
-  selectDom.find('img').each((i, el) => {
+  selectDom.find('img, video, source, audio, iframe').each((i, el) => {
     const src = $(el).attr('src');
     if (src) {
       if (src.startsWith('//')) {

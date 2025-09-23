@@ -1,24 +1,25 @@
-import React from 'react';
-import ReactFlow, { type NodeProps, SelectionMode } from 'reactflow';
-import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import { SmallCloseIcon } from '@chakra-ui/icons';
-import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-
 import dynamic from 'next/dynamic';
-
 import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
-
 import 'reactflow/dist/style.css';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
+import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
-import { useWorkflow } from './hooks/useWorkflow';
-import HelperLines from './components/HelperLines';
-import FlowController from './components/FlowController';
-import ContextMenu from './components/ContextMenu';
-import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowEventContext } from '../context/workflowEventContext';
+import NodeTemplatesPopover from './NodeTemplatesPopover';
+import SearchButton from '../../Workflow/components/SearchButton';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
+import ContextMenu from './components/ContextMenu';
+import FlowController from './components/FlowController';
+import HelperLines from './components/HelperLines';
+import { useWorkflow } from './hooks/useWorkflow';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { NodeProps } from 'reactflow';
+import ReactFlow, { SelectionMode } from 'reactflow';
+import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
+import React from 'react';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -43,11 +44,11 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./nodes/NodePluginIO/PluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
-  [FlowNodeTypeEnum.tools]: dynamic(() => import('./nodes/NodeTools')),
+  [FlowNodeTypeEnum.agent]: dynamic(() => import('./nodes/NodeAgent')),
   [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
     <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
   ),
-  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool')),
+  [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
@@ -112,21 +113,24 @@ const Workflow = () => {
         <>
           <IconButton
             position={'absolute'}
-            top={5}
-            left={5}
+            top={6}
+            left={6}
             size={'mdSquare'}
             borderRadius={'50%'}
-            icon={<SmallCloseIcon fontSize={'26px'} />}
-            transform={isOpenTemplate ? '' : 'rotate(135deg)'}
+            icon={<MyIcon name="common/addLight" w={'26px'} />}
             transition={'0.2s ease'}
             aria-label={''}
             zIndex={1}
-            boxShadow={'2px 2px 6px #85b1ff'}
+            boxShadow={
+              '0px 4px 10px 0px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.50)'
+            }
             onClick={() => {
               isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
             }}
           />
+          <SearchButton />
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
+          <NodeTemplatesPopover />
         </>
 
         <ReactFlow

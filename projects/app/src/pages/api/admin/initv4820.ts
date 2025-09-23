@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   await authCert({ req, authRoot: true });
 
   // load config
-  const [{ config: dbConfig }, fileConfig] = await Promise.all([
+  const [{ fastgptConfig: dbConfig }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);

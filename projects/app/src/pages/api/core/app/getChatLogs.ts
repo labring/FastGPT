@@ -7,12 +7,13 @@ import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(
   req: NextApiRequest,
@@ -23,30 +24,38 @@ async function handler(
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date(),
     sources,
-    logTitle
+    tmbIds,
+    chatSearch
   } = req.body as GetAppChatLogsParams;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
   if (!appId) {
-    throw new Error('缺少参数');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { teamId } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: AppReadChatLogPerVal
+  });
 
   const where = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
+    source: sources ? { $in: sources } : { $exists: true },
+    tmbId: tmbIds ? { $in: tmbIds.map((item) => new Types.ObjectId(item)) } : { $exists: true },
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
     },
-    ...(sources && { source: { $in: sources } }),
-    ...(logTitle && {
+    ...(chatSearch && {
       $or: [
-        { title: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } }
+        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
       ]
     })
   };
@@ -65,7 +74,7 @@ async function handler(
         {
           $lookup: {
             from: ChatItemCollectionName,
-            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
+            let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
             pipeline: [
               {
                 $match: {
@@ -78,14 +87,87 @@ async function handler(
                 $group: {
                   _id: null,
                   messageCount: { $sum: 1 },
-                  goodFeedback: { $sum: { $cond: [{ $eq: ['$userGoodFeedback', true] }, 1, 0] } },
-                  badFeedback: { $sum: { $cond: [{ $eq: ['$userBadFeedback', true] }, 1, 0] } },
+                  goodFeedback: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$userGoodFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
+                  badFeedback: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$userBadFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
                   customFeedback: {
                     $sum: {
                       $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
                     }
                   },
-                  adminMark: { $sum: { $cond: [{ $eq: ['$adminFeedback', true] }, 1, 0] } }
+                  adminMark: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $ifNull: ['$adminFeedback', false]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
+                  totalResponseTime: {
+                    $sum: {
+                      $cond: [{ $eq: ['$obj', 'AI'] }, { $ifNull: ['$durationSeconds', 0] }, 0]
+                    }
+                  },
+                  aiMessageCount: {
+                    $sum: {
+                      $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
+                    }
+                  },
+                  errorCount: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $gt: [
+                            {
+                              $size: {
+                                $filter: {
+                                  input: { $ifNull: ['$responseData', []] },
+                                  as: 'item',
+                                  cond: { $ne: [{ $ifNull: ['$$item.errorText', null] }, null] }
+                                }
+                              }
+                            },
+                            0
+                          ]
+                        },
+                        1,
+                        0
+                      ]
+                    }
+                  },
+                  totalPoints: {
+                    $sum: {
+                      $reduce: {
+                        input: { $ifNull: ['$responseData', []] },
+                        initialValue: 0,
+                        in: {
+                          $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }]
+                        }
+                      }
+                    }
+                  }
                 }
               }
             ],
@@ -104,7 +186,23 @@ async function handler(
             customFeedbacksCount: {
               $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
-            markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] }
+            markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+            averageResponseTime: {
+              $cond: [
+                {
+                  $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
+                },
+                {
+                  $divide: [
+                    { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
+                    { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+                  ]
+                },
+                0
+              ]
+            },
+            errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
+            totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] }
           }
         },
         {
@@ -115,12 +213,16 @@ async function handler(
             customTitle: 1,
             source: 1,
             sourceName: 1,
-            time: '$updateTime',
+            updateTime: 1,
+            createTime: 1,
             messageCount: 1,
             userGoodFeedbackCount: 1,
             userBadFeedbackCount: 1,
             customFeedbacksCount: 1,
             markCount: 1,
+            averageResponseTime: 1,
+            errorCount: 1,
+            totalPoints: 1,
             outLinkUid: 1,
             tmbId: 1
           }
@@ -134,7 +236,7 @@ async function handler(
   ]);
 
   const listWithSourceMember = await addSourceMember({
-    list: list
+    list
   });
 
   const listWithoutTmbId = list.filter((item) => !item.tmbId);

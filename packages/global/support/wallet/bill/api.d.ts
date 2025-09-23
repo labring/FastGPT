@@ -1,5 +1,5 @@
 import type { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
-import type { BillTypeEnum } from './constants';
+import type { BillTypeEnum, BillPayWayEnum } from './constants';
 import { DrawBillQRItem } from './constants';
 
 export type CreateOrderResponse = {

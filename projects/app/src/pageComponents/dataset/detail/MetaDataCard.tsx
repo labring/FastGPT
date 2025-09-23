@@ -9,7 +9,8 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
-  DatasetCollectionTypeMap
+  DatasetCollectionTypeMap,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -38,6 +39,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       manual: false
     }
   );
+
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
@@ -45,17 +47,25 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
 
     return [
       {
+        label: t('common:core.dataset.collection.id'),
+        value: collection?._id
+      },
+      {
         label: t('common:core.dataset.collection.metadata.source'),
         value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
       {
-        label: t('common:core.dataset.collection.metadata.source name'),
+        label: t('dataset:collection_name'),
         value: collection.file?.filename || collection?.rawLink || collection?.name
       },
-      {
-        label: t('common:core.dataset.collection.metadata.source size'),
-        value: collection.file ? formatFileSize(collection.file.length) : '-'
-      },
+      ...(collection.file
+        ? [
+            {
+              label: t('common:core.dataset.collection.metadata.source size'),
+              value: formatFileSize(collection.file.length)
+            }
+          ]
+        : []),
       {
         label: t('common:core.dataset.collection.metadata.Createtime'),
         value: formatTime2YMDHM(collection.createTime)
@@ -64,35 +74,71 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         label: t('common:core.dataset.collection.metadata.Updatetime'),
         value: formatTime2YMDHM(collection.updateTime)
       },
-      {
-        label: t('dataset:collection_metadata_custom_pdf_parse'),
-        value: collection.customPdfParse ? 'Yes' : 'No'
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Raw text length'),
-        value: collection.rawTextLength ?? '-'
-      },
-      {
-        label: t('dataset:collection_metadata_image_parse'),
-        value: collection.imageIndex ? 'Yes' : 'No'
-      },
-      {
-        label: t('dataset:auto_indexes'),
-        value: collection.autoIndexes ? 'Yes' : 'No'
-      },
-      {
-        label: t('dataset:collection.training_type'),
-        value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
-      },
-      {
-        label: t('dataset:chunk_size'),
-        value: collection.chunkSize || '-'
-      },
-      {
-        label: t('dataset:index_size'),
-        value: collection.indexSize || '-'
-      },
-      ...(webSelector
+      ...(collection.customPdfParse !== undefined
+        ? [
+            {
+              label: t('dataset:collection_metadata_custom_pdf_parse'),
+              value: collection.customPdfParse ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.rawTextLength !== undefined
+        ? [
+            {
+              label: t('common:core.dataset.collection.metadata.Raw text length'),
+              value: collection.rawTextLength
+            }
+          ]
+        : []),
+      ...(DatasetCollectionDataProcessModeMap[collection.trainingType]
+        ? [
+            {
+              label: t('dataset:collection.training_type'),
+              value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+            }
+          ]
+        : []),
+      ...(collection.indexPrefixTitle !== undefined
+        ? [
+            {
+              label: t('dataset:index_prefix_title'),
+              value: collection.indexPrefixTitle ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.imageIndex !== undefined
+        ? [
+            {
+              label: t('dataset:data_index_image'),
+              value: collection.imageIndex ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.autoIndexes !== undefined
+        ? [
+            {
+              label: t('dataset:auto_indexes'),
+              value: collection.autoIndexes ? 'Yes' : 'No'
+            }
+          ]
+        : []),
+      ...(collection.chunkSize !== undefined
+        ? [
+            {
+              label: t('dataset:chunk_size'),
+              value: collection.chunkSize
+            }
+          ]
+        : []),
+      ...(collection.indexSize !== undefined
+        ? [
+            {
+              label: t('dataset:index_size'),
+              value: collection.indexSize
+            }
+          ]
+        : []),
+      ...(webSelector !== undefined
         ? [
             {
               label: t('common:core.dataset.collection.metadata.Web page selector'),
@@ -100,40 +146,34 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      {
-        ...(collection.tags
-          ? [
-              {
-                label: t('dataset:collection_tags'),
-                value: collection.tags?.join(', ') || '-'
-              }
-            ]
-          : [])
-      }
+      ...(collection.tags
+        ? [
+            {
+              label: t('dataset:collection_tags'),
+              value: collection.tags?.join(', ') || '-'
+            }
+          ]
+        : [])
     ];
   }, [collection, t]);
 
   return (
-    <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>
-      <Box fontSize={'md'} pb={4}>
+    <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6} overflow={'auto'}>
+      <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'} pb={4}>
         {t('common:core.dataset.collection.metadata.metadata')}
       </Box>
-      <Flex mb={3} wordBreak={'break-all'} fontSize={'sm'}>
-        <Box color={'myGray.500'} flex={'0 0 90px'}>
-          {t('common:core.dataset.collection.id')}:
-        </Box>
-        <Box>{collection?._id}</Box>
-      </Flex>
       {metadataList.map(
         (item, i) =>
           item.label &&
           item.value && (
-            <Flex key={i} alignItems={'center'} mb={3} wordBreak={'break-all'} fontSize={'sm'}>
-              <Box color={'myGray.500'} flex={'0 0 90px'}>
+            <Box key={i} mb={3} wordBreak={'break-all'}>
+              <Box color={'myGray.500'} fontSize={'xs'}>
                 {item.label}
               </Box>
-              <Box>{item.value}</Box>
-            </Flex>
+              <Box color={'myGray.900'} fontSize={'sm'}>
+                {item.value}
+              </Box>
+            </Box>
           )
       )}
       {collection?.sourceId && (

@@ -11,21 +11,21 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
+import { Output_Template_Error_Message } from '../../output';
 
 export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.readFiles,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/readFiles',
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
   version: '4.9.2',
   isTool: false,
-  courseUrl: '/docs/guide/course/fileinput/',
+  courseUrl: '/docs/introduction/guide/course/fileinput/',
   inputs: [
     {
       key: NodeInputKeyEnum.fileUrlList,
@@ -44,6 +44,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
       description: i18nT('app:workflow.read_files_result_desc'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

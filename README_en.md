@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://tryfastgpt.ai/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.io/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -18,9 +18,9 @@ FastGPT is a knowledge-based platform built on the LLMs, offers a comprehensive 
 [![GitHub pull request](https://img.shields.io/badge/PRs-welcome-fffff?style=flat-square&labelColor=d4eaf7&color=7d09f1)](https://github.com/labring/FastGPT/pulls)
 [![GitHub last commit](https://img.shields.io/github/last-commit/labring/FastGPT?style=flat-square&labelColor=d4eaf7&color=7d09f1)](https://github.com/labring/FastGPT/pulls)
 [![License](https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=d4eaf7&color=7d09f1)](https://github.com/labring/FastGPT/blob/main/LICENSE)
-[![Documentation](https://img.shields.io/badge/Documentation-7d09f1?style=flat-square)](https://doc.tryfastgpt.ai/docs/intro)
-[![Local Development](https://img.shields.io/badge/Local_Development-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1)](https://doc.tryfastgpt.ai/docs/intro)
-[![Explore our platform](https://img.shields.io/badge/Explore_our_platform-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1)](https://tryfastgpt.ai/)
+[![Documentation](https://img.shields.io/badge/Documentation-7d09f1?style=flat-square)](https://doc.fastgpt.io/docs/introduction)
+[![Local Development](https://img.shields.io/badge/Local_Development-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1)](https://doc.fastgpt.io/docs/introduction/development/intro)
+[![Explore our platform](https://img.shields.io/badge/Explore_our_platform-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1)](https://fastgpt.io/)
 
 [![discord](https://theme.zdassets.com/theme_assets/678183/cc59daa07820943e943c2fc283b9079d7003ff76.svg)](https://discord.gg/mp68xkZn2Q)&nbsp;&nbsp;&nbsp;&nbsp; 
 [![Wechat](https://upload.wikimedia.org/wikipedia/en/thumb/a/af/WeChat_logo.svg/100px-WeChat_logo.svg.png?20231125073656)](https://oss.laf.run/otnvvf-imgs/feishu3.png)
@@ -33,7 +33,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 Online Use
 
-Website: [tryfastgpt.ai](https://tryfastgpt.ai/)
+Website: [fastgpt.io](https://fastgpt.io/)
 
 | | |
 | ---------------------------------- | ---------------------------------- |
@@ -74,13 +74,13 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a too slow since we're using the basic settings.
 
-  [sealos one click deployment tutorial](https://doc.tryfastgpt.ai/docs/development/sealos/)
+  [sealos one click deployment tutorial](https://doc.fastgpt.io/docs/introduction/development/sealos/)
 
-- [Getting Started with Local Development](https://doc.tryfastgpt.ai/docs/development)
-- [Deploying FastGPT](https://doc.tryfastgpt.ai/docs/installation)
-- [Guide on System Configs](https://doc.tryfastgpt.ai/docs/installation/reference)
-- [Configuring Multiple Models](https://doc.tryfastgpt.ai/docs/installation/reference/models)
-- [Version Updates & Upgrades](https://doc.tryfastgpt.ai/docs/installation/upgrading)
+- [Getting Started with Local Development](https://doc.fastgpt.io/docs/introduction/development/intro)
+- [Deploying FastGPT](https://doc.fastgpt.io/docs/introduction/development/docker)
+- [Guide on System Configs](https://doc.fastgpt.io/docs/introduction/development/configuration)
+- [Configuring Multiple Models](https://doc.fastgpt.io/docs//introduction/development/modelConfig/intro)
+- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
@@ -108,7 +108,7 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 
 ## 🏘️ Community & Support
 
-+ 🌐 Visit the [FastGPT website](https://tryfastgpt.ai/) for full documentation and useful links.
++ 🌐 Visit the [FastGPT website](https://fastgpt.io/) for full documentation and useful links.
 + 💬 Join our [Discord server](https://discord.gg/mp68xkZn2Q) is to chat with FastGPT developers and other FastGPT users. This is a good place to learn about FastGPT, ask questions, and share your experiences.
 + 🐞 Create [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose) for bug reports and feature requests.
 
@@ -185,7 +185,7 @@ This repository complies with the [FastGPT Open Source License](./LICENSE) open 
 1. Direct commercial use as a backend service is allowed, but provision of SaaS services is not allowed.
 2. Without commercial authorization, any form of commercial service must retain relevant copyright information.
 3. For full details, please see [FastGPT Open Source License](./LICENSE)
-4. Contact: Dennis@sealos.io , [click to view commercial version pricing strategy](https://doc.tryfastgpt.ai/docs/commercial)
+4. Contact: Dennis@sealos.io , [click to view commercial version pricing strategy](https://doc.fastgpt.io/docs/introduction/commercial/)
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">

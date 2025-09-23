@@ -1,10 +1,12 @@
 {
+  "Invoice_document": "Invoice documents",
   "all": "all",
   "back": "return",
   "bank_account": "Account opening account",
   "bank_name": "Bank of deposit",
   "bill_detail": "Bill details",
   "bill_record": "billing records",
+  "click_to_download": "Click to download",
   "company_address": "Company address",
   "company_phone": "Company phone number",
   "completed": "Completed",

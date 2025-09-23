@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -9,10 +8,13 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
+import { createUserSession } from '@fastgpt/service/support/user/session';
+import requestIp from 'request-ip';
+import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password, code } = req.body as PostLoginProps;
@@ -61,24 +63,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     lastLoginTmbId: userDetail.team.tmbId
   });
 
+  const token = await createUserSession({
+    userId: user._id,
+    teamId: userDetail.team.teamId,
+    tmbId: userDetail.team.tmbId,
+    isRoot: username === 'root',
+    ip: requestIp.getClientIp(req)
+  });
+
+  setCookie(res, token);
+
   pushTrack.login({
     type: 'password',
     uid: user._id,
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId
   });
-
-  const token = createJWT({
-    ...userDetail,
-    isRoot: username === 'root'
-  });
-
-  setCookie(res, token);
-
-  addOperationLog({
+  addAuditLog({
     tmbId: userDetail.team.tmbId,
     teamId: userDetail.team.teamId,
-    event: OperationLogEventEnum.LOGIN
+    event: AuditEventEnum.LOGIN
   });
 
   return {

@@ -5,8 +5,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
+import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type Query = {
   id: string;
@@ -30,45 +31,17 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  const { status, errorMsg } = await (async () => {
-    if (dataset.type === DatasetTypeEnum.websiteDataset) {
-      return await getWebsiteSyncDatasetStatus(datasetId);
-    }
-
-    return {
-      status: DatasetStatusEnum.active,
-      errorMsg: undefined
-    };
-  })();
+  const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
 
   return {
     ...dataset,
     status,
     errorMsg,
-    apiServer: dataset.apiServer
-      ? {
-          baseUrl: dataset.apiServer.baseUrl,
-          authorization: ''
-        }
-      : undefined,
-    yuqueServer: dataset.yuqueServer
-      ? {
-          userId: dataset.yuqueServer.userId,
-          token: '',
-          basePath: dataset.yuqueServer.basePath
-        }
-      : undefined,
-    feishuServer: dataset.feishuServer
-      ? {
-          appId: dataset.feishuServer.appId,
-          appSecret: '',
-          folderToken: dataset.feishuServer.folderToken
-        }
-      : undefined,
     permission,
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: getVlmModel(dataset.vlmModel)
+    vlmModel: getVlmModel(dataset.vlmModel),
+    apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 }
 

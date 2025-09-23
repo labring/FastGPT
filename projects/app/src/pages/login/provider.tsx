@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
@@ -15,9 +15,11 @@ import {
   getBdVId,
   getFastGPTSem,
   getInviterId,
+  getMsclkid,
   getSourceDomain,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
+import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 
 let isOauthLogging = false;
 
@@ -29,15 +31,40 @@ const provider = () => {
   const { state, error, ...props } = router.query as Record<string, string>;
   const { toast } = useToast();
 
+  const lastRoute = loginStore?.lastRoute
+    ? decodeURIComponent(loginStore.lastRoute)
+    : '/dashboard/apps';
+  const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
+
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    async (res: LoginSuccessResponse) => {
+      const decodeLastRoute = decodeURIComponent(lastRoute);
       setUserInfo(res.user);
 
-      router.push(
-        loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/dashboard/apps'
-      );
+      const navigateTo = await (async () => {
+        if (res.user.team.status !== 'active') {
+          if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
+            const id = decodeLastRoute.split('invitelinkid=')[1];
+            await postAcceptInvitationLink(id);
+            return '/dashboard/apps';
+          } else {
+            toast({
+              status: 'warning',
+              title: t('common:not_active_team')
+            });
+          }
+        }
+
+        return decodeLastRoute &&
+          !decodeLastRoute.includes('/login') &&
+          decodeLastRoute.startsWith('/')
+          ? lastRoute
+          : '/dashboard/apps';
+      })();
+
+      navigateTo && router.replace(navigateTo);
     },
-    [setUserInfo, router, loginStore?.lastRoute]
+    [setUserInfo, router, lastRoute]
   );
 
   const authProps = useCallback(
@@ -49,6 +76,7 @@ const provider = () => {
           callbackUrl: `${location.origin}/login/provider`,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
+          msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
           sourceDomain: getSourceDomain()
         });
@@ -59,7 +87,7 @@ const provider = () => {
             title: t('common:support.user.login.error')
           });
           return setTimeout(() => {
-            router.replace('/login');
+            router.replace(errorRedirectPage);
           }, 1000);
         }
 
@@ -71,12 +99,12 @@ const provider = () => {
           title: getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
-          router.replace('/login');
+          router.replace(errorRedirectPage);
         }, 1000);
       }
       setLoginStore(undefined);
     },
-    [loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
+    [errorRedirectPage, loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
   );
 
   useEffect(() => {
@@ -85,11 +113,10 @@ const provider = () => {
         status: 'warning',
         title: t('common:support.user.login.Provider error')
       });
-      router.replace('/login');
+      router.replace(errorRedirectPage);
       return;
     }
 
-    console.log('SSO', { initd, loginStore, props, state });
     if (!props || !initd) return;
 
     if (isOauthLogging) return;
@@ -106,14 +133,14 @@ const provider = () => {
           title: t('common:support.user.login.security_failed')
         });
         setTimeout(() => {
-          router.replace('/login');
+          router.replace(errorRedirectPage);
         }, 1000);
         return;
       } else {
         authProps(props);
       }
     })();
-  }, [initd, authProps, error, loginStore, loginStore?.state, router, state, t, toast, props]);
+  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
 
   return <Loading />;
 };

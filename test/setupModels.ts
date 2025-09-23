@@ -1,25 +1,22 @@
 import { ModelTypeEnum } from 'packages/global/core/ai/model';
-import type { ModelProviderIdType } from 'packages/global/core/ai/provider';
 
 export default async function setupModels() {
   global.llmModelMap = new Map<string, any>();
   global.embeddingModelMap = new Map<string, any>();
-  global.llmModelMap.set('gpt-4o-mini', {
+  global.llmModelMap.set('gpt-5', {
     type: ModelTypeEnum.llm,
-    model: 'gpt-4o-mini',
-    name: 'gpt-4o-mini',
-    avatar: 'gpt-4o-mini',
+    model: 'gpt-5',
+    name: 'gpt-5',
+    avatar: 'gpt-5',
     isActive: true,
     isDefault: true,
     isCustom: false,
     requestUrl: undefined,
     requestAuth: undefined,
-    customCQPrompt: '',
-    customExtractPrompt: '',
     defaultSystemChatPrompt: undefined,
     fieldMap: undefined,
     defaultConfig: undefined,
-    provider: 'OpenAI' as ModelProviderIdType,
+    provider: 'OpenAI',
     functionCall: false,
     toolChoice: false,
     maxContext: 4096,
@@ -29,20 +26,18 @@ export default async function setupModels() {
   global.systemDefaultModel = {
     llm: {
       type: ModelTypeEnum.llm,
-      model: 'gpt-4o-mini',
-      name: 'gpt-4o-mini',
-      avatar: 'gpt-4o-mini',
+      model: 'gpt-5',
+      name: 'gpt-5',
+      avatar: 'gpt-5',
       isActive: true,
       isDefault: true,
       isCustom: false,
       requestUrl: undefined,
       requestAuth: undefined,
-      customCQPrompt: '',
-      customExtractPrompt: '',
       defaultSystemChatPrompt: undefined,
       fieldMap: undefined,
       defaultConfig: undefined,
-      provider: 'OpenAI' as ModelProviderIdType,
+      provider: 'OpenAI',
       functionCall: false,
       toolChoice: false,
       maxContext: 4096,

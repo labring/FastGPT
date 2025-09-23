@@ -1,4 +1,8 @@
-import type { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types';
+import type {
+  FastGPTFeConfigsType,
+  LicenseDataType,
+  SystemEnvType
+} from '@fastgpt/global/common/system/types';
 import {
   TTSModelType,
   RerankModelItemType,
@@ -17,6 +21,7 @@ declare global {
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
   var subPlans: SubPlanType | undefined;
+  var licenseData: LicenseDataType | undefined;
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
 }

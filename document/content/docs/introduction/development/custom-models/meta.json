@@ -1,0 +1,4 @@
+{
+  "title": "本地模型使用",
+  "pages": ["marker","mineru","xinference","bge-rerank","chatglm2","m3e","chatglm2-m3e","ollama"]
+}

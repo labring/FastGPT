@@ -2,6 +2,7 @@ import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/we
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 type State = {
   source?: `${ChatSourceEnum}`;
@@ -16,6 +17,9 @@ type State = {
   chatId: string;
   setChatId: (e?: string) => any;
 
+  lastPane: ChatSidebarPaneEnum;
+  setLastPane: (e: ChatSidebarPaneEnum) => any;
+
   outLinkAuthData: OutLinkChatAuthProps;
   setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
 };
@@ -27,7 +31,14 @@ const createCustomStorage = () => {
     getItem: (name: string) => {
       const sessionData = JSON.parse(sessionStorage.getItem(name) || '{}');
       const localData = JSON.parse(localStorage.getItem(name) || '{}');
-      return JSON.stringify({ ...localData, ...sessionData });
+
+      return JSON.stringify({
+        version: 0,
+        state: {
+          ...localData.state,
+          ...sessionData.state
+        }
+      });
     },
     setItem: (name: string, value: string) => {
       const data = JSON.parse(value);
@@ -54,7 +65,8 @@ const createCustomStorage = () => {
     }
   };
 };
-/* 
+
+/*
   appId chatId source 存在当前 tab 中，刷新浏览器不会丢失。
   lastChatId 和 lastChatAppId 全局存储，切换 tab 或浏览器也不会丢失。用于首次 tab 进入对话时，恢复上一次的 chat。(只恢复相同来源的)
 */
@@ -104,6 +116,12 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = e;
           });
         },
+        lastPane: ChatSidebarPaneEnum.HOME,
+        setLastPane(e) {
+          set((state) => {
+            state.lastPane = e;
+          });
+        },
         outLinkAuthData: {},
         setOutLinkAuthData(e) {
           set((state) => {
@@ -119,9 +137,59 @@ export const useChatStore = create<State>()(
           chatId: state.chatId,
           appId: state.appId,
           lastChatId: state.lastChatId,
-          lastChatAppId: state.lastChatAppId
+          lastChatAppId: state.lastChatAppId,
+          lastPane: state.lastPane
         })
       }
     )
   )
 );
+
+// Storage 事件监听器，用于跨 tab 同步
+const createStorageListener = (store: any) => {
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === 'chatStore' && e.newValue && e.storageArea === localStorage) {
+      try {
+        const newData = JSON.parse(e.newValue);
+        const currentState = store.getState();
+
+        // 只同步 localStorage 中的数据（非 session 数据）
+        const sessionKeys = ['source', 'chatId', 'appId'];
+        const updatedState: Partial<State> = {};
+        let hasChanges = false;
+
+        Object.entries(newData.state || {}).forEach(([key, value]) => {
+          if (!sessionKeys.includes(key) && currentState[key] !== value) {
+            (updatedState as any)[key] = value;
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          store.setState(updatedState);
+        }
+      } catch (error) {
+        console.warn('Failed to parse storage event data:', error);
+      }
+    }
+  };
+
+  // 添加监听器
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorageChange);
+
+    // 返回清理函数
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }
+
+  return () => {};
+};
+
+// 初始化存储事件监听器
+if (typeof window !== 'undefined') {
+  createStorageListener(useChatStore);
+}
+
+export { createCustomStorage };

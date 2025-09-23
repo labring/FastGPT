@@ -1,33 +1,22 @@
-import { getMongoModel, Schema } from '../../mongo';
-import { type RawTextBufferSchemaType } from './type';
+import { getMongoModel, type Types, Schema } from '../../mongo';
 
-export const collectionName = 'buffer_rawtexts';
+export const bucketName = 'buffer_rawtext';
 
 const RawTextBufferSchema = new Schema({
-  sourceId: {
-    type: String,
-    required: true
-  },
-  rawText: {
-    type: String,
-    default: ''
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  metadata: Object
+  metadata: {
+    sourceId: { type: String, required: true },
+    sourceName: { type: String, required: true },
+    expiredTime: { type: Date, required: true }
+  }
 });
+RawTextBufferSchema.index({ 'metadata.sourceId': 'hashed' });
+RawTextBufferSchema.index({ 'metadata.expiredTime': -1 });
 
-try {
-  RawTextBufferSchema.index({ sourceId: 1 });
-  //  20 minutes
-  RawTextBufferSchema.index({ createTime: 1 }, { expireAfterSeconds: 20 * 60 });
-} catch (error) {
-  console.log(error);
-}
-
-export const MongoRawTextBuffer = getMongoModel<RawTextBufferSchemaType>(
-  collectionName,
-  RawTextBufferSchema
-);
+export const MongoRawTextBufferSchema = getMongoModel<{
+  _id: Types.ObjectId;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    expiredTime: Date;
+  };
+}>(`${bucketName}.files`, RawTextBufferSchema);

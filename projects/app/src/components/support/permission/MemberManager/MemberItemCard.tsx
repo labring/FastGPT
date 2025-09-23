@@ -1,92 +1,128 @@
 import React from 'react';
-import { useTranslation } from 'next-i18next';
-import { Box, Checkbox, HStack, VStack } from '@chakra-ui/react';
+import { Box, Checkbox, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import PermissionTags from './PermissionTags';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import RoleTags from './RoleTags';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
-import Tag from '@fastgpt/web/components/common/Tag';
+import RoleSelect from './RoleSelect';
+import { ChevronDownIcon } from '@chakra-ui/icons';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 function MemberItemCard({
   avatar,
   key,
-  onChange: _onChange,
+  onChange,
   isChecked,
   onDelete,
   name,
-  permission,
+  role,
   orgs,
-  addOnly,
-  rightSlot
+  rightSlot,
+  onRoleChange,
+  disabled = false
 }: {
   avatar: string;
   key: string;
-  onChange: () => void;
+  onChange?: () => void;
+  onRoleChange?: (role: RoleValueType) => void;
   isChecked?: boolean;
   onDelete?: () => void;
   name: string;
-  permission?: PermissionValueType;
-  addOnly?: boolean;
+  role?: RoleValueType;
   orgs?: string[];
   rightSlot?: React.ReactNode;
+  disabled?: boolean;
 }) {
-  const isAdded = addOnly && !!permission;
-  const onChange = () => {
-    if (!isAdded) _onChange();
-  };
-  const { t } = useTranslation();
+  const showRoleSelect = onRoleChange !== undefined;
+  const { userInfo } = useUserStore();
   return (
-    <HStack
+    <Flex
       justifyContent="space-between"
       alignItems="center"
       key={key}
-      px="3"
-      py="2"
+      px="1"
+      py="1"
+      gap="2"
       borderRadius="sm"
-      _hover={{
-        bgColor: 'myGray.50',
-        cursor: 'pointer'
+      {...(!showRoleSelect
+        ? {
+            _hover: { bgColor: 'myGray.50' },
+            cursor: 'pointer'
+          }
+        : {})}
+      onClick={() => {
+        if (disabled) return;
+        onChange?.();
       }}
-      onClick={onChange}
     >
-      {isChecked !== undefined && (
-        <Checkbox isChecked={isChecked} pointerEvents="none" disabled={isAdded} />
-      )}
-      <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-
-      <Box w="full">
-        <Box fontSize={'sm'} className="textEllipsis" maxW="300px">
-          {name}
+      <Flex
+        flexDirection={'row'}
+        h={showRoleSelect ? '36px' : 'unset'}
+        p="1"
+        alignItems={'center'}
+        gap="2"
+        w="full"
+      >
+        {isChecked !== undefined && (
+          <Checkbox isDisabled={disabled} isChecked={isChecked} pointerEvents="none" />
+        )}
+        <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
+        <Box flex={'1 0 0'} w={0}>
+          <Box fontSize={'sm'} w={'100%'} noOfLines={1}>
+            {name === DefaultGroupName ? userInfo?.team.teamName : name}
+          </Box>
+          <Box lineHeight={1} w={'100%'}>
+            {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
+          </Box>
         </Box>
-        <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
-      </Box>
-      {!isAdded && permission && <PermissionTags permission={permission} />}
-      {isAdded && (
-        <Tag
-          mixBlendMode={'multiply'}
-          colorSchema="blue"
-          border="none"
-          py={2}
-          px={3}
-          fontSize={'xs'}
-        >
-          {t('user:team.collaborator.added')}
-        </Tag>
-      )}
-      {onDelete !== undefined && (
-        <MyIcon
-          name="common/closeLight"
-          w="1rem"
-          cursor={'pointer'}
-          _hover={{
-            color: 'red.600'
-          }}
-          onClick={onDelete}
+      </Flex>
+      {showRoleSelect && (
+        <RoleSelect
+          disabled={disabled}
+          value={role}
+          Button={
+            <Flex
+              bg={'myGray.50'}
+              border="base"
+              fontSize={'sm'}
+              borderRadius={'md'}
+              minH={'18px'}
+              w="300px"
+              p="1"
+              alignItems={'end'}
+              justifyContent={'space-between'}
+            >
+              <RoleTags permission={role} />
+              <Flex h="18px" alignItems={'center'} justifyContent={'center'}>
+                <ChevronDownIcon fontSize="md" />
+              </Flex>
+            </Flex>
+          }
+          onChange={onRoleChange}
         />
       )}
-      {rightSlot}
-    </HStack>
+      <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
+        {onDelete !== undefined && !disabled ? (
+          <MyIcon
+            name="common/closeLight"
+            w="1rem"
+            cursor={disabled ? 'not-allowed' : 'pointer'}
+            _hover={{
+              color: 'red.600'
+            }}
+            onClick={() => {
+              if (disabled) return;
+              onDelete?.();
+            }}
+          />
+        ) : (
+          <Box minW="16px"></Box>
+        )}
+      </Flex>
+      {!!rightSlot && rightSlot}
+    </Flex>
   );
 }
 

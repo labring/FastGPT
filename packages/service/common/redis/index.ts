@@ -27,17 +27,26 @@ export const newWorkerRedisConnection = () => {
   return redis;
 };
 
-export const getGlobalRedisCacheConnection = () => {
-  if (global.redisCache) return global.redisCache;
+export const FASTGPT_REDIS_PREFIX = 'fastgpt:';
+export const getGlobalRedisConnection = () => {
+  if (global.redisClient) return global.redisClient;
 
-  global.redisCache = new Redis(REDIS_URL, { keyPrefix: 'fastgpt:cache:' });
+  global.redisClient = new Redis(REDIS_URL, { keyPrefix: FASTGPT_REDIS_PREFIX });
 
-  global.redisCache.on('connect', () => {
+  global.redisClient.on('connect', () => {
     addLog.info('Redis connected');
   });
-  global.redisCache.on('error', (error) => {
+  global.redisClient.on('error', (error) => {
     addLog.error('Redis connection error', error);
   });
 
-  return global.redisCache;
+  return global.redisClient;
+};
+
+export const getAllKeysByPrefix = async (key: string) => {
+  const redis = getGlobalRedisConnection();
+  const keys = (await redis.keys(`${FASTGPT_REDIS_PREFIX}${key}:*`)).map((key) =>
+    key.replace(FASTGPT_REDIS_PREFIX, '')
+  );
+  return keys;
 };

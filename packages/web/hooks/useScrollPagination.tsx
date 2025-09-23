@@ -70,7 +70,7 @@ export function useVirtualScrollPagination<
     overscan
   });
 
-  const loadData = useLockFn(async (init = false) => {
+  const loadData = useLockFn(async ({ init = false }: { init?: boolean } = {}) => {
     if (noMore && !init) return;
 
     const offset = init ? 0 : data.length;
@@ -140,7 +140,7 @@ export function useVirtualScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      loadData(true);
+      loadData({ init: true });
     },
     {
       manual: false,
@@ -156,7 +156,7 @@ export function useVirtualScrollPagination<
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
       if (scrollTop + clientHeight >= scrollHeight - thresholdVal) {
-        loadData(false);
+        loadData({ init: false });
       }
     },
     [scroll],
@@ -187,17 +187,20 @@ export function useScrollPagination<
     scrollLoadType = 'bottom',
 
     pageSize = 10,
-    params = {},
+    params,
     EmptyTip,
     showErrorToast = true,
+    disabled = false,
+
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
-    params?: Record<string, any>;
+    params?: Omit<TParams, 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
+    disabled?: boolean;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -211,8 +214,15 @@ export function useScrollPagination<
   const noMore = data.length >= total;
 
   const loadData = useLockFn(
-    async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+    async ({
+      init = false,
+      ScrollContainerRef
+    }: {
+      init?: boolean;
+      ScrollContainerRef?: RefObject<HTMLDivElement>;
+    } = {}) => {
       if (noMore && !init) return;
+
       setTrue();
 
       if (init) {
@@ -234,7 +244,7 @@ export function useScrollPagination<
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
-          // 使用 requestAnimationFrame 来调整滚动位置
+
           function adjustScrollPosition() {
             requestAnimationFrame(
               ScrollContainerRef?.current
@@ -249,10 +259,12 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (offset === 0 ? res.list : [...res.list, ...prevData]));
+          const newData = offset === 0 ? res.list : [...res.list, ...data];
+          setData(newData);
           adjustScrollPosition();
         } else {
-          setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
+          const newData = offset === 0 ? res.list : [...data, ...res.list];
+          setData(newData);
         }
       } catch (error: any) {
         if (showErrorToast) {
@@ -300,7 +312,7 @@ export function useScrollPagination<
               scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
             (scrollLoadType === 'top' && scrollTop < thresholdVal)
           ) {
-            loadData(false, ref);
+            loadData({ init: false, ScrollContainerRef: ref });
           }
         },
         [scroll],
@@ -330,7 +342,7 @@ export function useScrollPagination<
               cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
                 if (loadText !== t('common:request_more')) return;
-                loadData(false);
+                loadData({ init: false });
               }}
             >
               {loadText}
@@ -345,7 +357,8 @@ export function useScrollPagination<
   // Reload data
   useRequest2(
     async () => {
-      loadData(true);
+      if (disabled) return;
+      loadData({ init: true });
     },
     {
       manual: false,
@@ -354,7 +367,7 @@ export function useScrollPagination<
   );
 
   const refreshList = useMemoizedFn(() => {
-    loadData(true);
+    loadData({ init: true });
   });
 
   return {

@@ -1,3 +1,4 @@
+'use client';
 import { Box, Card, Flex } from '@chakra-ui/react';
 import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';

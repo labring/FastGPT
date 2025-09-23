@@ -1,9 +1,13 @@
+import { getEmbeddingModel } from '../../../../service/core/ai/model';
 import { type EmbeddingModelItemType, type LLMModelItemType } from '../../../core/ai/model.d';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  ParagraphChunkAIModeEnum
 } from '../constants';
+import type { ChunkSettingsType } from '../type';
+import { cloneDeep } from 'lodash';
 
 export const minChunkSize = 64; // min index and chunk size
 
@@ -22,15 +26,21 @@ export const getLLMDefaultChunkSize = (model?: LLMModelItemType) => {
 
 export const getLLMMaxChunkSize = (model?: LLMModelItemType) => {
   if (!model) return 8000;
-  return Math.max(model.maxContext - model.maxResponse, 2000);
+  return Math.max(model.maxContext, 4000);
 };
 
 // Index size
-export const getMaxIndexSize = (model?: EmbeddingModelItemType) => {
-  return model?.maxToken || 512;
+export const getMaxIndexSize = (model?: EmbeddingModelItemType | string) => {
+  if (!model) return 512;
+  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
+
+  return modelData?.maxToken || 512;
 };
-export const getAutoIndexSize = (model?: EmbeddingModelItemType) => {
-  return model?.defaultToken || 512;
+export const getAutoIndexSize = (model?: EmbeddingModelItemType | string) => {
+  if (!model) return 512;
+
+  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
+  return modelData?.defaultToken || 512;
 };
 
 const indexSizeSelectList = [
@@ -96,41 +106,78 @@ export const getIndexSizeSelectList = (max = 512) => {
 };
 
 // Compute
-export const computeChunkSize = (params: {
-  trainingType: DatasetCollectionDataProcessModeEnum;
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
+export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
+  llmModel,
+  vectorModel,
+  ...data
+}: {
   llmModel?: LLMModelItemType;
-  chunkSize?: number;
-}) => {
-  if (params.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
-    if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-      return getLLMDefaultChunkSize(params.llmModel);
+  vectorModel?: EmbeddingModelItemType;
+} & T) => {
+  const {
+    trainingType = DatasetCollectionDataProcessModeEnum.chunk,
+    chunkSettingMode = ChunkSettingModeEnum.auto,
+    chunkSplitMode,
+    chunkSize,
+    paragraphChunkDeep = 5,
+    indexSize,
+    autoIndexes
+  } = data;
+  const cloneChunkSettings = cloneDeep(data);
+
+  if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
+    delete cloneChunkSettings.qaPrompt;
+  }
+
+  // Format training type indexSize/chunkSize
+  const trainingModeSize: {
+    autoChunkSize: number;
+    autoIndexSize: number;
+    chunkSize?: number;
+    indexSize?: number;
+  } = (() => {
+    if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+      return {
+        autoChunkSize: getLLMDefaultChunkSize(llmModel),
+        autoIndexSize: getMaxIndexSize(vectorModel),
+        chunkSize,
+        indexSize: getMaxIndexSize(vectorModel)
+      };
+    } else if (autoIndexes) {
+      return {
+        autoChunkSize: chunkAutoChunkSize,
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        chunkSize,
+        indexSize
+      };
+    } else {
+      return {
+        autoChunkSize: chunkAutoChunkSize,
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        chunkSize,
+        indexSize
+      };
     }
+  })();
+
+  if (chunkSettingMode === ChunkSettingModeEnum.auto) {
+    cloneChunkSettings.chunkSplitMode = DataChunkSplitModeEnum.paragraph;
+    cloneChunkSettings.paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid;
+    cloneChunkSettings.paragraphChunkDeep = 5;
+    cloneChunkSettings.paragraphChunkMinSize = 100;
+    cloneChunkSettings.chunkSize = trainingModeSize.autoChunkSize;
+    cloneChunkSettings.indexSize = trainingModeSize.autoIndexSize;
+
+    cloneChunkSettings.chunkSplitter = undefined;
   } else {
-    // chunk
-    if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-      return chunkAutoChunkSize;
-    }
+    cloneChunkSettings.paragraphChunkDeep =
+      chunkSplitMode === DataChunkSplitModeEnum.paragraph ? paragraphChunkDeep : 0;
+
+    cloneChunkSettings.chunkSize = trainingModeSize.chunkSize
+      ? Math.min(trainingModeSize.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(llmModel))
+      : undefined;
+    cloneChunkSettings.indexSize = trainingModeSize.indexSize;
   }
 
-  if (params.chunkSplitMode === DataChunkSplitModeEnum.char) {
-    return getLLMMaxChunkSize(params.llmModel);
-  }
-
-  return Math.min(params.chunkSize || chunkAutoChunkSize, getLLMMaxChunkSize(params.llmModel));
-};
-
-export const computeChunkSplitter = (params: {
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
-  chunkSplitter?: string;
-}) => {
-  if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
-    return undefined;
-  }
-  if (params.chunkSplitMode === DataChunkSplitModeEnum.size) {
-    return undefined;
-  }
-  return params.chunkSplitter;
+  return cloneChunkSettings;
 };

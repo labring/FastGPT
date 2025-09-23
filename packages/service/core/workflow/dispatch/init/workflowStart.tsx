@@ -34,8 +34,9 @@ export const dispatchWorkflowStart = (props: Record<string, any>): Response => {
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {},
-    [NodeInputKeyEnum.userChatInput]: text || userChatInput,
-    [NodeOutputKeyEnum.userFiles]: [...queryFiles, ...variablesFiles]
-    // [NodeInputKeyEnum.inputFiles]: files
+    data: {
+      [NodeInputKeyEnum.userChatInput]: text || userChatInput,
+      [NodeOutputKeyEnum.userFiles]: [...queryFiles, ...variablesFiles]
+    }
   };
 };

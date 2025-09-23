@@ -7,8 +7,10 @@ export type ShortUrlParams = {
 export type TrackRegisterParams = {
   inviterId?: string;
   bd_vid?: string;
+  msclkid?: string;
   fastgpt_sem?: {
     keyword?: string;
+    search?: string;
   } & ShortUrlParams;
   sourceDomain?: string;
 };

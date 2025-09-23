@@ -100,7 +100,7 @@ const InputFormEditModal = ({
         onSubmit(data);
         toast({
           status: 'success',
-          title: t('common:Add Success')
+          title: t('common:add_success')
         });
         reset(defaultFormInput);
       }

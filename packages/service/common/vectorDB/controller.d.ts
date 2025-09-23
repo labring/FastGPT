@@ -17,8 +17,7 @@ export type InsertVectorProps = {
   collectionId: string;
 };
 export type InsertVectorControllerProps = InsertVectorProps & {
-  vector: number[];
-  retry?: number;
+  vectors: number[][];
 };
 
 export type EmbeddingRecallProps = {

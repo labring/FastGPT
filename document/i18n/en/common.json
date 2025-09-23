@@ -1,0 +1,20 @@
+{
+  "Documentation": "Documentation",
+  "nav": {
+    "home": "Home",
+    "docs": "Docs",
+    "blog": "Blog",
+    "about": "About"
+  },
+  "footer": {
+    "links": "Links",
+    "community": "Community",
+    "resources": "Resources"
+  },
+  "introduction": "Introduction",
+  "use-cases": "Use Cases",
+  "api": "API",
+  "protocol": "Protocol",
+  "upgrading": "Upgrading",
+  "faq": "FAQ"
+}

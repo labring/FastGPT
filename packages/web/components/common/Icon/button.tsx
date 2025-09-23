@@ -6,7 +6,6 @@ import MyTooltip from '../MyTooltip';
 type Props = FlexProps & {
   icon: string;
   size?: string;
-  onClick?: () => void;
   hoverColor?: string;
   hoverBg?: string;
   hoverBorderColor?: string;
@@ -41,9 +40,9 @@ const MyIconButton = ({
           color: hoverColor,
           borderColor: hoverBorderColor
         }}
-        onClick={() => {
+        onClick={(e) => {
           if (isLoading) return;
-          onClick?.();
+          onClick?.(e);
         }}
         sx={{ userSelect: 'none' }}
         {...props}

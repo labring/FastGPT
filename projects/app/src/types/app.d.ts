@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/type/io.d';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import type { ChatSchema } from '@fastgpt/global/core/chat/type';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -38,7 +37,8 @@ export type AppLogsListItemType = {
   _id: string;
   id: string;
   source: string;
-  time: Date;
+  createTime: Date;
+  updateTime: Date;
   title: string;
   customTitle: string;
   messageCount: number;
@@ -46,6 +46,9 @@ export type AppLogsListItemType = {
   userBadFeedbackCount: number;
   customFeedbacksCount: number;
   markCount: number;
+  averageResponseTime: number;
+  errorCount: number;
+  totalPoints: number;
   outLinkUid?: string;
   tmbId: string;
   sourceMember: SourceMember;

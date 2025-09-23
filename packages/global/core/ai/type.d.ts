@@ -6,7 +6,8 @@ import type {
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
   ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam
+  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam,
+  ChatCompletionTool
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
@@ -59,11 +60,7 @@ export type ChatCompletionAssistantToolParam = {
   role: 'assistant';
   tool_calls: ChatCompletionMessageToolCall[];
 };
-export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
-  index?: number;
-  toolName?: string;
-  toolAvatar?: string;
-};
+
 export type ChatCompletionMessageFunctionCall =
   SdkChatCompletionAssistantMessageParam.FunctionCall & {
     id?: string;

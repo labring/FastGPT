@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
@@ -43,7 +44,7 @@ const InformTable = () => {
     getData,
     pageNum
   } = usePagination(getInforms, {
-    pageSize: 20
+    defaultPageSize: 20
   });
 
   return (
@@ -146,7 +147,7 @@ const InformTable = () => {
         )}
 
         {total > pageSize && (
-          <Flex w="100%" mt={4} px={[3, 8]} justifyContent="flex-end">
+          <Flex mt={4} justifyContent="center">
             <Pagination />
           </Flex>
         )}

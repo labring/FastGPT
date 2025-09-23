@@ -8,7 +8,7 @@ import { WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { PluginInputModule } from '../../workflow/template/system/pluginInput';
 import { PluginOutputModule } from '../../workflow/template/system/pluginOutput';
 import { HttpNode468 } from '../../workflow/template/system/http468';
-import { type HttpParamAndHeaderItemType } from '../../workflow/api';
+import { type HttpParamAndHeaderItemType } from '../../workflow/type/io';
 import { type StoreNodeItemType } from '../../workflow/type/node';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';

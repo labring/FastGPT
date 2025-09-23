@@ -111,4 +111,4 @@ services:
 
 ## 接入 FastGPT
 
-参考 [ReRank模型接入](https://doc.tryfastgpt.ai/docs/development/configuration/#rerank-接入)
+参考 [ReRank模型接入](https://doc.fastgpt.io/docs/introduction/development/configuration/#rerank-接入)

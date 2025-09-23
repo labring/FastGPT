@@ -1,9 +1,8 @@
 {
-  "include": ["src"],
-  "exclude": ["node_modules"],
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "module": "esnext",
+    "module": "ESNext",
     "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,

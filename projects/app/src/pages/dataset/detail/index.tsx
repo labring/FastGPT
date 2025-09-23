@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
@@ -40,7 +41,7 @@ type Props = { datasetId: string; currentTab: TabEnum };
 const sliderStyles: FlexProps = {
   bg: 'white',
   borderRadius: 'md',
-  overflowY: 'scroll',
+  overflowY: 'auto',
   boxShadow: 2
 };
 

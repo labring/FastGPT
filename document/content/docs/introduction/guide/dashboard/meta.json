@@ -1,0 +1,5 @@
+{
+  "title": "工作台",
+  "description": "FastGPT 工作台及工作流节点的使用说明",
+  "pages": ["basic-mode", "intro", "workflow", "mcp_server", "mcp_tools", "gapier", "evaluation"]
+}

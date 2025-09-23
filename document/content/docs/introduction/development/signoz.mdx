@@ -1,0 +1,76 @@
+---
+title: 接入 Signoz  服务监控
+description: FastGPT 接入 Signoz 服务监控
+---
+
+## 介绍
+
+[SigNoz](https://signoz.io/) 是一款开源的应用性能监控（APM）和可观测性平台，为 FastGPT 提供全面的服务监控能力。它基于 OpenTelemetry 标准，能够收集、处理和可视化分布式系统的遥测数据，包括链路追踪（Tracing）、指标监控（Metrics）和日志分析（Logging）。
+
+**主要功能:**
+
+- **链路追踪**：跟踪用户请求在 FastGPT 各个服务间的完整调用链路
+- **性能监控**：监控 API 响应时间、吞吐量等关键性能指标
+- **错误追踪**：自动捕获和记录系统异常，便于问题排查
+- **日志聚合**：集中收集和管理应用日志，支持结构化查询
+- **实时告警**：基于指标阈值设置告警规则，及时发现系统异常
+
+## 部署 Signoz
+
+可以使用 [SigNoz](https://signoz.io/) 官方云服务，或者私有部署，下面介绍在 Sealos 上快速部署 Signoz。
+
+1. 点击下方的卡片，即可一键部署 Signoz。
+
+[![](/imgs/Deploy-on-Sealos.svg)](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-template%3FtemplateName%3Dsignoz)
+
+2. 开启 Signoz 外网访问
+
+部署后，可点击 P1 中的详情，进入应用详情页, 然后点击右上角的变更，并开启 4318 端口的外网地址（如果走内网服务，可忽略该步骤）。
+
+| P1 | P2 | P3 |
+| --- | --- | --- |
+| ![alt text](/imgs/image-112.png) | ![alt text](/imgs/image-110.png) | ![alt text](/imgs/image-111.png) |
+
+3. 获取 Signoz 访问地址
+
+变更完成后，等待公网地址就绪，复制该地址，将其填入 FastGPT 中。如果是走内网服务，可以直接复制 4318 端口的内网地址。
+
+![alt text](/imgs/image-113.png)
+
+## 配置 FastGPT
+
+1. 修改 FastGPT 环境变量
+
+```
+SIGNOZ_BASE_URL=上一步复制的地址
+SIGNOZ_SERVICE_NAME=fastgpt # 服务标识名，必须为英文
+SIGNOZ_STORE_LEVEL=warn # 日志等级，可选值: debug, info, warn, error
+```
+
+2. 重启 FastGPT
+
+## 查看效果
+
+返回 Sealos 应用管理列表，点击进入 Signoz 前端项目，并访问其公网地址，进入管理台。 
+
+| | |
+| --- | --- |
+| ![alt text](/imgs/image-114.png) | ![alt text](/imgs/image-115.png) |
+
+首次注册需要注册一个账号（数据是存储本地数据库），随便填写即可。
+
+![alt text](/imgs/image-116.png)
+
+登录进去后，如果看到右侧 COMPLETED 的步骤条中，logs 和 traces 亮起，则说明配置成功。
+
+![alt text](/imgs/image-117.png)
+
+![alt text](/imgs/image-118.png) 
+
+## 注意事项
+
+1. 调整日志存储时长
+
+Signoz 监控是一个非常占用磁盘的服务，首先不要把 FastGPT debug 日志也存储进来，另外可以将日志存储时长调整为 7 天。如果突然发现 Signoz 数据不增加了，并且内存一直追加，则说明是磁盘满了，需要扩大容量。
+
+![alt text](/imgs/image-119.png)

@@ -1,4 +1,5 @@
 export const getPromptByVersion = (version?: string, promptMap: Record<string, string> = {}) => {
+  // 版本号大的在前面
   const versions = Object.keys(promptMap).sort((a, b) => {
     const [majorA, minorA, patchA] = a.split('.').map(Number);
     const [majorB, minorB, patchB] = b.split('.').map(Number);
@@ -15,5 +16,5 @@ export const getPromptByVersion = (version?: string, promptMap: Record<string, s
   if (version in promptMap) {
     return promptMap[version];
   }
-  return promptMap[versions[versions.length - 1]];
+  return promptMap[versions[0]];
 };

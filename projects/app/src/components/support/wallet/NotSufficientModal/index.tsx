@@ -112,7 +112,7 @@ const RechargeModal = ({
             <Box>{`${t('common:support.user.team.Dataset usage')}:`}</Box>
             <Box
               ml={2}
-            >{`${teamPlanStatus?.usedDatasetSize} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
+            >{`${teamPlanStatus?.usedDatasetIndexSize} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
             <Box ml={5}>{`${t('common:support.wallet.subscription.AI points usage')}:`}</Box>
             <Box
               ml={2}

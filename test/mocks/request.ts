@@ -56,6 +56,7 @@ export type parseHeaderCertRet = {
   sourceName: string | undefined;
   apikey: string;
   isRoot: boolean;
+  sessionId: string;
 };
 
 export type MockReqType<B = any, Q = any> = {
@@ -66,7 +67,7 @@ export type MockReqType<B = any, Q = any> = {
   [key: string]: any;
 };
 
-vi.mock(import('@fastgpt/service/support/permission/controller'), async (importOriginal) => {
+vi.mock(import('@fastgpt/service/support/permission/auth/common'), async (importOriginal) => {
   const mod = await importOriginal();
   const parseHeaderCert = vi.fn(
     ({
@@ -87,9 +88,20 @@ vi.mock(import('@fastgpt/service/support/permission/controller'), async (importO
       return Promise.resolve(auth);
     }
   );
+
+  const authCert = async (props: any) => {
+    const result = await parseHeaderCert(props);
+
+    return {
+      ...result,
+      isOwner: true,
+      canWrite: true
+    };
+  };
   return {
     ...mod,
-    parseHeaderCert
+    parseHeaderCert,
+    authCert
   };
 });
 

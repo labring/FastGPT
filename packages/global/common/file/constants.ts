@@ -16,7 +16,8 @@ export const bucketNameMap = {
   }
 };
 
-export const ReadFileBaseUrl = `${process.env.FILE_DOMAIN || process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/common/file/read`;
+export const EndpointUrl = `${process.env.FILE_DOMAIN || process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}`;
+export const ReadFileBaseUrl = `${EndpointUrl}/api/common/file/read`;
 
 export const documentFileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 export const imageFileType =

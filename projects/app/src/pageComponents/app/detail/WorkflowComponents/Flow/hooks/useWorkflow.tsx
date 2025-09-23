@@ -21,7 +21,7 @@ import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { type THelperLine } from '@fastgpt/global/core/workflow/type';
+import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -266,6 +266,9 @@ const computeHelperLines = (
     );
 };
 
+export const popoverWidth = 400;
+export const popoverHeight = 600;
+
 export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -289,8 +292,9 @@ export const useWorkflow = () => {
     WorkflowStatusContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
+  const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
 
-  const { getIntersectingNodes } = useReactFlow();
+  const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
   /* helper line */
@@ -374,6 +378,61 @@ export const useWorkflow = () => {
       );
     }
   });
+
+  const getTemplatesListPopoverPosition = useMemoizedFn(({ nodeId }: { nodeId: string | null }) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
+
+    const position = flowToScreenPosition({
+      x: node.position.x,
+      y: node.position.y
+    });
+
+    const zoom = getZoom();
+
+    let x = position.x + (node.width || 0) * zoom;
+    let y = position.y;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const margin = 20;
+
+    // Check right boundary
+    if (x + popoverWidth + margin > viewportWidth) {
+      x = Math.max(margin, position.x + (node.width || 0) * zoom - popoverWidth - 30);
+    }
+
+    // Check bottom boundary
+    if (y + popoverHeight + margin > viewportHeight) {
+      y = Math.max(margin, viewportHeight - popoverHeight - margin);
+    }
+
+    // Check top boundary
+    if (y < margin) {
+      y = margin;
+    }
+
+    return { x, y };
+  });
+  const getAddNodePosition = useMemoizedFn(
+    ({ nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return { x: 0, y: 0 };
+
+      if (handleId === 'selectedTools') {
+        return {
+          x: node.position.x,
+          y: node.position.y + (node.height || 0) + 80
+        };
+      }
+
+      return {
+        x: node.position.x + (node.width || 0) + 120,
+        y: node.position.y
+      };
+    }
+  );
 
   /* node */
   // Remove change node and its child nodes and edges
@@ -525,21 +584,61 @@ export const useWorkflow = () => {
   /* connect */
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
-      if (!params.nodeId) return;
+      const { nodeId, handleId } = params;
+      if (!nodeId) return;
 
       // If node is folded, unfold it when connecting
-      const sourceNode = nodeList.find((node) => node.nodeId === params.nodeId);
+      const sourceNode = nodeList.find((node) => node.nodeId === nodeId);
       if (sourceNode?.isFolded) {
-        return onChangeNode({
-          nodeId: params.nodeId,
+        onChangeNode({
+          nodeId,
           type: 'attr',
           key: 'isFolded',
           value: false
         });
       }
       setConnectingEdge(params);
+
+      // Check connect or click(If the mouse position remains basically unchanged, it indicates a click)
+      if (params.handleId) {
+        const initialX = event.clientX;
+        const initialY = event.clientY;
+        const startTime = Date.now();
+
+        const handleMouseUp = (moveEvent: MouseEvent) => {
+          document.removeEventListener('mouseup', handleMouseUp);
+
+          const currentX = moveEvent.clientX;
+          const currentY = moveEvent.clientY;
+          const endTime = Date.now();
+          const pressDuration = endTime - startTime;
+
+          if (
+            Math.abs(currentX - initialX) <= 5 &&
+            Math.abs(currentY - initialY) <= 5 &&
+            pressDuration < 500
+          ) {
+            const popoverPosition = getTemplatesListPopoverPosition({ nodeId });
+            const addNodePosition = getAddNodePosition({ nodeId, handleId });
+            setHandleParams({
+              ...params,
+              popoverPosition,
+              addNodePosition
+            });
+          }
+        };
+
+        document.addEventListener('mouseup', handleMouseUp);
+      }
     },
-    [nodeList, setConnectingEdge, onChangeNode]
+    [
+      nodeList,
+      setConnectingEdge,
+      onChangeNode,
+      getTemplatesListPopoverPosition,
+      getAddNodePosition,
+      setHandleParams
+    ]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
@@ -563,7 +662,7 @@ export const useWorkflow = () => {
       // 1. Add file input
       if (
         node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-        node.flowNodeType === FlowNodeTypeEnum.tools ||
+        node.flowNodeType === FlowNodeTypeEnum.agent ||
         node.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
@@ -629,7 +728,6 @@ export const useWorkflow = () => {
     },
     [setMenu]
   );
-
   const onPaneClick = useCallback(() => {
     setMenu(null);
   }, [setMenu]);

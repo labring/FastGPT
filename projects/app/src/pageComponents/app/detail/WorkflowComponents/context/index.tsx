@@ -1,13 +1,13 @@
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
+  adaptCatchError,
   checkWorkflowNodeAndConnection,
   compareSnapshot,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   type FlowNodeItemType,
@@ -18,8 +18,10 @@ import {
   type RuntimeEdgeItemType,
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { type FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeOutputItemType,
+  type FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
@@ -52,10 +54,12 @@ import { cloneDeep } from 'lodash';
 import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
-import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
 /* 
   Context
@@ -98,6 +102,52 @@ export type WorkflowSnapshotsType = WorkflowStateType & {
   diff?: any;
 };
 
+type FlowNodeChangeProps = { nodeId: string } & (
+  | {
+      type: 'attr'; // key: attr, value: new value
+      key: string;
+      value: any;
+    }
+  | {
+      type: 'updateInput'; // key: update input key, value: new input value
+      key: string;
+      value: FlowNodeInputItemType;
+    }
+  | {
+      type: 'replaceInput'; // key: old input key, value: new input value
+      key: string;
+      value: FlowNodeInputItemType;
+    }
+  | {
+      type: 'addInput'; // key: null, value: new input value
+      value: FlowNodeInputItemType;
+      index?: number;
+    }
+  | {
+      type: 'delInput'; // key: delete input key, value: null
+      key: string;
+    }
+  | {
+      type: 'updateOutput'; // key: update output key, value: new output value
+      key: string;
+      value: FlowNodeOutputItemType;
+    }
+  | {
+      type: 'replaceOutput'; // key: old output key, value: new output value
+      key: string;
+      value: FlowNodeOutputItemType;
+    }
+  | {
+      type: 'addOutput'; // key: null, value: new output value
+      value: FlowNodeOutputItemType;
+      index?: number;
+    }
+  | {
+      type: 'delOutput'; // key: delete output key, value: null
+      key: string;
+    }
+);
+
 type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
@@ -105,9 +155,9 @@ type WorkflowContextType = {
 
   // nodes
   nodeList: FlowNodeItemType[];
-  hasToolNode: boolean;
 
   onUpdateNodeError: (node: string, isError: Boolean) => void;
+  onRemoveError: () => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   getNodeDynamicInputs: (nodeId: string) => FlowNodeInputItemType[];
@@ -154,6 +204,11 @@ type WorkflowContextType = {
     isTool: boolean;
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
+  };
+  splitOutput: (outputs: FlowNodeOutputItemType[]) => {
+    successOutputs: FlowNodeOutputItemType[];
+    hiddenOutputs: FlowNodeOutputItemType[];
+    errorOutputs: FlowNodeOutputItemType[];
   };
   initData: (
     e: {
@@ -211,7 +266,9 @@ type WorkflowContextType = {
 export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
-  nextRunNodes: RuntimeNodeItemType[];
+  entryNodeIds: string[];
+  skipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+
   variables: Record<string, any>;
   history?: ChatItemType[];
   query?: UserChatItemValueItemType[];
@@ -226,7 +283,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   basicNodeTemplates: [],
   nodeList: [],
-  hasToolNode: false,
   onUpdateNodeError: function (node: string, isError: Boolean): void {
     throw new Error('Function not implemented.');
   },
@@ -248,6 +304,13 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     isTool: boolean;
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
+  } {
+    throw new Error('Function not implemented.');
+  },
+  splitOutput: function (outputs: FlowNodeOutputItemType[]): {
+    successOutputs: FlowNodeOutputItemType[];
+    hiddenOutputs: FlowNodeOutputItemType[];
+    errorOutputs: FlowNodeOutputItemType[];
   } {
     throw new Error('Function not implemented.');
   },
@@ -341,6 +404,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     isSaved?: boolean;
   }): boolean {
     throw new Error('Function not implemented.');
+  },
+  onRemoveError: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -353,6 +419,8 @@ const WorkflowContextProvider = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+
+  const { chatId } = useChatStore();
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
@@ -399,10 +467,6 @@ const WorkflowContextProvider = ({
     [nodeListString]
   );
 
-  const hasToolNode = useMemo(() => {
-    return !!nodeList.find((node) => node.flowNodeType === FlowNodeTypeEnum.tools);
-  }, [nodeList]);
-
   const onUpdateNodeError = useMemoizedFn((nodeId: string, isError: Boolean) => {
     setNodes((state) => {
       return state.map((item) => {
@@ -410,6 +474,17 @@ const WorkflowContextProvider = ({
           item.selected = true;
           //@ts-ignore
           item.data.isError = isError;
+        }
+        return item;
+      });
+    });
+  });
+  const onRemoveError = useMemoizedFn(() => {
+    setNodes((state) => {
+      return state.map((item) => {
+        if (item.data.isError) {
+          item.data.isError = false;
+          item.selected = false;
         }
         return item;
       });
@@ -547,6 +622,18 @@ const WorkflowContextProvider = ({
     },
     [edges]
   );
+  const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
+    return {
+      successOutputs: outputs.filter(
+        (item) =>
+          item.type === FlowNodeOutputTypeEnum.dynamic ||
+          item.type === FlowNodeOutputTypeEnum.static ||
+          item.type === FlowNodeOutputTypeEnum.source
+      ),
+      hiddenOutputs: outputs.filter((item) => item.type === FlowNodeOutputTypeEnum.hidden),
+      errorOutputs: outputs.filter((item) => item.type === FlowNodeOutputTypeEnum.error)
+    };
+  }, []);
 
   /* ui flow to store data */
   const { fitView } = useReactFlow();
@@ -555,6 +642,7 @@ const WorkflowContextProvider = ({
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
     if (!checkResults) {
+      onRemoveError();
       const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return storeWorkflow;
@@ -600,57 +688,36 @@ const WorkflowContextProvider = ({
         }))
       );
 
-      // 2. Set isEntry field and get entryNodes
+      // 2. Set isEntry field and get entryNodes, and set running status
       const runtimeNodes = debugData.runtimeNodes.map((item) => ({
         ...item,
-        isEntry: debugData.nextRunNodes.some((node) => node.nodeId === item.nodeId)
+        isEntry: debugData.entryNodeIds.some((id) => id === item.nodeId)
       }));
-      const entryNodes = runtimeNodes.filter((item) => item.isEntry);
-
-      const runtimeNodeStatus: Record<string, string> = entryNodes
-        .map((node) => {
-          const status = checkNodeRunStatus({
-            node,
-            runtimeEdges: debugData?.runtimeEdges || []
-          });
-
-          return {
-            nodeId: node.nodeId,
-            status
-          };
-        })
-        .reduce(
-          (acc, cur) => ({
-            ...acc,
-            [cur.nodeId]: cur.status
-          }),
-          {}
-        );
-
-      // 3. Set entry node status to running
-      entryNodes.forEach((node) => {
-        if (runtimeNodeStatus[node.nodeId] !== 'wait') {
+      const entryNodes = runtimeNodes.filter((item) => {
+        if (item.isEntry) {
           onChangeNode({
-            nodeId: node.nodeId,
+            nodeId: item.nodeId,
             type: 'attr',
             key: 'debugResult',
             value: defaultRunningStatus
           });
+          return true;
         }
       });
 
       try {
-        // 4. Run one step
+        // 3. Run one step
         const {
-          finishedEdges,
-          finishedNodes,
-          nextStepRunNodes,
-          flowResponses,
-          newVariables,
-          workflowInteractiveResponse
+          memoryEdges,
+          memoryNodes,
+          entryNodeIds,
+          skipNodeQueue,
+          nodeResponses,
+          newVariables
         } = await postWorkflowDebug({
           nodes: runtimeNodes,
           edges: debugData.runtimeEdges,
+          skipNodeQueue: debugData.skipNodeQueue,
           variables: {
             appId,
             cTime: formatTime2YMDHMW(),
@@ -658,53 +725,37 @@ const WorkflowContextProvider = ({
           },
           query: debugData.query, // 添加 query 参数
           history: debugData.history,
-          appId
+          appId,
+          chatConfig: appDetail.chatConfig
         });
 
-        // 5. Store debug result
+        // 4. Store debug result
         setWorkflowDebugData({
-          runtimeNodes: finishedNodes,
-          // edges need to save status
-          runtimeEdges: finishedEdges,
-          nextRunNodes: nextStepRunNodes,
-          variables: newVariables,
-          workflowInteractiveResponse: workflowInteractiveResponse
+          runtimeNodes: memoryNodes,
+          runtimeEdges: memoryEdges,
+          entryNodeIds,
+          skipNodeQueue,
+          variables: newVariables
         });
 
-        // 6. selected entry node and Update entry node debug result
+        // 5. selected entry node and Update entry node debug result
         setNodes((state) =>
           state.map((node) => {
             const isEntryNode = entryNodes.some((item) => item.nodeId === node.data.nodeId);
 
-            if (!isEntryNode || runtimeNodeStatus[node.data.nodeId] === 'wait') return node;
-
-            const result = flowResponses.find((item) => item.nodeId === node.data.nodeId);
-
-            if (runtimeNodeStatus[node.data.nodeId] === 'skip') {
-              return {
-                ...node,
-                selected: isEntryNode,
-                data: {
-                  ...node.data,
-                  debugResult: {
-                    status: 'skipped',
-                    showResult: true,
-                    isExpired: false
-                  }
-                }
-              };
-            }
+            const result = nodeResponses[node.data.nodeId];
+            if (!result) return node;
             return {
               ...node,
-              selected: isEntryNode,
+              selected: result.type === 'run' && isEntryNode,
               data: {
                 ...node.data,
                 debugResult: {
-                  status: 'success',
-                  response: result,
+                  status: result.type === 'run' ? 'success' : 'skipped',
+                  response: result.response,
                   showResult: true,
                   isExpired: false,
-                  workflowInteractiveResponse: workflowInteractiveResponse
+                  workflowInteractiveResponse: result.interactiveResponse
                 }
               }
             };
@@ -712,13 +763,9 @@ const WorkflowContextProvider = ({
         );
 
         // Check for an empty response(Skip node)
-        if (
-          !workflowInteractiveResponse &&
-          flowResponses.length === 0 &&
-          nextStepRunNodes.length > 0
-        ) {
-          onNextNodeDebug(debugData);
-        }
+        // if (!workflowInteractiveResponse && flowResponses.length === 0 && entryNodeIds.length > 0) {
+        //   onNextNodeDebug(debugData);
+        // }
       } catch (error) {
         entryNodes.forEach((node) => {
           onChangeNode({
@@ -735,7 +782,7 @@ const WorkflowContextProvider = ({
         console.log(error);
       }
     },
-    [appId, onChangeNode, setNodes]
+    [appId, onChangeNode, setNodes, appDetail.chatConfig]
   );
   const onStopNodeDebug = useMemoizedFn(() => {
     setWorkflowDebugData(undefined);
@@ -769,7 +816,10 @@ const WorkflowContextProvider = ({
       const data: DebugDataType = {
         runtimeNodes,
         runtimeEdges,
-        nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
+        entryNodeIds: runtimeNodes
+          .filter((node) => node.nodeId === entryNodeId)
+          .map((node) => node.nodeId),
+        skipNodeQueue: [],
         variables,
         query,
         history
@@ -861,7 +911,7 @@ const WorkflowContextProvider = ({
   });
   const onSwitchCloudVersion = useMemoizedFn((appVersion: AppVersionSchemaType) => {
     const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-    const edges = appVersion.edges.map((item) => storeEdgesRenderEdge({ edge: item }));
+    const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
     const chatConfig = appVersion.chatConfig;
 
     resetSnapshot({
@@ -911,67 +961,10 @@ const WorkflowContextProvider = ({
       },
       isInit?: boolean
     ) => {
+      adaptCatchError(e.nodes, e.edges);
+
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
-      const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
-
-      // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
-      const pastSnapshot = (() => {
-        try {
-          const pastSnapshot = localStorage.getItem(`${appId}-past`);
-          return pastSnapshot ? (JSON.parse(pastSnapshot) as WorkflowSnapshotsType[]) : [];
-        } catch (error) {
-          return [];
-        }
-      })();
-      if (isInit && pastSnapshot.length > 0) {
-        const defaultState = pastSnapshot[pastSnapshot.length - 1].state;
-
-        if (pastSnapshot[0].diff && defaultState) {
-          // 设置旧的历史记录
-          setPast(
-            pastSnapshot
-              .map((item) => {
-                if (item.state) {
-                  return {
-                    title: t(`app:app.version_initial`),
-                    isSaved: item.isSaved,
-                    nodes: item.state.nodes,
-                    edges: item.state.edges,
-                    chatConfig: item.state.chatConfig
-                  };
-                }
-                if (item.diff) {
-                  const currentState = getAppConfigByDiff(defaultState, item.diff);
-                  return {
-                    title: item.title,
-                    isSaved: item.isSaved,
-                    nodes: currentState.nodes,
-                    edges: currentState.edges,
-                    chatConfig: currentState.chatConfig
-                  };
-                }
-                return undefined;
-              })
-              .filter(Boolean) as WorkflowSnapshotsType[]
-          );
-
-          // 设置当前版本
-          const targetState = getAppConfigByDiff(
-            pastSnapshot[pastSnapshot.length - 1].state,
-            pastSnapshot[0].diff
-          ) as WorkflowStateType;
-
-          setNodes(targetState.nodes);
-          setEdges(targetState.edges);
-          setAppDetail((state) => ({
-            ...state,
-            chatConfig: targetState.chatConfig
-          }));
-
-          localStorage.removeItem(`${appId}-past`);
-          return;
-        }
-      }
+      const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -1001,7 +994,7 @@ const WorkflowContextProvider = ({
         setAppDetail((state) => ({ ...state, chatConfig: e.chatConfig as AppChatConfigType }));
       }
     },
-    [appDetail.chatConfig, appId, past, setAppDetail, setEdges, setNodes, t]
+    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, t]
   );
 
   const value = useMemo(
@@ -1011,8 +1004,8 @@ const WorkflowContextProvider = ({
 
       // node
       nodeList,
-      hasToolNode,
       onUpdateNodeError,
+      onRemoveError,
       onResetNode,
       onChangeNode,
       getNodeDynamicInputs,
@@ -1036,6 +1029,7 @@ const WorkflowContextProvider = ({
 
       // function
       splitToolInputs,
+      splitOutput,
       initData,
       flowData2StoreDataAndCheck,
       flowData2StoreData,
@@ -1057,12 +1051,12 @@ const WorkflowContextProvider = ({
       flowData2StoreDataAndCheck,
       future,
       getNodeDynamicInputs,
-      hasToolNode,
       initData,
       nodeList,
       onChangeNode,
       onDelEdge,
       onNextNodeDebug,
+      onRemoveError,
       onResetNode,
       onStartNodeDebug,
       onStopNodeDebug,
@@ -1072,7 +1066,7 @@ const WorkflowContextProvider = ({
       past,
       pushPastSnapshot,
       redo,
-      setPast,
+      splitOutput,
       splitToolInputs,
       undo,
       workflowDebugData
@@ -1082,7 +1076,7 @@ const WorkflowContextProvider = ({
   return (
     <WorkflowContext.Provider value={value}>
       {children}
-      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
+      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} chatId={chatId} />
     </WorkflowContext.Provider>
   );
 };

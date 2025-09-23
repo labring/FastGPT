@@ -1,13 +1,11 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { createChatCompletion } from '../config';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '../utils';
 import { addLog } from '../../../common/system/log';
-import { filterGPTMessageByMaxContext } from '../../chat/utils';
+import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
+import { createLLMResponse } from '../llm/request';
 
 /* 
     query extension - 问题扩展
@@ -167,20 +165,17 @@ assistant: ${chatBg}
     }
   ] as any;
 
-  const { response } = await createChatCompletion({
-    body: llmCompletionsBodyFormat(
-      {
-        stream: true,
-        model: modelData.model,
-        temperature: 0.1,
-        messages
-      },
-      modelData
-    )
+  const {
+    answerText: answer,
+    usage: { inputTokens, outputTokens }
+  } = await createLLMResponse({
+    body: {
+      stream: true,
+      model: modelData.model,
+      temperature: 0.1,
+      messages
+    }
   });
-  const { text: answer, usage } = await formatLLMResponse(response);
-  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
-  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
   if (!answer) {
     return {

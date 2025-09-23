@@ -21,21 +21,25 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
+import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type Props = {
   isOpen: boolean;
   nodes?: StoreNodeItemType[];
   edges?: StoreEdgeItemType[];
   onClose: () => void;
+  chatId: string;
 };
 
-const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
+const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
+  const { copyData } = useCopyData();
 
-  const { restartChat, ChatContainer, loading } = useChatTest({
+  const { restartChat, ChatContainer } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig,
@@ -43,8 +47,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -60,7 +64,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         bottom={0}
         right={0}
         onClick={() => {
-          setQuoteData(undefined);
+          setCiteModalData(undefined);
           onClose();
         }}
       />
@@ -72,7 +76,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         top={5}
         right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? (quoteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
+        w={isOpen ? (datasetCiteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -118,9 +122,18 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           >
             <Flex fontSize={'16px'} fontWeight={'bold'} alignItems={'center'} mr={3}>
               <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
-              {t('common:core.chat.Run test')}
+              <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
+                <Box
+                  cursor={'pointer'}
+                  onClick={() => {
+                    copyData(chatId);
+                  }}
+                >
+                  {t('common:core.chat.Run test')}
+                </Box>
+              </MyTooltip>
             </Flex>
-            {!isVariableVisible && <VariablePopover showExternalVariables />}
+            {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
             <Box flex={1} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
@@ -152,7 +165,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
             <ChatContainer />
           </Box>
 
-          {quoteData && (
+          {datasetCiteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -166,9 +179,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={quoteData.rawSearch}
-                metadata={quoteData.metadata}
-                onClose={() => setQuoteData(undefined)}
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={() => setCiteModalData(undefined)}
               />
             </Box>
           )}
@@ -192,7 +205,6 @@ const Render = (Props: Props) => {
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}
@@ -200,7 +212,7 @@ const Render = (Props: Props) => {
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest {...Props} />
+        <ChatTest {...Props} chatId={chatId} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

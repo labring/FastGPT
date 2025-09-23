@@ -1,6 +1,7 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   CollaboratorItemType,
+  CollaboratorListType,
   DeletePermissionQuery,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
@@ -15,7 +16,10 @@ import type {
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
-import type { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type {
+  ClientTeamPlanStatusType,
+  TeamSubSchema
+} from '@fastgpt/global/support/wallet/sub/type';
 import type { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type {
@@ -23,6 +27,7 @@ import type {
   InvitationLinkCreateType,
   InvitationType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -80,9 +85,15 @@ export const putForbidInvitationLink = (linkId: string) =>
 
 /* -------------- team collaborator -------------------- */
 export const getTeamClbs = () =>
-  GET<CollaboratorItemType[]>(`/proApi/support/user/team/collaborator/list`);
+  GET<CollaboratorListType>(`/proApi/support/user/team/collaborator/list`);
 export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
-  PUT('/proApi/support/user/team/collaborator/update', data);
+  POST('/proApi/support/user/team/collaborator/update', data);
+export const updateOneMemberPermission = (data: {
+  tmbId?: string;
+  orgId?: string;
+  groupId?: string;
+  permission: PermissionValueType;
+}) => PUT('/proApi/support/user/team/collaborator/updateOne', data);
 export const deleteMemberPermission = (id: DeletePermissionQuery) =>
   DELETE('/proApi/support/user/team/collaborator/delete', id);
 
@@ -100,7 +111,7 @@ export const checkTeamDatasetSizeLimit = (size: number) =>
 
 /* plans */
 export const getTeamPlanStatus = () =>
-  GET<FeTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
+  GET<ClientTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
 export const getTeamPlans = () =>
   GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
 

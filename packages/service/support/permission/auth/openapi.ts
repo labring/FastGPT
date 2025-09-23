@@ -1,12 +1,11 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { type OpenApiSchema } from '@fastgpt/global/support/openapi/type';
-import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../app/auth';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import { parseHeaderCert } from './common';
 
 export async function authOpenApiKeyCrud({
   id,
@@ -49,9 +48,7 @@ export async function authOpenApiKeyCrud({
 
     return {
       openapi,
-      permission: new Permission({
-        per
-      })
+      permission: tmbPer
     };
   })();
 

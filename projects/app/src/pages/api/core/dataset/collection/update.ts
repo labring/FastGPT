@@ -12,7 +12,9 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;
@@ -88,7 +90,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
   }
 
   // 凭证校验
-  const { collection, teamId } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -131,6 +133,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
       });
     }
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_COLLECTION,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);

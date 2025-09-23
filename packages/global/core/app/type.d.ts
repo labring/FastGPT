@@ -6,7 +6,7 @@ import type {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '../workflow/constants';
-import type { SelectedDatasetType } from '../workflow/api';
+import type { SelectedDatasetType } from '../workflow/type/io';
 import type { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import type { StoreEdgeItemType } from '../workflow/type/edge';
@@ -15,16 +15,7 @@ import type { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { SourceMemberType } from '../../support/user/type';
-
-export type ToolType = {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: string;
-    properties?: Record<string, { type: string; description?: string }>;
-    required?: string[];
-  };
-};
+import type { JSONSchemaInputType } from './jsonschema';
 
 export type AppSchema = {
   _id: string;
@@ -58,12 +49,17 @@ export type AppSchema = {
   teamTags: string[];
   inheritPermission?: boolean;
 
+  // if access the app by favourite or quick
+  favourite?: boolean;
+  quick?: boolean;
+
   // abandon
   defaultPermission?: number;
 };
 
 export type AppListItemType = {
   _id: string;
+  parentId: ParentIdType;
   tmbId: string;
   name: string;
   avatar: string;
@@ -75,6 +71,7 @@ export type AppListItemType = {
   inheritPermission?: boolean;
   private?: boolean;
   sourceMember: SourceMemberType;
+  hasInteractiveNode?: boolean;
 };
 
 export type AppDetailType = AppSchema & {
@@ -117,6 +114,12 @@ export type AppSimpleEditFormType = {
   chatConfig: AppChatConfigType;
 };
 
+export type McpToolConfigType = {
+  name: string;
+  description: string;
+  inputSchema: JSONSchemaInputType;
+};
+
 /* app chat config type */
 export type AppChatConfigType = {
   welcomeText?: string;
@@ -148,7 +151,7 @@ export type SettingAIDataType = {
 
 // variable
 export type VariableItemType = {
-  id: string;
+  // id: string;
   key: string;
   label: string;
   type: VariableInputEnum;
@@ -159,10 +162,24 @@ export type VariableItemType = {
 
   // input
   maxLength?: number;
+  // password
+  minLength?: number;
   // numberInput
   max?: number;
   min?: number;
   // select
+  list?: { label: string; value: string }[];
+  // file
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  maxFiles?: number;
+  // timeSelect
+  timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
+  timeType?: 'point' | 'range';
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
+
+  // @deprecated
   enums?: { value: string; label: string }[];
 };
 // tts

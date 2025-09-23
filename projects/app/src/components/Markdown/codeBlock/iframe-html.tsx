@@ -114,7 +114,7 @@ const IframeHtmlCodeBlock = ({
     () => (
       <iframe
         srcDoc={String(children)}
-        sandbox=""
+        sandbox="allow-popups"
         referrerPolicy="no-referrer"
         style={{
           width: '100%',

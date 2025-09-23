@@ -53,7 +53,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const theme = useTheme();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const [baseUrl, setBaseUrl] = useState('https://tryfastgpt.ai/api');
+  const [baseUrl, setBaseUrl] = useState('https://fastgpt.io/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
 
@@ -97,7 +97,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
+                href={
+                  feConfigs.openAPIDocUrl || getDocPath('/docs/introduction/development/openapi')
+                }
                 target={'_blank'}
                 ml={1}
                 color={'primary.500'}

@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import {
   Accordion,
   AccordionButton,
@@ -35,7 +37,6 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
@@ -48,6 +49,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -178,7 +182,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
               templateType === TemplateTypeEnum.systemPlugin
-                ? t('common:plugin.Search plugin')
+                ? t('common:search_tool')
                 : t('app:search_app')
             }
           />
@@ -190,13 +194,15 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
-        <RenderList
-          templates={templates}
-          type={templateType}
-          setParentId={onUpdateParentId}
-          {...props}
-        />
+      <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
+        <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
+          <RenderList
+            templates={templates}
+            type={templateType}
+            setParentId={onUpdateParentId}
+            {...props}
+          />
+        </Box>
       </MyBox>
     </MyModal>
   );
@@ -218,7 +224,10 @@ const RenderList = React.memo(function RenderList({
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
 }) {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
+
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -269,38 +278,27 @@ const RenderList = React.memo(function RenderList({
           if (input.key === NodeInputKeyEnum.forbidStream) {
             return false;
           }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.input)) {
+          if (input.key === NodeInputKeyEnum.systemInputConfig) {
             return true;
           }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.textarea)) {
-            return true;
-          }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.numberInput)) {
-            return true;
-          }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.switch)) {
-            return true;
-          }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.select)) {
-            return true;
-          }
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.JSONEditor)) {
-            return true;
-          }
-          return false;
+
+          // Check if input has any of the form render types
+          const formRenderTypes = [
+            FlowNodeInputTypeEnum.input,
+            FlowNodeInputTypeEnum.textarea,
+            FlowNodeInputTypeEnum.numberInput,
+            FlowNodeInputTypeEnum.switch,
+            FlowNodeInputTypeEnum.select,
+            FlowNodeInputTypeEnum.JSONEditor
+          ];
+
+          return formRenderTypes.some((type) => input.renderTypeList.includes(type));
         });
 
       // 构建默认表单数据
       const defaultForm = {
         ...res,
         inputs: res.inputs.map((input) => {
-          // 如果是模型选择类型,使用当前选中的模型
-          // if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
-          //   return {
-          //     ...input,
-          //     value: selectedModel.model
-          //   };
-          // }
           // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
           if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
             return {
@@ -331,23 +329,45 @@ const RenderList = React.memo(function RenderList({
     const data = (() => {
       if (type === TemplateTypeEnum.systemPlugin) {
         return pluginGroups.map((group) => {
-          const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
-            list: [],
-            type: type.typeId,
-            label: type.typeName
-          }));
+          const map = group.groupTypes.reduce<
+            Record<
+              string,
+              {
+                list: NodeTemplateListItemType[];
+                label: string;
+              }
+            >
+          >((acc, item) => {
+            acc[item.typeId] = {
+              list: [],
+              label: t(parseI18nString(item.typeName, i18n.language))
+            };
+            return acc;
+          }, {});
+
           templates.forEach((item) => {
-            const index = copy.findIndex((template) => template.type === item.templateType);
-            if (index === -1) return;
-            copy[index].list.push(item);
+            if (map[item.templateType]) {
+              map[item.templateType].list.push({
+                ...item,
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro, i18n.language))
+              });
+            }
           });
           return {
             label: group.groupName,
-            list: copy.filter((item) => item.list.length > 0)
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
           };
         });
       }
 
+      // Team apps
       return [
         {
           list: [
@@ -363,7 +383,7 @@ const RenderList = React.memo(function RenderList({
     })();
 
     return data.filter(({ list }) => list.length > 0);
-  }, [pluginGroups, templates, type]);
+  }, [i18n.language, pluginGroups, t, templates, type]);
 
   const gridStyle = useMemo(() => {
     if (type === TemplateTypeEnum.teamPlugin) {
@@ -408,7 +428,7 @@ const RenderList = React.memo(function RenderList({
                       key={template.id}
                       placement={'right'}
                       label={
-                        <Box py={2}>
+                        <Box py={2} minW={['auto', '250px']}>
                           <Flex alignItems={'center'}>
                             <MyAvatar
                               src={template.avatar}
@@ -416,19 +436,22 @@ const RenderList = React.memo(function RenderList({
                               objectFit={'contain'}
                               borderRadius={'sm'}
                             />
-                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
                               {t(template.name as any)}
+                            </Box>
+                            <Box color={'myGray.500'}>
+                              By {template.author || feConfigs?.systemTitle}
                             </Box>
                           </Flex>
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                             {t(template.intro as any) || t('common:core.workflow.Not intro')}
                           </Box>
-                          {type === TemplateTypeEnum.systemPlugin && (
+                          {/* {type === TemplateTypeEnum.systemPlugin && (
                             <CostTooltip
                               cost={template.currentCost}
                               hasTokenFee={template.hasTokenFee}
                             />
-                          )}
+                          )} */}
                         </Box>
                       }
                     >
@@ -535,7 +558,7 @@ const RenderList = React.memo(function RenderList({
   return templates.length === 0 ? (
     <EmptyTip text={t('app:module.No Modules')} />
   ) : (
-    <Box flex={'1 0 0'} overflow={'overlay'}>
+    <>
       <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
         {formatTemplatesArray.length > 1 ? (
           <>
@@ -571,6 +594,6 @@ const RenderList = React.memo(function RenderList({
           onAddTool={onAddTool}
         />
       )}
-    </Box>
+    </>
   );
 });

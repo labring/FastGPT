@@ -23,6 +23,7 @@ export interface MyModalProps extends ModalContentProps {
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
   size?: 'md' | 'lg';
+  showCloseButton?: boolean;
 }
 
 const MyModal = ({
@@ -38,6 +39,7 @@ const MyModal = ({
   closeOnOverlayClick = true,
   iconColor,
   size = 'md',
+  showCloseButton = true,
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -55,7 +57,7 @@ const MyModal = ({
       closeOnOverlayClick={closeOnOverlayClick}
       returnFocusOnClose={false}
     >
-      <ModalOverlay />
+      <ModalOverlay zIndex={props.zIndex} />
       <ModalContent
         w={w}
         minW={['90vw', '400px']}
@@ -63,9 +65,12 @@ const MyModal = ({
         position={'relative'}
         maxH={'85vh'}
         boxShadow={'7'}
+        containerProps={{
+          zIndex: props.zIndex
+        }}
         {...props}
       >
-        {!title && onClose && <ModalCloseButton zIndex={1} />}
+        {!title && onClose && showCloseButton && <ModalCloseButton zIndex={1} />}
         {!!title && (
           <ModalHeader
             display={'flex'}

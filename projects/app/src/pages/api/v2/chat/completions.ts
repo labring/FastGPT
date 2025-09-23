@@ -35,6 +35,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
@@ -55,11 +56,14 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -129,7 +133,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       API params: chatId + [Human]
       API params: [histories, Human]
     */
-    const chatMessages = GPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats({ messages });
 
     // Computed start hook params
     const startHookText = (() => {
@@ -196,7 +200,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail = true;
     } else {
       if (messages.length === 0) {
-        throw new Error('messages is empty');
+        throw new UserError('messages is empty');
       }
     }
 
@@ -261,47 +265,51 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start flow controller */
-    const { flowResponses, flowUsages, assistantResponses, newVariables, durationSeconds } =
-      await (async () => {
-        if (app.version === 'v2') {
-          return dispatchWorkFlow({
-            res,
-            requestOrigin: req.headers.origin,
-            mode: 'chat',
-            timezone,
-            externalProvider,
+    const {
+      flowResponses,
+      flowUsages,
+      assistantResponses,
+      newVariables,
+      durationSeconds,
+      system_memories
+    } = await (async () => {
+      if (app.version === 'v2') {
+        return dispatchWorkFlow({
+          res,
+          lang: getLocale(req),
+          requestOrigin: req.headers.origin,
+          mode: 'chat',
+          timezone,
+          externalProvider,
 
-            runningAppInfo: {
-              id: String(app._id),
-              teamId: String(app.teamId),
-              tmbId: String(app.tmbId)
-            },
-            runningUserInfo: {
-              teamId,
-              tmbId
-            },
-            uid: String(outLinkUserId || tmbId),
+          runningAppInfo: {
+            id: String(app._id),
+            teamId: String(app.teamId),
+            tmbId: String(app.tmbId)
+          },
+          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+          uid: String(outLinkUserId || tmbId),
 
-            chatId,
-            responseChatItemId,
-            runtimeNodes,
-            runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-            variables,
-            query: removeEmptyUserInput(userQuestion.value),
-            lastInteractive: interactive,
-            chatConfig,
-            histories: newHistories,
-            stream,
-            retainDatasetCite,
-            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-            workflowStreamResponse: workflowResponseWrite,
-            version: 'v2',
-            responseAllData,
-            responseDetail
-          });
-        }
-        return Promise.reject('您的工作流版本过低，请重新发布一次');
-      })();
+          chatId,
+          responseChatItemId,
+          runtimeNodes,
+          runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+          variables,
+          query: removeEmptyUserInput(userQuestion.value),
+          lastInteractive: interactive,
+          chatConfig,
+          histories: newHistories,
+          stream,
+          retainDatasetCite,
+          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+          workflowStreamResponse: workflowResponseWrite,
+          version: 'v2',
+          responseAllData,
+          responseDetail
+        });
+      }
+      return Promise.reject('您的工作流版本过低，请重新发布一次');
+    })();
 
     // save chat
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -329,7 +337,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      memories: system_memories
     };
 
     const saveChatId = chatId || getNanoid(24);

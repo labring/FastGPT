@@ -6,16 +6,21 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type LafRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpReqUrl]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
   [key: string]: any;
 }>;
-type LafResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.failed]?: boolean;
-  [key: string]: any;
-}>;
+type LafResponse = DispatchNodeResultType<
+  {
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.errorText]?: string;
+  }
+>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
@@ -78,20 +83,24 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     }
 
     return {
+      data: {
+        [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
+        ...results
+      },
       assistantResponses: [],
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         httpResult: rawResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse,
-      [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
-      ...results
+      [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse
     };
   } catch (error) {
-    addLog.error('Http request error', error);
+    addLog.warn('Http request error', formatHttpError(error));
     return {
-      [NodeOutputKeyEnum.failed]: true,
+      error: {
+        [NodeOutputKeyEnum.errorText]: getErrText(error)
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,

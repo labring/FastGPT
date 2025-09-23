@@ -1,4 +1,4 @@
-import { type ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ChannelInfoType } from './type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
@@ -27,10 +27,15 @@ export const ChannelStautsMap = {
   }
 };
 
+const firstProviderId = useSystemStore.getState().getModelProviders('en')[0]?.id;
+const firstChannelType =
+  Object.entries(useSystemStore.getState().aiproxyIdMap).find(
+    ([id, item]) => item.provider === firstProviderId
+  )?.[0] || 1;
 export const defaultChannel: ChannelInfoType = {
   id: 0,
   status: ChannelStatusEnum.ChannelStatusEnabled,
-  type: 1,
+  type: Number(firstChannelType),
   created_at: 0,
   models: [],
   model_mapping: {},
@@ -38,118 +43,4 @@ export const defaultChannel: ChannelInfoType = {
   name: '',
   base_url: '',
   priority: 0
-};
-
-export const aiproxyIdMap: Record<
-  number,
-  { label: string; provider: ModelProviderIdType; avatar?: string }
-> = {
-  1: {
-    label: 'OpenAI',
-    provider: 'OpenAI'
-  },
-  3: {
-    avatar: 'model/azure',
-    label: i18nT('account_model:azure'),
-    provider: 'OpenAI'
-  },
-  14: {
-    label: 'Anthropic',
-    provider: 'Claude'
-  },
-  12: {
-    label: 'Google Gemini(OpenAI)',
-    provider: 'Gemini'
-  },
-  24: {
-    label: 'Google Gemini',
-    provider: 'Gemini'
-  },
-  28: {
-    label: 'Mistral AI',
-    provider: 'MistralAI'
-  },
-  29: {
-    label: 'Groq',
-    provider: 'Groq'
-  },
-  17: {
-    label: '阿里云',
-    provider: 'Qwen'
-  },
-  40: {
-    label: '豆包',
-    provider: 'Doubao'
-  },
-  36: {
-    label: 'DeepSeek AI',
-    provider: 'DeepSeek'
-  },
-  13: {
-    label: '百度智能云 V2',
-    provider: 'Ernie'
-  },
-  15: {
-    label: '百度智能云',
-    provider: 'Ernie'
-  },
-  16: {
-    label: '智谱 AI',
-    provider: 'ChatGLM'
-  },
-  18: {
-    label: '讯飞星火',
-    provider: 'SparkDesk'
-  },
-  25: {
-    label: '月之暗面',
-    provider: 'Moonshot'
-  },
-  26: {
-    label: '百川智能',
-    provider: 'Baichuan'
-  },
-  27: {
-    label: 'MiniMax',
-    provider: 'MiniMax'
-  },
-  31: {
-    label: '零一万物',
-    provider: 'Yi'
-  },
-  32: {
-    label: '阶跃星辰',
-    provider: 'StepFun'
-  },
-  43: {
-    label: 'SiliconFlow',
-    provider: 'Siliconflow'
-  },
-  30: {
-    label: 'Ollama',
-    provider: 'Ollama'
-  },
-  23: {
-    label: i18nT('account_model:Hunyuan'),
-    provider: 'Hunyuan'
-  },
-  44: {
-    label: 'doubao audio',
-    provider: 'Doubao'
-  },
-  33: {
-    label: 'AWS',
-    provider: 'Other',
-    avatar: 'model/aws'
-  },
-  35: {
-    label: 'Cohere',
-    provider: 'Other',
-    avatar: 'model/cohere'
-  },
-  37: {
-    label: 'Cloudflare',
-    provider: 'Other',
-    avatar: 'model/cloudflare'
-  }
 };

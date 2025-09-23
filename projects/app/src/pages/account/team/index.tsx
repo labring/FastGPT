@@ -1,3 +1,4 @@
+'use client';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
@@ -20,7 +21,7 @@ const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTa
 const PermissionManage = dynamic(
   () => import('@/pageComponents/account/team/PermissionManage/index')
 );
-const OperationLogTable = dynamic(() => import('@/pageComponents/account/team/OperationLog/index'));
+const AuditLog = dynamic(() => import('@/pageComponents/account/team/Audit/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
 const HandleInviteModal = dynamic(
@@ -32,7 +33,7 @@ export enum TeamTabEnum {
   org = 'org',
   group = 'group',
   permission = 'permission',
-  operationLog = 'operationLog'
+  audit = 'audit'
 }
 
 const Team = () => {
@@ -74,12 +75,12 @@ const Team = () => {
           { label: t('account_team:org'), value: TeamTabEnum.org },
           { label: t('account_team:group'), value: TeamTabEnum.group },
           { label: t('account_team:permission'), value: TeamTabEnum.permission },
-          { label: t('account_team:operation_log'), value: TeamTabEnum.operationLog }
+          { label: t('account_team:audit_log'), value: TeamTabEnum.audit }
         ]}
         px={'1rem'}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.operationLog && !planContent?.permissionTeamOperationLog) {
+          if (e === TeamTabEnum.audit && planContent && !planContent?.permissionTeamOperationLog) {
             toast({
               status: 'warning',
               title: t('common:not_permission')
@@ -95,7 +96,7 @@ const Team = () => {
         }}
       />
     ),
-    [router, t, teamTab]
+    [planContent, router, t, teamTab, toast]
   );
 
   return (
@@ -138,7 +139,7 @@ const Team = () => {
                     setEditTeamData({
                       id: userInfo.team.teamId,
                       name: userInfo.team.teamName,
-                      avatar: userInfo.team.avatar,
+                      avatar: userInfo.team.teamAvatar,
                       notificationAccount: userInfo.team.notificationAccount
                     });
                   }}
@@ -174,7 +175,7 @@ const Team = () => {
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.group && <GroupManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.permission && <PermissionManage Tabs={Tabs} />}
-          {teamTab === TeamTabEnum.operationLog && <OperationLogTable Tabs={Tabs} />}
+          {teamTab === TeamTabEnum.audit && <AuditLog Tabs={Tabs} />}
         </Box>
       </Flex>
       {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}

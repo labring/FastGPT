@@ -93,24 +93,6 @@ const ButtonEdge = (props: EdgeProps) => {
         newTargetY: targetY
       };
     }
-    if (targetPosition === 'right') {
-      return {
-        newTargetX: targetX + 3,
-        newTargetY: targetY
-      };
-    }
-    if (targetPosition === 'bottom') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY + 3
-      };
-    }
-    if (targetPosition === 'top') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY - 3
-      };
-    }
     return {
       newTargetX: targetX,
       newTargetY: targetY
@@ -150,6 +132,7 @@ const ButtonEdge = (props: EdgeProps) => {
         return `translate(-50%, -90%) translate(${newTargetX}px,${newTargetY}px) rotate(90deg)`;
       }
     })();
+
     return (
       <EdgeLabelRenderer>
         <Box hidden={parentNode?.isFolded}>
@@ -160,8 +143,8 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'18px'}
-            h={'18px'}
+            w={'26px'}
+            h={'26px'}
             bg={'white'}
             borderRadius={'18px'}
             cursor={'pointer'}
@@ -177,8 +160,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '12px' : '10px'}
-              h={highlightEdge ? '12px' : '10px'}
+              w={highlightEdge ? '14px' : '12px'}
+              h={highlightEdge ? '14px' : '12px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
@@ -197,8 +180,8 @@ const ButtonEdge = (props: EdgeProps) => {
     highlightEdge,
     labelX,
     labelY,
-    isToolEdge,
     defaultZIndex,
+    isToolEdge,
     edgeColor,
     targetPosition,
     newTargetX,

@@ -5,6 +5,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   const { dataId, q, a, indexes = [] } = req.body;
@@ -12,10 +15,13 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   // auth data permission
   const {
     collection: {
-      dataset: { vectorModel }
+      dataset: { vectorModel },
+      name,
+      indexPrefixTitle
     },
     teamId,
-    tmbId
+    tmbId,
+    collection
   } = await authDatasetData({
     req,
     authToken: true,
@@ -30,7 +36,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       q,
       a,
       indexes,
-      model: vectorModel
+      model: vectorModel,
+      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
     pushGenerateVectorUsage({
@@ -39,10 +46,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       inputTokens: tokens,
       model: vectorModel
     });
-  } else {
-    // await MongoDatasetData.findByIdAndUpdate(dataId, {
-    //   ...(forbid !== undefined && { forbid })
-    // });
+
+    (() => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.UPDATE_DATA,
+        params: {
+          collectionName: collection.name,
+          datasetName: collection.dataset?.name || '',
+          datasetType: getI18nDatasetType(collection.dataset?.type || '')
+        }
+      });
+    })();
   }
 }
 

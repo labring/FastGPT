@@ -14,10 +14,13 @@ export async function register() {
         { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
-        { getSystemPluginCb },
         { startMongoWatch },
         { startCron },
-        { startTrainingQueue }
+        { startTrainingQueue },
+        { preLoadWorker },
+        { loadSystemModels },
+        { connectSignoz },
+        { getSystemTools }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -25,11 +28,17 @@ export async function register() {
         import('@/service/common/system'),
         import('@fastgpt/service/common/vectorDB/controller'),
         import('@/service/mongo'),
-        import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),
         import('@/service/common/system/cron'),
-        import('@/service/core/dataset/training/utils')
+        import('@/service/core/dataset/training/utils'),
+        import('@fastgpt/service/worker/preload'),
+        import('@fastgpt/service/core/ai/config/utils'),
+        import('@fastgpt/service/common/otel/trace/register'),
+        import('@fastgpt/service/core/app/plugin/controller')
       ]);
+
+      // connect to signoz
+      connectSignoz();
 
       // 执行初始化流程
       systemStartCb();
@@ -40,11 +49,15 @@ export async function register() {
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
       //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
+      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
 
-      initSystemPluginGroups();
-      initAppTemplateTypes();
-      getSystemPluginCb();
+      await Promise.all([
+        preLoadWorker().catch(),
+        getSystemTools(),
+        initSystemPluginGroups(),
+        initAppTemplateTypes()
+      ]);
+
       startMongoWatch();
       startCron();
       startTrainingQueue(true);

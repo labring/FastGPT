@@ -1,0 +1,478 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/preset.css';
+
+@font-face {
+  font-family: 'Alef';
+  src: url('/fonts/Alef-Regular.ttf') format('truetype');
+}
+
+/* 在文件开头添加这些基础变量 */
+:root {
+  /* 基础颜色 */
+  --primary-50-hsl: 210, 40%, 98%;
+  --primary-hsl: 217, 91%, 60%;
+  --emerald-50-hsl: 152, 81%, 96%;
+  --emerald-500-hsl: 152, 76%, 40%;
+  --cardinal-50-hsl: 0, 86%, 97%;
+  --cardinal-500-hsl: 0, 74%, 42%;
+  --yellow-50-hsl: 55, 92%, 95%;
+  --yellow-500-hsl: 45, 93%, 47%;
+  --blue-500-hsl: 217, 91%, 60%;
+  --fd-layout-width: 1400px;
+
+  /* 文本颜色 */
+  --text-default: #374151;
+  --text-default-inv: #ffffff;
+  --text-muted: #6b7280;
+  --content-link-color: #2563eb;
+
+  /* 其他变量 */
+  --font-size-sm: 0.875rem;
+  --gray-200: #e5e7eb;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* 组件颜色 */
+  --primary-200: #bfdbfe;
+  --blue-200: #bfdbfe;
+  --blue-800: #1e40af;
+  --emerald-200: #a7f3d0;
+  --emerald-800: #065f46;
+  --cardinal-200: #fecaca;
+  --cardinal-800: #991b1b;
+  --yellow-200: #fde68a;
+  --yellow-800: #92400e;
+
+  /* Tabs 样式 */
+  --nav-tabs-border-width: none;
+  --nav-tabs-link-active-bg: none;
+  --nav-tabs-link-active-color: var(--text-default);
+  --nav-tabs-border-color: var(--gray-400);
+}
+
+[data-dark-mode] {
+  /* Tabs 样式 */
+  --nav-tabs-border-color: var(--gray-800);
+
+  --text-muted: #9ca3af;
+  --content-link-color: #60a5fa;
+}
+
+/* 全局代码块样式 */
+pre,
+code {
+  border-radius: 16px;
+  background: #F5F6F7;
+  font-family: Alef;
+  font-size: 1.0rem;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0.48px;
+}
+
+div[role='tabpanel'] figure:has(+ p) pre,
+div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #ececec;
+}
+
+.dark div[role='tabpanel'] figure:has(+ p) pre,
+.dark div[role='tabpanel'] figure:has(+ p) pre code {
+  background-color: #3d3d3d;
+}
+
+.dark pre,
+.dark code {
+  background: #1e1e1e;
+}
+
+pre {
+  padding: 24px 0 24px 24px ;
+}
+
+pre code {
+  gap: 20px;
+}
+
+code span {
+  padding-left: 0 !important;
+}
+
+/* 去除代码块内层边框 */
+.bg-fd-secondary.border {
+  border: none;
+}
+
+/* 去除代码块外层边框 */
+.shiki {
+  border: none;
+  padding: 0;
+}
+
+/* 行内代码样式 */
+/* 行内代码样式 */
+:not(pre) > code {
+  display: inline-block;
+  height: 25px;
+  padding: 0 10px;
+  margin: 0 0.2em;
+  color: #272727;
+  background: #f5f6f7;
+  font-family: "PingFang SC";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 180%; 
+  letter-spacing: 0.056px;
+  border: none;
+  border-radius: 8px;
+}
+
+.dark :not(pre) > code {
+  color: #E6E6E6 !important;
+  background: #282828 !important;
+}
+
+div[role="tablist"] ~ div:has(figure, p, ul) {
+  border-radius: 0 !important;
+  border: solid 1.5px #e5e5e5;
+  border-radius: 0.75rem !important;
+}
+
+.dark div[role="tablist"] ~ div:has(figure, p, ul) {
+  border: solid 1.5px #535353;
+}
+
+.dark div[role="tablist"] {
+  background-color: #1E1E1E;
+}
+
+/* 代码块下方的滚动条样式 */
+div.bg-fd-secondary:has(pre) {
+  padding: 0;
+}
+
+.dark div.bg-fd-secondary:has(pre) {
+  background-color: #1E1E1E;
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #e8e8e8; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #b0b0b0; 
+}
+
+div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #909090; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
+  background: #1a1a1a; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
+  background: #404040; 
+}
+
+.dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
+  background: #606060; 
+}
+
+/* 代码块中的滚动条样式优化 */
+
+/* 图片居中显示 */
+.fumadocs-content img,
+.mdx-content img,
+.prose img,
+img {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 8px !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* MDX 表格样式 */
+.fumadocs-content table,
+.mdx-content table,
+.prose table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  margin: 1rem 0 !important;
+}
+
+.fumadocs-content table td,
+.fumadocs-content table th,
+.mdx-content table td,
+.mdx-content table th,
+.prose table td,
+.prose table th {
+  padding: 0.75rem 1rem !important;
+  text-align: left !important;
+}
+
+/* Tabs 样式 */
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--nav-tabs-border-color);
+  margin-bottom: 0.8rem;
+}
+
+.nav-tabs .nav-link {
+  color: var(--text-muted) !important;
+  margin-bottom: -1px;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+  text-decoration: none !important;
+}
+
+.nav-tabs .nav-link.active {
+  border-bottom: 2px solid var(--content-link-color);
+  color: var(--content-link-color) !important;
+}
+
+.tab-content {
+  margin-bottom: 0.8rem;
+  padding: 1rem 0;
+}
+
+div[data-state='open'].fixed.inset-0.z-50 {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+#nd-subnav > div:nth-of-type(1) button:nth-of-type(1) {
+  box-shadow:
+    0px 1px 2px 0px rgba(19, 51, 107, 0.05),
+    0px 0px 1px 0px rgba(19, 51, 107, 0.08) !important;
+  background-color: none !important;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+/* 复制按钮容器和按钮样式 */
+div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']),
+div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
+  right: 26px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #818181;
+  color: #818181;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.01);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+/* 按钮内部样式 */
+button[aria-label='Copy Text'],
+button[aria-label='Copied Text'] {
+  color: #818181;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+button[aria-label='Copy Text'] svg {
+  display: none;
+}
+
+button[aria-label='Copy Text']::before {
+  content: '';
+  background-image: url('../public/icons/copy.svg');
+  width: 26px;
+  height: 26px;
+  transition: filter 0.2s ease; 
+}
+
+/* 鼠标悬停时使复制图标颜色变深 */
+button[aria-label='Copy Text']:hover::before {
+  filter: brightness(0.7); /* 降低亮度使颜色变深 */
+}
+
+button[aria-label='Copied Text'] {
+  width: 26px;
+  height: 26px;
+  /* transition: filter 0.2s ease; */
+}
+
+button[aria-label='Copied Text'] svg {
+  width: 20px;
+  height: 20px;
+  transition: filter 0.2s ease;
+}
+
+#nd-subnav > div:nth-of-type(1) button {
+  &:hover {
+    cursor: pointer;
+  }
+}
+#nd-subnav > div:nth-of-type(1) {
+  border-bottom: 0.1px solid #e8ebf0 !important;
+}
+#nd-subnav > div:nth-of-type(2) {
+  border-bottom: 0.1px solid #e8ebf0 !important;
+  height: 100%;
+}
+.dark #nd-subnav > div:nth-of-type(1) {
+  border-bottom: 0.1px solid #363b4a58 !important;
+}
+.dark #nd-subnav > div:nth-of-type(2) {
+  border-bottom: 0.1px solid #363b4a58 !important;
+}
+
+div[data-rmiz-modal-content] {
+  background-color: none !important;
+}
+
+div[data-rmiz-modal-overlay='visible'] {
+  background-color: #ffffff00 !important;
+  backdrop-filter: blur(4px);
+}
+.dark div[data-rmiz-modal-overlay='visible'] {
+  background-color: #060c1a00 !important;
+  backdrop-filter: blur(4px);
+}
+.dark div[data-rmiz-modal-content] {
+  background-color: #060c1a00 !important;
+}
+
+#nd-tocnav {
+  border-bottom-color: #e8ebf0 !important;
+}
+.dark #nd-tocnav {
+  border-bottom-color: #1d2532 !important;
+  cursor: pointer !important;
+}
+
+#nd-subnav > div:nth-of-type(2) a {
+  text-decoration: none;
+  color: #485264;
+  transition: color 0.2s ease;
+  background-color: transparent !important;
+  font-weight: 400;
+  /* 先清除默认下划线 */
+  &:hover {
+    text-decoration: underline;
+    text-decoration-color: #dfe2ea;
+    text-decoration-thickness: 3px; /* 下划线粗细 */
+    text-underline-offset: 17px; /* 下划线与文字距离 */
+  }
+  &.text-fd-primary {
+    text-decoration: underline;
+    text-decoration-color: #3370ff;
+    text-decoration-thickness: 3px; /* 下划线粗细 */
+    text-underline-offset: 17px; /* 下划线与文字距离 */
+    background-color: transparent !important;
+    font-weight: 600;
+    color: #111824;
+  }
+}
+.dark #nd-subnav > div:nth-of-type(2) a {
+  color: #ffffff;
+}
+
+@theme {
+  --color-fd-muted: hsl(0, 0%, 96.1%);
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(0, 0%, 15.1%);
+  --color-fd-card-foreground: hsl(0, 0%, 3.9%);
+  --color-fd-border: hsl(0, 0%, 89.8%);
+  --color-fd-primary-foreground: hsl(0, 0%, 98%);
+  --color-fd-secondary-foreground: hsl(0, 0%, 9%);
+  --color-fd-accent: hsl(0, 0%, 94.1%);
+  --color-fd-ring: hsl(0, 0%, 63.9%);
+
+  --color-fd-background: hsl(0, 0%, 100%);
+  --color-fd-card: hsl(0, 0%, 100%);
+  --color-fd-foreground: hsl(240, 6%, 25%);
+  --color-fd-muted-foreground: hsl(240, 6%, 50%);
+  --color-fd-secondary: hsl(240, 6%, 97%);
+  --color-fd-accent-foreground: hsl(240, 6%, 25%);
+  --color-fd-primary: hsl(226, 55%, 45%);
+}
+
+.dark {
+  --color-fd-background: #000000;
+  --color-fd-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-muted: hsl(220, 50%, 10%);
+  --color-fd-muted-foreground: #B0B0B0;
+  --color-fd-popover: hsl(220, 50%, 10%);
+  --color-fd-popover-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-card: hsla(220, 56%, 15%, 0.4);
+  --color-fd-card-foreground: hsl(220, 60%, 94.5%);
+  --color-fd-border: hsla(220, 50%, 50%, 0.2);
+  --color-fd-primary: #C2D3FF; /* 文本高亮色 */
+  --color-fd-primary-foreground: hsl(0, 0%, 9%);
+  --color-fd-secondary: hsl(220, 50%, 20%);
+  --color-fd-secondary-foreground: hsl(220, 80%, 90%);
+  --color-fd-accent: hsl(220, 40%, 20%);
+  --color-fd-accent-foreground: hsl(220, 80%, 90%);
+  --color-fd-ring: hsl(205, 100%, 85%);
+}
+
+#nd-sidebar {
+  border-color: transparent;
+}
+
+button[data-search-full] {
+  background-color: var(--color-fd-background);
+}
+
+.dark\:text-blue-400:where(.dark, .dark *) {
+  color: #C2D3FF;
+  background-color: #434548;
+}
+
+
+.dark div[role="tabpanel"].bg-fd-background {
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background {
+  background-color: #F7F7F8;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dark div[role="tabpanel"].bg-fd-background > div > ul {
+  margin: 0;
+  background-color: #1E1E1E;
+}
+
+div[role="tabpanel"].bg-fd-background > div > ul > li {
+  margin: 0;
+}
+
+button[role="tab"] {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}

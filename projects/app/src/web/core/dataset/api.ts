@@ -1,7 +1,6 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
-  ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type.d';
 import type {
@@ -14,16 +13,15 @@ import type {
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
-  ApiDatasetCreateDatasetCollectionParams,
+  ApiDatasetCreateDatasetCollectionV2Params,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
-  CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
-  PostWebsiteSyncParams,
+  PostDatasetSyncParams,
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
@@ -71,8 +69,8 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import type { GetQuoteDataProps } from '@/pages/api/core/chat/quote/getQuote';
+import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type {
   GetApiDatasetCataLogResponse,
   GetApiDatasetCataLogProps
@@ -81,6 +79,7 @@ import type {
   GetApiDatasetPathBody,
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
+import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -106,8 +105,8 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
-export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/proApi/core/dataset/websiteSync`, data, {
+export const postDatasetSync = (data: PostDatasetSyncParams) =>
+  POST(`/proApi/core/dataset/datasetSync`, data, {
     timeout: 600000
   }).catch();
 
@@ -119,6 +118,59 @@ export const resumeInheritPer = (datasetId: string) =>
 
 export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
+
+export const postBackupDatasetCollection = ({
+  file,
+  percentListen,
+  datasetId
+}: {
+  file: File;
+  percentListen: (percent: number) => void;
+  datasetId: string;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId }));
+
+  return POST(`/core/dataset/collection/create/backup`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
+export const postTemplateDatasetCollection = ({
+  file,
+  percentListen,
+  datasetId
+}: {
+  file: File;
+  percentListen: (percent: number) => void;
+  datasetId: string;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId }));
+
+  return POST(`/core/dataset/collection/create/template`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
@@ -149,10 +201,7 @@ export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectio
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
-export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data, {
-    timeout: 360000
-  });
+
 export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams
 ) =>
@@ -160,16 +209,16 @@ export const postCreateDatasetExternalFileCollection = (
     timeout: 360000
   });
 export const postCreateDatasetApiDatasetCollection = (
-  data: ApiDatasetCreateDatasetCollectionParams
+  data: ApiDatasetCreateDatasetCollectionV2Params
 ) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/apiCollection`, data, {
+  POST(`/core/dataset/collection/create/apiCollectionV2`, data, {
     timeout: 360000
   });
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
-export const delDatasetCollectionById = (params: { id: string }) =>
-  DELETE(`/core/dataset/collection/delete`, params);
+export const delDatasetCollectionById = (params: DelCollectionBody) =>
+  POST(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
   POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync`, {
     collectionId
@@ -261,7 +310,7 @@ export const getCollectionSource = (data: readCollectionSourceBody) =>
 
 /* ================== apiDataset ======================== */
 export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
-  POST<APIFileItem[]>('/core/dataset/apiDataset/list', data);
+  POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
 

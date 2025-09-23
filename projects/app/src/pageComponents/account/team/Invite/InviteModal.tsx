@@ -201,7 +201,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
                               Trigger={
                                 <Button variant="outline" ml="10px" size="sm" color="myGray.900">
                                   <Icon name="common/lineStop" w="16px" mr="1" />
-                                  {t('account_team:forbidden')}
+                                  {t('account_team:link_forbidden')}
                                 </Button>
                               }
                               closeOnBlur={true}

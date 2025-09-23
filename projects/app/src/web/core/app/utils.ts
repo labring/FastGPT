@@ -7,7 +7,6 @@ import {
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   chatHistoryValueDesc,
-  defaultNodeVersion,
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -20,7 +19,7 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import {
   WorkflowStart,
   userFilesInput
@@ -394,6 +393,7 @@ export function form2AppWorkflow(
             pluginId: tool.pluginId,
             name: tool.name,
             intro: tool.intro,
+            toolDescription: tool.toolDescription,
             avatar: tool.avatar,
             flowNodeType: tool.flowNodeType,
             showStatus: tool.showStatus,
@@ -401,8 +401,7 @@ export function form2AppWorkflow(
               x: 500 + 500 * (i + 1),
               y: 545
             },
-            // 这里不需要固定版本，给一个不存在的版本，每次都会用最新版
-            version: defaultNodeVersion,
+            toolConfig: tool.toolConfig,
             pluginData: tool.pluginData,
             inputs: tool.inputs.map((input) => {
               // Special key value
@@ -439,19 +438,19 @@ export function form2AppWorkflow(
       nodes: [
         {
           nodeId: toolNodeId,
-          name: ToolModule.name,
-          intro: ToolModule.intro,
-          avatar: ToolModule.avatar,
-          flowNodeType: ToolModule.flowNodeType,
+          name: AgentNode.name,
+          intro: AgentNode.intro,
+          avatar: AgentNode.avatar,
+          flowNodeType: AgentNode.flowNodeType,
           showStatus: true,
           position: {
             x: 1062.1738942532802,
             y: -223.65033022650476
           },
-          version: ToolModule.version,
+          version: AgentNode.version,
           inputs: [
             {
-              key: 'model',
+              key: NodeInputKeyEnum.aiModel,
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference
@@ -528,7 +527,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.aiChatReasoning
             }
           ],
-          outputs: ToolModule.outputs
+          outputs: AgentNode.outputs
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),

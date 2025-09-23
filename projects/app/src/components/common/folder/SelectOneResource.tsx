@@ -28,7 +28,7 @@ const SelectOneResource = ({
 }: {
   server: (e: GetResourceFolderListProps) => Promise<GetResourceListItemResponse[]>;
   value?: ParentIdType;
-  onSelect: (e?: string) => any;
+  onSelect: (e?: ResourceItemType) => any;
   maxH?: BoxProps['maxH'];
 }) => {
   const { t } = useTranslation();
@@ -105,7 +105,7 @@ const SelectOneResource = ({
                           item.open = !item.open;
                           setDataList([...dataList]);
                         } else {
-                          onSelect(item.id);
+                          onSelect(item);
                         }
                       }
                     })}

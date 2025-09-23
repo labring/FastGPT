@@ -10,6 +10,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 
 type StreamFetchProps = {
   url?: string;
@@ -272,3 +273,27 @@ export const streamFetch = ({
       failedFinish(err);
     }
   });
+
+export const onOptimizePrompt = async ({
+  originalPrompt,
+  model,
+  input,
+  onResult,
+  abortController
+}: OnOptimizePromptProps) => {
+  const controller = abortController || new AbortController();
+  await streamFetch({
+    url: '/api/core/ai/optimizePrompt',
+    data: {
+      originalPrompt,
+      optimizerInput: input,
+      model
+    },
+    onMessage: ({ event, text }) => {
+      if (event === SseResponseEventEnum.answer && text) {
+        onResult(text);
+      }
+    },
+    abortCtrl: controller
+  });
+};

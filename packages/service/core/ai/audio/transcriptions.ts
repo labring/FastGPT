@@ -3,6 +3,7 @@ import { getAxiosConfig } from '../config';
 import axios from 'axios';
 import FormData from 'form-data';
 import { type STTModelType } from '@fastgpt/global/core/ai/model.d';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const aiTranscriptions = async ({
   model: modelData,
@@ -14,7 +15,7 @@ export const aiTranscriptions = async ({
   headers?: Record<string, string>;
 }) => {
   if (!modelData) {
-    return Promise.reject('no model');
+    return Promise.reject(new UserError('no model'));
   }
 
   const data = new FormData();

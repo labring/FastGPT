@@ -8,7 +8,6 @@ import RenderOutput from '../render/RenderOutput';
 import {
   Box,
   Flex,
-  Input,
   Table,
   Thead,
   Tbody,
@@ -50,7 +49,10 @@ import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import CatchError from '../render/RenderOutput/CatchError';
+
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
+const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
 
 const defaultFormBody = {
   key: NodeInputKeyEnum.httpFormBody,
@@ -271,6 +273,7 @@ export function RenderHttpProps({
 
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
@@ -281,6 +284,7 @@ export function RenderHttpProps({
   const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
   const formBody =
     inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
+  const headerSecret = inputs.find((item) => item.key === NodeInputKeyEnum.headerSecret)!;
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
 
   const paramsLength = params?.value?.length || 0;
@@ -334,6 +338,21 @@ export function RenderHttpProps({
           <QuestionTip
             ml={1}
             label={t('common:core.module.http.Props tip', { variable: variableText })}
+          />
+          <Flex flex={1} />
+          <HeaderAuthConfig
+            storeHeaderSecretConfig={headerSecret?.value}
+            onUpdate={(data) => {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.headerSecret,
+                value: {
+                  ...headerSecret,
+                  value: data
+                }
+              });
+            }}
           />
         </Flex>
         <LightRowTabs<TabEnum>
@@ -403,7 +422,9 @@ export function RenderHttpProps({
     contentType,
     formBody,
     headersLength,
+    headerSecret,
     nodeId,
+    onChangeNode,
     paramsLength,
     requestMethods,
     selectedTab,
@@ -816,9 +837,11 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 
 const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs, outputs, catchError } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
   const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { successOutputs, errorOutputs } = splitOutput(outputs);
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />
@@ -843,22 +866,19 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Container>
         </>
       )}
-      <>
-        <Container>
-          <IOTitle text={t('common:Input')} />
-          <RenderInput
-            nodeId={nodeId}
-            flowInputList={commonInputs}
-            CustomComponent={CustomComponents}
-          />
-        </Container>
-      </>
-      <>
-        <Container>
-          <IOTitle text={t('common:Output')} />
-          <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
-        </Container>
-      </>
+      <Container>
+        <IOTitle text={t('common:Input')} />
+        <RenderInput
+          nodeId={nodeId}
+          flowInputList={commonInputs}
+          CustomComponent={CustomComponents}
+        />
+      </Container>
+      <Container>
+        <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />
+        <RenderOutput flowOutputList={successOutputs} nodeId={nodeId} />
+      </Container>
+      {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
     </NodeCard>
   );
 };

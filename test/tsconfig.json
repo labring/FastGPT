@@ -1,0 +1,29 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@fastgpt/*": ["packages/*"],
+      "@test/*": ["test/*"],
+      "@/*": ["projects/app/src/*"]
+    },
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "types": ["vitest/globals", "node"]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../packages/**/*.ts",
+    "../packages/**/*.tsx",
+    "../packages/**/*.d.ts",
+    "../projects/app/src/**/*.ts",
+    "../projects/app/src/**/*.tsx"
+  ],
+  "exclude": ["node_modules", "../node_modules", "dist", "../dist"]
+}

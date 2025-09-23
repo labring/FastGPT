@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -18,9 +18,20 @@ import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
-
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
 
+export type MenuItemData = {
+  label?: string;
+  children: Array<{
+    isActive?: boolean;
+    type?: MenuItemType;
+    icon?: IconNameType | string;
+    label: string | React.ReactNode;
+    description?: string;
+    onClick?: () => any;
+    menuItemStyles?: MenuItemProps;
+  }>;
+};
 export type Props = {
   width?: number | string;
   offset?: [number, number];
@@ -29,18 +40,7 @@ export type Props = {
   size?: MenuSizeType;
 
   placement?: PlacementWithLogical;
-  menuList: {
-    label?: string;
-    children: {
-      isActive?: boolean;
-      type?: MenuItemType;
-      icon?: IconNameType | string;
-      label: string | React.ReactNode;
-      description?: string;
-      onClick?: () => any;
-      menuItemStyles?: MenuItemProps;
-    }[];
-  }[];
+  menuList: MenuItemData[];
 };
 
 const typeMapStyle: Record<MenuItemType, { styles: MenuItemProps; iconColor?: string }> = {
@@ -216,7 +216,7 @@ const MyMenu = ({
     if (offset) return offset;
     if (typeof width === 'number') return [-width / 2, 5];
     return [0, 5];
-  }, [offset]);
+  }, [offset, width]);
 
   return (
     <Menu
@@ -326,6 +326,7 @@ const MyMenu = ({
                       <Box
                         w={'100%'}
                         color={child.description ? 'myGray.900' : 'inherit'}
+                        pr={child.icon ? 4 : 0}
                         {...sizeMapStyle[size].labelStyle}
                       >
                         {child.label}

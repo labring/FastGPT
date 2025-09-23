@@ -32,7 +32,7 @@ export const DatasetDataIndexMap: Record<
     color: 'red'
   },
   [DatasetDataIndexTypeEnum.image]: {
-    label: i18nT('common:data_index_image'),
+    label: i18nT('dataset:data_index_image'),
     color: 'purple'
   }
 };

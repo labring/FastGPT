@@ -1,4 +1,4 @@
-import { type THelperLine } from '@fastgpt/global/core/workflow/type';
+import { type THelperLine } from '@/web/core/workflow/type';
 import { type CSSProperties, useEffect, useRef } from 'react';
 import { type ReactFlowState, useStore, useViewport } from 'reactflow';
 

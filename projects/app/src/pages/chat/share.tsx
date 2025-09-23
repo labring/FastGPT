@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -10,7 +10,6 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
@@ -39,6 +38,10 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -85,8 +88,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -170,7 +173,7 @@ const OutLink = (props: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       // new chat
       if (completionChatId !== chatId) {
@@ -218,30 +221,21 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySlider
-        confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
-      />
+      <ChatHistorySidebar menuConfirmButtonText={t('common:core.chat.Confirm to clear history')} />
     );
 
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
-      <Drawer
-        isOpen={isOpenSlider}
-        placement="left"
-        autoFocus={false}
-        size={'xs'}
-        onClose={onCloseSlider}
-      >
-        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-        <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
-          {Children}
-        </DrawerContent>
-      </Drawer>
+      <ChatSliderMobileDrawer
+        showHeader={false}
+        showFooter={false}
+        menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
+      />
     );
-  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
+  }, [isPc, datasetCiteData, showHistory, t]);
 
   return (
     <>
@@ -255,7 +249,7 @@ const OutLink = (props: Props) => {
         gap={4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
-        {(!quoteData || isPc) && (
+        {(!datasetCiteData || isPc) && (
           <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
@@ -271,6 +265,8 @@ const OutLink = (props: Props) => {
                 {/* header */}
                 {showHead === '1' ? (
                   <ChatHeader
+                    chatSettings={undefined}
+                    pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
                     history={chatRecords}
                     totalRecordsCount={totalRecordsCount}
                     showHistory={showHistory === '1'}
@@ -294,7 +290,7 @@ const OutLink = (props: Props) => {
                       outLinkAuthData={outLinkAuthData}
                       feedbackType={'user'}
                       onStartChat={startChat}
-                      chatType="share"
+                      chatType={ChatTypeEnum.share}
                     />
                   )}
                 </Box>
@@ -303,12 +299,12 @@ const OutLink = (props: Props) => {
           </PageContainer>
         )}
 
-        {quoteData && (
+        {datasetCiteData && (
           <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
             <ChatQuoteList
-              rawSearch={quoteData.rawSearch}
-              metadata={quoteData.metadata}
-              onClose={() => setQuoteData(undefined)}
+              rawSearch={datasetCiteData.rawSearch}
+              metadata={datasetCiteData.metadata}
+              onClose={() => setCiteModalData(undefined)}
             />
           </PageContainer>
         )}
@@ -381,7 +377,6 @@ const Render = (props: Props) => {
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
-        showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
         isResponseDetail={props.responseDetail}

@@ -8,27 +8,26 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  ContentTypes
+  ContentTypes,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
-import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/httpRequest',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/http/',
-  version: '481',
+  catchError: false,
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/http/',
   inputs: [
     {
       ...Input_Template_DynamicInput,
@@ -64,6 +63,13 @@ export const HttpNode468: FlowNodeTemplateType = {
       label: '',
       description: i18nT('common:core.module.input.description.Http Request Url'),
       placeholder: 'https://api.ai.com/getInventory',
+      required: false
+    },
+    {
+      key: NodeInputKeyEnum.headerSecret,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.object,
+      label: '',
       required: false
     },
     {
@@ -119,14 +125,6 @@ export const HttpNode468: FlowNodeTemplateType = {
       description: i18nT('workflow:http_extract_output_description')
     },
     {
-      id: NodeOutputKeyEnum.error,
-      key: NodeOutputKeyEnum.error,
-      label: i18nT('workflow:request_error'),
-      description: i18nT('workflow:http_request_error_info'),
-      valueType: WorkflowIOValueTypeEnum.object,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
       id: NodeOutputKeyEnum.httpRawResponse,
       key: NodeOutputKeyEnum.httpRawResponse,
       required: true,
@@ -134,6 +132,13 @@ export const HttpNode468: FlowNodeTemplateType = {
       description: i18nT('workflow:http_raw_response_description'),
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.error,
+      key: NodeOutputKeyEnum.error,
+      label: i18nT('workflow:error_text'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.error
     }
   ]
 };

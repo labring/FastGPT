@@ -2,13 +2,22 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  DispatchNodeResultType,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
 
 export type PluginInputProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
+export type PluginInputResponse = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.userFiles]?: string[];
+  [key: string]: any;
+}>;
 
-export const dispatchPluginInput = (props: PluginInputProps) => {
+export const dispatchPluginInput = async (
+  props: PluginInputProps
+): Promise<PluginInputResponse> => {
   const { params, query } = props;
   const { files } = chatValue2RuntimePrompt(query);
 
@@ -33,12 +42,14 @@ export const dispatchPluginInput = (props: PluginInputProps) => {
   }
 
   return {
-    ...params,
-    [DispatchNodeResponseKeyEnum.nodeResponse]: {},
-    [NodeOutputKeyEnum.userFiles]: files
-      .map((item) => {
-        return item?.url ?? '';
-      })
-      .filter(Boolean)
+    data: {
+      ...params,
+      [NodeOutputKeyEnum.userFiles]: files
+        .map((item) => {
+          return item?.url ?? '';
+        })
+        .filter(Boolean)
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {}
   };
 };

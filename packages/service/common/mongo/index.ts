@@ -1,3 +1,4 @@
+import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { addLog } from '../../common/system/log';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
@@ -63,6 +64,33 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
       }
       next();
     });
+
+    // Convert _id to string
+    schema.post(/^find/, function (docs) {
+      if (!docs) return;
+
+      const convertObjectIds = (obj: any) => {
+        if (!obj) return;
+
+        // Convert _id
+        if (obj._id && obj._id.toString) {
+          obj._id = obj._id.toString();
+        }
+
+        // Convert other ObjectId fields
+        Object.keys(obj).forEach((key) => {
+          if (obj[key] && obj[key]._bsontype === 'ObjectId') {
+            obj[key] = obj[key].toString();
+          }
+        });
+      };
+
+      if (Array.isArray(docs)) {
+        docs.forEach((doc) => convertObjectIds(doc));
+      } else {
+        convertObjectIds(docs);
+      }
+    });
   });
 
   return schema;
@@ -70,7 +98,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
 export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionMongo.models[name]) return connectionMongo.models[name] as Model<T>;
-  if (process.env.NODE_ENV !== 'test') console.log('Load model======', name);
+  if (!isTestEnv) console.log('Load model======', name);
   addCommonMiddleware(schema);
 
   const model = connectionMongo.model<T>(name, schema);
