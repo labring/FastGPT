@@ -13,13 +13,14 @@ import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import {
   defaultProvider,
   formatModelProviders,
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
+import { getMyModels } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -65,6 +66,11 @@ type State = {
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  myModelList: {
+    list: string[];
+    expire: number;
+  };
+  getMyModelList: () => Promise<string[]>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
@@ -159,6 +165,24 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        myModelList: {
+          list: [],
+          expire: 0
+        },
+        getMyModelList: async () => {
+          const list = get().myModelList;
+          if (list.expire < Date.now()) {
+            const res = await getMyModels();
+            set((state) => {
+              state.myModelList = {
+                list: res,
+                expire: Date.now() + 5 * 60 * 1000 // 5 minutes
+              };
+            });
+            return res;
+          }
+          return list.list;
+        },
 
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);

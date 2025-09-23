@@ -1,4 +1,3 @@
-import { getMyModels } from '@/web/common/system/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
@@ -24,11 +23,12 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     ttsModelList,
     sttModelList,
     reRankModelList,
-    getModelProvider
+    getModelProvider,
+    getMyModelList
   } = useSystemStore();
 
   const { data: myModels } = useRequest2(
-    async (): Promise<string[]> => [...(await getMyModels()), props.value as string],
+    async (): Promise<string[]> => [...(await getMyModelList()), props.value as string],
     {
       manual: false
     }
@@ -136,10 +136,11 @@ const MultipleRowSelector = ({
     sttModelList,
     reRankModelList,
     getModelProvider,
-    getModelProviders
+    getModelProviders,
+    getMyModelList
   } = useSystemStore();
 
-  const { data: myModels } = useRequest2(getMyModels, {
+  const { data: myModels } = useRequest2(getMyModelList, {
     manual: false
   });
 
