@@ -60,7 +60,7 @@ const MyPopover = ({
       openDelay={100}
       closeDelay={100}
       isLazy
-      lazyBehavior="keepMounted"
+      lazyBehavior="unmount"
       autoFocus={false}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>

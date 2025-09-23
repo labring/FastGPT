@@ -289,7 +289,7 @@ const ToolDetailModal = ({
           fontWeight={'500'}
         >
           <Box>{t('workflow:tool_params.params_description')}</Box>
-          <Box display={'flex'} gap={1}>
+          <Box display={'flex'} alignItems={'center'} gap={1}>
             {t('workflow:field_used_as_tool_input')}
             <QuestionTip label={t('app:tool_tip')} />
           </Box>
@@ -307,7 +307,7 @@ const ToolDetailModal = ({
                 justifyContent={'space-between'}
                 alignItems={'center'}
               >
-                <Box>
+                <Box pr={4}>
                   <Flex alignItems="center">
                     {tool.inputSchema.required?.includes(paramName) && (
                       <Box mr={1} color="red.500">

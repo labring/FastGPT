@@ -124,8 +124,12 @@ const NodeCard = (props: Props) => {
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
-    // 1. MCP tool set do not have version
-    if (isAppNode && (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool)) return false;
+    // 1. MCP tool & HTTP tool set do not have version
+    if (
+      isAppNode &&
+      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
+    )
+      return false;
     // 2. Team app/System commercial plugin
     if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
     // 3. System tool

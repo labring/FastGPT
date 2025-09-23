@@ -618,6 +618,7 @@
   "core.module.extract.Required Description": "即使无法提取该字段，也会使用默认值进行返回",
   "core.module.extract.Target field": "目标字段",
   "core.module.http.Add props": "添加参数",
+  "core.module.http.Add_props_value": "添加参数值",
   "core.module.http.AppId": "应用 ID",
   "core.module.http.ChatId": "当前对话 ID",
   "core.module.http.Current time": "当前时间",

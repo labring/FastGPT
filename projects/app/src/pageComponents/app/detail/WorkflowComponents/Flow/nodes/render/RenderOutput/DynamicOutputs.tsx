@@ -86,7 +86,7 @@ const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => 
                 {t('common:core.module.Data Type')}
               </Box>
             </Flex>
-            <Box minW={6} />
+            {outputs.length > 0 && <Box w={6} />}
           </Flex>
           {[...outputs, defaultOutput].map((output, index) => (
             <Box key={output.key} _notLast={{ mb: 1.5 }}>
@@ -102,7 +102,7 @@ const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => 
         </Box>
       </Box>
     );
-  }, [outputs, addOutput, nodeId, handleUpdateOutput, handleDeleteOutput, handleAddOutput, t]);
+  }, [outputs, addOutput, handleUpdateOutput, handleDeleteOutput, handleAddOutput, t]);
 
   return Render;
 };
@@ -126,6 +126,7 @@ const DynamicOutputItem = ({
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const isEmptyItem = !output?.key;
+
   const valueTypeList = useMemo(() => {
     return Object.values(WorkflowIOValueTypeEnum)
       .filter(
@@ -209,7 +210,7 @@ const DynamicOutputItem = ({
         />
       </Flex>
       {!isEmptyItem && (
-        <Box minW={6}>
+        <Box w={6}>
           <MyIconButton
             icon={'delete'}
             color={'myGray.600'}
@@ -220,7 +221,7 @@ const DynamicOutputItem = ({
           />
         </Box>
       )}
-      {isEmptyItem && outputs.length > 0 && <Box minW={6} />}
+      {isEmptyItem && outputs.length > 0 && <Box w={6} />}
     </Flex>
   );
 };

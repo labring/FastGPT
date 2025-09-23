@@ -20,7 +20,8 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
 
 vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
   MongoChatItem: {
-    findOne: vi.fn()
+    findOne: vi.fn(),
+    find: vi.fn()
   }
 }));
 
@@ -615,6 +616,15 @@ describe('authCollectionInChat', () => {
 
   describe('validation', () => {
     it('should reject if chat item not found', async () => {
+      // Mock the find method to return empty array (no cite collection ids found)
+      vi.mocked(MongoChatItem.find).mockReturnValue({
+        sort: () => ({
+          limit: () => ({
+            lean: () => Promise.resolve([])
+          })
+        })
+      } as any);
+
       vi.mocked(MongoChatItem.findOne).mockReturnValue({
         lean: () => Promise.resolve(null)
       } as any);
@@ -630,6 +640,15 @@ describe('authCollectionInChat', () => {
     });
 
     it('should reject with empty collectionIds array', async () => {
+      // Mock the find method to return empty array (no cite collection ids found)
+      vi.mocked(MongoChatItem.find).mockReturnValue({
+        sort: () => ({
+          limit: () => ({
+            lean: () => Promise.resolve([])
+          })
+        })
+      } as any);
+
       const mockChatItem = {
         time: new Date(),
         responseData: []
@@ -650,9 +669,7 @@ describe('authCollectionInChat', () => {
         chatItemDataId: 'item1'
       });
 
-      expect(result).toEqual({
-        chatItem: mockChatItem
-      });
+      expect(result).toEqual(undefined);
     });
 
     it('should handle missing appId, chatId, or chatItemDataId', async () => {
@@ -669,13 +686,18 @@ describe('authCollectionInChat', () => {
 
   describe('response data handling', () => {
     it('should auth collection ids in chat item with existing responseData', async () => {
+      // Mock the find method to return empty array (no cite collection ids found)
+      vi.mocked(MongoChatItem.find).mockReturnValue({
+        sort: () => ({
+          limit: () => ({
+            lean: () => Promise.resolve([])
+          })
+        })
+      } as any);
+
       const mockChatItem = {
         time: new Date(),
-        responseData: [
-          {
-            quoteList: [{ collectionId: 'col1' }, { collectionId: 'col2' }]
-          }
-        ]
+        citeCollectionIds: ['col1', 'col2']
       };
 
       vi.mocked(MongoChatItem.findOne).mockReturnValue({
@@ -692,15 +714,13 @@ describe('authCollectionInChat', () => {
         chatItemDataId: 'item1'
       });
 
-      expect(result).toEqual({
-        chatItem: mockChatItem
-      });
+      expect(result).toEqual(undefined);
     });
 
     it('should fetch responseData from MongoChatItemResponse when missing', async () => {
       const mockChatItem = {
         time: new Date(),
-        responseData: undefined
+        citeCollectionIds: ['col1', 'col2']
       };
       const mockChatItemResponses = [
         { data: { quoteList: [{ collectionId: 'col1' }] } },
@@ -729,9 +749,7 @@ describe('authCollectionInChat', () => {
         { quoteList: [{ collectionId: 'col1' }] },
         { quoteList: [{ collectionId: 'col2' }] }
       ]);
-      expect(result).toEqual({
-        chatItem: mockChatItem
-      });
+      expect(result).toEqual(undefined);
     });
 
     it('should handle empty responseData array', async () => {
@@ -800,9 +818,7 @@ describe('authCollectionInChat', () => {
         chatItemDataId: 'item1'
       });
 
-      expect(result).toEqual({
-        chatItem: mockChatItem
-      });
+      expect(result).toEqual(undefined);
     });
 
     it('should reject if collection ids not found in quotes', async () => {
@@ -886,9 +902,7 @@ describe('authCollectionInChat', () => {
         chatItemDataId: 'item1'
       });
 
-      expect(result).toEqual({
-        chatItem: mockChatItem
-      });
+      expect(result).toEqual(undefined);
     });
 
     it('should handle missing quoteList in response data', async () => {
