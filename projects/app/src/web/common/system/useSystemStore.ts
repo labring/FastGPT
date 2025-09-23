@@ -67,10 +67,10 @@ type State = {
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
   myModelList: {
-    list: string[];
+    modelSet: Set<string>;
     expire: number;
   };
-  getMyModelList: () => Promise<string[]>;
+  getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
@@ -166,7 +166,7 @@ export const useSystemStore = create<State>()(
         reRankModelList: [],
         sttModelList: [],
         myModelList: {
-          list: [],
+          modelSet: new Set(),
           expire: 0
         },
         getMyModelList: async () => {
@@ -175,13 +175,13 @@ export const useSystemStore = create<State>()(
             const res = await getMyModels();
             set((state) => {
               state.myModelList = {
-                list: res,
+                modelSet: new Set(res),
                 expire: Date.now() + 5 * 60 * 1000 // 5 minutes
               };
             });
-            return res;
+            return new Set(res);
           }
-          return list.list;
+          return list.modelSet;
         },
 
         getVlmModelList: () => {

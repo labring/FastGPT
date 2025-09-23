@@ -71,11 +71,13 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     type,
     modules: await (async () => {
       if (modules) {
-        const myModels = await getMyModels({
-          teamId,
-          tmbId,
-          isTeamOwner: isRoot || tmb?.role === 'owner'
-        });
+        const myModels = new Set(
+          await getMyModels({
+            teamId,
+            tmbId,
+            isTeamOwner: isRoot || tmb?.role === 'owner'
+          })
+        );
 
         return removeUnauthModels({
           modules,

@@ -445,16 +445,16 @@ export const getPluginRunUserQuery = ({
 
 export const removeUnauthModels = async ({
   modules,
-  allowedModels
+  allowedModels = new Set()
 }: {
   modules: AppSchema['modules'];
-  allowedModels: string[];
+  allowedModels?: Set<string>;
 }) => {
   if (modules) {
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
-          if (!allowedModels.includes(input.value)) {
+          if (!allowedModels.has(input.value)) {
             input.value = undefined;
           }
         }

@@ -28,7 +28,11 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
   } = useSystemStore();
 
   const { data: myModels } = useRequest2(
-    async (): Promise<string[]> => [...(await getMyModelList()), props.value as string],
+    async () => {
+      const set = await getMyModelList();
+      set.add(props.value);
+      return set;
+    },
     {
       manual: false
     }
@@ -58,7 +62,7 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
         if (!modelData) return;
 
         const avatar = getModelProvider(modelData.provider)?.avatar;
-        if (!myModels?.includes(modelData.model)) {
+        if (!myModels?.has(modelData.model)) {
           return;
         }
         return {
@@ -155,7 +159,7 @@ const MultipleRowSelector = ({
 
     return list
       .map((item) => allModels.find((model) => model.model === item.value))
-      .filter((item) => !!item && !!myModels?.includes(item.name));
+      .filter((item) => !!item && !!myModels?.has(item.model));
   }, [
     llmModelList,
     embeddingModelList,

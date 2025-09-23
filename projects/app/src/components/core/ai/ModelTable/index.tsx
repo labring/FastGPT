@@ -3,7 +3,6 @@ import {
   Box,
   Flex,
   HStack,
-  IconButton,
   ModalBody,
   Table,
   TableContainer,
@@ -171,6 +170,7 @@ const ModelTable = () => {
     const formatList = list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
+        model: item.model,
         name: item.name,
         avatar: provider.avatar,
         providerId: provider.id,
@@ -318,7 +318,7 @@ const ModelTable = () => {
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
-                          modelNames: [item.name]
+                          models: [item.model]
                         })
                       }
                       permission={userInfo?.team.permission!}
@@ -355,7 +355,7 @@ const ModelTable = () => {
             onUpdateCollaborators={({ collaborators }) =>
               updateModelCollaborators({
                 collaborators,
-                modelNames: selectedItems.map((i) => i.name)
+                models: selectedItems.map((i) => i.model)
               })
             }
             permission={userInfo?.team.permission!}

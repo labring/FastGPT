@@ -27,19 +27,19 @@ export const getMyModels = async ({
     })
   ]);
 
-  const myIds = [tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)];
+  const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
 
   const rps = await MongoResourcePermission.find({
     teamId,
     resourceType: PerResourceTypeEnum.model
   }).lean();
 
-  const PermissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
-  const UnconfiguredModels = global.systemModelList.filter(
-    (model) => !PermissionConfiguredModelSet.has(model.model)
+  const permissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
+  const unconfiguredModels = global.systemModelList.filter(
+    (model) => !permissionConfiguredModelSet.has(model.model)
   );
 
-  const MyModels = rps.filter((rp) => myIds.includes(getCollaboratorId(rp)));
+  const myModels = rps.filter((rp) => myIdSet.has(getCollaboratorId(rp)));
 
-  return [...UnconfiguredModels.map((m) => m.model), ...MyModels.map((m) => m.resourceName)];
+  return [...unconfiguredModels.map((m) => m.model), ...myModels.map((m) => m.resourceName)];
 };

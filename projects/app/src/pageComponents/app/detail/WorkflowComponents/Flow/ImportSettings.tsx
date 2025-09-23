@@ -52,7 +52,7 @@ const ImportSettings = ({ onClose }: Props) => {
             }
             try {
               const data = JSON.parse(value);
-              removeUnauthModels({ modules: data.nodes, allowedModels: myModels ?? [] });
+              removeUnauthModels({ modules: data.nodes, allowedModels: myModels });
               await initData(data);
               toast({
                 title: t('app:import_configs_success'),

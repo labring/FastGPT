@@ -12,13 +12,12 @@ export const getSystemInitData = (bufferId?: string) =>
 
 // model permissions
 
-export const getModelCollaborators = (modelName: string) =>
+export const getModelCollaborators = (model: string) =>
   GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
-    modelName
+    model
   });
 
-export const updateModelCollaborators = (
-  props: UpdateClbPermissionProps & { modelNames: string[] }
-) => POST('/proApi/system/model/collaborator/update', props);
+export const updateModelCollaborators = (props: UpdateClbPermissionProps & { models: string[] }) =>
+  POST('/proApi/system/model/collaborator/update', props);
 
 export const getMyModels = () => GET<string[]>('/proApi/system/model/getMyModels');

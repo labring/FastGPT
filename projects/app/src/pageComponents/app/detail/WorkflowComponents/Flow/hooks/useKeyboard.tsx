@@ -69,7 +69,7 @@ export const useKeyboard = () => {
           const nodeId = getNanoid();
           item.data.inputs.forEach((input) => {
             if (input.key === 'model') {
-              if (!myModels?.includes(input.value)) input.value = undefined;
+              if (!myModels?.has(input.value)) input.value = undefined;
             }
           });
           return {

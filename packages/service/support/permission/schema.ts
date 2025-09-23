@@ -171,9 +171,6 @@ try {
         },
         resourceName: {
           $exists: true
-        },
-        resourceId: {
-          $exists: false
         }
       }
     }
@@ -194,9 +191,6 @@ try {
         },
         resourceName: {
           $exists: true
-        },
-        resourceId: {
-          $exists: false
         }
       }
     }
@@ -217,9 +211,6 @@ try {
         },
         resourceName: {
           $exists: true
-        },
-        resourceId: {
-          $exists: false
         }
       }
     }
@@ -236,9 +227,6 @@ try {
       partialFilterExpression: {
         resourceName: {
           $exists: true
-        },
-        resourceId: {
-          $exists: false
         }
       }
     }
