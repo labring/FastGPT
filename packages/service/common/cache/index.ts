@@ -42,7 +42,7 @@ export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) =
   return initVal;
 };
 
-export const getCachedData = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
+export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: string) => {
   if (!global.systemCache) initCache();
 
   const versionKey = await getVersionKey(key, id);
