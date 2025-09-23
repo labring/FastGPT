@@ -1,7 +1,10 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { Box, Flex, Input, HStack } from '@chakra-ui/react';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowValueTypeMap
+} from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -125,9 +128,12 @@ const DynamicOutputItem = ({
   const isEmptyItem = !output?.key;
   const valueTypeList = useMemo(() => {
     return Object.values(WorkflowIOValueTypeEnum)
-      .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
+      .filter(
+        (type) =>
+          type !== WorkflowIOValueTypeEnum.selectApp && type !== WorkflowIOValueTypeEnum.dynamic
+      )
       .map((item) => ({
-        label: item,
+        label: t(FlowValueTypeMap[item].label),
         value: item
       }));
   }, []);
@@ -151,6 +157,7 @@ const DynamicOutputItem = ({
         if (isEmptyItem && label) {
           onAdd({
             ...defaultOutput,
+            id: label,
             key: label,
             label: label,
             valueType: WorkflowIOValueTypeEnum.any,
@@ -213,7 +220,7 @@ const DynamicOutputItem = ({
           />
         </Box>
       )}
-      {isEmptyItem && <Box minW={6} />}
+      {isEmptyItem && outputs.length > 0 && <Box minW={6} />}
     </Flex>
   );
 };

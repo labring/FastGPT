@@ -13,9 +13,11 @@ import { getInputComponentProps } from '@/web/core/workflow/utils';
 import { ReferSelector, useReference } from '../Reference';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowValueTypeMap
+} from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const defaultInput: FlowNodeInputItemType = {
@@ -28,7 +30,6 @@ const defaultInput: FlowNodeInputItemType = {
 
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
@@ -101,20 +102,12 @@ const Reference = ({
     nodeId,
     valueType: inputChildren.valueType || WorkflowIOValueTypeEnum.any
   });
-  const valueTypeList = useMemo(() => {
-    return Object.values(WorkflowIOValueTypeEnum)
-      .filter((type) => type !== WorkflowIOValueTypeEnum.selectApp)
-      .map((item) => ({
-        label: item,
-        value: item
-      }));
-  }, []);
 
   const onlBlurLabel = useCallback(
     (label: string) => {
       setIsEditing(false);
       if (!label.trim()) return;
-      if (existsKeys.includes(label)) {
+      if (existsKeys.includes(label) && !isEmptyItem && label !== inputChildren.key) {
         toast({
           status: 'warning',
           title: t('workflow:field_name_already_exists')
@@ -175,24 +168,6 @@ const Reference = ({
     },
     [inputChildren, nodeId, onChangeNode, isEmptyItem, referenceList]
   );
-  const onlChangeValueType = useCallback(
-    (newValueType: string) => {
-      if (isEmptyItem) {
-        return;
-      }
-
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          valueType: newValueType as WorkflowIOValueTypeEnum
-        }
-      });
-    },
-    [inputChildren, nodeId, onChangeNode, isEmptyItem]
-  );
   const onDeleteInput = useCallback(() => {
     onChangeNode({
       nodeId,
@@ -234,17 +209,20 @@ const Reference = ({
             }
           }}
         />
-        <MySelect
+        <Flex
           h={10}
-          borderLeftRadius={'none'}
+          border={'1px solid'}
+          borderRightRadius={'sm'}
           borderColor={'myGray.200'}
-          minW={'140px'}
-          value={inputChildren.valueType || WorkflowIOValueTypeEnum.any}
-          list={valueTypeList}
-          onChange={(value) => onlChangeValueType(value)}
-          isDisabled={isEmptyItem}
-          className="nowheel"
-        />
+          minW={'150px'}
+          alignItems={'center'}
+          pl={4}
+          opacity={isEmptyItem ? 0.5 : 1}
+          fontSize={'sm'}
+          fontWeight={'medium'}
+        >
+          {t(FlowValueTypeMap[inputChildren.valueType || WorkflowIOValueTypeEnum.any].label)}
+        </Flex>
       </Flex>
       {!isEmptyItem && (
         <Box w={6}>
