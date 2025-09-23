@@ -55,7 +55,7 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
               {t('common:core.module.Data Type')}
             </Box>
           </Flex>
-          <Box w={6} />
+          {dynamicInputs.length > 0 && <Box w={6} />}
         </Flex>
         {[...dynamicInputs, defaultInput].map((children) => (
           <Box key={children.key} _notLast={{ mb: 1.5 }}>
@@ -152,7 +152,7 @@ const Reference = ({
       }, 50);
       setTempLabel('');
     },
-    [inputChildren, nodeId, onChangeNode, isEmptyItem, toast, t, item]
+    [existsKeys, toast, t, isEmptyItem, item, onChangeNode, nodeId, inputChildren]
   );
   const onSelectReference = useCallback(
     (e?: ReferenceValueType) => {
@@ -173,7 +173,7 @@ const Reference = ({
         }
       });
     },
-    [inputChildren, nodeId, onChangeNode, isEmptyItem, referenceList]
+    [inputChildren, nodeId, onChangeNode, referenceList]
   );
   const onlChangeValueType = useCallback(
     (newValueType: string) => {
