@@ -7,6 +7,11 @@ export const initCache = () => {
       versionKey: '',
       data: [],
       refreshFunc: refreshSystemTools
+    },
+    [SystemCacheKeyEnum.modelPermission]: {
+      versionKey: '',
+      data: null,
+      refreshFunc: () => Promise.resolve(null)
     }
   };
 };

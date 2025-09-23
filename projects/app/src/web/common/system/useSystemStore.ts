@@ -13,7 +13,7 @@ import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import {
   defaultProvider,
   formatModelProviders,
@@ -68,7 +68,7 @@ type State = {
   sttModelList: STTModelType[];
   myModelList: {
     modelSet: Set<string>;
-    expire: number;
+    versionKey: string;
   };
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
@@ -167,21 +167,22 @@ export const useSystemStore = create<State>()(
         sttModelList: [],
         myModelList: {
           modelSet: new Set(),
-          expire: 0
+          versionKey: ''
         },
         getMyModelList: async () => {
-          const list = get().myModelList;
-          if (list.expire < Date.now()) {
-            const res = await getMyModels();
-            set((state) => {
-              state.myModelList = {
-                modelSet: new Set(res),
-                expire: Date.now() + 5 * 60 * 1000 // 5 minutes
-              };
+          const res = await getMyModels({ versionKey: get().myModelList.versionKey });
+          if (res.isRefreshed === false) {
+            return get().myModelList.modelSet;
+          } else {
+            const modelSet = new Set(res.models);
+            set({
+              myModelList: {
+                modelSet,
+                versionKey: res.versionKey
+              }
             });
-            return new Set(res);
+            return modelSet;
           }
-          return list.modelSet;
         },
 
         getVlmModelList: () => {

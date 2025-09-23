@@ -20,8 +20,8 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { isProVersion } from './constants';
 import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');

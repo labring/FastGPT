@@ -1,4 +1,5 @@
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
+import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   CollaboratorListType,
@@ -20,4 +21,5 @@ export const getModelCollaborators = (model: string) =>
 export const updateModelCollaborators = (props: UpdateClbPermissionProps & { models: string[] }) =>
   POST('/proApi/system/model/collaborator/update', props);
 
-export const getMyModels = () => GET<string[]>('/proApi/system/model/getMyModels');
+export const getMyModels = (props: GetMyModelsQuery) =>
+  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);

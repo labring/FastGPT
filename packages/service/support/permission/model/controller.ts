@@ -3,6 +3,7 @@ import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgsByTmbId } from '../org/controllers';
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import { isProVersion } from '../../../common/system/constants';
 
 export const getMyModels = async ({
   teamId,
@@ -13,7 +14,7 @@ export const getMyModels = async ({
   tmbId: string;
   isTeamOwner: boolean;
 }) => {
-  if (isTeamOwner) {
+  if (isTeamOwner || !isProVersion()) {
     return global.systemModelList.map((m) => m.model);
   }
   const [groups, orgs] = await Promise.all([
