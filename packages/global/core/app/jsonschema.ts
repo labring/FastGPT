@@ -117,7 +117,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
         return yaml.load(yamlStr, { schema: yaml.FAILSAFE_SCHEMA });
       }
     })();
-    const jsonSchema = (await SwaggerParser.parse(data)) as OpenAPIV3.Document;
+    const jsonSchema = (await SwaggerParser.dereference(data)) as OpenAPIV3.Document;
 
     const serverPath = (() => {
       if (jsonSchema.servers && jsonSchema.servers.length > 0) {
@@ -134,7 +134,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
 
     const pathData = Object.keys(jsonSchema.paths)
       .map((path) => {
-        const methodData: any = data.paths[path];
+        const methodData: any = jsonSchema.paths[path];
         return Object.keys(methodData)
           .filter((method) =>
             ['get', 'post', 'put', 'delete', 'patch'].includes(method.toLocaleLowerCase())

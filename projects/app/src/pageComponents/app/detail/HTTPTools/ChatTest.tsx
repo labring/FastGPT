@@ -107,7 +107,7 @@ const ChatTest = ({
 
         {activeTab === 'input' ? (
           <Box flex={1} px={[2, 5]} overflow={'auto'}>
-            {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 && (
+            {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 ? (
               <>
                 <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
                   {Object.entries(currentTool?.inputSchema.properties || {}).map(
@@ -136,13 +136,17 @@ const ChatTest = ({
                           inputType={inputType}
                           fieldName={paramName}
                           form={form}
-                          placeholder={paramInfo.description}
+                          placeholder={paramName}
                         />
                       );
                     }
                   )}
                 </Box>
               </>
+            ) : (
+              <Box fontWeight={'medium'} pb={4} px={2}>
+                {t('app:this_tool_requires_no_input')}
+              </Box>
             )}
 
             <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>

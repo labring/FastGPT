@@ -617,6 +617,7 @@
   "core.module.extract.Required Description": "即使無法提取該欄位，也會使用預設值進行回傳",
   "core.module.extract.Target field": "目標欄位",
   "core.module.http.Add props": "新增參數",
+  "core.module.http.Add_props_value": "添加參數值",
   "core.module.http.AppId": "應用程式 ID",
   "core.module.http.ChatId": "目前對話 ID",
   "core.module.http.Current time": "目前時間",

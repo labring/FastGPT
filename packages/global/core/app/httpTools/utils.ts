@@ -102,8 +102,8 @@ export const pathData2ToolList = async (
         pathItem.params.forEach((param) => {
           if (param.name && param.schema) {
             inputProperties[param.name] = {
-              type: param.schema.type,
-              description: param.description
+              type: param.schema.type || 'any',
+              description: param.description || ''
             };
 
             if (param.required) {
@@ -118,8 +118,8 @@ export const pathData2ToolList = async (
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
             inputProperties[key] = {
-              type: value.type,
-              description: value.description
+              type: value.type || 'any',
+              description: value.description || ''
             };
           });
         }
@@ -129,13 +129,19 @@ export const pathData2ToolList = async (
         }
       }
 
-      if (pathItem.response?.default?.content?.['application/json']?.schema) {
-        const responseSchema = pathItem.response.default.content['application/json'].schema;
+      const responseToProcess =
+        pathItem.response?.['200'] ||
+        pathItem.response?.['201'] ||
+        pathItem.response?.['202'] ||
+        pathItem.response?.default;
+
+      if (responseToProcess?.content?.['application/json']?.schema) {
+        const responseSchema = responseToProcess.content['application/json'].schema;
         if (responseSchema.properties) {
           Object.entries(responseSchema.properties).forEach(([key, value]: [string, any]) => {
             outputProperties[key] = {
-              type: value.type,
-              description: value.description
+              type: value.type || 'any',
+              description: value.description || ''
             };
           });
         }
