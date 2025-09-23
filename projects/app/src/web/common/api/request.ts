@@ -109,10 +109,13 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  // 获取二级路由
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+  // 拼接二级路由
   const isOutlinkPage = {
-    '/chat/share': true,
-    '/chat': true,
-    '/login': true
+    [`${baseUrl}/chat/share`]: true,
+    [`${baseUrl}/chat`]: true,
+    [`${baseUrl}/login`]: true
   }[window.location.pathname];
 
   const data = err?.response?.data || err;
