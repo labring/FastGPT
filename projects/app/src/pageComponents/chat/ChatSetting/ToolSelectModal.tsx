@@ -45,6 +45,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
 import type { ChatSettingSchema } from '@fastgpt/global/core/chat/setting/type';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   selectedTools: ChatSettingSchema['selectedTools'];
@@ -162,6 +164,8 @@ const RenderList = React.memo(function RenderList({
   setParentId: (parentId: ParentIdType) => any;
 }) {
   const { t, i18n } = useTranslation();
+  const { feConfigs } = useSystemStore();
+
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
@@ -340,19 +344,20 @@ const RenderList = React.memo(function RenderList({
                               objectFit={'contain'}
                               borderRadius={'sm'}
                             />
-                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
                               {template.name}
+                            </Box>
+                            <Box color={'myGray.500'}>
+                              By {template.author || feConfigs?.systemTitle}
                             </Box>
                           </Flex>
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                             {template.intro || t('common:core.workflow.Not intro')}
                           </Box>
-                          {/* {type === TemplateTypeEnum.systemPlugin && (
-                            <CostTooltip
-                              cost={template.currentCost}
-                              hasTokenFee={template.hasTokenFee}
-                            />
-                          )} */}
+                          <CostTooltip
+                            cost={template.currentCost}
+                            hasTokenFee={template.hasTokenFee}
+                          />
                         </Box>
                       }
                     >

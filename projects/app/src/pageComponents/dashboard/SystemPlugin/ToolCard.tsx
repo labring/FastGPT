@@ -81,17 +81,17 @@ const PluginCard = ({
       }}
     >
       {/* Delete button with centered confirmation modal */}
-      {isUploadedPlugin && isRoot && (
+      {isUploadedPlugin && isRoot && isHovered && (
         <MyIconButton
           icon="delete"
           position="absolute"
           bottom={3}
           right={4}
           color="red.500"
+          hoverColor="red.500"
           aria-label={t('common:Delete')}
           zIndex={1}
-          opacity={isHovered ? 1 : 0}
-          pointerEvents={isHovered ? 'auto' : 'none'}
+          pointerEvents={'auto'}
           onClick={openConfirm(() => handleDelete(item.id))}
         />
       )}

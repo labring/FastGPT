@@ -59,6 +59,7 @@ export type TemplateListProps = {
 
 const NodeTemplateListItem = ({
   template,
+  templateType,
   handleAddNode,
   isPopover,
   onUpdateParentId
@@ -78,6 +79,7 @@ const NodeTemplateListItem = ({
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
+  const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
 
   return (
     <MyTooltip
@@ -94,16 +96,20 @@ const NodeTemplateListItem = ({
             <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
               {template.name}
             </Box>
-            <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
+            {isSystemTool && (
+              <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
+            )}
           </Flex>
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
             {template.intro || t('common:core.workflow.Not intro')}
           </Box>
-          <CostTooltip
-            cost={template.currentCost}
-            hasTokenFee={template.hasTokenFee}
-            isFolder={template.isFolder}
-          />
+          {isSystemTool && (
+            <CostTooltip
+              cost={template.currentCost}
+              hasTokenFee={template.hasTokenFee}
+              isFolder={template.isFolder}
+            />
+          )}
         </Box>
       }
       shouldWrapChildren={false}
@@ -192,7 +198,7 @@ const NodeTemplateListItem = ({
           </Box>
         )}
         {/* Author */}
-        {!isPopover && template.authorAvatar && template.author && (
+        {!isPopover && template.authorAvatar && template.author && isSystemTool && (
           <HStack spacing={1} maxW={'120px'} flexShrink={0}>
             <MyAvatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
             <Box fontSize={'xs'} className="textEllipsis">
