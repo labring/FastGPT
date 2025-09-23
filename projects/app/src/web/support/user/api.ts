@@ -125,3 +125,6 @@ export const GetSearchUserGroupOrg = (
   GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options }, { maxQuantity: 1 });
 
 export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');
+
+export const generateCsrfToken = () =>
+  GET<{ csrfToken: string; expiresAt: number }>('/support/user/account/generateCsrfToken');

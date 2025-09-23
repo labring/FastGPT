@@ -183,8 +183,7 @@ const MarkdownRender = ({
                 'base',
                 'form',
                 'input',
-                'button',
-                'img'
+                'button'
               ]
             }
           ]

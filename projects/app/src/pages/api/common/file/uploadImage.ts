@@ -13,7 +13,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<strin
   return uploadMongoImg({ teamId, ...body });
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, { isCSRFCheck: false });
 
 export const config = {
   api: {

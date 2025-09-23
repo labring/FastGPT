@@ -3,18 +3,32 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
 import { addLog } from '../system/log';
+import { withCSRFCheck } from './csrf';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
   res: NextApiResponse<T>
 ) => unknown | Promise<unknown>;
 
+type NextAPIOptsType = {
+  isCSRFCheck: boolean;
+};
+type Args = [...NextApiHandler[], NextAPIOptsType] | NextApiHandler[];
+
 export const NextEntry = ({
   beforeCallback = []
 }: {
   beforeCallback?: ((req: NextApiRequest, res: NextApiResponse) => Promise<any>)[];
 }) => {
-  return (...args: NextApiHandler[]): NextApiHandler => {
+  return (...args: Args): NextApiHandler => {
+    const opts = (() => {
+      if (typeof args.at(-1) === 'function') {
+        return {
+          isCSRFCheck: true
+        } as NextAPIOptsType;
+      }
+      return args.at(-1) as NextAPIOptsType;
+    })();
     return async function api(req: ApiRequestProps, res: NextApiResponse) {
       const start = Date.now();
       addLog.debug(`Request start ${req.url}`);
@@ -22,12 +36,13 @@ export const NextEntry = ({
       try {
         await Promise.all([
           withNextCors(req, res),
+          withCSRFCheck(req, res, opts.isCSRFCheck),
           ...beforeCallback.map((item) => item(req, res))
         ]);
 
         let response = null;
         for await (const handler of args) {
-          response = await handler(req, res);
+          if (typeof handler === 'function') response = await handler(req, res);
           if (res.writableFinished) {
             break;
           }
