@@ -26,11 +26,15 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import type { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpTools/type';
 import { pathData2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import {
+  headerValue2StoreHeader,
+  storeHeader2HeaderValue
+} from '@/components/common/secret/HeaderAuthConfig';
+import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 
 const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -310,9 +314,10 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
         </Box>
         <Box mt={2}>
           <HeaderAuthForm
-            storeHeaderSecretConfig={headerSecret}
-            onUpdate={(data) => {
-              setValue('headerSecret', data);
+            headerSecretValue={storeHeader2HeaderValue(headerSecret)}
+            onChange={(data) => {
+              const storeData = headerValue2StoreHeader(data);
+              setValue('headerSecret', storeData);
             }}
           />
         </Box>
