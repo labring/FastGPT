@@ -225,7 +225,6 @@ const ModelTable = () => {
     selectedItems,
     toggleSelect,
     isSelected,
-    setSelectedItems,
     FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
@@ -275,24 +274,30 @@ const ModelTable = () => {
         <Table>
           <Thead>
             <Tr color={'myGray.600'}>
-              <Th w="10px">
-                <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
-              </Th>
+              {userInfo?.team.permission.hasManagePer && (
+                <Th w="10px">
+                  <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
+                </Th>
+              )}
               <Th fontSize={'xs'}>{t('common:model.name')}</Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-              <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
+              {userInfo?.team.permission.hasManagePer && (
+                <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
+              )}
             </Tr>
           </Thead>
           <Tbody>
             {modelList.map((item, index) => (
               <Tr key={index} _hover={{ bg: 'myGray.50' }}>
-                <Td w="10px">
-                  <Checkbox
-                    isChecked={isSelected(item)}
-                    onChange={(e) => toggleSelect(item)}
-                  ></Checkbox>
-                </Td>
+                {userInfo?.team.permission.hasManagePer && (
+                  <Td w="10px">
+                    <Checkbox
+                      isChecked={isSelected(item)}
+                      onChange={(e) => toggleSelect(item)}
+                    ></Checkbox>
+                  </Td>
+                )}
                 <Td fontSize={'sm'}>
                   <HStack>
                     <Avatar src={item.avatar} w={'1.2rem'} />
@@ -305,31 +310,33 @@ const ModelTable = () => {
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                <Td fontSize={'sm'}>
-                  <CollaboratorContextProvider
-                    defaultRole={ReadRoleVal}
-                    onGetCollaboratorList={() => getModelCollaborators(item.name)}
-                    onUpdateCollaborators={({ collaborators }) =>
-                      updateModelCollaborators({
-                        collaborators,
-                        modelNames: [item.name]
-                      })
-                    }
-                    permission={userInfo?.team.permission!}
-                  >
-                    {({ onOpenManageModal }) => (
-                      <MyIconButton
-                        icon={'edit'}
-                        size="1rem"
-                        hoverColor={'blue.500'}
-                        w="min-content"
-                        onClick={() => {
-                          onOpenManageModal();
-                        }}
-                      />
-                    )}
-                  </CollaboratorContextProvider>
-                </Td>
+                {userInfo?.team.permission.hasManagePer && (
+                  <Td fontSize={'sm'}>
+                    <CollaboratorContextProvider
+                      defaultRole={ReadRoleVal}
+                      onGetCollaboratorList={() => getModelCollaborators(item.name)}
+                      onUpdateCollaborators={({ collaborators }) =>
+                        updateModelCollaborators({
+                          collaborators,
+                          modelNames: [item.name]
+                        })
+                      }
+                      permission={userInfo?.team.permission!}
+                    >
+                      {({ onOpenManageModal }) => (
+                        <MyIconButton
+                          icon={'edit'}
+                          size="1rem"
+                          hoverColor={'blue.500'}
+                          w="min-content"
+                          onClick={() => {
+                            onOpenManageModal();
+                          }}
+                        />
+                      )}
+                    </CollaboratorContextProvider>
+                  </Td>
+                )}
               </Tr>
             ))}
           </Tbody>
