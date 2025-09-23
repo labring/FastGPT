@@ -12,6 +12,7 @@ import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type DynamicOutputsProps = {
   nodeId: string;
@@ -137,7 +138,7 @@ const DynamicOutputItem = ({
         label: t(FlowValueTypeMap[item].label),
         value: item
       }));
-  }, []);
+  }, [t]);
 
   const onChangeValueType = useCallback(
     (valueType: WorkflowIOValueTypeEnum) => {
@@ -158,7 +159,7 @@ const DynamicOutputItem = ({
         if (isEmptyItem && label) {
           onAdd({
             ...defaultOutput,
-            id: label,
+            id: getNanoid(6),
             key: label,
             label: label,
             valueType: WorkflowIOValueTypeEnum.any,

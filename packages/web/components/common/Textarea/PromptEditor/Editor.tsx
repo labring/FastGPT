@@ -6,7 +6,7 @@
  *
  */
 
-import type { CSSProperties} from 'react';
+import type { CSSProperties } from 'react';
 import { useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';

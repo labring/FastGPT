@@ -19,6 +19,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -31,6 +33,8 @@ const defaultInput: FlowNodeInputItemType = {
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
 
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
 
@@ -40,6 +44,36 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
         <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
           <Box>{item.label || t('workflow:custom_input')}</Box>
           {item.description && <QuestionTip label={t(item.description as any)} />}
+
+          {item.deprecated && (
+            <>
+              <Box flex={'1'} />
+              <MyTooltip label={t('app:Click_to_delete_this_field')}>
+                <Flex
+                  px={1.5}
+                  py={1}
+                  bg={'adora.50'}
+                  rounded={'6px'}
+                  fontSize={'14px'}
+                  cursor="pointer"
+                  alignItems={'center'}
+                  _hover={{
+                    bg: 'adora.100'
+                  }}
+                  onClick={() => {
+                    onChangeNode({
+                      nodeId,
+                      type: 'delInput',
+                      key: item.key
+                    });
+                  }}
+                >
+                  <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
+                  <Box color={'adora.600'}>{t('app:Filed_is_deprecated')}</Box>
+                </Flex>
+              </MyTooltip>
+            </>
+          )}
         </HStack>
       </HStack>
       {/* field render */}
