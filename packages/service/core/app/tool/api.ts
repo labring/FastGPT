@@ -25,26 +25,6 @@ export async function APIGetSystemToolList() {
   return Promise.reject(res.body);
 }
 
-export async function deleteSystemTool(toolId: string) {
-  const res = await pluginClient.tool.delete({ body: { toolId } });
-
-  if (res.status === 200) {
-    return res.body;
-  }
-
-  return Promise.reject(res.body);
-}
-
-export async function uploadSystemTool(objectName: string) {
-  const res = await pluginClient.tool.upload({ body: { objectName } });
-
-  if (res.status === 200) {
-    return res.body;
-  }
-
-  return Promise.reject(res.body);
-}
-
 const runToolInstance = new RunToolWithStream({
   baseUrl: PLUGIN_BASE_URL,
   token: PLUGIN_TOKEN

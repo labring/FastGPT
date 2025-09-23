@@ -27,7 +27,8 @@ import type {
   ChatInputGuideConfigType,
   AppChatConfigType,
   AppAutoExecuteConfigType,
-  AppQGConfigType
+  AppQGConfigType,
+  AppSchema
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -440,4 +441,25 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
+};
+
+export const removeUnauthModels = async ({
+  modules,
+  allowedModels = new Set()
+}: {
+  modules: AppSchema['modules'];
+  allowedModels?: Set<string>;
+}) => {
+  if (modules) {
+    modules.forEach((module) => {
+      module.inputs.forEach((input) => {
+        if (input.key === 'model') {
+          if (!allowedModels.has(input.value)) {
+            input.value = undefined;
+          }
+        }
+      });
+    });
+  }
+  return modules;
 };

@@ -6,32 +6,46 @@ import { initCache } from './init';
 
 const cachePrefix = `${FASTGPT_REDIS_PREFIX}:VERSION_KEY:`;
 
-export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`) => {
+/**
+ *
+ * @param key SystemCacheKeyEnum
+ * @param id string (teamId, tmbId, etc), if '*' is used, all keys will be refreshed
+ */
+export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string | '*') => {
   const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
 
   const val = randomUUID();
-  await redis.set(`${cachePrefix}${key}`, val);
+  const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
+  if (id === '*') {
+    const pattern = `${cachePrefix}${key}:*`;
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
+  } else {
+    await redis.set(versionKey, val);
+  }
 };
 
-export const getCachedData = async (key: `${SystemCacheKeyEnum}`) => {
+export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
   const redis = getGlobalRedisConnection();
-
-  const getVersionkey = async (key: `${SystemCacheKeyEnum}`) => {
-    if (!global.systemCache) initCache();
-
-    const versionKey = `${cachePrefix}${key}`;
-    const val = await redis.get(versionKey);
-    if (val) return val;
-
-    const newVal = randomUUID();
-    await redis.set(versionKey, newVal);
-    return newVal;
-  };
-
   if (!global.systemCache) initCache();
 
-  const versionKey = await getVersionkey(key);
+  const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
+  const val = await redis.get(versionKey);
+  if (val) return val;
+
+  // if there is no val set to the key, init a new val.
+  const initVal = randomUUID();
+  await redis.set(versionKey, initVal);
+  return initVal;
+};
+
+export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: string) => {
+  if (!global.systemCache) initCache();
+
+  const versionKey = await getVersionKey(key, id);
   const isDisableCache = process.env.DISABLE_CACHE === 'true';
 
   // 命中缓存
@@ -40,7 +54,7 @@ export const getCachedData = async (key: `${SystemCacheKeyEnum}`) => {
   }
 
   const refreshedData = await global.systemCache[key].refreshFunc();
-  await refreshVersionKey(key);
+  await refreshVersionKey(key, id);
   global.systemCache[key].data = refreshedData;
   global.systemCache[key].versionKey = versionKey;
   return global.systemCache[key].data;
