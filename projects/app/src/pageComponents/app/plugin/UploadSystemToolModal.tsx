@@ -6,10 +6,9 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { postS3UploadFile } from '@/web/common/file/api';
-import { getPluginUploadPresignedURL, postConfirmUpload } from '@/web/core/app/api/plugin';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { pluginClient } from '@/web/core/app/api/plugin';
 
 function UploadSystemToolModal({
   onClose,
@@ -25,20 +24,27 @@ function UploadSystemToolModal({
     async () => {
       const file = selectFiles[0];
 
-      const presignedData = await getPluginUploadPresignedURL({
-        filename: file.name
+      const presignedData = await pluginClient.tool.upload.getUploadURL({
+        query: {
+          filename: file.name
+        }
       });
+      if (presignedData.status !== 200) {
+        return Promise.reject(presignedData.body);
+      }
 
       const formData = new FormData();
-      Object.entries(presignedData.formData).forEach(([key, value]) => {
+      Object.entries(presignedData.body.formData).forEach(([key, value]) => {
         formData.append(key, value);
       });
       formData.append('file', file.file);
 
-      await postS3UploadFile(presignedData.uploadUrl, formData);
+      await postS3UploadFile(presignedData.body.postURL, formData);
 
-      await postConfirmUpload({
-        objectName: presignedData.objectName
+      await pluginClient.tool.upload.confirmUpload({
+        body: {
+          objectName: presignedData.body.objectName
+        }
       });
     },
     {

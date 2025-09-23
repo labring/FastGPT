@@ -12,7 +12,7 @@ import { type SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { postDeletePlugin } from '@/web/core/app/api/plugin';
+import { pluginClient } from '@/web/core/app/api/plugin';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const PluginCard = ({
@@ -43,12 +43,20 @@ const PluginCard = ({
 
   const isUploadedPlugin = item.toolSource === 'uploaded';
 
-  const { runAsync: handleDelete } = useRequest2(postDeletePlugin, {
-    successToast: t('common:delete_success'),
-    onSuccess() {
-      refreshTools();
+  const { runAsync: handleDelete } = useRequest2(
+    (toolId: string) =>
+      pluginClient.tool.upload.delete({
+        query: {
+          toolId
+        }
+      }),
+    {
+      successToast: t('common:delete_success'),
+      onSuccess() {
+        refreshTools();
+      }
     }
-  });
+  );
 
   return (
     <MyBox

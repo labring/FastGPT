@@ -4,20 +4,23 @@ import type { SystemCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
 
+const cachePrefix = `${FASTGPT_REDIS_PREFIX}:VERSION_KEY:`;
+
+export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`) => {
+  const redis = getGlobalRedisConnection();
+  if (!global.systemCache) initCache();
+
+  const val = randomUUID();
+  await redis.set(`${cachePrefix}${key}`, val);
+};
+
 export const getCachedData = async (key: `${SystemCacheKeyEnum}`) => {
   const redis = getGlobalRedisConnection();
-
-  const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`) => {
-    if (!global.systemCache) initCache();
-
-    const val = randomUUID();
-    await redis.set(`${FASTGPT_REDIS_PREFIX}:VERSION_KEY:${key}`, val);
-  };
 
   const getVersionkey = async (key: `${SystemCacheKeyEnum}`) => {
     if (!global.systemCache) initCache();
 
-    const versionKey = `${FASTGPT_REDIS_PREFIX}:VERSION_KEY:${key}`;
+    const versionKey = `${cachePrefix}${key}`;
     const val = await redis.get(versionKey);
     if (val) return val;
 
