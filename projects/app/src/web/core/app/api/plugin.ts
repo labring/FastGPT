@@ -30,9 +30,7 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
-import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
 import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 /* ============ team plugin ============== */
