@@ -1,5 +1,4 @@
 import { addLog } from '../utils/log';
-import { getCsrfToken } from '../../../app/src/web/common/utils/csrfToken';
 
 type ConfigType = {
   headers?: Record<string, string>;
@@ -90,15 +89,11 @@ async function request(url: string, data: any, config: ConfigType, method: strin
 
   // Default timeout from config or 600 seconds
   const timeout = config.timeout || 600000;
-  // prevent circular requests
-  const isGenerateCsrfTokenRequest = url.includes('/support/user/account/generateCsrfToken');
-  const csrfToken = isGenerateCsrfTokenRequest ? '' : await getCsrfToken();
 
   const options: RequestInit = {
     method,
     headers: {
       'content-type': 'application/json',
-      ...(csrfToken && { 'x-csrf-token': csrfToken }),
       ...config.headers
     },
     signal: AbortSignal.timeout(timeout)
