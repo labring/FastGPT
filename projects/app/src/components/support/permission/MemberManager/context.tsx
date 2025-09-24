@@ -88,14 +88,14 @@ const CollaboratorContextProvider = ({
   refreshDeps = [],
   defaultRole,
   isInheritPermission,
-  batch = false
+  hint
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
   isInheritPermission?: boolean;
   hasParent?: boolean;
   addPermissionOnly?: boolean;
-  batch?: boolean;
+  hint?: string;
 }) => {
   const { t } = useTranslation();
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
@@ -221,6 +221,7 @@ const CollaboratorContextProvider = ({
             onCloseManageModal();
             refetchResource?.();
           }}
+          hint={hint}
         />
       )}
     </CollaboratorContext.Provider>
