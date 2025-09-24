@@ -254,10 +254,12 @@ export const streamFetch = ({
         },
         onerror(err) {
           if (err instanceof FatalError) {
+            failedFinish(getErrText(err));
             throw err;
           }
           clearTimeout(timeoutId);
-          failedFinish(getErrText(err));
+          console.log('Connection error, will retry...', err);
+          return 300; // 3秒后重连
         },
         openWhenHidden: true
       });
