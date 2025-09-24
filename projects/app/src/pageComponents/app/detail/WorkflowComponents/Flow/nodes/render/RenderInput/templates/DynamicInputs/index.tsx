@@ -134,7 +134,7 @@ const Reference = ({
 
   const { referenceList } = useReference({
     nodeId,
-    valueType: inputChildren.valueType || WorkflowIOValueTypeEnum.any
+    valueType: WorkflowIOValueTypeEnum.any
   });
 
   const onlBlurLabel = useCallback(
