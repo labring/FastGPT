@@ -314,7 +314,7 @@ const ModelTable = () => {
                   <Td fontSize={'sm'}>
                     <CollaboratorContextProvider
                       defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.name)}
+                      onGetCollaboratorList={() => getModelCollaborators(item.model)}
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
