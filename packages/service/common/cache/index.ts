@@ -54,7 +54,6 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   }
 
   const refreshedData = await global.systemCache[key].refreshFunc();
-  await refreshVersionKey(key, id);
   global.systemCache[key].data = refreshedData;
   global.systemCache[key].versionKey = versionKey;
   return global.systemCache[key].data;
