@@ -53,7 +53,7 @@ const LabelAndFormRender = ({
   return (
     <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
-        {typeof label === 'string' ? <FormLabel required={required}>{label}</FormLabel> : label}
+        {typeof label === 'string' ? <FormLabel required={required}>{t(label)}</FormLabel> : label}
         {placeholder && <QuestionTip ml={1} label={placeholder} />}
       </Flex>
 

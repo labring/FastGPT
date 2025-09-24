@@ -26,10 +26,10 @@ function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' |
     >
       {type === 'simple' ? (
         <Box
-          className="textEllipsis"
+          noOfLines={1}
           fontSize="xs"
           fontWeight={400}
-          w="full"
+          maxW={'200px'}
           color="myGray.400"
           whiteSpace={'nowrap'}
         >

@@ -1,12 +1,3 @@
-import {
-  CHECK_LIST,
-  ELEMENT_TRANSFORMERS,
-  TEXT_FORMAT_TRANSFORMERS,
-  type Transformer
-} from '@lexical/markdown';
+import { ORDERED_LIST, UNORDERED_LIST, type Transformer } from '@lexical/markdown';
 
-export const RICH_PROMPT_TRANSFORMERS: Array<Transformer> = [
-  CHECK_LIST,
-  ...ELEMENT_TRANSFORMERS,
-  ...TEXT_FORMAT_TRANSFORMERS
-];
+export const RICH_PROMPT_TRANSFORMERS: Array<Transformer> = [ORDERED_LIST, UNORDERED_LIST];

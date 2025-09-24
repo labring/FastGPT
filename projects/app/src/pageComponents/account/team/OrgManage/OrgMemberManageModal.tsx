@@ -160,8 +160,8 @@ function OrgMemberManageModal({
             </MemberScrollData>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
-            <OrgMemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
-              <Box mt={2}>{`${t('common:chosen')}:${selected.length}`}</Box>
+            <OrgMemberScrollData flexGrow="1" overflow={'auto'}>
+              <Box mt={2} mb={3}>{`${t('common:chosen')}:${selected.length}`}</Box>
               {selected.map((member) => {
                 return (
                   <HStack

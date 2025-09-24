@@ -118,19 +118,21 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
 
           {externalVariableList.length > 0 && (
             <Box textAlign={'left'}>
-              <Flex
-                color={'primary.600'}
-                bg={'primary.100'}
-                mb={3}
-                px={3}
-                py={1.5}
-                gap={1}
-                fontSize={'mini'}
-                rounded={'sm'}
-              >
-                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                {t('chat:variable_invisable_in_share')}
-              </Flex>
+              {chatType !== ChatTypeEnum.chat && (
+                <Flex
+                  color={'primary.600'}
+                  bg={'primary.100'}
+                  mb={3}
+                  px={3}
+                  py={1.5}
+                  gap={1}
+                  fontSize={'mini'}
+                  rounded={'sm'}
+                >
+                  <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                  {t('chat:variable_invisable_in_share')}
+                </Flex>
+              )}
               {externalVariableList.map((item) => (
                 <LabelAndFormRender
                   {...item}

@@ -21,7 +21,6 @@
   "delete.admin_success": "Admin Deleted Successfully",
   "delete.failed": "Delete failed",
   "delete.success": "Delete successfully",
-  "has_chosen": "Selected",
   "login.Dingtalk": "DingTalk Login",
   "login.error": "Login Error",
   "login.password_condition": "Password can be up to 60 characters",

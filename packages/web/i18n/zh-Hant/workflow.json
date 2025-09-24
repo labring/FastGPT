@@ -46,6 +46,7 @@
   "dataset_quote_role_system_option_desc": "歷史紀錄連貫優先（建議）",
   "dataset_quote_role_tip": "設定為 System 時，會將知識庫引用內容放置到系統訊息中，可以確保歷史紀錄的連貫性，但約束效果可能不佳。\n設定為 User 時，會將知識庫引用內容放置到使用者訊息中，並且需要指定 {{question}} 變數位置。會對歷史紀錄連貫性有一定影響，但通常約束效果較佳。",
   "dataset_quote_role_user_option_desc": "強約束優先",
+  "debug_test": "Debug 調試",
   "dynamic_input_description": "接收前一個節點的輸出值作為變數，這些變數可以被 Laf 請求參數使用。",
   "edit_input": "編輯輸入",
   "edit_output": "編輯輸出",

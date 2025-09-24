@@ -1,5 +1,5 @@
 {
-  "AI_input_is_empty": "传入AI 节点的内容为空",
+  "AI_input_is_empty": "传入 AI 节点的内容为空",
   "Delete_all": "清空词库",
   "LLM_model_response_empty": "模型流响应为空，请检查模型流输出是否正常",
   "ai_reasoning": "思考过程",

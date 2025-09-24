@@ -142,7 +142,7 @@ export const clearExpiredDatasetImageCron = async () => {
 
     for (const item of data) {
       try {
-        await gridBucket.delete(item._id);
+        await gridBucket.delete(new Types.ObjectId(item._id));
       } catch (error) {
         addLog.error('Delete expired dataset image error', error);
       }

@@ -133,7 +133,7 @@
   "llm_paragraph_mode_force_desc": "強制使用模型自動識別段落，並忽略原文本的段落（如有）",
   "loading": "加載中...",
   "max_chunk_size": "最大分塊大小",
-  "move.hint": "移動後，所選資料集／資料夾將繼承新資料夾的權限設定，原先的權限設定將失效。",
+  "move.hint": "移動後，所選知識庫/文件夾將繼承新文件夾的權限設置。",
   "noChildren": "無子目錄",
   "noSelectedFolder": "沒有選擇文件夾",
   "noSelectedId": "沒有選擇 ID",

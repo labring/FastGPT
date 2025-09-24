@@ -8,13 +8,6 @@ const createWorkflowDiffPatcher = () =>
 
 const diffPatcher = createWorkflowDiffPatcher();
 
-export const getAppDiffConfig = <T extends Record<string, unknown>>(
-  initialState?: T,
-  newState?: T
-) => {
-  return diffPatcher.diff(initialState, newState);
-};
-
 export const getAppConfigByDiff = <T extends Record<string, unknown>>(
   initialState?: T,
   diff?: ReturnType<typeof diffPatcher.diff>

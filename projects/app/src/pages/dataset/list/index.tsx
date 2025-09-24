@@ -30,6 +30,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -254,6 +255,7 @@ const Dataset = () => {
                 })
               }
               managePer={{
+                defaultRole: ReadRoleVal,
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 roleList: DatasetRoleList,

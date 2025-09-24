@@ -27,6 +27,7 @@ import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -78,6 +79,10 @@ const AppChatWindow = ({ myApps }: Props) => {
       errorToast: '',
       onError(e: any) {
         if (e?.code && e.code >= 502000) {
+          if (e?.statusText === ChatErrEnum.unAuthChat) {
+            onChangeChatId();
+            return;
+          }
           handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
         }
       },

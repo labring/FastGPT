@@ -141,6 +141,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       flowUsages: [],
       debugResponse: {
         memoryEdges: [],
+        memoryNodes: [],
         entryNodeIds: [],
         nodeResponses: {},
         skipNodeQueue: []
@@ -850,6 +851,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           ...edge,
           status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
         })),
+        memoryNodes: Array.from(this.runtimeNodesMap.values()),
         entryNodeIds,
         nodeResponses: this.debugNodeResponses,
         skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({

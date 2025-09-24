@@ -15,7 +15,7 @@ function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProp
 
   return (
     <HStack space="1" {...props}>
-      <Avatar src={sourceMember.avatar} w={avatarSize} />
+      <Avatar src={sourceMember.avatar} w={avatarSize} borderRadius={'xs'} />
       <Box maxW={'150px'} whiteSpace={'nowrap'} overflow={'hidden'}>
         {sourceMember.name}
       </Box>

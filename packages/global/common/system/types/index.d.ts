@@ -70,6 +70,7 @@ export type FastGPTFeConfigsType = {
   show_dataset_yuque?: boolean;
   show_publish_feishu?: boolean;
   show_publish_dingtalk?: boolean;
+  show_publish_wecom?: boolean;
   show_publish_offiaccount?: boolean;
 
   show_dataset_enhance?: boolean;

@@ -11,7 +11,7 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
   return (
     <Box>
       <CollaboratorContextProvider {...managePer}>
-        {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+        {({ MemberListCard, onOpenManageModal }) => {
           return (
             <>
               <Flex alignItems="center" flexDirection="row" justifyContent="space-between" w="full">
@@ -28,17 +28,6 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
                       color={'myGray.600'}
                       cursor={'pointer'}
                       _hover={{ color: 'primary.500' }}
-                    />
-                  </Box>
-                  <Box>
-                    <MyIcon
-                      cursor={'pointer'}
-                      onClick={onOpenAddMember}
-                      name="common/addUser"
-                      _hover={{ color: 'primary.500' }}
-                      w={'1rem'}
-                      h={'1rem'}
-                      color={'myGray.600'}
                     />
                   </Box>
                 </Flex>

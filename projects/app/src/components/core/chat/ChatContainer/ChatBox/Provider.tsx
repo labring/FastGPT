@@ -46,7 +46,6 @@ export type ChatProviderProps = {
 type useChatStoreType = ChatProviderProps & {
   welcomeText: string;
   variableList: VariableItemType[];
-  allVariableList: VariableItemType[];
   questionGuide: AppQGConfigType;
   ttsConfig: AppTTSConfigType;
   whisperConfig: AppWhisperConfigType;
@@ -238,10 +237,7 @@ const Provider = ({
   const value: useChatStoreType = {
     ...props,
     welcomeText,
-    variableList: variables.filter(
-      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-    ),
-    allVariableList: variables,
+    variableList: variables,
     questionGuide,
     ttsConfig,
     fileSelectConfig,

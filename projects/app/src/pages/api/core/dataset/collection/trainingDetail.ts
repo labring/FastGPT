@@ -9,6 +9,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { Types } from '@fastgpt/service/common/mongo';
 
 type getTrainingDetailParams = {
   collectionId: string;
@@ -50,9 +51,9 @@ async function handler(
   });
 
   const match = {
-    teamId: collection.teamId,
-    datasetId: collection.datasetId,
-    collectionId: collection._id
+    teamId: new Types.ObjectId(collection.teamId),
+    datasetId: new Types.ObjectId(collection.datasetId),
+    collectionId: new Types.ObjectId(collection._id)
   };
 
   // Computed global queue
@@ -74,7 +75,7 @@ async function handler(
           [
             {
               $match: {
-                _id: { $lt: minId },
+                _id: { $lt: new Types.ObjectId(minId) },
                 retryCount: { $gt: 0 },
                 lockTime: { $lt: new Date('2050/1/1') }
               }

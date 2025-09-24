@@ -129,13 +129,13 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     defaultPageSize: 20,
+    storeToQuery: true,
     params: {
       datasetId,
       parentId,
       searchText,
       filterTags
     },
-    // defaultRequest: false,
     refreshDeps: [parentId, searchText, filterTags]
   });
 

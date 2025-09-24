@@ -1,0 +1,52 @@
+---
+title: 'V4.12.4(包含升级脚本)'
+description: 'FastGPT V4.12.4 更新说明, 发布于 2025-9-15'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.12.4
+- 更新 FastGPT 商业版镜像tag: v4.12.4
+- 更新 fastgpt-plugin 镜像 tag: v0.1.13
+- mcp_server 无需更新
+- 更新 Sandbox 镜像 tag: v4.12.4
+- AIProxy 无需更新
+
+### 2. 执行升级脚本
+
+该脚本仅需商业版用户执行。
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4124' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**脚本功能**
+
+1. 补充所有资源的owner权限
+
+## 🚀 新增内容
+
+1. 商业版支持企微发布渠道。
+
+## ⚙️ 优化
+
+1. 权限继承优化，子资源权限高于父级时，不会强制打断继承模式。
+2. Prompt 编辑器支持列表渲染。
+3. 数据页返回知识库列表，保持分页。
+4. 知识库上传文件成功后，返回对应上传目录。
+5. 删除应用，减少事务操作。
+6. 用户选择 UI。
+
+## 🐛 修复
+
+1. HTTP 工具空指针，导致无法编辑。
+2. python 代码运行，入参无法是 boolean 值。
+
+## 🔨 插件更新
+

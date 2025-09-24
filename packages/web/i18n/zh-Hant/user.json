@@ -21,7 +21,6 @@
   "delete.admin_success": "刪除管理員成功",
   "delete.failed": "刪除失敗",
   "delete.success": "刪除成功",
-  "has_chosen": "已選擇",
   "login.Dingtalk": "釘釘登入",
   "login.error": "登入失敗",
   "login.password_condition": "密碼最多可輸入 60 個字元",

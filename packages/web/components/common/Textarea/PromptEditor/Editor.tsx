@@ -15,6 +15,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
+import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
@@ -219,7 +220,6 @@ export default function Editor({
           )}
           {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
           <OnBlurPlugin onBlur={onBlur} />
-          <ListDisplayFixPlugin />
           <OnChangePlugin
             onChange={(editorState, editor) => {
               const rootElement = editor.getRootElement();
@@ -232,11 +232,12 @@ export default function Editor({
 
           {isRichText && (
             <>
-              {/* <ListPlugin />
+              <ListDisplayFixPlugin />
+              <TabIndentationPlugin />
+              <ListPlugin />
               <CheckListPlugin />
-              <ListExitPlugin /> */}
-              <TabToSpacesPlugin />
-              {/* <MarkdownPlugin /> */}
+              <ListExitPlugin />
+              <MarkdownPlugin />
             </>
           )}
         </>

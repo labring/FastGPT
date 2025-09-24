@@ -1,6 +1,4 @@
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
@@ -9,6 +7,8 @@ import {
   ChatRoleEnum,
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
+import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -17,13 +17,13 @@ import {
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 export const getScheduleTriggerApp = async () => {
   addLog.info('Schedule trigger app');

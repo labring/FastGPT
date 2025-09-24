@@ -26,6 +26,7 @@ import {
 import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 import MyMenu from '../components/common/MyMenu';
 import { useSystem } from './useSystem';
+import { useRouter } from 'next/router';
 
 const thresholdVal = 200;
 
@@ -35,19 +36,18 @@ export function usePagination<DataT, ResT = {}>(
     defaultPageSize = 10,
     pageSizeOptions: defaultPageSizeOptions,
     params,
-    defaultRequest = true,
     type = 'button',
     onChange,
     refreshDeps,
     scrollLoadType = 'bottom',
     EmptyTip,
     pollingInterval,
-    pollingWhenHidden = false
+    pollingWhenHidden = false,
+    storeToQuery = false
   }: {
     defaultPageSize?: number;
     pageSizeOptions?: number[];
     params?: DataT;
-    defaultRequest?: boolean;
     type?: 'button' | 'scroll';
     onChange?: (pageNum: number) => void;
     refreshDeps?: any[];
@@ -56,15 +56,20 @@ export function usePagination<DataT, ResT = {}>(
     EmptyTip?: React.JSX.Element;
     pollingInterval?: number;
     pollingWhenHidden?: boolean;
+    storeToQuery?: boolean;
   }
 ) {
+  const router = useRouter();
+  let { page = '1' } = router.query as { page: string };
+  const numPage = Number(page);
+
   const { toast } = useToast();
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
-  const [pageNum, setPageNum] = useState(1);
+  const [pageNum, setPageNum] = useState(numPage);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const pageSizeOptions = useCreation(
     () => defaultPageSizeOptions || [10, 20, 50, 100],
@@ -76,7 +81,7 @@ export function usePagination<DataT, ResT = {}>(
   const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
   const isEmpty = total === 0 && !isLoading;
-  const noMore = data.length >= totalDataLength;
+  const noMore = data.length > 0 && data.length >= totalDataLength;
 
   const fetchData = useMemoizedFn(
     async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
@@ -92,6 +97,16 @@ export function usePagination<DataT, ResT = {}>(
         });
 
         setPageNum(num);
+        if (storeToQuery && num !== pageNum) {
+          router.replace({
+            pathname: router.pathname,
+            query: {
+              ...router.query,
+              page: num
+            }
+          });
+        }
+
         res.total !== undefined && setTotal(res.total);
 
         if (type === 'scroll') {
@@ -268,7 +283,8 @@ export function usePagination<DataT, ResT = {}>(
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || type !== 'scroll' || noMore || isLoading) return;
+          if (!ref?.current || type !== 'scroll' || noMore || isLoading || data.length === 0)
+            return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
@@ -313,9 +329,16 @@ export function usePagination<DataT, ResT = {}>(
   );
 
   // Reload data
+  const isFirstLoad = useRef(true);
   const { runAsync: refresh } = useRequest(
     async () => {
-      defaultRequest && fetchData(1);
+      if (isFirstLoad.current) {
+        isFirstLoad.current = false;
+        fetchData(numPage);
+        return;
+      }
+
+      fetchData(1);
     },
     {
       manual: false,
@@ -323,6 +346,7 @@ export function usePagination<DataT, ResT = {}>(
       throttleWait: 100
     }
   );
+  // Page size refresh
   useEffect(() => {
     data.length > 0 && fetchData();
   }, [pageSize]);

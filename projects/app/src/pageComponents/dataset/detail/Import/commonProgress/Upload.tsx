@@ -190,7 +190,7 @@ const Upload = () => {
         router.replace({
           query: {
             datasetId: datasetDetail._id,
-            currentTab: TabEnum.collectionCard
+            parentId
           }
         });
       },

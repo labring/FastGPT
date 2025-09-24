@@ -75,7 +75,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
-  useCheckCoupon(userInfo);
+  useCheckCoupon();
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,

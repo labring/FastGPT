@@ -30,6 +30,7 @@ import {
   nodeInputTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -41,7 +42,7 @@ enum TabEnum {
 }
 
 export const useDebug = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
@@ -223,14 +224,14 @@ export const useDebug = () => {
 
     const onCheckRunError = useCallback((e: FieldErrors<Record<string, any>>) => {
       const hasRequiredNodeVar =
-        e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'required');
+        e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'validate');
 
       if (hasRequiredNodeVar) {
         return setCurrentTab(TabEnum.node);
       }
 
       const hasRequiredGlobalVar =
-        e.variables && Object.values(e.variables).some((item) => item.type === 'required');
+        e.variables && Object.values(e.variables).some((item) => item.type === 'validate');
 
       if (hasRequiredGlobalVar) {
         setCurrentTab(TabEnum.global);
@@ -241,8 +242,8 @@ export const useDebug = () => {
       <MyRightDrawer
         onClose={onClose}
         iconSrc="core/workflow/debugBlue"
-        title={t('common:core.workflow.Debug Node')}
-        maxW={['90vw', '35vw']}
+        title={t('workflow:debug_test')}
+        maxW={['90vw', '40vw']}
         px={0}
       >
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
@@ -260,12 +261,27 @@ export const useDebug = () => {
               onChange={setCurrentTab}
             />
           )}
+          <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
+            {renderInputs.map((item) => (
+              <LabelAndFormRender
+                key={item.key}
+                label={item.label}
+                required={item.required}
+                placeholder={t(item.placeholder || item.description)}
+                inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                form={variablesForm}
+                fieldName={`nodeVariables.${item.key}`}
+                bg={'myGray.50'}
+              />
+            ))}
+          </Box>
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
               <LabelAndFormRender
-                {...item}
                 key={item.key}
-                placeholder={item.description}
+                label={item.label}
+                required={item.required}
+                placeholder={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -274,9 +290,10 @@ export const useDebug = () => {
             ))}
             {internalVar.map((item) => (
               <LabelAndFormRender
-                {...item}
                 key={item.key}
-                placeholder={item.description}
+                label={item.label}
+                required={item.required}
+                placeholder={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -285,25 +302,13 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...item}
                 key={item.key}
+                label={item.label}
+                required={item.required}
                 placeholder={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
-                bg={'myGray.50'}
-              />
-            ))}
-          </Box>
-          <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
-            {renderInputs.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                placeholder={item.placeholder || item.description}
-                inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                form={variablesForm}
-                fieldName={`nodeVariables.${item.key}`}
                 bg={'myGray.50'}
               />
             ))}

@@ -112,8 +112,8 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.12.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.12.3 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.12.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.12.4 # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -169,15 +169,15 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.12.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.12.3 # 阿里云
+    image: ghcr.io/labring/fastgpt-sandbox:v4.12.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.12.4 # 阿里云
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.12.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.12.3 # 阿里云
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.12.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.12.4 # 阿里云
     ports:
       - 3005:3000
     networks:
@@ -186,8 +186,8 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.1.12 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.12 # 阿里云
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.13 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.13 # 阿里云
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -212,8 +212,8 @@ services:
 
   # AI Proxy
   aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.2.2
-    # image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.2.2 # 阿里云
+    image: ghcr.io/labring/aiproxy:v0.3.2
+    # image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.2 # 阿里云
     container_name: aiproxy
     restart: unless-stopped
     depends_on:

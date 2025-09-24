@@ -1,5 +1,5 @@
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { connectionMongo } from '../../mongo';
+import { connectionMongo, Types } from '../../mongo';
 import { MongoRawTextBufferSchema, bucketName } from './schema';
 import { addLog } from '../../system/log';
 import { setCron } from '../../system/cron';
@@ -86,7 +86,7 @@ export const getRawTextBuffer = async (sourceId: string) => {
     }
 
     // Read file content
-    const downloadStream = gridBucket.openDownloadStream(bufferData._id);
+    const downloadStream = gridBucket.openDownloadStream(new Types.ObjectId(bufferData._id));
 
     const fileBuffers = await gridFsStream2Buffer(downloadStream);
 
@@ -120,7 +120,7 @@ export const deleteRawTextBuffer = async (sourceId: string): Promise<boolean> =>
       return false;
     }
 
-    await gridBucket.delete(buffer._id);
+    await gridBucket.delete(new Types.ObjectId(buffer._id));
     return true;
   });
 };
@@ -155,7 +155,7 @@ export const clearExpiredRawTextBufferCron = async () => {
 
     for (const item of data) {
       try {
-        await gridBucket.delete(item._id);
+        await gridBucket.delete(new Types.ObjectId(item._id));
       } catch (error) {
         addLog.error('Delete expired raw text buffer error', error);
       }

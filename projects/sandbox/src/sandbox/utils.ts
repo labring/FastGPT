@@ -12,7 +12,7 @@ import { createHmac } from './jsFn/crypto';
 import { spawn } from 'child_process';
 import { pythonScript } from './constants';
 const CustomLogStr = 'CUSTOM_LOG';
-const PythonScriptFileName = 'main.py';
+
 export const runJsSandbox = async ({
   code,
   variables = {}
@@ -111,13 +111,31 @@ export const runJsSandbox = async ({
   }
 };
 
+const PythonScriptFileName = 'main.py';
 export const runPythonSandbox = async ({
   code,
   variables = {}
 }: RunCodeDto): Promise<RunCodeResponse> => {
+  // Validate input parameters
+  if (!code || typeof code !== 'string' || !code.trim()) {
+    return Promise.reject('Code cannot be empty');
+  }
+
+  // Ensure variables is an object
+  if (variables === null || variables === undefined) {
+    variables = {};
+  }
+  if (typeof variables !== 'object' || Array.isArray(variables)) {
+    return Promise.reject('Variables must be an object');
+  }
+
   const tempDir = await mkdtemp(join(tmpdir(), 'python_script_tmp_'));
+  const dataJson = JSON.stringify({ code, variables, tempDir });
+  const dataBase64 = Buffer.from(dataJson).toString('base64');
   const mainCallCode = `
-data = ${JSON.stringify({ code, variables, tempDir })}
+import json
+import base64
+data = json.loads(base64.b64decode('${dataBase64}').decode('utf-8'))
 res = run_pythonCode(data)
 print(json.dumps(res))
 `;
@@ -173,7 +191,6 @@ async function createTempFile(tempFileDirPath: string, context: string) {
     return {
       path: tempFilePath,
       cleanup: () => {
-        rmSync(tempFilePath);
         rmSync(tempFileDirPath, {
           recursive: true,
           force: true

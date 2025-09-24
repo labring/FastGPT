@@ -46,6 +46,8 @@ import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -70,7 +72,9 @@ const NodeTemplateListItem = ({
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
+
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
@@ -79,7 +83,7 @@ const NodeTemplateListItem = ({
     <MyTooltip
       placement={'right'}
       label={
-        <Box py={2}>
+        <Box py={2} minW={['auto', '250px']}>
           <Flex alignItems={'center'}>
             <MyAvatar
               src={template.avatar}
@@ -87,9 +91,10 @@ const NodeTemplateListItem = ({
               objectFit={'contain'}
               borderRadius={'sm'}
             />
-            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
               {template.name}
             </Box>
+            <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
           </Flex>
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
             {template.intro || t('common:core.workflow.Not intro')}

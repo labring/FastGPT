@@ -1,11 +1,15 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { parseHeaderCert } from '../controller';
 import { getFileById } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
+import type { FileTokenQuery } from '@fastgpt/global/common/file/type';
+import { addMinutes } from 'date-fns';
+import { parseHeaderCert } from './common';
+import jwt from 'jsonwebtoken';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 export const authCollectionFile = async ({
   fileId,
@@ -46,3 +50,45 @@ export const authCollectionFile = async ({
     file
   };
 };
+
+/* file permission */
+export const createFileToken = (data: FileTokenQuery) => {
+  if (!process.env.FILE_TOKEN_KEY) {
+    return Promise.reject('System unset FILE_TOKEN_KEY');
+  }
+
+  const expireMinutes =
+    data.customExpireMinutes ?? bucketNameMap[data.bucketName].previewExpireMinutes;
+  const expiredTime = Math.floor(addMinutes(new Date(), expireMinutes).getTime() / 1000);
+
+  const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
+  const token = jwt.sign(
+    {
+      ...data,
+      exp: expiredTime
+    },
+    key
+  );
+  return Promise.resolve(token);
+};
+
+export const authFileToken = (token?: string) =>
+  new Promise<FileTokenQuery>((resolve, reject) => {
+    if (!token) {
+      return reject(ERROR_ENUM.unAuthFile);
+    }
+    const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
+
+    jwt.verify(token, key, (err, decoded: any) => {
+      if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
+        reject(ERROR_ENUM.unAuthFile);
+        return;
+      }
+      resolve({
+        bucketName: decoded.bucketName,
+        teamId: decoded.teamId,
+        uid: decoded.uid,
+        fileId: decoded.fileId
+      });
+    });
+  });
