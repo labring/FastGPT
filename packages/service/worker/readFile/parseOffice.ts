@@ -43,9 +43,23 @@ const parsePowerPoint = async ({
     return Promise.reject('解析 PPT 失败');
   }
 
+  // Sort files by slide number to ensure correct order
+  const sortedFiles = files.sort((a, b) => {
+    // Extract slide number from path like "ppt/slides/slide1.xml"
+    const getSlideNumber = (path: string) => {
+      const match = path.match(/slide(\d+)\.xml/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
+    const slideNumA = getSlideNumber(a.path);
+    const slideNumB = getSlideNumber(b.path);
+
+    return slideNumA - slideNumB;
+  });
+
   // Returning an array of all the xml contents read using fs.readFileSync
   const xmlContentArray = await Promise.all(
-    files.map(async (file) => {
+    sortedFiles.map(async (file) => {
       try {
         return await fs.promises.readFile(`${decompressPath}/${file.path}`, encoding);
       } catch (err) {
