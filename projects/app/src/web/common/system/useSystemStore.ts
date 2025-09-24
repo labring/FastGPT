@@ -21,7 +21,6 @@ import {
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels } from './api';
-import { cloneDeep } from 'lodash';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -174,7 +173,7 @@ export const useSystemStore = create<State>()(
           try {
             const res = await getMyModels({ versionKey: get().myModelList.versionKey });
             if (res.isRefreshed === false) {
-              return cloneDeep(get().myModelList.modelSet);
+              return new Set(get().myModelList.modelSet);
             } else {
               set((state) => {
                 state.myModelList = {
@@ -187,7 +186,7 @@ export const useSystemStore = create<State>()(
           } catch {
             console.log('Get my modals error');
           }
-          return cloneDeep(get().myModelList.modelSet);
+          return new Set(get().myModelList.modelSet);
         },
 
         getVlmModelList: () => {
