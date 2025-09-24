@@ -120,6 +120,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     const { flowResponses, flowUsages, assistantResponses, runTimes, system_memories } =
       await runWorkflow({
         ...props,
+        usageId: undefined,
         // Rewrite stream mode
         ...(system_forbid_stream
           ? {

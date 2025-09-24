@@ -95,6 +95,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     const response = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
@@ -150,12 +151,14 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        totalPoints,
-        moduleName: name
-      }
-    ],
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
+      ? [
+          {
+            totalPoints,
+            moduleName: name
+          }
+        ]
+      : [],
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables
   };
 };
