@@ -9,18 +9,18 @@ description: 'FastGPT V4.13.0 更新说明'
 
 - 更新 FastGPT 镜像tag: v4.13.0
 - 更新 FastGPT 商业版镜像tag: v4.13.0
-- 更新 fastgpt-plugin 镜像 tag: v0.1.14
+- 更新 fastgpt-plugin 镜像 tag: v0.2.0
 - mcp_server 无需更新
 - Sandbox 无需更新
 - AIProxy 无需更新
 
 ### 2. 更新环境变量
 
-1. 更新 `fastgpt-plugin` 环境变量名字，并新增`S3_PLUGIN_BUCKET`值。
+1. 更新 `fastgpt-plugin` 环境变量名字，并新增`S3_PLUGIN_BUCKET`、`MONGODB_URI`、`REDIS_URL`值。
 
 ```
-# S3 外网地址
-S3_EXTERNAL_BASE_URL=
+
+S3_EXTERNAL_BASE_URL=https://xxx.com # S3 外网地址
 S3_ENDPOINT=localhost
 S3_PORT=9000
 S3_USE_SSL=false
@@ -29,6 +29,8 @@ S3_SECRET_KEY=minioadmin
 S3_TOOL_BUCKET=fastgpt-tool # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
 S3_PLUGIN_BUCKET=fastgpt-plugin # 系统插件热安装文件的桶，私有读写。
 RETENTION_DAYS=15 # 系统工具临时文件保存天数
+MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin # MongoDB 链接参数
+REDIS_URL=redis://default:mypassword@redis:6379 # Redis 链接参数
 ```
 
 2. 增加`fastgpt`和`fastgpt-pro(商业版)` s3 相关环境变量。
