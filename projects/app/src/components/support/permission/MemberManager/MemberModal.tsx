@@ -3,7 +3,7 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Tooltip } from '@chakra-ui/react';
 import {
   DEFAULT_ORG_AVATAR,
   DEFAULT_TEAM_AVATAR,
@@ -30,19 +30,18 @@ import type { RoleValueType } from '@fastgpt/global/support/permission/type';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import {
   checkRoleUpdateConflict,
-  getCollaboratorId,
-  mergeCollaboratorList
+  getCollaboratorId
 } from '@fastgpt/global/support/permission/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
-import { isObjectIdOrHexString } from 'mongoose';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
   cursor: 'pointer'
 };
 
-function MemberModal({ onClose }: { onClose: () => void }) {
+function MemberModal({ onClose, hint }: { onClose: () => void; hint?: string }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
@@ -462,6 +461,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
           </Grid>
         </ModalBody>
         <ModalFooter>
+          {hint && <LightTip text={hint} />}
           <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
             {t('common:Confirm')}
           </Button>

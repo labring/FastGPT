@@ -89,5 +89,6 @@
   "vlm_model": "图片理解模型",
   "vlm_model_tip": "用于知识库中对文档中的图片进行额外的索引生成",
   "volunme_of_failed_calls": "调用失败量",
-  "waiting_test": "等待测试"
+  "waiting_test": "等待测试",
+  "model_permission_config_hint": "若无协作者，默认全部成员可用"
 }

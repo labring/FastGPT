@@ -313,8 +313,9 @@ const ModelTable = () => {
                 {userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
                     <CollaboratorContextProvider
+                      hint={t('account_model:model_permission_config_hint')}
                       defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() => getModelCollaborators(item.name)}
+                      onGetCollaboratorList={() => getModelCollaborators(item.model)}
                       onUpdateCollaborators={({ collaborators }) =>
                         updateModelCollaborators({
                           collaborators,
@@ -345,8 +346,8 @@ const ModelTable = () => {
       <FloatingActionBar
         Controler={
           <CollaboratorContextProvider
+            hint={t('account_model:model_permission_config_hint')}
             defaultRole={ReadRoleVal}
-            batch={true}
             onGetCollaboratorList={() =>
               Promise.resolve({
                 clbs: []
