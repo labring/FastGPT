@@ -45,7 +45,6 @@ export async function getEvaluationTaskStatus(evalId: string): Promise<Evaluatio
     // If all task jobs completed, check evaluation item status
     return await getEvaluationTaskStatusFromItems(evalId);
   } catch (error) {
-    addLog.error('Error getting evaluation task status:', { evalId, error });
     return EvaluationStatusEnum.error;
   }
 }
@@ -105,7 +104,6 @@ async function getEvaluationTaskStatusFromItems(evalId: string): Promise<Evaluat
     // Default status
     return EvaluationStatusEnum.completed;
   } catch (error) {
-    addLog.error('Error getting evaluation task status from items:', { evalId, error });
     return EvaluationStatusEnum.error;
   }
 }
@@ -165,7 +163,6 @@ export async function getEvaluationItemStatus(evalItemId: string): Promise<Evalu
 
     return EvaluationStatusEnum.queuing;
   } catch (error) {
-    addLog.error('Error getting evaluation item status:', { evalItemId, error });
     return EvaluationStatusEnum.error;
   }
 }
@@ -413,7 +410,6 @@ export async function checkEvaluationTaskJobActive(evalId: string): Promise<bool
 
     return hasActiveTaskJob || hasActiveItemJob;
   } catch (error) {
-    addLog.error('Error checking evaluation job active status:', { evalId, error });
     return false;
   }
 }
@@ -426,7 +422,6 @@ export async function checkEvaluationItemJobActive(evalItemId: string): Promise<
     const itemJobs = await evaluationItemQueue.getJobs(['waiting', 'delayed', 'active']);
     return itemJobs.some((job) => job.data.evalItemId === evalItemId);
   } catch (error) {
-    addLog.error('Error checking evaluation item job active status:', { evalItemId, error });
     return false;
   }
 }
