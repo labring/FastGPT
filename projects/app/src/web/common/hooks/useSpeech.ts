@@ -445,7 +445,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             setIsTransCription(true);
             try {
               const result = await POST<string>('/v1/audio/transcriptions', formData, {
-                timeout: 60000,
+                timeout: 600000,
                 headers: {
                   'Content-Type': 'multipart/form-data; charset=utf-8'
                 }
@@ -522,7 +522,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
   // listen minuted. over 60 seconds, stop speak
   useEffect(() => {
-    if (audioSecond >= 60) {
+    if (audioSecond >= 3600) {
       stopSpeak();
     }
   }, [audioSecond, stopSpeak]);

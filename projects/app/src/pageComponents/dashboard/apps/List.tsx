@@ -39,8 +39,10 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const ListItem = () => {
+  const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
@@ -342,7 +344,8 @@ const ListItem = () => {
                                               onClick: () => setMoveAppId(app._id)
                                             }
                                           ]),
-                                      ...(app.permission.hasManagePer
+                                      ...(app.permission.hasManagePer &&
+                                      userInfo?.team.permission.hasManagePer
                                         ? [
                                             {
                                               icon: 'key',
