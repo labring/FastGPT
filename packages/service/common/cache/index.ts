@@ -1,10 +1,10 @@
 import './init';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
+import { getGlobalRedisConnection } from '../../common/redis';
 import type { SystemCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
 
-const cachePrefix = `${FASTGPT_REDIS_PREFIX}:VERSION_KEY:`;
+const cachePrefix = `VERSION_KEY:`;
 
 /**
  *
