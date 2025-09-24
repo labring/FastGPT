@@ -82,8 +82,6 @@ export class WorkflowTarget extends EvaluationTarget {
   }
 
   async execute(input: TargetInput): Promise<TargetOutput> {
-    const startTime = Date.now();
-
     // Get application information
     const appData = await MongoApp.findById(this.config.appId);
     if (!appData) {
@@ -211,7 +209,7 @@ export class WorkflowTarget extends EvaluationTarget {
       actualOutput: response,
       retrievalContext: extractRetrievalContext(flowResponses),
       usage: flowUsages,
-      responseTime: Date.now() - startTime,
+      responseTime: durationSeconds,
       chatId,
       aiChatItemDataId
     };
