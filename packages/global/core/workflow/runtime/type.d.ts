@@ -79,6 +79,7 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+  usageId?: string;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
