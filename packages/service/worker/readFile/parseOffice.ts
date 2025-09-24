@@ -45,16 +45,11 @@ const parsePowerPoint = async ({
 
   // Sort files by slide number to ensure correct order
   const sortedFiles = files.sort((a, b) => {
-    // Extract slide number from path like "ppt/slides/slide1.xml"
     const getSlideNumber = (path: string) => {
-      const match = path.match(/slide(\d+)\.xml/);
-      return match ? parseInt(match[1], 10) : 0;
+      const match = path.match(/\d+/);
+      return match ? parseInt(match[0]) : 0;
     };
-
-    const slideNumA = getSlideNumber(a.path);
-    const slideNumB = getSlideNumber(b.path);
-
-    return slideNumA - slideNumB;
+    return getSlideNumber(a.path) - getSlideNumber(b.path);
   });
 
   // Returning an array of all the xml contents read using fs.readFileSync
