@@ -1,4 +1,4 @@
-export type PathDataType = {
+type PathDataType = {
   name: string;
   description: string;
   method: string;

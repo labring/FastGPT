@@ -20,6 +20,7 @@ import {
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
+import { getMyModels } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -65,6 +66,11 @@ type State = {
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  myModelList: {
+    modelSet: Set<string>;
+    versionKey: string;
+  };
+  getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
@@ -159,6 +165,29 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        myModelList: {
+          modelSet: new Set(),
+          versionKey: ''
+        },
+        getMyModelList: async () => {
+          try {
+            const res = await getMyModels({ versionKey: get().myModelList.versionKey });
+            if (res.isRefreshed === false) {
+              return new Set(get().myModelList.modelSet);
+            } else {
+              set((state) => {
+                state.myModelList = {
+                  modelSet: new Set(res.models),
+                  versionKey: res.versionKey
+                };
+              });
+              return new Set(res.models);
+            }
+          } catch {
+            console.log('Get my modals error');
+          }
+          return new Set(get().myModelList.modelSet);
+        },
 
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);

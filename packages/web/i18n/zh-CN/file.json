@@ -19,6 +19,8 @@
   "click_to_view_raw_source": "点击查看来源",
   "common.Some images failed to process": "部分图片处理失败",
   "common.dataset_data_input_image_support_format": "支持 .jpg, .jpeg, .png, .gif, .webp 格式",
+  "common.import_update": "导入/更新",
+  "common.upload_system_tools": "上传系统工具",
   "count.core.dataset.collection.Create Success": "成功导入 {{count}} 张图片",
   "delete_image": "删除图片",
   "file_name": "文件名",

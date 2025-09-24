@@ -1,8 +1,4 @@
-import {
-  DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum,
-  DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -25,9 +21,7 @@ import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
-import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { addDays } from 'date-fns';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
@@ -184,9 +178,9 @@ export const createCollectionAndInsertData = async ({
     });
 
     // 4. create training bill
-    const traingBillId = await (async () => {
+    const traingUsageId = await (async () => {
       if (billId) return billId;
-      const { billId: newBillId } = await createTrainingUsage({
+      const { usageId: newUsageId } = await createTrainingUsage({
         teamId,
         tmbId,
         appName: formatCreateCollectionParams.name,
@@ -196,7 +190,7 @@ export const createCollectionAndInsertData = async ({
         vllmModel: getVlmModel(dataset.vlmModel)?.name,
         session
       });
-      return newBillId;
+      return newUsageId;
     })();
 
     // 5. insert to training queue
@@ -212,7 +206,7 @@ export const createCollectionAndInsertData = async ({
           vlmModel: dataset.vlmModel,
           indexSize,
           mode: trainingMode,
-          billId: traingBillId,
+          billId: traingUsageId,
           data: chunks.map((item, index) => ({
             ...item,
             indexes: item.indexes?.map((text) => ({
@@ -229,7 +223,7 @@ export const createCollectionAndInsertData = async ({
           tmbId,
           datasetId: dataset._id,
           collectionId,
-          billId: traingBillId,
+          billId: traingUsageId,
           session
         });
         return {

@@ -1,12 +1,12 @@
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
+import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 
 export const pushGenerateVectorUsage = ({
-  billId,
+  usageId,
   teamId,
   tmbId,
   inputTokens,
@@ -19,7 +19,7 @@ export const pushGenerateVectorUsage = ({
   deepSearchInputTokens,
   deepSearchOutputTokens
 }: {
-  billId?: string;
+  usageId?: string;
   teamId: string;
   tmbId: string;
   inputTokens: number;
@@ -75,14 +75,13 @@ export const pushGenerateVectorUsage = ({
   const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
 
   // 插入 Bill 记录
-  if (billId) {
+  if (usageId) {
     concatUsage({
       teamId,
-      tmbId,
       totalPoints,
-      billId,
+      usageId,
       inputTokens,
-      listIndex: 0
+      itemType: UsageItemTypeEnum.training_vector
     });
   } else {
     createUsage({
@@ -219,7 +218,7 @@ export const pushWhisperUsage = ({
     multiple: 60
   });
 
-  const name = 'support.wallet.usage.Whisper';
+  const name = i18nT('common:support.wallet.usage.Whisper');
 
   createUsage({
     teamId,
@@ -238,39 +237,84 @@ export const pushWhisperUsage = ({
   });
 };
 
-export const pushRerankUsage = ({
+export const pushDatasetTestUsage = ({
   teamId,
   tmbId,
-  model,
-  inputTokens,
-  source = UsageSourceEnum.fastgpt
+  source = UsageSourceEnum.fastgpt,
+  embUsage,
+  rerankUsage,
+  extensionUsage
 }: {
   teamId: string;
   tmbId: string;
-  model: string;
-  inputTokens: number;
   source?: UsageSourceEnum;
+  embUsage?: {
+    model: string;
+    inputTokens: number;
+  };
+  rerankUsage?: {
+    model: string;
+    inputTokens: number;
+  };
+  extensionUsage?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+  };
 }) => {
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model,
-    inputTokens
-  });
+  const list: UsageItemType[] = [];
+  let points = 0;
+
+  if (extensionUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: extensionUsage.model,
+      inputTokens: extensionUsage.inputTokens,
+      outputTokens: extensionUsage.outputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('common:core.module.template.Query extension'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: extensionUsage.inputTokens,
+      outputTokens: extensionUsage.outputTokens
+    });
+  }
+  if (embUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: embUsage.model,
+      inputTokens: embUsage.inputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('account_usage:embedding_index'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: embUsage.inputTokens
+    });
+  }
+  if (rerankUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: rerankUsage.model,
+      inputTokens: rerankUsage.inputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('account_usage:rerank'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: rerankUsage.inputTokens
+    });
+  }
 
   createUsage({
     teamId,
     tmbId,
-    appName: i18nT('account_bill:rerank'),
-    totalPoints,
+    appName: i18nT('account_usage:search_test'),
+    totalPoints: points,
     source,
-    list: [
-      {
-        moduleName: modelName,
-        amount: totalPoints,
-        model: modelName,
-        inputTokens
-      }
-    ]
+    list
   });
 
-  return { totalPoints };
+  return { totalPoints: points };
 };

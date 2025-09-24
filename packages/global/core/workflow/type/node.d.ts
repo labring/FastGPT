@@ -19,7 +19,12 @@ import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type';
+import type {
+  AppDetailType,
+  AppSchema,
+  McpToolConfigType,
+  HttpToolConfigType
+} from '../../app/type';
 import type { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
@@ -45,6 +50,17 @@ export type NodeToolConfigType = {
       name: string;
       description: string;
     }[];
+  };
+  httpToolSet?: {
+    toolId: string;
+    baseUrl: string;
+    toolList: HttpToolConfigType[];
+    apiSchemaStr: string;
+    customHeaders: string;
+    headerSecret?: StoreSecretValueType;
+  };
+  httpTool?: {
+    toolId: string;
   };
 };
 
@@ -142,6 +158,7 @@ export type NodeTemplateListItemType = {
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接
   sourceMember?: SourceMember;
+  toolSource?: 'uploaded' | 'built-in'; // Plugin source type
 };
 
 export type NodeTemplateListType = {

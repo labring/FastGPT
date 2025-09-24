@@ -47,8 +47,13 @@ import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
+import { getUserChatInfo } from '../../../support/user/team/utils';
+import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
+import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
-type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
+type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -61,8 +66,38 @@ type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
 };
 
 // Run workflow
-export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
-  const { res, stream, externalProvider } = data;
+type WorkflowUsageProps = RequireOnlyOne<{
+  usageSource: UsageSourceEnum;
+  concatUsage: (points: number) => any;
+  usageId: string;
+}>;
+export async function dispatchWorkFlow({
+  usageSource,
+  usageId,
+  concatUsage,
+  ...data
+}: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
+  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive } = data;
+
+  await checkTeamAIPoints(runningUserInfo.teamId);
+  const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
+    getUserChatInfo(runningUserInfo.tmbId),
+    (() => {
+      if (lastInteractive?.usageId) {
+        return lastInteractive.usageId;
+      }
+      if (usageSource) {
+        return createChatUsageRecord({
+          appName: runningAppInfo.name,
+          appId: runningAppInfo.id,
+          teamId: runningUserInfo.teamId,
+          tmbId: runningUserInfo.tmbId,
+          source: usageSource
+        });
+      }
+      return usageId;
+    })()
+  ]);
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
 
@@ -96,15 +131,22 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   // Get default variables
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
-    ...getSystemVariables(data)
+    ...getSystemVariables({
+      ...data,
+      timezone
+    })
   };
 
   // Init some props
   return runWorkflow({
     ...data,
+    timezone,
+    externalProvider,
     defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue,
     variables: defaultVariables,
-    workflowDispatchDeep: 0
+    workflowDispatchDeep: 0,
+    usageId: newUsageId,
+    concatUsage
   }).finally(() => {
     if (streamCheckTimer) {
       clearInterval(streamCheckTimer);
@@ -116,6 +158,7 @@ type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  concatUsage?: (points: number) => any;
 };
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   let {
@@ -129,7 +172,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     retainDatasetCite = true,
     version = 'v1',
     responseDetail = true,
-    responseAllData = true
+    responseAllData = true,
+    usageId,
+    concatUsage,
+    runningUserInfo: { teamId }
   } = data;
 
   // Over max depth
@@ -487,7 +533,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           data: responseAllData
             ? formatResponseData
             : filterPublicNodeResponseData({
-                flowResponses: [formatResponseData],
+                nodeRespones: [formatResponseData],
                 responseDetail
               })[0]
         });
@@ -573,6 +619,17 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
 
         if (nodeDispatchUsages) {
+          if (usageId) {
+            pushChatItemUsage({
+              teamId,
+              usageId,
+              nodeUsages: nodeDispatchUsages
+            });
+          }
+          if (concatUsage) {
+            concatUsage(nodeDispatchUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+          }
+
           this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
         }
 
@@ -827,7 +884,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           ...edge,
           status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
         })),
-        nodeOutputs
+        nodeOutputs,
+        usageId
       };
 
       // Tool call, not need interactive response
@@ -945,7 +1003,9 @@ const getSystemVariables = ({
   uid,
   chatConfig,
   variables
-}: Props): SystemVariablesType => {
+}: Props & {
+  timezone: string;
+}): SystemVariablesType => {
   // Get global variables(Label -> key; Key -> key)
   const variablesConfig = chatConfig?.variables || [];
 

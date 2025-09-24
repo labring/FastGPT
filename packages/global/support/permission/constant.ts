@@ -49,7 +49,8 @@ export const PermissionTypeMap = {
 export enum PerResourceTypeEnum {
   team = 'team',
   app = 'app',
-  dataset = 'dataset'
+  dataset = 'dataset',
+  model = 'model'
 }
 
 /* new permission */

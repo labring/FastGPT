@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type UsageSchemaType } from '@fastgpt/global/support/wallet/usage/type';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -6,8 +6,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-
-export const UsageCollectionName = 'usages';
+import { UsageCollectionName, UsageItemCollectionName } from './constants';
 
 const UsageSchema = new Schema({
   teamId: {
@@ -30,6 +29,11 @@ const UsageSchema = new Schema({
     type: String,
     default: ''
   },
+  totalPoints: {
+    // total points
+    type: Number,
+    required: true
+  },
   appId: {
     type: Schema.Types.ObjectId,
     ref: 'apps',
@@ -44,26 +48,21 @@ const UsageSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  totalPoints: {
-    // total points
-    type: Number,
-    required: true
-  },
-  // total: {
-  //   // total points
-  //   type: Number,
-  //   required: true
-  // },
+
+  // @description It will not be used again in the future.
   list: {
-    type: Array,
-    default: []
+    type: Array
   }
+});
+
+UsageSchema.virtual('usageItems', {
+  ref: UsageItemCollectionName,
+  localField: '_id',
+  foreignField: 'usageId'
 });
 
 try {
   UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: 1, appName: 1, _id: -1 });
-  // timer task. clear dead team
-  // UsageSchema.index({ teamId: 1, time: -1 });
 
   UsageSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {

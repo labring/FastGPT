@@ -6,6 +6,7 @@
  *
  */
 
+import type { CSSProperties } from 'react';
 import { useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -40,18 +41,17 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
-import TabToSpacesPlugin from './plugins/TabToSpacesPlugin';
 import ListExitPlugin from './plugins/ListExitPlugin';
+import KeyDownPlugin from './plugins/KeyDownPlugin';
 
-const Placeholder = ({ children }: { children: React.ReactNode }) => (
+const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box
     position={'absolute'}
     top={0}
     left={0}
     right={0}
     bottom={0}
-    py={3}
-    px={3.5}
+    p={padding}
     pointerEvents={'none'}
     overflow={'hidden'}
   >
@@ -78,12 +78,14 @@ export type EditorProps = {
   maxH?: number;
   maxLength?: number;
   placeholder?: string;
+  placeholderPadding?: string;
   isInvalid?: boolean;
-
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
     iconButtonStyle: Record<string, any>;
   }) => React.ReactNode)[];
+  boxStyle?: CSSProperties;
 };
 
 export default function Editor({
@@ -100,10 +102,12 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
+  placeholderPadding = '12px 14px',
   bg = 'white',
   isInvalid,
-
-  ExtensionPopover
+  onKeyDown,
+  ExtensionPopover,
+  boxStyle
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
@@ -180,13 +184,14 @@ export default function Editor({
                 className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
                 style={{
                   minHeight: `${minH}px`,
-                  maxHeight: `${maxH}px`
+                  maxHeight: `${maxH}px`,
+                  ...boxStyle
                 }}
                 onFocus={() => setFocus(true)}
                 onBlur={() => setFocus(false)}
               />
             }
-            placeholder={<Placeholder>{placeholder}</Placeholder>}
+            placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
             ErrorBoundary={LexicalErrorBoundary}
           />
         ) : (
@@ -196,11 +201,12 @@ export default function Editor({
                 className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
                 style={{
                   minHeight: `${minH}px`,
-                  maxHeight: `${maxH}px`
+                  maxHeight: `${maxH}px`,
+                  ...boxStyle
                 }}
               />
             }
-            placeholder={<Placeholder>{placeholder}</Placeholder>}
+            placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
             ErrorBoundary={LexicalErrorBoundary}
           />
         )}
@@ -210,6 +216,7 @@ export default function Editor({
           <HistoryPlugin />
           <MaxLengthPlugin maxLength={maxLength || 999999} />
           <FocusPlugin focus={focus} setFocus={setFocus} />
+          <KeyDownPlugin onKeyDown={onKeyDown} />
 
           <VariablePlugin variables={variables} />
           {variableLabels.length > 0 && (

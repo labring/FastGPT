@@ -63,10 +63,20 @@ export const useTableMultipleSelect = <T = any,>({
     ({
       children,
       Controler,
+      activedStyles,
       ...props
-    }: { children: ReactNode; Controler: ReactNode } & FlexProps) => {
-      return (
-        <Flex w={'100%'} bg="white" px={6} pt={4} pb={2} alignItems="center" {...props}>
+    }: { children?: ReactNode; activedStyles?: FlexProps; Controler: ReactNode } & FlexProps) => {
+      return hasSelections ? (
+        <Flex
+          w={'100%'}
+          bg="white"
+          px={6}
+          pt={4}
+          pb={2}
+          alignItems="center"
+          {...props}
+          {...activedStyles}
+        >
           {hasSelections && (
             <>
               <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} />
@@ -80,7 +90,7 @@ export const useTableMultipleSelect = <T = any,>({
           )}
           <Box flex={hasSelections ? '' : '1 0 0'}>{children}</Box>
         </Flex>
-      );
+      ) : null;
     },
     [hasSelections, isSelecteAll, selectAllTrigger, selectedCount, t]
   );

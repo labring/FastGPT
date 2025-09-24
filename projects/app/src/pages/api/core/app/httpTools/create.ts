@@ -1,6 +1,5 @@
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { httpApiSchema2Plugins } from '@fastgpt/global/core/app/httpPlugin/utils';
 
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
@@ -11,25 +10,17 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 
-export type createHttpPluginQuery = {};
+export type createHttpToolsQuery = {};
 
-export type createHttpPluginBody = Omit<CreateAppBody, 'type' | 'modules' | 'edges'> & {
-  intro?: string;
-  pluginData: AppSchema['pluginData'];
-};
-
-export type createHttpPluginResponse = {};
+export type createHttpToolsBody = Omit<CreateAppBody, 'type' | 'modules' | 'edges' | 'chatConfig'>;
 
 async function handler(
-  req: ApiRequestProps<createHttpPluginBody, createHttpPluginQuery>,
-  res: ApiResponseType<any>
-): Promise<createHttpPluginResponse> {
-  const { parentId, name, intro, avatar, pluginData } = req.body;
-
-  if (!name || !pluginData) {
-    return Promise.reject('缺少参数');
-  }
+  req: ApiRequestProps<createHttpToolsBody, createHttpToolsQuery>,
+  res: ApiResponseType<string>
+): Promise<string> {
+  const { name, avatar, intro, parentId } = req.body;
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
@@ -37,49 +28,36 @@ async function handler(
 
   await checkTeamAppLimit(teamId);
 
-  const httpPluginId = await mongoSessionRun(async (session) => {
-    // create http plugin folder
-    const httpPluginId = await onCreateApp({
+  const httpToolsetId = await mongoSessionRun(async (session) => {
+    const httpToolsetId = await onCreateApp({
       parentId,
       name,
       avatar,
       intro,
       teamId,
       tmbId,
-      type: AppTypeEnum.httpPlugin,
-      pluginData,
+      type: AppTypeEnum.httpToolSet,
+      modules: [
+        getHTTPToolSetRuntimeNode({
+          name,
+          avatar
+        })
+      ],
       session
     });
 
-    // compute children plugins
-    const childrenPlugins = await httpApiSchema2Plugins({
-      parentId: httpPluginId,
-      apiSchemaStr: pluginData.apiSchemaStr,
-      customHeader: pluginData.customHeaders
-    });
-
-    // create children plugins
-    for await (const item of childrenPlugins) {
-      await onCreateApp({
-        ...item,
-        teamId,
-        tmbId,
-        session
-      });
-    }
-
-    return httpPluginId;
+    return httpToolsetId;
   });
 
   pushTrack.createApp({
-    type: AppTypeEnum.httpPlugin,
-    appId: httpPluginId,
+    type: AppTypeEnum.httpToolSet,
+    appId: httpToolsetId,
     uid: userId,
     teamId,
     tmbId
   });
 
-  return {};
+  return httpToolsetId;
 }
 
 export default NextAPI(handler);

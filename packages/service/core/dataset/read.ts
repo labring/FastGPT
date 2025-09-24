@@ -156,7 +156,8 @@ export const readDatasetSourceRawText = async ({
   externalFileId,
   apiDatasetServer,
   customPdfParse,
-  getFormatText
+  getFormatText,
+  usageId
 }: {
   teamId: string;
   tmbId: string;
@@ -168,6 +169,7 @@ export const readDatasetSourceRawText = async ({
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
   apiDatasetServer?: ApiDatasetServerType; // api dataset
+  usageId?: string;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -178,8 +180,9 @@ export const readDatasetSourceRawText = async ({
       tmbId,
       bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
+      getFormatText,
       customPdfParse,
-      getFormatText
+      usageId
     });
     return {
       title: filename,

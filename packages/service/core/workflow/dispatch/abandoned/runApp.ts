@@ -63,6 +63,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     ...props,
     runningAppInfo: {
       id: String(appData._id),
+      name: appData.name,
       teamId: String(appData.teamId),
       tmbId: String(appData.tmbId)
     },

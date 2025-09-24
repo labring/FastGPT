@@ -5,7 +5,7 @@ import {
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/type';
-import { UsageCollectionName } from '../../../support/wallet/usage/schema';
+import { UsageCollectionName } from '../../../support/wallet/usage/constants';
 const { Schema } = connectionMongo;
 
 export const EvaluationCollectionName = 'eval';

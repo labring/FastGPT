@@ -27,11 +27,14 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
+  intro?: string;
   type?: AppTypeEnum;
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
@@ -40,30 +43,49 @@ export type CreateAppBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, type, modules, edges, chatConfig, utmParams } = req.body;
+  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, utmParams } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
   }
 
   // 凭证校验
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId, userId, isRoot } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // 上限校验
   await checkTeamAppLimit(teamId);
-  const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId').populate<{
-    user: { username: string };
-  }>('user', 'username');
+  const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
+    .populate<{
+      user: { username: string };
+    }>('user', 'username')
+    .lean();
 
   // 创建app
   const appId = await onCreateApp({
     parentId,
     name,
     avatar,
+    intro,
     type,
-    modules,
+    modules: await (async () => {
+      if (modules) {
+        const myModels = new Set(
+          await getMyModels({
+            teamId,
+            tmbId,
+            isTeamOwner: isRoot || tmb?.role === 'owner'
+          })
+        );
+
+        return removeUnauthModels({
+          modules,
+          allowedModels: myModels
+        });
+      }
+      return [];
+    })(),
     edges,
     chatConfig,
     teamId,
