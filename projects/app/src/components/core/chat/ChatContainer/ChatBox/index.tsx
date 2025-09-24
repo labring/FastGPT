@@ -597,19 +597,13 @@ const ChatBox = ({
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
           } catch (err: any) {
-            console.log(err);
+            console.log('Chat error', err);
             toast({
               title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
               status: 'error',
               duration: 5000,
               isClosable: true
             });
-
-            if (!err?.responseText) {
-              resetInputVal({ text, files });
-              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
-              setChatRecords(newChatList.slice(0, newChatList.length - 2));
-            }
 
             // set finish status
             setChatRecords((state) =>
@@ -622,6 +616,12 @@ const ChatBox = ({
                 };
               })
             );
+
+            if (!err?.responseText) {
+              resetInputVal({ text, files });
+              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
+              setChatRecords(newChatList.slice(0, newChatList.length - 2));
+            }
           }
 
           autoTTSResponse && finishSegmentedAudio();

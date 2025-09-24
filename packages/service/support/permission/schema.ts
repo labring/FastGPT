@@ -41,14 +41,20 @@ export const ResourcePermissionSchema = new Schema({
     type: Number,
     required: true
   },
+
   /**
    * Optional. Only be set when the resource is *inherited* from the parent resource.
    * For recording the self permission. When cancel the inheritance, it will overwrite the permission property and set to `unset`.
    */
-  // Resource ID: App or DataSet or any other resource type.
-  // It is null if the resourceType is team.
   resourceId: {
     type: Schema.Types.ObjectId
+  },
+
+  /**
+   * Optional, For some resources, which do not have resourceId, the resourceName is required.
+   */
+  resourceName: {
+    type: String
   }
 });
 
@@ -72,6 +78,7 @@ ResourcePermissionSchema.virtual('org', {
 });
 
 try {
+  // Indexes for resourceId-based resources
   ResourcePermissionSchema.index(
     {
       resourceType: 1,
@@ -83,6 +90,9 @@ try {
       unique: true,
       partialFilterExpression: {
         groupId: {
+          $exists: true
+        },
+        resourceId: {
           $exists: true
         }
       }
@@ -101,6 +111,9 @@ try {
       partialFilterExpression: {
         orgId: {
           $exists: true
+        },
+        resourceId: {
+          $exists: true
         }
       }
     }
@@ -118,17 +131,106 @@ try {
       partialFilterExpression: {
         tmbId: {
           $exists: true
+        },
+        resourceId: {
+          $exists: true
         }
       }
     }
   );
 
-  // Delete tmb permission
-  ResourcePermissionSchema.index({
-    resourceType: 1,
-    teamId: 1,
-    resourceId: 1
-  });
+  // General index for resourceId-based resources
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceId: 1
+    },
+    {
+      partialFilterExpression: {
+        resourceId: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  // Indexes for resourceName-based resources
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceName: 1,
+      groupId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        groupId: {
+          $exists: true
+        },
+        resourceName: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceName: 1,
+      orgId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        orgId: {
+          $exists: true
+        },
+        resourceName: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceName: 1,
+      tmbId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        tmbId: {
+          $exists: true
+        },
+        resourceName: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  // General index for resourceName-based resources
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceName: 1
+    },
+    {
+      partialFilterExpression: {
+        resourceName: {
+          $exists: true
+        }
+      }
+    }
+  );
 } catch (error) {
   console.log(error);
 }

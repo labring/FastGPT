@@ -43,10 +43,13 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getCachedData } from '../../../common/cache';
+import { SystemCacheKeyEnum } from '../../../common/cache/type';
 
 type ChildAppType = SystemPluginTemplateItemType & {
   teamId?: string;
@@ -55,6 +58,8 @@ type ChildAppType = SystemPluginTemplateItemType & {
   versionLabel?: string; // Auto computed
   isLatestVersion?: boolean; // Auto computed
 };
+
+export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
 
 export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
@@ -190,11 +195,11 @@ export async function getChildAppPreviewNode({
           mcpToolSet: {
             toolId: pluginId,
             toolList: children,
-            url: ''
+            url: '',
+            headerSecret: {}
           }
         };
       }
-
       return {
         id: String(item._id),
         teamId: String(item.teamId),
@@ -249,6 +254,45 @@ export async function getChildAppPreviewNode({
                 description: tool.description,
                 inputSchema: tool.inputSchema,
                 name: tool.name
+              },
+              avatar: item.avatar,
+              parentId: item._id
+            })
+          ],
+          edges: []
+        },
+        version: '',
+        isLatestVersion: true
+      };
+    }
+    // http tool
+    else if (source === PluginSourceEnum.http) {
+      const [parentId, toolName] = pluginId.split('/');
+      const item = await MongoApp.findById(parentId).lean();
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
+
+      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
+      const tool = await (async () => {
+        if (toolConfig?.toolList) {
+          return toolConfig.toolList.find((item) => item.name === toolName);
+        }
+        return undefined;
+      })();
+      if (!tool) return Promise.reject(PluginErrEnum.unExist);
+      return {
+        avatar: item.avatar,
+        id: appId,
+        name: tool.name,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        workflow: {
+          nodes: [
+            getHTTPToolRuntimeNode({
+              tool: {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema,
+                name: `${item.name}/${tool.name}`
               },
               avatar: item.avatar,
               parentId: item._id
@@ -503,97 +547,63 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 };
 
 /* FastsGPT-Pluign api: */
-function getCachedSystemPlugins() {
-  if (!global.systemToolsCache) {
-    global.systemToolsCache = {
-      expires: 0,
-      data: [] as SystemPluginTemplateItemType[]
+export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType[]> => {
+  const tools = await APIGetSystemToolList();
+  // 从数据库里加载插件配置进行替换
+  const systemToolsArray = await MongoSystemPlugin.find({}).lean();
+  const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
+
+  const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
+    const dbPluginConfig = systemTools.get(item.id);
+    const isFolder = tools.some((tool) => tool.parentId === item.id);
+
+    const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
+
+    return {
+      id: item.id,
+      parentId: item.parentId,
+      isFolder,
+      name: item.name,
+      avatar: item.avatar,
+      intro: item.description,
+      toolDescription: item.toolDescription,
+      author: item.author,
+      courseUrl: item.courseUrl,
+      instructions: dbPluginConfig?.customConfig?.userGuide,
+      weight: item.weight,
+      toolSource: item.toolSource || 'built-in',
+      workflow: {
+        nodes: [],
+        edges: []
+      },
+      versionList,
+      templateType: item.templateType,
+      showStatus: true,
+      isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
+      inputList: item?.secretInputConfig,
+      hasSystemSecret: !!dbPluginConfig?.inputListVal,
+
+      originCost: dbPluginConfig?.originCost ?? 0,
+      currentCost: dbPluginConfig?.currentCost ?? 0,
+      systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
+      hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
+      pluginOrder: dbPluginConfig?.pluginOrder
     };
-  }
-  return global.systemToolsCache;
-}
-
-const cleanSystemPluginCache = () => {
-  global.systemToolsCache = undefined;
-};
-
-export const refetchSystemPlugins = () => {
-  const changeStream = MongoSystemPlugin.watch();
-
-  changeStream.on('change', () => {
-    try {
-      cleanSystemPluginCache();
-    } catch (error) {}
   });
-};
 
-export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> => {
-  if (getCachedSystemPlugins().expires > Date.now() && isProduction) {
-    return getCachedSystemPlugins().data;
-  } else {
-    const tools = await APIGetSystemToolList();
+  const dbPlugins = systemToolsArray
+    .filter((item) => item.customConfig?.associatedPluginId)
+    .map((item) => dbPluginFormat(item));
 
-    // 从数据库里加载插件配置进行替换
-    const systemToolsArray = await MongoSystemPlugin.find({}).lean();
-    const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
+  const concatTools = [...formatTools, ...dbPlugins];
+  concatTools.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
 
-    const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
-      const dbPluginConfig = systemTools.get(item.id);
-      const isFolder = tools.some((tool) => tool.parentId === item.id);
+  global.systemToolsTypeCache = {};
+  concatTools.forEach((item) => {
+    global.systemToolsTypeCache[item.templateType] = 1;
+  });
 
-      const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
-
-      return {
-        id: item.id,
-        parentId: item.parentId,
-        isFolder,
-        name: item.name,
-        avatar: item.avatar,
-        intro: item.description,
-        toolDescription: item.toolDescription,
-        author: item.author,
-        courseUrl: item.courseUrl,
-        instructions: dbPluginConfig?.customConfig?.userGuide,
-        weight: item.weight,
-        workflow: {
-          nodes: [],
-          edges: []
-        },
-        versionList,
-        templateType: item.templateType,
-        showStatus: true,
-        isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
-        inputList: item?.secretInputConfig,
-        hasSystemSecret: !!dbPluginConfig?.inputListVal,
-
-        originCost: dbPluginConfig?.originCost ?? 0,
-        currentCost: dbPluginConfig?.currentCost ?? 0,
-        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
-        hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
-        pluginOrder: dbPluginConfig?.pluginOrder
-      };
-    });
-
-    // TODO: Check the app exists
-    const dbPlugins = systemToolsArray
-      .filter((item) => item.customConfig?.associatedPluginId)
-      .map((item) => dbPluginFormat(item));
-
-    const concatTools = [...formatTools, ...dbPlugins];
-    concatTools.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
-
-    global.systemToolsCache = {
-      expires: Date.now() + 30 * 60 * 1000, // 30 minutes
-      data: concatTools
-    };
-
-    global.systemToolsTypeCache = {};
-    concatTools.forEach((item) => {
-      global.systemToolsTypeCache[item.templateType] = 1;
-    });
-
-    return concatTools;
-  }
+  return concatTools;
 };
 
 export const getSystemToolById = async (id: string): Promise<SystemPluginTemplateItemType> => {
@@ -613,11 +623,5 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
 };
 
 declare global {
-  var systemToolsCache:
-    | {
-        expires: number;
-        data: SystemPluginTemplateItemType[];
-      }
-    | undefined;
   var systemToolsTypeCache: Record<string, 1>;
 }

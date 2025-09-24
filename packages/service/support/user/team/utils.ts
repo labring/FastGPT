@@ -33,3 +33,28 @@ export async function getRunningUserInfoByTmbId(tmbId: string) {
 
   return Promise.reject(TeamErrEnum.notUser);
 }
+
+export async function getUserChatInfo(tmbId: string) {
+  const tmb = await MongoTeamMember.findById(tmbId, 'userId teamId')
+    .populate<{ user: UserModelSchema; team: TeamSchema }>([
+      {
+        path: 'user',
+        select: 'timezone'
+      },
+      {
+        path: 'team',
+        select: 'openaiAccount externalWorkflowVariables'
+      }
+    ])
+    .lean();
+
+  if (!tmb) return Promise.reject(TeamErrEnum.notUser);
+
+  return {
+    timezone: tmb.user.timezone,
+    externalProvider: {
+      openaiAccount: tmb.team.openaiAccount,
+      externalWorkflowVariables: tmb.team.externalWorkflowVariables
+    }
+  };
+}

@@ -1,16 +1,6 @@
-export type ConcatBillQueueItemType = {
-  billId: string; // usageId
-  listIndex?: number;
-  totalPoints: number;
-
-  // Model usage
-  inputTokens?: number;
-  outputTokens?: number;
-  // Times
-  count?: number;
-};
+import type { ConcatUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 
 declare global {
   var reduceAiPointsQueue: { teamId: string; totalPoints: number }[];
-  var concatBillQueue: ConcatBillQueueItemType[];
+  var concatBillQueue: ConcatUsageProps[];
 }

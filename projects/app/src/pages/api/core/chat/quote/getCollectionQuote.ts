@@ -16,6 +16,7 @@ import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
@@ -58,7 +59,7 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [collection, { chat, showRawSource }, { chatItem }] = await Promise.all([
+  const [collection, { chat, showRawSource }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
     authChatCrud({
       req,
@@ -70,12 +71,13 @@ async function handler(
       teamId,
       teamToken
     }),
+    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
-  if (!showRawSource) {
+
+  if (!showRawSource || !chat || !chatItem) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
-  if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const baseMatch: BaseMatchType = {
     teamId: collection.teamId,

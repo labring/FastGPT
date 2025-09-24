@@ -22,15 +22,22 @@ export default function VariableLabelPlugin({
       throw new Error('VariableLabelPlugin: VariableLabelPlugin not registered on editor');
   }, [editor]);
 
-  const createVariableLabelPlugin = useCallback((textNode: TextNode): VariableLabelNode => {
-    const [parentKey, childrenKey] = textNode.getTextContent().slice(3, -3).split('.');
-    const currentVariable = variables.find(
-      (item) => item.parent.id === parentKey && item.key === childrenKey
-    );
-    const variableLabel = `${currentVariable && t(currentVariable.parent?.label as any)}.${currentVariable?.label}`;
-    const nodeAvatar = currentVariable?.parent?.avatar || '';
-    return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
-  }, []);
+  const createVariableLabelPlugin = useCallback(
+    (textNode: TextNode): VariableLabelNode => {
+      const content = textNode.getTextContent().slice(3, -3); // Remove {{$ and $}}
+      const dotIndex = content.indexOf('.');
+      const parentKey = content.slice(0, dotIndex);
+      const childrenKey = content.slice(dotIndex + 1);
+
+      const currentVariable = variables.find(
+        (item) => item.parent.id === parentKey && item.key === childrenKey
+      );
+      const variableLabel = `${currentVariable && t(currentVariable.parent?.label as any)}.${currentVariable?.label}`;
+      const nodeAvatar = currentVariable?.parent?.avatar || '';
+      return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
+    },
+    [t]
+  );
 
   const getVariableMatch = useCallback((text: string) => {
     const matches = REGEX.exec(text);

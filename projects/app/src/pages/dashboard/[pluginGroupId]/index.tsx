@@ -1,30 +1,44 @@
 'use client';
+import UploadSystemToolModal from '@/pageComponents/app/plugin/UploadSystemToolModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-
 import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { Box, Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const SystemTools = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { type, pluginGroupId } = router.query as { type?: string; pluginGroupId?: string };
   const { isPc } = useSystem();
+  const { userInfo } = useUserStore();
+
+  const isRoot = userInfo?.username === 'root';
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: plugins = [], loading: isLoading } = useRequest2(getSystemPlugTemplates, {
+  const {
+    data: plugins = [],
+    loading: isLoading,
+    runAsync: refreshTools
+  } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
+
+  const {
+    isOpen: isOpenUploadPlugin,
+    onOpen: onOpenUploadPlugin,
+    onClose: onCloseUploadPlugin
+  } = useDisclosure();
 
   const currentPlugins = useMemo(() => {
     return plugins
@@ -34,8 +48,8 @@ const SystemTools = () => {
       })
       .filter((item) => {
         if (!searchKey) return true;
-        const regx = new RegExp(searchKey, 'i');
-        return regx.test(`${item.name}${item.intro}${item.instructions}`);
+        const regex = new RegExp(searchKey, 'i');
+        return regex.test(`${item.name}${item.intro}${item.instructions}`);
       });
   }, [plugins, searchKey, type]);
 
@@ -59,44 +73,61 @@ const SystemTools = () => {
         });
 
         return (
-          <MyBox isLoading={isLoading} h={'100%'}>
-            <Box p={6} h={'100%'} overflowY={'auto'}>
-              <Flex alignItems={'center'} justifyContent={'space-between'}>
-                {isPc ? (
-                  <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                    {t('common:core.module.template.System Plugin')}
-                  </Box>
-                ) : (
-                  MenuIcon
-                )}
-
-                <Box flex={'0 0 200px'}>
-                  <SearchInput
-                    value={searchKey}
-                    onChange={(e) => setSearchKey(e.target.value)}
-                    placeholder={t('common:search_tool')}
-                  />
-                </Box>
-              </Flex>
-              <Grid
-                gridTemplateColumns={[
-                  '1fr',
-                  'repeat(2,1fr)',
-                  'repeat(2,1fr)',
-                  'repeat(3,1fr)',
-                  'repeat(4,1fr)'
-                ]}
-                gridGap={4}
-                alignItems={'stretch'}
-                py={5}
-              >
-                {filterPluginsByGroup.map((item) => (
-                  <PluginCard key={item.id} item={item} groups={pluginGroups} />
-                ))}
-              </Grid>
-              {filterPluginsByGroup.length === 0 && <EmptyTip />}
-            </Box>
-          </MyBox>
+          <>
+            <MyBox isLoading={isLoading} h={'100%'}>
+              <Box p={6} h={'100%'} overflowY={'auto'}>
+                <Flex alignItems={'center'} justifyContent={'space-between'}>
+                  {isPc ? (
+                    <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
+                      {t('app:core.module.template.System Tools')}
+                    </Box>
+                  ) : (
+                    MenuIcon
+                  )}
+                  <Flex alignItems={'center'} gap={4}>
+                    <Box flex={'0 0 200px'}>
+                      <SearchInput
+                        value={searchKey}
+                        onChange={(e) => setSearchKey(e.target.value)}
+                        placeholder={t('common:search_tool')}
+                      />
+                    </Box>
+                    {isRoot && (
+                      <Button onClick={onOpenUploadPlugin}>{t('file:common:import_update')}</Button>
+                    )}
+                  </Flex>
+                </Flex>
+                <Grid
+                  gridTemplateColumns={[
+                    '1fr',
+                    'repeat(2,1fr)',
+                    'repeat(2,1fr)',
+                    'repeat(3,1fr)',
+                    'repeat(4,1fr)'
+                  ]}
+                  gridGap={4}
+                  alignItems={'stretch'}
+                  py={5}
+                >
+                  {filterPluginsByGroup.map((item) => (
+                    <PluginCard
+                      key={item.id}
+                      item={item}
+                      groups={pluginGroups}
+                      refreshTools={() => refreshTools({ parentId: null })}
+                    />
+                  ))}
+                </Grid>
+                {filterPluginsByGroup.length === 0 && <EmptyTip />}
+              </Box>
+            </MyBox>
+            {isOpenUploadPlugin && (
+              <UploadSystemToolModal
+                onClose={onCloseUploadPlugin}
+                onSuccess={() => refreshTools({ parentId: null })}
+              />
+            )}
+          </>
         );
       }}
     </DashboardContainer>
@@ -108,7 +139,7 @@ export default SystemTools;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'file']))
     }
   };
 }

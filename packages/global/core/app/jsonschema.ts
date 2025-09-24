@@ -1,10 +1,15 @@
 import { WorkflowIOValueTypeEnum } from '../workflow/constants';
-import { FlowNodeInputTypeEnum } from '../workflow/node/constant';
-import type { FlowNodeInputItemType } from '../workflow/type/io';
+import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../workflow/node/constant';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../workflow/type/io';
+import SwaggerParser from '@apidevtools/swagger-parser';
+import yaml from 'js-yaml';
+import type { OpenAPIV3 } from 'openapi-types';
+import type { OpenApiJsonSchema } from './httpTools/type';
 
 type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
 export type JsonSchemaPropertiesItemType = {
   description?: string;
+  'x-tool-description'?: string;
   type: SchemaInputValueType;
   enum?: string[];
   minimum?: number;
@@ -12,6 +17,11 @@ export type JsonSchemaPropertiesItemType = {
   items?: { type: SchemaInputValueType };
 };
 export type JSONSchemaInputType = {
+  type: SchemaInputValueType;
+  properties?: Record<string, JsonSchemaPropertiesItemType>;
+  required?: string[];
+};
+export type JSONSchemaOutputType = {
   type: SchemaInputValueType;
   properties?: Record<string, JsonSchemaPropertiesItemType>;
   required?: string[];
@@ -79,8 +89,119 @@ export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeI
     label: key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: value.description || key,
+    toolDescription: value['x-tool-description'] ?? value.description ?? key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));
+};
+export const jsonSchema2NodeOutput = (
+  jsonSchema: JSONSchemaOutputType
+): FlowNodeOutputItemType[] => {
+  return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
+    id: key,
+    key,
+    label: key,
+    required: jsonSchema?.required?.includes(key),
+    type: FlowNodeOutputTypeEnum.static,
+    valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
+    description: value.description,
+    toolDescription: value['x-tool-description'] ?? value.description ?? key
+  }));
+};
+export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
+  try {
+    const data = (() => {
+      try {
+        return JSON.parse(yamlStr);
+      } catch (jsonError) {
+        return yaml.load(yamlStr, { schema: yaml.FAILSAFE_SCHEMA });
+      }
+    })();
+    const jsonSchema = (await SwaggerParser.dereference(data)) as OpenAPIV3.Document;
+
+    const serverPath = (() => {
+      if (jsonSchema.servers && jsonSchema.servers.length > 0) {
+        return jsonSchema.servers[0].url || '';
+      }
+      if (data.host || data.basePath) {
+        const scheme = data.schemes && data.schemes.length > 0 ? data.schemes[0] : 'https';
+        const host = data.host || '';
+        const basePath = data.basePath || '';
+        return `${scheme}://${host}${basePath}`;
+      }
+      return '';
+    })();
+
+    const pathData = Object.keys(jsonSchema.paths)
+      .map((path) => {
+        const methodData: any = jsonSchema.paths[path];
+        return Object.keys(methodData)
+          .filter((method) =>
+            ['get', 'post', 'put', 'delete', 'patch'].includes(method.toLocaleLowerCase())
+          )
+          .map((method) => {
+            const methodInfo = methodData[method];
+            if (methodInfo.deprecated) return;
+
+            const requestBody = (() => {
+              if (methodInfo?.requestBody) {
+                return methodInfo.requestBody;
+              }
+              if (methodInfo.parameters) {
+                const bodyParam = methodInfo.parameters.find(
+                  (param: OpenAPIV3.ParameterObject) => param.in === 'body'
+                );
+                if (bodyParam) {
+                  return {
+                    content: {
+                      'application/json': {
+                        schema: bodyParam.schema
+                      }
+                    }
+                  };
+                }
+              }
+              return undefined;
+            })();
+
+            const result = {
+              path,
+              method,
+              name: methodInfo.operationId || path,
+              description: methodInfo.description || methodInfo.summary,
+              params: methodInfo.parameters,
+              request: requestBody,
+              response: methodInfo.responses
+            };
+            return result;
+          });
+      })
+      .flat()
+      .filter(Boolean) as OpenApiJsonSchema['pathData'];
+    return { pathData, serverPath };
+  } catch (err) {
+    throw new Error('Invalid Schema');
+  }
+};
+export const getSchemaValueType = (schema: { type: string; items?: { type: string } }) => {
+  const typeMap: { [key: string]: WorkflowIOValueTypeEnum } = {
+    string: WorkflowIOValueTypeEnum.arrayString,
+    number: WorkflowIOValueTypeEnum.arrayNumber,
+    integer: WorkflowIOValueTypeEnum.arrayNumber,
+    boolean: WorkflowIOValueTypeEnum.arrayBoolean,
+    object: WorkflowIOValueTypeEnum.arrayObject
+  };
+
+  if (schema?.type === 'integer') {
+    return WorkflowIOValueTypeEnum.number;
+  }
+
+  if (schema?.type === 'array' && schema?.items) {
+    const itemType = typeMap[schema.items.type];
+    if (itemType) {
+      return itemType;
+    }
+  }
+
+  return schema?.type as WorkflowIOValueTypeEnum;
 };

@@ -121,19 +121,25 @@ export const useNodeTemplates = () => {
     }
   );
 
-  const onUpdateParentId = useCallback((parentId: ParentIdType) => {
-    searchKeyLock.current = true;
-    setSearchKey('');
-    setParentId(parentId);
-    loadNodeTemplates({ parentId });
-  }, []);
-  const onUpdateTemplateType = useCallback((type: TemplateTypeEnum) => {
-    searchKeyLock.current = true;
-    setSearchKey('');
-    setParentId('');
-    setTemplateType(type);
-    loadNodeTemplates({ type });
-  }, []);
+  const onUpdateParentId = useCallback(
+    (parentId: ParentIdType) => {
+      searchKeyLock.current = true;
+      setSearchKey('');
+      setParentId(parentId);
+      loadNodeTemplates({ parentId });
+    },
+    [loadNodeTemplates]
+  );
+  const onUpdateTemplateType = useCallback(
+    (type: TemplateTypeEnum) => {
+      searchKeyLock.current = true;
+      setSearchKey('');
+      setParentId('');
+      setTemplateType(type);
+      loadNodeTemplates({ type });
+    },
+    [loadNodeTemplates]
+  );
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {

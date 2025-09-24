@@ -1,8 +1,33 @@
 import type { SourceMemberType } from '../../../support/user/type';
-import type { CreateUsageProps } from './api';
-import { UsageSourceEnum } from './constants';
+import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
 
-export type UsageListItemCountType = {
+export type UsageSchemaType = {
+  _id: string;
+  time: Date;
+
+  teamId: string;
+  tmbId: string;
+  appName: string;
+  appId?: string;
+  pluginId?: string;
+  totalPoints: number;
+  source: `${UsageSourceEnum}`;
+
+  // @deprecated
+  list?: UsageItemType[];
+};
+export type UsageItemSchemaType = {
+  _id: string;
+  teamId: string;
+  usageId: string;
+  name: string;
+  amount: number;
+  time: Date;
+  itemType?: UsageItemTypeEnum; // Use in usage concat
+} & UsageItemCountType;
+
+export type UsageItemCountType = {
+  model?: string;
   inputTokens?: number;
   outputTokens?: number;
   charsLength?: number;
@@ -14,24 +39,18 @@ export type UsageListItemCountType = {
   tokens?: number;
 };
 
-export type UsageListItemType = UsageListItemCountType & {
+export type UsageItemType = UsageItemCountType & {
   moduleName: string;
   amount: number;
-  model?: string;
-  count?: number;
+  itemType?: UsageItemTypeEnum;
 };
 
-export type UsageSchemaType = CreateUsageProps & {
-  _id: string;
-  time: Date;
-};
-
-export type UsageItemType = {
+export type UsageListItemType = {
   id: string;
   time: Date;
   appName: string;
   source: UsageSchemaType['source'];
   totalPoints: number;
-  list: UsageSchemaType['list'];
+  list: Omit<UsageItemType, 'itemType'>[];
   sourceMember: SourceMemberType;
 };

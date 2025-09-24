@@ -10,6 +10,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
 import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
@@ -20,6 +21,7 @@ import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
+import { runHTTPTool } from '../../../app/http';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -34,7 +36,7 @@ type RunToolProps = ModuleDispatchProps<{
 
 type RunToolResponse = DispatchNodeResultType<
   {
-    [NodeOutputKeyEnum.rawResponse]?: any; // MCP Tool
+    [NodeOutputKeyEnum.rawResponse]?: any;
     [key: string]: any;
   },
   Record<string, any>
@@ -213,6 +215,60 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           moduleLogo: avatar
         },
         [DispatchNodeResponseKeyEnum.toolResponses]: result
+      };
+    } else if (toolConfig?.httpTool?.toolId) {
+      const { pluginId } = splitCombinePluginId(toolConfig.httpTool.toolId);
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const toolset = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
+      if (!toolSetData || typeof toolSetData !== 'object') {
+        throw new Error('HTTP tool set not found');
+      }
+
+      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+
+      const httpTool = toolList?.find((tool: HttpToolConfigType) => tool.name === toolName);
+      if (!httpTool) {
+        throw new Error(`HTTP tool ${toolName} not found`);
+      }
+
+      const { data, errorMsg } = await runHTTPTool({
+        baseUrl: baseUrl,
+        toolPath: httpTool.path,
+        method: httpTool.method,
+        params,
+        headerSecret,
+        customHeaders: customHeaders
+          ? typeof customHeaders === 'string'
+            ? JSON.parse(customHeaders)
+            : customHeaders
+          : undefined
+      });
+
+      if (errorMsg) {
+        if (catchError) {
+          return {
+            error: { [NodeOutputKeyEnum.errorText]: errorMsg },
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolRes: errorMsg,
+              moduleLogo: avatar
+            },
+            [DispatchNodeResponseKeyEnum.toolResponses]: errorMsg
+          };
+        }
+        throw new Error(errorMsg);
+      }
+
+      return {
+        data: { [NodeOutputKeyEnum.rawResponse]: data, ...(typeof data === 'object' ? data : {}) },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: data,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: data
       };
     } else {
       // mcp tool (old version compatible)

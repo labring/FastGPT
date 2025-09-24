@@ -141,8 +141,14 @@ function PermissionManage({
     }
   );
 
-  const { runAsync: onDeleteMemberPermission, loading: deleteLoading } =
-    useRequest2(onDelOneCollaborator);
+  const { runAsync: onDeleteMemberPermission, loading: deleteLoading } = useRequest2(
+    async (props) => {
+      if (onDelOneCollaborator) {
+        return await onDelOneCollaborator(props);
+      }
+      return Promise.resolve();
+    }
+  );
 
   const userManage = userInfo?.permission.hasManagePer;
   const hasDeletePer = (per: Permission) => {

@@ -52,18 +52,18 @@ type Props = FlowNodeItemType & {
   selected?: boolean;
   searchedText?: string;
   menuForbid?: {
+    copilot?: boolean;
     debug?: boolean;
     copy?: boolean;
     delete?: boolean;
   };
   customStyle?: FlexProps;
+  rtDoms?: React.ReactNode[];
 };
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
-
   const { toast } = useToast();
-
   const {
     children,
     avatar = LOGO_ICON,
@@ -83,14 +83,19 @@ const NodeCard = (props: Props) => {
     debugResult,
     isFolded,
     customStyle,
-    inputs
+    inputs,
+    rtDoms
   } = props;
+
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
 
-  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const inputConfig = useMemo(
+    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
+    [inputs]
+  );
   const [
     isOpenToolParamConfigModal,
     { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
@@ -119,8 +124,12 @@ const NodeCard = (props: Props) => {
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
-    // 1. MCP tool set do not have version
-    if (isAppNode && (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool)) return false;
+    // 1. MCP tool & HTTP tool set do not have version
+    if (
+      isAppNode &&
+      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
+    )
+      return false;
     // 2. Team app/System commercial plugin
     if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
     // 3. System tool
@@ -163,6 +172,42 @@ const NodeCard = (props: Props) => {
   const Header = useMemo(() => {
     const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
     const error = formatToolError(node?.pluginData?.error);
+
+    // Header buttons array
+    const headerButtons = [
+      ...(nodeTemplate?.diagram
+        ? [
+            <MyTooltip
+              key="diagram"
+              label={
+                <MyImage src={nodeTemplate?.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
+              }
+            >
+              <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
+                {t('common:core.module.Diagram')}
+              </Button>
+            </MyTooltip>
+          ]
+        : []),
+      ...(node?.courseUrl || nodeTemplate?.userGuide
+        ? [
+            <UseGuideModal
+              key="userGuide"
+              title={nodeTemplate?.name}
+              iconSrc={nodeTemplate?.avatar}
+              text={nodeTemplate?.userGuide}
+              link={nodeTemplate?.courseUrl}
+            >
+              {({ onClick }) => (
+                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                  <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
+                </MyTooltip>
+              )}
+            </UseGuideModal>
+          ]
+        : []),
+      ...(rtDoms ?? [])
+    ];
 
     return (
       <Box position={'relative'}>
@@ -244,40 +289,13 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} mr={1} />
-              {showVersion && node && <NodeVersion node={node} />}
-              {!!nodeTemplate?.diagram && (
-                <MyTooltip
-                  label={
-                    <MyImage
-                      src={nodeTemplate?.diagram}
-                      w={'100%'}
-                      minH={['auto', '200px']}
-                      alt={''}
-                    />
-                  }
-                >
-                  <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
-                    {t('common:core.module.Diagram')}
-                  </Button>
-                </MyTooltip>
-              )}
-              {!!nodeTemplate?.diagram && node?.courseUrl && (
-                <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
-              )}
-              {!!(node?.courseUrl || nodeTemplate?.userGuide) && (
-                <UseGuideModal
-                  title={nodeTemplate?.name}
-                  iconSrc={nodeTemplate?.avatar}
-                  text={nodeTemplate?.userGuide}
-                  link={nodeTemplate?.courseUrl}
-                >
-                  {({ onClick }) => (
-                    <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                      <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
-                    </MyTooltip>
-                  )}
-                </UseGuideModal>
-              )}
+              {showVersion && <NodeVersion node={node!} />}
+              {headerButtons.map((Node, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
+                  {Node}
+                </React.Fragment>
+              ))}
               {!!error && (
                 <Flex
                   bg={'red.50'}
@@ -452,6 +470,12 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
+  const {
+    isOpen: isNodeCopilotOpen,
+    onOpen: onOpenNodeCopilot,
+    onClose: onCloseNodeCopilot
+  } = useDisclosure();
+
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
@@ -619,6 +643,7 @@ const MenuRender = React.memo(function MenuRender({
       </>
     );
   }, [
+    menuForbid?.copilot,
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
@@ -627,7 +652,10 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode
+    onDelNode,
+    onOpenNodeCopilot,
+    isNodeCopilotOpen,
+    onCloseNodeCopilot
   ]);
 
   return Render;

@@ -5,7 +5,10 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
+import {
+  ChatItemCollectionName,
+  ChatItemResponseCollectionName
+} from '@fastgpt/service/core/chat/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
@@ -135,7 +138,8 @@ async function handler(
                       $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
                     }
                   },
-                  errorCount: {
+                  // errorCount from chatItem responseData
+                  errorCountFromChatItem: {
                     $sum: {
                       $cond: [
                         {
@@ -157,7 +161,8 @@ async function handler(
                       ]
                     }
                   },
-                  totalPoints: {
+                  // totalPoints from chatItem responseData
+                  totalPointsFromChatItem: {
                     $sum: {
                       $reduce: {
                         input: { $ifNull: ['$responseData', []] },
@@ -172,6 +177,38 @@ async function handler(
               }
             ],
             as: 'chatItemsData'
+          }
+        },
+        // Add lookup for chatItemResponse data
+        {
+          $lookup: {
+            from: ChatItemResponseCollectionName,
+            let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                  }
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  // errorCount from chatItemResponse data
+                  errorCountFromResponse: {
+                    $sum: {
+                      $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
+                    }
+                  },
+                  // totalPoints from chatItemResponse data
+                  totalPointsFromResponse: {
+                    $sum: { $ifNull: ['$data.totalPoints', 0] }
+                  }
+                }
+              }
+            ],
+            as: 'chatItemResponsesData'
           }
         },
         {
@@ -201,8 +238,30 @@ async function handler(
                 0
               ]
             },
-            errorCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCount', 0] }, 0] },
-            totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] }
+            // Merge errorCount from both sources
+            errorCount: {
+              $add: [
+                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCountFromChatItem', 0] }, 0] },
+                {
+                  $ifNull: [
+                    { $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] },
+                    0
+                  ]
+                }
+              ]
+            },
+            // Merge totalPoints from both sources
+            totalPoints: {
+              $add: [
+                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },
+                {
+                  $ifNull: [
+                    { $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] },
+                    0
+                  ]
+                }
+              ]
+            }
           }
         },
         {

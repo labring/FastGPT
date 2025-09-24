@@ -41,6 +41,8 @@
   "points": "積分",
   "project_name": "專案名",
   "qa": "問答對提取",
+  "rerank": "結果重排",
+  "search_test": "搜索測試",
   "select_member_and_source_first": "請先選取成員和類型",
   "share": "分享連結",
   "source": "來源",

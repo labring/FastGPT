@@ -50,6 +50,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -839,9 +840,15 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
-  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const { commonInputs, isTool } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
   const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
-  const { successOutputs, errorOutputs } = splitOutput(outputs);
+  const { successOutputs, errorOutputs } = useMemoEnhance(
+    () => splitOutput(outputs),
+    [splitOutput, outputs]
+  );
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />

@@ -8,7 +8,11 @@ import type {
   SearchDatasetDataResponse
 } from '../../core/dataset/search/controller';
 import type { AuthOpenApiLimitProps } from '../../support/openapi/auth';
-import type { CreateUsageProps, ConcatUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import type {
+  CreateUsageProps,
+  ConcatUsageProps,
+  PushUsageItemsProps
+} from '@fastgpt/global/support/wallet/usage/api';
 
 declare global {
   var textCensorHandler: (params: { text: string }) => Promise<{ code: number; message?: string }>;
@@ -16,4 +20,5 @@ declare global {
   var authOpenApiHandler: (data: AuthOpenApiLimitProps) => Promise<any>;
   var createUsageHandler: (data: CreateUsageProps) => any;
   var concatUsageHandler: (data: ConcatUsageProps) => any;
+  var pushUsageItemsHandler: (data: PushUsageItemsProps) => any;
 }

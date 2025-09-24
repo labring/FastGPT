@@ -152,10 +152,6 @@ export const WholeResponseContent = ({
             value={formatNumber(activeModule.childTotalPoints)}
           />
         )}
-        <Row
-          label={t('common:core.chat.response.module time')}
-          value={`${activeModule?.runningTime || 0}s`}
-        />
         <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
         {activeModule?.tokens && (
           <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />

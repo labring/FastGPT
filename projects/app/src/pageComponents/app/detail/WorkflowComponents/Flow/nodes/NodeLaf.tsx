@@ -9,7 +9,6 @@ import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getApiSchemaByUrl } from '@/web/core/app/api/plugin';
-import { getType, str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';
@@ -35,6 +34,8 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { nodeLafCustomInputConfig } from '@fastgpt/global/core/workflow/template/system/laf';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { getSchemaValueType, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -158,7 +159,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           desc: bodyParams[key].description,
           required: requiredParams?.includes(key) || false,
           value: `{{${key}}}`,
-          type: getType(bodyParams[key])
+          type: getSchemaValueType(bodyParams[key])
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
@@ -190,7 +191,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
       const allResponseParams = [
         ...Object.keys(responseParams).map((key) => ({
-          valueType: getType(responseParams[key]),
+          valueType: getSchemaValueType(responseParams[key]),
           name: key,
           desc: responseParams[key].description,
           required: requiredResponseParams?.includes(key) || false
@@ -334,7 +335,10 @@ const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const { commonInputs, isTool } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
 
   return (
     <>

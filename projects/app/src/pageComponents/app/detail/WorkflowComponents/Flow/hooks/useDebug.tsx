@@ -100,7 +100,7 @@ export const useDebug = () => {
       });
       return Promise.reject();
     }
-  }, [edges, getNodes, onUpdateNodeError, t, toast]);
+  }, [edges, getNodes, onRemoveError, onUpdateNodeError, t, toast]);
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
@@ -326,6 +326,7 @@ export const useDebug = () => {
     t,
     variables.length,
     customVar,
+    internalVar,
     filteredVar,
     runtimeNodeId,
     onStartNodeDebug
