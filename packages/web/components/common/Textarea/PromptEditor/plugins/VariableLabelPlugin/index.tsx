@@ -36,7 +36,7 @@ export default function VariableLabelPlugin({
       const nodeAvatar = currentVariable?.parent?.avatar || '';
       return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
     },
-    [t, variables]
+    [t]
   );
 
   const getVariableMatch = useCallback((text: string) => {

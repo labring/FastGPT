@@ -62,6 +62,7 @@
   "confirm_copy_app_tip": "系統將為您建立一個相同設定的應用程式，但權限不會複製，請確認！",
   "confirm_del_app_tip": "確認刪除【{{name}}】及其所有聊天紀錄？",
   "confirm_delete_folder_tip": "確認刪除這個資料夾？將會刪除它底下所有應用程式及對應的對話紀錄，請確認！",
+  "copilot_config_message": "當前節點配置信息： \n代碼類型：{{codeType}} \n當前代碼： \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n輸入參數： {{inputs}} \n輸出參數： {{outputs}}",
   "copilot_confirm_message": "已接收到原始配置，了解當前代碼結構和輸入輸出參數。\n請說明您的優化需求。",
   "copy_one_app": "建立副本",
   "core.app.QG.Switch": "啟用猜你想問",

@@ -62,6 +62,7 @@
   "confirm_copy_app_tip": "The system will create an app with the same configuration for you, but permissions will not be copied. Please confirm!",
   "confirm_del_app_tip": "Are you sure you want to delete 【{{name}}】 and all of its chat history?",
   "confirm_delete_folder_tip": "Confirm to delete this folder? All apps and corresponding conversation records under it will be deleted. Please confirm!",
+  "copilot_config_message": "Current Node Configuration Information: \n Code Type: {{codeType}} \n Current Code: \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n Input Parameters: {{inputs}} \n Output Parameters: {{outputs}}",
   "copilot_confirm_message": "The original configuration has been received to understand the current code structure and input and output parameters. \nPlease explain your optimization requirements.",
   "copy_one_app": "Create Duplicate",
   "core.app.QG.Switch": "Enable guess what you want to ask",
