@@ -1,7 +1,6 @@
-import type { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
   CaculateMethodMap,
-  EvaluationStatusEnum as EvalStatus,
+  EvaluationStatusEnum,
   CalculateMethodEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvaluation, MongoEvalItem } from '../task/schema';
@@ -596,56 +595,6 @@ export class EvaluationSummaryService {
   }
 
   /**
-   * 异步执行报告生成 - 后台处理
-   */
-  static async executeAsyncSummaryGeneration(
-    evaluation: EvaluationSchemaType,
-    evaluatorTasks: Array<{
-      metricId: string;
-      evaluatorIndex: number;
-      evaluator: any;
-    }>
-  ): Promise<void> {
-    const evalId = evaluation._id.toString();
-
-    addLog.info('[EvaluationSummary] Starting async concurrent report generation', {
-      evalId,
-      totalTasks: evaluatorTasks.length
-    });
-
-    try {
-      // Generate reports concurrently
-      await Promise.all(
-        evaluatorTasks.map((task) =>
-          this.generateSingleMetricSummary(
-            evaluation,
-            task.metricId,
-            task.evaluatorIndex,
-            task.evaluator
-          ).catch((error) => {
-            addLog.error('[EvaluationSummary] Single metric report generation failed', {
-              evalId,
-              metricId: task.metricId,
-              error
-            });
-            // Don't block other metrics generation
-          })
-        )
-      );
-
-      addLog.info('[EvaluationSummary] Async concurrent report generation completed', {
-        evalId,
-        completedCount: evaluatorTasks.length
-      });
-    } catch (error) {
-      addLog.error('[EvaluationSummary] Error occurred during async report generation', {
-        evalId,
-        error
-      });
-    }
-  }
-
-  /**
    * 生成单个指标的总结报告
    */
   static async generateSingleMetricSummary(
@@ -774,24 +723,6 @@ export class EvaluationSummaryService {
   }
 
   /**
-   * 更新摘要状态
-   */
-  private static async updateSummaryStatus(
-    evalId: string,
-    evaluatorIndex: number,
-    status: SummaryStatusEnum
-  ): Promise<void> {
-    await MongoEvaluation.updateOne(
-      { _id: evalId },
-      {
-        $set: {
-          [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
-        }
-      }
-    );
-  }
-
-  /**
    * 更新摘要结果
    */
   private static async updateSummaryResult(
@@ -833,7 +764,6 @@ export class EvaluationSummaryService {
       metricName: evaluator.metric.name,
       thresholdValue
     });
-
     try {
       // Get evaluation to check metric count
       const evaluation = await MongoEvaluation.findById(evalId).lean();
@@ -911,41 +841,6 @@ export class EvaluationSummaryService {
         totalCount: results.length,
         belowThresholdCount: results.filter((item) => item.isBelowThreshold).length
       });
-
-      // Check if metric count >= 3 and all data items have abnormal status
-      if (evaluation.evaluators.length >= 3) {
-        // Query all eval items for this evaluation to check metadata.status
-        const allEvalItems = await MongoEvalItem.find(
-          {
-            evalId: new Types.ObjectId(evalId)
-          },
-          {
-            'metadata.status': 1
-          }
-        ).lean();
-
-        const allItemsAbnormal =
-          allEvalItems.length > 0 &&
-          allEvalItems.every((item) => item.metadata?.status === EvalStatus.error);
-
-        if (allItemsAbnormal) {
-          addLog.warn(
-            '[EvaluationSummary] All data items have abnormal status when metric count >= 3, throwing exception',
-            {
-              evalId,
-              metricId,
-              metricName: evaluator.metric.name,
-              metricCount: evaluation.evaluators.length,
-              totalItems: allEvalItems.length,
-              abnormalStatuses: allEvalItems.map((item) => item.metadata?.status)
-            }
-          );
-          //web not show summary while metric count >= 3 and all eval_item error,so cannel generate
-          throw new Error(
-            'All related data items have error status when metric count >= 3, summary generation skipped'
-          );
-        }
-      }
 
       return {
         filteredData: results,
@@ -1229,6 +1124,88 @@ export class EvaluationSummaryService {
       );
       // Return non-perfect score data first (sorted by score from low to high)
       return [...nonPerfectData];
+    }
+  }
+
+  /**
+   * Trigger summary generation for completed evaluation task
+   */
+  static async triggerSummaryGeneration(evalId: string, completedCount: number): Promise<void> {
+    try {
+      // Check if all evaluation items have error status - skip summary generation if true
+      const allEvalItemsStatus = await MongoEvalItem.find(
+        { evalId: new Types.ObjectId(evalId) },
+        { 'metadata.status': 1 }
+      ).lean();
+
+      const allItemsAbnormal =
+        allEvalItemsStatus.length > 0 &&
+        allEvalItemsStatus.every((item) => item.metadata?.status === EvaluationStatusEnum.error);
+
+      if (allItemsAbnormal) {
+        addLog.warn(
+          '[Evaluation] All evaluation items have error status, skipping summary generation for all metrics',
+          {
+            evalId,
+            totalItems: allEvalItemsStatus.length
+          }
+        );
+        return; // Skip summary generation entirely
+      }
+
+      // Check if there are any successful evaluatorOutputs, regardless of overall item status
+      const itemsWithSuccessfulOutputs = await MongoEvalItem.countDocuments({
+        evalId: new Types.ObjectId(evalId),
+        evaluatorOutputs: {
+          $elemMatch: {
+            status: MetricResultStatusEnum.Success,
+            'data.score': { $exists: true, $ne: null }
+          }
+        }
+      });
+
+      if (completedCount === 0 && itemsWithSuccessfulOutputs === 0) {
+        return; // No successful items, skip summary generation
+      }
+      // Scores are now calculated in real-time when getEvaluationSummary is called
+      // No need to pre-calculate and save scores
+
+      // Check which metrics need summary generation
+      const currentEvaluation = await MongoEvaluation.findById(
+        evalId,
+        'evaluators summaryConfigs'
+      ).lean();
+
+      if (!currentEvaluation?.evaluators || currentEvaluation.evaluators.length === 0) {
+        return; // No evaluators to process
+      }
+
+      // Find metrics with empty summaries
+      const metricsNeedingSummary: string[] = [];
+
+      currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
+        const metricId = evaluator.metric._id.toString();
+        const summaryConfig = currentEvaluation.summaryConfigs[index];
+
+        // Check if summary is empty
+        if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
+          metricsNeedingSummary.push(metricId);
+        }
+      });
+
+      if (metricsNeedingSummary.length > 0) {
+        // Trigger async summary generation for metrics with empty summaries
+        await EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary);
+      } else {
+        addLog.debug(
+          `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}`
+        );
+      }
+    } catch (error) {
+      // Log error without affecting main completion flow
+      addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
+        error
+      });
     }
   }
 }
