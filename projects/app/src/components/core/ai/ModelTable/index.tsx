@@ -274,12 +274,18 @@ const ModelTable = () => {
         <Table>
           <Thead>
             <Tr color={'myGray.600'}>
-              {userInfo?.team.permission.hasManagePer && (
-                <Th w="10px">
-                  <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
-                </Th>
-              )}
-              <Th fontSize={'xs'}>{t('common:model.name')}</Th>
+              <Th fontSize={'xs'}>
+                <HStack>
+                  {userInfo?.team.permission.hasManagePer && (
+                    <Checkbox
+                      mr={1}
+                      isChecked={isSelecteAll}
+                      onChange={selectAllTrigger}
+                    ></Checkbox>
+                  )}
+                  <Box>{t('common:model.name')}</Box>
+                </HStack>
+              </Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
               {userInfo?.team.permission.hasManagePer && (
@@ -290,16 +296,15 @@ const ModelTable = () => {
           <Tbody>
             {modelList.map((item, index) => (
               <Tr key={index} _hover={{ bg: 'myGray.50' }}>
-                {userInfo?.team.permission.hasManagePer && (
-                  <Td w="10px">
-                    <Checkbox
-                      isChecked={isSelected(item)}
-                      onChange={(e) => toggleSelect(item)}
-                    ></Checkbox>
-                  </Td>
-                )}
                 <Td fontSize={'sm'}>
                   <HStack>
+                    {userInfo?.team.permission.hasManagePer && (
+                      <Checkbox
+                        mr={1}
+                        isChecked={isSelected(item)}
+                        onChange={(e) => toggleSelect(item)}
+                      ></Checkbox>
+                    )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
                     <CopyBox value={item.name} color={'myGray.900'}>
                       {item.name}
@@ -313,7 +318,7 @@ const ModelTable = () => {
                 {userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
                     <CollaboratorContextProvider
-                      hint={t('account_model:model_permission_config_hint')}
+                      selectedHint={t('account_model:model_permission_config_hint')}
                       defaultRole={ReadRoleVal}
                       onGetCollaboratorList={() => getModelCollaborators(item.model)}
                       onUpdateCollaborators={({ collaborators }) =>
@@ -343,10 +348,11 @@ const ModelTable = () => {
           </Tbody>
         </Table>
       </TableContainer>
+
       <FloatingActionBar
         Controler={
           <CollaboratorContextProvider
-            hint={t('account_model:model_permission_config_hint')}
+            selectedHint={t('account_model:model_permission_config_hint')}
             defaultRole={ReadRoleVal}
             onGetCollaboratorList={() =>
               Promise.resolve({

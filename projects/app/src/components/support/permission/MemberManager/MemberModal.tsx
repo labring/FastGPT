@@ -34,14 +34,19 @@ import {
 } from '@fastgpt/global/support/permission/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
-import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
   cursor: 'pointer'
 };
 
-function MemberModal({ onClose, hint }: { onClose: () => void; hint?: string }) {
+function MemberModal({
+  onClose,
+  SelectedTip
+}: {
+  onClose: () => void;
+  SelectedTip?: React.ReactNode;
+}) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
@@ -416,7 +421,10 @@ function MemberModal({ onClose, hint }: { onClose: () => void; hint?: string }) 
             </Flex>
 
             <Flex h={'100%'} flexDirection="column" overflow={'auto'} p="2">
-              <Box mt={2} mb={3}>{`${t('common:chosen')}: ${editCollaborators.length}`}</Box>
+              <Flex alignItems={'center'} mt={2} mb={3}>
+                <Box>{`${t('common:chosen')}: ${editCollaborators.length}`}</Box>
+                {SelectedTip ? <Box ml={1}>{SelectedTip}</Box> : null}
+              </Flex>
               <Flex flexDirection="column" gap={1} flex={'1 0 0'} h={0}>
                 {editCollaborators.map((clb) => {
                   const onDelete = () => {
@@ -461,7 +469,6 @@ function MemberModal({ onClose, hint }: { onClose: () => void; hint?: string }) 
           </Grid>
         </ModalBody>
         <ModalFooter>
-          {hint && <LightTip text={hint} />}
           <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
             {t('common:Confirm')}
           </Button>

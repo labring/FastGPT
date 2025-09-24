@@ -21,6 +21,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
 import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 
@@ -88,14 +89,14 @@ const CollaboratorContextProvider = ({
   refreshDeps = [],
   defaultRole,
   isInheritPermission,
-  hint
+  selectedHint
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
   isInheritPermission?: boolean;
   hasParent?: boolean;
   addPermissionOnly?: boolean;
-  hint?: string;
+  selectedHint?: string;
 }) => {
   const { t } = useTranslation();
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
@@ -221,7 +222,7 @@ const CollaboratorContextProvider = ({
             onCloseManageModal();
             refetchResource?.();
           }}
-          hint={hint}
+          SelectedTip={selectedHint ? <LightTip text={selectedHint} /> : undefined}
         />
       )}
     </CollaboratorContext.Provider>
