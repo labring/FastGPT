@@ -728,7 +728,8 @@ const WorkflowContextProvider = ({
           query: debugData.query, // 添加 query 参数
           history: debugData.history,
           appId,
-          chatConfig: appDetail.chatConfig
+          chatConfig: appDetail.chatConfig,
+          usageId: debugData.usageId
         });
 
         // 4. Store debug result
