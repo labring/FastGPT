@@ -112,6 +112,7 @@ export const runToolCall = async (
     // Run entry tool
     const toolRunResponse = await runWorkflow({
       ...workflowProps,
+      usageId: undefined,
       isToolCall: true
     });
     const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);

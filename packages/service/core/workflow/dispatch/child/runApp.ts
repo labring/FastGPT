@@ -134,6 +134,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       system_memories
     } = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: childrenInteractive,
       // Rewrite stream mode
       ...(system_forbid_stream
