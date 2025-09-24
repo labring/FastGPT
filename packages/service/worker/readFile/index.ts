@@ -31,12 +31,13 @@ parentPort?.on(
         case 'pptx':
           return readPptxRawText(params);
         case 'xlsx':
+        case 'xls':
           return readXlsxRawText(params);
         case 'csv':
           return readCsvRawText(params);
         default:
           return Promise.reject(
-            `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+            `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx, .xls. "${params.extension}" is not supported.`
           );
       }
     };

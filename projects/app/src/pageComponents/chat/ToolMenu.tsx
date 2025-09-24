@@ -41,21 +41,21 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         },
         {
           children: [
-            // {
-            //   icon: 'core/app/appApiLight',
-            //   label: `HTML ${t('common:Export')}`,
-            //   onClick: () => onExportChat({ type: 'html', history })
-            // },
+            {
+              icon: 'core/app/appApiLight',
+              label: `HTML ${t('common:Export')}`,
+              onClick: () => onExportChat({ type: 'html', history })
+            },
             {
               icon: 'file/markdown',
               label: `Markdown ${t('common:Export')}`,
               onClick: () => onExportChat({ type: 'md', history })
+            },
+            {
+              icon: 'core/chat/export/pdf',
+              label: `PDF ${t('common:Export')}`,
+              onClick: () => onExportChat({ type: 'pdf', history })
             }
-            // {
-            //   icon: 'core/chat/export/pdf',
-            //   label: `PDF ${t('common:Export')}`,
-            //   onClick: () => onExportChat({ type: 'pdf', history })
-            // }
           ]
         }
       ]}
