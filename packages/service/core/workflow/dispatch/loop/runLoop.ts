@@ -95,6 +95,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     const response = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
