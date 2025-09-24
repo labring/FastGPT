@@ -90,7 +90,7 @@ const ChatItemSchema = new Schema({
   get chat logs; 
   close custom feedback; 
 */
-ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { unique: true });
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
 // timer, clear history
 ChatItemSchema.index({ teamId: 1, time: -1 });
 
