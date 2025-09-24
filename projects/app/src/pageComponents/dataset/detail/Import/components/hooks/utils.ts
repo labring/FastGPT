@@ -172,7 +172,7 @@ export const transformChangesToUI = (
 export const transformUIToBackend = (uiTables: UITableData[]): DatabaseCollectionsBody => {
   return {
     tables: uiTables
-      .filter((table) => table.enabled)
+      .filter((table) => table.enabled && table.status !== StatusEnum.delete)
       .map((table) => ({
         ...table,
         tableName: table.tableName,
