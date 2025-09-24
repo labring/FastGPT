@@ -142,8 +142,8 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   // Usage count
   const inputTokens =
-    usage?.prompt_tokens ?? (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
-  const outputTokens = usage?.completion_tokens ?? (await countGptMessagesTokens(assistantMessage));
+    usage?.prompt_tokens || (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
+  const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(assistantMessage));
 
   return {
     isStreamResponse,
