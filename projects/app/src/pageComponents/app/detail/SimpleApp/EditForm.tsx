@@ -34,6 +34,7 @@ import ToolSelect from './components/ToolSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -86,18 +87,22 @@ const EditForm = ({
   }, [selectDatasets]);
 
   useEffect(() => {
-    if (knowledgeTypeConfig.hasDatabaseKnowledge && defaultModels.llm?.model) {
-      setAppForm((prevForm) => {
-        return {
-          ...prevForm,
-          dataset: {
-            ...prevForm.dataset,
-            generateSqlModel: defaultModels.llm?.model
-          }
-        };
-      });
-    }
-  }, [knowledgeTypeConfig.hasDatabaseKnowledge, defaultModels.llm?.model]);
+    setAppForm((prevForm) => {
+      return {
+        ...prevForm,
+        dataset: {
+          ...prevForm.dataset,
+          searchMode:
+            knowledgeTypeConfig.hasDatabaseKnowledge && !knowledgeTypeConfig.hasOtherKnowledge
+              ? DatasetSearchModeEnum.database
+              : prevForm.dataset.searchMode === DatasetSearchModeEnum.database
+                ? DatasetSearchModeEnum.embedding
+                : prevForm.dataset.searchMode,
+          generateSqlModel: defaultModels.llm?.model
+        }
+      };
+    });
+  }, [knowledgeTypeConfig, defaultModels.llm?.model]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -460,7 +465,8 @@ const EditForm = ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,
             name: item.name,
-            avatar: item.avatar
+            avatar: item.avatar,
+            datasetType: item.datasetType
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {

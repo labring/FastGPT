@@ -166,8 +166,11 @@ const ConnectDatabaseConfig = () => {
             placeholder={t('dataset:host_placeholder')}
             bg="myGray.50"
             {...register('host', {
-              required: t('dataset:host_required'),
-              validate: databaseAddrValidator
+              required: true,
+              validate: (v) => {
+                const res = databaseAddrValidator(v);
+                return res === true ? true : t(res);
+              }
             })}
           />
           <Text fontSize="xs" color="myGray.500" mt={1}>
@@ -186,7 +189,7 @@ const ConnectDatabaseConfig = () => {
             placeholder="3306"
             bg="myGray.50"
             {...register('port', {
-              required: t('dataset:port_required'),
+              required: true,
               valueAsNumber: true,
               validate: (val) => {
                 if (typeof val !== 'number' || isNaN(val)) {
