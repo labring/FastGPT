@@ -850,7 +850,11 @@ export class EvaluationTaskService {
           }
         });
         commonPipeline.push({
-          $match: { hasFailedEvaluator: true }
+          $match: {
+            hasFailedEvaluator: true,
+            'metadata.status': EvaluationStatusEnum.completed, // Only completed items
+            evaluatorOutputs: { $exists: true, $ne: null, $not: { $size: 0 } } // Valid evaluator outputs
+          }
         });
       }
     }
@@ -966,6 +970,17 @@ export class EvaluationTaskService {
       // Get the updated item to determine the evalId
       const updatedItem = await MongoEvalItem.findById(itemId, 'evalId');
       if (updatedItem) {
+        const cleanupResult = await removeEvaluationItemJobsByItemId(itemId, {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
+        });
+
+        addLog.debug('Queue cleanup completed for evaluation item deletion', {
+          itemId,
+          cleanup: cleanupResult
+        });
+
         // Reset results and re-queue
         const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
           metricName: evaluator.metric.name
@@ -1029,7 +1044,7 @@ export class EvaluationTaskService {
     // Retry the job directly (active event will clear error state automatically)
     await job.retry();
 
-    addLog.info('Evaluation item retried successfully', {
+    addLog.debug('Evaluation item retried successfully', {
       itemId,
       evalId: item.evalId,
       teamId
@@ -1069,7 +1084,7 @@ export class EvaluationTaskService {
       }
     }
 
-    addLog.info('All failed evaluation items retry completed', {
+    addLog.debug('All failed evaluation items retry completed', {
       evalId,
       teamId,
       totalFailedJobs: evaluationFailedJobs.length,
