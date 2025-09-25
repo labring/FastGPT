@@ -25,7 +25,8 @@
       "summaryConcurrency": 1,
       "dataQualityConcurrency": 2,
       "datasetDataSynthesizeConcurrency": 5,
-      "datasetSmartGenerateConcurrency": 2
+      "datasetSmartGenerateConcurrency": 2,
+      "maxStalledCount": 3
     }
   }
 }
