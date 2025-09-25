@@ -15,16 +15,7 @@ export type EvalDatasetDataSynthesizeData = {
 };
 
 export const evalDatasetDataSynthesizeQueue = getQueue<EvalDatasetDataSynthesizeData>(
-  QueueNames.evalDatasetDataSynthesize,
-  {
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 1000
-      }
-    }
-  }
+  QueueNames.evalDatasetDataSynthesize
 );
 
 const concurrency = global.systemEnv?.evalConfig?.datasetDataSynthesizeConcurrency || 5;
@@ -33,8 +24,9 @@ export const getEvalDatasetDataSynthesizeWorker = (
   processor: Processor<EvalDatasetDataSynthesizeData>
 ) => {
   return getWorker<EvalDatasetDataSynthesizeData>(QueueNames.evalDatasetDataSynthesize, processor, {
+    maxStalledCount: 3,
     removeOnFail: {
-      count: 1000 // Keep last 1000 failed jobs for debugging
+      age: 30 * 60 * 60 * 24 // 30 day
     },
     concurrency: concurrency
   });

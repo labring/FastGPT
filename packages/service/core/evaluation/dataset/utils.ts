@@ -37,11 +37,11 @@ export async function getCollectionStatus(
       }
     }
 
-    if (hasWaiting) {
-      return EvalDatasetCollectionStatusEnum.queuing;
-    }
     if (hasActive) {
       return EvalDatasetCollectionStatusEnum.processing;
+    }
+    if (hasWaiting) {
+      return EvalDatasetCollectionStatusEnum.queuing;
     }
     if (hasFailed) {
       return EvalDatasetCollectionStatusEnum.error;
