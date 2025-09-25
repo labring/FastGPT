@@ -348,6 +348,10 @@ const ModelTable = () => {
       </TableContainer>
 
       <FloatingActionBar
+        activedStyles={{
+          borderRadius: 'md',
+          boxShadow: 'md'
+        }}
         Controler={
           <LazyCollaboratorProvider
             selectedHint={t('account_model:model_permission_config_hint')}
