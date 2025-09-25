@@ -11,6 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -104,6 +105,41 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               datasetType: item.datasetType
             }))}
             onChange={(e) => {
+              const searchModeInfo = inputs.find(
+                (v) => v.key === NodeInputKeyEnum.datasetSearchMode
+              );
+              if (searchModeInfo) {
+                const hasDatabaseKnowledge = e.some(
+                  (v) => v.datasetType === DatasetTypeEnum.database
+                );
+                const hasOtherKnowledge = e.some((v) => v.datasetType !== DatasetTypeEnum.database);
+                let value = searchModeInfo.value;
+
+                // 如果当前是database模式
+                if (value === DatasetSearchModeEnum.database) {
+                  // 如果存在其他知识类型，则改为embedding模式
+                  if (hasOtherKnowledge) {
+                    value = DatasetSearchModeEnum.embedding;
+                  }
+                }
+                // 如果当前不是database模式
+                else {
+                  // 如果存在数据库知识且不存在其他知识类型，则设置为database模式
+                  if (hasDatabaseKnowledge && !hasOtherKnowledge) {
+                    value = DatasetSearchModeEnum.database;
+                  }
+                }
+
+                onChangeNode({
+                  nodeId,
+                  key: searchModeInfo.key,
+                  type: 'updateInput',
+                  value: {
+                    ...searchModeInfo,
+                    value
+                  }
+                });
+              }
               onChangeNode({
                 nodeId,
                 key: item.key,
@@ -127,7 +163,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     onCloseDatasetSelect,
     onOpenDatasetSelect,
     selectedDatasets,
-    t
+    t,
+    inputs
   ]);
 
   return Render;

@@ -6,7 +6,10 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeMap,
+  DatasetSearchModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -18,6 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import { isEmpty } from 'lodash';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -42,7 +46,6 @@ export const WholeResponseContent = ({
   chatTime?: Date;
 }) => {
   const { t } = useTranslation();
-
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -120,6 +123,25 @@ export const WholeResponseContent = ({
     },
     [RowRender, t]
   );
+
+  const searchModeDisplay = useMemo(() => {
+    if (activeModule.searchMode === DatasetSearchModeEnum.database) {
+      return t(DatasetSearchModeMap[DatasetSearchModeEnum.database]?.title);
+    }
+
+    if (!isEmpty(activeModule.sqlResult)) {
+      const model = activeModule.searchMode as any;
+      // @ts-ignore
+      const textList = [
+        t(DatasetSearchModeMap[DatasetSearchModeEnum.database]?.title),
+        // @ts-ignore
+        t(DatasetSearchModeMap[model]?.title)
+      ].filter((v) => v);
+      return textList.join(t('common:semicolon'));
+    }
+    // @ts-ignore
+    return t(DatasetSearchModeMap[activeModule.searchMode]?.title);
+  }, [activeModule.searchMode, activeModule.sqlResult, t]);
 
   return activeModule ? (
     <Box
@@ -233,10 +255,7 @@ export const WholeResponseContent = ({
             label={t('common:core.dataset.search.search mode')}
             rawDom={
               <Flex border={'base'} borderRadius={'md'} p={2}>
-                <Box>
-                  {/* @ts-ignore */}
-                  {t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
-                </Box>
+                <Box>{searchModeDisplay}</Box>
                 {activeModule.embeddingWeight && (
                   <>{`(${t('chat:response_hybrid_weight', {
                     emb: activeModule.embeddingWeight,
