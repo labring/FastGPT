@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useDebounceFn } from 'ahooks';
 import {
   Box,
   Flex,
@@ -41,6 +42,7 @@ const DataListContent = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const [searchKey, setSearchKey] = useState('');
+  const [localSearchKey, setLocalSearchKey] = useState('');
   const [status, setStatus] = useState<EvaluationStatus>(EvaluationStatus.All);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -59,6 +61,32 @@ const DataListContent = () => {
   } = useDataListContext();
 
   const collectionName = router.query.collectionName as string;
+
+  // 防抖处理的搜索函数
+  const { run: debouncedSearch } = useDebounceFn(
+    (value: string) => {
+      setSearchKey(value);
+    },
+    {
+      wait: 500 // 500ms 的防抖延迟
+    }
+  );
+
+  // 处理搜索输入变化
+  const handleSearch = useCallback(
+    (value: string) => {
+      // 立即更新本地搜索值，使输入框内容即时更新
+      setLocalSearchKey(value);
+      // 防抖处理实际的搜索操作
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  // 当 searchKey 变化时，同步更新本地搜索值
+  React.useEffect(() => {
+    setLocalSearchKey(searchKey);
+  }, [searchKey]);
 
   // 删除数据的请求
   const { runAsync: onDeleteData, loading: isDeleting } = useRequest2(deleteEvaluationDatasetData, {
@@ -273,7 +301,7 @@ const DataListContent = () => {
               size={'sm'}
               h={'36px'}
               placeholder={t('common:Search') || ''}
-              value={searchKey}
+              value={localSearchKey}
               leftIcon={
                 <MyIcon
                   name="common/searchLight"
@@ -283,7 +311,7 @@ const DataListContent = () => {
                 />
               }
               onChange={(e) => {
-                setSearchKey(e.target.value);
+                handleSearch(e.target.value);
               }}
             />
 

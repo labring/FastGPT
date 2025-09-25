@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useDebounceFn } from 'ahooks';
 import {
   Table,
   Thead,
@@ -48,6 +49,7 @@ import { getBuiltinDimensionInfo, formatScoreToPercentage } from '@/web/core/eva
 const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
+  const [localSearchValue, setLocalSearchValue] = useState('');
   const [appFilter, setAppFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { t } = useTranslation();
@@ -62,6 +64,32 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
       appId: data.appFilter || undefined
     });
   };
+
+  // 防抖处理的搜索函数
+  const { run: debouncedSearch } = useDebounceFn(
+    (value: string) => {
+      setSearchValue(value);
+    },
+    {
+      wait: 500 // 500ms 的防抖延迟
+    }
+  );
+
+  // 处理搜索输入变化
+  const handleSearch = useCallback(
+    (value: string) => {
+      // 立即更新本地搜索值，使输入框内容即时更新
+      setLocalSearchValue(value);
+      // 防抖处理实际的搜索操作
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  // 当 searchValue 变化时，同步更新本地搜索值
+  React.useEffect(() => {
+    setLocalSearchValue(searchValue);
+  }, [searchValue]);
 
   // 使用分页Hook
   const {
@@ -207,8 +235,8 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
             </InputLeftElement>
             <Input
               placeholder={t('dashboard_evaluation:search_evaluation_task')}
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              value={localSearchValue}
+              onChange={(e) => handleSearch(e.target.value)}
               bg={'white'}
             />
           </InputGroup>
