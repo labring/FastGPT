@@ -78,6 +78,11 @@ ResourcePermissionSchema.virtual('org', {
 });
 
 try {
+  ResourcePermissionSchema.index({
+    resourceType: 1,
+    teamId: 1
+  });
+
   // Indexes for resourceId-based resources
   ResourcePermissionSchema.index(
     {
