@@ -71,7 +71,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
+  const { homePageModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
@@ -97,8 +97,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
   );
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
-    [llmModelList]
+    () => homePageModelList.map((model) => ({ value: model.model, label: model.name })),
+    [homePageModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
     defaultValue: defaultModels.llm?.model
