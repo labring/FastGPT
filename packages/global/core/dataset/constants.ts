@@ -39,7 +39,7 @@ export enum DatabaseType {
   postgresql = 'postgresql',
   mssql = 'mssql',
   sqlite = 'sqlite'
-};
+}
 
 // @ts-ignore
 export const ApiDatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
@@ -91,7 +91,6 @@ export const DatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
     avatar: 'core/dataset/databaseColor',
     label: i18nT('dataset:enterprise_database'),
     collectionLabel: i18nT('dataset:enterprise_database'),
-    courseUrl: '/docs/introduction/guide/knowledge_base/enterprise_database/',
     formConfig: {
       agentModel: {
         isHidden: true
