@@ -15,6 +15,7 @@ import {
   checkTeamEvaluationTaskLimit,
   checkTeamAIPoints
 } from '@fastgpt/service/support/permission/teamLimit';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
@@ -40,7 +41,12 @@ async function handler(
     teamId
   );
   if (!paramValidation.isValid) {
-    throw ValidationResultUtils.toError(paramValidation);
+    const error = ValidationResultUtils.toTranslatableError(paramValidation);
+    // Log detailed validation errors for debugging
+    if ((error as any).validationDebugInfo) {
+      addLog.error('Evaluation creation validation failed', (error as any).validationDebugInfo);
+    }
+    throw error;
   }
 
   // Check evaluation task limit

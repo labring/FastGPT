@@ -94,6 +94,8 @@ export const createEvaluationError = (
   forceRetry?: boolean
 ): Error => {
   const errorStr = error?.message || error?.code || String(error);
+
+  // Use getErrText for all error types for consistent translation
   const errorMessage = getErrText(error);
 
   // Build detailed error context

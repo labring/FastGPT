@@ -11,6 +11,7 @@ import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
   req: ApiRequestProps<UpdateEvaluationRequest>
@@ -39,7 +40,12 @@ async function handler(
     teamId
   );
   if (!paramValidation.isValid) {
-    throw ValidationResultUtils.toError(paramValidation);
+    const error = ValidationResultUtils.toTranslatableError(paramValidation);
+    // Log detailed validation errors for debugging
+    if ((error as any).validationDebugInfo) {
+      addLog.error('Evaluation update validation failed', (error as any).validationDebugInfo);
+    }
+    throw error;
   }
 
   const taskName = name?.trim() || evaluation.name;

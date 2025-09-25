@@ -581,8 +581,7 @@ export class EvaluationTaskService {
     const canStart =
       evaluation.status === EvaluationStatusEnum.queuing ||
       evaluation.status === EvaluationStatusEnum.completed ||
-      (evaluation.status === EvaluationStatusEnum.error &&
-        evaluation.errorMessage === 'Manually stopped');
+      evaluation.status === EvaluationStatusEnum.error;
 
     if (!canStart) {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
@@ -647,7 +646,7 @@ export class EvaluationTaskService {
         {
           $set: {
             finishTime: new Date(),
-            errorMessage: 'Manually stopped'
+            errorMessage: EvaluationErrEnum.evalManuallyStopped
           }
         },
         { session }
@@ -660,7 +659,7 @@ export class EvaluationTaskService {
         },
         {
           $set: {
-            errorMessage: 'Manually stopped',
+            errorMessage: EvaluationErrEnum.evalManuallyStopped,
             finishTime: new Date()
           }
         },
@@ -682,9 +681,9 @@ export class EvaluationTaskService {
     // Get real-time status from job queues
     const basicStats = await getEvaluationTaskStats(evalId);
 
-    // Calculate failed count using threshold checks
+    // Calculate belowThreshold count using threshold checks
     const evaluators = evaluation.evaluators || [];
-    let failedCount = 0;
+    let belowThresholdCount = 0;
 
     if (evaluators.length > 0) {
       const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
@@ -1294,20 +1293,26 @@ export class EvaluationTaskService {
       });
       const sortedMetricNames = Array.from(metricNames).sort();
 
-      // Get display names for CSV headers (i18n keys for built-in metrics, original names for custom metrics)
-      const displayMetricNames = sortedMetricNames.map((metricName) =>
-        getMetricDisplayName(metricName)
+      // Translate metric names for CSV headers
+      const translatedMetricNames = sortedMetricNames.map((metricName) =>
+        translateBuiltinMetricName(metricName, locale)
+      );
+
+      // Translate column headers
+      const baseHeaders = ['ItemId', 'UserInput', 'ExpectedOutput', 'ActualOutput'];
+      const translatedBaseHeaders = baseHeaders.map((header) =>
+        translateCsvColumnName(header, locale)
+      );
+
+      const footerHeaders = ['Status', 'ErrorMessage'];
+      const translatedFooterHeaders = footerHeaders.map((header) =>
+        translateCsvColumnName(header, locale)
       );
 
       const headers = [
-        'ItemId',
-        'UserInput',
-        'ExpectedOutput',
-        'ActualOutput',
-        ...displayMetricNames, // Dynamic metric columns with display names
-        'Status',
-        'ErrorMessage',
-        'FinishTime'
+        ...translatedBaseHeaders,
+        ...translatedMetricNames,
+        ...translatedFooterHeaders
       ];
 
       const csvRows = [headers.join(',')];
@@ -1334,8 +1339,7 @@ export class EvaluationTaskService {
             return score !== undefined ? score : '';
           }),
           itemStatus || '',
-          `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
-          item.finishTime || ''
+          `"${(item.errorMessage || '').replace(/"/g, '""')}"`
         ];
         csvRows.push(row.join(','));
       });
