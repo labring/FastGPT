@@ -331,8 +331,6 @@
   "tables_modified_and_deleted": "發現 {{modifiedTables}} 個數據表存在列的變更，{{deletedTables}} 個數據表已不存在，",
   "tables_no_longer_exist_comma": "個數據表已不存在，",
   "process.databaseSchema": "資料庫結構索引產生",
-  "database_dataset_desc": "直連企業內部MySQL、SQLite等資料庫構建知識庫",
-  "database_connection_config": "資料庫連接配置",
   "database_url": "資料庫地址",
   "database_url_placeholder": "例如: localhost 或 192.168.1.100",
   "database_url_required": "資料庫地址不能為空",
