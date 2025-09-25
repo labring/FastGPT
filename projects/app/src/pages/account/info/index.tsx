@@ -46,6 +46,7 @@ import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { useUploadAvatar } from '@/web/common/file/hooks/useUploadAvatar';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -140,14 +141,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdateContact,
     onOpen: onOpenUpdateContact
   } = useDisclosure();
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -163,6 +156,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     },
     [reset, t, toast, updateUserInfo]
   );
+
+  const { UploadAvatar, handleOpenSelectFile } = useUploadAvatar((avatar) => {
+    if (!userInfo) return;
+    onclickSave({ ...userInfo, avatar });
+  });
 
   const labelStyles: BoxProps = {
     flex: '0 0 80px',
@@ -241,6 +239,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Flex>
         )}
 
+        <UploadAvatar />
         {isPc ? (
           <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
             <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
@@ -253,7 +252,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 border={theme.borders.base}
                 overflow={'hidden'}
                 boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                onClick={onOpenSelectFile}
+                onClick={handleOpenSelectFile}
               >
                 <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
               </Box>
@@ -264,7 +263,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             flexDirection={'column'}
             alignItems={'center'}
             cursor={'pointer'}
-            onClick={onOpenSelectFile}
+            onClick={handleOpenSelectFile}
           >
             <MyTooltip label={t('account_info:choose_avatar')}>
               <Box
@@ -287,6 +286,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Flex>
         )}
+
         {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
@@ -334,21 +334,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxW: 300,
-            maxH: 300,
-            callback: (src) => {
-              if (!userInfo) return;
-              onclickSave({
-                ...userInfo,
-                avatar: src
-              });
-            }
-          })
-        }
-      />
     </Box>
   );
 };
