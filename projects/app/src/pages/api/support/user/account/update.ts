@@ -8,6 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources';
 
 export type UserAccountUpdateQuery = {};
 export type UserAccountUpdateBody = UserUpdateParams;
@@ -37,6 +38,10 @@ async function handler(
     }
     // if avatar, update team member avatar
     if (avatar) {
+      if (tmb?.avatar) {
+        const objectKey = tmb.avatar.split('/').slice(4).join('/');
+        await getS3AvatarSource().removeAvatar(objectKey);
+      }
       await MongoTeamMember.updateOne(
         {
           _id: tmbId
@@ -45,7 +50,6 @@ async function handler(
           avatar
         }
       ).session(session);
-      await refreshSourceAvatar(avatar, tmb?.avatar, session);
     }
   });
 
