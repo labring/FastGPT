@@ -91,5 +91,5 @@
   "volunme_of_failed_calls": "Failed calls",
   "waiting_test": "Waiting for test",
   "evaluation_model": "Model",
-  "evaluation_model_tip": "Used to evaluate apps and data quality evaluation in datasets."
+  "evaluation_model_tip": "Used to evaluate apps and quality of data in datasets."
 }
