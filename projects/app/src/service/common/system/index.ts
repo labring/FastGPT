@@ -22,6 +22,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
+import type { DatasetSearchTrackProps } from '@fastgpt/global/core/dataset/api';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -74,6 +75,12 @@ export function initGlobalVariables() {
     global.pushUsageItemsHandler = function pushUsageItemsHandler(data: PushUsageItemsProps) {
       if (!isProVersion()) return;
       return POST('/support/wallet/usage/pushUsageItems', data);
+    };
+    global.trackDatasetSearchHandler = function trackDatasetSearchHandler(
+      data: DatasetSearchTrackProps
+    ) {
+      if (!isProVersion()) return;
+      return POST('/core/dataset/search/track', data);
     };
   }
 

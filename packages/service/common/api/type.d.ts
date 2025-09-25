@@ -13,6 +13,7 @@ import type {
   ConcatUsageProps,
   PushUsageItemsProps
 } from '@fastgpt/global/support/wallet/usage/api';
+import type { DatasetSearchTrackProps } from '@fastgpt/global/core/dataset/api';
 
 declare global {
   var textCensorHandler: (params: { text: string }) => Promise<{ code: number; message?: string }>;
@@ -21,4 +22,5 @@ declare global {
   var createUsageHandler: (data: CreateUsageProps) => any;
   var concatUsageHandler: (data: ConcatUsageProps) => any;
   var pushUsageItemsHandler: (data: PushUsageItemsProps) => any;
+  var trackDatasetSearchHandler: (data: DatasetSearchTrackProps) => any;
 }
