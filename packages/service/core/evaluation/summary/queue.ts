@@ -3,6 +3,11 @@ import { QueueNames } from '../../../common/bullmq';
 import { addLog } from '../../../common/system/log';
 import { SummaryStatusHandler } from './statusHandler';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import {
+  createJobCleaner,
+  type JobCleanupResult,
+  type JobCleanupOptions
+} from '../utils/jobCleanup';
 
 // 评估总结任务数据接口
 export interface EvaluationSummaryJobData {
@@ -13,7 +18,16 @@ export interface EvaluationSummaryJobData {
 
 // 获取评估总结队列
 export function getEvaluationSummaryQueue() {
-  return getQueue<EvaluationSummaryJobData>(QueueNames.evaluationSummary);
+  return getQueue<EvaluationSummaryJobData>(QueueNames.evaluationSummary, {
+    defaultJobOptions: {
+      removeOnComplete: {
+        count: 0 // 立即删除完成的任务，不保留数据
+      },
+      removeOnFail: {
+        count: 0 // 立即删除失败的任务，不保留数据
+      }
+    }
+  });
 }
 
 // 检查是否有运行中的 summary 任务
@@ -81,12 +95,6 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
         },
         {
           attempts: 1, // 不自动重试，由用户通过API主动重试
-          removeOnComplete: {
-            count: 100 // 保留最近100个完成的任务，便于查看历史
-          },
-          removeOnFail: {
-            count: 50 // 保留最近50个失败的任务，便于调试
-          },
           deduplication: {
             id: `${evalId}_${metricId}`, // 使用 evalId+metricId 去重
             ttl: 5000 // 5秒内防止重复提交
@@ -114,3 +122,25 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
     throw error;
   }
 }
+
+// 清理评估总结任务 jobs
+export const removeEvaluationSummaryJobs = async (
+  evalId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
+  const queue = getEvaluationSummaryQueue();
+
+  const filterFn = (job: any) => {
+    return String(job.data?.evalId) === String(evalId);
+  };
+
+  const result = await cleaner.cleanAllJobsByFilter(queue, filterFn, QueueNames.evaluationSummary);
+
+  addLog.debug('Evaluation summary jobs cleanup completed', {
+    evalId,
+    result
+  });
+
+  return result;
+};
