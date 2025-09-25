@@ -221,9 +221,11 @@ const Provider = ({
           dataId,
           ...formatOutLinkAuth
         });
-        setChatRecords((state) =>
-          state.map((item) => (item.dataId === dataId ? { ...item, responseData: resData } : item))
-        );
+        setChatRecords((state) => {
+          return state.map((item) =>
+            item.dataId === dataId ? { ...item, responseData: resData } : item
+          );
+        });
         return resData;
       }
     },

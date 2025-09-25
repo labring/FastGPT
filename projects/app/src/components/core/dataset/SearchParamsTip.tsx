@@ -45,11 +45,6 @@ const SearchParamsTip = ({
     [datasetSearchUsingExtensionQuery, queryExtensionModel, llmModelList]
   );
 
-  const generateSqlModelName = useMemo(
-    () => (generateSqlModel ? getWebLLMModel(generateSqlModel)?.name : undefined),
-    [generateSqlModel]
-  );
-
   const onlyDatabase = useMemo(
     () => hasDatabaseKnowledge && !hasOtherKnowledge,
     [hasDatabaseKnowledge, hasOtherKnowledge]
@@ -129,7 +124,7 @@ const SearchParamsTip = ({
             )}
             {hasDatabaseKnowledge && (
               <Td pt={0} pb={2}>
-                {generateSqlModelName || '-'}
+                {getWebLLMModel(generateSqlModel)?.name || '-'}
               </Td>
             )}
           </Tr>

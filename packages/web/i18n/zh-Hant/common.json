@@ -1362,8 +1362,9 @@
   "core.chat.logs.evaluation": "評估測試",
   "support.wallet.subscription.eval_items_count": "單次評測資料條數: {{count}} 條",
   "core.dataset.table": "資料表",
-  "core.dataset.search.mode.database": "資料庫知識庫檢索",
+  "core.dataset.search.mode.database": "資料庫檢索",
   "core.dataset.search.mode.database desc": "使用向量檢索查找資料庫中可能相關的表和列",
   "core.dataset.training.databaseSchema mode": "資料庫結構",
-  "core.dataset.import.databaseSchema Tip": "對資料庫中的表資訊進行自動處理，使其更利於檢索，以提高SQL產生的準確率"
+  "core.dataset.import.databaseSchema Tip": "對資料庫中的表資訊進行自動處理，使其更利於檢索，以提高SQL產生的準確率",
+  "semicolon": "；"
 }

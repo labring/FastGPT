@@ -1353,7 +1353,7 @@
   "no_database_connection": "还没有连接数据库，",
   "click_config_database": "点击配置数据库",
   "core.dataset.table": "数据表",
-  "core.dataset.search.mode.database": "数据库知识库检索",
+  "core.dataset.search.mode.database": "数据库检索",
   "core.dataset.search.mode.database desc": "使用向量检索查找数据库中可能相关的表和列",
   "core.dataset.training.databaseSchema mode": "数据库结构",
   "core.dataset.import.databaseSchema Tip": "对数据库中的表信息进行自动处理，使其更利于检索，以提高SQL生成的准确率",
@@ -1365,5 +1365,6 @@
   "search_model_tip": "使用非推理模型、参数量大的模型效果更佳。",
   "other_knowledge_base": "其他知识库",
   "table_not_exist": "不存在",
-  "core.app.workflow.search_knowledge.database": "数据库"
+  "core.app.workflow.search_knowledge.database": "数据库",
+  "semicolon": "；"
 }

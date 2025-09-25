@@ -108,6 +108,18 @@ const QuoteItem = ({
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
 
+  const isDatabaseAnswer = useMemo(
+    () => quoteItem.collectionId.includes('sql_collection'),
+    [quoteItem.collectionId]
+  );
+  const datasetDetailUrl = useMemo(
+    () =>
+      isDatabaseAnswer
+        ? `/dataset/detail?datasetId=${quoteItem.datasetId}`
+        : `/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`,
+    [isDatabaseAnswer, quoteItem.datasetId, quoteItem.collectionId]
+  );
+
   return (
     <>
       <MyBox
@@ -202,17 +214,19 @@ const QuoteItem = ({
               {quoteItem.q.length + (quoteItem.a?.length || 0)}
             </Flex>
           </MyTooltip>
-          <RawSourceBox
-            fontWeight={'bold'}
-            color={'black'}
-            collectionId={quoteItem.collectionId}
-            sourceName={quoteItem.sourceName}
-            sourceId={quoteItem.sourceId}
-            canView={canViewSource}
-            {...RawSourceBoxProps}
-          />
+          {!isDatabaseAnswer && (
+            <RawSourceBox
+              fontWeight={'bold'}
+              color={'black'}
+              collectionId={quoteItem.collectionId}
+              sourceName={quoteItem.sourceName}
+              sourceId={quoteItem.sourceId}
+              canView={canViewSource}
+              {...RawSourceBoxProps}
+            />
+          )}
           <Box flex={1} />
-          {quoteItem.id && canEditData && (
+          {quoteItem.id && !isDatabaseAnswer && canEditData && (
             <MyTooltip label={t('common:core.dataset.data.Edit')}>
               <Box
                 className="hover-data"
@@ -248,7 +262,7 @@ const QuoteItem = ({
               alignItems={'center'}
               visibility={'hidden'}
               color={'primary.500'}
-              href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
+              href={datasetDetailUrl}
             >
               {t('common:to_dataset')}
               <MyIcon name={'common/rightArrowLight'} w={'10px'} />

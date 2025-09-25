@@ -19,33 +19,6 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const knowledgeTypeConfig = useMemo(() => {
-    const datasetList = (nodeList.find((node) => node.nodeId === nodeId)?.inputs || []).filter(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
-    const knowledgeInfoList = datasetList
-      .map((dataset) => dataset.value)
-      .flat()
-      .filter((v) => v);
-
-    // 引用变量场景展示全部
-    if (datasetList.some((v) => v.selectedTypeIndex == 1)) {
-      return {
-        hasDatabaseKnowledge: true,
-        hasOtherKnowledge: true
-      };
-    }
-
-    return {
-      hasDatabaseKnowledge: knowledgeInfoList.some(
-        (item) => item.datasetType === DatasetTypeEnum.database
-      ),
-      hasOtherKnowledge: knowledgeInfoList.some(
-        (item) => item.datasetType !== DatasetTypeEnum.database
-      )
-    };
-  }, [nodeList, nodeId]);
-
   const { t } = useTranslation();
   const { defaultModels } = useSystemStore();
 
@@ -62,6 +35,40 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     datasetSearchExtensionBg: '',
     generateSqlModel: defaultModels.llm?.model
   });
+
+  const knowledgeTypeConfig = useMemo(() => {
+    const datasetList = (nodeList.find((node) => node.nodeId === nodeId)?.inputs || []).filter(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    const knowledgeInfoList = datasetList
+      .map((dataset) => dataset.value)
+      .flat()
+      .filter((v) => v);
+
+    // 引用变量场景展示全部
+    if (datasetList.some((v) => v.selectedTypeIndex == 1)) {
+      setData((e) => ({
+        ...e,
+        searchMode:
+          e.searchMode === DatasetSearchModeEnum.database
+            ? DatasetSearchModeEnum.embedding
+            : e.searchMode
+      }));
+      return {
+        hasDatabaseKnowledge: true,
+        hasOtherKnowledge: true
+      };
+    }
+
+    return {
+      hasDatabaseKnowledge: knowledgeInfoList.some(
+        (item) => item.datasetType === DatasetTypeEnum.database
+      ),
+      hasOtherKnowledge: knowledgeInfoList.some(
+        (item) => item.datasetType !== DatasetTypeEnum.database
+      )
+    };
+  }, [nodeList, nodeId]);
 
   const tokenLimit = useMemo(() => {
     let maxTokens = 0;
