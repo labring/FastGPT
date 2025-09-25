@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useDebounceFn } from 'ahooks';
 import { useRouter } from 'next/router';
 import {
   Table,
@@ -43,6 +44,7 @@ import {
 
 const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
+  const [localSearchValue, setLocalSearchValue] = useState('');
   const [selectedDataset, setSelectedDataset] = useState<listEvalDatasetCollectionResponse | null>(
     null
   );
@@ -59,6 +61,32 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     onOpen: onOpenIntelligentModal,
     onClose: onCloseIntelligentModal
   } = useDisclosure();
+
+  // 防抖处理的搜索函数
+  const { run: debouncedSearch } = useDebounceFn(
+    (value: string) => {
+      setSearchValue(value);
+    },
+    {
+      wait: 500 // 500ms 的防抖延迟
+    }
+  );
+
+  // 处理搜索输入变化
+  const handleSearch = useCallback(
+    (value: string) => {
+      // 立即更新本地搜索值，使输入框内容即时更新
+      setLocalSearchValue(value);
+      // 防抖处理实际的搜索操作
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  // 当 searchValue 变化时，同步更新本地搜索值
+  React.useEffect(() => {
+    setLocalSearchValue(searchValue);
+  }, [searchValue]);
 
   // 使用分页Hook
   const {
@@ -200,8 +228,8 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
             </InputLeftElement>
             <Input
               placeholder={t('dashboard_evaluation:dataset_name_placeholder')}
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              value={localSearchValue}
+              onChange={(e) => handleSearch(e.target.value)}
               bg={'white'}
             />
           </InputGroup>
