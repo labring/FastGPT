@@ -34,12 +34,16 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime
+  chatTime,
+  appId,
+  chatId
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   chatTime?: Date;
+  appId?: string;
+  chatId?: string;
 }) => {
   const { t } = useTranslation();
 
@@ -305,7 +309,14 @@ export const WholeResponseContent = ({
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
             label={t('chat:search_results')}
-            rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
+            rawDom={
+              <QuoteList
+                chatItemDataId={dataId}
+                rawSearch={activeModule.quoteList}
+                applicationId={appId}
+                chatId={chatId}
+              />
+            }
           />
         )}
       </>
@@ -609,13 +620,17 @@ export const ResponseBox = React.memo(function ResponseBox({
   dataId,
   chatTime,
   hideTabs = false,
-  useMobile = false
+  useMobile = false,
+  appId,
+  chatId
 }: {
   response: ChatHistoryItemResType[];
   dataId?: string;
   chatTime: Date;
   hideTabs?: boolean;
   useMobile?: boolean;
+  appId?: string;
+  chatId?: string;
 }) {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -741,6 +756,8 @@ export const ResponseBox = React.memo(function ResponseBox({
               activeModule={activeModule}
               hideTabs={hideTabs}
               chatTime={chatTime}
+              appId={appId}
+              chatId={chatId}
             />
           </Box>
         </Flex>
@@ -806,6 +823,8 @@ export const ResponseBox = React.memo(function ResponseBox({
                   activeModule={activeModule}
                   hideTabs={hideTabs}
                   chatTime={chatTime}
+                  appId={appId}
+                  chatId={chatId}
                 />
               </Box>
             </Flex>

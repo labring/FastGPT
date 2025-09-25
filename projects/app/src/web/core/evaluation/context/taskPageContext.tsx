@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useCallback } from 'react';
+import { type ReactNode, useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -218,55 +218,61 @@ export const TaskPageContextProvider = ({
   }, []);
 
   // 使用 useRequest2 优化各种请求
-  const { runAsync: runLoadStats } = useRequest2(() => getEvaluationStats(taskId), {
-    manual: true,
-    pollingInterval: 15000,
-    pollingWhenHidden: false,
-    pollingErrorRetryCount: 0,
-    errorToast: '',
-    onBefore: () => {
-      // 只有首次加载时才显示loading状态，轮询时不显示
-      const isFirstLoad = !statsData;
-      if (isFirstLoad) {
-        updateLoading('stats', true);
+  const { runAsync: runLoadStats, cancel: cancelStatsPolling } = useRequest2(
+    () => getEvaluationStats(taskId),
+    {
+      manual: true,
+      pollingInterval: 15000,
+      pollingWhenHidden: false,
+      pollingErrorRetryCount: 0,
+      errorToast: '',
+      onBefore: () => {
+        // 只有首次加载时才显示loading状态，轮询时不显示
+        const isFirstLoad = !statsData;
+        if (isFirstLoad) {
+          updateLoading('stats', true);
+        }
+        updateError('stats', null);
+      },
+      onSuccess: (data) => {
+        setStatsData(data);
+      },
+      onError: (error) => {
+        updateError('stats', error.message);
+      },
+      onFinally: () => {
+        updateLoading('stats', false);
       }
-      updateError('stats', null);
-    },
-    onSuccess: (data) => {
-      setStatsData(data);
-    },
-    onError: (error) => {
-      updateError('stats', error.message);
-    },
-    onFinally: () => {
-      updateLoading('stats', false);
     }
-  });
+  );
 
-  const { runAsync: runLoadSummary } = useRequest2(() => getEvaluationSummary(taskId), {
-    manual: true,
-    pollingInterval: 15000,
-    pollingWhenHidden: false,
-    pollingErrorRetryCount: 0,
-    errorToast: '',
-    onBefore: () => {
-      // 只有首次加载时才显示loading状态，轮询时不显示
-      const isFirstLoad = !summaryData;
-      if (isFirstLoad) {
-        updateLoading('summary', true);
+  const { runAsync: runLoadSummary, cancel: cancelSummaryPolling } = useRequest2(
+    () => getEvaluationSummary(taskId),
+    {
+      manual: true,
+      pollingInterval: 15000,
+      pollingWhenHidden: false,
+      pollingErrorRetryCount: 0,
+      errorToast: '',
+      onBefore: () => {
+        // 只有首次加载时才显示loading状态，轮询时不显示
+        const isFirstLoad = !summaryData;
+        if (isFirstLoad) {
+          updateLoading('summary', true);
+        }
+        updateError('summary', null);
+      },
+      onSuccess: (data) => {
+        setSummaryData(data);
+      },
+      onError: (error) => {
+        updateError('summary', error.message);
+      },
+      onFinally: () => {
+        updateLoading('summary', false);
       }
-      updateError('summary', null);
-    },
-    onSuccess: (data) => {
-      setSummaryData(data);
-    },
-    onError: (error) => {
-      updateError('summary', error.message);
-    },
-    onFinally: () => {
-      updateLoading('summary', false);
     }
-  });
+  );
 
   const { runAsync: runLoadEvaluationDetail } = useRequest2(() => getEvaluationDetail(taskId), {
     manual: true,
@@ -511,6 +517,15 @@ export const TaskPageContextProvider = ({
       metricIds
     });
   }, [taskId, summaryData, t, toast, generateSummaryForMetrics]);
+
+  // 组件卸载时清除轮询
+  useEffect(() => {
+    return () => {
+      // 清除轮询定时器
+      cancelStatsPolling?.();
+      cancelSummaryPolling?.();
+    };
+  }, [cancelStatsPolling, cancelSummaryPolling]);
 
   const contextValue: TaskPageContextType = {
     taskId,
