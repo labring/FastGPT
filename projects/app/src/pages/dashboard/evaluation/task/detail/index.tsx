@@ -23,6 +23,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
+import { useDebounceFn } from 'ahooks';
 import {
   TaskPageContext,
   TaskPageContextProvider
@@ -256,7 +257,11 @@ const Detail = ({ taskId, currentTab }: Props) => {
     };
   }, [interval]);
 
-  const handleSearch = useCallback(
+  // 本地搜索值状态，用于即时更新输入框
+  const [localSearchValue, setLocalSearchValue] = useState(searchValue);
+
+  // 防抖处理的搜索函数
+  const { run: debouncedSearch } = useDebounceFn(
     (value: string) => {
       setSearchValue(value);
       // 重置选中项索引
@@ -264,8 +269,24 @@ const Detail = ({ taskId, currentTab }: Props) => {
       // 重置编辑状态
       setEditing(false);
     },
-    [setSearchValue]
+    {
+      wait: 500
+    }
   );
+
+  // 处理搜索输入变化
+  const handleSearch = useCallback(
+    (value: string) => {
+      setLocalSearchValue(value);
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  // 当 searchValue 从 context 变化时，同步更新本地搜索值
+  React.useEffect(() => {
+    setLocalSearchValue(searchValue);
+  }, [searchValue]);
 
   // 计算序号格式
   const getItemNumber = useCallback(
@@ -617,7 +638,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
                   </InputLeftElement>
                   <Input
                     placeholder={t('dashboard_evaluation:search_placeholder')}
-                    value={searchValue}
+                    value={localSearchValue}
                     onChange={(e) => handleSearch(e.target.value)}
                     bg={'white'}
                   />
