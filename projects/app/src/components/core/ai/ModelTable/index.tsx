@@ -26,10 +26,10 @@ import dynamic from 'next/dynamic';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
-import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -317,7 +317,7 @@ const ModelTable = () => {
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
                 {userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
-                    <CollaboratorContextProvider
+                    <LazyCollaboratorProvider
                       selectedHint={t('account_model:model_permission_config_hint')}
                       defaultRole={ReadRoleVal}
                       onGetCollaboratorList={() => getModelCollaborators(item.model)}
@@ -335,12 +335,10 @@ const ModelTable = () => {
                           size="1rem"
                           hoverColor={'blue.500'}
                           w="min-content"
-                          onClick={() => {
-                            onOpenManageModal();
-                          }}
+                          onClick={onOpenManageModal}
                         />
                       )}
-                    </CollaboratorContextProvider>
+                    </LazyCollaboratorProvider>
                   </Td>
                 )}
               </Tr>
@@ -351,7 +349,7 @@ const ModelTable = () => {
 
       <FloatingActionBar
         Controler={
-          <CollaboratorContextProvider
+          <LazyCollaboratorProvider
             selectedHint={t('account_model:model_permission_config_hint')}
             defaultRole={ReadRoleVal}
             onGetCollaboratorList={() =>
@@ -368,16 +366,11 @@ const ModelTable = () => {
             permission={userInfo?.team.permission!}
           >
             {({ onOpenManageModal }) => (
-              <Button
-                variant={'whiteBase'}
-                onClick={() => {
-                  onOpenManageModal();
-                }}
-              >
+              <Button variant={'whiteBase'} onClick={onOpenManageModal}>
                 {t('common:permission.Permission config')}
               </Button>
             )}
-          </CollaboratorContextProvider>
+          </LazyCollaboratorProvider>
         }
       ></FloatingActionBar>
     </Flex>
