@@ -97,78 +97,8 @@ export const finishEvaluationTask = async (evalId: string) => {
 
     const taskStatus = errorCount > 0 ? EvaluationStatusEnum.error : EvaluationStatusEnum.completed;
 
-    // Check if there are any successful evaluatorOutputs, regardless of overall item status
-    const itemsWithSuccessfulOutputs = await MongoEvalItem.countDocuments({
-      evalId: new Types.ObjectId(evalId),
-      evaluatorOutputs: {
-        $elemMatch: {
-          status: 'success',
-          'data.score': { $exists: true, $ne: null }
-        }
-      }
-    });
-
-    addLog.debug(
-      `[Evaluation] Task status calculated: ${evalId}, realTimeStatus: ${taskStatus}, total: ${totalCount}, ` +
-        `success: ${completedCount}, failed: ${errorCount}, pending: ${pendingCount}, itemsWithSuccessfulOutputs: ${itemsWithSuccessfulOutputs}`
-    );
-
-    // Calculate metric scores and trigger summary generation
-
-    if (completedCount > 0 || itemsWithSuccessfulOutputs > 0) {
-      try {
-        // Scores are now calculated in real-time when getEvaluationSummary is called
-        // No need to pre-calculate and save scores
-
-        // Check which metrics need summary generation
-        const currentEvaluation = await MongoEvaluation.findById(
-          evalId,
-          'evaluators summaryConfigs'
-        ).lean();
-
-        if (currentEvaluation?.evaluators && currentEvaluation.evaluators.length > 0) {
-          // Find metrics with empty summaries
-          const metricsNeedingSummary: string[] = [];
-
-          currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
-            const metricId = evaluator.metric._id.toString();
-            const summaryConfig = currentEvaluation.summaryConfigs[index];
-
-            // Check if summary is empty
-            if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
-              metricsNeedingSummary.push(metricId);
-            }
-          });
-
-          if (metricsNeedingSummary.length > 0) {
-            // Trigger async summary generation for metrics with empty summaries
-            setImmediate(() => {
-              EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary).catch(
-                (error) => {
-                  addLog.error(
-                    `[Evaluation] Failed to trigger async summary generation: ${evalId}`,
-                    error
-                  );
-                }
-              );
-            });
-
-            addLog.debug(
-              `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}, taskStatus: ${taskStatus}`
-            );
-          } else {
-            addLog.debug(
-              `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}, taskStatus: ${taskStatus}`
-            );
-          }
-        }
-      } catch (summaryError) {
-        // Log error without affecting main completion flow
-        addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
-          error: summaryError instanceof Error ? summaryError.message : String(summaryError)
-        });
-      }
-    }
+    // Trigger summary generation for completed task
+    await EvaluationSummaryService.triggerSummaryGeneration(evalId, completedCount);
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, {
       error: getErrText(error)
