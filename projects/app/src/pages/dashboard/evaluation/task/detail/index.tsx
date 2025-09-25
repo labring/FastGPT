@@ -31,6 +31,7 @@ import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useInterval } from 'ahooks';
 import NavBar, {
   TabEnum,
   getTabFilterParams
@@ -180,15 +181,79 @@ const Detail = ({ taskId, currentTab }: Props) => {
     ScrollData,
     total: totalItems,
     refreshList: refreshEvaluationItems,
-    setData: setEvaluationItems
+    setData: setEvaluationItems,
+    fetchData: fetchEvaluationItems
   } = useScrollPagination(getEvaluationItemList, {
     pageSize: 20,
     params: scrollParams,
     refreshDeps: [searchValue, taskId, currentTab],
     EmptyTip: EmptyTipDom,
-    pollingInterval: 15000,
     errorToast: ''
   });
+
+  // 智能轮询刷新函数
+  const smartRefreshData = useCallback(async () => {
+    if (!taskId || evaluationItems.length === 0) return;
+
+    try {
+      // 计算选中项所在的页码
+      const selectedPageIndex = Math.floor(selectedIndex / 20);
+
+      const pagesToLoad = selectedPageIndex + 1;
+
+      let allData: any[] = [];
+
+      // 逐页加载数据
+      for (let page = 0; page < pagesToLoad; page++) {
+        const offset = page * 20;
+        const response = await getEvaluationItemList({
+          ...scrollParams,
+          offset,
+          pageSize: 20
+        });
+
+        allData = [...allData, ...response.list];
+
+        // 如果已经是最后一页，提前结束
+        if (allData.length >= response.total) {
+          break;
+        }
+      }
+
+      setEvaluationItems(allData);
+
+      if (selectedIndex < allData.length) {
+        setSelectedIndex(selectedIndex);
+      } else if (allData.length > 0) {
+        setSelectedIndex(allData.length - 1);
+      } else {
+        setSelectedIndex(0);
+      }
+    } catch (error) {
+      console.error('Smart refresh error:', error);
+      // 发生错误时，使用原始的刷新方法作为兜底
+      refreshEvaluationItems();
+    }
+  }, [
+    taskId,
+    evaluationItems,
+    selectedIndex,
+    scrollParams,
+    setEvaluationItems,
+    refreshEvaluationItems
+  ]);
+
+  // 使用自定义轮询替代 useScrollPagination 的轮询
+  const interval = useInterval(() => {
+    smartRefreshData();
+  }, 15000);
+
+  // 组件卸载时清除轮询
+  React.useEffect(() => {
+    return () => {
+      interval?.();
+    };
+  }, [interval]);
 
   const handleSearch = useCallback(
     (value: string) => {
@@ -622,26 +687,61 @@ const Detail = ({ taskId, currentTab }: Props) => {
 
                         {/* 动态列 */}
                         {evaluatorOutputs.length === 0 ? (
-                          // 当 evaluatorOutputs 为空时，显示外层状态
-                          <Box
-                            flex={1}
-                            px={4}
-                            display={'flex'}
-                            alignItems={'center'}
-                            color={(() => {
-                              if (item.status === EvaluationStatusEnum.evaluating) {
-                                return 'blue.500';
-                              } else if (item.status === EvaluationStatusEnum.error) {
-                                return 'red.500';
-                              }
-                              return 'myGray.600';
-                            })()}
-                          >
-                            {(() => {
-                              const statusInfo = EvaluationStatusMap[item.status];
-                              return statusInfo ? t(statusInfo.name) : '-';
-                            })()}
-                          </Box>
+                          // 当 evaluatorOutputs 为空时，根据评估器数量显示对应的状态列
+                          (item.evaluators || []).length < 3 ? (
+                            // 显示每个评估器对应的状态列
+                            (item.evaluators || []).map((evaluator, evaluatorIndex) => {
+                              // 查找是否有匹配的内置维度信息
+                              const builtinInfo = getBuiltinDimensionInfo(evaluator.metric.name);
+                              const displayName = builtinInfo
+                                ? t(builtinInfo.name)
+                                : evaluator.metric.name;
+
+                              return (
+                                <Box
+                                  key={evaluatorIndex}
+                                  flex={1}
+                                  px={4}
+                                  display={'flex'}
+                                  alignItems={'center'}
+                                  color={(() => {
+                                    if (item.status === EvaluationStatusEnum.evaluating) {
+                                      return 'blue.500';
+                                    } else if (item.status === EvaluationStatusEnum.error) {
+                                      return 'red.500';
+                                    }
+                                    return 'myGray.600';
+                                  })()}
+                                >
+                                  {(() => {
+                                    const statusInfo = EvaluationStatusMap[item.status];
+                                    return statusInfo ? t(statusInfo.name) : '-';
+                                  })()}
+                                </Box>
+                              );
+                            })
+                          ) : (
+                            // 显示综合评分状态
+                            <Box
+                              flex={1}
+                              px={4}
+                              display={'flex'}
+                              alignItems={'center'}
+                              color={(() => {
+                                if (item.status === EvaluationStatusEnum.evaluating) {
+                                  return 'blue.500';
+                                } else if (item.status === EvaluationStatusEnum.error) {
+                                  return 'red.500';
+                                }
+                                return 'myGray.600';
+                              })()}
+                            >
+                              {(() => {
+                                const statusInfo = EvaluationStatusMap[item.status];
+                                return statusInfo ? t(statusInfo.name) : '-';
+                              })()}
+                            </Box>
+                          )
                         ) : evaluatorOutputs.length < 3 ? (
                           // 显示每个维度的分数或状态
                           evaluatorOutputs.map((output, outputIndex) => {
@@ -922,17 +1022,12 @@ const Detail = ({ taskId, currentTab }: Props) => {
                             confirmText={t('dashboard_evaluation:delete_action')}
                             onConfirm={handleDelete}
                             Trigger={
-                              <MyTooltip
-                                label={t('dashboard_evaluation:delete_action')}
-                                offset={[0, 15]}
-                              >
-                                <IconButton
-                                  aria-label="delete"
-                                  size={'mdSquare'}
-                                  variant={'whiteDanger'}
-                                  icon={<MyIcon name={'delete'} w={4} />}
-                                />
-                              </MyTooltip>
+                              <IconButton
+                                aria-label="delete"
+                                size={'mdSquare'}
+                                variant={'whiteDanger'}
+                                icon={<MyIcon name={'delete'} w={4} />}
+                              />
                             }
                           />
                         </>
@@ -953,17 +1048,12 @@ const Detail = ({ taskId, currentTab }: Props) => {
                             confirmText={t('dashboard_evaluation:delete_action')}
                             onConfirm={handleDelete}
                             Trigger={
-                              <MyTooltip
-                                label={t('dashboard_evaluation:delete_action')}
-                                offset={[0, 15]}
-                              >
-                                <IconButton
-                                  aria-label="delete"
-                                  size={'mdSquare'}
-                                  variant={'whiteDanger'}
-                                  icon={<MyIcon name={'delete'} w={4} />}
-                                />
-                              </MyTooltip>
+                              <IconButton
+                                aria-label="delete"
+                                size={'mdSquare'}
+                                variant={'whiteDanger'}
+                                icon={<MyIcon name={'delete'} w={4} />}
+                              />
                             }
                           />
                         </>
@@ -1195,17 +1285,17 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     <MyIcon name={'core/workflow/runError'} w={5} h={5} mb={4} color={'red.500'} />
                     <Box
                       fontSize={'12px'}
-                      color={'red.600'}
+                      color={'red.500'}
                       lineHeight={'1.5'}
                       textAlign={'center'}
                     >
                       <Box>{t('dashboard_evaluation:all_data_execution_error')}</Box>
                       <Box>{t('dashboard_evaluation:check_error_details')}</Box>
                       <Link
-                        color={'red.600'}
+                        color={'red.500'}
                         textDecoration={'underline'}
                         _hover={{
-                          color: 'red.700',
+                          color: 'red.600',
                           cursor: 'pointer'
                         }}
                         onClick={handleRetryFailed}

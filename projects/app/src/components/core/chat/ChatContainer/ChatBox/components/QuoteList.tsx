@@ -12,10 +12,14 @@ import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemDataId = '',
-  rawSearch = []
+  rawSearch = [],
+  applicationId,
+  chatId
 }: {
   chatItemDataId?: string;
   rawSearch: SearchDataResponseItemType[];
+  applicationId?: string;
+  chatId?: string;
 }) {
   const theme = useTheme();
   const { appId, outLinkAuthData } = useChatStore();
@@ -23,7 +27,7 @@ const QuoteList = React.memo(function QuoteList({
   const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
     chatItemDataId,
     appId: v.appId,
-    chatId: v.chatId,
+    chatId: chatId || v.chatId, // 优先使用外部传入的chatId
     ...(v.outLinkAuthData || {})
   }));
   const showRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
@@ -39,7 +43,7 @@ const QuoteList = React.memo(function QuoteList({
             datasetDataIdList: rawSearch.map((item) => item.id),
             collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
             chatItemDataId,
-            appId,
+            appId: applicationId || appId,
             chatId: RawSourceBoxProps.chatId,
             ...outLinkAuthData
           })

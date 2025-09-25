@@ -46,7 +46,13 @@ const DetailedResponseModal = ({
       title={t('common:core.chat.response.Complete Response')}
     >
       {!!response?.length ? (
-        <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
+        <ResponseBox
+          response={response}
+          dataId={dataId}
+          chatTime={chatTime}
+          appId={appId}
+          chatId={chatId}
+        />
       ) : (
         <EmptyTip text={t('chat:no_workflow_response')} />
       )}
