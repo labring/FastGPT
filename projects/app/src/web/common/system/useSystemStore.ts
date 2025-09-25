@@ -61,6 +61,7 @@ type State = {
   aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
+  homePageModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
@@ -160,6 +161,7 @@ export const useSystemStore = create<State>()(
         aiproxyIdMap: {},
         defaultModels: {},
         llmModelList: [],
+        homePageModelList: [],
         datasetModelList: [],
         embeddingModelList: [],
         ttsModelList: [],
@@ -234,7 +236,10 @@ export const useSystemStore = create<State>()(
             state.sttModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.stt) ??
               state.sttModelList;
-
+            state.homePageModelList =
+              (res.activeModelList?.filter(
+                (item) => item.type === ModelTypeEnum.llm && item.isHomePage
+              ) as LLMModelItemType[]) ?? state.homePageModelList;
             state.defaultModels = res.defaultModels ?? state.defaultModels;
           });
         }
@@ -253,6 +258,7 @@ export const useSystemStore = create<State>()(
           aiproxyIdMap: state.aiproxyIdMap,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
+          homePageModelList: state.homePageModelList,
           datasetModelList: state.datasetModelList,
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,

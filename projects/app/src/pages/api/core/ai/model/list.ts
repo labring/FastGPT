@@ -19,6 +19,7 @@ export type listResponse = {
 
   isActive: boolean;
   isCustom: boolean;
+  isHomePage: boolean;
 
   // Tag
   contextToken?: number;
@@ -44,6 +45,7 @@ async function handler(
     outputPrice: model.outputPrice,
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
+    isHomePage: model.isHomePage ?? false,
 
     // Tag
     contextToken:

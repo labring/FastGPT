@@ -18,7 +18,7 @@ type BaseModelItemType = {
   isDefault?: boolean;
   isDefaultDatasetTextModel?: boolean;
   isDefaultDatasetImageModel?: boolean;
-
+  isHomePage?: boolean;
   // If has requestUrl, it will request the model directly
   requestUrl?: string;
   requestAuth?: string;

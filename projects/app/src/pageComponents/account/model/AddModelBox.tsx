@@ -688,6 +688,14 @@ export const ModelEditModal = ({
                     </Tr>
                   )}
                   <Tr>
+                    <Td>{t('account:model.home_page')}</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('isHomePage')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
                     <Td>
                       <HStack spacing={1}>
                         <Box>{t('account:model.default_system_chat_prompt')}</Box>

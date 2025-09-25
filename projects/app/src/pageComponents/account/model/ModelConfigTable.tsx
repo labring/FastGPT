@@ -82,6 +82,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(false);
+  const [showHomePage, setShowHomePage] = useState(false);
 
   const {
     data: systemModelList = [],
@@ -229,8 +230,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       const nameFilter = search ? regx.test(item.name) : true;
 
       const activeFilter = showActive ? item.isActive : true;
+      const homePageFilter = showHomePage ? item.isHomePage : true;
 
-      return providerFilter && nameFilter && activeFilter;
+      return providerFilter && nameFilter && activeFilter && homePageFilter;
     });
 
     return filterList;
@@ -242,10 +244,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     i18n.language,
     provider,
     search,
-    showActive
+    showActive,
+    showHomePage
   ]);
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
+  }, [modelList]);
+  const homePageModelLength = useMemo(() => {
+    return modelList.filter((item) => item.isHomePage).length;
   }, [modelList]);
 
   const filterProviderList = useMemo(() => {
@@ -394,6 +400,15 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       {t('account:model.active')}({activeModelLength})
                     </Box>
                   </Th>
+                  <Th fontSize={'xs'}>
+                    <Box
+                      cursor={'pointer'}
+                      onClick={() => setShowHomePage(!showHomePage)}
+                      color={showHomePage ? 'primary.600' : 'myGray.600'}
+                    >
+                      {t('account:model.home_page')}({homePageModelLength})
+                    </Box>
+                  </Th>
                   <Th fontSize={'xs'}></Th>
                 </Tr>
               </Thead>
@@ -441,6 +456,19 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           updateModel({
                             model: item.model,
                             metadata: { isActive: e.target.checked }
+                          })
+                        }
+                        colorScheme={'myBlue'}
+                      />
+                    </Td>
+                    <Td fontSize={'sm'}>
+                      <Switch
+                        size={'sm'}
+                        isChecked={item.isHomePage}
+                        onChange={(e) =>
+                          updateModel({
+                            model: item.model,
+                            metadata: { isHomePage: e.target.checked }
                           })
                         }
                         colorScheme={'myBlue'}

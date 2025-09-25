@@ -14,6 +14,7 @@
   "default_model_config": "默认模型配置",
   "logout": "登出",
   "model.active": "启用",
+  "model.home_page": "是否首页显示",
   "model.alias": "别名",
   "model.alias_tip": "模型在系统中展示的名字，方便用户理解",
   "model.censor": "启用敏感校验",
