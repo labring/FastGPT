@@ -27,7 +27,7 @@ export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.ev
 
 export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.evalTaskItem, {
   defaultJobOptions: {
-    attempts: (global.systemEnv?.evalConfig?.itemMaxRetry || 3) + 1, // Enable retry: max 4 attempts (1 initial + 3 retries)
+    attempts: (global.systemEnv?.evalConfig?.caseMaxRetry || 3) + 1, // Enable retry: max 4 attempts (1 initial + 3 retries)
     backoff: {
       type: 'exponential',
       delay: 1000 // Initial delay 1s, exponential backoff
@@ -83,7 +83,7 @@ export const getEvaluationTaskWorker = (processor: any) => {
 
 export const getEvaluationItemWorker = (processor: any) => {
   const worker = getWorker<EvaluationItemJobData>(QueueNames.evalTaskItem, processor, {
-    concurrency: global.systemEnv?.evalConfig?.itemConcurrency || 10,
+    concurrency: global.systemEnv?.evalConfig?.caseConcurrency || 10,
     stalledInterval: 30000, // 30 seconds for faster recovery
     maxStalledCount: 1 // BullMQ recommended
   });
