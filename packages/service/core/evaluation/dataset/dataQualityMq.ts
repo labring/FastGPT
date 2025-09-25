@@ -27,7 +27,7 @@ export const getEvalDatasetDataQualityWorker = (
     QueueNames.evalDatasetDataQuality,
     processor,
     {
-      maxStalledCount: 3,
+      maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3,
       removeOnFail: {
         count: 1000 // Keep last 1000 failed jobs
       },

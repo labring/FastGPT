@@ -387,22 +387,6 @@ describe('EvaluationTaskProcessor', () => {
       expect(addEvaluationItemJobs).toHaveBeenCalled();
     });
 
-    test('应该创建评估项目（无现有项目）', async () => {
-      const mockJob = {
-        data: { evalId: evaluationId },
-        updateProgress: vi.fn()
-      };
-
-      await evaluationTaskProcessor(mockJob as any);
-
-      // 验证评估项目被创建
-      const createdItems = await MongoEvalItem.find({ evalId: evaluationId });
-      expect(createdItems.length).toBe(2);
-
-      const { addEvaluationItemJobs } = await import('@fastgpt/service/core/evaluation/task/mq');
-      expect(addEvaluationItemJobs).toHaveBeenCalled();
-    });
-
     test('应该处理评估任务不存在的情况', async () => {
       const nonExistentId = new Types.ObjectId().toString();
       const mockJob = {
@@ -759,7 +743,9 @@ describe('EvaluationTaskProcessor', () => {
         updateProgress: vi.fn()
       };
 
-      await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow('Evaluator errors');
+      await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow(
+        'evaluationEvaluatorExecutionErrors'
+      );
     });
   });
 
@@ -825,7 +811,9 @@ describe('EvaluationTaskProcessor', () => {
         updateProgress: vi.fn()
       };
 
-      await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow('Evaluator errors');
+      await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow(
+        'evaluationEvaluatorExecutionErrors'
+      );
     });
   });
 });

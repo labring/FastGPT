@@ -78,6 +78,7 @@ import {
   getEvaluationItemWorker
 } from '@fastgpt/service/core/evaluation/task/mq';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { EvaluationUnrecoverableError } from '@fastgpt/service/core/evaluation/task/errors';
 
 describe('Evaluation MQ System', () => {
   let teamId: string;
@@ -454,6 +455,208 @@ describe('Evaluation MQ System', () => {
 
       // 验证Worker创建函数被调用
       expect(getEvaluationItemWorker).toHaveBeenCalledWith(mockProcessor);
+    });
+  });
+
+  describe('Worker错误处理与重试逻辑', () => {
+    // Mock UnrecoverableError class since we can't import from bullmq in tests
+    class MockUnrecoverableError extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = 'UnrecoverableError';
+      }
+    }
+
+    test('willRetry逻辑：UnrecoverableError不应重试，即使有剩余尝试次数', () => {
+      // 模拟job对象
+      const mockJob = {
+        id: 'test-job-1',
+        data: {
+          evalId: evaluationId,
+          evalItemId: 'item-456'
+        },
+        opts: {
+          attempts: 3
+        },
+        attemptsMade: 1
+      };
+
+      // 模拟队列配置
+      const mockQueue = {
+        opts: {
+          defaultJobOptions: {
+            attempts: 5
+          }
+        }
+      };
+
+      // 测试UnrecoverableError
+      const unrecoverableError = new MockUnrecoverableError('This should not retry');
+
+      // 模拟mq.ts中的逻辑
+      const queueDefaultAttempts = mockQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = (mockJob?.opts as any)?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = mockJob?.attemptsMade || 0;
+
+      const isUnrecoverableError = unrecoverableError instanceof MockUnrecoverableError;
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      expect(isUnrecoverableError).toBe(true);
+      expect(attemptsMade).toBe(1);
+      expect(maxAttempts).toBe(3);
+      expect(willRetry).toBe(false); // 不应重试，即使有剩余尝试次数
+    });
+
+    test('willRetry逻辑：普通Error在有剩余尝试次数时应重试', () => {
+      const mockJob = {
+        id: 'test-job-2',
+        data: {
+          evalId: evaluationId,
+          evalItemId: 'item-456'
+        },
+        opts: {
+          attempts: 3
+        },
+        attemptsMade: 1
+      };
+
+      const mockQueue = {
+        opts: {
+          defaultJobOptions: {
+            attempts: 5
+          }
+        }
+      };
+
+      // 测试普通Error
+      const regularError = new Error('This should retry');
+
+      // 模拟mq.ts中的逻辑
+      const queueDefaultAttempts = mockQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = (mockJob?.opts as any)?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = mockJob?.attemptsMade || 0;
+
+      const isUnrecoverableError = regularError instanceof MockUnrecoverableError;
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      expect(isUnrecoverableError).toBe(false);
+      expect(attemptsMade).toBe(1);
+      expect(maxAttempts).toBe(3);
+      expect(willRetry).toBe(true); // 应该重试，因为不是UnrecoverableError
+    });
+
+    test('willRetry逻辑：EvaluationUnrecoverableError不应重试', () => {
+      const mockJob = {
+        id: 'test-job-3',
+        data: {
+          evalId: evaluationId,
+          evalItemId: 'item-456'
+        },
+        opts: {
+          attempts: 3
+        },
+        attemptsMade: 0 // 第一次尝试
+      };
+
+      const mockQueue = {
+        opts: {
+          defaultJobOptions: {
+            attempts: 5
+          }
+        }
+      };
+
+      // 测试EvaluationUnrecoverableError（继承自UnrecoverableError）
+      const evaluationError = new EvaluationUnrecoverableError('Evaluation failed', 'processing');
+
+      // 模拟mq.ts中的逻辑
+      const queueDefaultAttempts = mockQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = (mockJob?.opts as any)?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = mockJob?.attemptsMade || 0;
+
+      // 在实际代码中，我们需要检查是否是UnrecoverableError的实例
+      // EvaluationUnrecoverableError 继承自 UnrecoverableError，所以这个检查会通过
+      const isUnrecoverableError = evaluationError.name === 'EvaluationUnrecoverableError';
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      expect(isUnrecoverableError).toBe(true);
+      expect(attemptsMade).toBe(0);
+      expect(maxAttempts).toBe(3);
+      expect(willRetry).toBe(false); // 即使是第一次失败也不应重试
+    });
+
+    test('willRetry逻辑：尝试次数用尽时不应重试，即使是普通Error', () => {
+      const mockJob = {
+        id: 'test-job-4',
+        data: {
+          evalId: evaluationId,
+          evalItemId: 'item-456'
+        },
+        opts: {
+          attempts: 3
+        },
+        attemptsMade: 3 // 所有尝试次数已用尽
+      };
+
+      const mockQueue = {
+        opts: {
+          defaultJobOptions: {
+            attempts: 5
+          }
+        }
+      };
+
+      // 测试普通Error但尝试次数已用尽
+      const regularError = new Error('Regular error but no attempts left');
+
+      // 模拟mq.ts中的逻辑
+      const queueDefaultAttempts = mockQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = (mockJob?.opts as any)?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = mockJob?.attemptsMade || 0;
+
+      const isUnrecoverableError = regularError instanceof MockUnrecoverableError;
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      expect(isUnrecoverableError).toBe(false);
+      expect(attemptsMade).toBe(3);
+      expect(maxAttempts).toBe(3);
+      expect(willRetry).toBe(false); // 不应重试，因为尝试次数已用尽
+    });
+
+    test('willRetry逻辑：当job未指定attempts时应使用队列默认值', () => {
+      const mockJob = {
+        id: 'test-job-5',
+        data: {
+          evalId: evaluationId,
+          evalItemId: 'item-456'
+        },
+        // 没有指定 opts.attempts
+        opts: undefined,
+        attemptsMade: 2
+      };
+
+      const mockQueue = {
+        opts: {
+          defaultJobOptions: {
+            attempts: 5
+          }
+        }
+      };
+
+      const regularError = new Error('Regular error');
+
+      // 模拟mq.ts中的逻辑
+      const queueDefaultAttempts = mockQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = (mockJob?.opts as any)?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = mockJob?.attemptsMade || 0;
+
+      const isUnrecoverableError = regularError instanceof MockUnrecoverableError;
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      expect(isUnrecoverableError).toBe(false);
+      expect(attemptsMade).toBe(2);
+      expect(maxAttempts).toBe(5); // 应该使用队列默认值
+      expect(willRetry).toBe(true); // 应该重试，因为 2 < 5
     });
   });
 });

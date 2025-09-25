@@ -277,7 +277,7 @@ export async function getEvaluationTaskStats(evalId: string): Promise<{
     // Get all evaluation items from database
     const allEvalItems = await MongoEvalItem.find(
       { evalId: new Types.ObjectId(evalId) },
-      { _id: 1, finishTime: 1, errorMessage: 1 }
+      { _id: 1, finishTime: 1, errorMessage: 1, 'metadata.status': 1 }
     ).lean();
 
     const totalItems = allEvalItems.length;
@@ -351,8 +351,25 @@ export async function getEvaluationTaskStats(evalId: string): Promise<{
         } else if (['waiting', 'delayed', 'prioritized'].includes(jobState || '')) {
           queuing++;
         } else {
-          // Unknown job state, determine by database status
-          if (item.finishTime) {
+          // Unknown job state, determine by metadata.status first (now reliable), then database status
+          if (item.metadata?.status && item.metadata.status !== EvaluationStatusEnum.queuing) {
+            // Trust metadata.status for non-queuing states (these are actively managed)
+            switch (item.metadata.status) {
+              case EvaluationStatusEnum.completed:
+                completed++;
+                break;
+              case EvaluationStatusEnum.evaluating:
+                evaluating++;
+                break;
+              case EvaluationStatusEnum.error:
+                error++;
+                break;
+              default:
+                queuing++;
+                break;
+            }
+          } else if (item.finishTime) {
+            // No reliable metadata, use database status
             if (item.errorMessage) {
               error++;
             } else {
@@ -363,8 +380,25 @@ export async function getEvaluationTaskStats(evalId: string): Promise<{
           }
         }
       } else {
-        // No corresponding job, determine by database status
-        if (item.finishTime) {
+        // No corresponding job, determine by metadata.status first (now reliable), then database status
+        if (item.metadata?.status && item.metadata.status !== EvaluationStatusEnum.queuing) {
+          // Trust metadata.status for non-queuing states (these are actively managed)
+          switch (item.metadata.status) {
+            case EvaluationStatusEnum.completed:
+              completed++;
+              break;
+            case EvaluationStatusEnum.evaluating:
+              evaluating++;
+              break;
+            case EvaluationStatusEnum.error:
+              error++;
+              break;
+            default:
+              queuing++;
+              break;
+          }
+        } else if (item.finishTime) {
+          // No reliable metadata, use database status
           if (item.errorMessage) {
             error++;
           } else {

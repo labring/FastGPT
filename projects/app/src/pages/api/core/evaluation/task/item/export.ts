@@ -6,12 +6,15 @@ import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common'
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 async function handler(
   req: ApiRequestProps<{}, ExportEvaluationItemsRequest>,
   res: ApiResponseType<any>
 ) {
   const { evalId, format = 'json' } = req.query;
+  const locale: localeType = getLocale(req);
 
   if (!evalId) {
     throw new Error(EvaluationErrEnum.evalIdRequired);
@@ -30,7 +33,8 @@ async function handler(
   const { results, total } = await EvaluationTaskService.exportEvaluationResults(
     evalId,
     teamId,
-    format as 'json' | 'csv'
+    format as 'json' | 'csv',
+    locale
   );
 
   if (format === 'csv') {

@@ -33,33 +33,8 @@ import {
 } from './statusCalculator';
 import { EvaluationSummaryService } from '../summary';
 import { removeEvaluationSummaryJobs } from '../summary/queue';
-import { i18nT } from '../../../../web/i18n/utils';
-
-/**
- * Get display name for metric (returns i18n key for built-in metrics, original name for custom metrics)
- */
-function getMetricDisplayName(metricName: string): string {
-  // Check if it's a built-in metric (might have 'builtin_' prefix)
-  const cleanMetricName = metricName.replace(/^builtin_/, '');
-
-  // List of known built-in metrics
-  const builtinMetrics = [
-    'answer_correctness',
-    'answer_similarity',
-    'answer_relevancy',
-    'faithfulness',
-    'context_recall',
-    'context_precision'
-  ];
-
-  if (builtinMetrics.includes(cleanMetricName)) {
-    // Return the i18n key for built-in metrics
-    return i18nT(`dashboard_evaluation:builtin_${cleanMetricName}_name` as any);
-  }
-
-  // For custom metrics, return the original name
-  return metricName;
-}
+import { translateBuiltinMetricName, translateCsvColumnName } from '../utils/metricTranslator';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export class EvaluationTaskService {
   /**
@@ -616,8 +591,7 @@ export class EvaluationTaskService {
     const canStart =
       evaluation.status === EvaluationStatusEnum.queuing ||
       evaluation.status === EvaluationStatusEnum.completed ||
-      (evaluation.status === EvaluationStatusEnum.error &&
-        evaluation.errorMessage === 'Manually stopped');
+      evaluation.status === EvaluationStatusEnum.error;
 
     if (!canStart) {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
@@ -682,7 +656,7 @@ export class EvaluationTaskService {
         {
           $set: {
             finishTime: new Date(),
-            errorMessage: 'Manually stopped'
+            errorMessage: EvaluationErrEnum.evalManuallyStopped
           }
         },
         { session }
@@ -695,7 +669,7 @@ export class EvaluationTaskService {
         },
         {
           $set: {
-            errorMessage: 'Manually stopped',
+            errorMessage: EvaluationErrEnum.evalManuallyStopped,
             finishTime: new Date()
           }
         },
@@ -717,22 +691,22 @@ export class EvaluationTaskService {
     evaluating: number;
     queuing: number;
     error: number;
-    failed: number;
+    belowThreshold: number;
   }> {
     const evaluation = await this.getEvaluation(evalId, teamId); // Validate access
 
     // Get real-time status from job queues
     const basicStats = await getEvaluationTaskStats(evalId);
 
-    // Calculate failed count using threshold checks
+    // Calculate belowThreshold count using threshold checks
     const evaluators = evaluation.evaluators || [];
-    let failedCount = 0;
+    let belowThresholdCount = 0;
 
     if (evaluators.length > 0) {
       const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
 
-      // Count items that fail threshold checks
-      const failedResult = await MongoEvalItem.aggregate([
+      // Count items that are below threshold checks
+      const belowThresholdResult = await MongoEvalItem.aggregate([
         { $match: { evalId: new Types.ObjectId(evalId) } },
         {
           $addFields: {
@@ -747,15 +721,15 @@ export class EvaluationTaskService {
             errorMessage: { $exists: false } // Exclude errors
           }
         },
-        { $count: 'failed' }
+        { $count: 'belowThreshold' }
       ]);
 
-      failedCount = failedResult[0]?.failed || 0;
+      belowThresholdCount = belowThresholdResult[0]?.belowThreshold || 0;
     }
 
     return {
       ...basicStats,
-      failed: failedCount
+      belowThreshold: belowThresholdCount
     };
   }
 
@@ -1151,7 +1125,8 @@ export class EvaluationTaskService {
   static async exportEvaluationResults(
     evalId: string,
     teamId: string,
-    format: 'csv' | 'json' = 'json'
+    format: 'csv' | 'json' = 'json',
+    locale: localeType
   ): Promise<{ results: Buffer; total: number }> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
@@ -1197,20 +1172,26 @@ export class EvaluationTaskService {
       });
       const sortedMetricNames = Array.from(metricNames).sort();
 
-      // Get display names for CSV headers (i18n keys for built-in metrics, original names for custom metrics)
-      const displayMetricNames = sortedMetricNames.map((metricName) =>
-        getMetricDisplayName(metricName)
+      // Translate metric names for CSV headers
+      const translatedMetricNames = sortedMetricNames.map((metricName) =>
+        translateBuiltinMetricName(metricName, locale)
+      );
+
+      // Translate column headers
+      const baseHeaders = ['ItemId', 'UserInput', 'ExpectedOutput', 'ActualOutput'];
+      const translatedBaseHeaders = baseHeaders.map((header) =>
+        translateCsvColumnName(header, locale)
+      );
+
+      const footerHeaders = ['Status', 'ErrorMessage'];
+      const translatedFooterHeaders = footerHeaders.map((header) =>
+        translateCsvColumnName(header, locale)
       );
 
       const headers = [
-        'ItemId',
-        'UserInput',
-        'ExpectedOutput',
-        'ActualOutput',
-        ...displayMetricNames, // Dynamic metric columns with display names
-        'Status',
-        'ErrorMessage',
-        'FinishTime'
+        ...translatedBaseHeaders,
+        ...translatedMetricNames,
+        ...translatedFooterHeaders
       ];
 
       const csvRows = [headers.join(',')];
@@ -1237,8 +1218,7 @@ export class EvaluationTaskService {
             return score !== undefined ? score : '';
           }),
           itemStatus || '',
-          `"${(item.errorMessage || '').replace(/"/g, '""')}"`,
-          item.finishTime || ''
+          `"${(item.errorMessage || '').replace(/"/g, '""')}"`
         ];
         csvRows.push(row.join(','));
       });

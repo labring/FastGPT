@@ -97,6 +97,6 @@ describe('Update Evaluation Task API Handler', () => {
       }
     } as any;
 
-    await expect(updateHandler(mockReq)).rejects.toThrow('Invalid parameters');
+    await expect(updateHandler(mockReq)).rejects.toThrow('invalid_params');
   });
 });
