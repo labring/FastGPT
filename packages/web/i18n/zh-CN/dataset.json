@@ -300,8 +300,6 @@
   "remove": "移除",
   "confirm_remove_database_table": "确认移除该数据表及其所有数据配置？",
   "process.databaseSchema":"数据库结构索引生成",
-  "database_dataset_desc": "直连企业内部MySQL、SQLite等数据库构建知识库",
-  "database_connection_config": "数据库连接配置",
   "database_url": "数据库地址",
   "database_url_placeholder": "例如: localhost 或 192.168.1.100",
   "database_url_required": "数据库地址不能为空",
