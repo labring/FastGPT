@@ -96,6 +96,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
   const [editing, setEditing] = useState(false);
   const [modifyDataset, setModifyDataset] = useState(true);
   const [selectedDimension, setSelectedDimension] = useState(0);
+  const [selectedSummaryIndex, setSelectedSummaryIndex] = useState(0);
   const {
     isOpen: isSavePopoverOpen,
     onOpen: onSavePopoverOpen,
@@ -1333,12 +1334,16 @@ const Detail = ({ taskId, currentTab }: Props) => {
                       ? t(matchedDimension.name)
                       : item.metricName;
 
+                    const isClickable = summaryData.data.length >= 3;
+
                     return (
                       <ScoreBar
                         key={index}
                         dimensionName={displayName}
                         threshold={formatScoreToPercentage(item.threshold)}
                         actualScore={formatScoreToPercentage(item.metricScore)}
+                        isClickable={isClickable}
+                        onClick={isClickable ? () => setSelectedSummaryIndex(index) : undefined}
                       />
                     );
                   })}
@@ -1348,6 +1353,9 @@ const Detail = ({ taskId, currentTab }: Props) => {
                     <Box mt={4}>
                       <EvaluationSummaryCard
                         data={summaryData.data}
+                        selectedIndex={
+                          summaryData.data.length >= 3 ? selectedSummaryIndex : undefined
+                        }
                         onRetryGeneration={(metricIds) =>
                           generateSummaryForMetrics({ evalId: taskId, metricIds })
                         }
