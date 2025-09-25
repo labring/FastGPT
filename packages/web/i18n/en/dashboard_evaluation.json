@@ -352,7 +352,7 @@
   "view_results_after_completion": "Please wait until the evaluation is complete.",
   "all_data_execution_error": "All entries encountered error during execution.",
   "check_error_details": "Please view the cause.",
-  "click_to_retry": "Please view the cause.",
+  "click_to_retry": "Retry",
   "comprehensive_score_weight_description": "The ratio of a metric's score to the total score. You can configure it as needed.",
   "no_data_available": "No data available.",
   "question_column": "Question",

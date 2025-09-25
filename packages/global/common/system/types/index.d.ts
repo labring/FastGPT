@@ -164,6 +164,7 @@ export type EvaluationConfigType = {
   dataQualityConcurrency?: number;
   datasetDataSynthesizeConcurrency?: number;
   datasetSmartGenerateConcurrency?: number;
+  maxStalledCount?: number;
 };
 
 export type LicenseDataType = {

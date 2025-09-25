@@ -90,7 +90,8 @@ export interface EvaluationErrorContext {
 export const createEvaluationError = (
   error: any,
   stage: string,
-  context?: EvaluationErrorContext
+  context?: EvaluationErrorContext,
+  forceRetry?: boolean
 ): Error => {
   const errorStr = error?.message || error?.code || String(error);
   const errorMessage = getErrText(error);
@@ -102,6 +103,12 @@ export const createEvaluationError = (
     originalError: error,
     ...context
   };
+
+  // Force retry for specific stages
+  if (forceRetry) {
+    addLog.warn(`[Evaluation] Force retryable error in stage ${stage}`, logContext);
+    return new EvaluationRetryableError(errorMessage, stage);
+  }
 
   // Unrecoverable error types
   if (
