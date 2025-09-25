@@ -10,15 +10,17 @@ import type { EvaluationSummaryResponse } from '@fastgpt/global/core/evaluation/
 
 interface EvaluationSummaryCardProps {
   data: EvaluationSummaryResponse['data'];
+  selectedIndex?: number;
   onRetryGeneration?: (metricIds: string[]) => Promise<void>;
 }
 
 const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({
   data,
+  selectedIndex,
   onRetryGeneration
 }) => {
   const { t } = useTranslation();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(selectedIndex ?? 0);
 
   const handlePrevious = useCallback(() => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
@@ -27,6 +29,13 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => Math.min(data.length - 1, prev + 1));
   }, [data.length]);
+
+  // 当外部传入 selectedIndex 时，同步更新内部状态
+  React.useEffect(() => {
+    if (selectedIndex !== undefined) {
+      setCurrentIndex(selectedIndex);
+    }
+  }, [selectedIndex]);
 
   const handleRetryGeneration = useCallback(
     async (item: EvaluationSummaryResponse['data'][0]) => {

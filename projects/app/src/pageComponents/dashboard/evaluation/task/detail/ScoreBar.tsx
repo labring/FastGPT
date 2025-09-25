@@ -6,13 +6,17 @@ interface ScoreBarProps {
   threshold: number;
   actualScore: number;
   maxScore?: number;
+  isClickable?: boolean;
+  onClick?: () => void;
 }
 
 const ScoreBar: React.FC<ScoreBarProps> = ({
   dimensionName,
   threshold,
   actualScore,
-  maxScore = 100
+  maxScore = 100,
+  isClickable = false,
+  onClick
 }) => {
   // Check if actual score meets threshold
   const isAboveThreshold = actualScore >= threshold;
@@ -31,6 +35,8 @@ const ScoreBar: React.FC<ScoreBarProps> = ({
       borderColor={'myGray.200'}
       mb={2}
       gap={4}
+      cursor={isClickable ? 'pointer' : 'default'}
+      onClick={onClick}
     >
       {/* Dimension name */}
       <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'} minW={'80px'}>
