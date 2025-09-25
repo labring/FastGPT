@@ -769,9 +769,11 @@ export class EvaluationTaskService {
         ...item,
         _id: String(item._id),
         // Add evaluator info
-        evaluators: evaluation.evaluators.map((evaluator) => ({
+        evaluators: evaluation.evaluators.map((evaluator, index) => ({
           metric: evaluator.metric,
-          thresholdValue: evaluator.thresholdValue
+          thresholdValue: evaluator.thresholdValue,
+          //check mongo schema need to change or not,add this for Front-end calculate aggreatescore threshold
+          weight: evaluation.summaryConfigs[index]?.weight || 0
         })),
         // Add summary configs
         summaryConfigs: evaluation.summaryConfigs
