@@ -55,9 +55,9 @@ const EvaluationSummaryCard: React.FC<EvaluationSummaryCardProps> = ({
             <Text fontSize="12px" color="red.500" mb={1}>
               {t('dashboard_evaluation:summary_generation_error')}
               <Link
-                color="red.600"
+                color="red.500"
                 textDecoration="underline"
-                _hover={{ color: 'red.700' }}
+                _hover={{ color: 'red.600' }}
                 onClick={() => handleRetryGeneration(item)}
                 ml={1}
               >
