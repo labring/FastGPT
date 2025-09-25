@@ -10,7 +10,7 @@ import type {
   RoleListType,
   RoleValueType
 } from '@fastgpt/global/support/permission/type';
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
@@ -230,3 +230,35 @@ const CollaboratorContextProvider = ({
 };
 
 export default CollaboratorContextProvider;
+
+export const LazyCollaboratorProvider = ({
+  children,
+  ...props
+}: {
+  children: (params: { onOpenManageModal: () => void }) => React.ReactNode;
+} & React.ComponentProps<typeof CollaboratorContextProvider>) => {
+  const [isProviderMounted, setIsProviderMounted] = useState(false);
+
+  const handleOpen = useCallback(() => {
+    setIsProviderMounted(true);
+  }, []);
+
+  // 如果还未挂载 Provider，只渲染触发按钮
+  if (!isProviderMounted) {
+    return <>{children({ onOpenManageModal: handleOpen })}</>;
+  }
+
+  // Provider 已挂载，渲染完整的协作者管理功能
+  return (
+    <CollaboratorContextProvider {...props}>
+      {({ onOpenManageModal }) => {
+        // 组件挂载后自动打开模态框
+        useEffect(() => {
+          onOpenManageModal();
+        }, [onOpenManageModal]);
+
+        return <>{children({ onOpenManageModal })}</>;
+      }}
+    </CollaboratorContextProvider>
+  );
+};
