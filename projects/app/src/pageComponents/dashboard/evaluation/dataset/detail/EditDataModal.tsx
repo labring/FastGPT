@@ -218,6 +218,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       setCurrentEvaluationStatus(evaluationStatus);
       setCurrentQualityReason(qualityReason);
       setCurrentQualityResult(formData?.qualityResult || '');
+      setErrorMsg(formData.qualityMetadata?.error || '');
 
       // 根据评测状态设置按钮显示状态
       updateButtonsByStatus(evaluationStatus, formData?.qualityResult);
