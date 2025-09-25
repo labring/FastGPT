@@ -9,6 +9,8 @@
   "app_amount": "App amount",
   "avatar": "Avatar",
   "avatar_selection_exception": "Abnormal avatar selection",
+  "avatar_can_only_select_one": "Avatar can only select one picture",
+  "avatar_can_only_select_jpg_png": "Avatar can only select jpg or png format",
   "balance": "balance",
   "billing_standard": "Standards",
   "cancel": "Cancel",
