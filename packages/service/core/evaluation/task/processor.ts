@@ -3,13 +3,10 @@ import type { Job } from '../../../common/bullmq';
 import type {
   EvaluationTaskJobData,
   EvaluationItemJobData,
-  TargetOutput,
-  EvaluationItemSchemaType,
-  EvaluationDataItemType
+  TargetOutput
 } from '@fastgpt/global/core/evaluation/type';
 import { getEvaluationItemWorker, getEvaluationTaskWorker, addEvaluationItemJobs } from './mq';
 import { MongoEvaluation, MongoEvalItem } from './schema';
-import { MongoEvalDatasetData } from '../dataset/evalDatasetDataSchema';
 import { createTargetInstance } from '../target';
 import { createEvaluatorInstance } from '../evaluator';
 import { Types } from 'mongoose';
@@ -109,7 +106,7 @@ export const finishEvaluationTask = async (evalId: string) => {
         {
           $set: {
             finishTime: new Date(),
-            errorMessage: `System error occurred while completing task: ${error instanceof Error ? error.message : 'Unknown error'}`
+            errorMessage: EvaluationErrEnum.evalTaskSystemError
           }
         }
       );
@@ -153,86 +150,40 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   // Report validation progress
   await job.updateProgress(20);
 
-  // Check if evaluation items already exist
+  // Check if evaluation items exist
   const existingItems = await MongoEvalItem.find({ evalId }).lean();
-  if (existingItems.length > 0) {
-    // Items exist, submit to queue
-    const itemIds = existingItems.map((item) => item._id.toString());
-    const statusMap = await getBatchEvaluationItemStatus(itemIds);
-
-    const itemsToProcess = existingItems.filter((item) => {
-      const realTimeStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
-      // Only process items in queuing status
-      return realTimeStatus === EvaluationStatusEnum.queuing;
-    });
-
-    if (itemsToProcess.length > 0) {
-      const jobs = itemsToProcess.map((item, index) => ({
-        data: {
-          evalId,
-          evalItemId: item._id.toString()
-        },
-        delay: index * 100 // Small delay to avoid overwhelming system
-      }));
-
-      await addEvaluationItemJobs(jobs);
-      addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
-    }
-
-    // Report completion
-    await job.updateProgress(100);
-    return;
+  if (existingItems.length === 0) {
+    throw createEvaluationError(EvaluationErrEnum.evalItemNotFound, 'ResourceCheck');
   }
 
-  // Fallback: Create evaluation items if they don't exist
-  addLog.warn(`[Evaluation] No existing items found for evaluation ${evalId}, creating items...`);
+  // Get real-time status and submit items to queue
+  const itemIds = existingItems.map((item) => item._id.toString());
+  const statusMap = await getBatchEvaluationItemStatus(itemIds);
 
-  // Load dataset to create items
-  const dataItems = await MongoEvalDatasetData.find({
-    evalDatasetCollectionId: evaluation.evalDatasetCollectionId,
-    teamId: evaluation.teamId
-  }).lean();
+  const itemsToProcess = existingItems.filter((item) => {
+    const realTimeStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
+    // Only process items in queuing status
+    return realTimeStatus === EvaluationStatusEnum.queuing;
+  });
 
-  if (dataItems.length === 0) {
-    throw createEvaluationError(EvaluationErrEnum.evalDatasetLoadFailed, 'ResourceCheck');
+  if (itemsToProcess.length > 0) {
+    const jobs = itemsToProcess.map((item, index) => ({
+      data: {
+        evalId,
+        evalItemId: item._id.toString()
+      },
+      delay: index * 100 // Small delay to avoid overwhelming system
+    }));
+
+    await addEvaluationItemJobs(jobs);
+    addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
   }
-
-  // Create evaluation items
-  const evalItems: Omit<EvaluationItemSchemaType, '_id' | 'status'>[] = [];
-  for (const dataItem of dataItems) {
-    const evaluationDataItem: EvaluationDataItemType = {
-      _id: dataItem._id,
-      userInput: dataItem.userInput,
-      expectedOutput: dataItem.expectedOutput,
-      context: dataItem.context,
-      targetCallParams: undefined
-    };
-
-    evalItems.push({
-      evalId,
-      dataItem: evaluationDataItem
-    });
-  }
-
-  // Insert evaluation items
-  const insertedItems = await MongoEvalItem.insertMany(evalItems);
-
-  // Submit items to queue
-  const jobs = insertedItems.map((item, index) => ({
-    data: {
-      evalId,
-      evalItemId: item._id.toString()
-    },
-    delay: index * 100
-  }));
-
-  await addEvaluationItemJobs(jobs);
 
   // Report completion
   await job.updateProgress(100);
 
   addLog.debug(
-    `[Evaluation] Task decomposition completed: ${evalId}, submitted ${jobs.length} evaluation items to queue`
+    `[Evaluation] Task processing completed: ${evalId}, submitted ${itemsToProcess.length} evaluation items to queue`
   );
 };
 
@@ -340,7 +291,7 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       }
 
       if (!targetOutput.actualOutput) {
-        throw new Error(EvaluationErrEnum.evalTargetOutputRequired);
+        throw new Error(EvaluationErrEnum.evalTargetExecutionError);
       }
     } catch (error) {
       // Use BullMQ error type for retry handling
@@ -433,11 +384,16 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 
   // Check for evaluator errors
   if (errors.length > 0) {
-    const errorMessage = `Evaluator errors: ${errors.map((e) => `${e.evaluatorName}: ${e.error}`).join('; ')}`;
-    const aggregatedError = new Error(errorMessage);
+    const errorDetails = errors.map((e) => `${e.evaluatorName}: ${e.error}`).join('; ');
+    addLog.error('[Evaluation] Multiple evaluator execution errors', {
+      errorCount: errors.length,
+      details: errorDetails,
+      errors: errors
+    });
+
     // Use BullMQ error type
     throw createEvaluationError(
-      aggregatedError,
+      EvaluationErrEnum.evalEvaluatorExecutionErrors,
       'EvaluatorExecute',
       {
         evalId,

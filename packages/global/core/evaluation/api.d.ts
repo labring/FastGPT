@@ -50,7 +50,7 @@ export type StopEvaluationResponse = MessageResponse;
 // Get Evaluation Stats
 export type StatsEvaluationRequest = EvalIdQuery;
 export type EvaluationStatsResponse = EvaluationStatistics & {
-  failed: number;
+  belowThreshold: number;
 };
 
 // Export Evaluation Items

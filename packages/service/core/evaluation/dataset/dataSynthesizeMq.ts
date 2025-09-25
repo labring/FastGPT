@@ -24,7 +24,7 @@ export const getEvalDatasetDataSynthesizeWorker = (
   processor: Processor<EvalDatasetDataSynthesizeData>
 ) => {
   return getWorker<EvalDatasetDataSynthesizeData>(QueueNames.evalDatasetDataSynthesize, processor, {
-    maxStalledCount: 3,
+    maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3,
     removeOnFail: {
       age: 30 * 60 * 60 * 24 // 30 day
     },

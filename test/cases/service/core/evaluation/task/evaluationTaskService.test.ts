@@ -20,6 +20,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller');
 vi.mock('@fastgpt/service/common/system/log');
 vi.mock('@fastgpt/service/core/evaluation/summary/util/weightCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/statusCalculator');
+vi.mock('@fastgpt/service/core/evaluation/summary/queue');
 
 describe('EvaluationTaskService Integration Tests', () => {
   let teamId: string;
@@ -153,6 +154,15 @@ describe('EvaluationTaskService Integration Tests', () => {
     const { buildEvalDataConfig } = await import(
       '@fastgpt/service/core/evaluation/summary/util/weightCalculator'
     );
+    const {
+      removeEvaluationTaskJob,
+      removeEvaluationItemJobs,
+      addEvaluationTaskJob,
+      checkEvaluationTaskJobActive
+    } = await import('@fastgpt/service/core/evaluation/task/mq');
+    const { removeEvaluationSummaryJobs } = await import(
+      '@fastgpt/service/core/evaluation/summary/queue'
+    );
 
     (createEvaluationUsage as any).mockResolvedValue({ billId: new Types.ObjectId() });
     (getEvaluationTaskStatus as any).mockResolvedValue(EvaluationStatusEnum.queuing);
@@ -183,6 +193,25 @@ describe('EvaluationTaskService Integration Tests', () => {
         thresholdPassRate: 0
       }))
     }));
+
+    // Mock BullMQ operations to resolve immediately
+    (removeEvaluationTaskJob as any).mockResolvedValue({
+      removed: 1,
+      failed: 0,
+      activeJobsCleaned: 0
+    });
+    (removeEvaluationItemJobs as any).mockResolvedValue({
+      removed: 1,
+      failed: 0,
+      activeJobsCleaned: 0
+    });
+    (removeEvaluationSummaryJobs as any).mockResolvedValue({
+      removed: 1,
+      failed: 0,
+      activeJobsCleaned: 0
+    });
+    (addEvaluationTaskJob as any).mockResolvedValue(undefined);
+    (checkEvaluationTaskJobActive as any).mockResolvedValue(false);
   });
 
   describe('基本CRUD操作', () => {
@@ -366,7 +395,6 @@ describe('EvaluationTaskService Integration Tests', () => {
       expect(stats.evaluating).toBe(0);
       expect(stats.queuing).toBe(2);
       expect(stats.error).toBe(0);
-      expect(typeof stats.failed).toBe('number');
     });
   });
 

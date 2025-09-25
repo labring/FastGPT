@@ -1,5 +1,6 @@
 import { addLog } from '../../../common/system/log';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
+import { UnrecoverableError } from 'bullmq';
 import type {
   EvaluationTaskJobData,
   EvaluationItemJobData
@@ -15,7 +16,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.evalTask, {
   defaultJobOptions: {
-    attempts: 3, // Enable retry for task level
+    attempts: 0, // Disable retry for task level
     backoff: {
       type: 'exponential',
       delay: 2000
@@ -27,7 +28,7 @@ export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.ev
 
 export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.evalTaskItem, {
   defaultJobOptions: {
-    attempts: (global.systemEnv?.evalConfig?.caseMaxRetry || 3) + 1, // Enable retry: max 4 attempts (1 initial + 3 retries)
+    attempts: global.systemEnv?.evalConfig?.caseMaxRetry || 3,
     backoff: {
       type: 'exponential',
       delay: 1000 // Initial delay 1s, exponential backoff
@@ -90,11 +91,32 @@ export const getEvaluationItemWorker = (processor: any) => {
   worker.on('stalled', async (jobId) => {
     try {
       const job = await evaluationItemQueue.getJob(jobId);
+      const evalItemId = job?.data?.evalItemId;
+
       addLog.warn('[Evaluation] Item job stalled, will be retried', {
         jobId,
         evalId: job?.data?.evalId,
-        evalItemId: job?.data?.evalItemId
+        evalItemId,
+        attemptsMade: job?.attemptsMade,
+        opts: job?.opts?.attempts
       });
+
+      // Update status to queuing since stalled jobs will be retried
+      if (evalItemId) {
+        const { MongoEvalItem } = await import('./schema');
+        await MongoEvalItem.updateOne(
+          { _id: evalItemId },
+          {
+            $set: {
+              'metadata.status': EvaluationStatusEnum.queuing
+            },
+            $unset: {
+              finishTime: 1,
+              errorMessage: 1
+            }
+          }
+        );
+      }
     } catch (error) {
       addLog.warn('[Evaluation] Item job stalled, will be retried (could not get job data)', {
         jobId,
@@ -108,23 +130,66 @@ export const getEvaluationItemWorker = (processor: any) => {
     try {
       const evalId = job?.data?.evalId;
       const evalItemId = job?.data?.evalItemId;
-      // Update item status to error
+      // Get max attempts from queue's defaultJobOptions or fallback to global config
+      const queueDefaultAttempts = evaluationItemQueue.opts?.defaultJobOptions?.attempts;
+      const maxAttempts = job?.opts?.attempts || queueDefaultAttempts || 0;
+      const attemptsMade = job?.attemptsMade || 0;
+
+      // Check if error is UnrecoverableError (which prevents retries regardless of attempts)
+      const isUnrecoverableError = error instanceof UnrecoverableError;
+
+      // Job will retry only if:
+      // 1. Not an UnrecoverableError AND
+      // 2. Still has attempts remaining
+      const willRetry = !isUnrecoverableError && attemptsMade < maxAttempts;
+
+      addLog.error('[Evaluation] Item job failed', {
+        jobId: job?.id,
+        evalId,
+        evalItemId,
+        attemptsMade,
+        maxAttempts,
+        isUnrecoverableError,
+        willRetry,
+        error
+      });
+
+      // Update item status based on whether it will retry
       if (evalItemId) {
         const { MongoEvalItem } = await import('./schema');
-        await MongoEvalItem.updateOne(
-          { _id: evalItemId },
-          {
-            $set: {
-              errorMessage: getErrText(error),
-              finishTime: new Date(),
-              'metadata.status': EvaluationStatusEnum.error
+
+        if (willRetry) {
+          // Job will be retried, set status to queuing and clear error state
+          await MongoEvalItem.updateOne(
+            { _id: evalItemId },
+            {
+              $set: {
+                'metadata.status': EvaluationStatusEnum.queuing
+              },
+              $unset: {
+                finishTime: 1,
+                errorMessage: 1
+              }
             }
-          }
-        );
+          );
+        } else {
+          // Job exhausted all retries, set final error status
+          await MongoEvalItem.updateOne(
+            { _id: evalItemId },
+            {
+              $set: {
+                errorMessage: getErrText(error),
+                finishTime: new Date(),
+                'metadata.status': EvaluationStatusEnum.error
+              }
+            }
+          );
+        }
       }
-      // Check task completion after failure
-      if (evalId) {
-        addLog.debug('[Evaluation] Checking task completion after item failure', {
+
+      // Check task completion after failure (only if no more retries)
+      if (evalId && !willRetry) {
+        addLog.debug('[Evaluation] Checking task completion after final item failure', {
           jobId: job?.id,
           evalId,
           evalItemId,
@@ -199,6 +264,9 @@ export const getEvaluationItemWorker = (processor: any) => {
             $set: {
               'metadata.status': EvaluationStatusEnum.completed,
               finishTime: new Date()
+            },
+            $unset: {
+              errorMessage: 1
             }
           }
         );

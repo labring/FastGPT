@@ -15,7 +15,6 @@ export async function register() {
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
-        { initEvaluationWorkers },
         { startCron },
         { startTrainingQueue },
         { preLoadWorker },
@@ -29,7 +28,6 @@ export async function register() {
         import('@fastgpt/service/common/vectorDB/controller'),
         import('@/service/mongo'),
         import('@/service/common/system/volumnMongoWatch'),
-        import('@fastgpt/service/core/evaluation'),
         import('@/service/common/system/cron'),
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
@@ -62,7 +60,11 @@ export async function register() {
       initAppTemplateTypes();
       // getSystemPlugins(true);
       startMongoWatch();
+
+      // 动态导入评估模块并初始化（确保在系统配置加载后）
+      const { initEvaluationWorkers } = await import('@fastgpt/service/core/evaluation');
       initEvaluationWorkers();
+
       startCron();
       startTrainingQueue(true);
 

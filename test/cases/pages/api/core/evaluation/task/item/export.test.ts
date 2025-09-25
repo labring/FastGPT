@@ -22,7 +22,8 @@ describe('Export Evaluation Items API Handler', () => {
   const mockRequest = (query: any) =>
     ({
       query,
-      method: 'GET'
+      method: 'GET',
+      cookies: {}
     }) as any;
 
   const mockResponse = () => {
@@ -66,7 +67,8 @@ describe('Export Evaluation Items API Handler', () => {
     expect(EvaluationTaskService.exportEvaluationResults).toHaveBeenCalledWith(
       'eval-123',
       'team-123',
-      'json'
+      'json',
+      'en'
     );
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json; charset=utf-8');
     expect(res.write).toHaveBeenCalledWith('[]');
@@ -96,7 +98,8 @@ describe('Export Evaluation Items API Handler', () => {
     expect(EvaluationTaskService.exportEvaluationResults).toHaveBeenCalledWith(
       'eval-123',
       'team-123',
-      'csv'
+      'csv',
+      'en'
     );
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
     expect(res.write).toHaveBeenCalledWith('id,data\n1,test');
@@ -125,7 +128,8 @@ describe('Export Evaluation Items API Handler', () => {
     expect(EvaluationTaskService.exportEvaluationResults).toHaveBeenCalledWith(
       'eval-123',
       'team-123',
-      'json'
+      'json',
+      'en'
     );
   });
 

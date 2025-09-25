@@ -72,5 +72,35 @@ export const ValidationResultUtils = {
       throw new Error('Cannot create error from valid validation result');
     }
     return new Error(ValidationResultUtils.formatErrors(result));
+  },
+
+  /**
+   * Create an Error object with only the first error code for i18n translation
+   * Logs detailed validation errors for debugging
+   */
+  toTranslatableError(result: ValidationResult): Error {
+    if (result.isValid) {
+      throw new Error('Cannot create error from valid validation result');
+    }
+
+    // Log detailed validation errors for debugging
+    // Note: addLog is not available in global package, will be logged by caller
+    const debugInfo = {
+      errors: result.errors,
+      formattedMessage: ValidationResultUtils.formatErrors(result),
+      summary: ValidationResultUtils.getSummaryMessage(result)
+    };
+
+    // Return error with only the first error code for i18n translation
+    const firstError = result.errors[0];
+    if (!firstError) {
+      return new Error('Validation failed with unknown error');
+    }
+
+    // Attach debug info to the error for caller to log
+    const error = new Error(firstError.code);
+    (error as any).validationDebugInfo = debugInfo;
+
+    return error;
   }
 };

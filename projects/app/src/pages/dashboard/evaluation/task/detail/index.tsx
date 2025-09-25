@@ -413,22 +413,26 @@ const Detail = ({ taskId, currentTab }: Props) => {
 
     const messages: string[] = [];
 
-    // 优先取 evaluatorOutputs 下的 data.reason，但需要 status 为 Failed
-    if (selectedItem.evaluatorOutputs && selectedItem.evaluatorOutputs.length > 0) {
+    // 优先取外层的 errorMessage 作为主要错误信息
+    if (selectedItem.errorMessage) {
+      messages.push(t(selectedItem.errorMessage));
+    }
+
+    // 如果没有外层错误信息，则取 evaluatorOutputs 下的 data.reason，但需要 status 为 Failed
+    if (
+      messages.length === 0 &&
+      selectedItem.evaluatorOutputs &&
+      selectedItem.evaluatorOutputs.length > 0
+    ) {
       selectedItem.evaluatorOutputs.forEach((output) => {
         if (output.status === MetricResultStatusEnum.Failed && output.data?.reason) {
-          messages.push(output.data.reason);
+          messages.push(t(output.data.reason));
         }
       });
     }
 
-    // 如果没有找到任何 reason，则取外层的 errorMessage 作为兜底
-    if (messages.length === 0 && selectedItem.errorMessage) {
-      messages.push(selectedItem.errorMessage);
-    }
-
     return messages;
-  }, [selectedItem]);
+  }, [selectedItem, t]);
 
   const { register, handleSubmit, reset, setValue } = useForm();
 
