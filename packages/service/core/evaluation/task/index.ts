@@ -228,7 +228,7 @@ export class EvaluationTaskService {
   static async deleteEvaluation(evalId: string, teamId: string): Promise<void> {
     const del = async (session: ClientSession) => {
       // Remove tasks from queue to prevent further processing
-      const [taskCleanupResult, itemCleanupResult] = await Promise.all([
+      const [taskCleanupResult, itemCleanupResult, summaryCleanupResult] = await Promise.all([
         removeEvaluationTaskJob(evalId, {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
@@ -238,13 +238,19 @@ export class EvaluationTaskService {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
           retryDelay: 200
+        }),
+        removeEvaluationSummaryJobs(evalId, {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
         })
       ]);
 
       addLog.debug('Queue cleanup completed for evaluation deletion', {
         evalId,
         taskCleanup: taskCleanupResult,
-        itemCleanup: itemCleanupResult
+        itemCleanup: itemCleanupResult,
+        summaryCleanup: summaryCleanupResult
       });
 
       // Delete all evaluation items
@@ -610,7 +616,7 @@ export class EvaluationTaskService {
 
     const stopEval = async (session: ClientSession) => {
       // Remove tasks from queue
-      const [taskCleanupResult, itemCleanupResult] = await Promise.all([
+      const [taskCleanupResult, itemCleanupResult, summaryCleanupResult] = await Promise.all([
         removeEvaluationTaskJob(evalId, {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
@@ -620,13 +626,19 @@ export class EvaluationTaskService {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
           retryDelay: 200
+        }),
+        removeEvaluationSummaryJobs(evalId, {
+          forceCleanActiveJobs: true,
+          retryAttempts: 3,
+          retryDelay: 200
         })
       ]);
 
       addLog.debug('Queue cleanup completed for evaluation stop', {
         evalId,
         taskCleanup: taskCleanupResult,
-        itemCleanup: itemCleanupResult
+        itemCleanup: itemCleanupResult,
+        summaryCleanup: summaryCleanupResult
       });
 
       // Set error state for manual stop
