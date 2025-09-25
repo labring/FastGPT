@@ -311,6 +311,7 @@
   "eval_config_data_quality_concurrency": "Evaluation Dataset - Data Quality Concurrency",
   "eval_config_dataset_synthesize_concurrency": "Evaluation Dataset - Data Synthesis Concurrency",
   "eval_config_smart_generate_concurrency": "Evaluation Dataset - Data Intelligent Generation Concurrency",
+  "eval_config_maxStalledCount": "Evaluation - Max Stalled Job Retry Count",
   "max_upload_files_per_time": "Max files per upload",
   "max_upload_files_per_time_desc": "Maximum number of files per upload to a knowledge base",
   "max_upload_file_size": "Max file size (MB)",

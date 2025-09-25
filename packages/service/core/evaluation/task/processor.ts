@@ -708,10 +708,15 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     const errorMessage = `Evaluator errors: ${errors.map((e) => `${e.evaluatorName}: ${e.error}`).join('; ')}`;
     const aggregatedError = new Error(errorMessage);
     // Use BullMQ error type
-    throw createEvaluationError(aggregatedError, 'EvaluatorExecute', {
-      evalId,
-      evalItemId
-    });
+    throw createEvaluationError(
+      aggregatedError,
+      'EvaluatorExecute',
+      {
+        evalId,
+        evalItemId
+      },
+      true
+    );
   }
 
   // Report final progress

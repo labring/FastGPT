@@ -1294,12 +1294,17 @@ export class EvaluationTaskService {
       });
       const sortedMetricNames = Array.from(metricNames).sort();
 
+      // Get display names for CSV headers (i18n keys for built-in metrics, original names for custom metrics)
+      const displayMetricNames = sortedMetricNames.map((metricName) =>
+        getMetricDisplayName(metricName)
+      );
+
       const headers = [
         'ItemId',
         'UserInput',
         'ExpectedOutput',
         'ActualOutput',
-        ...sortedMetricNames, // Dynamic metric columns
+        ...displayMetricNames, // Dynamic metric columns with display names
         'Status',
         'ErrorMessage',
         'FinishTime'
