@@ -157,9 +157,9 @@ export type customPdfParseType = {
 
 export type EvaluationConfigType = {
   taskConcurrency?: number;
-  itemConcurrency?: number;
-  itemMaxRetry?: number;
-  defaultThreshold?: number;
+  caseConcurrency?: number;
+  caseMaxRetry?: number;
+  caseResultThreshold?: number;
   summaryConcurrency?: number;
   dataQualityConcurrency?: number;
   datasetDataSynthesizeConcurrency?: number;

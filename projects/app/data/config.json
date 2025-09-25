@@ -19,9 +19,9 @@
     },
     "evalConfig": {
       "taskConcurrency": 3,
-      "itemConcurrency": 10,
-      "itemMaxRetry": 3,
-      "defaultThreshold": 0.8,
+      "caseConcurrency": 10,
+      "caseMaxRetry": 3,
+      "caseResultThreshold": 0.8,
       "summaryConcurrency": 1,
       "dataQualityConcurrency": 2,
       "datasetDataSynthesizeConcurrency": 5,

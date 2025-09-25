@@ -37,11 +37,11 @@ export function calculateMetricWeights(metricCount: number): number[] {
  * @returns Default threshold value
  */
 function getDefaultThreshold(): number {
-  const threshold = global.systemEnv?.evalConfig?.defaultThreshold || 0.8;
+  const threshold = global.systemEnv?.evalConfig?.caseResultThreshold || 0.8;
   // Validate threshold is within valid range
   if (isNaN(threshold) || threshold < 0 || threshold > 1) {
     addLog.warn(
-      `[getDefaultThreshold] Invalid defaultThreshold value: ${threshold}. Using default: 0.8`
+      `[getDefaultThreshold] Invalid caseResultThreshold value: ${threshold}. Using default: 0.8`
     );
     return 0.8;
   }
@@ -61,13 +61,13 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
   }
 
   const weights = calculateMetricWeights(evaluators.length);
-  const defaultThreshold = getDefaultThreshold();
+  const caseResultThreshold = getDefaultThreshold();
 
   // Clean evaluators without summaryConfig
   const cleanedEvaluators = evaluators.map((evaluator) => ({
     metric: evaluator.metric,
     runtimeConfig: evaluator.runtimeConfig,
-    thresholdValue: evaluator.thresholdValue ?? defaultThreshold
+    thresholdValue: evaluator.thresholdValue ?? caseResultThreshold
   }));
 
   // Create separate summaryConfigs array with metric relationship
