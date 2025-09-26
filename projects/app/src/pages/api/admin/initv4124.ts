@@ -17,7 +17,7 @@ export type SyncAppChatLogBody = {
 export type SyncAppChatLogResponse = {};
 
 /**
- * 初始化脚本 v4.13.0
+ * 初始化脚本 v4.12.4
  * 对系统内所有资源 App 和 dataset 添加 tmbId 为自己 owner 的协作者，权限为 OwnerRoleVal
  */
 async function handler(
