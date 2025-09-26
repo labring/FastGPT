@@ -12,13 +12,6 @@ export enum CodeClassNameEnum {
   video = 'video',
   audio = 'audio',
   render = 'render'
-  // table = 'table',
-  // indicator = 'indicator',
-  // link = 'link',
-  // error_tips = 'error_tips',
-  // warning_tips = 'warning_tips',
-  // divider = 'divider',
-  // textblock = 'textblock'
 }
 
 export const mdTextFormat = (text: string) => {
