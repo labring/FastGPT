@@ -10,11 +10,10 @@ export const subRoute = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const getWebReqUrl = (url: string = '') => {
   if (!url) return '/';
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-  if (!baseUrl) return url;
+  if (!subRoute) return url;
 
-  if (!url.startsWith('/') || url.startsWith(baseUrl)) return url;
-  return `${baseUrl}${url}`;
+  if (!url.startsWith('/') || url.startsWith(subRoute)) return url;
+  return `${subRoute}${url}`;
 };
 
 export const isMobile = () => {
