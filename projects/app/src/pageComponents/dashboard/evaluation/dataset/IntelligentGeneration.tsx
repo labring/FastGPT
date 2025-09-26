@@ -22,13 +22,15 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
-import {
-  postSmartGenerateEvaluationDataset,
-  postCreateEvaluationDataset
-} from '@/web/core/evaluation/dataset';
+import { postSmartGenerateEvaluationDataset } from '@/web/core/evaluation/dataset';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+
+const formatDatasetList = (datasetList: DatasetListItemType[]) =>
+  datasetList.filter((v) => v.type !== DatasetTypeEnum.database);
 
 /**
  * 智能生成表单数据接口
@@ -353,6 +355,7 @@ const IntelligentGeneration = ({
       {/* 知识库选择弹窗 */}
       {isOpenDatasetSelect && (
         <DatasetSelectModal
+          formatResData={formatDatasetList}
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectedDatasets.map((item) => ({
             datasetId: item.datasetId,
