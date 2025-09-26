@@ -34,13 +34,15 @@ export const DatasetSelectModal = ({
   defaultSelectedDatasets = [],
   onChange,
   onClose,
-  scene = ''
+  scene = '',
+  formatResData
 }: {
   isOpen: boolean;
   defaultSelectedDatasets: SelectedDatasetType;
   scene?: string;
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
+  formatResData?: (datasetList: DatasetListItemType[]) => DatasetListItemType[];
 }) => {
   // Translation function
   const { t } = useTranslation();
@@ -50,8 +52,10 @@ export const DatasetSelectModal = ({
   const { toast } = useToast();
 
   // Use server-side search, following the logic of the dataset list page
-  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } =
-    useDatasetSelect(scene);
+  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect(
+    scene,
+    formatResData
+  );
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
