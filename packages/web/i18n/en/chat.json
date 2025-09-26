@@ -128,8 +128,8 @@
   "variable_invisable_in_share": "Custom variables are not visible in the login-free link.",
   "view_citations": "View reference",
   "web_site_sync": "Website sync",
-  "setting.home.available_tools": "可用工具",
-  "setting.share": "分享",
-  "embedding_model_error": "向量模型出错，请核查模型配置信息",
-  "language_model_error": "请求大模型出错，请检查模型配置是否正确"
+  "setting.home.available_tools": "Available tools",
+  "setting.share": "Share",
+  "embedding_model_error": "The vector model encountered error. Please check its configuration.",
+  "language_model_error": "Error occurred while requesting the LLM. Please check the model configuration."
 }
