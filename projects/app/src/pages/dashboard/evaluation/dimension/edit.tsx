@@ -110,25 +110,12 @@ const DimensionEdit = () => {
           status: 'success'
         });
         router.push('/dashboard/evaluation?evaluationTab=dimensions');
-      },
-      onError: (error) => {
-        toast({
-          title: t('dashboard_evaluation:dimension_update_failed'),
-          status: 'error'
-        });
       }
     }
   );
 
-  const onSubmit = async (data: EvaluationDimensionForm) => {
-    if (!data.name) {
-      return toast({
-        title: t('dashboard_evaluation:dimension_name_required'),
-        status: 'warning'
-      });
-    }
-
-    await updateDimension(data);
+  const onSubmit = (data: EvaluationDimensionForm) => {
+    updateDimension(data);
   };
 
   if (isLoading || isFetching) {

@@ -12,7 +12,6 @@ import EditForm from '@/pageComponents/dashboard/evaluation/dimension/EditForm';
 import TestRun from '@/pageComponents/dashboard/evaluation/dimension/TestRun';
 import type { EvaluationDimensionForm } from '@/pageComponents/dashboard/evaluation/dimension/EditForm';
 import { postCreateMetric } from '@/web/core/evaluation/dimension';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const DimensionCreate = () => {
   const { t } = useTranslation();
@@ -60,13 +59,6 @@ const DimensionCreate = () => {
         });
 
         router.push('/dashboard/evaluation?evaluationTab=dimensions');
-      },
-      errorToast: '',
-      onError: (error) => {
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
       }
     }
   );
