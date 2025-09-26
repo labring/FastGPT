@@ -327,9 +327,9 @@
   "user_team_leave_team": "Leave team",
   "user_team_leave_team_failed": "Failed to leave the team.",
   "waiting": "Pending",
-  "create_evaluation": "创建应用评测",
-  "export_evaluation": "导出应用评测数据",
-  "log_create_evaluation": "【{{name}}】创建了名为【{{appName}}】的【{{appType}}】的批量评测",
-  "log_export_evaluation": "【{{name}}】导出了名为【{{appName}}】的【{{appType}}】的评测数据",
-  "permission_evaluationCreate": "Create evaluation task"
+  "create_evaluation": "Create app evaluation",
+  "export_evaluation": "Export app evaluation data",
+  "log_create_evaluation": "{{name}} created an evaluation task for the {{appType}} ({{appName}}).",
+  "log_export_evaluation": "{{name}} exported the evaluation data of the {{appType}} ({{appName}}).",
+  "permission_evaluationCreate": "Create evaluation"
 }
