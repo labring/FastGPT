@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Flex } from '@chakra-ui/react';
+import { Flex, Box } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 
 interface TipsProps {
@@ -12,7 +12,8 @@ const Tips: React.FC<TipsProps> = ({ content, type = 'error' }) => {
 
   return (
     <Flex
-      align="center"
+      maxW="200px"
+      alignItems="start"
       p={4}
       bg={isError ? 'red.50' : 'yellow.50'}
       border="1px solid"
@@ -26,9 +27,9 @@ const Tips: React.FC<TipsProps> = ({ content, type = 'error' }) => {
         h="20px"
         color={isError ? 'red.500' : 'yellow.500'}
       />
-      <Text color={isError ? 'red.700' : 'yellow.700'} fontSize="sm" fontWeight="medium">
+      <Box color={isError ? 'red.700' : 'yellow.700'} fontSize="sm" fontWeight="medium">
         {content}
-      </Text>
+      </Box>
     </Flex>
   );
 };

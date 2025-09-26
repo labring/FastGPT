@@ -18,7 +18,7 @@ const IndicatorCard: React.FC<IndicatorCardProps> = ({ dataList }) => {
   return (
     <VStack align="stretch">
       {dataList.map((indicator, index) => (
-        <Flex align="stretch" w="250px" key={index} gap={1} mt={1}>
+        <Flex align="stretch" minW="250px" key={index} gap={1} mt={1}>
           <Flex w="5px" bg="blue.500"></Flex>
           <Flex
             flex="1"
@@ -29,32 +29,30 @@ const IndicatorCard: React.FC<IndicatorCardProps> = ({ dataList }) => {
             overflow="hidden"
           >
             {/* indicator name */}
-            <Flex w="full">
-              <Text
-                color="gray.800"
-                fontSize="sm"
-                fontWeight="normal"
-                textAlign="right"
-                flex="1"
-                noOfLines={1}
-              >
-                {indicator.name}
-              </Text>
-            </Flex>
+            <Box
+              color="gray.800"
+              fontSize="sm"
+              fontWeight="normal"
+              textAlign="right"
+              flex="1"
+              noOfLines={1}
+              my={'4px'}
+            >
+              {indicator.name}
+            </Box>
 
             {/* indicator value and unit */}
-            <Flex w="full">
-              <Text
-                color="blue.500"
-                fontSize="lg"
-                fontWeight="bold"
-                textAlign="right"
-                flex="1"
-                noOfLines={1}
-              >
-                {indicator.value || t('common:core.chat.indicator.no_data')}
-              </Text>
-            </Flex>
+            <Box
+              my={'4px'}
+              color="blue.500"
+              fontSize="lg"
+              fontWeight="bold"
+              textAlign="right"
+              flex="1"
+              noOfLines={1}
+            >
+              {indicator.value || t('common:core.chat.indicator.no_data')}
+            </Box>
           </Flex>
         </Flex>
       ))}
