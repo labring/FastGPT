@@ -1,6 +1,8 @@
 import { S3BaseSource } from './base';
 import {
   S3Sources,
+  S3APIPrefix,
+  type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3Options
@@ -17,20 +19,36 @@ class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
   }
 
   override createPostPresignedUrl(
-    params: Omit<CreatePostPresignedUrlParams, 'source' | 'visibility'>
+    params: Omit<CreatePostPresignedUrlParams, 'source' | 'visibility'>,
+    options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
-    return this.bucket.createPostPresignedUrl({
-      ...params,
-      source: S3Sources.avatar
-    });
+    return this.bucket.createPostPresignedUrl(
+      {
+        ...params,
+        source: S3Sources.avatar
+      },
+      options
+    );
   }
 
   createPublicUrl(objectKey: string): string {
     return this.bucket.createPublicUrl(objectKey);
   }
 
-  removeAvatar(objectKey: string): Promise<void> {
-    return this.bucket.delete(objectKey);
+  createAvatarObjectKey(avatarWithPrefix: string): string {
+    return avatarWithPrefix.replace(S3APIPrefix.avatar, '');
+  }
+
+  removeAvatar(avatarWithPrefix: string): Promise<void> {
+    const avatarObjectKey = this.createAvatarObjectKey(avatarWithPrefix);
+    return this.bucket.delete(avatarObjectKey);
+  }
+
+  async moveAvatarFromTemp(tempAvatarWithPrefix: string): Promise<string> {
+    const tempAvatarObjectKey = this.createAvatarObjectKey(tempAvatarWithPrefix);
+    const avatarObjectKey = tempAvatarObjectKey.replace(`${S3Sources.temp}/`, '');
+    await this.bucket.move(tempAvatarObjectKey, avatarObjectKey);
+    return S3APIPrefix.avatar + avatarObjectKey;
   }
 }
 

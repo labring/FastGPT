@@ -69,7 +69,8 @@ export const S3SourcesSchema = z.enum([
   'dataset',
   'dataset-image',
   'invoice',
-  'rawtext'
+  'rawtext',
+  'temp'
 ]);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
@@ -87,8 +88,18 @@ export const CreatePostPresignedUrlParamsSchema = z.object({
 });
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;
 
+export const CreatePostPresignedUrlOptionsSchema = z.object({
+  temporay: z.boolean().optional()
+});
+export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
+
 export const CreatePostPresignedUrlResultSchema = z.object({
   url: z.string().min(1),
   fields: z.record(z.string(), z.string())
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
+
+export const S3APIPrefix = {
+  avatar: '/api/system/img/'
+} as const;
+export type S3APIPrefixType = (typeof S3APIPrefix)[keyof typeof S3APIPrefix];
