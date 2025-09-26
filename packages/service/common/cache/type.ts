@@ -15,6 +15,7 @@ type SystemCacheType = {
     versionKey: string;
     data: SystemCacheDataType[K];
     refreshFunc: () => Promise<SystemCacheDataType[K]>;
+    devRefresh?: boolean;
   };
 };
 

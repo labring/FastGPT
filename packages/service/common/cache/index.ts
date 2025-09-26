@@ -3,6 +3,7 @@ import { getGlobalRedisConnection } from '../../common/redis';
 import type { SystemCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 const cachePrefix = `VERSION_KEY:`;
 
@@ -48,13 +49,15 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   const versionKey = await getVersionKey(key, id);
   const isDisableCache = process.env.DISABLE_CACHE === 'true';
 
+  const item = global.systemCache[key];
+
   // 命中缓存
-  if (global.systemCache[key].versionKey === versionKey && !isDisableCache) {
-    return global.systemCache[key].data;
+  if ((isProduction || !item.devRefresh) && item.versionKey === versionKey && !isDisableCache) {
+    return item.data;
   }
 
-  const refreshedData = await global.systemCache[key].refreshFunc();
-  global.systemCache[key].data = refreshedData;
-  global.systemCache[key].versionKey = versionKey;
-  return global.systemCache[key].data;
+  const refreshedData = await item.refreshFunc();
+  item.data = refreshedData;
+  item.versionKey = versionKey;
+  return item.data;
 };
