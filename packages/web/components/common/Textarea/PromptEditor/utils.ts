@@ -270,9 +270,41 @@ const buildListStructure = (items: ListItemInfo[]) => {
   return result;
 };
 
-export const textToEditorState = (text = '') => {
+export const textToEditorState = (text = '', isRichText = false) => {
   const lines = text.split('\n');
   const children: Array<ParagraphEditorNode | ListEditorNode> = [];
+
+  if (!isRichText) {
+    return JSON.stringify({
+      root: {
+        children: lines.map((p) => {
+          return {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: 'normal',
+                style: '',
+                text: p,
+                type: 'text',
+                version: 1
+              }
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1
+          };
+        }),
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1
+      }
+    });
+  }
 
   let i = 0;
   while (i < lines.length) {
