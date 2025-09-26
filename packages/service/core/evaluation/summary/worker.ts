@@ -3,7 +3,7 @@ import { addLog } from '../../../common/system/log';
 import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
-import { type EvaluationSummaryJobData } from './queue';
+import { type EvaluationSummaryJobData, getEvaluationSummaryQueue } from './queue';
 import { EvaluationSummaryService } from './index';
 import { SummaryStatusHandler } from './statusHandler';
 
@@ -96,13 +96,8 @@ export function initEvaluationSummaryWorker() {
       }
     },
     {
-      concurrency: global.systemEnv?.evalConfig?.summaryConcurrency || 1,
-      removeOnComplete: {
-        count: 0 // 完成后立即删除，允许重复提交相同jobId
-      },
-      removeOnFail: {
-        count: 0 // 失败后立即删除，允许重新提交失败的任务
-      }
+      stalledInterval: 30000, // 30 seconds
+      maxStalledCount: 3 // BullMQ recommended
     }
   );
 
@@ -148,6 +143,51 @@ export function initEvaluationSummaryWorker() {
         SummaryStatusEnum.completed,
         undefined,
         new Date()
+      );
+    }
+  });
+
+  // 监听任务停滞事件
+  worker.on('stalled', async (jobId: string) => {
+    try {
+      const summaryQueue = getEvaluationSummaryQueue();
+      const job = await summaryQueue.getJob(jobId);
+
+      if (job?.data) {
+        const { evalId, metricId } = job.data;
+
+        addLog.warn('[EvaluationSummary] Task job stalled, will be retried', {
+          jobId,
+          evalId,
+          metricId,
+          timestamp: new Date().toISOString()
+        });
+
+        // 将状态重置为pending，等待重试
+        await SummaryStatusHandler.updateStatus(
+          evalId,
+          metricId,
+          SummaryStatusEnum.pending,
+          undefined,
+          new Date()
+        );
+      } else {
+        addLog.warn(
+          '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
+          {
+            jobId,
+            timestamp: new Date().toISOString()
+          }
+        );
+      }
+    } catch (error) {
+      addLog.warn(
+        '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
+        {
+          jobId,
+          error,
+          timestamp: new Date().toISOString()
+        }
       );
     }
   });
