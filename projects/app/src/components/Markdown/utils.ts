@@ -11,13 +11,14 @@ export enum CodeClassNameEnum {
   svg = 'svg',
   video = 'video',
   audio = 'audio',
-  table = 'table',
-  indicator = 'indicator',
-  link = 'link',
-  error_tips = 'error_tips',
-  warning_tips = 'warning_tips',
-  divider = 'divider',
-  textblock = 'textblock'
+  render = 'render'
+  // table = 'table',
+  // indicator = 'indicator',
+  // link = 'link',
+  // error_tips = 'error_tips',
+  // warning_tips = 'warning_tips',
+  // divider = 'divider',
+  // textblock = 'textblock'
 }
 
 export const mdTextFormat = (text: string) => {

@@ -4,26 +4,25 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
-const TableBlock: React.FC<{ code: string }> = ({ code }) => {
+const TableBlock = ({ data }: { data: any }) => {
   const { t } = useSafeTranslation();
-  const tableData = JSON.parse(code);
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  const headers = Object.keys(tableData[0]);
+  const headers = Object.keys(data[0]);
 
   // calculate paginated data
   const { paginatedData, totalPages } = useMemo(() => {
-    const total = Math.ceil(tableData.length / perPage);
+    const total = Math.ceil(data.length / perPage);
     const startIndex = (currentPage - 1) * perPage;
     const endIndex = startIndex + perPage;
-    const paginated = tableData.slice(startIndex, endIndex);
+    const paginated = data.slice(startIndex, endIndex);
 
     return {
       paginatedData: paginated,
       totalPages: total
     };
-  }, [tableData, currentPage, perPage]);
+  }, [data, currentPage, perPage]);
 
   const handlePrevPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));

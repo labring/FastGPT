@@ -36,16 +36,15 @@ const TextBlock: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <Box
-      w="90%"
       mx="auto"
-      mt={2}
-      p={4}
+      p={2}
       bg="gray.200"
       border="1px solid"
       borderColor="gray.200"
       borderRadius="md"
       fontSize="sm"
-      lineHeight="1.6"
+      lineHeight="1.2"
+      sx={{ p: { marginBlock: '6px', padding: '1rem' } }}
     >
       <ReactMarkdown
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
@@ -57,7 +56,7 @@ const TextBlock: React.FC<{ content: string }> = ({ content }) => {
       {hasNewlines && (
         <>
           {!isExpanded && (
-            <Flex justify="flex-end">
+            <Flex justify="flex-end" p="2">
               <Button {...buttonProps} onClick={() => setIsExpanded(true)}>
                 {t('common:core.chat.response.Read complete response')}
               </Button>
@@ -72,7 +71,7 @@ const TextBlock: React.FC<{ content: string }> = ({ content }) => {
               >
                 {detail}
               </ReactMarkdown>
-              <Flex justify="flex-end">
+              <Flex justify="flex-end" p="2">
                 <Button {...buttonProps} onClick={() => setIsExpanded(false)}>
                   {t('common:core.chat.response.Fold response')}
                 </Button>
