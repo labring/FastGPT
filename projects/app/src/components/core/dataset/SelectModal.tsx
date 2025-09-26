@@ -7,6 +7,7 @@ import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 
 type PathItemType = {
   parentId: string;
@@ -68,7 +69,10 @@ const DatasetSelectContainer = ({
   );
 };
 
-export function useDatasetSelect(scene?: string | undefined) {
+export function useDatasetSelect(
+  scene?: string | undefined,
+  formatResData = (datasetList: DatasetListItemType[]) => datasetList
+) {
   const [parentId, setParentId] = useState('');
   const [searchKey, setSearchKey] = useState('');
 
@@ -88,7 +92,7 @@ export function useDatasetSelect(scene?: string | undefined) {
           : getDatasetPaths({ sourceId: parentId, type: 'current' })
       ]);
       return {
-        datasets: result[0],
+        datasets: formatResData(result[0]),
         paths: result[1]
       };
     },
