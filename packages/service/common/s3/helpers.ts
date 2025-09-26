@@ -69,3 +69,11 @@ export function createObjectKey({ source, teamId, filename }: CreateObjectKeyPar
   const id = crypto.randomBytes(16).toString('hex');
   return `${source}/${teamId}/${date}/${id}_${filename}`;
 }
+
+/**
+ * create temporary s3 object key by source, team ID and filename
+ */
+export function createTempObjectKey(params: CreateObjectKeyParams): string {
+  const origin = createObjectKey(params);
+  return `temp/${origin}`;
+}

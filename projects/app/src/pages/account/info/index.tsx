@@ -157,9 +157,15 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     [reset, t, toast, updateUserInfo]
   );
 
-  const { UploadAvatar, handleOpenSelectFile } = useUploadAvatar((avatar) => {
-    if (!userInfo) return;
-    onclickSave({ ...userInfo, avatar });
+  const afterUploadAvatar = useCallback(
+    (avatar: string) => {
+      if (!userInfo) return;
+      onclickSave({ ...userInfo, avatar });
+    },
+    [onclickSave, userInfo]
+  );
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar({
+    onSuccess: afterUploadAvatar
   });
 
   const labelStyles: BoxProps = {
@@ -239,7 +245,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Flex>
         )}
 
-        <UploadAvatar />
+        <AvatarUploader />
         {isPc ? (
           <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
             <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
@@ -252,7 +258,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 border={theme.borders.base}
                 overflow={'hidden'}
                 boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                onClick={handleOpenSelectFile}
+                onClick={handleFileSelectorOpen}
               >
                 <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
               </Box>
@@ -263,7 +269,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             flexDirection={'column'}
             alignItems={'center'}
             cursor={'pointer'}
-            onClick={handleOpenSelectFile}
+            onClick={handleFileSelectorOpen}
           >
             <MyTooltip label={t('account_info:choose_avatar')}>
               <Box

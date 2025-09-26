@@ -33,6 +33,6 @@ export const postS3UploadFile = (
     onUploadProgress
   });
 
-export const getUploadAvatarPresignedUrl = (filename: string) => {
-  return POST<CreatePostPresignedUrlResult>('/support/user/account/updateAvatar', { filename });
+export const getUploadAvatarPresignedUrl = (params: { filename: string; temporay: boolean }) => {
+  return POST<CreatePostPresignedUrlResult>('/common/file/avatar', params);
 };
