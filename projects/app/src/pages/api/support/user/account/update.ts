@@ -39,9 +39,9 @@ async function handler(
     // if avatar, update team member avatar
     if (avatar) {
       if (tmb?.avatar) {
-        const objectKey = tmb.avatar.split('/').slice(4).join('/');
-        await getS3AvatarSource().removeAvatar(objectKey);
+        await getS3AvatarSource().removeAvatar(tmb.avatar);
       }
+
       await MongoTeamMember.updateOne(
         {
           _id: tmbId
