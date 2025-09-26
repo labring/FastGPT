@@ -39,6 +39,7 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -202,12 +203,20 @@ async function handler(
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
+    const permanentAvatar = await (async () => {
+      if (avatar) {
+        const s3AvatarSource = getS3AvatarSource();
+        await s3AvatarSource.removeAvatar(dataset.avatar); // 移除旧的头像
+        return await s3AvatarSource.moveAvatarFromTemp(avatar); // 永久化临时的预览头像
+      }
+    })();
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
         ...parseParentIdInMongo(parentId),
         ...(name && { name }),
-        ...(avatar && { avatar }),
+        ...(avatar && { avatar: permanentAvatar }),
         ...(agentModel && { agentModel }),
         ...(vlmModel && { vlmModel }),
         ...(websiteConfig && { websiteConfig }),
@@ -224,8 +233,6 @@ async function handler(
       dataset,
       autoSync
     });
-
-    await refreshSourceAvatar(avatar, dataset.avatar, session);
   };
 
   await mongoSessionRun(async (session) => {
