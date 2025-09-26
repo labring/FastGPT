@@ -121,7 +121,7 @@ async function handler(
   }
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, { isCSRFCheck: false });
 
 export const config = {
   api: {

@@ -11,6 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
+import { getCsrfToken } from '../utils/csrfToken';
 
 type StreamFetchProps = {
   url?: string;
@@ -121,11 +122,13 @@ export const streamFetch = ({
       // auto complete variables
       const variables = data?.variables || {};
       variables.cTime = formatTime2YMDHMW();
+      const csrfToken = await getCsrfToken();
 
       const requestData = {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken
         },
         signal: abortCtrl.signal,
         body: JSON.stringify({

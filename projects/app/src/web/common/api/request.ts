@@ -11,6 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getCsrfToken } from '../utils/csrfToken';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -78,8 +79,19 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
 /**
  * 请求开始
  */
-function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+async function startInterceptors(
+  config: InternalAxiosRequestConfig
+): Promise<InternalAxiosRequestConfig> {
   if (config.headers) {
+    // prevent circular requests
+    const isGenerateCsrfTokenRequest = config.url?.includes(
+      '/support/user/account/generateCsrfToken'
+    );
+    const csrfToken = isGenerateCsrfTokenRequest ? '' : await getCsrfToken();
+
+    if (csrfToken) {
+      config.headers['x-csrf-token'] = csrfToken;
+    }
   }
 
   return config;
