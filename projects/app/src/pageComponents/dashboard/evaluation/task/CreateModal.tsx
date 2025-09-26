@@ -94,6 +94,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     control,
     watch,
     setValue,
+    setFocus,
     formState: { errors }
   } = useForm({
     defaultValues: defaultForm
@@ -440,6 +441,18 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     [onOpenIntelligentModal]
   );
 
+  // 处理表单提交
+  const handleSubmitForm = useCallback(
+    (data: TaskFormData) => {
+      if (!data.name) {
+        setFocus('name');
+        return;
+      }
+      createTask(data);
+    },
+    [createTask, setFocus]
+  );
+
   // 智能生成数据集确认回调
   const handleIntelligentGenerationConfirm = useCallback(
     (data: any, evalDatasetCollectionId?: string) => {
@@ -472,13 +485,12 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                 {t('dashboard_evaluation:task_name_input')}
               </FormLabel>
               <Input
-                {...register('name', {
-                  required: true
-                })}
+                {...register('name')}
                 placeholder={t('dashboard_evaluation:task_name_input_placeholder')}
                 h={8}
                 isInvalid={!!errors.name}
                 flex={1}
+                autoFocus
               />
             </Flex>
 
@@ -726,12 +738,11 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
             variant="primary"
             isLoading={isCreating}
             isDisabled={
-              !watchedValues.name ||
               !watchedValues.appId ||
               !watchedValues.evalDatasetCollectionId ||
               selectedDimensions.length === 0
             }
-            onClick={handleSubmit((data) => createTask(data))}
+            onClick={handleSubmit(handleSubmitForm)}
           >
             {t('common:Confirm')}
           </Button>

@@ -109,7 +109,12 @@ const EditForm = ({ defaultValues, onSubmit, onValidationChange }: EditFormProps
         >
           {t('dashboard_evaluation:dimension_name_label')}
         </FormLabel>
-        <Input h={10} {...register('name', { required: true })} isInvalid={!!errors.name} />
+        <Input
+          h={10}
+          {...register('name', { required: true })}
+          autoFocus
+          isInvalid={!!errors.name}
+        />
       </Flex>
 
       {/* 介绍输入框 */}
