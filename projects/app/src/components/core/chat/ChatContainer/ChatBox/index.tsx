@@ -926,7 +926,7 @@ const ChatBox = ({
       chatBoxData?.app?.chatConfig?.autoExecute
     ],
     {
-      wait: 500
+      wait: 1000
     }
   );
 
