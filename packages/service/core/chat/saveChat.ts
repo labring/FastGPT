@@ -277,7 +277,6 @@ export async function saveChat({
 export const updateInteractiveChat = async ({
   teamId,
   chatId,
-
   appId,
   userContent,
   aiContent,
@@ -405,4 +404,38 @@ export const updateInteractiveChat = async ({
       );
     }
   });
+
+  try {
+    const now = new Date();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+
+    const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
+    const totalPoints =
+      nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+
+    await MongoAppChatLog.updateOne(
+      {
+        teamId,
+        appId,
+        chatId,
+        updateTime: { $gte: fifteenMinutesAgo }
+      },
+      {
+        $inc: {
+          chatItemCount: 1,
+          errorCount,
+          totalPoints,
+          totalResponseTime: durationSeconds
+        },
+        $set: {
+          updateTime: now
+        }
+      },
+      {
+        ...writePrimary
+      }
+    );
+  } catch (error) {
+    addLog.error('update interactive chat log error', error);
+  }
 };
