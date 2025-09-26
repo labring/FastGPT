@@ -8,7 +8,7 @@ import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -109,13 +109,10 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
-  // 获取二级路由
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-  // 拼接二级路由
   const isOutlinkPage = {
-    [`${baseUrl}/chat/share`]: true,
-    [`${baseUrl}/chat`]: true,
-    [`${baseUrl}/login`]: true
+    [`${subRoute}/chat/share`]: true,
+    [`${subRoute}/chat`]: true,
+    [`${subRoute}/login`]: true
   }[window.location.pathname];
 
   const data = err?.response?.data || err;
