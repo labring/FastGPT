@@ -55,6 +55,46 @@ export async function uploadMongoImg({
 
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
+export const copyImage = async ({
+  teamId,
+  imageUrl,
+  session
+}: {
+  teamId: string;
+  imageUrl: string;
+  session?: ClientSession;
+}) => {
+  const imageId = getIdFromPath(imageUrl);
+  if (!imageId) return imageUrl;
+
+  const image = await MongoImage.findOne(
+    {
+      _id: imageId,
+      teamId
+    },
+    undefined,
+    {
+      session
+    }
+  );
+  if (!image) return imageUrl;
+
+  const [newImage] = await MongoImage.create(
+    [
+      {
+        teamId,
+        binary: image.binary,
+        metadata: image.metadata
+      }
+    ],
+    {
+      session,
+      ordered: true
+    }
+  );
+
+  return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+};
 
 const getIdFromPath = (path?: string) => {
   if (!path) return;
