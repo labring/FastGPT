@@ -134,9 +134,6 @@ export enum FlowNodeTypeEnum {
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',
   httpRequest468 = 'httpRequest468',
-  runApp = 'app',
-  appModule = 'appModule',
-  pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
@@ -156,7 +153,12 @@ export enum FlowNodeTypeEnum {
   loopEnd = 'loopEnd',
   formInput = 'formInput',
   tool = 'tool',
-  toolSet = 'toolSet'
+  toolSet = 'toolSet',
+
+  // child:
+  appModule = 'appModule',
+  pluginModule = 'pluginModule',
+  runApp = 'app'
 }
 
 // node IO value type
