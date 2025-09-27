@@ -27,6 +27,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -111,13 +112,19 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       nodes
     });
 
-    await refreshSourceAvatar(avatar, app.avatar, session);
+    const permanentAvatar = await (async () => {
+      if (avatar) {
+        const s3AvatarSource = getS3AvatarSource();
+        await s3AvatarSource.removeAvatar(app.avatar); // 移除旧的头像
+        return await s3AvatarSource.moveAvatarFromTemp(avatar); // 永久化临时的预览头像
+      }
+    })();
 
     if (app.type === AppTypeEnum.toolSet && avatar) {
       await MongoApp.updateMany(
         { parentId: appId, teamId: app.teamId },
         {
-          avatar
+          avatar: permanentAvatar
         },
         { session }
       );
@@ -129,7 +136,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         ...parseParentIdInMongo(parentId),
         ...(name && { name }),
         ...(type && { type }),
-        ...(avatar && { avatar }),
+        ...(avatar && { avatar: permanentAvatar }),
         ...(intro !== undefined && { intro }),
         ...(teamTags && { teamTags }),
         ...(nodes && {
