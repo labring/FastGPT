@@ -20,8 +20,8 @@ export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.ev
       type: 'exponential',
       delay: 2000
     },
-    removeOnComplete: 100,
-    removeOnFail: 100
+    removeOnComplete: false,
+    removeOnFail: false
   }
 });
 
@@ -32,8 +32,8 @@ export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.ev
       type: 'exponential',
       delay: 1000 // Initial delay 1s, exponential backoff
     },
-    removeOnComplete: 500,
-    removeOnFail: 500
+    removeOnComplete: false,
+    removeOnFail: false
   }
 });
 
@@ -41,7 +41,7 @@ export const getEvaluationTaskWorker = (processor: any) => {
   const worker = getWorker<EvaluationTaskJobData>(QueueNames.evalTask, processor, {
     concurrency: global.systemEnv?.evalConfig?.taskConcurrency || 3,
     stalledInterval: 30000, // 30 seconds
-    maxStalledCount: 1 // BullMQ recommended
+    maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3
   });
 
   worker.on('stalled', async (jobId: string) => {
@@ -85,7 +85,7 @@ export const getEvaluationItemWorker = (processor: any) => {
   const worker = getWorker<EvaluationItemJobData>(QueueNames.evalTaskItem, processor, {
     concurrency: global.systemEnv?.evalConfig?.caseConcurrency || 10,
     stalledInterval: 30000, // 30 seconds for faster recovery
-    maxStalledCount: 1 // BullMQ recommended
+    maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3
   });
   worker.on('stalled', async (jobId) => {
     try {

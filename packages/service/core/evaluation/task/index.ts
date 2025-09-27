@@ -33,6 +33,33 @@ import {
 } from './statusCalculator';
 import { EvaluationSummaryService } from '../summary';
 import { removeEvaluationSummaryJobs } from '../summary/queue';
+import { i18nT } from '../../../../web/i18n/utils';
+
+/**
+ * Get display name for metric (returns i18n key for built-in metrics, original name for custom metrics)
+ */
+function getMetricDisplayName(metricName: string): string {
+  // Check if it's a built-in metric (might have 'builtin_' prefix)
+  const cleanMetricName = metricName.replace(/^builtin_/, '');
+
+  // List of known built-in metrics
+  const builtinMetrics = [
+    'answer_correctness',
+    'answer_similarity',
+    'answer_relevancy',
+    'faithfulness',
+    'context_recall',
+    'context_precision'
+  ];
+
+  if (builtinMetrics.includes(cleanMetricName)) {
+    // Return the i18n key for built-in metrics
+    return i18nT(`dashboard_evaluation:builtin_${cleanMetricName}_name` as any);
+  }
+
+  // For custom metrics, return the original name
+  return metricName;
+}
 
 export class EvaluationTaskService {
   /**
@@ -1170,12 +1197,17 @@ export class EvaluationTaskService {
       });
       const sortedMetricNames = Array.from(metricNames).sort();
 
+      // Get display names for CSV headers (i18n keys for built-in metrics, original names for custom metrics)
+      const displayMetricNames = sortedMetricNames.map((metricName) =>
+        getMetricDisplayName(metricName)
+      );
+
       const headers = [
         'ItemId',
         'UserInput',
         'ExpectedOutput',
         'ActualOutput',
-        ...sortedMetricNames, // Dynamic metric columns
+        ...displayMetricNames, // Dynamic metric columns with display names
         'Status',
         'ErrorMessage',
         'FinishTime'
