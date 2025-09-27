@@ -92,10 +92,13 @@ export const filterPublicNodeResponseData = ({
   responseDetail?: boolean;
 }) => {
   const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.appModule]: true,
     [FlowNodeTypeEnum.pluginModule]: true,
     [FlowNodeTypeEnum.datasetSearchNode]: true,
     [FlowNodeTypeEnum.agent]: true,
-    [FlowNodeTypeEnum.pluginOutput]: true
+    [FlowNodeTypeEnum.pluginOutput]: true,
+
+    [FlowNodeTypeEnum.runApp]: true
   };
 
   const filedMap: Record<string, boolean> = responseDetail
