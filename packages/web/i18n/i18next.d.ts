@@ -1,4 +1,5 @@
 import 'i18next';
+import type sangfor from './zh-CN/sangfor.json';
 import type account_team from './zh-CN/account_team.json';
 import type account from './zh-CN/account.json';
 import type account_thirdParty from './zh-CN/account_thirdParty.json';
@@ -26,6 +27,7 @@ import type admin from './zh-CN/admin.json';
 import type { I18N_NAMESPACES } from './constants';
 
 export interface I18nNamespaces {
+  sangfor: typeof sangfor;
   common: typeof common;
   dataset: typeof dataset;
   evaluation: typeof evaluation;
