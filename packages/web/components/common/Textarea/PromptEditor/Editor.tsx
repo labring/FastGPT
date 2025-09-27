@@ -132,7 +132,7 @@ export default function Editor({
       CodeNode,
       CodeHighlightNode
     ],
-    editorState: textToEditorState(value),
+    editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
       throw error;
     }
