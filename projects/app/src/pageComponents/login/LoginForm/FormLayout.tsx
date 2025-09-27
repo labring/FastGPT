@@ -171,7 +171,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             <MyImage src={SANGFOR_LOGO_ICON} w={['22.5px', '36px']} alt={'icon'} />
           </Flex>
           <Box ml={[3, 5]} fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
-            {t('common:support.user.login.sxf_com')}
+            {t('sangfor:support.user.login.sxf_com')}
           </Box>
         </Flex>
         {/* {!isPc && <I18nLngSelector />} */}

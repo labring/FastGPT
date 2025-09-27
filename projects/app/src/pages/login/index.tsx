@@ -188,10 +188,10 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
                 mb={'20px'}
                 lineHeight={'48px'}
               >
-                {t('common:support.user.login.fastgpt_sxf_com')}
+                {t('sangfor:support.user.login.fastgpt_sxf_com')}
               </Box>
               <Box fontSize={'14px'} color={'#666'} lineHeight={'28px'} letterSpacing={'normal'}>
-                {t('common:support.user.login.sxf_com_platform_desc')}
+                {t('sangfor:support.user.login.sxf_com_platform_desc')}
               </Box>
             </Box>
           </Flex>
@@ -336,7 +336,7 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL ?? '',
-      ...(await serviceSideProps(context, ['app', 'user', 'login']))
+      ...(await serviceSideProps(context, ['app', 'user', 'login', 'sangfor']))
     }
   };
 }

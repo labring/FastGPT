@@ -1,4 +1,5 @@
 export const I18N_NAMESPACES = [
+  'sangfor',
   'common',
   'dataset',
   'app',
