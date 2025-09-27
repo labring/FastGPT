@@ -85,26 +85,48 @@ const formatAiContent = ({
   };
 };
 
-export async function saveChat({
-  chatId,
-  appId,
-  teamId,
-  tmbId,
-  nodes,
-  appChatConfig,
-  variables,
-  isUpdateUseTime,
-  newTitle,
-  source,
-  sourceName,
-  shareId,
-  outLinkUid,
-  userContent,
-  aiContent,
-  durationSeconds,
-  errorMsg,
-  metadata = {}
-}: Props) {
+const getChatDataLog = async ({
+  nodeResponses
+}: {
+  nodeResponses: ReturnType<typeof formatAiContent>['nodeResponses'];
+}) => {
+  const now = new Date();
+  const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+
+  const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
+  const totalPoints =
+    nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+
+  return {
+    fifteenMinutesAgo,
+    errorCount,
+    totalPoints,
+    now
+  };
+};
+
+export async function saveChat(props: Props) {
+  const {
+    chatId,
+    appId,
+    teamId,
+    tmbId,
+    nodes,
+    appChatConfig,
+    variables,
+    isUpdateUseTime,
+    newTitle,
+    source,
+    sourceName,
+    shareId,
+    outLinkUid,
+    userContent,
+    aiContent,
+    durationSeconds,
+    errorMsg,
+    metadata = {}
+  } = props;
+
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
 
   try {
@@ -204,13 +226,10 @@ export async function saveChat({
 
     // Create chat data log
     try {
+      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+        nodeResponses
+      });
       const userId = String(outLinkUid || tmbId);
-      const now = new Date();
-      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
-
-      const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
-      const totalPoints =
-        nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
 
       const hasHistoryChat = await MongoAppChatLog.exists({
         teamId,
@@ -255,7 +274,7 @@ export async function saveChat({
         }
       );
     } catch (error) {
-      addLog.error('update chat log error', error);
+      addLog.error('Push chat log error', error);
     }
 
     if (isUpdateUseTime) {
@@ -277,7 +296,6 @@ export async function saveChat({
 export const updateInteractiveChat = async ({
   teamId,
   chatId,
-
   appId,
   userContent,
   aiContent,
@@ -405,4 +423,36 @@ export const updateInteractiveChat = async ({
       );
     }
   });
+
+  // Push chat data logs
+  try {
+    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+      nodeResponses
+    });
+
+    await MongoAppChatLog.updateOne(
+      {
+        teamId,
+        appId,
+        chatId,
+        updateTime: { $gte: fifteenMinutesAgo }
+      },
+      {
+        $inc: {
+          chatItemCount: 1,
+          errorCount,
+          totalPoints,
+          totalResponseTime: durationSeconds
+        },
+        $set: {
+          updateTime: now
+        }
+      },
+      {
+        ...writePrimary
+      }
+    );
+  } catch (error) {
+    addLog.error('update interactive chat log error', error);
+  }
 };
