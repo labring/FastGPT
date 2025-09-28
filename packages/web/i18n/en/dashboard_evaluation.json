@@ -370,5 +370,7 @@
   "no_dimension_data_cannot_generate_summary": "Unable to generate a summary because no metric data is available.",
   "Task_name": "Task name",
   "click_to_download_template": "Download CSV template",
-  "evaluation_created": "Evaluation task created successfully."
+  "evaluation_created": "Evaluation task created successfully.",
+  "evaluation_dimension_missing_model_config": "Metric configuration incomplete",
+  "evaluation_dimension_missing_model_config_desc": "The following metrics are missing model configuration. Please complete the configuration: {{names}}"
 }
