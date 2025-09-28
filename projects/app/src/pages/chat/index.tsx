@@ -145,7 +145,17 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'user', 'login']))
+      ...(await serviceSideProps(context, [
+        'file',
+        'app',
+        'chat',
+        'workflow',
+        'user',
+        'login',
+        'dataset',
+        'dashboard_evaluation',
+        'evaluation'
+      ]))
     }
   };
 }

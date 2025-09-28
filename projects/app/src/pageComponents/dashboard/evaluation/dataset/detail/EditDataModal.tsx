@@ -486,7 +486,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_question')}
                     bg="gray.50"
-                    maxLength={1000}
                     minH="234px"
                     {...register('question', {
                       required: t('dashboard_evaluation:question_required')
@@ -501,7 +500,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_reference_answer')}
                     bg="gray.50"
-                    maxLength={1000}
                     minH="234px"
                     {...register('referenceAnswer', {
                       required: t('dashboard_evaluation:reference_answer_required')

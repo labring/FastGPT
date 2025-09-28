@@ -236,7 +236,6 @@
   "evaluation_status": "Status",
   "manually_add_data_modal": "Add evaluation data",
   "question_input_label": "Question",
-  "max_chars_3000_placeholder": "Up to 3,000 characters allowed",
   "reference_answer_input_label": "Expected answer",
   "auto_quality_eval_after_add": "Quality evaluation",
   "auto_quality_eval_add_tip": "If enabled, Q&A relevance and correctness are automatically evaluated, providing evaluation results and optimization support.",
