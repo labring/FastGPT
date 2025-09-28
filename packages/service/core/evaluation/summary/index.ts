@@ -104,21 +104,6 @@ export class EvaluationSummaryService {
     };
   }
 
-  // This method is no longer needed as scores are calculated in real-time
-  // Keeping for backward compatibility but will be deprecated
-  static async calculateAndSaveMetricScores(
-    evalId: string,
-    session?: any // 支持在事务中调用
-  ): Promise<void> {
-    addLog.warn(
-      '[Evaluation] calculateAndSaveMetricScores is deprecated, scores are now calculated in real-time',
-      {
-        evalId
-      }
-    );
-    // No-op: scores are calculated in real-time when getEvaluationSummary is called
-  }
-
   // Real-time calculation of metricScore and aggregateScore (pure calculation, no database updates)
   static async calculateMetricScores(evaluation: EvaluationSchemaType): Promise<{
     metricsData: Array<{
@@ -477,26 +462,6 @@ export class EvaluationSummaryService {
       metricsConfig
     };
   }
-
-  static async queryEvalItems(
-    evalId: string,
-    status: EvaluationStatusEnum
-  ): Promise<EvaluationItemSchemaType[]> {
-    try {
-      const items = await MongoEvalItem.find({
-        evalId,
-        status
-      })
-        .sort({ createTime: -1 })
-        .lean();
-
-      return items;
-    } catch (error) {
-      throw new Error(`查询评估项失败: ${error}`);
-    }
-  }
-
-  // ===== Summary Generation Methods =====
 
   /**
    * 生成多个指标的总结报告 - 使用BullMQ队列化处理，解决系统崩溃导致状态卡死问题
@@ -1088,13 +1053,6 @@ export class EvaluationSummaryService {
   private static isAllPerfectScores(data: any[]): boolean {
     if (data.length === 0) return false;
     return data.every((item) => (item.matchingMetricResult?.data?.score || 0) >= PERFECT_SCORE);
-  }
-
-  /**
-   * 智能选择示例类型
-   */
-  private static selectExampleType(data: any[]): string {
-    return this.isAllPerfectScores(data) ? goodExample : badExample;
   }
 
   /**
