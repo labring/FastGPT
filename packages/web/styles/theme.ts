@@ -622,6 +622,7 @@ const Table = tableMultiStyle({
           th: {
             borderBottom: 'none',
             overflow: 'hidden',
+            textTransform: 'none',
             '&:first-of-type': {
               borderLeftRadius: 'md'
             },
