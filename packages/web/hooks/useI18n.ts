@@ -40,11 +40,20 @@ export const useI18nLng = () => {
     const lang = languageMap[lng] || 'en';
     const prevLang = getLang();
 
+    if (prevLang === lang) {
+      return;
+    }
+
     setLang(lang);
+
+    if (lang === LangEnum.zh_CN || lang === LangEnum.zh_Hant) {
+      window?.location?.reload?.();
+      return;
+    }
 
     await i18n?.changeLanguage?.(lang);
 
-    if (!i18n?.hasResourceBundle?.(lang, 'common') && prevLang !== lang) {
+    if (!i18n?.hasResourceBundle?.(lang, 'common')) {
       window?.location?.reload?.();
     }
   };
