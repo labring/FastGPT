@@ -4,7 +4,6 @@ import {
   DBDatasetVectorTableName,
   DBDatasetValueVectorTableName
 } from '../constants';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type {

@@ -37,7 +37,6 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     collectionIdList,
     datasetDataIdList
   } = req.body;
-
   const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
     authChatCrud({
       req,
@@ -62,7 +61,6 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
   const formatPreviewUrlList = getFormatDatasetCiteList(list);
 
   const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
-
   return quoteList;
 }
 
