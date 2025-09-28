@@ -370,5 +370,7 @@
   "export_failed": "导出失败",
   "load_failed": "加载失败",
   "export_success": "导出成功",
-  "no_dimension_data_cannot_generate_summary": "暂无维度数据，无法生成总结"
+  "no_dimension_data_cannot_generate_summary": "暂无维度数据，无法生成总结",
+  "evaluation_dimension_missing_model_config": "评测维度缺少模型配置",
+  "evaluation_dimension_missing_model_config_desc": "以下评测维度缺少模型配置，请先完善配置：{{names}}"
 }

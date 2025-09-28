@@ -370,5 +370,7 @@
   "task_name": "任務名稱",
   "Task_name": "任務名",
   "click_to_download_template": "點擊下載該應用的 CSV 模板",
-  "evaluation_created": "評測任務創建成功"
+  "evaluation_created": "評測任務創建成功",
+  "evaluation_dimension_missing_model_config": "評測維度缺少模型配置",
+  "evaluation_dimension_missing_model_config_desc": "以下評測維度缺少模型配置，請先完善配置：{{names}}"
 }
