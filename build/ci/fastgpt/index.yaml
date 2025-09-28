@@ -8,3 +8,5 @@ index:
     type: image
     yamlPath:
       x86_64: build/ci/fastgpt/fastgpt-image.x86_64.yaml
+      c86_64: build/ci/fastgpt/fastgpt-image.c86_64.yaml
+      aarch64: build/ci/fastgpt/fastgpt-image.aarch64.yaml
