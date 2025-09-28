@@ -119,6 +119,7 @@ export type SearchDatabaseDataResponse = {
       collectionId: string;
       datasetId: string;
       score: number;
+      retrieval_columns: string[];
     }
   >;
   tokens: number;
@@ -1088,7 +1089,6 @@ export const SearchDatabaseData = async (
     });
 
     addLog.debug(`Database embed recall completed. Found ${Object.keys(schema).length} tables.`);
-    addLog.debug('Schema results:', schema);
 
     return {
       schema,
@@ -1123,7 +1123,10 @@ const columnDescriptionRecall = async ({
       tableName: DBDatasetVectorTableName,
       forbidCollectionIdList
     });
-
+    addLog.debug(
+      'Column description recall results:',
+      results.map((r) => r.columnDesIndex)
+    );
     return results.map((result: any) => ({
       id: result.id,
       collectionId: result.collectionId,
@@ -1183,61 +1186,125 @@ const mergeAndGetSchema = async ({
   columnValueRecallResultList: any[];
   teamId: string;
 }) => {
-  const schema: Record<string, { collectionId: string; datasetId: string; score: number }> = {};
+  const schema: Record<
+    string,
+    { collectionId: string; datasetId: string; score: number; retrieval_columns: string[] }
+  > = {};
   const collectionIds = new Set<string>();
 
-  // Collect all collection IDs from both results
-  [...columnDescriptionRecallResList, ...columnValueRecallResultList].forEach((result) => {
-    if (result.collectionId) {
-      collectionIds.add(result.collectionId);
-    }
-  });
+  // Collect all collection IDs from both results (more efficient)
+  for (const result of columnDescriptionRecallResList) {
+    if (result.collectionId) collectionIds.add(result.collectionId);
+  }
+  for (const result of columnValueRecallResultList) {
+    if (result.collectionId) collectionIds.add(result.collectionId);
+  }
 
-  // Batch fetch all collections
+  // Early return if no collection IDs
+  if (collectionIds.size === 0) {
+    return schema;
+  }
+
+  // Batch fetch all collections with table schema
   const collections = await MongoDatasetCollection.find({
     _id: { $in: Array.from(collectionIds) },
     teamId
   })
-    .select('_id datasetId name')
+    .select('_id datasetId name tableSchema')
     .lean();
 
   const collectionMap = new Map(collections.map((coll) => [String(coll._id), coll]));
 
+  // Pre-compute table keys for all collections to avoid repeated calculations
+  const tableKeysMap = new Map<string, { primaryKeys: string[]; foreignKeys: string[] }>();
+  collections.forEach((collection) => {
+    const primaryKeys: string[] = [];
+    const foreignKeys: string[] = [];
+
+    if (collection.tableSchema) {
+      // Get primary keys
+      if (collection.tableSchema.primaryKeys) {
+        primaryKeys.push(...collection.tableSchema.primaryKeys);
+      }
+      if (collection.tableSchema.foreignKeys) {
+        foreignKeys.push(...collection.tableSchema.foreignKeys.map((fk) => fk.column));
+      }
+    }
+    tableKeysMap.set(String(collection._id), { primaryKeys, foreignKeys });
+  });
+
+  // Group results by collectionId directly (avoid creating intermediate array)
+  const resultsByCollection = new Map<string, any[]>();
+
   // Process column description results
   for (const result of columnDescriptionRecallResList) {
-    try {
-      const collection = collectionMap.get(result.collectionId);
-      if (collection && collection.name) {
-        const tableName = collection.name;
-        if (!schema[tableName] || result.score > schema[tableName].score) {
-          schema[tableName] = {
-            collectionId: String(result.collectionId),
-            datasetId: String(collection.datasetId),
-            score: result.score
-          };
-        }
+    if (result.collectionId) {
+      if (!resultsByCollection.has(result.collectionId)) {
+        resultsByCollection.set(result.collectionId, []);
       }
-    } catch (error) {
-      addLog.error('Error processing column description result', error);
+      resultsByCollection.get(result.collectionId)!.push({ ...result, type: 'description' });
     }
   }
 
   // Process column value results
   for (const result of columnValueRecallResultList) {
+    if (result.collectionId) {
+      if (!resultsByCollection.has(result.collectionId)) {
+        resultsByCollection.set(result.collectionId, []);
+      }
+      resultsByCollection.get(result.collectionId)!.push({ ...result, type: 'value' });
+    }
+  }
+
+  // Process each collection once with all its results
+  for (const [collectionId, results] of resultsByCollection) {
     try {
-      const collection = collectionMap.get(result.collectionId);
-      if (collection && collection.name) {
-        const tableName = collection.name;
-        if (!schema[tableName] || result.score > schema[tableName].score) {
-          schema[tableName] = {
-            collectionId: String(result.collectionId),
-            datasetId: String(collection.datasetId),
-            score: result.score
-          };
+      const collection = collectionMap.get(collectionId);
+      if (!collection || !collection.name) continue;
+
+      const tableName = collection.name;
+      const { primaryKeys, foreignKeys } = tableKeysMap.get(collectionId) || {
+        primaryKeys: [],
+        foreignKeys: []
+      };
+
+      // Find the best score among all results for this collection (optimized)
+      let bestResult = results[0];
+      for (let i = 1; i < results.length; i++) {
+        if (results[i].score > bestResult.score) {
+          bestResult = results[i];
         }
       }
+
+      // Initialize or update schema entry
+      if (!schema[tableName] || bestResult.score > schema[tableName].score) {
+        schema[tableName] = {
+          collectionId: String(collectionId),
+          datasetId: String(collection.datasetId),
+          score: bestResult.score,
+          retrieval_columns: []
+        };
+      }
+
+      // Collect all unique columns from all results for this collection
+      const allRetrievedColumns = new Set<string>();
+
+      // Add primary keys and foreign keys in one go
+      for (const pk of primaryKeys) allRetrievedColumns.add(pk);
+      for (const fk of foreignKeys) allRetrievedColumns.add(fk);
+      // Add retrieved columns from all results in one pass
+      for (const result of results) {
+        const retrievedColumn =
+          result.type === 'description' ? result.columnDesIndex : result.columnValIndex;
+        if (retrievedColumn) {
+          allRetrievedColumns.add(retrievedColumn.split('<sep>')[1]);
+        }
+      }
+
+      // Update retrieval_columns with all unique columns
+      schema[tableName].retrieval_columns = Array.from(allRetrievedColumns);
     } catch (error) {
-      addLog.error('Error processing column value result', error);
+      addLog.error('Error processing collection results', error);
     }
   }
 
@@ -1259,7 +1326,10 @@ export const generateAndExecuteSQL = async ({
 }: {
   datasetId: string;
   query: string;
-  schema: Record<string, { collectionId: string; datasetId: string; score: number }>;
+  schema: Record<
+    string,
+    { collectionId: string; datasetId: string; score: number; retrieval_columns: string[] }
+  >;
   teamId: string;
   limit?: number;
   generate_sql_llm: { model: string; api_key?: string; base_url?: string };
@@ -1306,17 +1376,19 @@ export const generateAndExecuteSQL = async ({
     const columns: Record<string, DativeTableColumns> = {};
     if (collection.tableSchema?.columns) {
       Object.values(collection.tableSchema.columns).forEach((col) => {
-        columns[col.columnName] = {
-          name: col.columnName,
-          type: col.columnType,
-          comment: col.description,
-          auto_increment: col.isAutoIncrement || false,
-          nullable: col.isNullable || false,
-          default: col.defaultValue || null,
-          examples: col.examples || [],
-          enabled: !col.forbid,
-          value_index: col.valueIndex || false
-        };
+        if (schema[collection.name]?.retrieval_columns.includes(col.columnName)) {
+          columns[col.columnName] = {
+            name: col.columnName,
+            type: col.columnType,
+            comment: col.description,
+            auto_increment: col.isAutoIncrement || false,
+            nullable: col.isNullable || false,
+            default: col.defaultValue || null,
+            examples: col.examples || [],
+            enabled: !col.forbid,
+            value_index: col.valueIndex || false
+          };
+        }
       });
     }
 
@@ -1338,10 +1410,11 @@ export const generateAndExecuteSQL = async ({
       enable: !collection.forbid,
       score: schema[collection.name]?.score || 0
     };
-    console.debug('[generateAndExecuteSQL] table', table);
     return table;
   });
-
+  addLog.debug(
+    `[generateAndExecuteSQL] retrieved_metadata: ${JSON.stringify(retrievedMetadata).length}`
+  );
   if (retrievedMetadata.length === 0) {
     addLog.warn('No valid table schemas found');
     return null;

@@ -188,7 +188,7 @@ export async function dispatchDatasetSearch(
             teamId,
             queries: [userChatInput],
             model: vectorModel.model,
-            limit,
+            limit: 50,
             datasetIds: [datasetId]
           });
           if (singleResult) {
@@ -205,19 +205,6 @@ export async function dispatchDatasetSearch(
               });
 
               if (singleSqlResult) {
-                addLog.debug('Dataset Search - SQL Generation Success', {
-                  datasetId,
-                  sql: singleSqlResult.sql.substring(0, 100) + '...',
-                  dataCount: singleSqlResult.sql_res.data.length,
-                  inputTokens: singleSqlResult.input_tokens,
-                  outputTokens: singleSqlResult.output_tokens
-                });
-
-                // Add to search results as chunks
-                searchRes.push(
-                  convertSqlResultsToChunks(singleSqlResult, userChatInput, datasetId)
-                );
-
                 // Collect for billing and response data
                 sqlResult.push({
                   ...singleSqlResult,
@@ -422,22 +409,7 @@ export async function dispatchDatasetSearch(
         reRankInputTokens
       }),
       // SQL Result (for database datasets) - use first result or create summary
-      ...(sqlResult.length > 0 && {
-        sqlResult:
-          sqlResult.length === 1
-            ? {
-                sql: sqlResult[0].sql,
-                data: sqlResult[0].sql_res.data,
-                columns: sqlResult[0].sql_res.columns,
-                answer: sqlResult[0].answer
-              }
-            : {
-                sql: sqlResult.map((r) => r.sql).join('; '),
-                data: sqlResult.flatMap((r) => r.sql_res.data),
-                columns: sqlResult[0].sql_res.columns,
-                answer: sqlResult.map((r) => r.answer).join('\n\n')
-              }
-      }),
+      sqlResult: sqlResult,
       searchUsingReRank,
       // Results
       quoteList: searchRes,
