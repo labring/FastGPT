@@ -1,0 +1,22 @@
+// 已使用 json5 进行解析，会自动去掉注释，无需手动去除
+{
+  "feConfigs": {
+    "lafEnv": "https://laf.dev", // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
+    "mcpServerProxyEndpoint": "" // mcp server 代理地址，例如： http://localhost:3005
+  },
+  "systemEnv": {
+    "datasetParseMaxProcess": 10, // 知识库文件解析最大线程数量
+    "vectorMaxProcess": 10, // 向量处理线程数量
+    "qaMaxProcess": 10, // 问答拆分线程数量
+    "vlmMaxProcess": 10, // 图片理解模型最大处理进程
+    "tokenWorkers": 30, // Token 计算线程保持数，会持续占用内存，不能设置太大。
+    "hnswEfSearch": 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "hnswMaxScanTuples": 100000, // 向量搜索最大扫描数据量，仅对 PG生效。
+    "customPdfParse": {
+      "url": "", // 自定义 PDF 解析服务地址
+      "key": "", // 自定义 PDF 解析服务密钥
+      "doc2xKey": "", // doc2x 服务密钥
+      "price": 0 // PDF 解析服务价格
+    }
+  }
+}

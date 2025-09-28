@@ -32,9 +32,9 @@
   "document/content/docs/introduction/development/modelConfig/ppio.mdx": "2025-08-05T23:20:39+08:00",
   "document/content/docs/introduction/development/modelConfig/siliconCloud.mdx": "2025-08-05T23:20:39+08:00",
   "document/content/docs/introduction/development/openapi/app.mdx": "2025-09-26T13:18:51+08:00",
-  "document/content/docs/introduction/development/openapi/chat.mdx": "2025-08-14T18:54:47+08:00",
-  "document/content/docs/introduction/development/openapi/dataset.mdx": "2025-09-15T20:02:54+08:00",
-  "document/content/docs/introduction/development/openapi/intro.mdx": "2025-08-14T18:54:47+08:00",
+  "document/content/docs/introduction/development/openapi/chat.mdx": "2025-09-26T14:18:50+08:00",
+  "document/content/docs/introduction/development/openapi/dataset.mdx": "2025-09-26T14:18:50+08:00",
+  "document/content/docs/introduction/development/openapi/intro.mdx": "2025-09-26T14:18:50+08:00",
   "document/content/docs/introduction/development/openapi/share.mdx": "2025-08-05T23:20:39+08:00",
   "document/content/docs/introduction/development/proxy/cloudflare.mdx": "2025-07-23T21:35:03+08:00",
   "document/content/docs/introduction/development/proxy/http_proxy.mdx": "2025-07-23T21:35:03+08:00",
@@ -190,7 +190,7 @@
   "document/content/docs/use-cases/external-integration/dingtalk.mdx": "2025-07-23T21:35:03+08:00",
   "document/content/docs/use-cases/external-integration/feishu.mdx": "2025-07-24T14:23:04+08:00",
   "document/content/docs/use-cases/external-integration/official_account.mdx": "2025-08-05T23:20:39+08:00",
-  "document/content/docs/use-cases/external-integration/openapi.mdx": "2025-08-14T18:54:47+08:00",
+  "document/content/docs/use-cases/external-integration/openapi.mdx": "2025-09-26T14:18:50+08:00",
   "document/content/docs/use-cases/external-integration/wecom.mdx": "2025-09-16T14:22:28+08:00",
   "document/content/docs/use-cases/index.mdx": "2025-07-24T14:23:04+08:00"
 }
