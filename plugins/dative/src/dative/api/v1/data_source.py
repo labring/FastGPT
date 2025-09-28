@@ -65,8 +65,8 @@ async def valid_data_source_config(source_config: DataSourceConfig) -> DataSourc
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "msg": f"不支持的duckdb存储类型：{source_config.store}",
-                    "error": f"不支持的duckdb存储类型：{source_config.store}",
+                    "msg": f"Unsupported duckdb storage type: {source_config.store}",
+                    "error": f"Unsupported duckdb storage type: {source_config.store}",
                 },
             )
     elif source_config.type == "sqlite":
@@ -75,8 +75,8 @@ async def valid_data_source_config(source_config: DataSourceConfig) -> DataSourc
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": f"不支持的数据源类型：{source_config.type}",
-                "error": f"不支持的数据源类型：{source_config.type}",
+                "msg": f"Unsupported data source types: {source_config.type}",
+                "error": f"Unsupported data source types: {source_config.type}",
             },
         )
     try:
@@ -86,7 +86,7 @@ async def valid_data_source_config(source_config: DataSourceConfig) -> DataSourc
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "数据源连接失败，请检查连接信息是否正确",
+                "msg": "Connection failed. Please check the connection information.",
                 "error": str(e),
             },
         )
@@ -105,22 +105,20 @@ async def get_metadata(ds: Annotated[DataSourceBase, Depends(valid_data_source_c
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "获取数据库元信息失败",
+                "msg": "Failed to obtain database metadata",
                 "error": str(e),
             },
         )
 
 @router.post("/get_metadata_with_value_examples", response_class=ORJSONResponse)
-async def get_metadata_with_value_example(
-    ds: Annotated[DataSourceBase, Depends(valid_data_source_config)]
-) -> DatabaseMetadata:
+async def get_metadata_with_value_example(ds: Annotated[DataSourceBase, Depends(valid_data_source_config)]) -> DatabaseMetadata:
     try:
         return await ds.aget_metadata_with_value_examples()
     except Exception as e:
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "获取数据库元信息失败",
+                "msg": "Failed to obtain database metadata",
                 "error": str(e),
             },
         )
@@ -133,7 +131,7 @@ async def get_server_version(ds: Annotated[DataSourceBase, Depends(valid_data_so
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "获取数据库版本信息失败",
+                "msg": "Failed to obtain database version information",
                 "error": str(e),
             },
         )
@@ -147,7 +145,7 @@ async def sql_query(request: SqlQueryRequest) -> SqlQueryResponse:
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "数据库查询失败",
+                "msg": "Database query failed",
                 "error": err.msg,
             },
         )
@@ -164,7 +162,7 @@ async def query_by_nl(request: QueryByNLRequest) -> QueryByNLResponse:
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "数据库连接失败，请检查连接信息是否正确",
+                "msg": "Connection failed. Please check the connection information.",
                 "error": str(e),
             },
         )
@@ -201,7 +199,7 @@ async def query_by_nl(request: QueryByNLRequest) -> QueryByNLResponse:
         raise HTTPException(
             status_code=400,
             detail={
-                "msg": "数据库检索失败",
+                "msg": "Database search failed",
                 "error": str(e),
             },
         )
