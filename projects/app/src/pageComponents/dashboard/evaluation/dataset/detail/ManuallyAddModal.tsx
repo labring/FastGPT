@@ -136,8 +136,6 @@ const ManuallyAddModal = ({
             </FormLabel>
             <MyTextarea
               bg="myGray.50"
-              placeholder={t('dashboard_evaluation:max_chars_3000_placeholder')}
-              maxLength={3000}
               minH={120}
               maxH={200}
               {...register('question', { required: true })}
@@ -152,8 +150,6 @@ const ManuallyAddModal = ({
             </FormLabel>
             <MyTextarea
               bg="myGray.50"
-              placeholder={t('dashboard_evaluation:max_chars_3000_placeholder')}
-              maxLength={3000}
               minH={120}
               maxH={200}
               {...register('answer', { required: true })}
