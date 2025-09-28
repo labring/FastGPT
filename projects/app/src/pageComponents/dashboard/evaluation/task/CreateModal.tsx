@@ -22,6 +22,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import ManageDimension, { type Dimension } from './ManageDimension';
 import AppSelect from '@/components/Select/AppSelect';
@@ -38,7 +39,7 @@ import { getModelFromList } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import IntelligentGeneration from '@/pageComponents/dashboard/evaluation/dataset/IntelligentGeneration';
-import { getAppDetailById } from '@/web/core/app/api';
+import { getAppVersionDetail } from '@/web/core/app/api/version';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
@@ -77,6 +78,7 @@ const defaultForm: TaskFormData = {
 
 const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [isManageDimensionOpen, setIsManageDimensionOpen] = useState(false);
   const [recommendedDimensionText, setRecommendedDimensionText] = useState('');
   const [shouldAutoExpand, setShouldAutoExpand] = useState(false);
@@ -208,26 +210,26 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     }
   );
 
-  // 获取应用详情并分析节点类型
-  const { runAsync: getAppDetail } = useRequest2(
-    async (appId: string) => {
-      if (!appId) return null;
-      return await getAppDetailById(appId);
+  // 获取应用版本详情并分析节点类型
+  const { runAsync: getAppVersionDetailInfo } = useRequest2(
+    async ({ appId, versionId }: { appId: string; versionId: string }) => {
+      if (!appId || !versionId) return null;
+      return await getAppVersionDetail(versionId, appId);
     },
     {
       manual: true,
-      onSuccess: async (appDetail) => {
-        if (!appDetail?.modules) {
+      onSuccess: async (versionDetail) => {
+        if (!versionDetail?.nodes) {
           setRecommendedDimensionText('');
           // 清空推荐维度
           setValue('selectedDimensions', []);
           return;
         }
 
-        const hasDatasetSearch = appDetail.modules.some(
+        const hasDatasetSearch = versionDetail.nodes.some(
           (module: any) => module.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
         );
-        const hasChatNode = appDetail.modules.some(
+        const hasChatNode = versionDetail.nodes.some(
           (module: any) => module.flowNodeType === FlowNodeTypeEnum.chatNode
         );
 
@@ -255,7 +257,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
 
         // 获取并设置该应用最近使用的数据集
         try {
-          const lastEvaluation = await getLastUsedDataset(appDetail._id);
+          const lastEvaluation = await getLastUsedDataset(versionDetail.appId);
           if (lastEvaluation?.evalDatasetCollectionId) {
             setValue('evalDatasetCollectionId', lastEvaluation.evalDatasetCollectionId);
           }
@@ -336,7 +338,6 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     {
       manual: true,
       successToast: t('common:create_success'),
-      errorToast: t('dashboard_evaluation:create_failed'),
       onSuccess: (result) => {
         onSubmit(result);
         onClose();
@@ -368,9 +369,16 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
       );
       if (!watchedValues.appVersion || !currentVersionExists) {
         setValue('appVersion', latestVersion._id);
+        getAppVersionDetailInfo({ appId: watchedValues.appId, versionId: latestVersion._id });
       }
     }
-  }, [appVersions, watchedValues.appId, watchedValues.appVersion, setValue]);
+  }, [
+    appVersions,
+    watchedValues.appId,
+    watchedValues.appVersion,
+    setValue,
+    getAppVersionDetailInfo
+  ]);
 
   // 转换版本数据为下拉选项格式
   const appVersionOptions = useMemo(() => {
@@ -448,9 +456,30 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
         setFocus('name');
         return;
       }
+
+      // 校验 evaluators 数据
+      const invalidEvaluators = data.selectedDimensions.filter((dimension) => {
+        return (
+          (dimension.llmRequired && !dimension.evaluationModel) ||
+          (dimension.embeddingRequired && !dimension.indexModel)
+        );
+      });
+
+      if (invalidEvaluators.length > 0) {
+        const invalidDimensionNames = invalidEvaluators.map((d) => d.name).join(', ');
+        toast({
+          status: 'warning',
+          title: t('dashboard_evaluation:evaluation_dimension_missing_model_config'),
+          description: t('dashboard_evaluation:evaluation_dimension_missing_model_config_desc', {
+            names: invalidDimensionNames
+          })
+        });
+        return;
+      }
+
       createTask(data);
     },
-    [createTask, setFocus]
+    [createTask, setFocus, toast, t]
   );
 
   // 智能生成数据集确认回调
@@ -511,8 +540,6 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   onSelect={(id) => {
                     setValue('appId', id);
                     setValue('appVersion', '');
-                    // 获取应用详情并分析节点类型
-                    getAppDetail(id);
                   }}
                 />
               </Box>
@@ -529,7 +556,12 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   placeholder={t('dashboard_evaluation:evaluation_app_version_select_placeholder')}
                   value={watchedValues.appVersion}
                   list={appVersionOptions}
-                  onChange={(val) => setValue('appVersion', val)}
+                  onChange={(val) => {
+                    setValue('appVersion', val);
+                    if (val && watchedValues.appId) {
+                      getAppVersionDetailInfo({ appId: watchedValues.appId, versionId: val });
+                    }
+                  }}
                   isDisabled={!watchedValues.appId}
                   isLoading={isLoadingVersions}
                   ScrollData={VersionScrollData}
@@ -602,130 +634,145 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
             </Flex>
 
             {/* 评测维度 */}
-            <Flex align="center" gap={4}>
-              <FormLabel minW="120px" mb={0}>
-                {t('dashboard_evaluation:evaluation_dimensions_label')}
-              </FormLabel>
-              <Button
-                variant="whiteBase"
-                size="md"
-                leftIcon={<MyIcon name="edit" w="14px" />}
-                onClick={handleOpenManageDimension}
-              >
-                {t('dashboard_evaluation:manage_dimension')}
-              </Button>
-            </Flex>
-
-            {/* 维度展开/收起区域 */}
-            <Box>
-              <VStack
-                spacing={0}
-                align="stretch"
-                bg="myGray.50"
-                borderRadius="md"
-                overflow="hidden"
-              >
-                <Flex align="center" justify="space-between" p={4}>
-                  <Text fontSize="sm" color="myGray.600">
-                    {recommendedDimensionText || ''}
-                  </Text>
-                  <Box
-                    cursor="pointer"
-                    onClick={toggleDimensionExpanded}
-                    _hover={{ bg: 'myGray.100' }}
-                    borderRadius="sm"
-                    h={'16px'}
-                  >
-                    <MyIcon
-                      name={isDimensionExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                      w="16px"
-                      h="16px"
-                      color="myGray.500"
-                    />
-                  </Box>
-                </Flex>
-
-                <Collapse in={isDimensionExpanded}>
-                  {selectedDimensions.length > 0 ? (
-                    <VStack spacing={0} align="stretch">
-                      {selectedDimensions.map((dimension) => {
-                        // 优先显示评测模型，没有评测模型则显示索引模型
-                        const displayModelName =
-                          dimension.evaluationModel || dimension.indexModel || '';
-                        const modelInfo = getModelInfo(displayModelName);
-
-                        return (
-                          <Flex
-                            key={dimension.id}
-                            align="center"
-                            justify="space-between"
-                            p={3}
-                            bg="myGray.50"
-                          >
-                            <HStack spacing={3}>
-                              <Text
-                                fontSize="sm"
-                                fontWeight="medium"
-                                color={'myGray.900'}
-                                noOfLines={1}
-                                maxW="200px"
-                              >
-                                {dimension.name}
-                              </Text>
-                              {dimension.type === 'builtin' && (
-                                <MyTag colorSchema="gray" type="borderSolid" px={1.5}>
-                                  {t('dashboard_evaluation:builtin_dimension')}
-                                </MyTag>
-                              )}
-                              {displayModelName && (
-                                <HStack spacing={2}>
-                                  <Avatar
-                                    borderRadius={'0'}
-                                    src={modelInfo?.avatar}
-                                    w="14px"
-                                    h="14px"
-                                  />
-                                  <Text fontSize="xs" color="myGray.600" noOfLines={1} maxW="200px">
-                                    {modelInfo?.name || displayModelName}
-                                  </Text>
-                                </HStack>
-                              )}
-                            </HStack>
-                            <MyIcon
-                              name="delete"
-                              w="16px"
-                              h="16px"
-                              cursor="pointer"
-                              color="myGray.500"
-                              _hover={{ color: 'red.600' }}
-                              onClick={() => handleRemoveDimension(dimension.id)}
-                            />
-                          </Flex>
-                        );
-                      })}
-                    </VStack>
-                  ) : (
-                    <Box bg="myGray.50" pb={4}>
-                      <EmptyTip
-                        py={4}
-                        iconSize="48px"
-                        text={
-                          <Text fontSize="sm" color="myGray.500">
-                            {t('dashboard_evaluation:no_dimensions_added')}
-                            <Link
-                              color="primary.600"
-                              _hover={{ color: 'primary.700' }}
-                              onClick={handleOpenManageDimension}
-                            >
-                              {t('dashboard_evaluation:click_to_add')}
-                            </Link>
-                          </Text>
-                        }
+            <Box mb={3}>
+              <Flex align="center" mb={2}>
+                <FormLabel minW="120px" mb={0}>
+                  <Flex align="center">
+                    <Text>{t('dashboard_evaluation:evaluation_dimensions_label')}</Text>
+                    <Box
+                      cursor="pointer"
+                      onClick={toggleDimensionExpanded}
+                      _hover={{ bg: 'myGray.100' }}
+                      borderRadius="sm"
+                      p={1}
+                      ml={2}
+                      display="flex"
+                      alignItems="center"
+                    >
+                      <MyIcon
+                        name={isDimensionExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                        w="16px"
+                        h="16px"
+                        color="myGray.500"
+                        verticalAlign="middle"
+                        boxSizing="border-box"
                       />
                     </Box>
-                  )}
-                </Collapse>
-              </VStack>
+                  </Flex>
+                </FormLabel>
+              </Flex>
+
+              {recommendedDimensionText && (
+                <Text fontSize="sm" color="myGray.600" mb={3}>
+                  {recommendedDimensionText}
+                </Text>
+              )}
+
+              <Collapse in={isDimensionExpanded}>
+                <VStack spacing={3} align="stretch">
+                  <Button
+                    variant="whiteBase"
+                    size="md"
+                    leftIcon={<MyIcon name="edit" w="14px" />}
+                    onClick={handleOpenManageDimension}
+                    alignSelf="flex-start"
+                  >
+                    {t('dashboard_evaluation:manage_dimension')}
+                  </Button>
+
+                  <VStack
+                    spacing={0}
+                    align="stretch"
+                    bg="myGray.50"
+                    borderRadius="md"
+                    overflow="hidden"
+                  >
+                    {selectedDimensions.length > 0 ? (
+                      <VStack spacing={0} align="stretch">
+                        {selectedDimensions.map((dimension) => {
+                          // 优先显示评测模型，没有评测模型则显示索引模型
+                          const displayModelName =
+                            dimension.evaluationModel || dimension.indexModel || '';
+                          const modelInfo = getModelInfo(displayModelName);
+
+                          return (
+                            <Flex
+                              key={dimension.id}
+                              align="center"
+                              justify="space-between"
+                              p={3}
+                              bg="myGray.50"
+                            >
+                              <HStack spacing={3}>
+                                <Text
+                                  fontSize="sm"
+                                  fontWeight="medium"
+                                  color={'myGray.900'}
+                                  noOfLines={1}
+                                  maxW="200px"
+                                >
+                                  {dimension.name}
+                                </Text>
+                                {dimension.type === 'builtin' && (
+                                  <MyTag colorSchema="gray" type="borderSolid" px={1.5}>
+                                    {t('dashboard_evaluation:builtin_dimension')}
+                                  </MyTag>
+                                )}
+                                {displayModelName && (
+                                  <HStack spacing={2}>
+                                    <Avatar
+                                      borderRadius={'0'}
+                                      src={modelInfo?.avatar}
+                                      w="14px"
+                                      h="14px"
+                                    />
+                                    <Text
+                                      fontSize="xs"
+                                      color="myGray.600"
+                                      noOfLines={1}
+                                      maxW="200px"
+                                    >
+                                      {modelInfo?.name || displayModelName}
+                                    </Text>
+                                  </HStack>
+                                )}
+                              </HStack>
+                              <MyIcon
+                                name="delete"
+                                w="16px"
+                                h="16px"
+                                cursor="pointer"
+                                color="myGray.500"
+                                _hover={{ color: 'red.600' }}
+                                onClick={() => handleRemoveDimension(dimension.id)}
+                              />
+                            </Flex>
+                          );
+                        })}
+                      </VStack>
+                    ) : (
+                      <Box bg="myGray.50" p={4}>
+                        <EmptyTip
+                          py={4}
+                          iconSize="48px"
+                          text={
+                            <Text fontSize="sm" color="myGray.500">
+                              {t('dashboard_evaluation:no_dimensions_added')}
+                              <Link
+                                color="primary.600"
+                                _hover={{ color: 'primary.700' }}
+                                onClick={handleOpenManageDimension}
+                              >
+                                {t('dashboard_evaluation:click_to_add')}
+                              </Link>
+                            </Text>
+                          }
+                        />
+                      </Box>
+                    )}
+                  </VStack>
+                </VStack>
+              </Collapse>
             </Box>
           </VStack>
         </ModalBody>
