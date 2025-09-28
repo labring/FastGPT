@@ -35,7 +35,6 @@ export const trackTimer = async () => {
       }
     >();
 
-    // Group items by unique key for merging
     queuedItems.forEach(({ event, data }) => {
       const { uid, teamId, tmbId, datasetIds } = data;
       if (event === TrackEnum.datasetSearch) {
@@ -61,7 +60,6 @@ export const trackTimer = async () => {
       }
     });
 
-    // Prepare bulk operations with time-based merging
     const bulkOps = Array.from(batchMap.values()).map(({ event, uid, teamId, tmbId, data }) => ({
       updateOne: {
         filter: {
@@ -69,7 +67,7 @@ export const trackTimer = async () => {
           uid,
           teamId,
           tmbId,
-          'data.datasetId': data.datasetId,
+          ...(data.datasetId ? { 'data.datasetId': data.datasetId } : {}),
           createTime: { $gte: timeWindowStart }
         },
         update: [
@@ -81,7 +79,7 @@ export const trackTimer = async () => {
               tmbId,
               createTime: { $ifNull: ['$createTime', new Date()] },
               data: {
-                datasetId: data.datasetId,
+                ...(data.datasetId ? { datasetId: data.datasetId } : {}),
                 count: { $add: [{ $ifNull: ['$data.count', 0] }, data.count] }
               }
             }

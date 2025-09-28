@@ -13,7 +13,6 @@ import {
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';
-import type { DatasetSearchTrackProps } from '@fastgpt/global/core/dataset/api';
 
 declare global {
   var systemInitBufferId: string | undefined;

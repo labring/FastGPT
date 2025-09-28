@@ -164,8 +164,3 @@ export type PushDatasetDataProps = {
 export type PushDatasetDataResponse = {
   insertLen: number;
 };
-
-export type DatasetSearchTrackProps = {
-  datasetIds: string[];
-  teamId: string;
-};
