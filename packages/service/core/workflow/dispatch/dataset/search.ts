@@ -200,8 +200,8 @@ export async function dispatchDatasetSearch(
                 schema: singleResult.schema,
                 teamId,
                 limit,
-                generate_sql_llm: { model: generateSqlModel ?? getDefaultLLMModel().name },
-                evaluate_sql_llm: { model: generateSqlModel ?? getDefaultLLMModel().name }
+                generate_sql_llm: { model: generateSqlModel || getDefaultLLMModel().name },
+                evaluate_sql_llm: { model: generateSqlModel || getDefaultLLMModel().name }
               });
 
               if (singleSqlResult) {

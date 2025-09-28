@@ -41,7 +41,6 @@ import {
 } from '../../../common/vectorDB/constants';
 import { MongoDataset } from '../schema';
 import { addLog } from '../../../common/system/log';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '../../../../web/i18n/utils';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import type {
@@ -51,6 +50,7 @@ import type {
   SqlGenerationRequest,
   SqlGenerationResponse
 } from '@fastgpt/global/core/dataset/database/api';
+import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -1043,8 +1043,8 @@ export const SearchDatabaseData = async (
     const vectorModel = getEmbeddingModel(model);
     let totalTokens = 0;
     // Step 2: Generate embedding vector for the query
-    const columnDescriptionRecallResList: any[] = [];
-    const columnValueRecallResultList: any[] = [];
+    const columnDescriptionRecallResList: DatabaseEmbeddingRecallItemType[] = [];
+    const columnValueRecallResultList: DatabaseEmbeddingRecallItemType[] = [];
 
     const forbidCollectionIdList = forbidCollections.map((item: any) => String(item._id));
     await Promise.all(
@@ -1112,7 +1112,7 @@ const columnDescriptionRecall = async ({
   vector: number[];
   limit: number;
   forbidCollectionIdList: string[];
-}) => {
+}): Promise<DatabaseEmbeddingRecallItemType[]> => {
   try {
     // Use universal database embedding recall interface
     const { results } = await databaseEmbeddingRecall({
@@ -1127,12 +1127,7 @@ const columnDescriptionRecall = async ({
       'Column description recall results:',
       results.map((r) => r.columnDesIndex)
     );
-    return results.map((result: any) => ({
-      id: result.id,
-      collectionId: result.collectionId,
-      score: result.score,
-      columnDesIndex: result.columnDesIndex
-    }));
+    return results;
   } catch (error) {
     addLog.error('Column description recall error', error);
     return [];
@@ -1152,7 +1147,7 @@ const columnValueRecall = async ({
   vector: number[];
   limit: number;
   forbidCollectionIdList: string[];
-}) => {
+}): Promise<DatabaseEmbeddingRecallItemType[]> => {
   try {
     // Use universal database embedding recall interface
     const { results } = await databaseEmbeddingRecall({
@@ -1164,12 +1159,11 @@ const columnValueRecall = async ({
       forbidCollectionIdList
     });
 
-    return results.map((result: any) => ({
-      id: result.id,
-      collectionId: result.collectionId,
-      score: result.score,
-      columnValIndex: result.columnValIndex
-    }));
+    addLog.debug(
+      'Column value recall results:',
+      results.map((r) => r.columnValIndex)
+    );
+    return results;
   } catch (error) {
     addLog.error('Column value recall error', error);
     return [];
@@ -1182,66 +1176,25 @@ const mergeAndGetSchema = async ({
   columnValueRecallResultList,
   teamId
 }: {
-  columnDescriptionRecallResList: any[];
-  columnValueRecallResultList: any[];
+  columnDescriptionRecallResList: DatabaseEmbeddingRecallItemType[];
+  columnValueRecallResultList: DatabaseEmbeddingRecallItemType[];
   teamId: string;
 }) => {
   const schema: Record<
     string,
     { collectionId: string; datasetId: string; score: number; retrieval_columns: string[] }
   > = {};
-  const collectionIds = new Set<string>();
-
-  // Collect all collection IDs from both results (more efficient)
-  for (const result of columnDescriptionRecallResList) {
-    if (result.collectionId) collectionIds.add(result.collectionId);
-  }
-  for (const result of columnValueRecallResultList) {
-    if (result.collectionId) collectionIds.add(result.collectionId);
-  }
-
-  // Early return if no collection IDs
-  if (collectionIds.size === 0) {
-    return schema;
-  }
-
-  // Batch fetch all collections with table schema
-  const collections = await MongoDatasetCollection.find({
-    _id: { $in: Array.from(collectionIds) },
-    teamId
-  })
-    .select('_id datasetId name tableSchema')
-    .lean();
-
-  const collectionMap = new Map(collections.map((coll) => [String(coll._id), coll]));
-
-  // Pre-compute table keys for all collections to avoid repeated calculations
-  const tableKeysMap = new Map<string, { primaryKeys: string[]; foreignKeys: string[] }>();
-  collections.forEach((collection) => {
-    const primaryKeys: string[] = [];
-    const foreignKeys: string[] = [];
-
-    if (collection.tableSchema) {
-      // Get primary keys
-      if (collection.tableSchema.primaryKeys) {
-        primaryKeys.push(...collection.tableSchema.primaryKeys);
-      }
-      if (collection.tableSchema.foreignKeys) {
-        foreignKeys.push(...collection.tableSchema.foreignKeys.map((fk) => fk.column));
-      }
-    }
-    tableKeysMap.set(String(collection._id), { primaryKeys, foreignKeys });
-  });
-
   // Group results by collectionId directly (avoid creating intermediate array)
-  const resultsByCollection = new Map<string, any[]>();
+  const resultsByCollection = new Map<
+    string,
+    Array<DatabaseEmbeddingRecallItemType & { type: string }>
+  >();
 
   // Process column description results
   for (const result of columnDescriptionRecallResList) {
     if (result.collectionId) {
-      if (!resultsByCollection.has(result.collectionId)) {
+      if (!resultsByCollection.has(result.collectionId))
         resultsByCollection.set(result.collectionId, []);
-      }
       resultsByCollection.get(result.collectionId)!.push({ ...result, type: 'description' });
     }
   }
@@ -1249,65 +1202,59 @@ const mergeAndGetSchema = async ({
   // Process column value results
   for (const result of columnValueRecallResultList) {
     if (result.collectionId) {
-      if (!resultsByCollection.has(result.collectionId)) {
+      if (!resultsByCollection.has(result.collectionId))
         resultsByCollection.set(result.collectionId, []);
-      }
       resultsByCollection.get(result.collectionId)!.push({ ...result, type: 'value' });
     }
   }
 
+  // Batch fetch all collections with table schema
+  const collections = await MongoDatasetCollection.find({
+    _id: { $in: Array.from(resultsByCollection.keys()) },
+    teamId
+  })
+    .select('_id datasetId name tableSchema')
+    .lean();
+  const collectionMap = new Map(collections.map((coll) => [String(coll._id), coll]));
   // Process each collection once with all its results
   for (const [collectionId, results] of resultsByCollection) {
-    try {
-      const collection = collectionMap.get(collectionId);
-      if (!collection || !collection.name) continue;
+    const collection = collectionMap.get(collectionId);
+    if (!collection || !collection.name || !results) continue;
 
-      const tableName = collection.name;
-      const { primaryKeys, foreignKeys } = tableKeysMap.get(collectionId) || {
-        primaryKeys: [],
-        foreignKeys: []
-      };
+    const tableName = collection.name;
+    const primaryKeys = collection.tableSchema?.primaryKeys || [];
+    const foreignKyes = collection.tableSchema?.foreignKeys.map((fk) => fk.column) || [];
 
-      // Find the best score among all results for this collection (optimized)
-      let bestResult = results[0];
-      for (let i = 1; i < results.length; i++) {
-        if (results[i].score > bestResult.score) {
-          bestResult = results[i];
-        }
+    // Collect all unique columns from all results for this collection
+    const allRetrievedColumns = new Set<string>([...primaryKeys, ...foreignKyes]);
+
+    // Find the best score among all results for this collection (optimized)
+    let bestResult = results[0];
+    for (let i = 1; i < results.length; i++) {
+      if (results[i].score > bestResult.score) {
+        bestResult = results[i];
       }
-
-      // Initialize or update schema entry
-      if (!schema[tableName] || bestResult.score > schema[tableName].score) {
-        schema[tableName] = {
-          collectionId: String(collectionId),
-          datasetId: String(collection.datasetId),
-          score: bestResult.score,
-          retrieval_columns: []
-        };
-      }
-
-      // Collect all unique columns from all results for this collection
-      const allRetrievedColumns = new Set<string>();
-
-      // Add primary keys and foreign keys in one go
-      for (const pk of primaryKeys) allRetrievedColumns.add(pk);
-      for (const fk of foreignKeys) allRetrievedColumns.add(fk);
-      // Add retrieved columns from all results in one pass
-      for (const result of results) {
-        const retrievedColumn =
-          result.type === 'description' ? result.columnDesIndex : result.columnValIndex;
-        if (retrievedColumn) {
-          allRetrievedColumns.add(retrievedColumn.split('<sep>')[1]);
-        }
-      }
-
-      // Update retrieval_columns with all unique columns
-      schema[tableName].retrieval_columns = Array.from(allRetrievedColumns);
-    } catch (error) {
-      addLog.error('Error processing collection results', error);
     }
-  }
 
+    schema[tableName] = {
+      collectionId: String(collectionId),
+      datasetId: String(collection.datasetId),
+      score: bestResult.score,
+      retrieval_columns: []
+    };
+
+    // Add retrieved columns from all results in one pass
+    for (const result of results) {
+      const retrievedColumn =
+        result.type === 'description' ? result.columnDesIndex : result.columnValIndex;
+      if (retrievedColumn) {
+        allRetrievedColumns.add(retrievedColumn.split('<sep>')[1]);
+      }
+    }
+
+    // Update retrieval_columns with all unique columns
+    schema[tableName].retrieval_columns = Array.from(allRetrievedColumns);
+  }
   return schema;
 };
 
@@ -1475,7 +1422,10 @@ export const generateAndExecuteSQL = async ({
       statusText: response.statusText,
       error: errorText
     });
-    return Promise.reject(i18nT('chat:language_model_error'));
+    if (response.status == 404) return Promise.reject(i18nT('chat:language_model_error'));
+    const detail = JSON.parse(errorText).detail?.error;
+
+    return Promise.reject(`dative error: ${detail}`);
   }
 
   const result: SqlGenerationResponse = await response.json();
