@@ -128,7 +128,6 @@ export class TableColumnTransformer {
    */
   static toPlainObject(tableColumn: TableColumn): any {
     if (!tableColumn) return null;
-    console.debug('[TableColumnTransformer toPlainObject] tableColumn', tableColumn.defaultValue);
     return {
       columnName: tableColumn.columnName,
       columnType: String(tableColumn.columnType),
