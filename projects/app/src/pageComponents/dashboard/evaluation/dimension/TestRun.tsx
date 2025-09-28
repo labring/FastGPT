@@ -128,14 +128,14 @@ const TestRun = ({
       setTestResult({
         score: result.score,
         status: 'success',
-        feedback: result.reason || t('dashboard_evaluation:no_feedback_text')
+        feedback: t(result.reason) || t('dashboard_evaluation:no_feedback_text')
       });
     } catch (error) {
       console.error('debug metric error:', error);
       setTestResult({
         score: 0,
         status: 'error',
-        feedback: getErrText(error) || t('dashboard_evaluation:run_failed_please_retry')
+        feedback: t(getErrText(error)) || t('dashboard_evaluation:run_failed_please_retry')
       });
     } finally {
       setIsRunning(false);
