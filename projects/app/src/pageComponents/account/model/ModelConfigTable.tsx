@@ -753,7 +753,7 @@ const DefaultModelModal = ({
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  evaluationLLM: llmModelList.find((item) => item.model === e)
+                  evaluation: llmModelList.find((item) => item.model === e)
                 }));
               }}
             />
