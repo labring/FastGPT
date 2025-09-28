@@ -4,5 +4,6 @@ export enum TrackEnum {
   useAppTemplate = 'useAppTemplate',
   createDataset = 'createDataset',
   appNodes = 'appNodes',
-  runSystemTool = 'runSystemTool'
+  runSystemTool = 'runSystemTool',
+  datasetSearch = 'datasetSearch'
 }

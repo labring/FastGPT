@@ -21,7 +21,7 @@ export async function register() {
         { loadSystemModels },
         { connectSignoz },
         { getSystemTools },
-        { datasetSearchTimerProcess }
+        { trackTimerProcess }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -36,7 +36,7 @@ export async function register() {
         import('@fastgpt/service/core/ai/config/utils'),
         import('@fastgpt/service/common/otel/trace/register'),
         import('@fastgpt/service/core/app/plugin/controller'),
-        import('@fastgpt/service/core/dataset/search/track/controller')
+        import('@fastgpt/service/common/middle/tracks/processor')
       ]);
 
       // connect to signoz
@@ -63,7 +63,7 @@ export async function register() {
       startMongoWatch();
       startCron();
       startTrainingQueue(true);
-      datasetSearchTimerProcess();
+      trackTimerProcess();
 
       console.log('Init system success');
     }

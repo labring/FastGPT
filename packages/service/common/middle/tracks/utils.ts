@@ -25,6 +25,24 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
     data: props
   });
 };
+
+const queueTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
+  if (!global.feConfigs?.isPlus) return;
+  addLog.debug('Push tracks', {
+    event,
+    ...data
+  });
+
+  if (!global.tracksQueue) {
+    global.tracksQueue = [];
+  }
+
+  global.tracksQueue.push({
+    event,
+    data
+  });
+};
+
 export const pushTrack = {
   login: (data: PushTrackCommonType & { type: `${OAuthEnum}` | 'password' }) => {
     return createTrack({
@@ -71,6 +89,12 @@ export const pushTrack = {
   ) => {
     return createTrack({
       event: TrackEnum.runSystemTool,
+      data
+    });
+  },
+  datasetSearch: (data: PushTrackCommonType & { datasetIds: string[] }) => {
+    return queueTrack({
+      event: TrackEnum.datasetSearch,
       data
     });
   }

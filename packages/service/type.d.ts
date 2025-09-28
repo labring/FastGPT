@@ -25,5 +25,5 @@ declare global {
   var licenseData: LicenseDataType | undefined;
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
-  var datasetSearchQueue: DatasetSearchTrackProps[];
+  var tracksQueue: { event: TrackEnum; data: Record<string, any> }[];
 }
