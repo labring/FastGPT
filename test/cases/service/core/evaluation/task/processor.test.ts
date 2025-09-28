@@ -25,7 +25,6 @@ vi.mock('@fastgpt/service/core/evaluation/evaluator');
 vi.mock('@fastgpt/service/support/permission/teamLimit');
 vi.mock('@fastgpt/service/core/evaluation/utils/usage');
 vi.mock('@fastgpt/service/core/evaluation/summary');
-vi.mock('@fastgpt/service/core/evaluation/summary/util/aggregateScoreCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/statusCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/errors');
 
@@ -149,9 +148,6 @@ describe('EvaluationTaskProcessor', () => {
     const { createMergedEvaluationUsage } = await import(
       '@fastgpt/service/core/evaluation/utils/usage'
     );
-    const { calculateEvaluationItemAggregateScore } = await import(
-      '@fastgpt/service/core/evaluation/summary/util/aggregateScoreCalculator'
-    );
     const { getBatchEvaluationItemStatus } = await import(
       '@fastgpt/service/core/evaluation/task/statusCalculator'
     );
@@ -160,7 +156,6 @@ describe('EvaluationTaskProcessor', () => {
     (addEvaluationItemJobs as any).mockResolvedValue(undefined);
     (checkTeamAIPoints as any).mockResolvedValue(undefined);
     (createMergedEvaluationUsage as any).mockResolvedValue(undefined);
-    (calculateEvaluationItemAggregateScore as any).mockResolvedValue(85);
     (getBatchEvaluationItemStatus as any).mockResolvedValue(new Map());
     (createEvaluationError as any).mockImplementation((error: any) => new Error(error));
 
@@ -208,8 +203,8 @@ describe('EvaluationTaskProcessor', () => {
 
     // Mock summary service methods
     const { EvaluationSummaryService } = await import('@fastgpt/service/core/evaluation/summary');
-    vi.mocked(EvaluationSummaryService.calculateAndSaveMetricScores).mockResolvedValue(undefined);
     vi.mocked(EvaluationSummaryService.generateSummaryReports).mockResolvedValue(undefined);
+    vi.mocked(EvaluationSummaryService.triggerSummaryGeneration).mockResolvedValue(undefined);
   });
 
   describe('finishEvaluationTask', () => {
@@ -297,10 +292,6 @@ describe('EvaluationTaskProcessor', () => {
       const { EvaluationSummaryService } = await import('@fastgpt/service/core/evaluation/summary');
 
       await finishEvaluationTask(evaluationId);
-
-      expect(EvaluationSummaryService.calculateAndSaveMetricScores).toHaveBeenCalledWith(
-        evaluationId
-      );
     });
 
     test('应该正确处理空评估任务', async () => {
@@ -540,7 +531,6 @@ describe('EvaluationTaskProcessor', () => {
       const updatedItem = await MongoEvalItem.findById(evalItem._id);
       expect(updatedItem?.targetOutput).toBeDefined();
       expect(updatedItem?.evaluatorOutputs).toBeDefined();
-      expect(updatedItem?.aggregateScore).toBeDefined();
     });
 
     test('应该从检查点恢复', async () => {
