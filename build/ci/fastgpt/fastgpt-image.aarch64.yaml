@@ -1,0 +1,9 @@
+buildName: fastgpt
+
+buildDocker: auto
+
+artifacts:
+  - fastgpt.image
+
+refPaths:
+  dockerfile: Dockerfile.app
