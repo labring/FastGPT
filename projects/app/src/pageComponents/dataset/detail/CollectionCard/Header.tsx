@@ -263,7 +263,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
 
   return (
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
-      <HStack flex={1} gap={0}>
+      <HStack flex={1}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
           <FolderPath
             paths={paths.map((path, i) => ({
@@ -313,7 +313,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         {/* search input */}
         {isPc && (
           <MyInput
-            mr={3}
             maxW={'250px'}
             flex={1}
             size={'sm'}
@@ -606,6 +605,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 <>
                   <Button
                     mr={3}
+                    ml={1}
                     onClick={() => handleOpenConfigPage('edit')}
                     leftIcon={<Icon name="common/lineChange" w={'18px'} />}
                   >
@@ -623,7 +623,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               ) : (
                 <>
                   <Button
-                    mx={3}
+                    ml={1}
                     onClick={() => handleOpenConfigPage('create')}
                     leftIcon={<Icon name="common/setting" w={'18px'} />}
                   >
