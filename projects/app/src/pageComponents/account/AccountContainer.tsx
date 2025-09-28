@@ -43,84 +43,87 @@ const AccountContainer = ({
     return router.pathname.split('/').pop() as TabEnum;
   }, [router.pathname]);
 
-  const tabList = useRef([
-    {
-      icon: 'support/user/userLight',
-      label: t('account:personal_information'),
-      value: TabEnum.info
-    },
-    ...(feConfigs?.isPlus
-      ? [
-          {
-            icon: 'support/user/usersLight',
-            label: t('account:team'),
-            value: TabEnum.team
-          },
-          {
-            icon: 'support/usage/usageRecordLight',
-            label: t('account:usage_records'),
-            value: TabEnum.usage
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
-      ? [
-          {
-            icon: 'support/bill/payRecordLight',
-            label: t('account:bills_and_invoices'),
-            value: TabEnum.bill
-          }
-        ]
-      : []),
-    {
-      icon: 'common/thirdParty',
-      label: t('account:third_party'),
-      value: TabEnum.thirdParty
-    },
-    {
-      icon: 'common/model',
-      label: t('account:model_provider'),
-      value: TabEnum.model
-    },
-    ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
-      ? [
-          {
-            icon: 'support/account/promotionLight',
-            label: t('account:promotion_records'),
-            value: TabEnum.promotion
-          }
-        ]
-      : []),
-    ...(userInfo?.team?.permission.hasApikeyCreatePer
-      ? [
-          {
-            icon: 'key',
-            label: t('account:api_key'),
-            value: TabEnum.apikey
-          }
-        ]
-      : []),
+  const tabList = useMemo(
+    () => [
+      {
+        icon: 'support/user/userLight',
+        label: t('account:personal_information'),
+        value: TabEnum.info
+      },
+      ...(feConfigs?.isPlus
+        ? [
+            {
+              icon: 'support/user/usersLight',
+              label: t('account:team'),
+              value: TabEnum.team
+            },
+            {
+              icon: 'support/usage/usageRecordLight',
+              label: t('account:usage_records'),
+              value: TabEnum.usage
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
+        ? [
+            {
+              icon: 'support/bill/payRecordLight',
+              label: t('account:bills_and_invoices'),
+              value: TabEnum.bill
+            }
+          ]
+        : []),
+      {
+        icon: 'common/thirdParty',
+        label: t('account:third_party'),
+        value: TabEnum.thirdParty
+      },
+      {
+        icon: 'common/model',
+        label: t('account:model_provider'),
+        value: TabEnum.model
+      },
+      ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
+        ? [
+            {
+              icon: 'support/account/promotionLight',
+              label: t('account:promotion_records'),
+              value: TabEnum.promotion
+            }
+          ]
+        : []),
+      ...(userInfo?.team?.permission.hasApikeyCreatePer
+        ? [
+            {
+              icon: 'key',
+              label: t('account:api_key'),
+              value: TabEnum.apikey
+            }
+          ]
+        : []),
 
-    ...(feConfigs.isPlus
-      ? [
-          {
-            icon: 'support/user/informLight',
-            label: t('account:notifications'),
-            value: TabEnum.inform
-          }
-        ]
-      : []),
-    {
-      icon: 'common/settingLight',
-      label: t('common:Setting'),
-      value: TabEnum.setting
-    },
-    {
-      icon: 'support/account/loginoutLight',
-      label: t('account:logout'),
-      value: TabEnum.loginout
-    }
-  ]);
+      ...(feConfigs.isPlus
+        ? [
+            {
+              icon: 'support/user/informLight',
+              label: t('account:notifications'),
+              value: TabEnum.inform
+            }
+          ]
+        : []),
+      {
+        icon: 'common/settingLight',
+        label: t('common:Setting'),
+        value: TabEnum.setting
+      },
+      {
+        icon: 'support/account/loginoutLight',
+        label: t('account:logout'),
+        value: TabEnum.loginout
+      }
+    ],
+    [t, feConfigs, userInfo]
+  );
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('account:confirm_logout')
@@ -156,7 +159,7 @@ const AccountContainer = ({
               mx={'auto'}
               mt={2}
               w={'100%'}
-              list={tabList.current}
+              list={tabList}
               value={currentTab}
               onChange={setCurrentTab}
             />
@@ -173,7 +176,7 @@ const AccountContainer = ({
               m={'auto'}
               w={'100%'}
               size={isPc ? 'md' : 'sm'}
-              list={tabList.current.map((item) => ({
+              list={tabList.map((item) => ({
                 value: item.value,
                 label: item.label
               }))}
