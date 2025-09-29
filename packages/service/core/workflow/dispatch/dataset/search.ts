@@ -52,6 +52,7 @@ export async function dispatchDatasetSearch(
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
+    uid,
     histories,
     node,
     params: {
@@ -127,6 +128,8 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
+      uid,
+      tmbId,
       reRankQuery: userChatInput,
       queries: [userChatInput],
       model: vectorModel.model,
