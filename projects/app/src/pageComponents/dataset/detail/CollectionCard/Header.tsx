@@ -183,10 +183,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             <AlertIcon w={6} h={6} />
             <Box flex={1} color={'myGray.900'}>
               <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
-              <AlertDescription fontSize={'14px'}>
-                {!(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) ? (
-                  t('dataset:no_data_changes')
-                ) : (
+              {(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) && (
+                <AlertDescription fontSize={'14px'}>
                   <Box>
                     {getTips(result)}
                     <Button
@@ -203,11 +201,10 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       {t('dataset:config')}
                     </Button>
                   </Box>
-                )}
-              </AlertDescription>
+                </AlertDescription>
+              )}
             </Box>
             <CloseButton
-              alignSelf="flex-start"
               position="relative"
               color={'black'}
               right={-1}
@@ -233,7 +230,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               </AlertDescription>
             </Box>
             <CloseButton
-              alignSelf="flex-start"
               position="relative"
               color={'black'}
               right={-1}

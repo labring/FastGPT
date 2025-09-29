@@ -10,7 +10,8 @@ import {
   Td,
   Tbody,
   MenuButton,
-  Switch
+  Switch,
+  Text
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -69,7 +70,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   placement={'auto'}
                   label={collection.tableSchema?.description}
                 >
-                  {collection.tableSchema?.description}
+                  <Text>{collection.tableSchema?.description}</Text>
                 </MyTooltip>
               </Td>
               <Td fontSize={'xs'} py={2} color={'myGray.500'}>
