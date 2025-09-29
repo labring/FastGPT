@@ -2,18 +2,7 @@
  * @file 连接数据库配置表单
  */
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Flex,
-  FormControl,
-  FormLabel,
-  FormErrorMessage,
-  Input,
-  VStack,
-  HStack,
-  Text,
-  Alert
-} from '@chakra-ui/react';
+import { Box, Flex, Input, VStack, HStack, Text, Alert } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -25,6 +14,9 @@ import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyInput from '@/components/MyInput';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type DatabaseFormData = {
   client: DatabaseConfig['client'];
@@ -70,7 +62,8 @@ const ConnectDatabaseConfig = () => {
     reset,
     formState: { errors, isValid }
   } = useForm<DatabaseFormData>({
-    defaultValues
+    defaultValues,
+    mode: 'onChange'
   });
 
   // 页面加载时重新执行一次loadDatasetDetail
@@ -118,8 +111,8 @@ const ConnectDatabaseConfig = () => {
       <VStack spacing={6} align="stretch">
         {/* Database Type */}
         {!isEditMode && (
-          <FormControl isRequired>
-            <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900" mb={3}>
+          <Box>
+            <FormLabel required fontSize="14px" fontWeight="medium" color="myGray.900" mb={4}>
               {t('dataset:database_type')}
             </FormLabel>
             <Box
@@ -154,89 +147,106 @@ const ConnectDatabaseConfig = () => {
                 </Box>
               </HStack>
             </Box>
-          </FormControl>
+          </Box>
         )}
 
         {/* Database Host */}
-        <FormControl isRequired isInvalid={!!errors.host}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:database_host')}
           </FormLabel>
-          <Input
-            placeholder={t('dataset:host_placeholder')}
-            bg="myGray.50"
-            {...register('host', {
-              required: true,
-              validate: (v) => {
-                const res = databaseAddrValidator(v);
-                return res === true ? true : t(res);
+          <Box
+            css={{
+              '& > span': {
+                display: 'block'
               }
-            })}
-          />
-          <Text fontSize="xs" color="myGray.500" mt={1}>
-            {t('dataset:host_tips')}
-          </Text>
-          {errors.host && <FormErrorMessage>{errors.host.message}</FormErrorMessage>}
-        </FormControl>
+            }}
+          >
+            <MyTooltip label={t('dataset:database_host_tooltip')}>
+              <Input
+                placeholder={t('dataset:host_placeholder')}
+                bg="myGray.50"
+                isInvalid={Boolean(errors.host)}
+                {...register('host', {
+                  required: true,
+                  validate: (v) => {
+                    const res = databaseAddrValidator(v);
+                    return res === true ? true : false;
+                  }
+                })}
+              />
+            </MyTooltip>
+          </Box>
+        </Box>
 
         {/* Port */}
-        <FormControl isRequired isInvalid={!!errors.port}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:port')}
           </FormLabel>
-          <Input
-            type="number"
-            placeholder="3306"
-            bg="myGray.50"
-            {...register('port', {
-              required: true,
-              valueAsNumber: true,
-              validate: (val) => {
-                if (typeof val !== 'number' || isNaN(val)) {
-                  return t('dataset:port_invalid');
-                }
-                return val >= PORT_RANGE[0] && val <= PORT_RANGE[1]
-                  ? true
-                  : t('dataset:port_range_error');
+          <Box
+            css={{
+              '& > span': {
+                display: 'block'
               }
-            })}
-          />
-          {errors.port && <FormErrorMessage>{errors.port.message}</FormErrorMessage>}
-        </FormControl>
+            }}
+          >
+            <MyTooltip
+              label={t('dataset:database_host_port_tip', {
+                min: PORT_RANGE[0],
+                max: PORT_RANGE[1]
+              })}
+            >
+              <Input
+                type="number"
+                placeholder="3306"
+                bg="myGray.50"
+                isInvalid={Boolean(errors.port)}
+                {...register('port', {
+                  required: true,
+                  min: PORT_RANGE[0],
+                  max: PORT_RANGE[1],
+                  valueAsNumber: true
+                })}
+              />
+            </MyTooltip>
+            {errors.port?.message}
+          </Box>
+        </Box>
 
         {/* Database Name */}
-        <FormControl isRequired isInvalid={!!errors.database}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:database_name')}
           </FormLabel>
           <Input
             placeholder={t('dataset:database_name_placeholder')}
             bg="myGray.50"
+            isInvalid={!!errors.database}
             {...register('database', {
-              required: t('dataset:database_name_required')
+              required: true
             })}
           />
-          {errors.database && <FormErrorMessage>{errors.database.message}</FormErrorMessage>}
-        </FormControl>
+        </Box>
 
         {/* Username */}
-        <FormControl isRequired isInvalid={!!errors.user}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:database_username')}
           </FormLabel>
           <Input
             placeholder={t('dataset:username_placeholder')}
             bg="myGray.50"
+            isInvalid={!!errors.user}
             {...register('user', {
-              required: t('dataset:username_required')
+              required: true
             })}
           />
-          {errors.user && <FormErrorMessage>{errors.user.message}</FormErrorMessage>}
-        </FormControl>
+        </Box>
 
         {/* Password */}
-        <FormControl isRequired isInvalid={!!errors.password}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:database_password')}
           </FormLabel>
           <MyInput
@@ -254,17 +264,19 @@ const ConnectDatabaseConfig = () => {
             type={showPassword ? 'text' : 'password'}
             placeholder={t('dataset:password_placeholder')}
             bg="myGray.50"
+            maxLength={255}
+            isInvalid={!!errors.password}
             {...register('password', {
-              required: t('dataset:password_required')
+              required: true
             })}
           />
-          {errors.password && <FormErrorMessage>{errors.password.message}</FormErrorMessage>}
-        </FormControl>
+        </Box>
 
         {/* Connection Pool Size */}
-        <FormControl isRequired isInvalid={!!errors.poolSize}>
-          <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
+        <Box>
+          <FormLabel required mb={1}>
             {t('dataset:connection_pool_size')}
+            <QuestionTip label={t('dataset:connection_pool_size_tooltip')} />
           </FormLabel>
           <MyNumberInput
             size={'sm'}
@@ -272,11 +284,11 @@ const ConnectDatabaseConfig = () => {
             min={1}
             max={100}
             step={1}
+            isInvalid={!!errors.poolSize}
             register={register}
             name="poolSize"
           />
-          {errors.poolSize && <FormErrorMessage>{errors.poolSize.message}</FormErrorMessage>}
-        </FormControl>
+        </Box>
         <FormBottomButtons
           isEditMode={isEditMode}
           formData={formData}
