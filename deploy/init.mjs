@@ -68,13 +68,13 @@ const args = (() => {
 const vector = {
   pg: {
     db: '',
-    config: `
+    config: `\
   PG_URL: postgresql://username:password@pg:5432/postgres`,
     extra: ''
   },
   milvus: {
     db: '',
-    config: `
+    config: `\
   MILVUS_ADDRESS: http://milvusStandalone:19530
   MILVUS_TOKEN: none
     `,
@@ -82,17 +82,17 @@ const vector = {
   },
   zilliz: {
     db: '',
-    config: `
+    config: `\
   MILVUS_ADDRESS: zilliz_cloud_address
   MILVUS_TOKEN: zilliz_cloud_token`,
     extra: ''
   },
   ob: {
     db: '',
-    cofig: `
+    cofig: `\
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
 `,
-    extra: `
+    extra: `\
 configs:
   init_sql:
     name: init_sql
