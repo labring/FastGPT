@@ -125,7 +125,6 @@ const EvaluationDatasetSelector: React.FC<EvaluationDatasetSelectorProps> = ({
           list={evaluationDatasetSelectList}
           isLoading={isLoadingDatasets}
           onChange={onChange}
-          bg="myGray.50"
         />
       </Flex>
 

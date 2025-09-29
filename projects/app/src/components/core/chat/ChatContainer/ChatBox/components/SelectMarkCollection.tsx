@@ -9,6 +9,7 @@ import FilesCascader from './FilesCascader';
 import type { FileSelection } from './FilesCascader';
 import EvaluationDatasetSelector from './EvaluationDatasetSelector';
 import { getEvaluationList } from '@/web/core/evaluation/task';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
@@ -38,6 +39,7 @@ const SelectMarkCollection = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { userInfo } = useUserStore();
 
   // 从路由查询参数获取appId
   const appId = useMemo(() => {
@@ -90,23 +92,31 @@ const SelectMarkCollection = ({
   // 控制是否显示输入数据模态框
   const [showInputDataModal, setShowInputDataModal] = useState(false);
 
+  // 检查是否有评测权限
+  const hasEvaluationPermission = useMemo(() => {
+    return userInfo?.team?.permission.hasEvaluationCreatePer;
+  }, [userInfo]);
+
   // 检查是否可以选择（需要同时选择了数据集和集合，且不是"不加入知识库"）
   const canConfirm =
     (adminMarkData.datasetId && adminMarkData.collectionId && !adminMarkData.noKnowledgeBase) ||
-    (selectedEvaluationDataset !== 'null' && selectedEvaluationDataset);
+    (hasEvaluationPermission && selectedEvaluationDataset !== 'null' && selectedEvaluationDataset);
 
   useEffect(() => {
-    getEvaluationList({
-      pageNum: 1,
-      pageSize: 1,
-      appId: appId
-    }).then((res) => {
-      const item = res?.list?.[0];
-      if (item) {
-        setSelectedEvaluationDataset(item.evalDatasetCollectionId);
-      }
-    });
-  }, [appId]);
+    // 只有在有评测权限时才获取评测列表
+    if (hasEvaluationPermission) {
+      getEvaluationList({
+        pageNum: 1,
+        pageSize: 1,
+        appId: appId
+      }).then((res) => {
+        const item = res?.list?.[0];
+        if (item) {
+          setSelectedEvaluationDataset(item.evalDatasetCollectionId);
+        }
+      });
+    }
+  }, [appId, hasEvaluationPermission]);
 
   return (
     <>
@@ -122,10 +132,12 @@ const SelectMarkCollection = ({
       >
         <ModalBody flex={'1 0 0'} overflowY={'auto'} p={6}>
           <VStack spacing={4} align="stretch">
-            <EvaluationDatasetSelector
-              value={selectedEvaluationDataset}
-              onChange={handleEvaluationDatasetChange}
-            />
+            {hasEvaluationPermission && (
+              <EvaluationDatasetSelector
+                value={selectedEvaluationDataset}
+                onChange={handleEvaluationDatasetChange}
+              />
+            )}
             <FormControl>
               <FormLabel fontSize="14px" fontWeight="medium" color="myGray.900">
                 {t('dashboard_evaluation:join_knowledge_base')}
