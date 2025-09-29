@@ -15,6 +15,19 @@ const config = {
   output: 'standalone',
   reactStrictMode: true,
   compress: true,
+  async headers() {
+    return [
+      {
+        source: '/deploy/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: true,
