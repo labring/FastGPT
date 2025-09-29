@@ -1,23 +1,32 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Flex, Collapse, HStack, IconButton } from '@chakra-ui/react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Box, Flex, Collapse, HStack, IconButton, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import format from 'date-fns/format';
 import type { EvaluationDisplayType } from '@fastgpt/global/core/evaluation/type';
+import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
 
 interface BasicInfoProps {
   evaluationDetail: EvaluationDisplayType | null;
+  appDetail: AppDetailType | null;
 }
 
-const BasicInfo: React.FC<BasicInfoProps> = ({ evaluationDetail }) => {
+const BasicInfo: React.FC<BasicInfoProps> = ({ evaluationDetail, appDetail }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+
+  // 跳转到应用详情页的处理函数
+  const handleAppDetailClick = useCallback(() => {
+    if (evaluationDetail?.target?.config?.appId) {
+      window.open(`/app/detail?appId=${evaluationDetail.target.config.appId}`, '_blank');
+    }
+  }, [evaluationDetail?.target?.config?.appId]);
 
   // 格式化时间的辅助函数
   const formatTime = useMemo(() => {
@@ -78,7 +87,21 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ evaluationDetail }) => {
                 borderRadius={'sm'}
                 w={'1.5rem'}
               />
-              <Box color={'myGray.600'}>{safeValue(evaluationDetail?.target?.config?.appName)}</Box>
+              {appDetail?.permission?.hasWritePer ? (
+                <Link
+                  onClick={handleAppDetailClick}
+                  color={'blue.600'}
+                  textDecoration={'underline'}
+                  _hover={{ color: 'blue.700' }}
+                  cursor={'pointer'}
+                >
+                  {safeValue(evaluationDetail?.target?.config?.appName)}
+                </Link>
+              ) : (
+                <Box color={'myGray.600'}>
+                  {safeValue(evaluationDetail?.target?.config?.appName)}
+                </Box>
+              )}
             </HStack>
           </Flex>
 

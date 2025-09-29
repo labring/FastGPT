@@ -3,6 +3,8 @@ import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getAppDetailById } from '@/web/core/app/api';
+import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import {
   getEvaluationStats,
   getEvaluationItemList,
@@ -56,6 +58,7 @@ type TaskPageContextType = {
   summaryData: EvaluationSummaryResponse | null;
   evaluationDetail: EvaluationDisplayType | null;
   evaluationItems: EvaluationItemDisplayType[];
+  appDetail: AppDetailType | null;
 
   // 状态管理
   loading: LoadingState;
@@ -120,6 +123,7 @@ const defaultContextValue: TaskPageContextType = {
   summaryData: null,
   evaluationDetail: null,
   evaluationItems: [],
+  appDetail: null,
   loading: defaultLoading,
   errors: defaultErrors,
   searchValue: '',
@@ -201,6 +205,7 @@ export const TaskPageContextProvider = ({
   const [summaryData, setSummaryData] = useState<EvaluationSummaryResponse | null>(null);
   const [evaluationDetail, setEvaluationDetail] = useState<EvaluationDisplayType | null>(null);
   const [evaluationItems, setEvaluationItems] = useState<EvaluationItemDisplayType[]>([]);
+  const [appDetail, setAppDetail] = useState<AppDetailType | null>(null);
   const [loading, setLoading] = useState<LoadingState>(defaultLoading);
   const [errors, setErrors] = useState<ErrorState>(defaultErrors);
   const [searchValue, setSearchValue] = useState('');
@@ -274,23 +279,32 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runLoadEvaluationDetail } = useRequest2(() => getEvaluationDetail(taskId), {
-    manual: true,
-    errorToast: t('dashboard_evaluation:request_failed'),
-    onBefore: () => {
-      updateLoading('detail', true);
-      updateError('detail', null);
-    },
-    onSuccess: (data) => {
-      setEvaluationDetail(data);
-    },
-    onError: (error) => {
-      updateError('detail', error.message);
-    },
-    onFinally: () => {
-      updateLoading('detail', false);
+  const { runAsync: runLoadEvaluationDetail, cancel: cancelDetailPolling } = useRequest2(
+    () => getEvaluationDetail(taskId),
+    {
+      manual: true,
+      pollingInterval: 15000,
+      pollingWhenHidden: false,
+      pollingErrorRetryCount: 0,
+      errorToast: t('dashboard_evaluation:request_failed'),
+      onBefore: () => {
+        const isFirstLoad = !evaluationDetail;
+        if (isFirstLoad) {
+          updateLoading('detail', true);
+        }
+        updateError('detail', null);
+      },
+      onSuccess: (data) => {
+        setEvaluationDetail(data);
+      },
+      onError: (error) => {
+        updateError('detail', error.message);
+      },
+      onFinally: () => {
+        updateLoading('detail', false);
+      }
     }
-  });
+  );
 
   const { runAsync: runDeleteItem } = useRequest2(
     (itemId: string) => deleteEvaluationItem(itemId),
@@ -345,6 +359,13 @@ export const TaskPageContextProvider = ({
     }
   );
 
+  const { runAsync: runLoadAppDetail } = useRequest2((appId: string) => getAppDetailById(appId), {
+    manual: true,
+    onSuccess: (data) => {
+      setAppDetail(data);
+    }
+  });
+
   // 加载任务详情
   const loadTaskDetail = useCallback(
     async (id: string) => {
@@ -385,16 +406,36 @@ export const TaskPageContextProvider = ({
   const loadAllData = useCallback(
     async (taskDetailData?: EvaluationDisplayType) => {
       // 第一阶段：优先并行加载基础数据（stats 和 detail）
-      const loadDetailPromise = taskDetailData
-        ? Promise.resolve().then(() => setEvaluationDetail(taskDetailData))
-        : loadEvaluationDetail();
+      if (taskDetailData) {
+        // 如果传入了 taskDetailData，先设置它，然后启动轮询
+        setEvaluationDetail(taskDetailData);
+        // 手动触发一次轮询，确保轮询机制启动
+        runLoadEvaluationDetail();
+      } else {
+        // 如果没有传入 taskDetailData，正常加载
+        await loadEvaluationDetail();
+      }
 
-      await Promise.all([loadStats(), loadDetailPromise]);
+      await Promise.all([loadStats()]);
 
       // 第二阶段：加载详细数据（summary）
       await loadSummary();
+
+      // 第三阶段：加载应用详情（用于判断跳转权限）
+      const targetAppId =
+        taskDetailData?.target?.config?.appId || evaluationDetail?.target?.config?.appId;
+      if (targetAppId) {
+        await runLoadAppDetail(targetAppId);
+      }
     },
-    [loadStats, loadSummary, loadEvaluationDetail]
+    [
+      loadStats,
+      loadSummary,
+      loadEvaluationDetail,
+      evaluationDetail?.target?.config?.appId,
+      runLoadAppDetail,
+      runLoadEvaluationDetail
+    ]
   );
 
   // 刷新统计数据
@@ -524,8 +565,9 @@ export const TaskPageContextProvider = ({
       // 清除轮询定时器
       cancelStatsPolling?.();
       cancelSummaryPolling?.();
+      cancelDetailPolling?.();
     };
-  }, [cancelStatsPolling, cancelSummaryPolling]);
+  }, [cancelStatsPolling, cancelSummaryPolling, cancelDetailPolling]);
 
   const contextValue: TaskPageContextType = {
     taskId,
@@ -534,6 +576,7 @@ export const TaskPageContextProvider = ({
     summaryData,
     evaluationDetail,
     evaluationItems,
+    appDetail,
     loading,
     errors,
     searchValue,
