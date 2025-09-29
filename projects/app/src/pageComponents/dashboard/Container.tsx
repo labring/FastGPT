@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/app/type';
 import { getPluginGroups } from '@/web/core/app/api/plugin';
 import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   apps = 'apps',
@@ -41,6 +42,7 @@ const DashboardContainer = ({
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
+  const { userInfo } = useUserStore();
 
   // First tab
   const currentTab = useMemo(() => {
@@ -118,7 +120,7 @@ const DashboardContainer = ({
       }[];
     }[]
   >(() => {
-    return [
+    const groups = [
       {
         groupId: TabEnum.apps,
         groupAvatar: 'common/app',
@@ -192,15 +194,28 @@ const DashboardContainer = ({
         groupAvatar: 'mcp',
         groupName: t('common:mcp_server'),
         children: []
-      },
-      {
+      }
+    ];
+
+    if (userInfo?.team?.permission.hasEvaluationCreatePer) {
+      groups.push({
         groupId: TabEnum.evaluation,
         groupAvatar: 'kbTest',
         groupName: t('common:app_evaluation'),
         children: []
-      }
-    ];
-  }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
+      });
+    }
+
+    return groups;
+  }, [
+    currentType,
+    feConfigs.appTemplateCourse,
+    pluginGroups,
+    t,
+    templateList,
+    templateTags,
+    userInfo?.team?.permission.hasEvaluationCreatePer
+  ]);
 
   const MenuIcon = useMemo(
     () => (
