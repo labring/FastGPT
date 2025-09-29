@@ -77,6 +77,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
   const statsData = useContextSelector(TaskPageContext, (v) => v.statsData);
   const summaryData = useContextSelector(TaskPageContext, (v) => v.summaryData);
   const evaluationDetail = useContextSelector(TaskPageContext, (v) => v.evaluationDetail);
+  const appDetail = useContextSelector(TaskPageContext, (v) => v.appDetail);
   const loading = useContextSelector(TaskPageContext, (v) => v.loading);
   const searchValue = useContextSelector(TaskPageContext, (v) => v.searchValue);
   const setSearchValue = useContextSelector(TaskPageContext, (v) => v.setSearchValue);
@@ -1395,7 +1396,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
             <Box h={'1px'} bg={'myGray.200'} mt={4} mb={5} />
 
             {/* 基本信息 */}
-            <BasicInfo evaluationDetail={evaluationDetail} />
+            <BasicInfo evaluationDetail={evaluationDetail} appDetail={appDetail} />
           </Box>
         </MyBox>
       </Flex>
