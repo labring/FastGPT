@@ -239,17 +239,12 @@
   "host_required": "数据库地址不能为空",
   "port": "端口号",
   "port_required": "端口号不能为空",
-  "port_invalid": "端口号格式不正确",
-  "port_range_error": "端口号必须在1-65535范围内",
   "database_name": "数据库名称",
   "database_name_placeholder": "请输入数据库名称",
-  "database_name_required": "数据库名称不能为空",
   "database_username": "数据库用户名",
   "username_placeholder": "请输入用户名",
-  "username_required": "用户名不能为空",
   "database_password": "数据库密码",
   "password_placeholder": "请输入密码",
-  "password_required": "密码不能为空",
   "connection_pool_size": "连接池大小",
   "connection_pool_required": "连接池大小不能为空",
   "connection_pool_min_error": "连接池大小不能小于1",
@@ -346,5 +341,8 @@
   "database_address_format_invalid": "数据库地址格式不正确，请输入有效的IP地址或域名",
    "tables_modified_and_deleted": "发现 {{modifiedTables}} 个数据表存在列的变更，{{deletedTables}} 个数据表已不存在，",
    "tables_no_longer_exist_comma": "个数据表已不存在，",
-   "no_data_in_database": "该数据库中没有数据"
+   "no_data_in_database": "该数据库中没有数据",
+   "database_host_tooltip": "请输入可与本平台连通的正确地址",
+   "database_host_port_tip": "范围：{{min}}~{{max}}",
+   "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。"
 }

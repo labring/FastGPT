@@ -239,17 +239,13 @@
   "host_required": "This field is required.",
   "port": "Port",
   "port_required": "This field is required.",
-  "port_invalid": "Port number is invalid.",
   "port_range_error": "Port range: 1-65535",
   "database_name": "Database name",
   "database_name_placeholder": "",
-  "database_name_required": "Database name is required.",
   "database_username": "Username",
   "username_placeholder": "",
-  "username_required": "Username is required.",
   "database_password": "Password",
   "password_placeholder": "",
-  "password_required": "Password is required.",
   "connection_pool_size": "Connection pool size",
   "connection_pool_required": "This field is required.",
   "connection_pool_min_error": "Cannot be smaller than 1.",
@@ -346,6 +342,9 @@
   "confirm_create_database_config": "Are you sure you want to create the database configuration?",
   "database_config_updated": "Updated successfully.",
   "data_index_column_description": "SQL field description index",
-  "no_data_in_database": "No data in the database"
+  "no_data_in_database": "No data in the database",
+  "database_host_tooltip": "请输入可与本平台连通的正确地址",
+  "database_host_port_tip": "范围：{{min}}~{{max}}",
+  "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。"
 }
 
