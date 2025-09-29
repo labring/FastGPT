@@ -5,9 +5,9 @@
 # - 建议修改账密后再运行
 
 # plugin auth token
-x-plugin-auth-token: &x-plugin-auth-token token
+x-plugin-auth-token: &x-plugin-auth-token 'token'
 # aiproxy token
-x-aiproxy-token: &x-aiproxy-token token
+x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://username:password@mongo:27017/fastgpt?authSource=admin
