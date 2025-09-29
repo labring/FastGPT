@@ -5,10 +5,10 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useUploadAvatar } from '@/web/common/file/hooks/useUploadAvatar';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type EditResourceInfoFormType = {
   id: string;
@@ -49,10 +49,13 @@ const EditResourceModal = ({
     },
     [setValue]
   );
-  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar({
-    temporay: true,
-    onSuccess: afterUploadAvatar
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
+    getUploadAvatarPresignedUrl,
+    {
+      temporay: true,
+      onSuccess: afterUploadAvatar
+    }
+  );
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>

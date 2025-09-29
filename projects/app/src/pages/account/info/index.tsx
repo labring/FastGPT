@@ -46,7 +46,8 @@ import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import { useUploadAvatar } from '@/web/common/file/hooks/useUploadAvatar';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -164,9 +165,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     },
     [onclickSave, userInfo]
   );
-  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar({
-    onSuccess: afterUploadAvatar
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
+    getUploadAvatarPresignedUrl,
+    {
+      onSuccess: afterUploadAvatar
+    }
+  );
 
   const labelStyles: BoxProps = {
     flex: '0 0 80px',
