@@ -239,17 +239,12 @@
   "host_required": "資料庫位址不能為空",
   "port": "連接埠號",
   "port_required": "連接埠號不能為空",
-  "port_invalid": "連接埠號格式不正確",
-  "port_range_error": "連接埠號必須在1-65535範圍內",
   "database_name": "資料庫名稱",
   "database_name_placeholder": "請輸入資料庫名稱",
-  "database_name_required": "資料庫名稱不能為空",
   "database_username": "資料庫使用者名稱",
   "username_placeholder": "請輸入使用者名稱",
-  "username_required": "使用者名稱不能為空",
   "database_password": "資料庫密碼",
   "password_placeholder": "請輸入密碼",
-  "password_required": "密碼不能為空",
   "connection_pool_size": "連接池大小",
   "connection_pool_required": "連接池大小不能為空",
   "connection_pool_min_error": "連接池大小不能小於1",
@@ -346,5 +341,8 @@
   "confirm_create_database_config": "確認創建資料庫配置？",
   "database_config_updated": "資料庫配置已更新",
   "data_index_column_description": "SQL欄位描述索引",
-   "no_data_in_database": "該數據庫中沒有數據"
+   "no_data_in_database": "該數據庫中沒有數據",
+   "database_host_tooltip": "請輸入可與本平台連通的正確地址。",
+   "database_host_port_tip": "範圍：{{min}}~{{max}}",
+    "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。"
 }
