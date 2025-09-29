@@ -79,7 +79,7 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   redis:
-    image: redis:7.2-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
     container_name: redis
     ports:
       - 6379:6379
@@ -97,7 +97,7 @@ services:
     volumes:
       - ./redis/data:/data
   fastgpt-minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fastgpt-minio
     restart: always
     networks:

@@ -99,9 +99,11 @@ fi
 
 echo "Downloaded config.json from $CONFIG"
 
+mv docker-compose.${VECTOR}.yml docker-compose.yml
+
 echo "Installation success! What's next:"
-echo "1. Edit the yml file: vim docker-compose.${VECTOR}.yml"
-echo "2. start the service: docker compose -f docker-compose.${VECTOR}.yml up -d"
-echo "3. stop the service: docker compose -f docker-compose.${VECTOR}.yml down"
-echo "4. restart the service: docker compose -f docker-compose.${VECTOR}.yml restart"
-echo "For more information, please visit https://doc.fastgpt.cn/deploy"
+echo "1. Edit the yml file: vim docker-compose.yml"
+echo "2. start the service: docker compose up -d"
+echo "3. stop the service: docker compose down"
+echo "4. restart the service: docker compose restart"
+echo "For more information, please visit https://doc.fastgpt.cn/docs/introduction/development/docker"
