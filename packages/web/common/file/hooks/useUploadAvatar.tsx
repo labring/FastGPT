@@ -1,17 +1,20 @@
-import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
-import { base64ToFile, fileToBase64 } from '@/web/common/file/utils';
-import { compressBase64Img } from '@fastgpt/web/common/file/img';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { base64ToFile, fileToBase64 } from '../utils';
+import { compressBase64Img } from '../img';
+import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
+import { type CreatePostPresignedUrlResult } from '../../../../service/common/s3/types';
 
-export const useUploadAvatar = ({
-  temporay = false,
-  onSuccess
-}: {
-  temporay?: boolean;
-  onSuccess: (avatar: string) => void;
-}) => {
+export const useUploadAvatar = (
+  api: (params: { filename: string; temporay: boolean }) => Promise<CreatePostPresignedUrlResult>,
+  {
+    temporay = false,
+    onSuccess
+  }: {
+    temporay?: boolean;
+    onSuccess?: (avatar: string) => void;
+  } = {}
+) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [uploading, startUpload] = useTransition();
@@ -52,22 +55,19 @@ export const useUploadAvatar = ({
           }),
           file.name
         );
-        const { url, fields } = await getUploadAvatarPresignedUrl({
-          filename: file.name,
-          temporay
-        });
+        const { url, fields } = await api({ filename: file.name, temporay });
         const formData = new FormData();
         Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
         formData.set('file', compressed);
         await fetch(url, { method: 'POST', body: formData }); // 204
 
         const avatar = `/api/system/img/${fields.key}`;
-        onSuccess(avatar);
+        onSuccess?.(avatar);
 
         e.target.value = '';
       });
     },
-    [t, temporay, toast, onSuccess]
+    [t, temporay, toast, onSuccess, api]
   );
 
   const Component = useCallback(() => {
