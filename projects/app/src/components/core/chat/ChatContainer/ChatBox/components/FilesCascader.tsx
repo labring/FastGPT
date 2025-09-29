@@ -309,7 +309,7 @@ const FilesCascader: React.FC<FilesCascaderProps> = ({
     }
 
     return (
-      <Text color="myGray.400" noOfLines={1}>
+      <Text color="myGray.700" noOfLines={1}>
         {placeholder || t('app:files_cascader_select_knowledge_base')}
       </Text>
     );
