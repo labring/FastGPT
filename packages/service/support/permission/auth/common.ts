@@ -190,7 +190,10 @@ export const clearCsrfCookie = (res: NextApiResponse) => {
 };
 
 /* verify CSRF JWT token */
-export const verifyCsrfToken = (token: string): any => {
+export const verifyCsrfToken = (token: string | null): any => {
+  if (!token) {
+    throw new Error('CSRF token is required');
+  }
   try {
     const jwtSecret = process.env.TOKEN_KEY || 'any';
     const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });

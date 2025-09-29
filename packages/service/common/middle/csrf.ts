@@ -11,7 +11,7 @@ export const withCSRFCheck = async (
 
   try {
     const csrfToken = await getCsrfTokenFromRequest(req);
-    verifyCsrfToken(csrfToken || '');
+    verifyCsrfToken(csrfToken);
   } catch (error) {
     return res.status(403).json({
       code: 403,
