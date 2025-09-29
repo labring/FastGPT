@@ -32,7 +32,13 @@ const Services = {
   mongo: 'mongo',
   redis: 'redis',
   aiproxy: 'aiproxy',
-  aiproxyPg: 'aiproxy-pg'
+  aiproxyPg: 'aiproxy-pg',
+  // vectors
+  pg: 'pg',
+  milvusMinio: 'milvus-minio',
+  milvusEtcd: 'milvus-etcd',
+  milvusStandalone: 'milvus-standalone',
+  oceanbase: 'oceanbase'
 };
 
 // make sure the cwd

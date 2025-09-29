@@ -27,8 +27,7 @@ version: '3.3'
 services:
   # Vector DB
   ob:
-    image: oceanbase/oceanbase-ce:4.3.5-lts # docker hub
-    # image: quay.io/oceanbase/oceanbase-ce:4.3.5-lts # 镜像
+    image:  oceanbase/oceanbase-ce:4.3.5-lts
     container_name: ob
     restart: always
     # ports: # 生产环境建议不要暴露

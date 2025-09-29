@@ -35,7 +35,6 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     networks:
-      - fastgpt
       - vector
     volumes:
       - ./milvus-minio:/minio_data
@@ -46,8 +45,9 @@ services:
       timeout: 20s
       retries: 3
   # milvus
-  milvusEtcd:
-    container_name: milvusEtcd
+  milvus-etcd:
+    container_name: milvus-etcd
+    image:
     image: quay.io/coreos/etcd:v3.5.5
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -55,7 +55,6 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     networks:
-      - fastgpt
       - vector
     volumes:
       - ./milvus/etcd:/etcd
@@ -72,7 +71,7 @@ services:
     security_opt:
       - seccomp:unconfined
     environment:
-      ETCD_ENDPOINTS: milvusEtcd:2379
+      ETCD_ENDPOINTS: milvus-etcd:2379
       MINIO_ADDRESS: milvus-minio:9000
     networks:
       - fastgpt
@@ -86,7 +85,7 @@ services:
       timeout: 20s
       retries: 3
     depends_on:
-      - 'milvusEtcd'
+      - 'milvus-etcd'
       - 'milvus-minio'
 
 
