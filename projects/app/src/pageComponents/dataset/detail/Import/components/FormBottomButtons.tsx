@@ -251,7 +251,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       case 'success':
         const getSubTitle = () => {
           if (!databaseChanges.hasChanges) {
-            return t('dataset:no_changes_detected');
+            return '';
           }
 
           const { modifiedTables, deletedTables } = databaseChanges;
@@ -299,9 +299,8 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
                 {databaseChanges.hasChanges && (
                   <Text
                     as="span"
-                    color="blue.500"
+                    color="primary.500"
                     cursor="pointer"
-                    textDecoration="underline"
                     ml={1}
                     onClick={() => {
                       onSuccess?.();
