@@ -8,6 +8,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import jwt from 'jsonwebtoken';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -170,4 +171,40 @@ export const setCookie = (res: NextApiResponse, token: string) => {
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {
   res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);
+};
+
+/* CSRF token */
+export const CsrfTokenName = 'csrf_token';
+
+/* set CSRF cookie */
+export const setCsrfCookie = (res: NextApiResponse, token: string) => {
+  res.setHeader(
+    'Set-Cookie',
+    `${CsrfTokenName}=${token}; Path=/; HttpOnly; Max-Age=3600; Samesite=Strict;`
+  );
+};
+
+/* clear CSRF cookie */
+export const clearCsrfCookie = (res: NextApiResponse) => {
+  res.setHeader('Set-Cookie', `${CsrfTokenName}=; Path=/; Max-Age=0`);
+};
+
+/* verify CSRF JWT token */
+export const verifyCsrfToken = (token: string | null): any => {
+  if (!token) {
+    throw new Error('CSRF token is required');
+  }
+  try {
+    const jwtSecret = process.env.TOKEN_KEY || 'any';
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+
+    if (typeof decoded === 'object' && decoded.type === 'csrf') {
+      return decoded;
+    }
+
+    throw new Error('Invalid CSRF token type');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`CSRF token verification failed: ${errorMessage}`);
+  }
 };
