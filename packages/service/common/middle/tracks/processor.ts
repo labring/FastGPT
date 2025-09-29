@@ -3,7 +3,7 @@ import { addLog } from '../../system/log';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 
-const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 5000);
+const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 10000);
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();
@@ -17,80 +17,61 @@ const getCurrentTenMinuteBoundary = () => {
 
 export const trackTimerProcess = async () => {
   while (true) {
-    await trackTimer();
+    await countTrackTimer();
     await delay(batchUpdateTime);
   }
 };
 
-export const trackTimer = async () => {
-  if (!global.tracksQueue || global.tracksQueue.length === 0) {
+export const countTrackTimer = async () => {
+  if (!global.countTrackQueue || global.countTrackQueue.size === 0) {
     return;
   }
 
-  const queuedItems = global.tracksQueue.slice();
-  global.tracksQueue = [];
+  const queuedItems = Array.from(global.countTrackQueue.values());
+  global.countTrackQueue = new Map();
 
   try {
     const currentBoundary = getCurrentTenMinuteBoundary();
-    const batchMap = new Map<
-      string,
-      {
-        event: TrackEnum;
-        teamId: string;
-        data: Record<string, any>;
-      }
-    >();
 
-    queuedItems.forEach(({ event, data }) => {
-      const { uid, teamId, tmbId, datasetIds } = data;
-      if (event === TrackEnum.datasetSearch) {
-        datasetIds.forEach((datasetId: string) => {
-          const key = `${event}_${uid}_${teamId}_${tmbId}_${datasetId}`;
+    const bulkOps = queuedItems
+      .map(({ event, count, data }) => {
+        if (event === TrackEnum.datasetSearch) {
+          const { teamId, datasetId } = data;
 
-          const existing = batchMap.get(key);
-          if (existing) {
-            existing.data.count++;
-          } else {
-            batchMap.set(key, {
-              event,
-              teamId,
-              data: {
-                datasetId,
-                count: 1
-              }
-            });
-          }
-        });
-      }
-    });
-
-    const bulkOps = Array.from(batchMap.values()).map(({ event, teamId, data }) => ({
-      updateOne: {
-        filter: {
-          event,
-          teamId,
-          ...(data.datasetId ? { 'data.datasetId': data.datasetId } : {}),
-          createTime: currentBoundary
-        },
-        update: [
-          {
-            $set: {
-              event,
-              teamId,
-              createTime: { $ifNull: ['$createTime', currentBoundary] },
-              data: {
-                ...(data.datasetId ? { datasetId: data.datasetId } : {}),
-                count: { $add: [{ $ifNull: ['$data.count', 0] }, data.count] }
+          return [
+            {
+              updateOne: {
+                filter: {
+                  event,
+                  teamId,
+                  createTime: currentBoundary,
+                  'data.datasetId': datasetId
+                },
+                update: [
+                  {
+                    $set: {
+                      event,
+                      teamId,
+                      createTime: { $ifNull: ['$createTime', currentBoundary] },
+                      data: {
+                        datasetId,
+                        count: { $add: [{ $ifNull: ['$data.count', 0] }, count] }
+                      }
+                    }
+                  }
+                ],
+                upsert: true
               }
             }
-          }
-        ],
-        upsert: true
-      }
-    }));
+          ];
+        }
+        return [];
+      })
+      .flat();
 
     if (bulkOps.length > 0) {
       await TrackModel.bulkWrite(bulkOps);
+      addLog.info('Track timer processing success');
     }
   } catch (error) {
     addLog.error('Track timer processing error', error);

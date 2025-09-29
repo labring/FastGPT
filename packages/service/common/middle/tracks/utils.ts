@@ -26,21 +26,39 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
   });
 };
 
-const queueTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
+// Run times
+const pushCountTrack = ({
+  event,
+  key,
+  data
+}: {
+  event: TrackEnum;
+  key: string;
+  data: Record<string, any>;
+}) => {
   if (!global.feConfigs?.isPlus) return;
   addLog.debug('Push tracks', {
     event,
-    ...data
+    key
   });
 
-  if (!global.tracksQueue) {
-    global.tracksQueue = [];
+  if (!global.countTrackQueue) {
+    global.countTrackQueue = new Map();
   }
 
-  global.tracksQueue.push({
-    event,
-    data
-  });
+  const value = global.countTrackQueue.get(key);
+  if (value) {
+    global.countTrackQueue.set(key, {
+      ...value,
+      count: value.count + 1
+    });
+  } else {
+    global.countTrackQueue.set(key, {
+      event,
+      data,
+      count: 1
+    });
+  }
 };
 
 export const pushTrack = {
@@ -93,9 +111,15 @@ export const pushTrack = {
     });
   },
   datasetSearch: (data: { teamId: string; datasetIds: string[] }) => {
-    return queueTrack({
-      event: TrackEnum.datasetSearch,
-      data
+    data.datasetIds.forEach((datasetId) => {
+      pushCountTrack({
+        event: TrackEnum.datasetSearch,
+        key: `${TrackEnum.datasetSearch}_${datasetId}`,
+        data: {
+          teamId: data.teamId,
+          datasetId
+        }
+      });
     });
   }
 };

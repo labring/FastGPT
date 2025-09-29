@@ -13,7 +13,6 @@ import {
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';
-import type { TracksQueueType } from '@fastgpt/global/common/middle/tracks/type';
 
 declare global {
   var systemInitBufferId: string | undefined;
@@ -25,5 +24,4 @@ declare global {
   var licenseData: LicenseDataType | undefined;
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
-  var tracksQueue: TracksQueueType[];
 }
