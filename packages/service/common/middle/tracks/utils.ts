@@ -92,7 +92,7 @@ export const pushTrack = {
       data
     });
   },
-  datasetSearch: (data: PushTrackCommonType & { datasetIds: string[] }) => {
+  datasetSearch: (data: { teamId: string; datasetIds: string[] }) => {
     return queueTrack({
       event: TrackEnum.datasetSearch,
       data

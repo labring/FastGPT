@@ -3,7 +3,17 @@ import { addLog } from '../../system/log';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 
-const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 3000);
+const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 5000);
+
+const getCurrentTenMinuteBoundary = () => {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const tenMinuteBoundary = Math.floor(minutes / 10) * 10;
+
+  const boundary = new Date(now);
+  boundary.setMinutes(tenMinuteBoundary, 0, 0);
+  return boundary;
+};
 
 export const trackTimerProcess = async () => {
   while (true) {
@@ -21,16 +31,12 @@ export const trackTimer = async () => {
   global.tracksQueue = [];
 
   try {
-    if (!global.feConfigs?.isPlus || queuedItems.length === 0) return;
-
-    const timeWindowStart = new Date(Date.now() - 10 * 60 * 1000);
+    const currentBoundary = getCurrentTenMinuteBoundary();
     const batchMap = new Map<
       string,
       {
         event: TrackEnum;
-        uid: string;
         teamId: string;
-        tmbId: string;
         data: Record<string, any>;
       }
     >();
@@ -47,9 +53,7 @@ export const trackTimer = async () => {
           } else {
             batchMap.set(key, {
               event,
-              uid,
               teamId,
-              tmbId,
               data: {
                 datasetId,
                 count: 1
@@ -60,24 +64,20 @@ export const trackTimer = async () => {
       }
     });
 
-    const bulkOps = Array.from(batchMap.values()).map(({ event, uid, teamId, tmbId, data }) => ({
+    const bulkOps = Array.from(batchMap.values()).map(({ event, teamId, data }) => ({
       updateOne: {
         filter: {
           event,
-          uid,
           teamId,
-          tmbId,
           ...(data.datasetId ? { 'data.datasetId': data.datasetId } : {}),
-          createTime: { $gte: timeWindowStart }
+          createTime: currentBoundary
         },
         update: [
           {
             $set: {
               event,
-              uid,
               teamId,
-              tmbId,
-              createTime: { $ifNull: ['$createTime', new Date()] },
+              createTime: { $ifNull: ['$createTime', currentBoundary] },
               data: {
                 ...(data.datasetId ? { datasetId: data.datasetId } : {}),
                 count: { $add: [{ $ifNull: ['$data.count', 0] }, data.count] }

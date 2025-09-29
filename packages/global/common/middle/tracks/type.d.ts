@@ -16,3 +16,8 @@ export type TrackSchemaType = {
   tmbId?: string;
   data: Record<string, any>;
 };
+
+export type TracksQueueType = {
+  event: TrackEnum;
+  data: Record<string, any>;
+};

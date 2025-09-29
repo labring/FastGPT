@@ -906,8 +906,8 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
-  if (teamId && uid && tmbId && datasetIds.length > 0 && isProVersion()) {
-    pushTrack.datasetSearch({ datasetIds, teamId, uid, tmbId });
+  if (teamId && datasetIds.length > 0 && isProVersion()) {
+    pushTrack.datasetSearch({ datasetIds, teamId });
   }
 
   return {
