@@ -56,7 +56,7 @@ export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file
   }
 
   try {
-    const parseUrl = new URL(url, 'https://localhost:3000');
+    const parseUrl = new URL(url, 'http://localhost:3000');
 
     // Get filename from URL
     const filename = parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
