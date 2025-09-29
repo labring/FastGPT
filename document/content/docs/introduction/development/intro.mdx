@@ -8,49 +8,46 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink>FastGPT</FastGPTLink>。
 
-## 前置依赖项
+## 前置开发环境
 
 您需要在计算机上安装和配置以下依赖项才能构建 <FastGPTLink>FastGPT</FastGPTLink>：
 
-- [Git](http://git-scm.com/)
-- [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v20.14.0](http://nodejs.org)（版本尽量一样，可以使用nvm管理node版本）
+- [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Node.js v20.14.0](https://nodejs.org)（版本尽量一样，可以使用 [nvm](https://github.com/nvm-sh/nvm) 管理 node 版本）
 - [pnpm](https://pnpm.io/) 推荐版本 9.4.0 (目前官方的开发环境)
-- make命令: 根据不同平台，百度安装 (官方是GNU Make 4.3)
+
+建议在 *nix 环境进行开发 (Linux, MacOS, Windows WSL)
 
 ## 开始本地开发
 
-<Alert  context="success">
+### 1. Fork FastGPT 存储库
 
-1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
-2. 建议先服务器装好**数据库**，再进行本地开发。
-
-</Alert>
-
-### 1. Fork 存储库
-
-您需要 Fork [存储库](https://github.com/labring/FastGPT)。
+您需要 Fork [FastGPT 存储库](https://github.com/labring/FastGPT)。
 
 ### 2. 克隆存储库
 
 克隆您在 GitHub 上 Fork 的存储库：
 
 ```
-git clone git@github.com:<github_username>/FastGPT.git
+git clone git@github.com:<your_github_username>/FastGPT.git
 ```
 
-**目录简要说明**
 
-1. `projects` 目录下为 FastGPT 应用代码。其中 `app` 为 FastGPT 核心应用。（后续可能会引入其他应用）
-2. NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。
-3. `packages` 目录为共用代码，通过 workspace 被注入到 `projects` 中，已配置 monorepo 自动注入，无需额外打包。
+### 3. 通过 docker 启动开发环境
 
-### 3. 安装数据库
+若您本地已经通过 docker 启动了 FastGPT，则需要先关闭，否则会有端口冲突。
 
-第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践，或者新建文件夹并配置相关文件用以运行docker。数据库部署教程：[Docker 快速部署](/docs/introduction/development/docker/)。部署完了，可以本地访问其数据库。
+切换到 `FastGPT/deploy/dev` 目录，执行 `docker compose up -d` 运行 FastGPT 的各种依赖。
+
+```bash
+cd FastGPT/deploy/dev
+docker compose up -d
+```
 
 <Alert context="warning">
-  Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnection=true`
+    1. 如果无法获取镜像，可以选择国内镜像版本的 docker-compose.yml 文件：`docker compose -f docker-compose.cn.yml up -d`
+    2. Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnection=true`
   参数，才能连接上副本集的数据库。
 </Alert>
 
@@ -58,15 +55,29 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 以下文件均在 `projects/app` 路径下。
 
+```bash
+# 确保你现在在 projects/app 下
+pwd
+# 应当输出 /xxxx/xxxx/xxx/FastGPT/projects/app
+```
+
 **1. 环境变量**
 
-复制`.env.template`文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。变量说明见 .env.template，主要需要修改`API_KEY`和数据库的地址与端口以及数据库账号的用户名和密码，具体配置需要和docker配置文件相同，其中用户名和密码如需修改需要修改docker配置文件、数据库和`.env.local`文件，不能只改一处。
+复制 `.env.template` 文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。
+变量说明见 `.env.template`
+如果没有修改 docker-compose.yaml 中的变量，`.env.template` 中的默认值就可以，不需要进行修改，否则需要和 `yml` 中的变量一致。
 
-**2. config 配置文件**
+```bash
+cp .env.template .env.local
+```
+
+**2. config.json 配置文件**
 
 复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](/docs/introduction/development/configuration)
 
-**注意：json 配置文件不能包含注释，介绍中为了方便看才加入的注释**
+```bash
+cp data/config.json data/config.local.json
+```
 
 这个文件大部分时候不需要修改。只需要关注 `systemEnv` 里的参数：
 
@@ -82,28 +93,22 @@ git clone git@github.com:<github_username>/FastGPT.git
 ```bash
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 # 如果提示 isolate-vm 安装失败，可以参考：https://github.com/laverdet/isolated-vm?tab=readme-ov-file#requirements
+pwd # 应该在代码的根目录
 pnpm i
-
-# 非 Make 运行
 cd projects/app
 pnpm dev
-
-# Make 运行
-make dev name=app
 ```
 
-### 6. 部署打包
+默认 next 将运行在 3000 端口，访问 http://localhost:3000
 
+### 6. 打包
+
+建议直接使用 Docker 进行打包。
 ```bash
-# Docker cmd: Build image, not proxy
-docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app
-# Make cmd: Build image, not proxy
-make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1
-
-# Docker cmd: Build image with proxy
-docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app --build-arg proxy=taobao
-# Make cmd: Build image with proxy
-make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
+# 没有 Proxy
+docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app
+# Taobao Proxy
+docker build -f ./projects/app/Dockerfile -t fastgpt. --build-arg name=app --build-arg proxy=taobao
 ```
 
 如果不使用 `docker` 打包，需要手动把 `Dockerfile` 里 run 阶段的内容全部手动执行一遍（非常不推荐）。
@@ -117,6 +122,10 @@ make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 
 ## QA
+
+### 获取系统时间异常
+
+如果用户默认的时区为 `Asia/Shanghai`, 非 linux 环境时，获取系统时间会异常，本地开发时，可以将用户的时区调整成 UTC（+0）。
 
 ### 本地数据库无法连接
 
@@ -178,9 +187,9 @@ FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个�
 
 FastGPT 在代码模块划分时，按DDD的思想进行划分，主要分为以下几个领域：
 
-core - 核心功能（知识库，工作流，应用，对话）
-support - 支撑功能（用户体系，计费，鉴权等）
-common - 基础功能（日志管理，文件读写等）
+- core - 核心功能（知识库，工作流，应用，对话）
+- support - 支撑功能（用户体系，计费，鉴权等）
+- common - 基础功能（日志管理，文件读写等）
 
 <details>
 <summary>代码结构说明</summary>
