@@ -84,6 +84,12 @@ jobs:
           find document/content/docs -name "*.mdx" -type f | while read file; do
             sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
           done
+      - name: Rewrite domain links for CN
+        if: matrix.domain_config.suffix == 'cn'
+        run: |
+          find document/content/docs -name "*.mdx" -type f | while read file; do
+            sed -i 's|doc\.fastgpt\.io|doc.fastgpt.cn|g' "$file"
+          done
 
       - name: Docker meta
         id: meta
