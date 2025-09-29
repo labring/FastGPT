@@ -64,8 +64,8 @@ const NavBar = ({
       {
         labelKey: 'dashboard_evaluation:question_data_with_count',
         value: TabEnum.questionData,
-        count: statsData?.failed || 0,
-        shouldShow: (statsData?.failed || 0) > 0
+        count: statsData?.belowThreshold || 0,
+        shouldShow: (statsData?.belowThreshold || 0) > 0
       },
       {
         labelKey: 'dashboard_evaluation:error_data_with_count',

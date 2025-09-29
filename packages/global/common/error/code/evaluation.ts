@@ -30,10 +30,7 @@ export enum EvaluationErrEnum {
   evalInvalidStatus = 'evaluationInvalidStatus',
   evalInvalidStateTransition = 'evaluationInvalidStateTransition',
   evalOnlyRunningCanStop = 'evaluationOnlyRunningCanStop',
-  evalOnlyFailedCanRetry = 'evaluationOnlyFailedCanRetry',
   evalItemNoErrorToRetry = 'evaluationItemNoErrorToRetry',
-  evalTargetOutputRequired = 'evaluationTargetOutputRequired',
-  evalEvaluatorOutputRequired = 'evaluationEvaluatorOutputRequired',
   evalDatasetLoadFailed = 'evaluationDatasetLoadFailed',
   evalTargetConfigInvalid = 'evaluationTargetConfigInvalid',
   evalEvaluatorsConfigInvalid = 'evaluationEvaluatorsConfigInvalid',
@@ -42,7 +39,11 @@ export enum EvaluationErrEnum {
   evalDuplicateDatasetName = 'evaluationDuplicateDatasetName',
   evalNoDataInCollections = 'evaluationNoDataInCollections',
   evalUpdateFailed = 'evaluationUpdateFailed',
-  evalLockAcquisitionFailed = 'evaluationLockAcquisitionFailed',
+  // Task execution errors
+  evalTaskSystemError = 'evaluationTaskSystemError',
+  evalManuallyStopped = 'evaluationManuallyStopped',
+  evalEvaluatorExecutionErrors = 'evaluationEvaluatorExecutionErrors',
+  evalTargetExecutionError = 'evaluationTargetExecutionError',
 
   // Metric related errors
   evalMetricNotFound = 'evaluationMetricNotFound',
@@ -251,20 +252,12 @@ const evaluationErrList = [
     message: i18nT('evaluation:only_running_can_stop')
   },
   {
-    statusText: EvaluationErrEnum.evalOnlyFailedCanRetry,
-    message: i18nT('evaluation:only_failed_can_retry')
-  },
-  {
     statusText: EvaluationErrEnum.evalItemNoErrorToRetry,
     message: i18nT('evaluation:item_no_error_to_retry')
   },
   {
-    statusText: EvaluationErrEnum.evalTargetOutputRequired,
-    message: i18nT('evaluation:target_output_required')
-  },
-  {
-    statusText: EvaluationErrEnum.evalEvaluatorOutputRequired,
-    message: i18nT('evaluation:evaluator_output_required')
+    statusText: EvaluationErrEnum.evalTargetExecutionError,
+    message: i18nT('evaluation:target_execution_error')
   },
   {
     statusText: EvaluationErrEnum.evalDatasetLoadFailed,
@@ -297,10 +290,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalUpdateFailed,
     message: i18nT('evaluation:update_failed')
-  },
-  {
-    statusText: EvaluationErrEnum.evalLockAcquisitionFailed,
-    message: i18nT('evaluation:lock_acquisition_failed')
   },
   // Metric related errors
   {
@@ -638,6 +627,20 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalDescriptionInvalidType,
     message: i18nT('evaluation:description_invalid_type')
+  },
+
+  // Task execution errors
+  {
+    statusText: EvaluationErrEnum.evalTaskSystemError,
+    message: i18nT('evaluation:task_system_error')
+  },
+  {
+    statusText: EvaluationErrEnum.evalManuallyStopped,
+    message: i18nT('evaluation:manually_stopped')
+  },
+  {
+    statusText: EvaluationErrEnum.evalEvaluatorExecutionErrors,
+    message: i18nT('evaluation:evaluator_execution_errors')
   }
 ];
 
