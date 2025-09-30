@@ -241,11 +241,8 @@
   "port_required": "This field is required.",
   "port_range_error": "Port range: 1-65535",
   "database_name": "Database name",
-  "database_name_placeholder": "",
   "database_username": "Username",
-  "username_placeholder": "",
   "database_password": "Password",
-  "password_placeholder": "",
   "connection_pool_size": "Connection pool size",
   "connection_pool_required": "This field is required.",
   "connection_pool_min_error": "Cannot be smaller than 1.",
@@ -255,7 +252,6 @@
   "search_tables": "Table name",
   "table_selection_warning": "Configuration is not complete.",
   "table_description": "Description",
-  "table_description_placeholder": "Default value: Predefined description in the table",
   "default_table_description": "Default value: Predefined description in the table",
   "column_configuration": "Columns",
   "search_columns": "Column name",
@@ -343,6 +339,9 @@
   "no_data_in_database": "No data in the database",
   "database_host_tooltip": "请输入可与本平台连通的正确地址",
   "database_host_port_tip": "范围：{{min}}~{{max}}",
-  "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。"
+  "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。",
+  "database_table_desc_tip": "为了提高问答准确率，请准确填写数据表描述，用来解释该表的含义和用途，大模型将会根据描述识别并调用该表。",
+  "database_tables": "数据表"
+  
 }
 
