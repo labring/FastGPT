@@ -8,4 +8,4 @@ export const isProVersion = () => {
 };
 
 export const serviceRequestMaxContentLength =
-  Number(process.env.SERVICE_REQUEST_MAX_CONTENT_LENGTH || 5) * 1024 * 1024; // 5MB
+  Number(process.env.SERVICE_REQUEST_MAX_CONTENT_LENGTH || 10) * 1024 * 1024; // 10MB
