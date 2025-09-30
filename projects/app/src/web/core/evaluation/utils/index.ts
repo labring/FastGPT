@@ -85,8 +85,7 @@ export const getBuiltinDimensionIdFromName = (dimensionName: string): string => 
   return `${BUILTIN_ID_PREFIX}${dimensionName}`;
 };
 
-// 将0-1的数字转换为百分比格式（保留两位小数）
+// 将0-1的数字转换为百分比格式（四舍五入取整）
 export const formatScoreToPercentage = (score: number): number => {
-  const result = (score * 100).toFixed(2);
-  return parseFloat(result);
+  return Math.round(score * 100);
 };
