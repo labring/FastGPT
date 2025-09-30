@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { type Dispatch, type ReactNode, type SetStateAction, useState, useEffect } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+  useEffect,
+  useMemo
+} from 'react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { createContext } from 'use-context-selector';
@@ -20,6 +27,7 @@ import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type DatasetPageContextType = {
   datasetId: string;
@@ -42,6 +50,7 @@ type DatasetPageContextType = {
   rebuildingCount: number;
   trainingCount: number;
   refetchDatasetTraining: () => void;
+  isDatabaseType: boolean;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
@@ -76,7 +85,8 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
     throw new Error('Function not implemented.');
   },
   paths: [],
-  refetchPaths: () => {}
+  refetchPaths: () => {},
+  isDatabaseType: false
 });
 
 export const DatasetPageContextProvider = ({
@@ -97,6 +107,10 @@ export const DatasetPageContextProvider = ({
     setDatasetDetail(data);
     return data;
   };
+  const isDatabaseType = useMemo(
+    () => datasetDetail.type === DatasetTypeEnum.database,
+    [datasetDetail]
+  );
   const updateDataset = async (data: DatasetUpdateBody) => {
     await putDatasetById(data);
 
@@ -228,7 +242,8 @@ export const DatasetPageContextProvider = ({
     onCreateCollectionTag,
     isCreateCollectionTagLoading,
     searchTagKey,
-    setSearchTagKey
+    setSearchTagKey,
+    isDatabaseType
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;
