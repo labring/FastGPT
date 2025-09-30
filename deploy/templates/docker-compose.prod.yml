@@ -184,6 +184,10 @@ ${{vec.db}}
       <<: *x-share-db-config
       AUTH_TOKEN: *x-plugin-auth-token
       S3_BUCKET: fastgpt-plugins
+      # 工具网络请求，最大请求和响应体
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # 最大 API 请求体大小
+      MAX_API_SIZE: 10
     depends_on:
       fastgpt-minio:
         condition: service_healthy
