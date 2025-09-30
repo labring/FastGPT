@@ -1,4 +1,3 @@
-import { type S3BaseBucket } from './base';
 import { type S3Options } from '../types';
 import { S3PublicBucket } from './public';
 import { S3PrivateBucket } from './private';
