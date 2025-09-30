@@ -90,7 +90,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.13.0 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.13.1 # git
     ports:
       - 3000:3000
     networks:
@@ -161,13 +161,13 @@ services:
       retries: 3
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.13.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.13.1
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.13.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.13.1
     networks:
       - fastgpt
     ports:
@@ -176,7 +176,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.2.2
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -185,6 +185,10 @@ services:
       <<: *x-share-db-config
       AUTH_TOKEN: *x-plugin-auth-token
       S3_BUCKET: fastgpt-plugins
+      # 工具网络请求，最大请求和响应体
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # 最大 API 请求体大小
+      MAX_API_SIZE: 10
     depends_on:
       fastgpt-minio:
         condition: service_healthy
