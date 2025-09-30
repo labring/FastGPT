@@ -220,7 +220,6 @@ const ConnectDatabaseConfig = () => {
             {t('dataset:database_name')}
           </FormLabel>
           <Input
-            placeholder={t('dataset:database_name_placeholder')}
             bg="myGray.50"
             isInvalid={!!errors.database}
             {...register('database', {
@@ -235,7 +234,6 @@ const ConnectDatabaseConfig = () => {
             {t('dataset:database_username')}
           </FormLabel>
           <Input
-            placeholder={t('dataset:username_placeholder')}
             bg="myGray.50"
             isInvalid={!!errors.user}
             {...register('user', {
@@ -262,7 +260,6 @@ const ConnectDatabaseConfig = () => {
               </>
             }
             type={showPassword ? 'text' : 'password'}
-            placeholder={t('dataset:password_placeholder')}
             bg="myGray.50"
             maxLength={255}
             isInvalid={!!errors.password}

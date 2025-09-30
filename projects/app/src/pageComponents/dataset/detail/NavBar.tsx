@@ -26,7 +26,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
-  const { datasetDetail, rebuildingCount, paths } = useContextSelector(
+  const { datasetDetail, rebuildingCount, paths, isDatabaseType } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
@@ -201,92 +201,94 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           </Box>
 
           {/* 训练情况hover弹窗 */}
-          <MyPopover
-            placement="bottom-end"
-            visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-            trigger="hover"
-            Trigger={
-              <Flex
-                visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-                alignItems={'center'}
-                justifyContent={'center'}
-                p={2}
-                borderRadius={'md'}
-                _hover={{
-                  bg: 'myGray.05'
-                }}
-              >
-                <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
-                <Box color={'myGray.600'} ml={1.5} fontWeight={500} userSelect={'none'}>
-                  {t('common:core.dataset.training.tag')}
-                </Box>
-              </Flex>
-            }
-          >
-            {({ onClose }) => (
-              <Box p={6}>
-                {rebuildingCount > 0 && (
-                  <Box mb={3}>
-                    <Box fontSize={'sm'}>
-                      {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
+          {!isDatabaseType && (
+            <MyPopover
+              placement="bottom-end"
+              visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
+              trigger="hover"
+              Trigger={
+                <Flex
+                  visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  p={2}
+                  borderRadius={'md'}
+                  _hover={{
+                    bg: 'myGray.05'
+                  }}
+                >
+                  <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
+                  <Box color={'myGray.600'} ml={1.5} fontWeight={500} userSelect={'none'}>
+                    {t('common:core.dataset.training.tag')}
+                  </Box>
+                </Flex>
+              }
+            >
+              {({ onClose }) => (
+                <Box p={6}>
+                  {rebuildingCount > 0 && (
+                    <Box mb={3}>
+                      <Box fontSize={'sm'}>
+                        {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
+                      </Box>
                     </Box>
+                  )}
+                  <Box mb={3}>
+                    <Box fontSize={'sm'} pb={1}>
+                      {t('common:core.dataset.training.Agent queue')}({qaTrainingMap.tip})
+                    </Box>
+                    <Progress
+                      value={100}
+                      size={'xs'}
+                      colorScheme={qaTrainingMap.colorSchema}
+                      borderRadius={'md'}
+                      isAnimated
+                      hasStripe
+                    />
                   </Box>
-                )}
-                <Box mb={3}>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('common:core.dataset.training.Agent queue')}({qaTrainingMap.tip})
+                  <Box mb={3}>
+                    <Box fontSize={'sm'} pb={1}>
+                      {t('dataset:auto_training_queue')}({autoTrainingMap.tip})
+                    </Box>
+                    <Progress
+                      value={100}
+                      size={'xs'}
+                      colorScheme={autoTrainingMap.colorSchema}
+                      borderRadius={'md'}
+                      isAnimated
+                      hasStripe
+                    />
                   </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={qaTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
+                  <Box mb={3}>
+                    <Box fontSize={'sm'} pb={1}>
+                      {t('dataset:image_training_queue')}({imageTrainingMap.tip})
+                    </Box>
+                    <Progress
+                      value={100}
+                      size={'xs'}
+                      colorScheme={imageTrainingMap.colorSchema}
+                      borderRadius={'md'}
+                      isAnimated
+                      hasStripe
+                    />
+                  </Box>
+                  <Box>
+                    <Box fontSize={'sm'} pb={1}>
+                      {t('common:core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
+                    </Box>
+                    <Progress
+                      value={100}
+                      size={'xs'}
+                      colorScheme={vectorTrainingMap.colorSchema}
+                      borderRadius={'md'}
+                      isAnimated
+                      hasStripe
+                    />
+                  </Box>
                 </Box>
-                <Box mb={3}>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('dataset:auto_training_queue')}({autoTrainingMap.tip})
-                  </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={autoTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
-                </Box>
-                <Box mb={3}>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('dataset:image_training_queue')}({imageTrainingMap.tip})
-                  </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={imageTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
-                </Box>
-                <Box>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('common:core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
-                  </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={vectorTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
-                </Box>
-              </Box>
-            )}
-          </MyPopover>
+              )}
+            </MyPopover>
+          )}
         </Flex>
       ) : (
         <Box mb={2}>

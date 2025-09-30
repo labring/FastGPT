@@ -225,7 +225,7 @@
   "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储",
   "enterprise_database": "数据库",
   "enterprise_database_desc": "授权 MySQL 数据库后读取选定的数据表，检索时连接数据库获取相关信息",
-  "enterprise_database_embedding_model_tip": "索引模型可将数据库关键信息（截取部分数据的表名、表描述、列名、列描述）转成向量，用于进行语义检索",
+  "enterprise_database_embedding_model_tip": "索引模型可将数据库关键信息（截取部分数据的表名、表描述、列名、列描述）转成向量，用于进行语义检索。",
   "database_structure_change_tip": "数据结构发生变化时，如数据表名称变更或其中的列名变更等，请手动刷新数据源。",
   "refresh_data_source": "刷新数据源",
   "search_name_or_description": "搜索名称或描述",
@@ -240,11 +240,8 @@
   "port": "端口号",
   "port_required": "端口号不能为空",
   "database_name": "数据库名称",
-  "database_name_placeholder": "请输入数据库名称",
   "database_username": "数据库用户名",
-  "username_placeholder": "请输入用户名",
   "database_password": "数据库密码",
-  "password_placeholder": "请输入密码",
   "connection_pool_size": "连接池大小",
   "connection_pool_required": "连接池大小不能为空",
   "connection_pool_min_error": "连接池大小不能小于1",
@@ -254,7 +251,6 @@
   "search_tables": "数据表名",
   "table_selection_warning": "存在未选择内容",
   "table_description": "数据表描述",
-  "table_description_placeholder": "默认值是数据表表自带的描述",
   "default_table_description": "默认值是数据表表自带的描述",
   "column_configuration": "数据列配置",
   "search_columns": "列名",
@@ -342,5 +338,8 @@
    "no_data_in_database": "该数据库中没有数据",
    "database_host_tooltip": "请输入可与本平台连通的正确地址",
    "database_host_port_tip": "范围：{{min}}~{{max}}",
-   "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。"
+   "connection_pool_size_tooltip": "应用在数据库进行检索时需与数据库建立连接，为避免影响数据库正常业务，将建立连接池，保障应用与数据库的连接数不超过连接池的大小。可根据数据库性能及业务并发访问量合理分配。",
+   "database_table_desc_tip": "为了提高问答准确率，请准确填写数据表描述，用来解释该表的含义和用途，大模型将会根据描述识别并调用该表。",
+   "database_tables": "数据表"
+
 }
