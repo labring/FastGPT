@@ -33,7 +33,6 @@ import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
-import { isProVersion } from '../../../common/system/constants';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -169,8 +168,6 @@ export async function searchDatasetData(
 ): Promise<SearchDatasetDataResponse> {
   let {
     teamId,
-    uid,
-    tmbId,
     reRankQuery,
     queries,
     model,
@@ -906,9 +903,7 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
-  if (teamId && datasetIds.length > 0 && isProVersion()) {
-    pushTrack.datasetSearch({ datasetIds, teamId });
-  }
+  pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
     searchRes: filterMaxTokensResult,

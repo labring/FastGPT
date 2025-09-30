@@ -111,6 +111,7 @@ export const pushTrack = {
     });
   },
   datasetSearch: (data: { teamId: string; datasetIds: string[] }) => {
+    if (!data.teamId) return;
     data.datasetIds.forEach((datasetId) => {
       pushCountTrack({
         event: TrackEnum.datasetSearch,
