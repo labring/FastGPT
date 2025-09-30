@@ -221,6 +221,8 @@ export const iconPaths = {
   'core/chat/think': () => import('./icons/core/chat/think.svg'),
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/commonDatasetColor': () => import('./icons/core/dataset/commonDatasetColor.svg'),
+  'core/dataset/database': () =>
+    import('./icons/core/dataset/database.svg'),
   'core/dataset/commonDatasetOutline': () =>
     import('./icons/core/dataset/commonDatasetOutline.svg'),
   'core/dataset/datasetFill': () => import('./icons/core/dataset/datasetFill.svg'),

@@ -131,5 +131,9 @@
   "language_model_error": "請求大模型出錯，請檢查模型配置是否正確",
   "setting.copyright.save_success": "Logo 儲存成功",
   "setting.home.available_tools": "可用工具",
-  "setting.share": "分享"
+  "setting.share": "分享",
+  "database_sql_query": "資料庫檢索的 SQL 語句",
+  "search_result": "檢索結果",
+    "database_search_results": "數據庫搜索結果",
+  "other_knowledge_base_search_results": "其他知識庫搜索結果"
 }
