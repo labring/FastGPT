@@ -128,8 +128,6 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
-      uid,
-      tmbId,
       reRankQuery: userChatInput,
       queries: [userChatInput],
       model: vectorModel.model,

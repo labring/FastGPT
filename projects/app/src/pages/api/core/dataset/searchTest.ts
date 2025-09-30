@@ -62,8 +62,6 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   const searchData = {
     histories: [],
     teamId,
-    uid: userId,
-    tmbId,
     reRankQuery: text,
     queries: [text],
     model: dataset.vectorModel,
