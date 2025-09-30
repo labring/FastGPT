@@ -154,3 +154,5 @@ export type SqlGenerationResponse = {
   input_tokens: number;
   output_tokens: number;
 };
+
+export type SqlResultWithDatasetId = SqlGenerationResponse & { datasetId: string };

@@ -6,7 +6,10 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { SearchDatasetDataResponse } from '../../../dataset/search/controller';
-import type { SqlGenerationResponse } from '@fastgpt/global/core/dataset/database/api';
+import type {
+  SqlGenerationResponse,
+  SqlResultWithDatasetId
+} from '@fastgpt/global/core/dataset/database/api';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getDefaultLLMModel, getEmbeddingModel, getRerankModel } from '../../../ai/model';
 import {
@@ -27,7 +30,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
 
-type SqlResultWithDatasetId = SqlGenerationResponse & { datasetId: string };
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [NodeInputKeyEnum.datasetSimilarity]: number;
@@ -160,21 +162,25 @@ export async function dispatchDatasetSearch(
     let deepSearchResult = undefined;
     let sqlResult: SqlResultWithDatasetId[] = [];
 
-    const convertSqlResultsToChunks = (
-      sqlResults: SqlGenerationResponse,
-      userChatInput: string,
+    const convertSqlResultsToChunks = async (
+      singleSQLResult: SqlGenerationResponse,
       datasetId: string
-    ): SearchDataResponseItemType => {
+    ): Promise<SearchDataResponseItemType> => {
+      const sourceName =
+        (await MongoDataset.findById(datasetId, 'name')
+          .lean()
+          ?.then((doc) => doc?.name)) || 'Unknown Dataset';
+      const uuid = `sql_quote_${datasetId}`;
       return {
-        id: `sql_result_${datasetId}`,
+        id: uuid,
         updateTime: new Date(),
-        q: userChatInput, // Use the original query as question
-        a: sqlResults.answer, // Use the generated answer as content
+        q: singleSQLResult.answer, // Use the original query as question
+        a: singleSQLResult.sql, // Use the generated answer as content
         chunkIndex: 0,
         datasetId: datasetId,
-        collectionId: `sql_collection_${datasetId}`,
-        sourceName: 'SQL Query Result',
-        sourceId: `sql_${datasetId}`,
+        collectionId: '',
+        sourceName: sourceName,
+        sourceId: uuid,
         score: [] // Empty score array as requested
       };
     };
@@ -210,6 +216,8 @@ export async function dispatchDatasetSearch(
                   ...singleSqlResult,
                   datasetId
                 } as SqlResultWithDatasetId);
+                // convertSqlResultsToChunks
+                searchRes.push(await convertSqlResultsToChunks(singleSqlResult, datasetId));
               } else {
                 addLog.warn('Dataset Search - SQL Generation Failed', { datasetId });
               }
