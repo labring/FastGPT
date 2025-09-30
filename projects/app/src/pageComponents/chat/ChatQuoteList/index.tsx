@@ -13,6 +13,7 @@ const ChatQuoteList = ({
   metadata: GetQuoteProps;
   onClose: () => void;
 }) => {
+
   if ('collectionId' in metadata) {
     return <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />;
   } else if ('collectionIdList' in metadata) {
