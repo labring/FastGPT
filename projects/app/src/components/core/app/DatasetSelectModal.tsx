@@ -68,11 +68,13 @@ export const DatasetSelectModal = ({
     [selectedDatasets]
   );
 
+  const isEmptyDatabase = (item: DatasetListItemType) =>
+    scene === 'smartGenerate' && !item.dataCount;
+
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
     return (
-      (!!activeVectorModel && activeVectorModel !== item.vectorModel.model) ||
-      (scene === 'smartGenerate' && !item.dataCount)
+      (!!activeVectorModel && activeVectorModel !== item.vectorModel.model) || isEmptyDatabase(item)
     );
   };
 
@@ -113,10 +115,13 @@ export const DatasetSelectModal = ({
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
       if (isDatasetDisabled(item)) {
-        return toast({
-          status: 'warning',
-          title: t('common:dataset.Select Dataset Tips')
-        });
+        return (
+          !isEmptyDatabase(item) &&
+          toast({
+            status: 'warning',
+            title: t('common:dataset.Select Dataset Tips')
+          })
+        );
       }
       setSelectedDatasets((prev) => [
         ...prev,
