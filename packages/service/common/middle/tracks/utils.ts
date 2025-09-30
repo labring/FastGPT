@@ -25,6 +25,42 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
     data: props
   });
 };
+
+// Run times
+const pushCountTrack = ({
+  event,
+  key,
+  data
+}: {
+  event: TrackEnum;
+  key: string;
+  data: Record<string, any>;
+}) => {
+  if (!global.feConfigs?.isPlus) return;
+  addLog.debug('Push tracks', {
+    event,
+    key
+  });
+
+  if (!global.countTrackQueue) {
+    global.countTrackQueue = new Map();
+  }
+
+  const value = global.countTrackQueue.get(key);
+  if (value) {
+    global.countTrackQueue.set(key, {
+      ...value,
+      count: value.count + 1
+    });
+  } else {
+    global.countTrackQueue.set(key, {
+      event,
+      data,
+      count: 1
+    });
+  }
+};
+
 export const pushTrack = {
   login: (data: PushTrackCommonType & { type: `${OAuthEnum}` | 'password' }) => {
     return createTrack({
@@ -72,6 +108,19 @@ export const pushTrack = {
     return createTrack({
       event: TrackEnum.runSystemTool,
       data
+    });
+  },
+  datasetSearch: (data: { teamId: string; datasetIds: string[] }) => {
+    if (!data.teamId) return;
+    data.datasetIds.forEach((datasetId) => {
+      pushCountTrack({
+        event: TrackEnum.datasetSearch,
+        key: `${TrackEnum.datasetSearch}_${datasetId}`,
+        data: {
+          teamId: data.teamId,
+          datasetId
+        }
+      });
     });
   }
 };

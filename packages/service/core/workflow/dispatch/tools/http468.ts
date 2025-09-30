@@ -27,6 +27,7 @@ import { addLog } from '../../../../common/system/log';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 
 type PropsArrType = {
   key: string;
@@ -505,6 +506,7 @@ async function fetchData({
 
   const { data: response } = await axios({
     method,
+    maxContentLength: serviceRequestMaxContentLength,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {

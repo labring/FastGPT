@@ -6,7 +6,8 @@ export const initCache = () => {
     [SystemCacheKeyEnum.systemTool]: {
       versionKey: '',
       data: [],
-      refreshFunc: refreshSystemTools
+      refreshFunc: refreshSystemTools,
+      devRefresh: true
     },
     [SystemCacheKeyEnum.modelPermission]: {
       versionKey: '',

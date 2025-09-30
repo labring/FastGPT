@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   const start = Date.now();
 
   // auth dataset role
-  const { dataset, teamId, tmbId, apikey } = await authDataset({
+  const { dataset, teamId, tmbId, userId, apikey } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
