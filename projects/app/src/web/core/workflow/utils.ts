@@ -87,7 +87,9 @@ export const storeNode2FlowNode = ({
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
     EmptyNode;
 
-  const templateInputs = template.inputs.filter((input) => !input.canEdit);
+  const templateInputs = template.inputs.filter(
+    (input) => !input.canEdit && input.deprecated !== true
+  );
   const templateOutputs = template.outputs.filter(
     (output) => output.type !== FlowNodeOutputTypeEnum.dynamic
   );

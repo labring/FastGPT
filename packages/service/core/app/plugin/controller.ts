@@ -549,6 +549,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 /* FastsGPT-Pluign api: */
 export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType[]> => {
   const tools = await APIGetSystemToolList();
+
   // 从数据库里加载插件配置进行替换
   const systemToolsArray = await MongoSystemPlugin.find({}).lean();
   const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
@@ -596,7 +597,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
     .map((item) => dbPluginFormat(item));
 
   const concatTools = [...formatTools, ...dbPlugins];
-  concatTools.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+  concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
 
   global.systemToolsTypeCache = {};
   concatTools.forEach((item) => {

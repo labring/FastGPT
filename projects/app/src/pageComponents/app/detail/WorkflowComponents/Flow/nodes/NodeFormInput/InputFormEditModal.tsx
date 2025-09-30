@@ -166,6 +166,7 @@ const InputFormEditModal = ({
                     }}
                     onClick={() => {
                       setValue('type', item.value);
+                      setValue('defaultValue', '');
                     }}
                   >
                     <MyIcon

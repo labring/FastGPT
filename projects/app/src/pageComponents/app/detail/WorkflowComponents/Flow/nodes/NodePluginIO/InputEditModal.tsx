@@ -296,6 +296,7 @@ const FieldEditModal = ({
                           }}
                           onClick={() => {
                             setValue('renderTypeList', item.value);
+                            setValue('defaultValue', '');
                           }}
                         >
                           <MyIcon

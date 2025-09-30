@@ -75,7 +75,7 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
 
     const deprecatedInput = result.data.inputs.find((input) => input.key === 'deprecatedInput');
     expect(deprecatedInput).toBeDefined();
-    expect(deprecatedInput?.deprecated).toBe(true);
+    expect(deprecatedInput?.deprecated).toBe(undefined);
 
     const deprecatedOutput = result.data.outputs.find(
       (output) => output.key === 'deprecatedOutput'

@@ -275,6 +275,13 @@ const NodeTemplateList = ({
         });
 
         const currentNode = nodeList.find((node) => node.nodeId === handleParams?.nodeId);
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
+          toast({
+            status: 'warning',
+            title: t('workflow:can_not_loop')
+          });
+          return;
+        }
 
         const newNode = nodeTemplate2FlowNode({
           template: {

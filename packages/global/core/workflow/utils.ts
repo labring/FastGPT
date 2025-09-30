@@ -276,7 +276,7 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: WorkflowIOValueTypeEnum.any,
           required: item.required,
-          list: item.enums?.map((enumItem) => ({
+          list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
           }))

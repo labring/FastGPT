@@ -52,6 +52,7 @@ export async function dispatchDatasetSearch(
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
+    uid,
     histories,
     node,
     params: {

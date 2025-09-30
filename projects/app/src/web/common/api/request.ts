@@ -8,7 +8,7 @@ import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -110,9 +110,9 @@ function checkRes(data: ResponseDataType) {
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
   const isOutlinkPage = {
-    '/chat/share': true,
-    '/chat': true,
-    '/login': true
+    [`${subRoute}/chat/share`]: true,
+    [`${subRoute}/chat`]: true,
+    [`${subRoute}/login`]: true
   }[window.location.pathname];
 
   const data = err?.response?.data || err;

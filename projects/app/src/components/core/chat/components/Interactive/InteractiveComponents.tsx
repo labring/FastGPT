@@ -94,7 +94,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 inputType={inputType}
                 value={value}
                 onChange={onChange}
-                placeholder={input.label}
                 isDisabled={submitted}
                 isInvalid={!!error}
                 maxLength={input.maxLength}
