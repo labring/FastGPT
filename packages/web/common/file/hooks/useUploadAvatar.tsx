@@ -25,24 +25,11 @@ export const useUploadAvatar = (
     uploadAvatarRef.current.click();
   }, []);
 
-  const onUploadAvatarChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-
-      if (!files || files.length === 0) {
-        e.target.value = '';
-        return;
-      }
-      if (files.length > 1) {
-        toast({ title: t('account_info:avatar_can_only_select_one'), status: 'warning' });
-        e.target.value = '';
-        return;
-      }
-      const file = files[0]!;
-
+  // manually upload avatar
+  const handleUploadAvatar = useCallback(
+    async (file: File) => {
       if (!file.name.match(/\.(jpg|png|jpeg)$/)) {
         toast({ title: t('account_info:avatar_can_only_select_jpg_png'), status: 'warning' });
-        e.target.value = '';
         return;
       }
 
@@ -63,11 +50,28 @@ export const useUploadAvatar = (
 
         const avatar = `/api/system/img/${fields.key}`;
         onSuccess?.(avatar);
-
-        e.target.value = '';
       });
     },
-    [t, temporay, toast, onSuccess, api]
+    [t, toast, api, temporay, onSuccess]
+  );
+
+  const onUploadAvatarChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+
+      if (!files || files.length === 0) {
+        e.target.value = '';
+        return;
+      }
+      if (files.length > 1) {
+        toast({ title: t('account_info:avatar_can_only_select_one'), status: 'warning' });
+        e.target.value = '';
+        return;
+      }
+      const file = files[0]!;
+      handleUploadAvatar(file);
+    },
+    [t, toast, handleUploadAvatar]
   );
 
   const Component = useCallback(() => {
@@ -86,6 +90,7 @@ export const useUploadAvatar = (
   return {
     uploading,
     Component,
-    handleFileSelectorOpen
+    handleFileSelectorOpen,
+    handleUploadAvatar
   };
 };
