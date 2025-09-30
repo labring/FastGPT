@@ -1366,5 +1366,7 @@
   "core.dataset.search.mode.database desc": "Uses vector search to retrieve related tables and columns in databases.",
   "core.dataset.training.databaseSchema mode": "Database structure",
   "core.dataset.import.databaseSchema Tip": "Automatically processes data in database tables to enhance searching, improving the accuracy of SQL statements generated.",
-  "semicolon": "；"
+  "semicolon": "；",
+  "database_sql_query": "数据库检索的 SQL 语句",
+  "search_result": "检索结果"
 }

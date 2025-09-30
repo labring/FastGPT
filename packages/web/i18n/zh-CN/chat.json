@@ -131,5 +131,9 @@
   "view_citations": "查看引用",
   "web_site_sync": "Web站点同步",
   "embedding_model_error": "向量模型出错，请核查模型配置信息",
-  "language_model_error":"请求大模型出错，请检查模型配置是否正确"
+  "language_model_error":"请求大模型出错，请检查模型配置是否正确",
+  "database_sql_query": "数据库检索的 SQL 语句",
+  "search_result": "检索结果",
+  "database_search_results": "数据库搜索结果",
+  "other_knowledge_base_search_results": "其他知识库搜索结果"
 }

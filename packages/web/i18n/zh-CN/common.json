@@ -1366,5 +1366,7 @@
   "other_knowledge_base": "其他知识库",
   "table_not_exist": "不存在",
   "core.app.workflow.search_knowledge.database": "数据库",
-  "semicolon": "；"
+  "semicolon": "；",
+  "database_sql_query": "数据库检索的 SQL 语句",
+  "search_result": "检索结果"
 }
