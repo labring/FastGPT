@@ -17,7 +17,6 @@
   # milvus
   milvus-etcd:
     container_name: milvus-etcd
-    image:
     image: ${{milvus-etcd.image}}:${{milvus-etcd.tag}}
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -34,7 +33,7 @@
       interval: 30s
       timeout: 20s
       retries: 3
-  milvusStandalone:
+  vectorDB:
     container_name: milvusStandalone
     image: ${{milvus-standalone.image}}:${{milvus-standalone.tag}}
     command: ['milvus', 'run', 'standalone']

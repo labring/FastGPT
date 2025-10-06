@@ -15,7 +15,7 @@
 ### 加向量库
 
 比如添加 `exampleDB` 向量库:
-1. 添加 vector service 配置在 `templates/vector` 下面，例如 `templates/vector/exampleDB.txt` 内容可以参考其他 txt，注意缩进，image 名字也要替换成 ${{exampleDB.image}}:${{exampleDB:tag}}
+1. 添加 vector service 配置在 `templates/vector` 下面，例如 `templates/vector/exampleDB.txt` 内容可以参考其他 txt，注意缩进，image 名字也要替换成 ${{exampleDB.image}}:${{exampleDB:tag}}, service name 必须是 `vectorDB`
 2. 在 `args.json` 中添加 `exampleDB` 的配置
 3. init.mjs vector enum 中添加 `vector`
 4. init.mjs 中添加 vector 的相关配置:
@@ -34,7 +34,7 @@ const vector = {
 ```
 
 5. init.mjs 读入 vector 配置
-   
+
 ```json
 { // 这是个块作用域, 直接搜 read in Vectors
 // read in Vectors
