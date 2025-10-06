@@ -95,7 +95,7 @@ const vector = {
   },
   ob: {
     db: '',
-    cofig: `\
+    config: `\
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
 `,
     extra: `\

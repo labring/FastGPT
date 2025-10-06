@@ -1,5 +1,4 @@
 # 用于部署的 docker-compose 文件:
-# - 向量库为 Pgvector
 # - FastGPT 端口映射为 3000:3000
 # - FastGPT-mcp-server 端口映射 3005:3000
 # - 建议修改账密后再运行
@@ -10,7 +9,7 @@ x-plugin-auth-token: &x-plugin-auth-token 'token'
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
-  MONGODB_URI: mongodb://username:password@mongo:27017/fastgpt?authSource=admin
+  MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 30
   REDIS_URL: redis://default:mypassword@redis:6379
   S3_ENDPOINT: fastgpt-minio
@@ -21,12 +20,13 @@ x-share-db-config: &x-share-db-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-undefined
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
+
 
 version: '3.3'
 services:
   # Vector DB
-  ob:
+  vectorDB:
     image:  oceanbase/oceanbase-ce:4.3.5-lts
     container_name: ob
     restart: always
@@ -133,7 +133,7 @@ services:
     depends_on:
       - mongo
       - sandbox
-      - pg
+      - vectorDB
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config]
@@ -159,9 +159,6 @@ services:
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
-
-      # 数据库最大连接数
-      PG_URL: postgresql://username:password@pg:5432/postgres
 
       # 日志等级: debug, info, warn, error
       LOG_LEVEL: info

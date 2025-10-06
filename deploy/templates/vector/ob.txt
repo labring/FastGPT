@@ -1,4 +1,4 @@
-  ob:
+  vectorDB:
     image:  ${{oceanbase.image}}:${{oceanbase.tag}}
     container_name: ob
     restart: always

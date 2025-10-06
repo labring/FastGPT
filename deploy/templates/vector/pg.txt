@@ -1,4 +1,4 @@
-  pg:
+  vectorDB:
     image: ${{pg.image}}:${{pg.tag}}
     container_name: pg
     restart: always
