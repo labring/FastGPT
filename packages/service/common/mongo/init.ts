@@ -3,7 +3,6 @@ import { addLog } from '../system/log';
 import type { Mongoose } from 'mongoose';
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
-
 /**
  * connect MongoDB and init data
  */
