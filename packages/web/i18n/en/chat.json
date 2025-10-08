@@ -71,7 +71,7 @@
   "reasoning_text": "Reasoning process",
   "release_cancel": "Release to cancel",
   "release_send": "Release to send, swipe up to cancel",
-  "response.child total points": "Points consumed by sub-workflow",
+  "response.child total points": "Credits consumed by sub-workflow",
   "response.dataset_concat_length": "Total shards after merging",
   "response.node_inputs": "Node input",
   "response_embedding_model": "Vector model",
