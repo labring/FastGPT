@@ -234,19 +234,58 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 };
 
 export const watchSystemModelUpdate = () => {
-  const changeStream = MongoSystemModel.watch();
+  let changeStream: any;
+  
+  const createWatch = () => {
+    try {
+      changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
-    'change',
-    debounce(async () => {
-      try {
-        // Main node will reload twice
-        await loadSystemModels(true);
-        // All node reaload buffer
-        await reloadFastGPTConfigBuffer();
-      } catch (error) {}
-    }, 500)
-  );
+      changeStream.on(
+        'change',
+        debounce(async () => {
+          try {
+            // Main node will reload twice
+            await loadSystemModels(true);
+            // All node reaload buffer
+            await reloadFastGPTConfigBuffer();
+          } catch (error) {
+            console.error('System model update error:', error);
+          }
+        }, 500)
+      );
+
+      // 添加错误处理和重连机制
+      changeStream.on('error', (error) => {
+        console.error('System model change stream error:', error);
+        setTimeout(() => {
+          console.log('Attempting to reconnect system model change stream...');
+          createWatch();
+        }, 5000);
+      });
+
+      changeStream.on('close', () => {
+        console.log('System model change stream closed, attempting to reconnect...');
+        setTimeout(() => {
+          createWatch();
+        }, 1000);
+      });
+
+      console.log('System model change stream created');
+    } catch (error) {
+      console.error('Failed to create system model change stream:', error);
+      setTimeout(() => {
+        createWatch();
+      }, 5000);
+    }
+  };
+
+  createWatch();
+  
+  return () => {
+    if (changeStream) {
+      changeStream.close();
+    }
+  };
 };
 
 // 更新完模型后，需要重载缓存
