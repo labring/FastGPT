@@ -1,13 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ChatFavouriteTagType,
-  ChatSettingSchema,
-  ChatSettingUpdateParams,
-  QuickAppType,
-  SelectedToolType,
-  ChatSettingReturnType
-} from '@fastgpt/global/core/chat/setting/type';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
   CloseCustomFeedbackParams,
@@ -38,11 +30,7 @@ import type {
   GetCollectionQuoteProps,
   GetCollectionQuoteRes
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
-import type {
-  ChatFavouriteAppUpdateParams,
-  ChatFavouriteAppSchema,
-  ChatFavouriteApp
-} from '@fastgpt/global/core/chat/favouriteApp/type';
+import { RestAPI, client } from '@fastgpt/global/common/tsRest/client';
 
 /**
  * 获取初始化聊天内容
@@ -121,30 +109,16 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
   POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
 
 /*---------- chat setting ------------*/
-export const getChatSetting = () => {
-  return GET<ChatSettingReturnType>('/proApi/core/chat/setting/detail');
-};
+export const getChatSetting = RestAPI(client.chat.setting.detail);
 
-export const updateChatSetting = (data: ChatSettingUpdateParams) => {
-  return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
-};
+export const updateChatSetting = RestAPI(client.chat.setting.update);
 
-export const getFavouriteApps = (data?: { name?: string; tag?: string }) => {
-  return GET<ChatFavouriteApp[]>('/proApi/core/chat/setting/favourite/list', data);
-};
+export const getFavouriteApps = RestAPI(client.chat.setting.favourite.list);
 
-export const updateFavouriteApps = (data: ChatFavouriteAppUpdateParams[]) => {
-  return POST<ChatFavouriteAppSchema[]>('/proApi/core/chat/setting/favourite/update', data);
-};
+export const updateFavouriteApps = RestAPI(client.chat.setting.favourite.update);
 
-export const updateFavouriteAppOrder = (data: { id: string; order: number }[]) => {
-  return PUT<void>('/proApi/core/chat/setting/favourite/order', data);
-};
+export const updateFavouriteAppOrder = RestAPI(client.chat.setting.favourite.order);
 
-export const updateFavouriteAppTags = (data: { id: string; tags: string[] }[]) => {
-  return PUT<void>('/proApi/core/chat/setting/favourite/tags', data);
-};
+export const updateFavouriteAppTags = RestAPI(client.chat.setting.favourite.tags);
 
-export const deleteFavouriteApp = (id: string) => {
-  return DELETE<void>(`/proApi/core/chat/setting/favourite/delete?id=${id}`);
-};
+export const deleteFavouriteApp = RestAPI(client.chat.setting.favourite.delete);

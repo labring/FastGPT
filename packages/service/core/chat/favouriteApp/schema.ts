@@ -1,5 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { type ChatFavouriteAppSchema as ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
+// import { type ChatFavouriteAppSchema as ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
+import { type ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/types';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
 

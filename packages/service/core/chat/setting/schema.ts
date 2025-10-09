@@ -1,5 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+// import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { type ChatSettingType } from '@fastgpt/global/core/chat/setting/types';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
 
