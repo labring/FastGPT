@@ -8,52 +8,60 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
 
-const UsageSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName,
-    required: true
-  },
-  tmbId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamMemberCollectionName,
-    required: true
-  },
-  source: {
-    type: String,
-    enum: Object.values(UsageSourceEnum),
-    required: true
-  },
-  appName: {
-    // usage name
-    type: String,
-    default: ''
-  },
-  totalPoints: {
-    // total points
-    type: Number,
-    required: true
-  },
-  appId: {
-    type: Schema.Types.ObjectId,
-    ref: 'apps',
-    required: false
-  },
-  pluginId: {
-    type: Schema.Types.ObjectId,
-    ref: 'plugins',
-    required: false
-  },
-  time: {
-    type: Date,
-    default: () => new Date()
-  },
+const UsageSchema = new Schema(
+  {
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamCollectionName,
+      required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamMemberCollectionName,
+      required: true
+    },
+    source: {
+      type: String,
+      enum: Object.values(UsageSourceEnum),
+      required: true
+    },
+    appName: {
+      // usage name
+      type: String,
+      default: ''
+    },
+    totalPoints: {
+      // total points
+      type: Number,
+      required: true
+    },
+    appId: {
+      type: Schema.Types.ObjectId,
+      ref: 'apps',
+      required: false
+    },
+    pluginId: {
+      type: Schema.Types.ObjectId,
+      ref: 'plugins',
+      required: false
+    },
+    time: {
+      type: Date,
+      default: () => new Date()
+    },
 
-  // @description It will not be used again in the future.
-  list: {
-    type: Array
+    // @description It will not be used again in the future.
+    list: {
+      type: Array
+    }
+  },
+  {
+    // Auto update time
+    timestamps: {
+      updatedAt: 'time'
+    }
   }
-});
+);
 
 UsageSchema.virtual('usageItems', {
   ref: UsageItemCollectionName,

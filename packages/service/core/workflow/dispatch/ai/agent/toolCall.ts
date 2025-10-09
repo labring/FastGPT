@@ -386,6 +386,7 @@ export const runToolCall = async (
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
       const toolRunResponse = await runWorkflow({
         ...workflowProps,
+        usageId: undefined,
         isToolCall: true
       });
 
