@@ -50,6 +50,7 @@ export enum EvaluationErrEnum {
   evalMetricUnAuth = 'evaluationMetricUnAuth',
   evalMetricNameRequired = 'evaluationMetricNameRequired',
   evalMetricNameTooLong = 'evaluationMetricNameTooLong',
+  evalMetricDescriptionRequired = 'evaluationMetricDescriptionRequired',
   evalMetricDescriptionTooLong = 'evaluationMetricDescriptionTooLong',
   evalMetricPromptRequired = 'evaluationMetricPromptRequired',
   evalMetricPromptTooLong = 'evaluationMetricPromptTooLong',
@@ -307,6 +308,10 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalMetricNameTooLong,
     message: i18nT('evaluation:metric_name_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalMetricDescriptionRequired,
+    message: i18nT('evaluation:metric_description_required')
   },
   {
     statusText: EvaluationErrEnum.evalMetricDescriptionTooLong,
