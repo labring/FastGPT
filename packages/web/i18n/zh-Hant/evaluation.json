@@ -44,6 +44,7 @@
   "metric_un_auth": "無權操作該評估指標",
   "metric_name_required": "指標名稱不能為空",
   "metric_name_too_long": "指標名稱不能超過100個字符",
+  "metric_description_required": "指標描述不能為空",
   "metric_description_too_long": "指標描述不能超過100個字符",
   "metric_prompt_required": "指標提示詞不能為空",
   "metric_prompt_too_long": "指標提示詞不能超過4000個字符",

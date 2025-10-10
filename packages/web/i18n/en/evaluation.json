@@ -46,6 +46,7 @@
   "metric_un_auth": "You do not have permission on the evaluation metric.",
   "metric_name_required": "Metric name is required.",
   "metric_name_too_long": "Metric name cannot exceed 100 characters.",
+  "metric_description_required": "Metric description is required and must be a non-empty string",
   "metric_description_too_long": "Metric description cannot exceed 100 characters.",
   "metric_prompt_required": "Prompt is required.",
   "metric_prompt_too_long": "Prompt cannot exceed 4,000 characters.",
