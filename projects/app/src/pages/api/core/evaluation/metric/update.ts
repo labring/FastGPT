@@ -33,7 +33,7 @@ async function handler(req: ApiRequestProps<UpdateMetricBody, {}>, res: ApiRespo
   }
 
   if (description && (typeof description !== 'string' || description.trim().length === 0)) {
-    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionTooLong);
+    return Promise.reject(EvaluationErrEnum.evalMetricDescriptionRequired);
   }
 
   if (description && description.length > MAX_DESCRIPTION_LENGTH) {
