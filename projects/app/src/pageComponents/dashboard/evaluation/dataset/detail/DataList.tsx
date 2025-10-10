@@ -317,16 +317,16 @@ const DataListContent = () => {
 
             {/* Action Buttons */}
             <HStack>
-              <Button size={'sm'} variant={'whitePrimary'} onClick={onSettingsModalOpen}>
+              <Button h={'36px'} variant={'whitePrimary'} onClick={onSettingsModalOpen}>
                 {t('dashboard_evaluation:settings')}
               </Button>
-              <Button size={'sm'} variant={'whitePrimary'} onClick={onQualityEvaluationModalOpen}>
+              <Button h={'36px'} variant={'whitePrimary'} onClick={onQualityEvaluationModalOpen}>
                 {t('dashboard_evaluation:quality_evaluation')}
               </Button>
               <MyMenu
                 Button={
                   <Button
-                    size={'sm'}
+                    h={'36px'}
                     colorScheme={'primary.600'}
                     leftIcon={
                       <MyIcon
