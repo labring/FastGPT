@@ -11,8 +11,7 @@ import { formatScore } from '@/components/core/dataset/QuoteItem';
 import { type GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
-const isDatabaseQuote = (str: string) => str.startsWith('sql')
-
+const isDatabaseQuote = (str: string) => str.startsWith('sql');
 
 const QuoteReader = ({
   rawSearch,
@@ -29,11 +28,23 @@ const QuoteReader = ({
     return rawSearch.filter((item) => metadata.collectionIdList.includes(item.collectionId));
   }, [rawSearch, metadata.collectionIdList]);
 
-  const datasetDataIdList = useMemo(() => filterRawSearch.map((item) => item.id).filter(v => !isDatabaseQuote(v)), [filterRawSearch]);
-  const collectionIdList = useMemo(() => metadata.collectionIdList?.filter(v => !isDatabaseQuote(v)), [metadata.collectionIdList])
+  const datasetDataIdList = useMemo(
+    () => filterRawSearch.map((item) => item.id).filter((v) => !isDatabaseQuote(v)),
+    [filterRawSearch]
+  );
+  const collectionIdList = useMemo(
+    () => metadata.collectionIdList?.filter((v) => !isDatabaseQuote(v)),
+    [metadata.collectionIdList]
+  );
 
-  const hasDatabase = useMemo(() => rawSearch.some(item => isDatabaseQuote(item.id)), [rawSearch]);
-  const hasOtherKnowledgeBase = useMemo(() => rawSearch.some(item => !isDatabaseQuote(item.id)), [rawSearch]);
+  const hasDatabase = useMemo(
+    () => rawSearch.some((item) => isDatabaseQuote(item.id)),
+    [rawSearch]
+  );
+  const hasOtherKnowledgeBase = useMemo(
+    () => rawSearch.some((item) => !isDatabaseQuote(item.id)),
+    [rawSearch]
+  );
 
   const { data: quoteList, loading } = useRequest2(
     async () =>
@@ -73,11 +84,23 @@ const QuoteReader = ({
       });
   }, [quoteList, filterRawSearch]);
 
-  const otherKnowledgeBaseDataList = useMemo(() => formatedDataList.filter(v => !isDatabaseQuote(v.id)), [formatedDataList]);
-  const databaseDataList = useMemo(() => formatedDataList.filter(v => isDatabaseQuote(v.id)), [formatedDataList]);
+  const otherKnowledgeBaseDataList = useMemo(
+    () => formatedDataList.filter((v) => !isDatabaseQuote(v.id)),
+    [formatedDataList]
+  );
+  const databaseDataList = useMemo(
+    () => formatedDataList.filter((v) => isDatabaseQuote(v.id)),
+    [formatedDataList]
+  );
 
   const theme = useTheme();
-  const borderSty = useMemo(() => hasDatabase && hasOtherKnowledgeBase ? { border: theme.borders.base, borderRadius: 'sm' } : {}, [])
+  const borderSty = useMemo(
+    () =>
+      hasDatabase && hasOtherKnowledgeBase
+        ? { border: theme.borders.base, borderRadius: 'sm' }
+        : {},
+    [hasDatabase, hasOtherKnowledgeBase, theme.borders.base]
+  );
 
   const otherKnowledgeQuote = useMemo(() => {
     return (
@@ -96,93 +119,107 @@ const QuoteReader = ({
           ))}
         </Flex>
       </>
-    )
-  }, [otherKnowledgeBaseDataList])
+    );
+  }, [otherKnowledgeBaseDataList]);
 
   const dataBaseKnowledgeQuote = useMemo(() => {
     return (
       <Box p={2}>
-        {
-          databaseDataList.map((v, i) => (
-            <>
-              <Box
+        {databaseDataList.map((v, i) => (
+          <>
+            <Box
+              alignItems={'center'}
+              fontSize={'xs'}
+              border={'sm'}
+              borderRadius={'sm'}
+              _hover={{
+                '.controller': {
+                  display: 'flex'
+                }
+              }}
+              overflow={'hidden'}
+              display={'inline-flex'}
+              height={6}
+            >
+              <Flex
+                color={'myGray.500'}
+                bg={'myGray.150'}
+                w={4}
+                justifyContent={'center'}
+                fontSize={'10px'}
+                h={'full'}
                 alignItems={'center'}
-                fontSize={'xs'}
-                border={'sm'}
-                borderRadius={'sm'}
-                _hover={{
-                  '.controller': {
-                    display: 'flex'
-                  }
-                }}
-                overflow={'hidden'}
-                display={'inline-flex'}
-                height={6}
+                mr={1}
+                flexShrink={0}
               >
-                <Flex
-                  color={'myGray.500'}
-                  bg={'myGray.150'}
-                  w={4}
-                  justifyContent={'center'}
-                  fontSize={'10px'}
-                  h={'full'}
-                  alignItems={'center'}
+                {i + 1}
+              </Flex>
+              <Flex px={1.5}>
+                <MyIcon
+                  name="core/workflow/inputType/selectDataset"
+                  color={'myGray.600'}
                   mr={1}
                   flexShrink={0}
+                  w={'12px'}
+                />
+                <Box
+                  className={'textEllipsis'}
+                  wordBreak={'break-all'}
+                  flex={'1 0 0'}
+                  fontSize={'mini'}
+                  color={'myGray.900'}
                 >
-                  {i + 1}
-                </Flex>
-                <Flex px={1.5}>
-                  <MyIcon name='core/workflow/inputType/selectDataset' color={'myGray.600'} mr={1} flexShrink={0} w={'12px'} />
-                  <Box
-                    className={'textEllipsis'}
-                    wordBreak={'break-all'}
-                    flex={'1 0 0'}
-                    fontSize={'mini'}
-                    color={'myGray.900'}
-                  >
-                    {v.sourceName}
-                  </Box>
-                </Flex>
-              </Box>
-              <Box py={2} color={'myGray.600'}>
-                <Box>
-                  <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>{t('common:database_sql_query')}</Text>
-                  <Text>{v.a || '-'}</Text>
+                  {v.sourceName}
                 </Box>
-                <Box mt={4}>
-                  <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>{t('common:search_result')}</Text>
-                  <Text>{v.q || '-'}</Text>
-                </Box>
+              </Flex>
+            </Box>
+            <Box py={2} color={'myGray.600'}>
+              <Box>
+                <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
+                  {t('common:database_sql_query')}
+                </Text>
+                <Text>{v.a || '-'}</Text>
               </Box>
-            </>
-          ))
-        }
+              <Box mt={4}>
+                <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
+                  {t('common:search_result')}
+                </Text>
+                <Text>{v.q || '-'}</Text>
+              </Box>
+            </Box>
+          </>
+        ))}
       </Box>
-    )
-  }, [databaseDataList, t])
+    );
+  }, [databaseDataList, t]);
 
-  const renderOtherKnowledgeQuote = useMemo(() => hasDatabase ? (
-    <Box>
-      <Text mb={1} fontSize={"0.875rem"}>{t('common:other_knowledge_base')}</Text>
-      <Box {...borderSty}>
-        {otherKnowledgeQuote}
-      </Box>
-    </Box>
-  ) : otherKnowledgeQuote, [borderSty, otherKnowledgeQuote, t, hasDatabase])
+  const renderOtherKnowledgeQuote = useMemo(
+    () =>
+      hasDatabase ? (
+        <Box>
+          <Text mb={1} fontSize={'0.875rem'}>
+            {t('common:other_knowledge_base')}
+          </Text>
+          <Box {...borderSty}>{otherKnowledgeQuote}</Box>
+        </Box>
+      ) : (
+        otherKnowledgeQuote
+      ),
+    [borderSty, otherKnowledgeQuote, t, hasDatabase]
+  );
 
   const renderDataBaseKnowledgeQuote = useMemo(() => {
-    return (
-      hasOtherKnowledgeBase ? (
-        <Box mb={4}>
-          <Text mb={1} fontSize={"0.875rem"}>{t('common:core.app.workflow.search_knowledge.database')}</Text>
-          <Box {...borderSty}>
-            {dataBaseKnowledgeQuote}
-          </Box>
-        </Box>
-      ) : dataBaseKnowledgeQuote
-    )
-  }, [dataBaseKnowledgeQuote, borderSty, hasOtherKnowledgeBase, t, otherKnowledgeQuote])
+    return hasOtherKnowledgeBase ? (
+      <Box mb={4}>
+        <Text mb={1} fontSize={'0.875rem'}>
+          {t('common:core.app.workflow.search_knowledge.database')}
+        </Text>
+        <Box {...borderSty}>{dataBaseKnowledgeQuote}</Box>
+      </Box>
+    ) : (
+      dataBaseKnowledgeQuote
+    );
+  }, [dataBaseKnowledgeQuote, borderSty, hasOtherKnowledgeBase, t, otherKnowledgeQuote]);
 
   return (
     <Flex flexDirection={'column'} h={'full'}>
@@ -258,12 +295,8 @@ const QuoteReader = ({
 
       {/* quote list */}
       <MyBox flex={'1 0 0'} mt={2} px={5} py={1} overflow={'auto'} isLoading={loading}>
-        {
-          !loading && hasDatabase && renderDataBaseKnowledgeQuote
-        }
-        {
-          !loading && hasOtherKnowledgeBase && renderOtherKnowledgeQuote
-        }
+        {!loading && hasDatabase && renderDataBaseKnowledgeQuote}
+        {!loading && hasOtherKnowledgeBase && renderOtherKnowledgeQuote}
       </MyBox>
     </Flex>
   );
