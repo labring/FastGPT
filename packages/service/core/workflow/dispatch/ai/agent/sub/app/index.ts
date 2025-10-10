@@ -4,7 +4,10 @@ import { filterSystemVariables } from '../../../../../../../core/workflow/dispat
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../../../../../core/app/version/controller';
-import { getRunningUserInfoByTmbId } from '../../../../../../../support/user/team/utils';
+import {
+  getRunningUserInfoByTmbId,
+  getUserChatInfo
+} from '../../../../../../../support/user/team/utils';
 import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
@@ -13,7 +16,6 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { getUserChatInfoAndAuthTeamPoints } from '../../../../../../../support/permission/auth/team';
 import { getChildAppRuntimeById } from '../../../../../../app/plugin/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
@@ -61,7 +63,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   // Rewrite children app variables
   const systemVariables = filterSystemVariables(variables);
-  const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(appData.tmbId);
+  const { externalProvider } = await getUserChatInfo(appData.tmbId);
   const childrenRunVariables = {
     ...systemVariables,
     histories: [],
@@ -79,6 +81,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     ...props,
     runningAppInfo: {
       id: String(appData._id),
+      name: appData.name,
       teamId: String(appData.teamId),
       tmbId: String(appData.tmbId),
       isChildApp: true
@@ -154,7 +157,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     };
   });
 
-  const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+  const { externalProvider } = await getUserChatInfo(tmbId);
   const runtimeVariables = {
     ...filterSystemVariables(props.variables),
     appId: String(plugin.id),
@@ -167,6 +170,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       runningAppInfo: {
         id: String(plugin.id),
         // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
+        name: plugin.name,
         teamId: plugin.teamId || runningAppInfo.teamId,
         tmbId: plugin.tmbId || runningAppInfo.tmbId,
         isChildApp: true
