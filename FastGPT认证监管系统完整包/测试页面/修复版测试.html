@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 修复版测试 - 分享页面显示</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            margin: 0;
+            padding: 20px;
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .btn {
+            background: linear-gradient(45deg, #0984e3, #74b9ff);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 15px 5px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            width: calc(100% - 10px);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        .btn.danger { background: linear-gradient(45deg, #e17055, #d63031); }
+        .btn.success { background: linear-gradient(45deg, #00b894, #00cec9); }
+        
+        .fix-info {
+            background: rgba(116, 185, 255, 0.3);
+            border: 2px solid rgba(116, 185, 255, 0.6);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        .test-step {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #0984e3;
+        }
+        .url-display {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 修复版测试 - 分享页面显示</h1>
+        
+        <div class="fix-info">
+            <h2>🎯 修复的关键问题</h2>
+            <ul>
+                <li><strong>✅ HTML解析问题</strong> - 修复了脚本注入导致的页面空白</li>
+                <li><strong>✅ 内容完整性</strong> - 确保FastGPT的内容完整传输</li>
+                <li><strong>✅ 安全脚本注入</strong> - 在&lt;head&gt;标签前注入，避免破坏页面结构</li>
+                <li><strong>✅ 错误回退机制</strong> - 注入失败时直接显示原始页面</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>🔄 现在应该工作正常了</h3>
+            <p>修复版代理服务器解决了页面空白的问题，现在应该能正常显示分享的聊天内容了。</p>
+        </div>
+
+        <div class="test-step">
+            <h3>🧹 第1步：清除状态</h3>
+            <button class="btn danger" onclick="clearAll()">🗑️ 清除所有认证状态</button>
+        </div>
+
+        <div class="test-step">
+            <h3>🔗 第2步：测试修复后的分享链接</h3>
+            <div class="url-display">
+                http://localhost:3001/chat/share?shareId=oYfBSqaBp7hHyHNC9Ehp684s
+            </div>
+            <a href="http://localhost:3001/chat/share?shareId=oYfBSqaBp7hHyHNC9Ehp684s" target="_blank" class="btn success">
+                🚀 测试修复版分享链接
+            </a>
+        </div>
+
+        <div class="test-step">
+            <h3>👤 如需注册用户</h3>
+            <a href="http://localhost:3002/user_register.html" target="_blank" class="btn">📝 注册新用户</a>
+        </div>
+
+        <div class="test-step">
+            <h3>🎯 预期结果（修复后）</h3>
+            <ol>
+                <li><strong>访问分享链接</strong> → 跳转到登录页面</li>
+                <li><strong>登录成功</strong> → 跳转回分享链接（带token）</li>
+                <li><strong>⭐ 显示完整的分享聊天内容</strong> → 不再是空白页面！</li>
+                <li><strong>页面顶部绿色横幅</strong> → "分享页面认证成功 - 聊天监控已激活"</li>
+                <li><strong>可以正常聊天</strong> → 所有功能正常工作</li>
+                <li><strong>聊天被监控</strong> → 记录到管理员后台</li>
+            </ol>
+        </div>
+
+        <div class="test-step">
+            <h3>📊 查看聊天记录</h3>
+            <a href="http://localhost:3002/admin.html" target="_blank" class="btn">👥 管理员后台</a>
+        </div>
+
+        <div id="status" style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <p><strong>🔧 修复版已部署</strong></p>
+            <p>解决了脚本注入导致的页面空白问题</p>
+            <p><small>现在应该能正常显示分享的聊天内容了</small></p>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 10px; font-size: 14px;">
+            <h4>🔧 技术修复详情</h4>
+            <p><strong>问题诊断</strong>: 之前的脚本注入过程破坏了HTML结构，导致页面空白</p>
+            <p><strong>解决方案</strong>: 重写了脚本注入逻辑，更安全地处理HTML内容</p>
+            <p><strong>注入位置</strong>: 在&lt;/head&gt;标签前注入，避免破坏页面结构</p>
+            <p><strong>错误处理</strong>: 如果注入失败，会回退到显示原始页面</p>
+            <p><strong>监控保留</strong>: 聊天监控功能完全保留，记录用户对话</p>
+        </div>
+    </div>
+
+    <script>
+        function clearAll() {
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            document.getElementById('status').innerHTML = `
+                <p><strong>✅ 所有状态已清除</strong></p>
+                <p>现在可以测试修复后的分享链接了！</p>
+                <p><small>时间: ${new Date().toLocaleTimeString()}</small></p>
+            `;
+            
+            alert('✅ 所有认证状态已清除！现在测试修复版分享链接。');
+        }
+
+        window.onload = function() {
+            console.log('🔧 修复版测试页面已加载');
+        };
+    </script>
+</body>
+</html>

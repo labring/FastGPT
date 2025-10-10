@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastGPT 认证系统 - 管理后台</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #2563eb;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
+        }
+        
+        .tab:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-admin {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .badge-user {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #10b981;
+        }
+        
+        .chat-card {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #64748b;
+        }
+        
+        .chat-question {
+            background-color: #e0f2fe;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .chat-answer {
+            background-color: #f0fdf4;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .login-status {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fee2e2;
+            color: #ef4444;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 40px auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="adminContainer" style="display: none;">
+        <header>
+            <h1>FastGPT 认证系统管理后台</h1>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>系统正常运行中</span>
+            </div>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="users">用户管理</div>
+            <div class="tab" data-tab="chats">对话记录</div>
+            <div class="tab" data-tab="settings">系统设置</div>
+        </div>
+        
+        <div class="tab-content active" id="users">
+            <h2>用户列表</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>注册时间</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <!-- 用户数据将通过JavaScript填充 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="tab-content" id="chats">
+            <h2>对话记录</h2>
+            <div id="chatLogs">
+                <!-- 对话记录将通过JavaScript填充 -->
+            </div>
+        </div>
+        
+        <div class="tab-content" id="settings">
+            <h2>系统设置</h2>
+            <p>系统设置功能开发中...</p>
+        </div>
+    </div>
+    
+    <div class="container" id="loginContainer">
+        <h1 style="text-align: center; margin-bottom: 30px;">管理员登录</h1>
+        <div id="loginError" class="login-status" style="display: none;">
+            用户名或密码错误，请重试
+        </div>
+        <div class="login-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" placeholder="请输入密码">
+            </div>
+            <button id="loginBtn">登录</button>
+        </div>
+    </div>
+
+    <script>
+        // 登录逻辑
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 保存token到localStorage
+                    localStorage.setItem('admin-token', data.token);
+                    localStorage.setItem('admin-user', JSON.stringify(data.user));
+                    
+                    // 如果是管理员则显示管理界面
+                    if (data.user.role === 'admin') {
+                        document.getElementById('loginContainer').style.display = 'none';
+                        document.getElementById('adminContainer').style.display = 'block';
+                        loadUserData();
+                        loadChatLogs();
+                    } else {
+                        document.getElementById('loginError').textContent = '您不是管理员，无权访问此页面';
+                        document.getElementById('loginError').style.display = 'block';
+                    }
+                } else {
+                    document.getElementById('loginError').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('登录请求失败:', error);
+                document.getElementById('loginError').textContent = '登录请求失败，请稍后重试';
+                document.getElementById('loginError').style.display = 'block';
+            }
+        });
+        
+        // 检查是否已登录
+        function checkLoginStatus() {
+            const token = localStorage.getItem('admin-token');
+            const user = JSON.parse(localStorage.getItem('admin-user') || '{}');
+            
+            if (token && user.role === 'admin') {
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('adminContainer').style.display = 'block';
+                loadUserData();
+                loadChatLogs();
+            }
+        }
+        
+        // 加载用户数据
+        async function loadUserData() {
+            try {
+                const token = localStorage.getItem('admin-token');
+                const response = await fetch('/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    const tableBody = document.getElementById('userTableBody');
+                    tableBody.innerHTML = '';
+                    
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.id}</td>
+                            <td>${user.username}</td>
+                            <td>${user.email}</td>
+                            <td><span class="badge badge-${user.role}">${user.role}</span></td>
+                            <td>${user.createdAt ? new Date(user.createdAt).toLocaleString() : '未知'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    console.error('获取用户数据失败');
+                }
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+            }
+        }
+        
+        // 加载聊天记录
+        async function loadChatLogs() {
+            try {
+                const token = localStorage.getItem('admin-token');
+                const response = await fetch('/api/chat/logs', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const logs = await response.json();
+                    const chatLogs = document.getElementById('chatLogs');
+                    chatLogs.innerHTML = '';
+                    
+                    logs.forEach(log => {
+                        const card = document.createElement('div');
+                        card.className = 'chat-card';
+                        card.innerHTML = `
+                            <div class="chat-header">
+                                <div>用户: ${log.username} (${log.email})</div>
+                                <div>时间: ${new Date(log.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div class="chat-question">
+                                <strong>问题:</strong> ${log.question}
+                            </div>
+                            <div class="chat-answer">
+                                <strong>回答:</strong> ${log.answer}
+                            </div>
+                        `;
+                        chatLogs.appendChild(card);
+                    });
+                } else {
+                    console.error('获取聊天记录失败');
+                }
+            } catch (error) {
+                console.error('加载聊天记录失败:', error);
+            }
+        }
+        
+        // 标签页切换逻辑
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 取消所有标签页的激活状态
+                document.querySelectorAll('.tab').forEach(t => {
+                    t.classList.remove('active');
+                });
+                
+                // 隐藏所有内容
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 激活当前标签页
+                tab.classList.add('active');
+                
+                // 显示对应内容
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // 页面加载后检查登录状态
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+    </script>
+</body>
+</html>

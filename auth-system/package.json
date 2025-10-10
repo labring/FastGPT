@@ -1,0 +1,35 @@
+{
+  "name": "fastgpt-auth-system",
+  "version": "1.0.0",
+  "description": "FastGPT 认证监管系统 - 分享链接认证保护和用户行为追踪",
+  "main": "simple-server.js",
+  "scripts": {
+    "start": "node simple-server.js",
+    "start:proxy": "node fixed-proxy.js",
+    "start:all": "concurrently \"npm run start\" \"npm run start:proxy\"",
+    "test": "node test/test-system.js",
+    "dev": "nodemon simple-server.js",
+    "dev:proxy": "nodemon fixed-proxy.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "fastgpt",
+    "authentication",
+    "proxy",
+    "monitoring",
+    "chat",
+    "user-tracking"
+  ],
+  "author": "FastGPT Auth System",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

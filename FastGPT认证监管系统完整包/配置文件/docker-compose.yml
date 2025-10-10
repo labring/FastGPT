@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # 原始 FastGPT 服务
+  fastgpt:
+    image: ghcr.io/labring/fastgpt:v4.10.0-fix
+    container_name: fastgpt
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - fastgpt-data:/app/data
+    networks:
+      - fastgpt-network
+    restart: unless-stopped
+
+  # 用户管理系统
+  user-management:
+    build: 
+      context: ../核心组件
+      dockerfile: Dockerfile.user-system
+    container_name: fastgpt-user-system
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key}
+      - ENABLE_REGISTRATION=${ENABLE_REGISTRATION:-true}
+    volumes:
+      - user-data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - fastgpt-network
+    depends_on:
+      - fastgpt
+    restart: unless-stopped
+
+  # 认证代理服务器
+  auth-proxy:
+    build:
+      context: ../核心组件
+      dockerfile: Dockerfile.auth-proxy
+    container_name: fastgpt-auth-proxy
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - FASTGPT_URL=http://fastgpt:3000
+      - USER_SYSTEM_URL=http://user-management:3002
+      - ENABLE_SCRIPT_INJECTION=${ENABLE_SCRIPT_INJECTION:-true}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - fastgpt-network
+    depends_on:
+      - fastgpt
+      - user-management
+    restart: unless-stopped
+
+volumes:
+  fastgpt-data:
+  user-data:
+
+networks:
+  fastgpt-network:
+    driver: bridge

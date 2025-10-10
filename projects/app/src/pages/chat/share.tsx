@@ -39,6 +39,7 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { checkAuthAndRedirect, logChatToAuthSystem } from '@/auth-proxy';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -196,6 +197,9 @@ const OutLink = (props: Props) => {
         '*'
       );
 
+      // 记录对话到监控系统
+      logChatToAuthSystem(histories[0]?.content, responseText);
+
       return { responseText, isNewChat: forbidLoadChat.current };
     },
     [
@@ -341,6 +345,16 @@ const Render = (props: Props) => {
   useMount(() => {
     setSource('share');
     setUserDefaultLng(true);
+
+    // 检查用户是否已登录，如未登录则跳转到认证登录页面
+    if (typeof window !== 'undefined') {
+      // 如果在客户端环境
+      const isAuthenticated = checkAuthAndRedirect(shareId);
+      if (!isAuthenticated) {
+        console.log('用户未登录，重定向到登录页面');
+        // 函数内部已经处理了跳转逻辑，这里不需要额外操作
+      }
+    }
   });
 
   // Set default localUId

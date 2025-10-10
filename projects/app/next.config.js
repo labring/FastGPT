@@ -8,7 +8,8 @@ const isDev = process.env.NODE_ENV === 'development';
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
   i18n,
-  output: 'standalone',
+  // Removing standalone output to avoid symlink issues
+  // output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
   webpack(config, { isServer, nextRuntime }) {

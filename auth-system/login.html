@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastGPT 认证系统 - 登录</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2563eb;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        
+        button:disabled {
+            background-color: #93c5fd;
+            cursor: not-allowed;
+        }
+        
+        .links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .links a {
+            color: #4b5563;
+            text-decoration: none;
+        }
+        
+        .links a:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+        
+        .alert {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #f87171;
+        }
+        
+        .alert-success {
+            background-color: #d1fae5;
+            color: #047857;
+            border: 1px solid #34d399;
+        }
+        
+        .register-form {
+            display: none;
+        }
+        
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .toggle-form a {
+            color: #2563eb;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>FastGPT 认证系统</h1>
+        </div>
+        
+        <div id="alert" style="display: none;"></div>
+        
+        <form id="login-form" class="login-form">
+            <h1>登录</h1>
+            <div class="form-group">
+                <label for="login-username">用户名</label>
+                <input type="text" id="login-username" placeholder="请输入用户名" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="login-password">密码</label>
+                <input type="password" id="login-password" placeholder="请输入密码" required>
+            </div>
+            
+            <button type="submit" id="login-button">登录</button>
+            
+            <div class="toggle-form">
+                <span>没有账号？</span>
+                <a id="show-register">立即注册</a>
+            </div>
+        </form>
+        
+        <form id="register-form" class="register-form">
+            <h1>注册账号</h1>
+            <div class="form-group">
+                <label for="register-username">用户名</label>
+                <input type="text" id="register-username" placeholder="请输入用户名" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-email">邮箱</label>
+                <input type="email" id="register-email" placeholder="请输入邮箱" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-password">密码</label>
+                <input type="password" id="register-password" placeholder="请输入密码" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-password-confirm">确认密码</label>
+                <input type="password" id="register-password-confirm" placeholder="请再次输入密码" required>
+            </div>
+            
+            <button type="submit" id="register-button">注册</button>
+            
+            <div class="toggle-form">
+                <span>已有账号？</span>
+                <a id="show-login">立即登录</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // 获取URL参数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        
+        // 显示提示
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alert');
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
+            
+            // 5秒后自动消失
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 表单切换
+        document.getElementById('show-register').addEventListener('click', () => {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+        });
+        
+        document.getElementById('show-login').addEventListener('click', () => {
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+        });
+        
+            // 登录表单提交
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                // 禁用按钮
+                document.getElementById('login-button').disabled = true;
+                document.getElementById('login-button').textContent = '登录中...';
+                
+                const response = await fetch('http://10.14.53.120:3003/api/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || '登录失败');
+                }
+                
+                // 登录成功
+                showAlert('登录成功，正在跳转...', 'success');
+                
+                // 保存token到本地存储
+                localStorage.setItem('auth_token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                // 获取跳转URL
+                const redirectUrl = getUrlParam('redirect');
+                
+                // 如果有跳转URL，则添加token并跳转
+                if (redirectUrl) {
+                    // 添加token参数
+                    const hasParams = redirectUrl.includes('?');
+                    const tokenParam = `token=${data.token}`;
+                    const newUrl = hasParams ? `${redirectUrl}&${tokenParam}` : `${redirectUrl}?${tokenParam}`;
+                    
+                    setTimeout(() => {
+                        window.location.href = newUrl;
+                    }, 1000);
+                } else {
+                    // 默认跳转到首页
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                }
+            } catch (error) {
+                showAlert(error.message || '登录失败', 'error');
+                // 恢复按钮
+                document.getElementById('login-button').disabled = false;
+                document.getElementById('login-button').textContent = '登录';
+            }
+        });
+        
+        // 注册表单提交
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const passwordConfirm = document.getElementById('register-password-confirm').value;
+            
+            // 验证两次密码是否一致
+            if (password !== passwordConfirm) {
+                showAlert('两次输入的密码不一致', 'error');
+                return;
+            }
+            
+            try {
+                // 禁用按钮
+                document.getElementById('register-button').disabled = true;
+                document.getElementById('register-button').textContent = '注册中...';
+                
+                const response = await fetch('http://10.14.53.120:3003/api/user/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || '注册失败');
+                }
+                
+                // 注册成功
+                showAlert('注册成功，请登录', 'success');
+                
+                // 切换到登录表单
+                setTimeout(() => {
+                    document.getElementById('register-form').style.display = 'none';
+                    document.getElementById('login-form').style.display = 'block';
+                    
+                    // 自动填充用户名
+                    document.getElementById('login-username').value = username;
+                }, 1000);
+            } catch (error) {
+                showAlert(error.message || '注册失败', 'error');
+            } finally {
+                // 恢复按钮
+                document.getElementById('register-button').disabled = false;
+                document.getElementById('register-button').textContent = '注册';
+            }
+        });
+        
+        // 检查是否已登录
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('auth_token');
+            
+            if (token) {
+                // 验证token
+                fetch('http://10.14.53.120:3003/api/user/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.valid) {
+                        // token有效
+                        showAlert('您已登录，正在跳转...', 'success');
+                        
+                        // 更新本地存储的用户信息
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        
+                        // 获取跳转URL
+                        const redirectUrl = getUrlParam('redirect');
+                        
+                        // 如果有跳转URL，则添加token并跳转
+                        if (redirectUrl) {
+                            // 添加token参数
+                            const hasParams = redirectUrl.includes('?');
+                            const tokenParam = `token=${token}`;
+                            const newUrl = hasParams ? `${redirectUrl}&${tokenParam}` : `${redirectUrl}?${tokenParam}`;
+                            
+                            setTimeout(() => {
+                                window.location.href = newUrl;
+                            }, 1000);
+                        }
+                    } else {
+                        // token无效，清除本地存储
+                        localStorage.removeItem('auth_token');
+                        localStorage.removeItem('user');
+                    }
+                })
+                .catch(() => {
+                    // 清除本地存储
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
