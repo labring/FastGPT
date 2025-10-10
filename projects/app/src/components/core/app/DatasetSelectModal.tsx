@@ -51,6 +51,8 @@ export const DatasetSelectModal = ({
     useState<SelectedDatasetType>(defaultSelectedDatasets);
   const { toast } = useToast();
 
+  const isSmartGenerateScene = scene === 'smartGenerate';
+
   // Use server-side search, following the logic of the dataset list page
   const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect(
     scene,
@@ -68,18 +70,17 @@ export const DatasetSelectModal = ({
     [selectedDatasets]
   );
 
-  const isEmptyDatabase = (item: DatasetListItemType) =>
-    scene === 'smartGenerate' && !item.dataCount;
+  const isEmptyDatabase = (item: DatasetListItemType) => isSmartGenerateScene && !item.dataCount;
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
-    return (
-      (!!activeVectorModel && activeVectorModel !== item.vectorModel.model) || isEmptyDatabase(item)
-    );
+    return isSmartGenerateScene
+      ? isEmptyDatabase(item)
+      : !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
-    return scene === 'smartGenerate' && isDatasetDisabled(item)
+    return isSmartGenerateScene && isDatasetDisabled(item)
       ? t('app:no_data_for_smart_generate')
       : '';
   };
@@ -116,7 +117,7 @@ export const DatasetSelectModal = ({
     if (checked) {
       if (isDatasetDisabled(item)) {
         return (
-          !isEmptyDatabase(item) &&
+          !isSmartGenerateScene &&
           toast({
             status: 'warning',
             title: t('common:dataset.Select Dataset Tips')
@@ -400,19 +401,21 @@ export const DatasetSelectModal = ({
           <HStack spacing={4} w="full" align="center">
             <Spacer />
             <HStack spacing={3} align="center">
-              <Box
-                px={3}
-                py={2}
-                borderRadius="md"
-                bg="blue.50"
-                display="flex"
-                alignItems="center"
-                fontSize="xs"
-                color="blue.600"
-              >
-                <InfoIcon w={3.5} h={3.5} color="blue.500" mr={2} />
-                {t('common:dataset.Select Dataset Tips')}
-              </Box>
+              {!isSmartGenerateScene && (
+                <Box
+                  px={3}
+                  py={2}
+                  borderRadius="md"
+                  bg="blue.50"
+                  display="flex"
+                  alignItems="center"
+                  fontSize="xs"
+                  color="blue.600"
+                >
+                  <InfoIcon w={3.5} h={3.5} color="blue.500" mr={2} />
+                  {t('common:dataset.Select Dataset Tips')}
+                </Box>
+              )}
               <Button
                 colorScheme="blue"
                 onClick={() => {
