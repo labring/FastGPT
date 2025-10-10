@@ -14,6 +14,7 @@ import {
   createTempObjectKey,
   inferContentType
 } from '../helpers';
+import { afterCreatePresignedUrl } from '../../file/minioTtl/hooks';
 
 export class S3BaseBucket implements IBucketBasicOperations {
   public client: Client;
@@ -49,7 +50,7 @@ export class S3BaseBucket implements IBucketBasicOperations {
   async move(src: string, dst: string, options?: CopyConditions): Promise<void> {
     const bucket = this.name;
     await this.client.copyObject(bucket, dst, `/${bucket}/${src}`, options);
-    return this.client.removeObject(bucket, src);
+    await this.delete(src);
   }
 
   copy(src: string, dst: string, options?: CopyConditions): ReturnType<Client['copyObject']> {
@@ -60,8 +61,8 @@ export class S3BaseBucket implements IBucketBasicOperations {
     return this.client.bucketExists(this.name);
   }
 
-  delete(objectKey: string, options?: RemoveOptions): Promise<void> {
-    return this.client.removeObject(this.name, objectKey, options);
+  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
+    await this.client.removeObject(this.name, objectKey, options);
   }
 
   get(): Promise<void> {
@@ -76,7 +77,7 @@ export class S3BaseBucket implements IBucketBasicOperations {
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
-    const { temporay } = options;
+    const { temporay, ttl: ttlDays = 7 } = options;
     const contentType = inferContentType(params.filename);
     const maxFileSize = this.options.maxFileSize as number;
     const key = temporay ? createTempObjectKey(params) : createObjectKey(params);
@@ -93,6 +94,12 @@ export class S3BaseBucket implements IBucketBasicOperations {
     });
 
     const { formData, postURL } = await this.client.presignedPostPolicy(policy);
+    await afterCreatePresignedUrl({
+      bucketName: this.name,
+      objectKey: key,
+      temporay,
+      ttl: ttlDays
+    });
 
     return {
       url: postURL,
