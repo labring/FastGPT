@@ -127,6 +127,16 @@ export type HttpToolConfigType = {
   outputSchema: JSONSchemaOutputType;
   path: string;
   method: string;
+
+  // manual
+  staticParams?: Array<{ key: string; value: string }>;
+  staticHeaders?: Array<{ key: string; value: string }>;
+  staticBody?: {
+    type: 'none' | 'json' | 'form-data' | 'x-www-form-urlencoded' | 'xml' | 'raw';
+    content?: string;
+    formData?: Array<{ key: string; value: string }>;
+  };
+  headerSecret?: StoreSecretValueType;
 };
 
 /* app chat config type */

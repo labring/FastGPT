@@ -14,6 +14,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ConfigModal from './ConfigModal';
+import ManualToolModal from './ManualToolModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 
@@ -36,12 +37,24 @@ const EditForm = ({
 }) => {
   const { t } = useTranslation();
 
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
+
   const [toolDetail, setToolDetail] = useState<HttpToolConfigType | null>(null);
+  const [editingManualTool, setEditingManualTool] = useState<HttpToolConfigType | null>(null);
+
+  const isBatchMode = apiSchemaStr !== undefined;
 
   const {
     onOpen: onOpenConfigModal,
     isOpen: isOpenConfigModal,
     onClose: onCloseConfigModal
+  } = useDisclosure();
+
+  const {
+    onOpen: onOpenAddToolModal,
+    isOpen: isOpenAddToolModal,
+    onClose: onCloseAddToolModal
   } = useDisclosure();
 
   return (
@@ -54,18 +67,28 @@ const EditForm = ({
               total: toolList?.length || 0
             })}
           </FormLabel>
-          <Button
-            px={'2'}
-            leftIcon={
-              <MyIcon
-                name={toolList?.length && toolList.length > 0 ? 'change' : 'common/setting'}
-                w={'18px'}
-              />
-            }
-            onClick={onOpenConfigModal}
-          >
-            {toolList?.length && toolList.length > 0 ? t('common:Config') : t('app:Start_config')}
-          </Button>
+          {isBatchMode ? (
+            <Button
+              px={'2'}
+              leftIcon={
+                <MyIcon
+                  name={toolList?.length && toolList.length > 0 ? 'change' : 'common/setting'}
+                  w={'18px'}
+                />
+              }
+              onClick={onOpenConfigModal}
+            >
+              {toolList?.length && toolList.length > 0 ? t('common:Config') : t('app:Start_config')}
+            </Button>
+          ) : (
+            <Button
+              px={'2'}
+              leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+              onClick={onOpenAddToolModal}
+            >
+              {t('common:Add')}
+            </Button>
+          )}
         </Flex>
 
         <Box mt={3}>
@@ -148,20 +171,62 @@ const EditForm = ({
                   bg="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
                   paddingLeft="20px"
                 >
-                  <MyIconButton
-                    size={'16px'}
-                    icon={'common/detail'}
-                    p={2}
-                    border={'1px solid'}
-                    borderColor={'myGray.250'}
-                    hoverBg={'rgba(51, 112, 255, 0.10)'}
-                    hoverBorderColor={'primary.300'}
-                    tip={t('app:HTTP_tools_detail')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setToolDetail(tool);
-                    }}
-                  />
+                  {isBatchMode ? (
+                    <MyIconButton
+                      size={'16px'}
+                      icon={'common/detail'}
+                      p={2}
+                      border={'1px solid'}
+                      borderColor={'myGray.250'}
+                      hoverBg={'rgba(51, 112, 255, 0.10)'}
+                      hoverBorderColor={'primary.300'}
+                      tip={t('app:HTTP_tools_detail')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setToolDetail(tool);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <MyIconButton
+                        size={'16px'}
+                        icon={'edit'}
+                        p={2}
+                        border={'1px solid'}
+                        borderColor={'myGray.250'}
+                        hoverBg={'rgba(51, 112, 255, 0.10)'}
+                        hoverBorderColor={'primary.300'}
+                        tip={t('common:Edit')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingManualTool(tool);
+                        }}
+                      />
+                      <MyIconButton
+                        size={'16px'}
+                        icon={'delete'}
+                        p={2}
+                        border={'1px solid'}
+                        borderColor={'myGray.250'}
+                        _hover={{
+                          color: 'red.500',
+                          bg: 'rgba(255, 0, 0, 0.10)',
+                          borderColor: 'red.300'
+                        }}
+                        tip={t('common:Delete')}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const updatedToolList =
+                            toolList?.filter((t) => t.name !== tool.name) || [];
+                          await putUpdateHttpPlugin({
+                            appId: appDetail._id,
+                            toolList: updatedToolList
+                          });
+                          reloadApp();
+                        }}
+                      />
+                    </>
+                  )}
                 </Flex>
               </MyBox>
             );
@@ -170,6 +235,7 @@ const EditForm = ({
       </Box>
 
       {isOpenConfigModal && <ConfigModal onClose={onCloseConfigModal} />}
+      {isOpenAddToolModal && <ManualToolModal onClose={onCloseAddToolModal} />}
       {toolDetail && (
         <ToolDetailModal
           tool={toolDetail}
@@ -179,6 +245,12 @@ const EditForm = ({
           apiSchemaStr={apiSchemaStr || ''}
           headerSecret={headerSecret || {}}
           customHeaders={customHeaders || '{}'}
+        />
+      )}
+      {editingManualTool && (
+        <ManualToolModal
+          onClose={() => setEditingManualTool(null)}
+          editingTool={editingManualTool}
         />
       )}
     </>
