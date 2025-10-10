@@ -4,6 +4,7 @@ import axios from 'axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -22,129 +23,91 @@ export type RunHTTPToolResult = RequireOnlyOne<{
   errorMsg?: string;
 }>;
 
-const buildHeaders = ({
-  customHeaders,
+const buildHttpRequest = ({
+  method,
+  params,
   headerSecret,
-  staticHeaders,
-  contentType,
-  formDataHeaders
-}: {
-  customHeaders?: Record<string, string>;
-  headerSecret?: StoreSecretValueType;
-  staticHeaders?: Array<{ key: string; value: string }>;
-  contentType?: string;
-  formDataHeaders?: Record<string, string>;
-}) => {
-  const baseHeaders = {
-    'Content-Type': 'application/json',
-    ...(customHeaders || {}),
-    ...(headerSecret ? getSecretValue({ storeSecret: headerSecret }) : {})
-  };
-
-  const staticHeadersObj = staticHeaders?.reduce(
-    (acc, { key, value }) => {
-      acc[key] = value;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
-
-  const headers = {
-    ...baseHeaders,
-    ...(staticHeadersObj || {}),
-    ...(formDataHeaders || {})
-  };
-
-  if (contentType) {
-    headers['Content-Type'] = contentType;
-  }
-
-  return headers;
-};
-
-const buildRequestBody = ({
-  staticBody,
-  params,
-  method
-}: {
-  staticBody?: HttpToolConfigType['staticBody'];
-  params: Record<string, any>;
-  method: string;
-}): {
-  body: any;
-  contentType?: string;
-  formDataHeaders?: Record<string, string>;
-} => {
-  if (!staticBody || staticBody.type === 'none') {
-    if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
-      return { body: params };
-    }
-    return { body: undefined };
-  }
-
-  if (staticBody.type === 'json') {
-    const body = staticBody.content ? JSON.parse(staticBody.content) : {};
-    return { body: { ...body, ...params } };
-  }
-
-  if (staticBody.type === 'form-data') {
-    const formData = new (require('form-data'))();
-    staticBody.formData?.forEach(({ key, value }) => {
-      formData.append(key, value);
-    });
-    Object.entries(params).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-    return {
-      body: formData,
-      formDataHeaders: formData.getHeaders()
-    };
-  }
-
-  if (staticBody.type === 'x-www-form-urlencoded') {
-    const urlencoded = new URLSearchParams();
-    staticBody.formData?.forEach(({ key, value }) => {
-      urlencoded.append(key, value);
-    });
-    Object.entries(params).forEach(([key, value]) => {
-      urlencoded.append(key, String(value));
-    });
-    return {
-      body: urlencoded.toString(),
-      contentType: 'application/x-www-form-urlencoded'
-    };
-  }
-
-  if (staticBody.type === 'xml' || staticBody.type === 'raw') {
-    return {
-      body: staticBody.content || '',
-      contentType: staticBody.type === 'xml' ? 'application/xml' : 'text/plain'
-    };
-  }
-
-  return { body: undefined };
-};
-
-const buildQueryParams = ({
+  customHeaders,
   staticParams,
-  params,
-  method
-}: {
-  staticParams?: Array<{ key: string; value: string }>;
-  params: Record<string, any>;
-  method: string;
-}): Record<string, any> | undefined => {
-  const queryParams: Record<string, any> = {};
+  staticHeaders,
+  staticBody
+}: Omit<RunHTTPToolParams, 'baseUrl' | 'toolPath'>) => {
+  const body = (() => {
+    if (!staticBody || staticBody.type === ContentTypes.none) {
+      return ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) ? params : undefined;
+    }
 
-  staticParams?.forEach(({ key, value }) => {
-    queryParams[key] = value;
-  });
+    if (staticBody.type === ContentTypes.json) {
+      const staticContent = staticBody.content ? JSON.parse(staticBody.content) : {};
+      return { ...staticContent, ...params };
+    }
 
-  if (method.toUpperCase() === 'GET' || staticParams) {
-    Object.assign(queryParams, params);
-  }
+    if (staticBody.type === ContentTypes.formData) {
+      const formData = new (require('form-data'))();
+      staticBody.formData?.forEach(({ key, value }) => {
+        formData.append(key, value);
+      });
+      Object.entries(params).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      return formData;
+    }
 
-  return Object.keys(queryParams).length > 0 ? queryParams : undefined;
+    if (staticBody.type === ContentTypes.xWwwFormUrlencoded) {
+      const urlencoded = new URLSearchParams();
+      staticBody.formData?.forEach(({ key, value }) => {
+        urlencoded.append(key, value);
+      });
+      Object.entries(params).forEach(([key, value]) => {
+        urlencoded.append(key, String(value));
+      });
+      return urlencoded.toString();
+    }
+
+    if (staticBody.type === ContentTypes.xml || staticBody.type === ContentTypes.raw) {
+      return staticBody.content || '';
+    }
+
+    return undefined;
+  })();
+
+  const contentType = contentTypeMap[staticBody?.type || ContentTypes.none];
+  const headers = {
+    ...(contentType && { 'Content-Type': contentType }),
+    ...(customHeaders || {}),
+    ...(headerSecret ? getSecretValue({ storeSecret: headerSecret }) : {}),
+    ...(staticHeaders?.reduce(
+      (acc, { key, value }) => {
+        acc[key] = value;
+        return acc;
+      },
+      {} as Record<string, string>
+    ) || {})
+  };
+
+  const queryParams = (() => {
+    const staticParamsObj =
+      staticParams?.reduce(
+        (acc, { key, value }) => {
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, any>
+      ) || {};
+
+    const mergedParams =
+      method.toUpperCase() === 'GET' || staticParams
+        ? { ...staticParamsObj, ...params }
+        : staticParamsObj;
+
+    return Object.keys(mergedParams).length > 0 ? mergedParams : undefined;
+  })();
+
+  return {
+    headers,
+    body,
+    queryParams
+  };
 };
 
 export const runHTTPTool = async ({
@@ -159,24 +122,14 @@ export const runHTTPTool = async ({
   staticBody
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
-    const { body, contentType, formDataHeaders } = buildRequestBody({
-      staticBody,
+    const { headers, body, queryParams } = buildHttpRequest({
+      method,
       params,
-      method
-    });
-
-    const headers = buildHeaders({
-      customHeaders,
       headerSecret,
-      staticHeaders,
-      contentType,
-      formDataHeaders
-    });
-
-    const queryParams = buildQueryParams({
+      customHeaders,
       staticParams,
-      params,
-      method
+      staticHeaders,
+      staticBody
     });
 
     const { data } = await axios({
@@ -194,7 +147,6 @@ export const runHTTPTool = async ({
 
     return { data };
   } catch (error: any) {
-    console.log(error);
     return { errorMsg: getErrText(error) };
   }
 };

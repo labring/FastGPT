@@ -2,6 +2,7 @@ import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/n
 import type { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import type {
+  ContentTypes,
   NodeInputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -132,7 +133,7 @@ export type HttpToolConfigType = {
   staticParams?: Array<{ key: string; value: string }>;
   staticHeaders?: Array<{ key: string; value: string }>;
   staticBody?: {
-    type: 'none' | 'json' | 'form-data' | 'x-www-form-urlencoded' | 'xml' | 'raw';
+    type: ContentTypes;
     content?: string;
     formData?: Array<{ key: string; value: string }>;
   };
