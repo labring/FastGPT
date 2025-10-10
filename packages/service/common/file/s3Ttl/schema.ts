@@ -21,4 +21,4 @@ const S3TtlSchema = new Schema({
 S3TtlSchema.index({ expiredTime: 1 });
 S3TtlSchema.index({ bucketName: 1, minioKey: 1 });
 
-export const MongoS3Ttl = getMongoModel<S3TtlSchemaType>(collectionName, S3TtlSchema);
+export const MongoS3TTL = getMongoModel<S3TtlSchemaType>(collectionName, S3TtlSchema);

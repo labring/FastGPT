@@ -12,7 +12,7 @@ import {
 import type { BucketBasicOperationsType } from '../interface';
 import { createObjectKey, createTempObjectKey } from '../helpers';
 import path from 'node:path';
-import { MongoS3Ttl } from 'common/file/s3Ttl/schema';
+import { MongoS3TTL } from 'common/file/s3TTL/schema';
 
 export class S3BaseBucket implements BucketBasicOperationsType {
   public client: Client;
@@ -95,7 +95,7 @@ export class S3BaseBucket implements BucketBasicOperationsType {
     const { formData, postURL } = await this.client.presignedPostPolicy(policy);
 
     if (temporary) {
-      await MongoS3Ttl.create({
+      await MongoS3TTL.create({
         minioKey: key,
         bucketName: this.name,
         expiredTime: new Date(Date.now() + ttl * 3.6e6)

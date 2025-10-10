@@ -1,4 +1,4 @@
-import { MongoS3Ttl } from './schema';
+import { MongoS3TTL } from './schema';
 import { S3BucketManager } from '../../s3/buckets/manager';
 import { addLog } from '../../system/log';
 import { setCron } from '../../system/cron';
@@ -9,10 +9,7 @@ export async function clearExpiredMinioFiles() {
   try {
     const now = new Date();
 
-    const expiredFiles = await MongoS3Ttl.find({
-      expiredTime: { $exists: true, $ne: null, $lte: now }
-    }).lean();
-
+    const expiredFiles = await MongoS3TTL.find({ expiredTime: { $lte: now } }).lean();
     if (expiredFiles.length === 0) {
       addLog.info('No expired minio files to clean');
       return;
@@ -37,7 +34,7 @@ export async function clearExpiredMinioFiles() {
         })();
 
         await bucket.delete(file.minioKey);
-        await MongoS3Ttl.deleteOne({ _id: file._id });
+        await MongoS3TTL.deleteOne({ _id: file._id });
 
         success++;
         addLog.info(`Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`);
