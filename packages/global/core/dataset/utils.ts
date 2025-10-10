@@ -33,6 +33,9 @@ export function getSourceNameIcon({
   sourceId?: string;
 }) {
   try {
+    if (sourceId?.startsWith('sql')) {
+      return 'core/dataset/database'
+    }
     const fileIcon = getFileIcon(decodeURIComponent(sourceName.replace(/%/g, '%25')), '');
     if (fileIcon) {
       return fileIcon;
@@ -40,7 +43,7 @@ export function getSourceNameIcon({
     if (strIsLink(sourceId)) {
       return 'common/linkBlue';
     }
-  } catch (error) {}
+  } catch (error) { }
 
   return 'file/fill/file';
 }

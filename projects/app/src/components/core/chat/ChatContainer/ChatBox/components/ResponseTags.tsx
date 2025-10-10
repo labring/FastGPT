@@ -20,6 +20,7 @@ export type CitationRenderItem = {
   key: string;
   displayText: string;
   icon?: string;
+  disabled?: boolean;
   onClick: () => any;
 };
 
@@ -92,10 +93,14 @@ const ResponseTags = ({
         type: 'dataset' as const,
         key: item.collectionId,
         displayText: item.sourceName,
+        disabled: item.sourceId?.startsWith('sql'),
         icon: item.imageId
           ? 'core/dataset/imageFill'
           : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         onClick: () => {
+          if (item.sourceId?.startsWith('sql')) {
+            return;
+          }
           onOpenCiteModal({
             collectionId: item.collectionId,
             sourceId: item.sourceId,
@@ -154,22 +159,22 @@ const ResponseTags = ({
             _after={
               quoteFolded && quoteIsOverflow
                 ? {
-                    content: '""',
-                    position: 'absolute',
-                    zIndex: 2,
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '50%',
-                    background:
-                      'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))'
-                  }
+                  content: '""',
+                  position: 'absolute',
+                  zIndex: 2,
+                  bottom: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '50%',
+                  background:
+                    'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))'
+                }
                 : {}
             }
           >
             {citationRenderList.map((item, index) => {
               return (
-                <MyTooltip key={item.key} label={t('common:core.chat.quote.Read Quote')}>
+                <MyTooltip key={item.key} label={item.disabled ? '' : t('common:core.chat.quote.Read Quote')}>
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
@@ -182,7 +187,7 @@ const ResponseTags = ({
                     }}
                     overflow={'hidden'}
                     position={'relative'}
-                    cursor={'pointer'}
+                    cursor={item.disabled ? 'default' : 'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
                       item.onClick?.();
