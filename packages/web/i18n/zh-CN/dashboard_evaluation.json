@@ -156,7 +156,7 @@
   "file_import_success": "文件导入成功",
   "file_import_file_label": "文件",
   "file_import_download_template": "点击下载文件模板",
-  "file_import_download_template_tip": "下载模板文件以了解正确的文件格式",
+  "file_import_download_template_tip": "一行一个词条，第1列为【提问】，第2列为【答案】，第1行默认为表头，不会作为词条内容。例如：",
   "file_import_auto_evaluation_label": "导入后自动进行数据质量评测",
   "file_import_auto_evaluation_tip": "开启后将自动对导入的数据进行质量评测",
   "file_import_evaluation_model_label": "质量评测模型",
@@ -371,5 +371,7 @@
   "export_success": "导出成功",
   "no_dimension_data_cannot_generate_summary": "暂无维度数据，无法生成总结",
   "evaluation_dimension_missing_model_config": "评测维度缺少模型配置",
-  "evaluation_dimension_missing_model_config_desc": "以下评测维度缺少模型配置，请先完善配置：{{names}}"
+  "evaluation_dimension_missing_model_config_desc": "以下评测维度缺少模型配置，请先完善配置：{{names}}",
+  "example_highest_mountain_question": "世界最高峰是什么",
+  "example_highest_mountain_answer": "珠穆朗玛峰"
 }
