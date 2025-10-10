@@ -1,6 +1,6 @@
 # --------- install dependence -----------
 FROM python:3.11-alpine AS python_base
-ENV VERSION_RELEASE = Alpine3.11
+ENV VERSION_RELEASE=Alpine3.11
 # 安装make和g++
 RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers
 
@@ -14,8 +14,8 @@ RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libsecco
     make install && \
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple Cython && \
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple -r /app/requirements.txt && \
-    cd src/python && \
-    python setup.py install  
+    cd /app/libseccomp-2.5.5/src/python && \
+    python setup.py install
 
 
 FROM node:20.14.0-alpine AS install
