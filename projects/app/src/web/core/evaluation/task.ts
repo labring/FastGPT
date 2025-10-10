@@ -1,5 +1,4 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import type {
   CreateEvaluationRequest,
   CreateEvaluationResponse,
@@ -17,7 +16,6 @@ import type {
   StopEvaluationResponse,
   StatsEvaluationRequest,
   EvaluationStatsResponse,
-  ExportEvaluationItemsRequest,
   RetryFailedEvaluationItemsRequest,
   RetryFailedItemsResponse,
   ListEvaluationItemsRequest,
@@ -119,31 +117,6 @@ export const postRetryFailedEvaluationItems = (data: RetryFailedEvaluationItemsR
   POST<RetryFailedItemsResponse>('/core/evaluation/task/retryFailed', data);
 
 // ====== 评估项 API ======
-
-/**
- * 导出评估项
- * @param evalId - 评估任务ID
- * @param format - 导出格式
- * @returns 导出文件
- */
-export const getExportEvaluationItems = (evalId: string, format?: string) => {
-  const params = new URLSearchParams({ evalId });
-  if (format) {
-    params.append('format', format);
-  }
-
-  return fetch(`/api/core/evaluation/task/item/export?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.blob();
-  });
-};
 
 /**
  * 删除评估项

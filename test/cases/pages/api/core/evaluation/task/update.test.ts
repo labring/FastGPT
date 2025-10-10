@@ -56,6 +56,18 @@ describe('Update Evaluation Task API Handler', () => {
 
     const result = await updateHandler(mockReq);
 
+    const { validateEvaluationParamsForUpdate } = await import(
+      '@fastgpt/service/core/evaluation/utils'
+    );
+
+    expect(validateEvaluationParamsForUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Updated Evaluation',
+        description: 'Updated Description'
+      }),
+      mockTeamId,
+      evalId
+    );
     expect(EvaluationTaskService.updateEvaluation).toHaveBeenCalledWith(
       evalId,
       expect.objectContaining({

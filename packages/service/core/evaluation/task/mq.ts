@@ -21,7 +21,7 @@ export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.ev
       type: 'exponential',
       delay: 2000
     },
-    removeOnComplete: false,
+    removeOnComplete: true,
     removeOnFail: false
   }
 });
@@ -33,7 +33,7 @@ export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.ev
       type: 'exponential',
       delay: 1000 // Initial delay 1s, exponential backoff
     },
-    removeOnComplete: false,
+    removeOnComplete: true,
     removeOnFail: false
   }
 });
@@ -108,7 +108,7 @@ export const getEvaluationItemWorker = (processor: any) => {
           { _id: evalItemId },
           {
             $set: {
-              'metadata.status': EvaluationStatusEnum.queuing
+              status: EvaluationStatusEnum.queuing
             },
             $unset: {
               finishTime: 1,
@@ -164,7 +164,7 @@ export const getEvaluationItemWorker = (processor: any) => {
             { _id: evalItemId },
             {
               $set: {
-                'metadata.status': EvaluationStatusEnum.queuing
+                status: EvaluationStatusEnum.queuing
               },
               $unset: {
                 finishTime: 1,
@@ -180,7 +180,7 @@ export const getEvaluationItemWorker = (processor: any) => {
               $set: {
                 errorMessage: getErrText(error),
                 finishTime: new Date(),
-                'metadata.status': EvaluationStatusEnum.error
+                status: EvaluationStatusEnum.error
               }
             }
           );
@@ -225,7 +225,7 @@ export const getEvaluationItemWorker = (processor: any) => {
           { _id: evalItemId },
           {
             $set: {
-              'metadata.status': EvaluationStatusEnum.evaluating
+              status: EvaluationStatusEnum.evaluating
             },
             $unset: {
               finishTime: 1,
@@ -262,7 +262,7 @@ export const getEvaluationItemWorker = (processor: any) => {
           { _id: evalItemId },
           {
             $set: {
-              'metadata.status': EvaluationStatusEnum.completed,
+              status: EvaluationStatusEnum.completed,
               finishTime: new Date()
             },
             $unset: {
@@ -393,40 +393,4 @@ export const addEvaluationItemJobs = (
   });
 
   return evaluationItemQueue.addBulk(bulkJobs);
-};
-
-export const checkEvaluationTaskJobActive = async (evalId: string): Promise<boolean> => {
-  try {
-    // Check active jobs first (most likely state for active tasks)
-    const activeJobs = await evaluationTaskQueue.getJobs([
-      'active',
-      'waiting',
-      'delayed',
-      'prioritized'
-    ]);
-    const job = activeJobs.find((j) => j.data.evalId === evalId);
-
-    return job !== undefined;
-  } catch (error) {
-    addLog.error('[Evaluation] Failed to check task job status', { evalId, error });
-    return false;
-  }
-};
-
-export const checkEvaluationItemJobActive = async (evalItemId: string): Promise<boolean> => {
-  try {
-    // Check active jobs first (most likely state for active items)
-    const activeJobs = await evaluationItemQueue.getJobs([
-      'active',
-      'waiting',
-      'delayed',
-      'prioritized'
-    ]);
-    const job = activeJobs.find((j) => j.data.evalItemId === evalItemId);
-
-    return job !== undefined;
-  } catch (error) {
-    addLog.error('[Evaluation] Failed to check item job status', { evalItemId, error });
-    return false;
-  }
 };
