@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/types';
+import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources';
 

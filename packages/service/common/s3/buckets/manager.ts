@@ -1,4 +1,4 @@
-import { type S3Options } from '../types';
+import { type S3Options } from '../type';
 import { S3PublicBucket } from './public';
 import { S3PrivateBucket } from './private';
 

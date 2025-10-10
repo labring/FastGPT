@@ -6,9 +6,9 @@ import {
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3Options
-} from '../types';
+} from '../type';
 import type { S3PublicBucket } from '../buckets/public';
-import { MongoMinioTtl } from '../../file/minioTtl/schema';
+import { MongoS3Ttl } from '../../file/s3Ttl/schema';
 
 class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
   constructor(options?: Partial<S3Options>) {
@@ -42,7 +42,7 @@ class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
 
   async removeAvatar(avatarWithPrefix: string): Promise<void> {
     const avatarObjectKey = this.createAvatarObjectKey(avatarWithPrefix);
-    await MongoMinioTtl.deleteOne({ minioKey: avatarObjectKey, bucketName: this.bucketName });
+    await MongoS3Ttl.deleteOne({ minioKey: avatarObjectKey, bucketName: this.bucketName });
     await this.bucket.delete(avatarObjectKey);
   }
 
@@ -51,7 +51,7 @@ class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
     const avatarObjectKey = tempAvatarObjectKey.replace(`${S3Sources.temp}/`, '');
 
     try {
-      const file = await MongoMinioTtl.findOne({
+      const file = await MongoS3Ttl.findOne({
         bucketName: this.bucketName,
         minioKey: tempAvatarObjectKey
       });

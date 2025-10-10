@@ -89,7 +89,7 @@ export const CreatePostPresignedUrlParamsSchema = z.object({
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;
 
 export const CreatePostPresignedUrlOptionsSchema = z.object({
-  temporay: z.boolean().optional(),
+  temporary: z.boolean().optional(),
   ttl: z.number().positive().optional() // TTL in Hours, default 7 * 24
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;

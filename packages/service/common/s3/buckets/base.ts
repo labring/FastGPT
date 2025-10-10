@@ -1,22 +1,20 @@
 import { Client, type RemoveOptions, type CopyConditions, type LifecycleConfig } from 'minio';
 import {
   defaultS3Options,
+  type ExtensionType,
+  Mimes,
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3BucketName,
   type S3Options
-} from '../types';
-import type { IBucketBasicOperations } from '../interface';
-import {
-  createObjectKey,
-  createPresignedUrlExpires,
-  createTempObjectKey,
-  inferContentType
-} from '../helpers';
-import { afterCreatePresignedUrl } from '../../file/minioTtl/hooks';
+} from '../type';
+import type { BucketBasicOperationsType } from '../interface';
+import { createObjectKey, createTempObjectKey } from '../helpers';
+import path from 'node:path';
+import { MongoS3Ttl } from 'common/file/s3Ttl/schema';
 
-export class S3BaseBucket implements IBucketBasicOperations {
+export class S3BaseBucket implements BucketBasicOperationsType {
   public client: Client;
 
   /**
@@ -69,7 +67,7 @@ export class S3BaseBucket implements IBucketBasicOperations {
     throw new Error('Method not implemented.');
   }
 
-  lifecycle(): Promise<LifecycleConfig | null> {
+  getLifecycle(): Promise<LifecycleConfig | null> {
     return this.client.getBucketLifecycle(this.name);
   }
 
@@ -77,29 +75,32 @@ export class S3BaseBucket implements IBucketBasicOperations {
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
-    const { temporay, ttl: ttlDays = 7 } = options;
-    const contentType = inferContentType(params.filename);
+    const { temporary, ttl = 7 * 24 } = options;
+    const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
+    const contentType = Mimes[ext] ?? 'application/octet-stream';
     const maxFileSize = this.options.maxFileSize as number;
-    const key = temporay ? createTempObjectKey(params) : createObjectKey(params);
+    const key = temporary ? createTempObjectKey(params) : createObjectKey(params);
 
     const policy = this.client.newPostPolicy();
     policy.setKey(key);
     policy.setBucket(this.name);
     policy.setContentType(contentType);
     policy.setContentLengthRange(1, maxFileSize);
-    policy.setExpires(createPresignedUrlExpires(10));
+    policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
     policy.setUserMetaData({
       filename: encodeURIComponent(params.filename),
       visibility: params.visibility
     });
 
     const { formData, postURL } = await this.client.presignedPostPolicy(policy);
-    await afterCreatePresignedUrl({
-      bucketName: this.name,
-      objectKey: key,
-      temporay,
-      ttl: ttlDays
-    });
+
+    if (temporary) {
+      await MongoS3Ttl.create({
+        minioKey: key,
+        bucketName: this.name,
+        expiredTime: new Date(Date.now() + ttl * 3.6e6)
+      });
+    }
 
     return {
       url: postURL,

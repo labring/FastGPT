@@ -6,7 +6,7 @@ import {
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3Options
-} from '../types';
+} from '../type';
 import type { IPublicBucketOperations } from '../interface';
 import { lifecycleOfTemporaryAvatars } from '../lifecycle';
 
@@ -42,7 +42,17 @@ export class S3PublicBucket extends S3BaseBucket implements IPublicBucketOperati
     const port = this.options.port;
     const bucket = this.name;
 
-    return `${protocol}://${hostname}:${port}/${bucket}/${objectKey}`;
+    const url = new URL(`${protocol}://${hostname}:${port}/${bucket}/${objectKey}`);
+
+    if (this.options.externalBaseURL) {
+      const externalBaseURL = new URL(this.options.externalBaseURL);
+
+      url.port = externalBaseURL.port;
+      url.hostname = externalBaseURL.hostname;
+      url.protocol = externalBaseURL.protocol;
+    }
+
+    return url.toString();
   }
 
   override createPostPresignedUrl(

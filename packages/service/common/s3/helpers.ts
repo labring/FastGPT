@@ -1,27 +1,6 @@
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { type ContentType, type CreateObjectKeyParams, type ExtensionType, Mimes } from './types';
+import { type CreateObjectKeyParams } from './type';
 import dayjs from 'dayjs';
-
-/**
- *
- * @param filename
- * @returns the Content-Type relative to the mime type
- */
-export const inferContentType = (filename: string): ContentType | 'application/octet-stream' => {
-  const ext = path.extname(filename).toLowerCase() as ExtensionType;
-  return Mimes[ext] ?? 'application/octet-stream';
-};
-
-/**
- * Generate a date that is `minutes` minutes from now
- *
- * @param minutes
- * @returns the date object
- */
-export const createPresignedUrlExpires = (minutes: number): Date => {
-  return new Date(Date.now() + minutes * 60 * 1_000);
-};
 
 /**
  * use public policy or just a custom policy
