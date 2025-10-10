@@ -143,10 +143,7 @@ const ManualToolModal = ({
         try {
           JSON.parse(bodyContent);
         } catch (error) {
-          return toast({
-            status: 'error',
-            title: t('common:json_parse_error')
-          });
+          return Promise.reject(t('common:json_parse_error'));
         }
       }
 
