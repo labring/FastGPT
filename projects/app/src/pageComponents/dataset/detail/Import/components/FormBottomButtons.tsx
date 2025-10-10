@@ -242,7 +242,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
               w={'48px'}
               h={'48px'}
             />
-            <Text fontSize="12px" color="myGray.500">
+            <Text fontSize={'0.75rem'} color="myGray.500">
               {t('dataset:reconnecting')}
             </Text>
           </VStack>
@@ -288,13 +288,13 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         return (
           <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
             <Flex direction="column" w="317px">
-              <Flex mb={1} w={'100%'}>
-                <MyIcon name="core/workflow/runSuccess" w={6} h={6} mr={3} />
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900">
+              <Flex mb={1} w={'100%'} alignItems={'center'}>
+                <MyIcon name="core/workflow/runSuccess" w={4} h={4} mr={3} />
+                <Box fontSize={'1rem'} fontWeight="medium" color="myGray.900">
                   {t('dataset:reconnect_success')}
                 </Box>
               </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={9}>
+              <Text fontSize={'0.875rem'} color="myGray.600" pl={7}>
                 {getSubTitle()}
                 {databaseChanges.hasChanges && (
                   <Text
@@ -318,13 +318,13 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         return (
           <ModalBody display={'flex'} justifyContent={'center'} alignItems={'center'}>
             <Flex direction="column" w="317px">
-              <Flex mb={1} w={'100%'}>
-                <MyIcon name="core/workflow/runError" w={6} h={6} mr={3} />
-                <Box fontSize="16px" fontWeight="medium" color="myGray.900">
+              <Flex mb={1} w={'100%'} alignItems={'center'}>
+                <MyIcon name="core/workflow/runError" w={4} h={4} mr={3} />
+                <Box fontSize={'1rem'} fontWeight="medium" color="myGray.900">
                   {t('dataset:connection_failed')}
                 </Box>
               </Flex>
-              <Text fontSize="14px" color="myGray.600" pl={9}>
+              <Text fontSize={'0.875rem'} color="myGray.600" pl={7}>
                 {t(connectionMessage)}
               </Text>
             </Flex>
@@ -342,10 +342,12 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
       <>
         <HStack justifyContent={'flex-end'}>
           {connectionTest.message && (
-            <>
-              <MyIcon w={6} h={6} name={icon as any} color={color} />
-              <Box color="black">{connectionTest.message}</Box>
-            </>
+            <Flex gap={0} alignItems={'center'}>
+              <MyIcon mr={1} w={4} h={4} name={icon as any} color={color} />
+              <Box color="black" fontSize={'0.75rem'}>
+                {connectionTest.message}
+              </Box>
+            </Flex>
           )}
           <Flex>
             <Button
@@ -382,7 +384,9 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
           {connectionMessage && (
             <>
               <MyIcon w={4} h={4} name="common/circleAlert" />
-              <Box color="black">{t(connectionMessage)}</Box>
+              <Box color="black" fontSize={'0.75rem'}>
+                {t(connectionMessage)}
+              </Box>
             </>
           )}
           <Button

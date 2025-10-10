@@ -54,6 +54,9 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
   const isImageParse =
     trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
 
+  const isDatabaseParse =
+    trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.databaseSchema;
+
   /* 
     状态计算
     1. 暂时没有内容解析的状态
@@ -100,15 +103,19 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       status: TrainingStatus;
       errorCount: number;
     }[] = [
-      {
-        label: t(TrainingProcess.parsing.label),
-        status: (() => {
-          if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
-          if (isContentParsing) return TrainingStatus.Running;
-          return TrainingStatus.Ready;
-        })(),
-        errorCount: trainingDetail.errorCounts.parse
-      },
+      ...(!isDatabaseParse
+        ? [
+            {
+              label: t(TrainingProcess.parsing.label),
+              status: (() => {
+                if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
+                if (isContentParsing) return TrainingStatus.Running;
+                return TrainingStatus.Ready;
+              })(),
+              errorCount: trainingDetail.errorCounts.parse
+            }
+          ]
+        : []),
       ...(isImageParse
         ? [
             {
