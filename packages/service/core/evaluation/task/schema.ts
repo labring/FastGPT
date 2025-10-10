@@ -5,17 +5,14 @@ import {
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import type {
   EvaluationSchemaType,
-  EvaluationItemSchemaType,
-  TargetOutput
+  EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
-import { EvalDatasetDataKeyEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 import {
   EvaluationStatusEnum,
   EvaluationStatusValues,
   SummaryStatusValues,
   SummaryStatusEnum,
-  CalculateMethodEnum,
   CaculateMethodValues
 } from '@fastgpt/global/core/evaluation/constants';
 import { EvalDatasetCollectionName } from '../dataset/evalDatasetCollectionSchema';
@@ -212,14 +209,10 @@ export const EvaluationItemSchema = new Schema({
   },
   finishTime: Date,
   errorMessage: String,
-  // Metadata for optimization
-  metadata: {
-    status: {
-      type: String,
-      enum: EvaluationStatusValues,
-      default: EvaluationStatusEnum.queuing,
-      index: true // Index for status filtering
-    }
+  status: {
+    type: String,
+    enum: EvaluationStatusValues,
+    default: EvaluationStatusEnum.queuing
   }
 });
 
@@ -230,8 +223,8 @@ EvaluationItemSchema.index({ evalId: 1 }); // Basic queries
 EvaluationItemSchema.index({ evalId: 1, createTime: -1 }); // Time-sorted listing
 
 // Status filtering indexes
-EvaluationItemSchema.index({ evalId: 1, 'metadata.status': 1, createTime: -1 }); // Status with time
-EvaluationItemSchema.index({ evalId: 1, 'metadata.status': 1 }); // Status only
+EvaluationItemSchema.index({ evalId: 1, status: 1, createTime: -1 }); // Status with time
+EvaluationItemSchema.index({ evalId: 1, status: 1 }); // Status only
 
 // Text search index for content filtering
 EvaluationItemSchema.index({

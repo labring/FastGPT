@@ -9,7 +9,6 @@ import type {
   EvalTarget,
   EvaluatorSchema
 } from '@fastgpt/global/core/evaluation/type';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
@@ -21,6 +20,23 @@ vi.mock('@fastgpt/service/common/system/log');
 vi.mock('@fastgpt/service/core/evaluation/summary/util/weightCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/statusCalculator');
 vi.mock('@fastgpt/service/core/evaluation/summary/queue');
+
+// Mock BullMQ
+vi.mock('@fastgpt/service/common/bullmq', () => ({
+  getQueue: vi.fn(() => ({
+    add: vi.fn().mockResolvedValue({ id: 'test-job-id' }),
+    addBulk: vi.fn().mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }]),
+    getJob: vi.fn(),
+    getJobs: vi.fn().mockResolvedValue([])
+  })),
+  getWorker: vi.fn(() => ({
+    on: vi.fn()
+  })),
+  QueueNames: {
+    evalTask: 'evalTask',
+    evalTaskItem: 'evalTaskItem'
+  }
+}));
 
 describe('EvaluationTaskService Integration Tests', () => {
   let teamId: string;
@@ -148,24 +164,19 @@ describe('EvaluationTaskService Integration Tests', () => {
     const { createEvaluationUsage } = await import(
       '@fastgpt/service/support/wallet/usage/controller'
     );
-    const { getEvaluationTaskStatus, getEvaluationTaskStats } = await import(
+    const { getEvaluationTaskStats } = await import(
       '@fastgpt/service/core/evaluation/task/statusCalculator'
     );
     const { buildEvalDataConfig } = await import(
       '@fastgpt/service/core/evaluation/summary/util/weightCalculator'
     );
-    const {
-      removeEvaluationTaskJob,
-      removeEvaluationItemJobs,
-      addEvaluationTaskJob,
-      checkEvaluationTaskJobActive
-    } = await import('@fastgpt/service/core/evaluation/task/mq');
+    const { removeEvaluationTaskJob, removeEvaluationItemJobs, addEvaluationTaskJob } =
+      await import('@fastgpt/service/core/evaluation/task/mq');
     const { removeEvaluationSummaryJobs } = await import(
       '@fastgpt/service/core/evaluation/summary/queue'
     );
 
     (createEvaluationUsage as any).mockResolvedValue({ billId: new Types.ObjectId() });
-    (getEvaluationTaskStatus as any).mockResolvedValue(EvaluationStatusEnum.queuing);
     (getEvaluationTaskStats as any).mockResolvedValue({
       total: 2,
       completed: 0,
@@ -211,7 +222,6 @@ describe('EvaluationTaskService Integration Tests', () => {
       activeJobsCleaned: 0
     });
     (addEvaluationTaskJob as any).mockResolvedValue(undefined);
-    (checkEvaluationTaskJobActive as any).mockResolvedValue(false);
   });
 
   describe('基本CRUD操作', () => {
@@ -439,114 +449,6 @@ describe('EvaluationTaskService Integration Tests', () => {
           tmbId: tmbId
         })
       ).rejects.toThrow(EvaluationErrEnum.evalDatasetLoadFailed);
-    });
-  });
-
-  describe('导出功能', () => {
-    test('应该成功导出 JSON 格式', async () => {
-      const params: CreateEvaluationParams = {
-        name: 'Export Test Evaluation JSON',
-        description: 'Test evaluation for JSON export',
-        evalDatasetCollectionId,
-        target,
-        evaluators: evaluators,
-        autoStart: false
-      };
-      const evaluation = await retryOnLockError(() =>
-        EvaluationTaskService.createEvaluation({
-          ...params,
-          teamId: teamId,
-          tmbId: tmbId
-        })
-      );
-
-      await MongoEvalItem.create({
-        evalId: evaluation._id,
-        dataItem: { userInput: 'Test userInput', expectedOutput: 'Test answer' },
-        targetOutput: {
-          actualOutput: 'Test response',
-          responseTime: 1000
-        },
-        evaluatorOutputs: [
-          {
-            metricName: 'Test Metric',
-            data: {
-              score: 85
-            }
-          }
-        ]
-      });
-
-      const { getBatchEvaluationItemStatus } = await import(
-        '@fastgpt/service/core/evaluation/task/statusCalculator'
-      );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([['someId', EvaluationStatusEnum.completed]])
-      );
-
-      const { results: buffer, total } = await EvaluationTaskService.exportEvaluationResults(
-        evaluation._id.toString(),
-        teamId,
-        'json'
-      );
-      const data = JSON.parse(buffer.toString());
-
-      expect(Array.isArray(data)).toBe(true);
-      expect(total).toBeGreaterThanOrEqual(1);
-    });
-
-    test('应该成功导出 CSV 格式', async () => {
-      const params: CreateEvaluationParams = {
-        name: 'Export Test Evaluation CSV',
-        description: 'Test evaluation for CSV export',
-        evalDatasetCollectionId,
-        target,
-        evaluators: evaluators,
-        autoStart: false
-      };
-      const evaluation = await retryOnLockError(() =>
-        EvaluationTaskService.createEvaluation({
-          ...params,
-          teamId: teamId,
-          tmbId: tmbId
-        })
-      );
-
-      await MongoEvalItem.create({
-        evalId: evaluation._id,
-        dataItem: { userInput: 'CSV Test userInput', expectedOutput: 'CSV Test answer' },
-        targetOutput: {
-          actualOutput: 'CSV Test response',
-          responseTime: 1000
-        },
-        evaluatorOutputs: [
-          {
-            metricName: 'Test Metric',
-            data: {
-              score: 85,
-              metricName: 'Test Metric'
-            }
-          }
-        ]
-      });
-
-      const { getBatchEvaluationItemStatus } = await import(
-        '@fastgpt/service/core/evaluation/task/statusCalculator'
-      );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([['someId', EvaluationStatusEnum.completed]])
-      );
-
-      const { results: buffer, total } = await EvaluationTaskService.exportEvaluationResults(
-        evaluation._id.toString(),
-        teamId,
-        'csv'
-      );
-      const csvContent = buffer.toString();
-
-      expect(total).toBeGreaterThanOrEqual(1);
-      expect(csvContent.includes('ItemId,UserInput,ExpectedOutput')).toBe(true);
-      expect(csvContent.includes('CSV Test userInput')).toBe(true);
     });
   });
 });

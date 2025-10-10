@@ -5,6 +5,7 @@ import {
   validateEvaluationParamsForUpdate
 } from '@fastgpt/service/core/evaluation/utils';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
+import { MongoEvaluation } from '@fastgpt/service/core/evaluation/task/schema';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
@@ -12,6 +13,12 @@ import type { EvaluatorSchema } from '@fastgpt/global/core/evaluation/type';
 // Mock the dataset collection
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
+    findOne: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/evaluation/task/schema', () => ({
+  MongoEvaluation: {
     findOne: vi.fn()
   }
 }));
@@ -54,12 +61,19 @@ describe('Dataset Existence Validation', () => {
       createTime: new Date(),
       updateTime: new Date()
     },
-    runtimeConfig: {},
-    weight: 1
+    runtimeConfig: {}
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const mockDatasetFindOne = MongoEvalDatasetCollection.findOne as any;
+    mockDatasetFindOne.mockReset();
+    const mockFindEvaluation = MongoEvaluation.findOne as any;
+    mockFindEvaluation.mockReset();
+    mockFindEvaluation.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue(null)
+    });
   });
 
   describe('Dataset ID Format Validation', () => {
@@ -67,7 +81,7 @@ describe('Dataset Existence Validation', () => {
       const result = await validateEvaluationParamsForCreate(
         {
           name: 'Test Evaluation',
-          datasetId: 'invalid-id-format',
+          evalDatasetCollectionId: 'invalid-id-format',
           target: {
             type: 'workflow',
             config: {
@@ -83,9 +97,9 @@ describe('Dataset Existence Validation', () => {
       expect(result.isValid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toMatchObject({
-        code: EvaluationErrEnum.evalDatasetIdRequired,
-        message: 'Invalid dataset ID format',
-        field: 'datasetId'
+        code: EvaluationErrEnum.datasetCollectionIdRequired,
+        message: 'Invalid evalDatasetCollectionId format',
+        field: 'evalDatasetCollectionId'
       });
     });
 
@@ -99,7 +113,7 @@ describe('Dataset Existence Validation', () => {
       const result = await validateEvaluationParamsForCreate(
         {
           name: 'Test Evaluation',
-          datasetId: validDatasetId,
+          evalDatasetCollectionId: validDatasetId,
           target: {
             type: 'workflow',
             config: {
@@ -134,7 +148,7 @@ describe('Dataset Existence Validation', () => {
       const result = await validateEvaluationParamsForCreate(
         {
           name: 'Test Evaluation',
-          datasetId: validDatasetId,
+          evalDatasetCollectionId: validDatasetId,
           target: {
             type: 'workflow',
             config: {
@@ -151,8 +165,8 @@ describe('Dataset Existence Validation', () => {
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toMatchObject({
         code: EvaluationErrEnum.datasetCollectionNotFound,
-        message: 'Dataset not found or access denied',
-        field: 'datasetId'
+        message: 'evalDatasetCollection not found or access denied',
+        field: 'evalDatasetCollectionId'
       });
     });
 
@@ -166,7 +180,7 @@ describe('Dataset Existence Validation', () => {
       const result = await validateEvaluationParamsForCreate(
         {
           name: 'Test Evaluation',
-          datasetId: validDatasetId,
+          evalDatasetCollectionId: validDatasetId,
           target: {
             type: 'workflow',
             config: {
@@ -200,7 +214,7 @@ describe('Dataset Existence Validation', () => {
       const result = await validateEvaluationParamsForCreate(
         {
           name: 'Test Evaluation',
-          datasetId: validDatasetId,
+          evalDatasetCollectionId: validDatasetId,
           target: {
             type: 'workflow',
             config: {
@@ -234,8 +248,8 @@ describe('Dataset Existence Validation', () => {
 
       const result = await validateEvaluationParamsForUpdate(
         {
-          datasetId: validDatasetId
-          // Only updating datasetId
+          evalDatasetCollectionId: validDatasetId
+          // Only updating dataset collection
         },
         teamId
       );
@@ -263,16 +277,16 @@ describe('Dataset Existence Validation', () => {
     it('should reject empty datasetId in update mode', async () => {
       const result = await validateEvaluationParamsForUpdate(
         {
-          datasetId: ''
+          evalDatasetCollectionId: ''
         },
         teamId
       );
 
       expect(result.isValid).toBe(false);
       expect(result.errors[0]).toMatchObject({
-        code: EvaluationErrEnum.evalDatasetIdRequired,
-        message: 'Dataset ID is required',
-        field: 'datasetId'
+        code: EvaluationErrEnum.datasetCollectionIdRequired,
+        message: 'datasetCollectionId is required',
+        field: 'evalDatasetCollectionId'
       });
     });
   });
@@ -289,7 +303,7 @@ describe('Dataset Existence Validation', () => {
         validateEvaluationParamsForCreate(
           {
             name: 'Test Evaluation',
-            datasetId: validDatasetId,
+            evalDatasetCollectionId: validDatasetId,
             target: {
               type: 'workflow',
               config: {
@@ -302,6 +316,97 @@ describe('Dataset Existence Validation', () => {
           teamId
         )
       ).rejects.toThrow('Database connection failed');
+    });
+  });
+
+  describe('Name Uniqueness Validation', () => {
+    it('should reject duplicate evaluation name during creation', async () => {
+      const mockDatasetFindOne = MongoEvalDatasetCollection.findOne as any;
+      mockDatasetFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue(mockDataset)
+      });
+
+      const duplicateQuery = {
+        select: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockResolvedValue({ _id: new Types.ObjectId() })
+      };
+      const mockFindEvaluation = MongoEvaluation.findOne as any;
+      mockFindEvaluation.mockReturnValue(duplicateQuery);
+
+      const result = await validateEvaluationParamsForCreate(
+        {
+          name: 'Duplicate Evaluation',
+          evalDatasetCollectionId: validDatasetId,
+          target: {
+            type: 'workflow',
+            config: {
+              appId: new Types.ObjectId().toString(),
+              versionId: new Types.ObjectId().toString()
+            }
+          },
+          evaluators: [validEvaluator]
+        },
+        teamId
+      );
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]).toMatchObject({
+        code: EvaluationErrEnum.evalNameDuplicate,
+        field: 'name'
+      });
+    });
+
+    it('should allow keeping the same name when excluding current evaluation in update mode', async () => {
+      const excludeEvalId = new Types.ObjectId().toString();
+
+      const mockFindEvaluation = MongoEvaluation.findOne as any;
+      mockFindEvaluation.mockImplementation((filter: any) => {
+        expect(filter.name).toBe('Existing Evaluation');
+        expect(filter.teamId).toBeInstanceOf(Types.ObjectId);
+        expect(filter.teamId.toString()).toBe(teamId);
+        expect(filter._id).toBeDefined();
+        expect(filter._id.$ne).toBeInstanceOf(Types.ObjectId);
+        expect(filter._id.$ne.toString()).toBe(excludeEvalId);
+        return {
+          select: vi.fn().mockReturnThis(),
+          lean: vi.fn().mockResolvedValue(null)
+        };
+      });
+
+      const result = await validateEvaluationParamsForUpdate(
+        {
+          name: 'Existing Evaluation'
+        },
+        teamId,
+        excludeEvalId
+      );
+
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should reject duplicate evaluation name during update when conflict exists', async () => {
+      const excludeEvalId = new Types.ObjectId().toString();
+
+      const conflictQuery = {
+        select: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockResolvedValue({ _id: new Types.ObjectId() })
+      };
+      const mockFindEvaluation = MongoEvaluation.findOne as any;
+      mockFindEvaluation.mockReturnValue(conflictQuery);
+
+      const result = await validateEvaluationParamsForUpdate(
+        {
+          name: 'Conflicting Evaluation'
+        },
+        teamId,
+        excludeEvalId
+      );
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]).toMatchObject({
+        code: EvaluationErrEnum.evalNameDuplicate,
+        field: 'name'
+      });
     });
   });
 });

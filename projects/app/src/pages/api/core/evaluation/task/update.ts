@@ -37,7 +37,8 @@ async function handler(
       target,
       evaluators
     },
-    teamId
+    teamId,
+    evalId
   );
   if (!paramValidation.isValid) {
     const error = ValidationResultUtils.toTranslatableError(paramValidation);

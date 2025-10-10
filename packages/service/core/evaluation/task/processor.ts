@@ -16,8 +16,8 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
-import { getBatchEvaluationItemStatus } from './statusCalculator';
 import { createEvaluationError } from './errors';
+import { getEvaluationTaskStats } from './statusCalculator';
 
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
@@ -27,49 +27,21 @@ import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/c
  */
 export const finishEvaluationTask = async (evalId: string) => {
   try {
-    // Get all evaluation items for this task
-    const allItems = await MongoEvalItem.find({ evalId: new Types.ObjectId(evalId) }, '_id').lean();
+    // Get task statistics using the reusable function
+    const stats = await getEvaluationTaskStats(evalId);
 
-    if (allItems.length === 0) {
+    if (stats.total === 0) {
       addLog.warn(`[Evaluation] Evaluation task has no evaluation item data: ${evalId}`);
       return;
     }
 
-    const totalCount = allItems.length;
-    const itemIds = allItems.map((item) => item._id.toString());
-
-    const statusMap = await getBatchEvaluationItemStatus(itemIds);
-
-    let completedCount = 0;
-    let errorCount = 0;
-    let evaluatingCount = 0;
-    let queuingCount = 0;
-
-    for (const itemId of itemIds) {
-      const status = statusMap.get(itemId) || EvaluationStatusEnum.completed;
-      switch (status) {
-        case EvaluationStatusEnum.completed:
-          completedCount++;
-          break;
-        case EvaluationStatusEnum.error:
-          errorCount++;
-          break;
-        case EvaluationStatusEnum.evaluating:
-          evaluatingCount++;
-          break;
-        case EvaluationStatusEnum.queuing:
-          queuingCount++;
-          break;
-      }
-    }
-
     // Check if all items are truly completed
-    const pendingCount = evaluatingCount + queuingCount;
+    const pendingCount = stats.evaluating + stats.queuing;
 
     if (pendingCount > 0) {
       addLog.debug(
-        `[Evaluation] Task still has pending items, skipping completion: ${evalId}, total: ${totalCount}, ` +
-          `success: ${completedCount}, failed: ${errorCount}, pending: ${pendingCount}`
+        `[Evaluation] Task still has pending items, skipping completion: ${evalId}, total: ${stats.total}, ` +
+          `success: ${stats.completed}, failed: ${stats.error}, pending: ${pendingCount}`
       );
       return;
     }
@@ -93,7 +65,7 @@ export const finishEvaluationTask = async (evalId: string) => {
     }
 
     // Trigger summary generation for completed task
-    await EvaluationSummaryService.triggerSummaryGeneration(evalId, completedCount);
+    await EvaluationSummaryService.triggerSummaryGeneration(evalId, stats.completed);
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, {
       error: getErrText(error)
@@ -124,9 +96,6 @@ export const finishEvaluationTask = async (evalId: string) => {
 const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   const { evalId } = job.data;
 
-  // Report progress
-  await job.updateProgress(0);
-
   // Get evaluation data
   const evaluation = await MongoEvaluation.findById(evalId).lean();
 
@@ -147,23 +116,14 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     throw createEvaluationError(EvaluationErrEnum.evalEvaluatorsConfigInvalid, 'ResourceCheck');
   }
 
-  // Report validation progress
-  await job.updateProgress(20);
-
   // Check if evaluation items exist
   const existingItems = await MongoEvalItem.find({ evalId }).lean();
   if (existingItems.length === 0) {
     throw createEvaluationError(EvaluationErrEnum.evalItemNotFound, 'ResourceCheck');
   }
 
-  // Get real-time status and submit items to queue
-  const itemIds = existingItems.map((item) => item._id.toString());
-  const statusMap = await getBatchEvaluationItemStatus(itemIds);
-
   const itemsToProcess = existingItems.filter((item) => {
-    const realTimeStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
-    // Only process items in queuing status
-    return realTimeStatus === EvaluationStatusEnum.queuing;
+    return item.status === EvaluationStatusEnum.queuing;
   });
 
   if (itemsToProcess.length > 0) {
@@ -179,9 +139,6 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
   }
 
-  // Report completion
-  await job.updateProgress(100);
-
   addLog.debug(
     `[Evaluation] Task processing completed: ${evalId}, submitted ${itemsToProcess.length} evaluation items to queue`
   );
@@ -194,9 +151,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
   const { evalId, evalItemId } = job.data;
 
   addLog.debug(`[Evaluation] Start processing evaluation item: ${evalItemId}`);
-
-  // Report progress
-  await job.updateProgress(0);
 
   // Get evaluation item
   const evalItem = await MongoEvalItem.findById(evalItemId);
@@ -238,9 +192,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     addLog.debug(`[Evaluation] Starting evaluation item from scratch: ${evalItemId}`);
   }
 
-  // Report setup progress
-  await job.updateProgress(10);
-
   // Execute evaluation target if needed
   if (!targetOutput || !targetOutput.actualOutput) {
     try {
@@ -260,9 +211,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
           }
         }
       );
-
-      // Report target execution progress
-      await job.updateProgress(30);
 
       // Record target usage
       if (targetOutput.usage) {
@@ -367,13 +315,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
         { _id: new Types.ObjectId(evalItemId) },
         { $set: { evaluatorOutputs: evaluatorOutputs } }
       );
-
-      // Report evaluator progress
-      const completedEvaluators = evaluatorOutputs.filter(
-        (output) => output?.data?.score !== undefined
-      ).length;
-      const evaluatorProgress = 30 + (60 * completedEvaluators) / evaluation.evaluators.length;
-      await job.updateProgress(Math.round(evaluatorProgress));
     } catch (error) {
       // Handle evaluator error
       const errorMessage = getErrText(error) || 'Evaluator execution failed';
@@ -402,9 +343,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       true
     );
   }
-
-  // Report final progress
-  await job.updateProgress(100);
 };
 
 /**

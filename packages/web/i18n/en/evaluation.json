@@ -3,6 +3,7 @@
   "dataset_data_not_found": "Evaluation dataset not found.",
   "name_required": "Name is required.",
   "name_too_long": "Name is too long.",
+  "name_duplicate": "Name already exists.",
   "description_too_long": "Description is too long.",
   "target_required": "Evaluation target is required.",
   "target_invalid_config": "Evaluation target configuration is invalid.",

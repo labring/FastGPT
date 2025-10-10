@@ -353,6 +353,7 @@
   "click_to_retry": "Retry",
   "comprehensive_score_weight_description": "The ratio of a metric's score to the total score. You can configure it as needed.",
   "no_data_available": "No data available.",
+  "case_id_column": "Case ID",
   "question_column": "Question",
   "comprehensive_score_column": "Rating",
   "error_info_column": "Error",

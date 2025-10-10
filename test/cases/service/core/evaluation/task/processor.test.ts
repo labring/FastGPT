@@ -28,6 +28,23 @@ vi.mock('@fastgpt/service/core/evaluation/summary');
 vi.mock('@fastgpt/service/core/evaluation/task/statusCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/errors');
 
+// Mock BullMQ
+vi.mock('@fastgpt/service/common/bullmq', () => ({
+  getQueue: vi.fn(() => ({
+    add: vi.fn().mockResolvedValue({ id: 'test-job-id' }),
+    addBulk: vi.fn().mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }]),
+    getJob: vi.fn(),
+    getJobs: vi.fn().mockResolvedValue([])
+  })),
+  getWorker: vi.fn(() => ({
+    on: vi.fn()
+  })),
+  QueueNames: {
+    evalTask: 'evalTask',
+    evalTaskItem: 'evalTaskItem'
+  }
+}));
+
 import {
   finishEvaluationTask,
   evaluationTaskProcessor,
@@ -148,7 +165,7 @@ describe('EvaluationTaskProcessor', () => {
     const { createMergedEvaluationUsage } = await import(
       '@fastgpt/service/core/evaluation/utils/usage'
     );
-    const { getBatchEvaluationItemStatus } = await import(
+    const { getEvaluationTaskStats } = await import(
       '@fastgpt/service/core/evaluation/task/statusCalculator'
     );
     const { createEvaluationError } = await import('@fastgpt/service/core/evaluation/task/errors');
@@ -156,7 +173,7 @@ describe('EvaluationTaskProcessor', () => {
     (addEvaluationItemJobs as any).mockResolvedValue(undefined);
     (checkTeamAIPoints as any).mockResolvedValue(undefined);
     (createMergedEvaluationUsage as any).mockResolvedValue(undefined);
-    (getBatchEvaluationItemStatus as any).mockResolvedValue(new Map());
+    (getEvaluationTaskStats as any).mockResolvedValue(new Map());
     (createEvaluationError as any).mockImplementation((error: any) => new Error(error));
 
     // Mock target instance
@@ -223,15 +240,16 @@ describe('EvaluationTaskProcessor', () => {
         }
       ]);
 
-      const { getBatchEvaluationItemStatus } = await import(
+      const { getEvaluationTaskStats } = await import(
         '@fastgpt/service/core/evaluation/task/statusCalculator'
       );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([
-          ['item1', EvaluationStatusEnum.completed],
-          ['item2', EvaluationStatusEnum.completed]
-        ])
-      );
+      (getEvaluationTaskStats as any).mockResolvedValue({
+        total: 2,
+        completed: 2,
+        evaluating: 0,
+        queuing: 0,
+        error: 0
+      });
 
       await finishEvaluationTask(evaluationId);
 
@@ -255,15 +273,16 @@ describe('EvaluationTaskProcessor', () => {
       ]);
 
       const itemIds = allItems.map((item) => item._id.toString());
-      const { getBatchEvaluationItemStatus } = await import(
+      const { getEvaluationTaskStats } = await import(
         '@fastgpt/service/core/evaluation/task/statusCalculator'
       );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([
-          [itemIds[0], EvaluationStatusEnum.completed],
-          [itemIds[1], EvaluationStatusEnum.evaluating]
-        ])
-      );
+      (getEvaluationTaskStats as any).mockResolvedValue({
+        total: 2,
+        completed: 1,
+        evaluating: 1,
+        queuing: 0,
+        error: 0
+      });
 
       await finishEvaluationTask(evaluationId);
 
@@ -282,14 +301,16 @@ describe('EvaluationTaskProcessor', () => {
         }
       ]);
 
-      const { getBatchEvaluationItemStatus } = await import(
+      const { getEvaluationTaskStats } = await import(
         '@fastgpt/service/core/evaluation/task/statusCalculator'
       );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([['item1', EvaluationStatusEnum.completed]])
-      );
-
-      const { EvaluationSummaryService } = await import('@fastgpt/service/core/evaluation/summary');
+      (getEvaluationTaskStats as any).mockResolvedValue({
+        total: 1,
+        completed: 1,
+        evaluating: 1,
+        queuing: 0,
+        error: 0
+      });
 
       await finishEvaluationTask(evaluationId);
     });
@@ -306,6 +327,17 @@ describe('EvaluationTaskProcessor', () => {
         usageId: new Types.ObjectId(),
         status: EvaluationStatusEnum.queuing,
         createTime: new Date()
+      });
+
+      const { getEvaluationTaskStats } = await import(
+        '@fastgpt/service/core/evaluation/task/statusCalculator'
+      );
+      (getEvaluationTaskStats as any).mockResolvedValue({
+        total: 0,
+        completed: 0,
+        evaluating: 1,
+        queuing: 0,
+        error: 0
       });
 
       const { addLog } = await import('@fastgpt/service/common/system/log');
@@ -328,10 +360,10 @@ describe('EvaluationTaskProcessor', () => {
 
       // Setup error mock before calling the function
       const { addLog } = await import('@fastgpt/service/common/system/log');
-      const { getBatchEvaluationItemStatus } = await import(
+      const { getEvaluationTaskStats } = await import(
         '@fastgpt/service/core/evaluation/task/statusCalculator'
       );
-      (getBatchEvaluationItemStatus as any).mockRejectedValue(new Error('Status check failed'));
+      (getEvaluationTaskStats as any).mockRejectedValue(new Error('Status check failed'));
 
       await finishEvaluationTask(evaluationId);
 
@@ -362,26 +394,22 @@ describe('EvaluationTaskProcessor', () => {
         }
       ]);
 
-      const { getBatchEvaluationItemStatus } = await import(
+      const { getEvaluationTaskStats } = await import(
         '@fastgpt/service/core/evaluation/task/statusCalculator'
       );
-      (getBatchEvaluationItemStatus as any).mockResolvedValue(
-        new Map([
-          [existingItems[0]._id.toString(), EvaluationStatusEnum.queuing],
-          [existingItems[1]._id.toString(), EvaluationStatusEnum.queuing]
-        ])
-      );
+      (getEvaluationTaskStats as any).mockResolvedValue({
+        total: 2,
+        completed: 0,
+        evaluating: 0,
+        queuing: 2,
+        error: 0
+      });
 
       const mockJob = {
-        data: { evalId: evaluationId },
-        updateProgress: vi.fn()
+        data: { evalId: evaluationId }
       };
 
       await evaluationTaskProcessor(mockJob as any);
-
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(0);
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(20);
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(100);
 
       const { addEvaluationItemJobs } = await import('@fastgpt/service/core/evaluation/task/mq');
       expect(addEvaluationItemJobs).toHaveBeenCalled();
@@ -390,13 +418,10 @@ describe('EvaluationTaskProcessor', () => {
     test('应该处理评估任务不存在的情况', async () => {
       const nonExistentId = new Types.ObjectId().toString();
       const mockJob = {
-        data: { evalId: nonExistentId },
-        updateProgress: vi.fn()
+        data: { evalId: nonExistentId }
       };
 
       await evaluationTaskProcessor(mockJob as any);
-
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(0);
 
       const { addLog } = await import('@fastgpt/service/common/system/log');
       expect(addLog.warn).toHaveBeenCalledWith(expect.stringContaining('no longer exists'));
@@ -424,8 +449,7 @@ describe('EvaluationTaskProcessor', () => {
       const invalidEvaluation = await invalidEvaluationDoc.save({ validateBeforeSave: false });
 
       const mockJob = {
-        data: { evalId: invalidEvaluation._id.toString() },
-        updateProgress: vi.fn()
+        data: { evalId: invalidEvaluation._id.toString() }
       };
 
       await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
@@ -447,8 +471,7 @@ describe('EvaluationTaskProcessor', () => {
       });
 
       const mockJob = {
-        data: { evalId: invalidEvaluation._id.toString() },
-        updateProgress: vi.fn()
+        data: { evalId: invalidEvaluation._id.toString() }
       };
 
       await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
@@ -477,8 +500,7 @@ describe('EvaluationTaskProcessor', () => {
       });
 
       const mockJob = {
-        data: { evalId: emptyEvaluation._id.toString() },
-        updateProgress: vi.fn()
+        data: { evalId: emptyEvaluation._id.toString() }
       };
 
       await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
@@ -500,16 +522,10 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await evaluationItemProcessor(mockJob as any);
-
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(0);
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(10);
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(30);
-      expect(mockJob.updateProgress).toHaveBeenCalledWith(100);
 
       // 验证项目被更新
       const updatedItem = await MongoEvalItem.findById(evalItem._id);
@@ -551,8 +567,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await evaluationItemProcessor(mockJob as any);
@@ -568,8 +583,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: nonExistentId
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -588,8 +602,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: new Types.ObjectId().toString(),
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -611,8 +624,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -636,8 +648,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -663,8 +674,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -683,8 +693,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await evaluationItemProcessor(mockJob as any);
@@ -739,8 +748,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow(
@@ -772,8 +780,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow();
@@ -807,8 +814,7 @@ describe('EvaluationTaskProcessor', () => {
         data: {
           evalId: evaluationId,
           evalItemId: evalItem._id.toString()
-        },
-        updateProgress: vi.fn()
+        }
       };
 
       await expect(evaluationItemProcessor(mockJob as any)).rejects.toThrow(

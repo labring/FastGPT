@@ -66,7 +66,7 @@ export type EvaluationSchemaType = {
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
   summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
   usageId: string;
-  status: EvaluationStatusEnum; // Computed real-time from job queues
+  status: EvaluationStatusEnum;
   createTime: Date;
   finishTime?: Date;
   errorMessage?: string;
@@ -113,19 +113,14 @@ export type EvaluationDataItemType = Pick<
 export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
-  // Chat information is stored in targetOutput.chatId and targetOutput.aiChatItemDataId
   // Dependent component configurations
   dataItem: EvaluationDataItemType;
   // Execution results
   targetOutput?: TargetOutput; // Actual output from target
   evaluatorOutputs?: MetricResult[]; // Results from multiple evaluators
-  status: EvaluationStatusEnum; // Computed real-time from job queues
+  status: EvaluationStatusEnum;
   finishTime?: Date;
   errorMessage?: string;
-  // Metadata for optimization
-  metadata?: {
-    status: EvaluationStatusEnum;
-  };
 };
 
 // Evaluation target input/output types

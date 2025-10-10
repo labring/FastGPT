@@ -14,7 +14,6 @@ import {
   putUpdateEvaluationItem,
   postRetryEvaluationItem,
   postRetryFailedEvaluationItems,
-  getExportEvaluationItems,
   postGenerateSummary
 } from '@/web/core/evaluation/task';
 import type {
@@ -29,6 +28,12 @@ import type {
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
 import type { EvaluationSummaryResponse } from '@fastgpt/global/core/evaluation/summary/api';
+import { downloadFetch } from '@/web/common/system/utils';
+import {
+  EvaluationStatusEnum,
+  EvaluationStatusMap
+} from '@fastgpt/global/core/evaluation/constants';
+import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
 
 // 使用正式的评估显示类型
 type EvaluationTaskType = EvaluationDisplayType;
@@ -82,7 +87,7 @@ type TaskPageContextType = {
   retryItem: (itemId: string) => Promise<void>;
   updateItem: (itemId: string, data: UpdateEvaluationItemRequest) => Promise<void>;
   retryFailedItems: () => Promise<void>;
-  exportItems: (format?: string) => Promise<void>;
+  exportItems: (filters?: Record<string, any>) => Promise<void>;
   generateSummary: () => Promise<void>;
   generateSummaryForMetrics: (params: { evalId: string; metricIds: string[] }) => Promise<void>;
 
@@ -159,7 +164,7 @@ const defaultContextValue: TaskPageContextType = {
   retryFailedItems: async (): Promise<void> => {
     throw new Error('Function not implemented.');
   },
-  exportItems: async (format?: string): Promise<void> => {
+  exportItems: async (filters?: Record<string, any>): Promise<void> => {
     throw new Error('Function not implemented.');
   },
   generateSummary: async (): Promise<void> => {
@@ -351,11 +356,62 @@ export const TaskPageContextProvider = ({
   );
 
   const { runAsync: runExportItems } = useRequest2(
-    (params: { evalId: string; format?: string }) =>
-      getExportEvaluationItems(params.evalId, params.format),
+    async (filters: Record<string, any> = {}) => {
+      const metricNameSet = new Set<string>();
+      (evaluationDetail?.metricNames || []).forEach((name) => name && metricNameSet.add(name));
+      summaryData?.data?.forEach((item) => {
+        if (item.metricName) {
+          metricNameSet.add(item.metricName);
+        }
+      });
+
+      const metricColumns = Array.from(metricNameSet)
+        .sort((a, b) => a.localeCompare(b))
+        .map((metricName) => {
+          const builtinInfo = getBuiltinDimensionInfo(metricName);
+          return {
+            key: metricName,
+            label: builtinInfo ? t(builtinInfo.name) : metricName
+          };
+        });
+
+      const headers = {
+        itemId: t('dashboard_evaluation:case_id_column'),
+        userInput: t('dashboard_evaluation:question_column'),
+        expectedOutput: t('dashboard_evaluation:reference_answer_field'),
+        actualOutput: t('dashboard_evaluation:actual_answer_field'),
+        status: t('dashboard_evaluation:stauts'),
+        errorMessage: t('dashboard_evaluation:error_info_column')
+      };
+
+      const statusLabelMap = Object.values(EvaluationStatusEnum).reduce(
+        (acc, status) => {
+          acc[status] = t(EvaluationStatusMap[status].name);
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      const filename = `evaluation_${taskDetail?.name || 'task'}_${
+        new Date().toISOString().split('T')[0]
+      }.csv`;
+
+      await downloadFetch({
+        url: '/api/core/evaluation/task/item/export',
+        filename,
+        body: {
+          evalId: taskId,
+          filters,
+          headers,
+          metricColumns,
+          statusLabelMap
+        }
+      });
+    },
     {
       manual: true,
-      errorToast: t('dashboard_evaluation:export_failed')
+      errorToast: t('dashboard_evaluation:export_failed'),
+      refreshDeps: [taskId, evaluationDetail, summaryData, t, taskDetail?.name]
     }
   );
 
@@ -500,34 +556,18 @@ export const TaskPageContextProvider = ({
 
   // 导出评估项
   const exportItems = useCallback(
-    async (format?: string) => {
+    async (filters: Record<string, any> = {}) => {
       try {
-        const blob = await runExportItems({
-          evalId: taskId,
-          format: format || 'csv'
-        });
-
-        // 创建下载链接
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `evaluation_${taskDetail?.name || 'task'}_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-
-        // 手动显示成功提示，因为下载成功后才算真正成功
+        await runExportItems(filters);
         toast({
           title: t('dashboard_evaluation:export_success'),
           status: 'success'
         });
       } catch (error) {
-        // 错误已由 useRequest2 处理
         throw error;
       }
     },
-    [taskId, taskDetail?.name, t, toast, runExportItems]
+    [runExportItems, t, toast]
   );
 
   // 生成总结报告（为指定的 metricIds）
