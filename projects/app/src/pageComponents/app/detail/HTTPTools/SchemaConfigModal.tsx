@@ -1,5 +1,5 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -26,7 +26,6 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpTools/type';
 import { pathData2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
@@ -36,7 +35,7 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 
-const ConfigModal = ({ onClose }: { onClose: () => void }) => {
+const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
@@ -181,6 +180,20 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
         </Box>
 
         <Box mt={6} mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
+          {t('common:auth_config')}
+        </Box>
+        <Box mt={2}>
+          <HeaderAuthForm
+            headerSecretValue={storeHeader2HeaderValue(headerSecret)}
+            onChange={(data) => {
+              const storeData = headerValue2StoreHeader(data);
+              setValue('headerSecret', storeData);
+            }}
+            fontWeight="normal"
+          />
+        </Box>
+
+        <Box mt={6} mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
           {t('app:request_headers')}
         </Box>
         <Box
@@ -296,20 +309,6 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
             </Table>
           </TableContainer>
         </Box>
-
-        <Box mt={6} mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
-          {t('common:auth_config')}
-        </Box>
-        <Box mt={2}>
-          <HeaderAuthForm
-            headerSecretValue={storeHeader2HeaderValue(headerSecret)}
-            onChange={(data) => {
-              const storeData = headerValue2StoreHeader(data);
-              setValue('headerSecret', storeData);
-            }}
-            fontWeight="normal"
-          />
-        </Box>
       </ModalBody>
 
       <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
@@ -330,4 +329,4 @@ const ConfigModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-export default React.memo(ConfigModal);
+export default React.memo(SchemaConfigModal);
