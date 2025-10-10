@@ -333,7 +333,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             </Text>
           </Box>
           <Flex flex="1" justifyContent="center" mr="70px">
-            <Box>
+            <Box w={'232px'}>
               <LightRowTabs
                 px={4}
                 py={1}
