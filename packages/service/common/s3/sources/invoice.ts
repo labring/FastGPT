@@ -4,7 +4,7 @@ import {
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3Options
-} from '../types';
+} from '../type';
 import type { S3PrivateBucket } from '../buckets/private';
 
 class S3InvoiceSource extends S3BaseSource<S3PrivateBucket> {

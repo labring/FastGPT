@@ -1,6 +1,6 @@
 import { POST } from '@/web/common/api/request';
 import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
-import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/types';
+import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { type AxiosProgressEvent } from 'axios';
 
 export const postUploadImg = (e: UploadImgProps) => POST<string>('/common/file/uploadImage', e);
@@ -34,5 +34,5 @@ export const postS3UploadFile = (
   });
 
 export const getUploadAvatarPresignedUrl = (params: { filename: string; temporay: boolean }) => {
-  return POST<CreatePostPresignedUrlResult>('/common/file/avatar', params);
+  return POST<CreatePostPresignedUrlResult>('/common/file/updateAvatar', params);
 };

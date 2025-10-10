@@ -1,4 +1,4 @@
-import { MongoMinioTtl } from './schema';
+import { MongoS3Ttl } from './schema';
 import { S3BucketManager } from '../../s3/buckets/manager';
 import { addLog } from '../../system/log';
 import { setCron } from '../../system/cron';
@@ -9,7 +9,7 @@ export async function clearExpiredMinioFiles() {
   try {
     const now = new Date();
 
-    const expiredFiles = await MongoMinioTtl.find({
+    const expiredFiles = await MongoS3Ttl.find({
       expiredTime: { $exists: true, $ne: null, $lte: now }
     }).lean();
 
@@ -27,19 +27,17 @@ export async function clearExpiredMinioFiles() {
     for (const file of expiredFiles) {
       try {
         const bucket = (() => {
-          switch (file.bucketName) {
-            case process.env.S3_PUBLIC_BUCKET:
-              return s3Manager.getPublicBucket();
-            case process.env.S3_PRIVATE_BUCKET:
-              return s3Manager.getPrivateBucket();
-            default:
-              throw new Error(`Unknown bucket name: ${file.bucketName}`);
+          if (file.bucketName === process.env.S3_PUBLIC_BUCKET) {
+            return s3Manager.getPublicBucket();
           }
+          if (file.bucketName === process.env.S3_PRIVATE_BUCKET) {
+            return s3Manager.getPrivateBucket();
+          }
+          throw new Error(`Unknown bucket name: ${file.bucketName}`);
         })();
 
         await bucket.delete(file.minioKey);
-
-        await MongoMinioTtl.deleteOne({ _id: file._id });
+        await MongoS3Ttl.deleteOne({ _id: file._id });
 
         success++;
         addLog.info(`Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`);
@@ -67,26 +65,4 @@ export function clearExpiredMinioFilesCron() {
       await clearExpiredMinioFiles();
     }
   });
-}
-
-export async function addMinioTtlFile({
-  bucketName,
-  minioKey,
-  expiredTime
-}: {
-  bucketName: string;
-  minioKey: string;
-  expiredTime?: Date;
-}) {
-  try {
-    await MongoMinioTtl.create({
-      bucketName,
-      minioKey,
-      expiredTime
-    });
-    addLog.info(`Added minio TTL file: ${minioKey}, expiredTime: ${expiredTime}`);
-  } catch (error) {
-    addLog.error('Failed to add minio TTL file', error);
-    throw error;
-  }
 }

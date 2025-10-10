@@ -6,7 +6,7 @@ import type {
   CreatePostPresignedUrlResult,
   S3Options,
   S3SourceType
-} from '../types';
+} from '../type';
 
 type Bucket = S3PublicBucket | S3PrivateBucket;
 

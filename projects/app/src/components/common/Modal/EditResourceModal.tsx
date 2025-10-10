@@ -49,13 +49,11 @@ const EditResourceModal = ({
     },
     [setValue]
   );
-  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
-    getUploadAvatarPresignedUrl,
-    {
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
       temporay: true,
       onSuccess: afterUploadAvatar
-    }
-  );
+    });
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>
@@ -71,7 +69,7 @@ const EditResourceModal = ({
                 h={'2rem'}
                 cursor={'pointer'}
                 borderRadius={'sm'}
-                onClick={handleFileSelectorOpen}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input

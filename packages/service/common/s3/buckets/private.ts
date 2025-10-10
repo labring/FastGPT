@@ -4,7 +4,7 @@ import {
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3Options
-} from '../types';
+} from '../type';
 
 export class S3PrivateBucket extends S3BaseBucket {
   constructor(options?: Partial<S3Options>) {
