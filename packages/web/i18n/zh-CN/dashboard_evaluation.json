@@ -373,5 +373,6 @@
   "evaluation_dimension_missing_model_config": "评测维度缺少模型配置",
   "evaluation_dimension_missing_model_config_desc": "以下评测维度缺少模型配置，请先完善配置：{{names}}",
   "example_highest_mountain_question": "世界最高峰是什么",
-  "example_highest_mountain_answer": "珠穆朗玛峰"
+  "example_highest_mountain_answer": "珠穆朗玛峰",
+  "data_updated_before_retest": "数据已更新，重新评测前将先自动保存"
 }

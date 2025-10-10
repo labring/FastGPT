@@ -340,6 +340,6 @@
   "database_host_port_tip": "範圍：{{min}}~{{max}}",
   "connection_pool_size_tooltip": "應用在資料庫進行檢索時需與資料庫建立連接，為避免影響資料庫正常業務，將建立連接池，保障應用與資料庫的連接數不超過連接池的大小。可根據資料庫性能及業務並發訪問量合理分配。",
   "database_table_desc_tip": "為了提高問答準確率，請準確填寫數據表描述，用來解釋該表的含義和用途，大模型將會根據描述識別並調用該表。",
-  "database_tables": "數據表"
-
+  "database_tables": "數據表",
+  "remove_warning": "移除警告"
 }

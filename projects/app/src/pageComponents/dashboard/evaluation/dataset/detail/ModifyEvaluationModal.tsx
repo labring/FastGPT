@@ -100,7 +100,6 @@ const ModifyEvaluationModal = ({
             {t('dashboard_evaluation:modify_reason_label')}
           </FormLabel>
           <Textarea
-            placeholder={t('dashboard_evaluation:modify_reason_input_placeholder')}
             bg="myGray.50"
             minH="80px"
             resize="vertical"

@@ -37,20 +37,27 @@ const QuoteList = React.memo(function QuoteList({
     (v) => v.showRouteToDatasetDetail
   );
 
-  const datasetDataIdList = useMemo(() => rawSearch.map((item) => item.id).filter(v => !v.includes('sql')), [rawSearch]);
-  const collectionIdList = useMemo(() => [...new Set(rawSearch.map((item) => item.collectionId))].filter(v => !v.includes('sql')), [rawSearch])
+  const datasetDataIdList = useMemo(
+    () => rawSearch.map((item) => item.id).filter((v) => !v.includes('sql')),
+    [rawSearch]
+  );
+  const collectionIdList = useMemo(
+    () =>
+      [...new Set(rawSearch.map((item) => item.collectionId))].filter((v) => !v.includes('sql')),
+    [rawSearch]
+  );
 
   const { data: quoteList } = useRequest2(
     async () =>
       !!chatItemDataId
         ? await getQuoteDataList({
-          datasetDataIdList,
-          collectionIdList,
-          chatItemDataId,
-          appId: applicationId || appId,
-          chatId: RawSourceBoxProps.chatId,
-          ...outLinkAuthData
-        })
+            datasetDataIdList,
+            collectionIdList,
+            chatItemDataId,
+            appId: applicationId || appId,
+            chatId: RawSourceBoxProps.chatId,
+            ...outLinkAuthData
+          })
         : [],
     {
       refreshDeps: [rawSearch, RawSourceBoxProps.chatId],

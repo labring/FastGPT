@@ -8,10 +8,7 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import {
-  SearchScoreTypeEnum,
-  SearchScoreTypeMap
-} from '@fastgpt/global/core/dataset/constants';
+import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import Markdown from '@/components/Markdown';
 
@@ -106,10 +103,7 @@ const QuoteItem = ({
   const score = useMemo(() => {
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
-  const isDatabaseAnswer = useMemo(
-    () => quoteItem.id.startsWith('sql'),
-    [quoteItem.id]
-  );
+  const isDatabaseAnswer = useMemo(() => quoteItem.id.startsWith('sql'), [quoteItem.id]);
   const datasetDetailUrl = useMemo(
     () =>
       isDatabaseAnswer
@@ -118,18 +112,25 @@ const QuoteItem = ({
     [isDatabaseAnswer, quoteItem.datasetId, quoteItem.collectionId]
   );
 
-  const databaseContent = useMemo(() => (
-    <Box pb={2} color={'myGray.600'}>
-      <Box>
-        <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>{t('chat:database_sql_query')}</Text>
-        <Text>{quoteItem.a || '-'}</Text>
+  const databaseContent = useMemo(
+    () => (
+      <Box pb={2} color={'myGray.600'}>
+        <Box>
+          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
+            {t('chat:database_sql_query')}
+          </Text>
+          <Text>{quoteItem.a || '-'}</Text>
+        </Box>
+        <Box mt={4}>
+          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
+            {t('chat:search_result')}
+          </Text>
+          <Text>{quoteItem.q || '-'}</Text>
+        </Box>
       </Box>
-      <Box mt={4}>
-        <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>{t('chat:search_result')}</Text>
-        <Text>{quoteItem.q || '-'}</Text>
-      </Box>
-    </Box>
-  ), [t, quoteItem.q, quoteItem.a])
+    ),
+    [t, quoteItem.q, quoteItem.a]
+  );
 
   return (
     <>
@@ -144,81 +145,86 @@ const QuoteItem = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        {
-          score?.primaryScore || score.secondaryScore.length > 0 ?
-            <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
-              {score?.primaryScore && (
-                <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
-                  <Flex
-                    px={'12px'}
-                    py={'5px'}
-                    borderRadius={'md'}
-                    color={'primary.700'}
-                    bg={'primary.50'}
-                    borderWidth={'1px'}
-                    borderColor={'primary.200'}
-                    alignItems={'center'}
-                    fontSize={'sm'}
-                  >
-                    <Box>#{score.primaryScore.index + 1}</Box>
-                    <Box borderRightColor={'primary.700'} borderRightWidth={'1px'} h={'14px'} mx={2} />
-                    <Box>
-                      {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
-                      {SearchScoreTypeMap[score.primaryScore.type]?.showScore
-                        ? ` ${score.primaryScore.value?.toFixed(4)}`
-                        : ''}
+        {score?.primaryScore || score.secondaryScore.length > 0 ? (
+          <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
+            {score?.primaryScore && (
+              <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
+                <Flex
+                  px={'12px'}
+                  py={'5px'}
+                  borderRadius={'md'}
+                  color={'primary.700'}
+                  bg={'primary.50'}
+                  borderWidth={'1px'}
+                  borderColor={'primary.200'}
+                  alignItems={'center'}
+                  fontSize={'sm'}
+                >
+                  <Box>#{score.primaryScore.index + 1}</Box>
+                  <Box
+                    borderRightColor={'primary.700'}
+                    borderRightWidth={'1px'}
+                    h={'14px'}
+                    mx={2}
+                  />
+                  <Box>
+                    {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
+                    {SearchScoreTypeMap[score.primaryScore.type]?.showScore
+                      ? ` ${score.primaryScore.value?.toFixed(4)}`
+                      : ''}
+                  </Box>
+                </Flex>
+              </MyTooltip>
+            )}
+            {score.secondaryScore.map((item, i) => (
+              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
+                <Box fontSize={'xs'}>
+                  <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                    <Box
+                      px={'5px'}
+                      borderWidth={'1px'}
+                      borderRadius={'sm'}
+                      mr={'2px'}
+                      {...(scoreTheme[i] && scoreTheme[i])}
+                    >
+                      <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
+                    </Box>
+                    <Box transform={'scale(0.9)'}>
+                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
                     </Box>
                   </Flex>
-                </MyTooltip>
-              )}
-              {score.secondaryScore.map((item, i) => (
-                <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
-                  <Box fontSize={'xs'}>
-                    <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
-                      <Box
-                        px={'5px'}
-                        borderWidth={'1px'}
-                        borderRadius={'sm'}
-                        mr={'2px'}
-                        {...(scoreTheme[i] && scoreTheme[i])}
-                      >
-                        <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
-                      </Box>
-                      <Box transform={'scale(0.9)'}>
-                        {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
-                      </Box>
-                    </Flex>
-                    <Box h={'4px'}>
-                      {SearchScoreTypeMap[item.type]?.showScore && (
-                        <Progress
-                          value={item.value * 100}
-                          h={'4px'}
-                          w={'100%'}
-                          size="sm"
-                          borderRadius={'20px'}
-                          {...(scoreTheme[i] && {
-                            colorScheme: scoreTheme[i].colorScheme
-                          })}
-                          bg="#E8EBF0"
-                        />
-                      )}
-                    </Box>
+                  <Box h={'4px'}>
+                    {SearchScoreTypeMap[item.type]?.showScore && (
+                      <Progress
+                        value={item.value * 100}
+                        h={'4px'}
+                        w={'100%'}
+                        size="sm"
+                        borderRadius={'20px'}
+                        {...(scoreTheme[i] && {
+                          colorScheme: scoreTheme[i].colorScheme
+                        })}
+                        bg="#E8EBF0"
+                      />
+                    )}
                   </Box>
-                </MyTooltip>
-              ))}
-            </Flex> : ''
-        }
+                </Box>
+              </MyTooltip>
+            ))}
+          </Flex>
+        ) : (
+          ''
+        )}
 
         <Box flex={'1 0 0'}>
-          {
-            isDatabaseAnswer ? databaseContent : (
-              <>
-                <Markdown source={quoteItem.q} />
-                <Markdown source={quoteItem.a} />
-              </>
-            )
-          }
-
+          {isDatabaseAnswer ? (
+            databaseContent
+          ) : (
+            <>
+              <Markdown source={quoteItem.q} />
+              <Markdown source={quoteItem.a} />
+            </>
+          )}
         </Box>
 
         <Flex

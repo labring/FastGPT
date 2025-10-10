@@ -156,9 +156,16 @@ const CollectionCard = () => {
     }
   );
 
+  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
-    type: 'delete'
+    type: 'delete',
+    ...(isDatabase
+      ? {
+          title: t('dataset:remove_warning')
+        }
+      : {})
   });
   const { runAsync: onDelCollection } = useRequest2(
     (collectionIds: string[]) => {
@@ -224,8 +231,6 @@ const CollectionCard = () => {
   });
 
   const isLoading = isUpdating || isSyncing || isGetting || isDropping;
-
-  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
