@@ -51,3 +51,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { handler };
