@@ -72,8 +72,6 @@ import {
   removeEvaluationTaskJob,
   removeEvaluationItemJobs,
   removeEvaluationItemJobsByItemId,
-  checkEvaluationTaskJobActive,
-  checkEvaluationItemJobActive,
   getEvaluationTaskWorker,
   getEvaluationItemWorker
 } from '@fastgpt/service/core/evaluation/task/mq';
@@ -373,70 +371,6 @@ describe('Evaluation MQ System', () => {
         '@fastgpt/service/core/evaluation/utils/jobCleanup'
       );
       expect(createJobCleaner).toHaveBeenCalledWith(options);
-    });
-  });
-
-  describe('任务状态检查', () => {
-    test('应该检查评估任务是否活跃', async () => {
-      // Mock 返回活跃任务
-      (evaluationTaskQueue.getJobs as any).mockResolvedValueOnce([
-        { data: { evalId: evaluationId } }
-      ]);
-
-      const isActive = await checkEvaluationTaskJobActive(evaluationId);
-
-      expect(isActive).toBe(true);
-      expect(evaluationTaskQueue.getJobs).toHaveBeenCalledWith([
-        'active',
-        'waiting',
-        'delayed',
-        'prioritized'
-      ]);
-    });
-
-    test('应该正确检测非活跃的评估任务', async () => {
-      // Mock 返回空数组
-      (evaluationTaskQueue.getJobs as any).mockResolvedValueOnce([]);
-
-      const isActive = await checkEvaluationTaskJobActive(evaluationId);
-
-      expect(isActive).toBe(false);
-    });
-
-    test('应该检查评估项是否活跃', async () => {
-      const evalItem = await MongoEvalItem.create({
-        evalId: new Types.ObjectId(evaluationId),
-        dataItem: { userInput: 'Test input', expectedOutput: 'Test output' }
-      });
-      const itemId = evalItem._id.toString();
-
-      // Mock 返回活跃任务
-      (evaluationItemQueue.getJobs as any).mockResolvedValueOnce([
-        { data: { evalItemId: itemId } }
-      ]);
-
-      const isActive = await checkEvaluationItemJobActive(itemId);
-
-      expect(isActive).toBe(true);
-      expect(evaluationItemQueue.getJobs).toHaveBeenCalledWith([
-        'active',
-        'waiting',
-        'delayed',
-        'prioritized'
-      ]);
-    });
-
-    test('应该处理状态检查错误', async () => {
-      // Mock 抛出错误
-      (evaluationTaskQueue.getJobs as any).mockRejectedValueOnce(new Error('Queue error'));
-
-      const isActive = await checkEvaluationTaskJobActive(evaluationId);
-
-      expect(isActive).toBe(false);
-      expect(addLog.error).toHaveBeenCalledWith('[Evaluation] Failed to check task job status', {
-        evalId: evaluationId,
-        error: expect.any(Error)
-      });
     });
   });
 

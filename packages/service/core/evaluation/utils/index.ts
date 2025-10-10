@@ -5,6 +5,7 @@ import type { ValidationResult } from '@fastgpt/global/core/evaluation/validate'
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvalDatasetCollection } from '../dataset/evalDatasetCollectionSchema';
+import { MongoEvaluation } from '../task/schema';
 import { Types } from 'mongoose';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { getBuiltinMetrics } from '../metric/provider';
@@ -14,6 +15,7 @@ export type EvaluationValidationParams = Partial<CreateEvaluationParams>;
 export interface EvaluationValidationOptions {
   mode?: 'create' | 'update'; // validation mode
   teamId?: string; // required for evalDatasetCollection existence validation
+  excludeEvaluationId?: string; // exclude current evaluation when checking name uniqueness
 }
 
 /**
@@ -167,7 +169,9 @@ export async function validateEvaluationParams(
 
   // For update mode, only validate provided fields
   if (name !== undefined) {
-    if (!name || !name.trim()) {
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+
+    if (!trimmedName) {
       return {
         isValid: false,
         errors: [
@@ -180,7 +184,7 @@ export async function validateEvaluationParams(
       };
     }
 
-    if (name.length > MAX_NAME_LENGTH) {
+    if (trimmedName.length > MAX_NAME_LENGTH) {
       return {
         isValid: false,
         errors: [
@@ -188,10 +192,37 @@ export async function validateEvaluationParams(
             code: EvaluationErrEnum.evalNameTooLong,
             message: 'Evaluation name is too long (max 100 characters)',
             field: 'name',
-            debugInfo: { currentLength: name.length, maxLength: 100 }
+            debugInfo: { currentLength: trimmedName.length, maxLength: 100 }
           }
         ]
       };
+    }
+
+    if (options?.teamId) {
+      const nameFilter: Record<string, any> = {
+        teamId: new Types.ObjectId(options.teamId),
+        name: trimmedName
+      };
+
+      if (options.excludeEvaluationId && Types.ObjectId.isValid(options.excludeEvaluationId)) {
+        nameFilter._id = { $ne: new Types.ObjectId(options.excludeEvaluationId) };
+      }
+
+      const existingEvaluation = await MongoEvaluation.findOne(nameFilter).select('_id').lean();
+
+      if (existingEvaluation) {
+        return {
+          isValid: false,
+          errors: [
+            {
+              code: EvaluationErrEnum.evalNameDuplicate,
+              message: 'Evaluation name already exists',
+              field: 'name',
+              debugInfo: { duplicatedResourceId: existingEvaluation._id.toString() }
+            }
+          ]
+        };
+      }
     }
   }
 
@@ -345,7 +376,8 @@ export async function validateEvaluationParamsForCreate(
 
 export async function validateEvaluationParamsForUpdate(
   params: EvaluationValidationParams,
-  teamId?: string
+  teamId?: string,
+  excludeEvaluationId?: string
 ): Promise<ValidationResult> {
-  return validateEvaluationParams(params, { mode: 'update', teamId });
+  return validateEvaluationParams(params, { mode: 'update', teamId, excludeEvaluationId });
 }

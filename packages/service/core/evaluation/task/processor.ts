@@ -16,8 +16,8 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
-import { getBatchEvaluationItemStatus } from './statusCalculator';
 import { createEvaluationError } from './errors';
+import { getEvaluationTaskStats } from './statusCalculator';
 
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
@@ -396,9 +396,6 @@ const finishEvaluationTask = async (evalId: string) => {
 const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   const { evalId } = job.data;
 
-  // Report progress
-  await job.updateProgress(0);
-
   // Get evaluation data
   const evaluation = await MongoEvaluation.findById(evalId).lean();
 
@@ -419,23 +416,14 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     throw createEvaluationError(EvaluationErrEnum.evalEvaluatorsConfigInvalid, 'ResourceCheck');
   }
 
-  // Report validation progress
-  await job.updateProgress(20);
-
   // Check if evaluation items exist
   const existingItems = await MongoEvalItem.find({ evalId }).lean();
   if (existingItems.length === 0) {
     throw createEvaluationError(EvaluationErrEnum.evalItemNotFound, 'ResourceCheck');
   }
 
-  // Get real-time status and submit items to queue
-  const itemIds = existingItems.map((item) => item._id.toString());
-  const statusMap = await getBatchEvaluationItemStatus(itemIds);
-
   const itemsToProcess = existingItems.filter((item) => {
-    const realTimeStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
-    // Only process items in queuing status
-    return realTimeStatus === EvaluationStatusEnum.queuing;
+    return item.status === EvaluationStatusEnum.queuing;
   });
 
   if (itemsToProcess.length > 0) {
@@ -451,9 +439,6 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
     addLog.debug(`[Evaluation] Submitted ${jobs.length} items to queue`);
   }
 
-  // Report completion
-  await job.updateProgress(100);
-
   addLog.debug(
     `[Evaluation] Task processing completed: ${evalId}, submitted ${itemsToProcess.length} evaluation items to queue`
   );
@@ -466,9 +451,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
   const { evalId, evalItemId } = job.data;
 
   addLog.debug(`[Evaluation] Start processing evaluation item: ${evalItemId}`);
-
-  // Report progress
-  await job.updateProgress(0);
 
   // Get evaluation item
   const evalItem = await MongoEvalItem.findById(evalItemId);
@@ -510,9 +492,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
     addLog.debug(`[Evaluation] Starting evaluation item from scratch: ${evalItemId}`);
   }
 
-  // Report setup progress
-  await job.updateProgress(10);
-
   // Execute evaluation target if needed
   if (!targetOutput || !targetOutput.actualOutput) {
     try {
@@ -532,9 +511,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
           }
         }
       );
-
-      // Report target execution progress
-      await job.updateProgress(30);
 
       // Record target usage
       if (targetOutput.usage) {
@@ -639,13 +615,6 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
         { _id: new Types.ObjectId(evalItemId) },
         { $set: { evaluatorOutputs: evaluatorOutputs } }
       );
-
-      // Report evaluator progress
-      const completedEvaluators = evaluatorOutputs.filter(
-        (output) => output?.data?.score !== undefined
-      ).length;
-      const evaluatorProgress = 30 + (60 * completedEvaluators) / evaluation.evaluators.length;
-      await job.updateProgress(Math.round(evaluatorProgress));
     } catch (error) {
       // Handle evaluator error
       const errorMessage = getErrText(error) || 'Evaluator execution failed';

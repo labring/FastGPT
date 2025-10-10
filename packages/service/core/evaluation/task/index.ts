@@ -17,7 +17,6 @@ import {
   removeEvaluationItemJobsByItemId,
   addEvaluationTaskJob,
   addEvaluationItemJob,
-  checkEvaluationTaskJobActive,
   evaluationItemQueue
 } from './mq';
 import { createEvaluationUsage } from '../../../support/wallet/usage/controller';
@@ -603,11 +602,7 @@ export class EvaluationTaskService {
   static async stopEvaluation(evalId: string, teamId: string): Promise<void> {
     const evaluation = await this.getEvaluation(evalId, teamId);
 
-    // Check if task is running using job status
-    const isJobActive = await checkEvaluationTaskJobActive(evalId);
-
     if (
-      !isJobActive &&
       ![EvaluationStatusEnum.evaluating, EvaluationStatusEnum.queuing].includes(evaluation.status)
     ) {
       throw new Error(EvaluationErrEnum.evalOnlyRunningCanStop);
@@ -825,9 +820,9 @@ export class EvaluationTaskService {
       evalId: evaluation._id
     };
 
-    // Use metadata.status for status filtering
+    // Use status for status filtering
     if (status !== undefined) {
-      matchConditions['metadata.status'] = status;
+      matchConditions['status'] = status;
     }
 
     // Add text search conditions
@@ -855,12 +850,7 @@ export class EvaluationTaskService {
     // Build pipeline stages
     const commonPipeline: any[] = [{ $match: matchConditions }];
 
-    // Add status field using metadata.status
-    commonPipeline.push({
-      $addFields: {
-        status: '$metadata.status'
-      }
-    });
+    // Status field is already available directly
 
     // Add threshold filter if specified
     if (belowThreshold) {
@@ -876,7 +866,7 @@ export class EvaluationTaskService {
         commonPipeline.push({
           $match: {
             hasFailedEvaluator: true,
-            'metadata.status': EvaluationStatusEnum.completed, // Only completed items
+            status: EvaluationStatusEnum.completed, // Only completed items
             evaluatorOutputs: { $exists: true, $ne: null, $not: { $size: 0 } } // Valid evaluator outputs
           }
         });
@@ -922,13 +912,7 @@ export class EvaluationTaskService {
 
     await this.getEvaluation(item.evalId, teamId);
 
-    // Get real-time status
-    const status = await getEvaluationItemStatus(itemId);
-
-    return {
-      ...item,
-      status
-    };
+    return item;
   }
 
   /**

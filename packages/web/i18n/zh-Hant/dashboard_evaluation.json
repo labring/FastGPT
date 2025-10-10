@@ -349,6 +349,7 @@
   "click_to_retry": "點擊重試",
   "comprehensive_score_weight_description": "按照指定權重計算測試數據全部維度的綜合評分，可根據應用使用場景所關注的維度進行設置。",
   "no_data_available": "暫無數據",
+  "case_id_column": "評估項ID",
   "question_column": "問題",
   "comprehensive_score_column": "綜合評分",
   "error_info_column": "異常信息",
