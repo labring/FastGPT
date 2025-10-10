@@ -38,10 +38,34 @@ docSite/resources/_gen/
 docSite/.vercel
 *.local.*
 
-
 .idea/
 files/helm/fastgpt/fastgpt-0.1.0.tgz
 files/helm/fastgpt/charts/*.tgz
 
 tmp/
 coverage
+
+# ============ 新增的关键内容 ============
+# 数据库文件
+mongo/
+pg/
+fastgpt-minio/
+
+# Docker 相关
+docker-compose.override.yml
+*.yml.bak
+
+# 日志文件
+*.log
+logs/
+
+# 系统文件
+*.pid
+*.lock
+*.meta
+*.interim
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
