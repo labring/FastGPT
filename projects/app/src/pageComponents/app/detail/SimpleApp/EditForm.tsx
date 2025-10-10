@@ -98,7 +98,7 @@ const EditForm = ({
               : prevForm.dataset.searchMode === DatasetSearchModeEnum.database
                 ? DatasetSearchModeEnum.embedding
                 : prevForm.dataset.searchMode,
-          generateSqlModel: defaultModels.llm?.model
+          generateSqlModel: prevForm.dataset?.generateSqlModel || defaultModels.llm?.model
         }
       };
     });
