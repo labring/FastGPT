@@ -13,7 +13,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import ConfigModal from './ConfigModal';
+import SchemaConfigModal from './SchemaConfigModal';
 import ManualToolModal from './ManualToolModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
@@ -246,7 +246,7 @@ const EditForm = ({
         </MyBox>
       </Box>
 
-      {isOpenConfigModal && <ConfigModal onClose={onCloseConfigModal} />}
+      {isOpenConfigModal && <SchemaConfigModal onClose={onCloseConfigModal} />}
       {isOpenAddToolModal && <ManualToolModal onClose={onCloseAddToolModal} />}
       {toolDetail && (
         <ToolDetailModal
