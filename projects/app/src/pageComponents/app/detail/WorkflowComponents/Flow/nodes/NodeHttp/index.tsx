@@ -25,6 +25,7 @@ import {
 } from '@chakra-ui/react';
 import {
   ContentTypes,
+  HTTP_METHODS,
   NodeInputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -198,28 +199,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           bg={'white'}
           width={'100%'}
           value={requestMethods?.value}
-          list={[
-            {
-              label: 'GET',
-              value: 'GET'
-            },
-            {
-              label: 'POST',
-              value: 'POST'
-            },
-            {
-              label: 'PUT',
-              value: 'PUT'
-            },
-            {
-              label: 'DELETE',
-              value: 'DELETE'
-            },
-            {
-              label: 'PATCH',
-              value: 'PATCH'
-            }
-          ]}
+          list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
           onChange={(e) => {
             onChangeNode({
               nodeId,

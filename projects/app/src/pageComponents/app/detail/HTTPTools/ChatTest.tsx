@@ -56,10 +56,13 @@ const ChatTest = ({
       return await postRunHTTPTool({
         baseUrl,
         params: data,
-        headerSecret,
+        headerSecret: currentTool.headerSecret || headerSecret,
         toolPath: currentTool.path,
         method: currentTool.method,
-        customHeaders: customHeaders
+        customHeaders: customHeaders,
+        staticParams: currentTool.staticParams,
+        staticHeaders: currentTool.staticHeaders,
+        staticBody: currentTool.staticBody
       });
     },
     {
