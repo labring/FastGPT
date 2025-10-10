@@ -19,7 +19,10 @@ async function handler(
 ): Promise<updateAvatarResponse> {
   const { filename, temporay } = req.body;
   const { teamId } = await authCert({ req, authToken: true });
-  return await getS3AvatarSource().createPostPresignedUrl({ teamId, filename }, { temporay });
+  return await getS3AvatarSource().createPostPresignedUrl(
+    { teamId, filename },
+    { temporay, ttl: 1 }
+  );
 }
 
 export default NextAPI(handler);

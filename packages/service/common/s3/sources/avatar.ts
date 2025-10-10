@@ -8,6 +8,7 @@ import {
   type S3Options
 } from '../types';
 import type { S3PublicBucket } from '../buckets/public';
+import { MongoMinioTtl } from '../../file/minioTtl/schema';
 
 class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
   constructor(options?: Partial<S3Options>) {
@@ -39,15 +40,31 @@ class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
     return avatarWithPrefix.replace(S3APIPrefix.avatar, '');
   }
 
-  removeAvatar(avatarWithPrefix: string): Promise<void> {
+  async removeAvatar(avatarWithPrefix: string): Promise<void> {
     const avatarObjectKey = this.createAvatarObjectKey(avatarWithPrefix);
-    return this.bucket.delete(avatarObjectKey);
+    await MongoMinioTtl.deleteOne({ minioKey: avatarObjectKey, bucketName: this.bucketName });
+    await this.bucket.delete(avatarObjectKey);
   }
 
   async moveAvatarFromTemp(tempAvatarWithPrefix: string): Promise<string> {
     const tempAvatarObjectKey = this.createAvatarObjectKey(tempAvatarWithPrefix);
     const avatarObjectKey = tempAvatarObjectKey.replace(`${S3Sources.temp}/`, '');
+
+    try {
+      const file = await MongoMinioTtl.findOne({
+        bucketName: this.bucketName,
+        minioKey: tempAvatarObjectKey
+      });
+      if (file) {
+        file.set({ expiredTime: undefined, minioKey: avatarObjectKey });
+        await file.save();
+      }
+    } catch (error) {
+      console.error('Failed to convert TTL to permanent:', error);
+    }
+
     await this.bucket.move(tempAvatarObjectKey, avatarObjectKey);
+
     return S3APIPrefix.avatar + avatarObjectKey;
   }
 }
