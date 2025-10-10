@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ModalBody,
   Box,
@@ -18,6 +18,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import ModifyEvaluationModal from './ModifyEvaluationModal';
 import { evaluationStatusMap, EvaluationStatus } from './const';
@@ -90,7 +91,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   );
 
   const [errorMsg, setErrorMsg] = useState(formData.qualityMetadata?.error || '');
-
+  const [hasDataChanged, setHasDataChanged] = useState(false);
   const [reviewBtns, setReviewBtns] = useState<ReviewBtnType[]>([
     {
       label: t('dashboard_evaluation:start_evaluation'),
@@ -200,7 +201,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     handleSubmit,
     formState: { errors },
     getValues,
-    reset
+    reset,
+    watch
   } = useForm<EditDataFormData>({
     defaultValues: {
       question: defaultQuestion,
@@ -208,6 +210,14 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     }
   });
 
+  // 监听表单变化，检查数据是否被修改
+  const watchedValues = watch();
+
+  useEffect(() => {
+    const questionChanged = watchedValues.question !== defaultQuestion;
+    const answerChanged = watchedValues.referenceAnswer !== defaultReferenceAnswer;
+    setHasDataChanged(questionChanged || answerChanged);
+  }, [watchedValues, defaultQuestion, defaultReferenceAnswer]);
   // 当弹窗打开时重置表单数据
   React.useEffect(() => {
     if (isOpen) {
@@ -481,11 +491,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
               <VStack spacing={6} align="stretch">
                 <FormControl isRequired>
                   <FormLabel required mt={1.5} mb={3.5}>
-                    {t('dashboard_evaluation:question')}
+                    {t('dashboard_evaluation:question_input_label')}
                   </FormLabel>
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_question')}
-                    bg="gray.50"
                     minH="234px"
                     {...register('question', {
                       required: t('dashboard_evaluation:question_required')
@@ -499,7 +508,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                   </FormLabel>
                   <Textarea
                     placeholder={t('dashboard_evaluation:enter_reference_answer')}
-                    bg="gray.50"
                     minH="234px"
                     {...register('referenceAnswer', {
                       required: t('dashboard_evaluation:reference_answer_required')
@@ -521,25 +529,53 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
                     <HStack ml={'auto'}>
                       {reviewBtns
                         .filter((btn) => btn.isShow)
-                        .map((btn, index) => (
-                          <Button
-                            key={btn.key}
-                            fontSize={'12px'}
-                            px={2.5}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault(); // 阻止默认行为
-                              handleOprRes(btn.key);
-                            }}
-                            variant="outline"
-                            isLoading={
-                              retestLoading && (btn.key === 'startReview' || btn.key === 'reStart')
-                            }
-                            disabled={retestLoading}
-                          >
-                            {btn.label}
-                          </Button>
-                        ))}
+                        .map((btn, index) => {
+                          // 对于重新评测按钮，添加提示
+                          if (btn.key === 'reStart' && hasDataChanged) {
+                            return (
+                              <MyTooltip
+                                key={btn.key}
+                                label={t('dashboard_evaluation:data_updated_before_retest')}
+                              >
+                                <Button
+                                  fontSize={'12px'}
+                                  px={2.5}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault(); // 阻止默认行为
+                                    handleOprRes(btn.key);
+                                  }}
+                                  variant="outline"
+                                  isLoading={retestLoading}
+                                  disabled={retestLoading}
+                                >
+                                  {btn.label}
+                                </Button>
+                              </MyTooltip>
+                            );
+                          }
+
+                          return (
+                            <Button
+                              key={btn.key}
+                              fontSize={'12px'}
+                              px={2.5}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault(); // 阻止默认行为
+                                handleOprRes(btn.key);
+                              }}
+                              variant="outline"
+                              isLoading={
+                                retestLoading &&
+                                (btn.key === 'startReview' || btn.key === 'reStart')
+                              }
+                              disabled={retestLoading}
+                            >
+                              {btn.label}
+                            </Button>
+                          );
+                        })}
                     </HStack>
                   )}
               </Flex>
@@ -595,7 +631,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
             currentQualityResult === EvalDatasetDataQualityResultEnum.highQuality
               ? EvaluationStatus.HighQuality
               : EvaluationStatus.NeedsImprovement,
-          evaluationResult: currentQualityReason
+          evaluationResult: ''
         }}
       />
     </>
