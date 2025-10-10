@@ -170,7 +170,9 @@ export enum NodeInputKeyEnum {
 
   // agent
   subApps = 'subApps',
-  planAgentConfig = 'planAgentConfig',
+  isAskAgent = 'isAskAgent',
+  isPlanAgent = 'isPlanAgent',
+  isConfirmPlanAgent = 'isConfirmPlanAgent',
 
   // dataset
   datasetSelectList = 'datasets',
