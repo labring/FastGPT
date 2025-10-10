@@ -1,7 +1,7 @@
 # --------- install dependence -----------
 FROM python:3.11-alpine AS python_base
 # 安装make和g++以及libseccomp开发包
-RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers libseccomp libseccomp-dev
+RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers libseccomp-dev
 
 WORKDIR /app
 COPY projects/sandbox/requirements.txt /app/requirements.txt
@@ -10,11 +10,15 @@ COPY projects/sandbox/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple Cython && \
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple -r /app/requirements.txt
 
-# 下载并安装libseccomp的Python绑定,设置正确的VERSION_RELEASE
+# 下载、编译并安装libseccomp及其Python绑定
 ENV VERSION_RELEASE=2.5.5
 RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz && \
     tar -zxvf libseccomp-2.5.5.tar.gz && \
-    cd libseccomp-2.5.5/src/python && \
+    cd libseccomp-2.5.5 && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd src/python && \
     python setup.py install && \
     cd /app && \
     rm -rf libseccomp-2.5.5 libseccomp-2.5.5.tar.gz
