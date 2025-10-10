@@ -513,14 +513,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
               <FormLabel minW="120px" mb={0}>
                 {t('dashboard_evaluation:task_name_input')}
               </FormLabel>
-              <Input
-                {...register('name')}
-                placeholder={t('dashboard_evaluation:task_name_input_placeholder')}
-                h={8}
-                isInvalid={!!errors.name}
-                flex={1}
-                autoFocus
-              />
+              <Input {...register('name')} h={8} isInvalid={!!errors.name} flex={1} autoFocus />
             </Flex>
 
             {/* 评测应用 */}
@@ -627,6 +620,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                   size="md"
                   flexShrink={0}
                   onClick={() => fetchDatasets({})}
+                  p={0}
                 >
                   <MyIcon name="common/confirm/restoreTip" w="14px" />
                 </Button>
