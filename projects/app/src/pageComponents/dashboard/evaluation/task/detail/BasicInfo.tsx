@@ -85,7 +85,7 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ evaluationDetail, appDetail }) =>
               <Avatar
                 src={evaluationDetail?.target?.config?.avatar}
                 borderRadius={'sm'}
-                w={'1.5rem'}
+                w={'16px'}
               />
               {appDetail?.permission?.hasWritePer ? (
                 <Link

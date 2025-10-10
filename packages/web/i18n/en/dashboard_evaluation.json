@@ -166,7 +166,6 @@
   "select_model_placeholder": "Select",
   "create_new_task_modal": "Create task",
   "task_name_input": "Name",
-  "task_name_input_placeholder": "",
   "evaluation_app_select": "App",
   "evaluation_app_support_tip": "You can select a simple app or workflow but not a plugin.",
   "evaluation_app_select_placeholder": "Select",

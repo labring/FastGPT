@@ -181,14 +181,7 @@ const TestRun = ({
     >
       <Grid templateColumns="3fr 2fr" h="100%" gap={0} overflow="hidden">
         {/* 左侧 - 输入区域 */}
-        <Box
-          borderRight="1px solid"
-          borderColor="myGray.200"
-          display="flex"
-          flexDirection="column"
-          h="100%"
-          overflow="hidden"
-        >
+        <Box display="flex" flexDirection="column" h="100%" overflow="hidden">
           <Box flex="1" overflowY="auto" p={6} className={styles.scrollbar}>
             <VStack spacing={4} align="stretch">
               {/* 问题 */}
@@ -241,7 +234,7 @@ const TestRun = ({
         {/* 右侧 - 运行结果区域 */}
         <Box display="flex" flexDirection="column" h="100%" overflow="hidden">
           {/* 运行结果标题和按钮 */}
-          <Flex justify="space-between" align="center" p={6} pb={2}>
+          <Flex justify="space-between" align="center" p={'18px 24px 8px 0'}>
             <Text fontSize="md" fontWeight="medium">
               {t('dashboard_evaluation:run_result_label')}
             </Text>
@@ -278,7 +271,7 @@ const TestRun = ({
           </Flex>
 
           {/* 运行结果内容 */}
-          <Box flex="1" px={6} pb={6}>
+          <Box flex="1" pr={6} pb={6}>
             {testResult && testResult.status !== 'running' && (
               <Box
                 h="100%"
@@ -291,7 +284,7 @@ const TestRun = ({
                 flexDirection="column"
               >
                 {/* 状态标识 */}
-                <Flex align="center" gap={2} mb={4}>
+                <Flex align="center" gap={2} mb={5}>
                   <MyTag
                     showDot
                     colorSchema={statusInfo?.colorSchema as any}
@@ -307,8 +300,8 @@ const TestRun = ({
 
                 {/* 分数显示 */}
                 {testResult.status === 'success' && (
-                  <Box mb={4}>
-                    <Text fontSize="lg" fontWeight="bold" color="myGray.800">
+                  <Box mb={1}>
+                    <Text fontSize="sm" color="myGray.500">
                       {Number(testResult.score) * 100} {t('dashboard_evaluation:score_unit')}
                     </Text>
                   </Box>
@@ -316,8 +309,8 @@ const TestRun = ({
 
                 {/* 报错信息标题 */}
                 {testResult.status === 'error' && (
-                  <Box mb={4}>
-                    <Text fontSize="sm" fontWeight="medium" color="red.500">
+                  <Box mb={1}>
+                    <Text fontSize="sm" color="red.500">
                       {t('dashboard_evaluation:error_info_label')}
                     </Text>
                   </Box>
@@ -327,7 +320,7 @@ const TestRun = ({
                 <Box
                   flex="1"
                   fontSize="sm"
-                  color={testResult.status === 'error' ? 'red.500' : 'myGray.700'}
+                  color={testResult.status === 'error' ? 'red.500' : 'myGray.500'}
                   whiteSpace="pre-wrap"
                   overflowY="auto"
                   className={styles.scrollbar}
