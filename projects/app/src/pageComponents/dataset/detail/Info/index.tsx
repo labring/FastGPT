@@ -35,8 +35,14 @@ const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServic
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
-    useContextSelector(DatasetPageContext, (v) => v);
+  const {
+    datasetDetail,
+    loadDatasetDetail,
+    updateDataset,
+    rebuildingCount,
+    trainingCount,
+    isDatabaseType: isDatabase
+  } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
@@ -117,8 +123,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     vlmModel: showVlmModel
   } = DatasetTypeMap[datasetDetail.type]?.formConfig || {};
 
-  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
-
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
@@ -178,11 +182,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
                 {t('common:core.ai.model.Vector Model')}
               </FormLabel>
-              <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
-                <Box fontSize={'mini'}>
-                  {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
-                </Box>
-              </MyTooltip>
+              {!isDatabase && (
+                <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
+                  <Box fontSize={'mini'}>
+                    {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
+                  </Box>
+                </MyTooltip>
+              )}
             </Flex>
             <Box pt={2}>
               <AIModelSelector

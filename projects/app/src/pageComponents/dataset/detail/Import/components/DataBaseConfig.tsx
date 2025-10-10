@@ -335,32 +335,30 @@ const DataBaseConfig = () => {
           )}
           {/* Table Description */}
           <Box mb={4}>
-            <FormLabel required color="myGray.900" mb={1}>
+            <FormLabel required color="myGray.900" mb={1} display={'flex'} alignItems={'center'}>
               <Text>{t('dataset:table_description')}</Text>
-            </FormLabel>
-            <Box
-              flex={1}
-              css={{
-                '& > span': {
-                  display: 'block'
+              <QuestionTip
+                label={
+                  <UnorderedList>
+                    <ListItem>{t('dataset:database_table_desc_tip')}</ListItem>
+                    <ListItem>{t('dataset:default_table_desc_tip')}</ListItem>
+                  </UnorderedList>
                 }
-              }}
-            >
-              <MyTooltip w={'100%'} label={errors.description?.message || ''}>
-                <MyInput
-                  {...register('description', {
-                    required: currentTable?.enabled ? true : false,
-                    validate: (value) => {
-                      if (!currentTable?.enabled) return true;
-                      return value?.trim() ? true : false;
-                    }
-                  })}
-                  placeholder={t('dataset:table_description_placeholder')}
-                  bg="white"
-                  w={'100%'}
-                  isDisabled={isOnlyRead}
-                />
-              </MyTooltip>
+              />
+            </FormLabel>
+            <Box flex={1}>
+              <MyInput
+                {...register('description', {
+                  required: currentTable?.enabled ? true : false,
+                  validate: (value) => {
+                    if (!currentTable?.enabled) return true;
+                    return value?.trim() ? true : false;
+                  }
+                })}
+                bg="white"
+                w={'100%'}
+                isDisabled={isOnlyRead}
+              />
             </Box>
           </Box>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={4}>
@@ -401,7 +399,7 @@ const DataBaseConfig = () => {
                       {t('dataset:column_type')}
                     </Th>
                     <Th py={4}>
-                      <HStack spacing={1}>
+                      <HStack gap={0}>
                         <Text>{t('dataset:column_description')}</Text>
                         <QuestionTip
                           label={
@@ -414,7 +412,7 @@ const DataBaseConfig = () => {
                       </HStack>
                     </Th>
                     <Th py={4}>
-                      <HStack spacing={1}>
+                      <HStack gap={0}>
                         <Text>{t('dataset:column_enabled')}</Text>
                         <QuestionTip label={<>{t('dataset:column_enabled_tip')}</>} />
                       </HStack>
