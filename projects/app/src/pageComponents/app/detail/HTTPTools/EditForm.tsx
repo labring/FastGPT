@@ -57,6 +57,22 @@ const EditForm = ({
     onClose: onCloseAddToolModal
   } = useDisclosure();
 
+  const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest2(
+    async (updatedToolList: HttpToolConfigType[]) =>
+      await putUpdateHttpPlugin({
+        appId: appDetail._id,
+        toolList: updatedToolList
+      }),
+    {
+      manual: true,
+      onSuccess: () => {
+        reloadApp();
+      },
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   return (
     <>
       <Box p={6}>
@@ -91,7 +107,7 @@ const EditForm = ({
           )}
         </Flex>
 
-        <Box mt={3}>
+        <MyBox mt={3} isLoading={isDeletingTool}>
           {toolList?.map((tool, index) => {
             return (
               <MyBox
@@ -214,15 +230,11 @@ const EditForm = ({
                           borderColor: 'red.300'
                         }}
                         tip={t('common:Delete')}
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           const updatedToolList =
                             toolList?.filter((t) => t.name !== tool.name) || [];
-                          await putUpdateHttpPlugin({
-                            appId: appDetail._id,
-                            toolList: updatedToolList
-                          });
-                          reloadApp();
+                          runDeleteHttpTool(updatedToolList);
                         }}
                       />
                     </>
@@ -231,7 +243,7 @@ const EditForm = ({
               </MyBox>
             );
           })}
-        </Box>
+        </MyBox>
       </Box>
 
       {isOpenConfigModal && <ConfigModal onClose={onCloseConfigModal} />}

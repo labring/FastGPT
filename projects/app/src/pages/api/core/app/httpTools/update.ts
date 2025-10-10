@@ -13,9 +13,9 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 export type UpdateHttpPluginBody = {
   appId: string;
+  toolList: HttpToolConfigType[];
   baseUrl?: string;
   apiSchemaStr?: string;
-  toolList: HttpToolConfigType[];
   headerSecret?: StoreSecretValueType;
   customHeaders?: string;
 };
