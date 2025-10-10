@@ -305,6 +305,7 @@
   "tool_detail": "工具详情",
   "tool_input_param_tip": "该插件正常运行需要配置相关信息",
   "tool_not_active": "该工具尚未激活",
+  "tool_params_description_tips": "参数功能的描述，若作为工具调用参数，影响模型工具调用效果",
   "tool_run_free": "该工具运行无积分消耗",
   "tool_tip": "作为工具执行时，该字段是否作为工具响应结果",
   "tool_type_tools": "工具",

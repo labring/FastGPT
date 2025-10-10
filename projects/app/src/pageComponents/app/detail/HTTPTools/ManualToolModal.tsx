@@ -1,5 +1,5 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -25,8 +25,13 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { parseCurl } from '@fastgpt/global/common/string/http';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  HTTP_METHODS,
+  type HttpMethod,
+  toolValueTypeList,
+  ContentTypes
+} from '@fastgpt/global/core/workflow/constants';
 import {
   headerValue2StoreHeader,
   storeHeader2HeaderValue
@@ -38,13 +43,20 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import CurlImportModal from './CurlImportModal';
 
 type ManualToolFormType = {
   name: string;
   description: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: HttpMethod;
   path: string;
   headerSecret: StoreSecretValueType;
+  customParams: CustomParamItemType[];
+  params: ParamItemType[];
+  bodyType: ContentTypes;
+  bodyContent: string;
+  bodyFormData: ParamItemType[];
+  headers: ParamItemType[];
 };
 
 type CustomParamItemType = {
@@ -55,7 +67,7 @@ type CustomParamItemType = {
   isTool: boolean;
 };
 
-type ParamItemType = {
+export type ParamItemType = {
   key: string;
   value: string;
 };
@@ -68,34 +80,56 @@ const ManualToolModal = ({
   editingTool?: HttpToolConfigType;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
-  const isEditMode = editingTool !== undefined;
-  const editingToolName = editingTool?.name;
 
-  const { register, handleSubmit, watch, setValue, reset } = useForm<ManualToolFormType>({
+  const isEditMode = editingTool !== undefined;
+
+  const { register, handleSubmit, watch, setValue } = useForm<ManualToolFormType>({
     defaultValues: {
       name: editingTool?.name || '',
       description: editingTool?.description || '',
       method: (editingTool?.method.toUpperCase() as any) || 'POST',
       path: editingTool?.path || '',
-      headerSecret: editingTool?.headerSecret || {}
+      headerSecret: editingTool?.headerSecret || {},
+      customParams: editingTool
+        ? Object.entries(editingTool.inputSchema.properties || {}).map(
+            ([key, value]: [string, any]) => ({
+              key,
+              description: value.description || '',
+              type: value.type || 'string',
+              required: editingTool.inputSchema.required?.includes(key) || false,
+              isTool: !!value['x-tool-description']
+            })
+          )
+        : [],
+      params: editingTool?.staticParams || [],
+      bodyType: editingTool?.staticBody?.type || ContentTypes.json,
+      bodyContent: editingTool?.staticBody?.content || '',
+      bodyFormData: editingTool?.staticBody?.formData || [],
+      headers: editingTool?.staticHeaders || []
     }
   });
 
   const method = watch('method');
   const headerSecret = watch('headerSecret');
+  const customParams = watch('customParams');
+  const params = watch('params');
+  const bodyType = watch('bodyType');
+  const bodyContent = watch('bodyContent');
+  const bodyFormData = watch('bodyFormData');
+  const headers = watch('headers');
 
-  const [customParams, setCustomParams] = useState<CustomParamItemType[]>([]);
-  const [editingParam, setEditingParam] = useState<
-    (CustomParamItemType & { index?: number }) | null
-  >(null);
+  const hasBody = method !== 'GET' && method !== 'DELETE';
+  const isFormBody =
+    bodyType === ContentTypes.formData || bodyType === ContentTypes.xWwwFormUrlencoded;
+  const isContentBody =
+    bodyType === ContentTypes.json ||
+    bodyType === ContentTypes.xml ||
+    bodyType === ContentTypes.raw;
 
-  const [params, setParams] = useState<ParamItemType[]>([]);
-  const [bodyType, setBodyType] = useState<string>('json');
-  const [bodyContent, setBodyContent] = useState<string>('');
-  const [bodyFormData, setBodyFormData] = useState<ParamItemType[]>([]);
-  const [headers, setHeaders] = useState<ParamItemType[]>([]);
+  const [editingParam, setEditingParam] = useState<CustomParamItemType | null>(null);
 
   const {
     onOpen: onOpenCurlImport,
@@ -103,58 +137,29 @@ const ManualToolModal = ({
     onClose: onCloseCurlImport
   } = useDisclosure();
 
-  const {
-    onOpen: onOpenParamEdit,
-    isOpen: isOpenParamEdit,
-    onClose: onCloseParamEdit
-  } = useDisclosure();
-
-  useEffect(() => {
-    if (editingTool) {
-      const restoredCustomParams: CustomParamItemType[] = Object.entries(
-        editingTool.inputSchema.properties || {}
-      ).map(([key, value]: [string, any]) => ({
-        key,
-        description: value.description || '',
-        type: value.type || 'string',
-        required: editingTool.inputSchema.required?.includes(key) || false,
-        isTool: true
-      }));
-      setCustomParams(restoredCustomParams);
-
-      if (editingTool.staticParams) {
-        setParams(editingTool.staticParams);
-      }
-      if (editingTool.staticHeaders) {
-        setHeaders(editingTool.staticHeaders);
-      }
-
-      if (editingTool.staticBody) {
-        setBodyType(editingTool.staticBody.type);
-        if (editingTool.staticBody.content) {
-          setBodyContent(editingTool.staticBody.content);
-        }
-        if (editingTool.staticBody.formData) {
-          setBodyFormData(editingTool.staticBody.formData);
-        }
-      }
-    }
-  }, [editingTool]);
-
   const { runAsync: onSubmit, loading: isSubmitting } = useRequest2(
     async (data: ManualToolFormType) => {
+      if (bodyType === ContentTypes.json && bodyContent) {
+        try {
+          JSON.parse(bodyContent);
+        } catch (error) {
+          return toast({
+            status: 'error',
+            title: t('common:json_parse_error')
+          });
+        }
+      }
+
       const inputProperties: Record<string, any> = {};
       const inputRequired: string[] = [];
-
       customParams.forEach((param) => {
-        if (param.isTool) {
-          inputProperties[param.key] = {
-            type: param.type,
-            description: param.description || ''
-          };
-          if (param.required) {
-            inputRequired.push(param.key);
-          }
+        inputProperties[param.key] = {
+          type: param.type,
+          description: param.description || '',
+          'x-tool-description': param.isTool ? param.description : ''
+        };
+        if (param.required) {
+          inputRequired.push(param.key);
         }
       });
 
@@ -175,17 +180,14 @@ const ManualToolModal = ({
         },
         ...(params.length > 0 && { staticParams: params }),
         ...(headers.length > 0 && { staticHeaders: headers }),
-        ...(bodyType !== 'none' && {
-          staticBody: {
-            type: bodyType as any,
-            ...(bodyType === 'json' || bodyType === 'xml' || bodyType === 'raw'
-              ? { content: bodyContent }
-              : {}),
-            ...(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded'
-              ? { formData: bodyFormData }
-              : {})
-          }
-        }),
+        ...(hasBody &&
+          bodyType !== ContentTypes.none && {
+            staticBody: {
+              type: bodyType,
+              ...(isContentBody ? { content: bodyContent } : {}),
+              ...(isFormBody ? { formData: bodyFormData } : {})
+            }
+          }),
         headerSecret: data.headerSecret
       };
 
@@ -194,12 +196,12 @@ const ManualToolModal = ({
       );
       const existingToolList = toolSetNode?.toolConfig?.httpToolSet?.toolList || [];
 
-      let updatedToolList: HttpToolConfigType[];
-      if (isEditMode && editingToolName) {
-        updatedToolList = existingToolList.map((t) => (t.name === editingToolName ? newTool : t));
-      } else {
-        updatedToolList = [...existingToolList, newTool];
-      }
+      const updatedToolList = (() => {
+        if (isEditMode) {
+          return existingToolList.map((tool) => (tool.name === editingTool?.name ? newTool : tool));
+        }
+        return [...existingToolList, newTool];
+      })();
 
       return putUpdateHttpPlugin({
         appId: appDetail._id,
@@ -225,16 +227,34 @@ const ManualToolModal = ({
     >
       <ModalBody display={'flex'}>
         <Flex w={'1167px'}>
-          <Box w={'500px'} px={9} py={3} borderRight={'1px solid'} borderColor={'myGray.200'}>
-            <Flex gap={8} mb={6} alignItems={'center'}>
+          <Flex
+            w={'500px'}
+            px={9}
+            py={3}
+            flexDirection={'column'}
+            gap={6}
+            borderRight={'1px solid'}
+            borderColor={'myGray.200'}
+          >
+            <Flex gap={8} alignItems={'center'}>
               <FormLabel>{t('app:Tool_name')}</FormLabel>
-              <Input h={8} {...register('name', { required: true })} />
+              <Input
+                h={8}
+                {...register('name', { required: true })}
+                placeholder={t('app:Tool_name')}
+              />
             </Flex>
-            <Box mb={6}>
+            <Box>
               <FormLabel mb={2}>{t('app:Tool_description')}</FormLabel>
-              <Textarea {...register('description')} rows={8} minH={'150px'} maxH={'400px'} />
+              <Textarea
+                {...register('description')}
+                rows={8}
+                minH={'150px'}
+                maxH={'400px'}
+                placeholder={t('app:Tool_description')}
+              />
             </Box>
-            <Box mb={6}>
+            <Box>
               <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
                 <FormLabel>{t('common:core.module.Http request settings')}</FormLabel>
                 <Button size={'sm'} onClick={onOpenCurlImport}>
@@ -246,31 +266,8 @@ const ManualToolModal = ({
                   h={9}
                   w={'100px'}
                   value={method}
-                  list={[
-                    {
-                      label: 'GET',
-                      value: 'GET'
-                    },
-                    {
-                      label: 'POST',
-                      value: 'POST'
-                    },
-                    {
-                      label: 'PUT',
-                      value: 'PUT'
-                    },
-                    {
-                      label: 'DELETE',
-                      value: 'DELETE'
-                    },
-                    {
-                      label: 'PATCH',
-                      value: 'PATCH'
-                    }
-                  ]}
-                  onChange={(e) => {
-                    setValue('method', e as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH');
-                  }}
+                  list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
+                  onChange={(e) => setValue('method', e)}
                 />
                 <Input
                   {...register('path', { required: true })}
@@ -291,10 +288,10 @@ const ManualToolModal = ({
                 />
               </Box>
             </Box>
-          </Box>
+          </Flex>
 
-          <Box flex={1} px={9} py={3}>
-            <Box mb={6}>
+          <Flex flex={1} px={9} py={3} flexDirection={'column'} gap={6}>
+            <Box>
               <Flex alignItems={'center'} mb={2}>
                 <FormLabel flex={1}>{t('app:Custom_params')}</FormLabel>
                 <Button
@@ -309,7 +306,6 @@ const ManualToolModal = ({
                       required: false,
                       isTool: true
                     });
-                    onOpenParamEdit();
                   }}
                 >
                   {t('common:add_new')}
@@ -317,35 +313,35 @@ const ManualToolModal = ({
               </Flex>
               <CustomParamsTable
                 list={customParams}
-                onEdit={(param, index) => {
-                  setEditingParam({ ...param, index });
-                  onOpenParamEdit();
+                onEdit={(param) => {
+                  setEditingParam(param);
                 }}
                 onDelete={(index) => {
-                  setCustomParams((prev) => prev.filter((_, i) => i !== index));
+                  setValue(
+                    'customParams',
+                    customParams.filter((_, i) => i !== index)
+                  );
                 }}
               />
             </Box>
-
-            <Box mb={6}>
+            <Box>
               <FormLabel mb={2}>Params</FormLabel>
-              <ParamsTable list={params} setList={setParams} />
+              <ParamsTable list={params} setList={(newParams) => setValue('params', newParams)} />
             </Box>
-
-            <Box mb={6}>
-              <FormLabel mb={2}>Body</FormLabel>
-              <Flex
-                mb={2}
-                p={1}
-                flexWrap={'nowrap'}
-                bg={'myGray.25'}
-                border={'1px solid'}
-                borderColor={'myGray.200'}
-                borderRadius={'8px'}
-                justifyContent={'space-between'}
-              >
-                {['none', 'json', 'form-data', 'x-www-form-urlencoded', 'xml', 'raw'].map(
-                  (type) => (
+            {hasBody && (
+              <Box>
+                <FormLabel mb={2}>Body</FormLabel>
+                <Flex
+                  mb={2}
+                  p={1}
+                  flexWrap={'nowrap'}
+                  bg={'myGray.25'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'8px'}
+                  justifyContent={'space-between'}
+                >
+                  {Object.values(ContentTypes).map((type) => (
                     <Box
                       key={type}
                       cursor={'pointer'}
@@ -361,30 +357,48 @@ const ManualToolModal = ({
                           ? '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
                           : ''
                       }
-                      onClick={() => setBodyType(type)}
+                      onClick={() => setValue('bodyType', type)}
                     >
                       {type}
                     </Box>
-                  )
+                  ))}
+                </Flex>
+                {isContentBody && (
+                  <Textarea
+                    value={bodyContent}
+                    onChange={(e) => setValue('bodyContent', e.target.value)}
+                    onBlur={(e) => {
+                      if (bodyType === ContentTypes.json && e.target.value) {
+                        try {
+                          JSON.parse(e.target.value);
+                        } catch (error) {
+                          toast({
+                            status: 'warning',
+                            title: t('common:json_parse_error')
+                          });
+                        }
+                      }
+                    }}
+                    minH={'100px'}
+                    maxH={'200px'}
+                  />
                 )}
-              </Flex>
-              {bodyType === 'json' || bodyType === 'xml' || bodyType === 'raw' ? (
-                <Textarea
-                  value={bodyContent}
-                  onChange={(e) => setBodyContent(e.target.value)}
-                  minH={'100px'}
-                  maxH={'200px'}
-                />
-              ) : bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded' ? (
-                <ParamsTable list={bodyFormData} setList={setBodyFormData} />
-              ) : null}
-            </Box>
-
-            <Box mb={6}>
+                {isFormBody && (
+                  <ParamsTable
+                    list={bodyFormData}
+                    setList={(newFormData) => setValue('bodyFormData', newFormData)}
+                  />
+                )}
+              </Box>
+            )}
+            <Box>
               <FormLabel mb={2}>Headers</FormLabel>
-              <ParamsTable list={headers} setList={setHeaders} />
+              <ParamsTable
+                list={headers}
+                setList={(newHeaders) => setValue('headers', newHeaders)}
+              />
             </Box>
-          </Box>
+          </Flex>
         </Flex>
       </ModalBody>
 
@@ -400,94 +414,42 @@ const ManualToolModal = ({
       {isOpenCurlImport && (
         <CurlImportModal
           onClose={onCloseCurlImport}
-          onImport={(parsed) => {
-            setValue('method', parsed.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH');
-            setValue('path', parsed.url);
+          onImport={(result) => {
+            setValue('method', result.method);
+            setValue('path', result.path);
+            if (result.params) {
+              setValue('params', result.params);
+            }
+            if (result.headers) {
+              setValue('headers', result.headers);
+            }
+            setValue('bodyType', result.bodyType as ContentTypes);
+            if (result.bodyContent) {
+              setValue('bodyContent', result.bodyContent);
+            }
+            if (result.bodyFormData) {
+              setValue('bodyFormData', result.bodyFormData);
+            }
             onCloseCurlImport();
           }}
         />
       )}
-
-      {isOpenParamEdit && editingParam && (
+      {editingParam && (
         <CustomParamEditModal
           param={editingParam}
-          onClose={onCloseParamEdit}
+          onClose={() => setEditingParam(null)}
           onConfirm={(newParam) => {
-            if (editingParam.index !== undefined) {
-              setCustomParams((prev) =>
-                prev.map((p, i) => (i === editingParam.index ? newParam : p))
+            if (editingParam.key) {
+              setValue(
+                'customParams',
+                customParams.map((param) => (param.key === editingParam.key ? newParam : param))
               );
             } else {
-              setCustomParams((prev) => [...prev, newParam]);
+              setValue('customParams', [...customParams, newParam]);
             }
-            onCloseParamEdit();
           }}
         />
       )}
-    </MyModal>
-  );
-};
-
-const CurlImportModal = ({
-  onClose,
-  onImport
-}: {
-  onClose: () => void;
-  onImport: (parsed: ReturnType<typeof parseCurl>) => void;
-}) => {
-  const { t } = useTranslation();
-  const { toast } = useToast();
-
-  const { register, handleSubmit } = useForm({
-    defaultValues: {
-      curlContent: ''
-    }
-  });
-
-  const handleCurlImport = async (content: string) => {
-    try {
-      const parsed = parseCurl(content);
-      console.log(parsed);
-      // onImport(parsed);
-      toast({
-        title: t('common:import_success'),
-        status: 'success'
-      });
-    } catch (error: any) {
-      toast({
-        title: t('common:import_failed'),
-        description: error.message,
-        status: 'error'
-      });
-      console.error(error);
-    }
-  };
-
-  return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc="modal/edit"
-      title={t('common:core.module.http.curl import')}
-      w={600}
-    >
-      <ModalBody>
-        <Textarea
-          rows={20}
-          mt={2}
-          autoFocus
-          {...register('curlContent')}
-          placeholder={t('common:core.module.http.curl import placeholder')}
-        />
-      </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button onClick={handleSubmit((data) => handleCurlImport(data.curlContent))}>
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
     </MyModal>
   );
 };
@@ -507,14 +469,6 @@ const CustomParamEditModal = ({
   const { register, handleSubmit, watch, setValue } = useForm<CustomParamItemType>({
     defaultValues: param
   });
-
-  const typeList = [
-    { label: 'string', value: 'string' },
-    { label: 'number', value: 'number' },
-    { label: 'boolean', value: 'boolean' },
-    { label: 'object', value: 'object' },
-    { label: 'array', value: 'array' }
-  ];
 
   const type = watch('type');
   const required = watch('required');
@@ -542,9 +496,9 @@ const CustomParamEditModal = ({
         <Flex mb={6}>
           <FormLabel w={'120px'}>{t('common:plugin.Description')}</FormLabel>
           <Textarea
-            {...register('description')}
+            {...register('description', { required: isTool })}
             rows={4}
-            placeholder={t('common:plugin.Description')}
+            placeholder={t('app:tool_params_description_tips')}
             bg={'myGray.50'}
           />
         </Flex>
@@ -553,7 +507,7 @@ const CustomParamEditModal = ({
           <FormLabel w={'120px'}>{t('common:core.module.Data Type')}</FormLabel>
           <MySelect
             value={type}
-            list={typeList}
+            list={toolValueTypeList}
             onChange={(val) => setValue('type', val)}
             flex={1}
           />
@@ -573,7 +527,14 @@ const CustomParamEditModal = ({
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        <Button onClick={handleSubmit(onConfirm)}>{t('common:Confirm')}</Button>
+        <Button
+          onClick={handleSubmit((data) => {
+            onConfirm(data);
+            onClose();
+          })}
+        >
+          {t('common:Confirm')}
+        </Button>
       </ModalFooter>
     </MyModal>
   );
@@ -585,7 +546,7 @@ const CustomParamsTable = ({
   onDelete
 }: {
   list: CustomParamItemType[];
-  onEdit: (param: CustomParamItemType, index: number) => void;
+  onEdit: (param: CustomParamItemType) => void;
   onDelete: (index: number) => void;
 }) => {
   const { t } = useTranslation();
@@ -615,7 +576,7 @@ const CustomParamsTable = ({
                 <Td px={2}>{item.key}</Td>
                 <Td px={2}>{item.description}</Td>
                 <Td px={2}>{item.type}</Td>
-                <Td px={2}>{item.isTool ? '是' : '否'}</Td>
+                <Td px={2}>{item.isTool ? t('common:yes') : t('common:no')}</Td>
                 <Td px={2}>
                   <Flex gap={2}>
                     <MyIcon
@@ -623,7 +584,7 @@ const CustomParamsTable = ({
                       cursor={'pointer'}
                       _hover={{ color: 'primary.600' }}
                       w={'14px'}
-                      onClick={() => onEdit(item, index)}
+                      onClick={() => onEdit(item)}
                     />
                     <MyIcon
                       name={'delete'}
@@ -648,7 +609,7 @@ const ParamsTable = ({
   setList
 }: {
   list: ParamItemType[];
-  setList: React.Dispatch<React.SetStateAction<ParamItemType[]>>;
+  setList: (list: ParamItemType[]) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -684,12 +645,10 @@ const ParamsTable = ({
                       }
 
                       if (index === list.length) {
-                        setList((prev) => [...prev, { key: val, value: '' }]);
+                        setList([...list, { key: val, value: '' }]);
                         setUpdateTrigger((prev) => !prev);
                       } else {
-                        setList((prev) =>
-                          prev.map((p, i) => (i === index ? { ...p, key: val } : p))
-                        );
+                        setList(list.map((p, i) => (i === index ? { ...p, key: val } : p)));
                       }
                     }}
                     updateTrigger={updateTrigger}
@@ -701,9 +660,7 @@ const ParamsTable = ({
                       placeholder={'value'}
                       value={item.value}
                       onBlur={(val) =>
-                        setList((prevList) =>
-                          prevList.map((p, i) => (i === index ? { ...p, value: val } : p))
-                        )
+                        setList(list.map((p, i) => (i === index ? { ...p, value: val } : p)))
                       }
                     />
                     {index !== list.length && (
@@ -714,9 +671,7 @@ const ParamsTable = ({
                         w={'14px'}
                         mx={'2'}
                         display={'block'}
-                        onClick={() =>
-                          setList((prevList) => prevList.filter((_, i) => i !== index))
-                        }
+                        onClick={() => setList(list.filter((_, i) => i !== index))}
                       />
                     )}
                   </Box>

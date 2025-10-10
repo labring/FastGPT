@@ -486,6 +486,10 @@ export const contentTypeMap = {
   [ContentTypes.raw]: 'text/plain'
 };
 
+// http request methods
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
 export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum> = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
   [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,

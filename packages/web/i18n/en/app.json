@@ -289,6 +289,7 @@
   "tool_detail": "Tool details",
   "tool_input_param_tip": "This plugin requires configuration of related information to run properly.",
   "tool_not_active": "This tool has not been activated yet",
+  "tool_params_description_tips": "The description of parameter functions, if used as tool invocation parameters, affects the model tool invocation effect.",
   "tool_run_free": "This tool runs without points consumption",
   "tool_tip": "When executed as a tool, is this field used as a tool response result?",
   "tool_type_tools": "tool",
