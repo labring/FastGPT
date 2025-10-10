@@ -47,6 +47,7 @@ import { dispatchFileRead } from './sub/file';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import { getSubAppsPrompt } from './sub/plan/prompt';
 import { parseAgentSystemPrompt } from './utils';
+import type { AgentPlanType } from './sub/plan/type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -59,7 +60,9 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTopP]?: number;
 
   [NodeInputKeyEnum.subApps]?: FlowNodeTemplateType[];
-  [NodeInputKeyEnum.planAgentConfig]?: Record<string, any>;
+  [NodeInputKeyEnum.isAskAgent]?: boolean;
+  [NodeInputKeyEnum.isPlanAgent]?: boolean;
+  [NodeInputKeyEnum.isConfirmPlanAgent]?: boolean;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -94,41 +97,37 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       temperature,
       aiChatTopP,
       subApps = [],
-      planAgentConfig
+      isPlanAgent = false,
+      isAskAgent = false,
+      isConfirmPlanAgent = false
     }
   } = props;
   const agentModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const masterMessagesKey = `masterMessages-${nodeId}`;
   const planMessagesKey = `planMessages-${nodeId}`;
-  const planToolCallMessagesKey = `planToolCallMessages-${nodeId}`;
+  const contextKey = `context-${nodeId}`;
+  const plansKey = `plans-${nodeId}`;
 
   // Get history messages
-  let { masterHistoryMessages, planHistoryMessages, planToolCallMessages } = (() => {
+  let { planHistoryMessages, contextMap, plans } = (() => {
     const lastHistory = chatHistories[chatHistories.length - 1];
     if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
       return {
-        masterHistoryMessages: (lastHistory.memories?.[masterMessagesKey] ||
-          []) as ChatCompletionMessageParam[],
         planHistoryMessages: (lastHistory.memories?.[planMessagesKey] ||
           []) as ChatCompletionMessageParam[],
-        planToolCallMessages: (lastHistory.memories?.[planToolCallMessagesKey] ||
-          []) as ChatCompletionMessageParam[]
+        contextMap: (lastHistory.memories?.[contextKey] || []) as ChatCompletionMessageParam[],
+        plans: (lastHistory.memories?.[plansKey] || []) as AgentPlanType
       };
     }
     return {
-      masterHistoryMessages: [],
       planHistoryMessages: [],
-      planToolCallMessages: []
+      contextMap: {}
     };
   })();
 
   // Check interactive entry
   props.node.isEntry = false;
-
-  // 交互模式进来的话，这个值才是交互输入的值
-  const interactiveInput = lastInteractive ? chatValue2RuntimePrompt(query).text : '';
 
   try {
     // Get files
@@ -181,6 +180,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
+    // 交互模式进来的话，这个值才是交互输入的值
+    const interactiveInput = lastInteractive ? chatValue2RuntimePrompt(query).text : '';
+
     /* ===== Plan Agent ===== */
     let planMessages: ChatCompletionMessageParam[] = [];
     /* 
@@ -195,8 +197,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     */
     if (
       // 如果是 userSelect 和 userInput，说明不是 plan 触发的交互。
-      lastInteractive?.type !== 'userSelect' &&
-      lastInteractive?.type !== 'userInput'
+      lastInteractive?.type &&
+      [
+        'agentPlanAskQuery',
+        'agentPlanAskUserForm',
+        'agentPlanAskUserSelect',
+        'agentPlanCheck'
+      ].includes(lastInteractive?.type)
     ) {
       // Confirm 操作
       if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
@@ -242,7 +249,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
 
         planMessages = completeMessages;
-        planToolCallMessages = newPlanToolCallMessages;
+        plans = planList;
 
         // TODO: usage 合并
         // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
@@ -251,7 +258,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
             [DispatchNodeResponseKeyEnum.memories]: {
               [planMessagesKey]: filterMemoryMessages(planMessages),
-              [planToolCallMessagesKey]: planToolCallMessages
+              [plansKey]: plans
             },
             [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
           };
@@ -259,7 +266,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     }
 
-    /* ===== Master agent ===== */
+    /* ===== Master agent, 逐步执行 plan ===== */
 
     // Get master request messages
     const systemMessages = chats2GPTMessages({
@@ -267,10 +274,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reserveId: false
     });
     const historyMessages: ChatCompletionMessageParam[] = (() => {
-      if (masterHistoryMessages && masterHistoryMessages.length > 0) {
-        return masterHistoryMessages;
-      }
-
       return [];
     })();
 
@@ -286,12 +289,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       ],
       reserveId: false
     });
-    const requestMessages = [
-      ...systemMessages,
-      ...historyMessages,
-      ...userMessages,
-      ...planToolCallMessages
-    ];
+    const requestMessages = [...historyMessages, ...userMessages];
     console.log(JSON.stringify({ requestMessages }, null, 2));
 
     const dispatchFlowResponse: ChatHistoryItemResType[] = [];
