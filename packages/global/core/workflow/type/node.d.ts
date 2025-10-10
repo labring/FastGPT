@@ -52,11 +52,10 @@ export type NodeToolConfigType = {
     }[];
   };
   httpToolSet?: {
-    toolId: string;
-    baseUrl: string;
     toolList: HttpToolConfigType[];
-    apiSchemaStr: string;
-    customHeaders: string;
+    baseUrl?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string;
     headerSecret?: StoreSecretValueType;
   };
   httpTool?: {
