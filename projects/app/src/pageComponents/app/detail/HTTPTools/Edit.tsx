@@ -27,7 +27,7 @@ const Edit = () => {
   );
   const baseUrl = toolSetData?.baseUrl ?? '';
   const toolList = toolSetData?.toolList ?? [];
-  const apiSchemaStr = toolSetData?.apiSchemaStr ?? '';
+  const apiSchemaStr = toolSetData?.apiSchemaStr;
   const headerSecret = toolSetData?.headerSecret ?? {};
   const customHeaders = useMemo(() => {
     try {

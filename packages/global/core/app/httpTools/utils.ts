@@ -13,9 +13,9 @@ import { i18nT } from '../../../../web/i18n/utils';
 export const getHTTPToolSetRuntimeNode = ({
   name,
   avatar,
-  baseUrl = '',
-  customHeaders = '',
-  apiSchemaStr = '',
+  baseUrl,
+  customHeaders,
+  apiSchemaStr,
   toolList = [],
   headerSecret
 }: {
@@ -34,12 +34,11 @@ export const getHTTPToolSetRuntimeNode = ({
     intro: 'HTTP Tools',
     toolConfig: {
       httpToolSet: {
-        baseUrl,
         toolList,
-        headerSecret,
-        customHeaders,
-        apiSchemaStr,
-        toolId: ''
+        ...(baseUrl !== undefined && { baseUrl }),
+        ...(apiSchemaStr !== undefined && { apiSchemaStr }),
+        ...(customHeaders !== undefined && { customHeaders }),
+        ...(headerSecret !== undefined && { headerSecret })
       }
     },
     inputs: [],
