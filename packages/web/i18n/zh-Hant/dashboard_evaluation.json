@@ -149,7 +149,7 @@
   "file_import_success": "文件導入成功",
   "file_import_file_label": "文件",
   "file_import_download_template": "點擊下載文件模板",
-  "file_import_download_template_tip": "下載模板文件以了解正確的文件格式",
+  "file_import_download_template_tip": "一行一個詞條，第1列為【提問】，第2列為【答案】，第1行默認為表頭，不會作為詞條內容。例如：",
   "file_import_auto_evaluation_label": "導入後自動進行數據質量評測",
   "file_import_auto_evaluation_tip": "開啟後將自動對導入的數據進行質量評測",
   "file_import_evaluation_model_label": "質量評測模型",
@@ -371,5 +371,7 @@
   "click_to_download_template": "點擊下載該應用的 CSV 模板",
   "evaluation_created": "評測任務創建成功",
   "evaluation_dimension_missing_model_config": "評測維度缺少模型配置",
-  "evaluation_dimension_missing_model_config_desc": "以下評測維度缺少模型配置，請先完善配置：{{names}}"
+  "evaluation_dimension_missing_model_config_desc": "以下評測維度缺少模型配置，請先完善配置：{{names}}",
+  "example_highest_mountain_question": "世界最高峰是什麼",
+  "example_highest_mountain_answer": "珠穆朗瑪峰"
 }

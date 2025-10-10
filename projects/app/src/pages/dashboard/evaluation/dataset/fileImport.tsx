@@ -11,7 +11,15 @@ import {
   IconButton,
   Switch,
   HStack,
-  Progress
+  Progress,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -186,7 +194,7 @@ const FileImport = () => {
               {t('dashboard_evaluation:file_import_back')}
             </Button>
           </Flex>
-          <VStack gap={4} align="stretch" maxW={['90vw', '800px']} mx="auto">
+          <VStack gap={4} align="stretch" maxW={['90vw', '800px']} mx="auto" mt={8}>
             <VStack
               as="form"
               id="file-import-form"
@@ -230,9 +238,35 @@ const FileImport = () => {
                     <QuestionTip
                       position={'absolute'}
                       top="10px"
-                      label={t('dashboard_evaluation:file_import_download_template_tip')}
                       ml={1}
-                    />
+                      label={
+                        <Box>
+                          <Text fontSize={'sm'} color={'myGray.700'} mb={2}>
+                            {t('dashboard_evaluation:file_import_download_template_tip')}
+                          </Text>
+                          <TableContainer>
+                            <Table>
+                              <Thead>
+                                <Tr>
+                                  <Th p={2}>input</Th>
+                                  <Th p={2}>excepted_output</Th>
+                                </Tr>
+                              </Thead>
+                              <Tbody>
+                                <Tr _hover={{ bg: 'myGray.100' }}>
+                                  <Td p={2}>
+                                    {t('dashboard_evaluation:example_highest_mountain_question')}
+                                  </Td>
+                                  <Td p={2}>
+                                    {t('dashboard_evaluation:example_highest_mountain_answer')}
+                                  </Td>
+                                </Tr>
+                              </Tbody>{' '}
+                            </Table>
+                          </TableContainer>
+                        </Box>
+                      }
+                    />{' '}
                   </Flex>
                   <FileSelector
                     autoFilterOverSize={true}
