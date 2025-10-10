@@ -236,16 +236,19 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       const { data, errorMsg } = await runHTTPTool({
-        baseUrl: baseUrl,
+        baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,
         params,
-        headerSecret,
+        headerSecret: httpTool.headerSecret || headerSecret,
         customHeaders: customHeaders
           ? typeof customHeaders === 'string'
             ? JSON.parse(customHeaders)
             : customHeaders
-          : undefined
+          : undefined,
+        staticParams: httpTool.staticParams,
+        staticHeaders: httpTool.staticHeaders,
+        staticBody: httpTool.staticBody
       });
 
       if (errorMsg) {
