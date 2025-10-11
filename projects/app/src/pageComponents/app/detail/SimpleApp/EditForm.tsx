@@ -80,9 +80,10 @@ const EditForm = ({
       hasDatabaseKnowledge: selectDatasets.some(
         (item) => item.datasetType === DatasetTypeEnum.database
       ),
-      hasOtherKnowledge: selectDatasets.some(
-        (item) => item.datasetType !== DatasetTypeEnum.database
-      )
+      // 若没选择知识库，保留之前的展示逻辑
+      hasOtherKnowledge:
+        selectDatasets.some((item) => item.datasetType !== DatasetTypeEnum.database) ||
+        selectDatasets.length === 0
     };
   }, [selectDatasets]);
 
