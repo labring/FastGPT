@@ -7,6 +7,7 @@ import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import { getRedisCache, setRedisCache } from '../../redis/cache';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -66,7 +67,30 @@ export const pushTrack = {
     return createTrack({
       event: TrackEnum.login,
       data
+    })?.then(() => {
+      pushTrack.dailyUserActive({
+        uid: data.uid,
+        teamId: data.teamId,
+        tmbId: data.tmbId
+      });
     });
+  },
+  dailyUserActive: async (data: PushTrackCommonType) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dailyUserActive:${data.uid}_${today}`;
+      const cache = await getRedisCache(key);
+      if (cache) return;
+
+      await setRedisCache(key, '1', 24 * 60 * 60);
+
+      return createTrack({
+        event: TrackEnum.dailyUserActive,
+        data
+      });
+    } catch (error) {
+      addLog.error('Failed to track daily user active:', error);
+    }
   },
   createApp: (
     data: PushTrackCommonType &
