@@ -116,12 +116,6 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
         });
         onClose();
         reloadApp();
-      },
-      onError: (err) => {
-        toast({
-          status: 'warning',
-          title: t('common:plugin.Invalid Schema')
-        });
       }
     }
   );

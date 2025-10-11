@@ -51,12 +51,6 @@ const EditForm = ({
     onClose: onCloseConfigModal
   } = useDisclosure();
 
-  const {
-    onOpen: onOpenAddToolModal,
-    isOpen: isOpenAddToolModal,
-    onClose: onCloseAddToolModal
-  } = useDisclosure();
-
   const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest2(
     async (updatedToolList: HttpToolConfigType[]) =>
       await putUpdateHttpPlugin({
@@ -100,7 +94,16 @@ const EditForm = ({
             <Button
               px={'2'}
               leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
-              onClick={onOpenAddToolModal}
+              onClick={() =>
+                setEditingManualTool({
+                  name: '',
+                  description: '',
+                  inputSchema: { type: 'object' },
+                  outputSchema: { type: 'object' },
+                  path: '',
+                  method: 'POST'
+                })
+              }
             >
               {t('common:Add')}
             </Button>
@@ -247,7 +250,6 @@ const EditForm = ({
       </Box>
 
       {isOpenConfigModal && <SchemaConfigModal onClose={onCloseConfigModal} />}
-      {isOpenAddToolModal && <ManualToolModal onClose={onCloseAddToolModal} />}
       {toolDetail && (
         <ToolDetailModal
           tool={toolDetail}

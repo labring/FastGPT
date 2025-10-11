@@ -7,6 +7,7 @@ import { parseCurl } from '@fastgpt/global/common/string/http';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { type HttpMethod, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import type { ParamItemType } from './ManualToolModal';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 export type CurlImportResult = {
   method: HttpMethod;
@@ -16,6 +17,7 @@ export type CurlImportResult = {
   bodyType: string;
   bodyContent?: string;
   bodyFormData?: ParamItemType[];
+  headerSecret?: StoreSecretValueType;
 };
 
 type CurlImportModalProps = {
@@ -46,6 +48,37 @@ const CurlImportModal = ({ onClose, onImport }: CurlImportModalProps) => {
         }));
       };
 
+      const { headerSecret, filteredHeaders } = (() => {
+        let headerSecret: StoreSecretValueType | undefined;
+        const filteredHeaders = parsed.headers.filter((header) => {
+          if (header.key.toLowerCase() === 'authorization') {
+            const authValue = header.value || '';
+            if (authValue.startsWith('Bearer ')) {
+              const token = authValue.substring(7).trim();
+              headerSecret = {
+                Bearer: {
+                  value: token,
+                  secret: ''
+                }
+              };
+              return false;
+            }
+            if (authValue.startsWith('Basic ')) {
+              const credentials = authValue.substring(6).trim();
+              headerSecret = {
+                Basic: {
+                  value: credentials,
+                  secret: ''
+                }
+              };
+              return false;
+            }
+          }
+          return true;
+        });
+        return { headerSecret, filteredHeaders };
+      })();
+
       const bodyType = (() => {
         if (!parsed.body || parsed.body === '{}') {
           return ContentTypes.none;
@@ -57,9 +90,10 @@ const CurlImportModal = ({ onClose, onImport }: CurlImportModalProps) => {
         method: parsed.method as HttpMethod,
         path: parsed.url,
         params: parsed.params.length > 0 ? convertToParamItemType(parsed.params) : undefined,
-        headers: parsed.headers.length > 0 ? convertToParamItemType(parsed.headers) : undefined,
+        headers: filteredHeaders.length > 0 ? convertToParamItemType(filteredHeaders) : undefined,
         bodyType,
-        bodyContent: bodyType === ContentTypes.json ? parsed.body : undefined
+        bodyContent: bodyType === ContentTypes.json ? parsed.body : undefined,
+        ...(headerSecret && { headerSecret })
       };
 
       onImport(result);

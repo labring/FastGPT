@@ -52,18 +52,22 @@ const ChatTest = ({
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
-
-      return await postRunHTTPTool({
-        baseUrl,
-        params: data,
-        headerSecret: currentTool.headerSecret || headerSecret,
-        toolPath: currentTool.path,
-        method: currentTool.method,
-        customHeaders: customHeaders,
-        staticParams: currentTool.staticParams,
-        staticHeaders: currentTool.staticHeaders,
-        staticBody: currentTool.staticBody
-      });
+      try {
+        const result = await postRunHTTPTool({
+          baseUrl,
+          params: data,
+          headerSecret: currentTool.headerSecret || headerSecret,
+          toolPath: currentTool.path,
+          method: currentTool.method,
+          customHeaders: customHeaders,
+          staticParams: currentTool.staticParams,
+          staticHeaders: currentTool.staticHeaders,
+          staticBody: currentTool.staticBody
+        });
+        return result;
+      } catch (error) {
+        return Promise.reject(error);
+      }
     },
     {
       onSuccess: (res) => {
@@ -74,7 +78,8 @@ const ChatTest = ({
         } catch (error) {
           console.error(error);
         }
-      }
+      },
+      errorToast: 'test'
     }
   );
 
@@ -100,6 +105,7 @@ const ChatTest = ({
 
         <Box px={[2, 5]} mb={6}>
           <LightRowTabs
+            gap={4}
             list={tabList}
             value={activeTab}
             onChange={(value) => {

@@ -5,6 +5,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
+import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -32,23 +33,33 @@ const buildHttpRequest = ({
   staticHeaders,
   staticBody
 }: Omit<RunHTTPToolParams, 'baseUrl' | 'toolPath'>) => {
+  const replaceVariables = (text: string) => {
+    return replaceEditorVariable({
+      text,
+      nodes: [],
+      variables: params
+    });
+  };
+
   const body = (() => {
     if (!staticBody || staticBody.type === ContentTypes.none) {
-      return ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) ? params : undefined;
+      return ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) ? {} : undefined;
     }
 
     if (staticBody.type === ContentTypes.json) {
-      const staticContent = staticBody.content ? JSON.parse(staticBody.content) : {};
-      return { ...staticContent, ...params };
+      const contentWithReplacedVars = staticBody.content
+        ? replaceVariables(staticBody.content)
+        : '{}';
+      const staticContent = JSON.parse(contentWithReplacedVars);
+      return { ...staticContent };
     }
 
     if (staticBody.type === ContentTypes.formData) {
       const formData = new (require('form-data'))();
       staticBody.formData?.forEach(({ key, value }) => {
-        formData.append(key, value);
-      });
-      Object.entries(params).forEach(([key, value]) => {
-        formData.append(key, value);
+        const replacedKey = replaceVariables(key);
+        const replacedValue = replaceVariables(value);
+        formData.append(replacedKey, replacedValue);
       });
       return formData;
     }
@@ -56,16 +67,15 @@ const buildHttpRequest = ({
     if (staticBody.type === ContentTypes.xWwwFormUrlencoded) {
       const urlencoded = new URLSearchParams();
       staticBody.formData?.forEach(({ key, value }) => {
-        urlencoded.append(key, value);
-      });
-      Object.entries(params).forEach(([key, value]) => {
-        urlencoded.append(key, String(value));
+        const replacedKey = replaceVariables(key);
+        const replacedValue = replaceVariables(value);
+        urlencoded.append(replacedKey, replacedValue);
       });
       return urlencoded.toString();
     }
 
     if (staticBody.type === ContentTypes.xml || staticBody.type === ContentTypes.raw) {
-      return staticBody.content || '';
+      return replaceVariables(staticBody.content || '');
     }
 
     return undefined;
@@ -78,7 +88,9 @@ const buildHttpRequest = ({
     ...(headerSecret ? getSecretValue({ storeSecret: headerSecret }) : {}),
     ...(staticHeaders?.reduce(
       (acc, { key, value }) => {
-        acc[key] = value;
+        const replacedKey = replaceVariables(key);
+        const replacedValue = replaceVariables(value);
+        acc[replacedKey] = replacedValue;
         return acc;
       },
       {} as Record<string, string>
@@ -89,7 +101,9 @@ const buildHttpRequest = ({
     const staticParamsObj =
       staticParams?.reduce(
         (acc, { key, value }) => {
-          acc[key] = value;
+          const replacedKey = replaceVariables(key);
+          const replacedValue = replaceVariables(value);
+          acc[replacedKey] = replacedValue;
           return acc;
         },
         {} as Record<string, any>
