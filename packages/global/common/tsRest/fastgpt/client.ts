@@ -1,9 +1,9 @@
-import { contract } from '../contract';
+import { contract } from './contracts';
 import { initClient, tsRestFetchApi } from '@ts-rest/core';
 import { TOKEN_ERROR_CODE } from '../../error/errorCode';
 import { getNanoid } from '../../string/tools';
 import { type ApiFetcherArgs } from '@ts-rest/core';
-import { AnyResponseSchema } from '../type';
+import { AnyResponseSchema } from '../../type';
 import { ZodError } from 'zod';
 import { getWebReqUrl } from '../../../../web/common/system/utils';
 

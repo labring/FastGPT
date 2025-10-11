@@ -3,10 +3,10 @@ import {
   ChatSettingSchema
 } from '../../../../../../core/chat/setting/type';
 import { c } from '../../../../init';
-import { favouriteProContract } from './favourite';
+import { favouriteContract } from './favourite';
 
-export const settingProContract = c.router({
-  favourite: favouriteProContract,
+export const settingContract = c.router({
+  favourite: favouriteContract,
 
   detail: {
     path: '/proApi/core/chat/setting/detail',

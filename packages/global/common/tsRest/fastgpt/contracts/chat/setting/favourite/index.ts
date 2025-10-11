@@ -1,4 +1,4 @@
-import { ObjectIdSchema } from '../../../../../type';
+import { ObjectIdSchema } from '../../../../../../type';
 import {
   ChatFavouriteAppResponseItemSchema,
   ChatFavouriteAppUpdateSchema
@@ -6,7 +6,7 @@ import {
 import { c } from '../../../../../init';
 import { z } from 'zod';
 
-export const favouriteProContract = c.router({
+export const favouriteContract = c.router({
   list: {
     path: '/proApi/core/chat/setting/favourite/list',
     method: 'GET',

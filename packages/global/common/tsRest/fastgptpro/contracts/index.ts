@@ -1,21 +1,9 @@
-import { supportContract } from './fastgpt/contracts/support';
-import { chatProContract } from './fastgptpro/contracts/chat';
-import { c } from './init';
-
-// 前端使用的完整合约（开源 + Pro）
-// FastGPT 后端使用的合约
-export const contract = c.router({
-  chat: {
-    ...chatProContract
-  },
-  support: {
-    ...supportContract
-  }
-});
+import { chatContract } from '../../fastgpt/contracts/chat';
+import { c } from '../../init';
 
 // 通过 FastGPT 后端转发到 Pro 后端使用的合约
 const transformedProContract = c.router({
-  chat: transformPaths(chatProContract)
+  chat: transformPaths(chatContract)
 });
 
 // Pro 后端独有的接口
