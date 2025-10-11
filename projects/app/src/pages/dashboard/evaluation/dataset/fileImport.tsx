@@ -261,12 +261,12 @@ const FileImport = () => {
                                     {t('dashboard_evaluation:example_highest_mountain_answer')}
                                   </Td>
                                 </Tr>
-                              </Tbody>{' '}
+                              </Tbody>
                             </Table>
                           </TableContainer>
                         </Box>
                       }
-                    />{' '}
+                    />
                   </Flex>
                   <FileSelector
                     autoFilterOverSize={true}
