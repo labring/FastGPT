@@ -1,23 +1,6 @@
-import { chatContract } from '../../fastgpt/contracts/chat';
-import { c } from '../../init';
-
-// 通过 FastGPT 后端转发到 Pro 后端使用的合约
-const transformedProContract = c.router({
-  chat: transformPaths(chatContract)
-});
-
-// Pro 后端独有的接口
-const proOnlyContract = c.router({
-  // TODO
-  // admin: adminContract,
-});
-
-// 最终的 Pro 合约 = 转换后的 Pro 接口 + Pro 后端独有的接口
-// Pro 后端使用的合约
-export const proContract = c.router({
-  ...transformedProContract,
-  ...proOnlyContract
-});
+import { chatContract } from '../../fastgpt/contracts/core/chat';
+import { initContract } from '@ts-rest/core';
+const c = initContract();
 
 /**
  * 转换路径前缀
@@ -53,3 +36,21 @@ function transformPaths<T extends Record<string, any>>(
 
   return transform(router) as T;
 }
+
+// 通过 FastGPT 后端转发到 Pro 后端使用的合约
+const transformedProContract = c.router({
+  chat: transformPaths(chatContract)
+});
+
+// Pro 后端独有的接口
+const proOnlyContract = c.router({
+  // TODO
+  // admin: adminContract,
+});
+
+// 最终的 Pro 合约 = 转换后的 Pro 接口 + Pro 后端独有的接口
+// Pro 后端使用的合约
+export const proContract = c.router({
+  ...transformedProContract,
+  ...proOnlyContract
+});

@@ -1,12 +1,14 @@
-import { c } from '../../../../../init';
+import { initContract } from '@ts-rest/core';
+import z from 'zod';
+const c = initContract();
 
 export const accountContract = c.router({
   logout: {
     path: '/support/user/account/login',
     method: 'POST',
-    body: c.type<undefined>(),
+    body: z.undefined(),
     responses: {
-      200: c.type<void>()
+      200: z.void()
     },
     metadata: {
       tags: ['support']

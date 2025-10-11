@@ -27,8 +27,3 @@ export const ChatFavouriteAppResponseItemSchema = z.object({
 });
 
 export type ChatFavouriteAppResponseItemType = z.infer<typeof ChatFavouriteAppResponseItemSchema>;
-
-export const ChatFavouriteAppUpdateSchema = z.array(
-  ChatFavouriteAppSchema.pick({ appId: true, order: true })
-);
-export type ChatFavouriteAppUpdateType = z.infer<typeof ChatFavouriteAppUpdateSchema>;
