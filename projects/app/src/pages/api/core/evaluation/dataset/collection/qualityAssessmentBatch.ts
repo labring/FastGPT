@@ -125,12 +125,22 @@ async function handler(
           evaluationModel: evalModel
         });
 
-        // Update quality metadata
+        // Reset quality metadata and quality result fields
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
             'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
             'qualityMetadata.model': evalModel,
             'qualityMetadata.queueTime': new Date()
+          },
+          $unset: {
+            'qualityMetadata.score': '',
+            'qualityMetadata.reason': '',
+            'qualityMetadata.usages': '',
+            'qualityMetadata.runLogs': '',
+            'qualityMetadata.startTime': '',
+            'qualityMetadata.finishTime': '',
+            'qualityMetadata.error': '',
+            qualityResult: ''
           }
         });
 
