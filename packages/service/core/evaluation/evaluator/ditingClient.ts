@@ -35,7 +35,6 @@ export function createDitingClient(config: HttpConfig = loadHttpConfigFromEnv())
         clearTimeout(timeoutId);
 
         if (!res.ok) {
-          const errorText = await res.text().catch(() => res.statusText);
           if (res.status >= 500) {
             throw new Error(EvaluationErrEnum.evaluatorServiceUnavailable);
           } else {

@@ -44,6 +44,7 @@
   "metric_un_auth": "无权操作该评估指标",
   "metric_name_required": "指标名称不能为空",
   "metric_name_too_long": "指标名称不能超过100个字符",
+  "metric_description_required": "指标描述不能为空",
   "metric_description_too_long": "指标描述不能超过100个字符",
   "metric_prompt_required": "指标提示词不能为空",
   "metric_prompt_too_long": "指标提示词不能超过4000个字符",
