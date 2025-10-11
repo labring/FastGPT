@@ -124,9 +124,21 @@ const QuoteReader = ({
 
   const dataBaseKnowledgeQuote = useMemo(() => {
     return (
-      <Box p={2}>
+      <>
         {databaseDataList.map((v, i) => (
-          <>
+          <Box
+            p={2}
+            border={'1px solid transparent'}
+            borderBottomColor={'myGray.150'}
+            wordBreak={'break-all'}
+            key={i}
+            fontSize={'sm'}
+            _hover={{
+              bg: 'linear-gradient(180deg,  #FBFBFC 7.61%, #F0F1F6 100%)',
+              borderTopColor: 'myGray.50',
+              '& .hover-data': { visibility: 'visible' }
+            }}
+          >
             <Box
               alignItems={'center'}
               fontSize={'xs'}
@@ -187,9 +199,9 @@ const QuoteReader = ({
                 <Text>{v.q || '-'}</Text>
               </Box>
             </Box>
-          </>
+          </Box>
         ))}
-      </Box>
+      </>
     );
   }, [databaseDataList, t]);
 
