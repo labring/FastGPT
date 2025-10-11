@@ -17,26 +17,11 @@ async function handler(
   const { tmbId, userId, teamId } = await authCert({ req, authToken: true });
   const user = await getUserDetail({ tmbId });
 
-  try {
-    const redis = getGlobalRedisConnection();
-    const today = new Date().toISOString().split('T')[0];
-    const activeKey = `user_daily_active:${userId}:${today}`;
-
-    const hasRecorded = await redis.get(activeKey);
-
-    if (!hasRecorded) {
-      console.log('dddd');
-      await pushTrack.active({
-        uid: userId,
-        teamId: teamId,
-        tmbId: tmbId
-      });
-
-      await redis.setex(activeKey, 26 * 60 * 60, '1');
-    }
-  } catch (error) {
-    console.error('Failed to track user active:', error);
-  }
+  pushTrack.dailyUserActive({
+    uid: userId,
+    teamId: teamId,
+    tmbId: tmbId
+  });
 
   // Remove sensitive information
   // if (user.team.lafAccount) {

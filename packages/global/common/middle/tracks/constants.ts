@@ -1,6 +1,6 @@
 export enum TrackEnum {
   login = 'login',
-  active = 'active',
+  dailyUserActive = 'dailyUserActive',
   createApp = 'createApp',
   useAppTemplate = 'useAppTemplate',
   createDataset = 'createDataset',
