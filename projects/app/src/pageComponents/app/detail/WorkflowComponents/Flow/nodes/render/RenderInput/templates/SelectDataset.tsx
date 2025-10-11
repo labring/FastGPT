@@ -112,6 +112,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
                 const hasDatabaseKnowledge = e.some(
                   (v) => v.datasetType === DatasetTypeEnum.database
                 );
+
                 const hasOtherKnowledge = e.some((v) => v.datasetType !== DatasetTypeEnum.database);
                 let value = searchModeInfo.value;
 
@@ -129,14 +130,13 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
                     value = DatasetSearchModeEnum.database;
                   }
                 }
-
                 onChangeNode({
                   nodeId,
                   key: searchModeInfo.key,
                   type: 'updateInput',
                   value: {
                     ...searchModeInfo,
-                    value
+                    value: e.length === 0 ? DatasetSearchModeEnum.embedding : value
                   }
                 });
               }

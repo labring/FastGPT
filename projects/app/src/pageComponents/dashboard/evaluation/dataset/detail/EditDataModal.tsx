@@ -92,6 +92,11 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
   const [errorMsg, setErrorMsg] = useState(formData.qualityMetadata?.error || '');
   const [hasDataChanged, setHasDataChanged] = useState(false);
+  const [lastSavedData, setLastSavedData] = useState<EditDataFormData>({
+    question: defaultQuestion,
+    referenceAnswer: defaultReferenceAnswer
+  });
+
   const [reviewBtns, setReviewBtns] = useState<ReviewBtnType[]>([
     {
       label: t('dashboard_evaluation:start_evaluation'),
@@ -159,17 +164,25 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
 
   // 新增保存请求，用于重测前的数据保存
   const { runAsync: saveBeforeRetest, loading: isSavingBeforeRetest } = useRequest2(
-    async (data: EditDataFormData) =>
-      updateEvaluationDatasetData({
+    async (data: EditDataFormData) => {
+      const result = await updateEvaluationDatasetData({
         dataId: formData._id,
         userInput: data.question,
         expectedOutput: data.referenceAnswer
-      }),
+      });
+
+      // 保存成功后，更新最后保存的数据状态
+      setLastSavedData({
+        question: data.question,
+        referenceAnswer: data.referenceAnswer
+      });
+
+      return result;
+    },
     {
       errorToast: t('common:submit_failed')
     }
   );
-
   // 重测按钮的loading状态
   const retestLoading = useMemo(() => {
     return isEvaluating || isSavingBeforeRetest;
@@ -226,10 +239,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   const watchedValues = watch();
 
   useEffect(() => {
-    const questionChanged = watchedValues.question !== defaultQuestion;
-    const answerChanged = watchedValues.referenceAnswer !== defaultReferenceAnswer;
+    const questionChanged = watchedValues.question !== lastSavedData.question;
+    const answerChanged = watchedValues.referenceAnswer !== lastSavedData.referenceAnswer;
     setHasDataChanged(questionChanged || answerChanged);
-  }, [watchedValues, defaultQuestion, defaultReferenceAnswer]);
+  }, [watchedValues, lastSavedData.question, lastSavedData.referenceAnswer]);
   // 当弹窗打开时重置表单数据
   React.useEffect(() => {
     if (isOpen) {
@@ -243,6 +256,12 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       setCurrentQualityResult(formData?.qualityResult || '');
       setErrorMsg(formData.qualityMetadata?.error || '');
 
+      // 重置最后保存的数据状态
+      setLastSavedData({
+        question: defaultQuestion,
+        referenceAnswer: defaultReferenceAnswer
+      });
+
       // 根据评测状态设置按钮显示状态
       updateButtonsByStatus(evaluationStatus, formData?.qualityResult);
 
@@ -254,11 +273,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       }
     }
   }, [isOpen, defaultQuestion, defaultReferenceAnswer, evaluationStatus, qualityReason]);
-
   const handleSaveClick = (data: EditDataFormData, isGoNext = false) => {
     // 检查是否修改了问题或参考答案
-    const hasQuestionChanged = data.question !== defaultQuestion;
-    const hasAnswerChanged = data.referenceAnswer !== defaultReferenceAnswer;
+    const hasQuestionChanged = data.question !== lastSavedData.question;
+    const hasAnswerChanged = data.referenceAnswer !== lastSavedData.referenceAnswer;
 
     let saveData;
     if (hasQuestionChanged || hasAnswerChanged) {
@@ -463,11 +481,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
       case 'reStart':
         // 获取当前表单数据
         const currentFormData = getValues();
-
-        // 检查数据是否发生变化
-        const hasDataChanged =
-          currentFormData.question !== defaultQuestion ||
-          currentFormData.referenceAnswer !== defaultReferenceAnswer;
 
         if (hasDataChanged) {
           // 如果数据发生变化，先保存再重测
