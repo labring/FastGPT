@@ -30,9 +30,9 @@ export function RestAPI<T extends AppRoute>(handler: Handler<T>): Endpoint<T> {
         status: 200 as const,
         body: {
           code: 200,
-          message: 'success',
           data: body,
-          statusText: 'success'
+          message: '',
+          statusText: ''
         }
       } as any;
     } catch (error) {
@@ -41,7 +41,7 @@ export function RestAPI<T extends AppRoute>(handler: Handler<T>): Endpoint<T> {
       // 使用统一的错误处理逻辑
       const processedError = processError({
         error,
-        url: `${url} (${duration}ms)`,
+        url,
         defaultCode: 500
       });
 
