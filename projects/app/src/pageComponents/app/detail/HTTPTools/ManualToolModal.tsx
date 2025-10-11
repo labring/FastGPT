@@ -1,5 +1,5 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -17,7 +17,12 @@ import {
   Th,
   Td,
   TableContainer,
-  Switch
+  Switch,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -30,7 +35,8 @@ import {
   HTTP_METHODS,
   type HttpMethod,
   toolValueTypeList,
-  ContentTypes
+  ContentTypes,
+  VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
   headerValue2StoreHeader,
@@ -44,6 +50,10 @@ import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import CurlImportModal from './CurlImportModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type ManualToolFormType = {
   name: string;
@@ -77,22 +87,23 @@ const ManualToolModal = ({
   editingTool
 }: {
   onClose: () => void;
-  editingTool?: HttpToolConfigType;
+  editingTool: HttpToolConfigType;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
 
-  const isEditMode = editingTool !== undefined;
+  const isEditMode = !!editingTool.name;
 
   const { register, handleSubmit, watch, setValue } = useForm<ManualToolFormType>({
     defaultValues: {
-      name: editingTool?.name || '',
-      description: editingTool?.description || '',
-      method: (editingTool?.method.toUpperCase() as any) || 'POST',
-      path: editingTool?.path || '',
-      headerSecret: editingTool?.headerSecret || {},
+      name: editingTool.name,
+      description: editingTool.description,
+      method: editingTool.method.toUpperCase() as HttpMethod,
+      path: editingTool.path,
+      headerSecret: editingTool.headerSecret || {},
       customParams: editingTool
         ? Object.entries(editingTool.inputSchema.properties || {}).map(
             ([key, value]: [string, any]) => ({
@@ -104,11 +115,11 @@ const ManualToolModal = ({
             })
           )
         : [],
-      params: editingTool?.staticParams || [],
-      bodyType: editingTool?.staticBody?.type || ContentTypes.json,
-      bodyContent: editingTool?.staticBody?.content || '',
-      bodyFormData: editingTool?.staticBody?.formData || [],
-      headers: editingTool?.staticHeaders || []
+      params: editingTool.staticParams || [],
+      bodyType: editingTool.staticBody?.type || ContentTypes.json,
+      bodyContent: editingTool.staticBody?.content || '',
+      bodyFormData: editingTool.staticBody?.formData || [],
+      headers: editingTool.staticHeaders || []
     }
   });
 
@@ -195,7 +206,7 @@ const ManualToolModal = ({
 
       const updatedToolList = (() => {
         if (isEditMode) {
-          return existingToolList.map((tool) => (tool.name === editingTool?.name ? newTool : tool));
+          return existingToolList.map((tool) => (tool.name === editingTool.name ? newTool : tool));
         }
         return [...existingToolList, newTool];
       })();
@@ -213,6 +224,20 @@ const ManualToolModal = ({
     }
   );
 
+  const formatVariables = useMemo(
+    () =>
+      customParams.map((item) => ({
+        key: item.key,
+        label: item.key,
+        parent: {
+          id: VARIABLE_NODE_ID,
+          label: t('app:Custom_params'),
+          avatar: 'core/workflow/template/variable'
+        }
+      })),
+    [t, customParams]
+  );
+
   return (
     <MyModal
       isOpen
@@ -222,8 +247,8 @@ const ManualToolModal = ({
       title={isEditMode ? t('app:Edit_tool') : t('app:Add_tool')}
       maxW={'1167px'}
     >
-      <ModalBody display={'flex'}>
-        <Flex w={'1167px'}>
+      <ModalBody display={'flex'} minH={['90vh', '600px']}>
+        <Flex w={'1167px'} overflow={'hidden'}>
           <Flex
             w={'500px'}
             px={9}
@@ -232,6 +257,7 @@ const ManualToolModal = ({
             gap={6}
             borderRight={'1px solid'}
             borderColor={'myGray.200'}
+            overflow={'auto'}
           >
             <Flex gap={8} alignItems={'center'}>
               <FormLabel>{t('app:Tool_name')}</FormLabel>
@@ -246,51 +272,17 @@ const ManualToolModal = ({
               <Textarea
                 {...register('description')}
                 rows={8}
-                minH={'150px'}
-                maxH={'400px'}
+                minH={'100px'}
+                maxH={'200px'}
                 placeholder={t('app:Tool_description')}
               />
             </Box>
             <Box>
-              <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
-                <FormLabel>{t('common:core.module.Http request settings')}</FormLabel>
-                <Button size={'sm'} onClick={onOpenCurlImport}>
-                  {t('common:core.module.http.curl import')}
-                </Button>
-              </Flex>
-              <Flex gap={2}>
-                <MySelect
-                  h={9}
-                  w={'100px'}
-                  value={method}
-                  list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
-                  onChange={(e) => setValue('method', e)}
-                />
-                <Input
-                  {...register('path', { required: true })}
-                  placeholder={t('common:core.module.input.label.Http Request Url')}
-                />
-              </Flex>
-            </Box>
-            <Box alignItems={'center'}>
-              <FormLabel mb={0}>{t('common:auth_config')}</FormLabel>
-              <Box>
-                <HeaderAuthForm
-                  headerSecretValue={storeHeader2HeaderValue(headerSecret)}
-                  onChange={(data) => {
-                    const storeData = headerValue2StoreHeader(data);
-                    setValue('headerSecret', storeData);
-                  }}
-                  fontWeight="normal"
-                />
-              </Box>
-            </Box>
-          </Flex>
-
-          <Flex flex={1} px={9} py={3} flexDirection={'column'} gap={6}>
-            <Box>
               <Flex alignItems={'center'} mb={2}>
-                <FormLabel flex={1}>{t('app:Custom_params')}</FormLabel>
+                <FormLabel flex={1} alignItems={'center'}>
+                  {t('app:Custom_params')}
+                  <QuestionTip ml={1} label={t('app:input_params_tips')} />
+                </FormLabel>
                 <Button
                   size={'sm'}
                   variant={'whitePrimary'}
@@ -321,80 +313,179 @@ const ManualToolModal = ({
                 }}
               />
             </Box>
-            <Box>
-              <FormLabel mb={2}>Params</FormLabel>
-              <ParamsTable list={params} setList={(newParams) => setValue('params', newParams)} />
+          </Flex>
+
+          <Flex flex={1} px={7} py={3} flexDirection={'column'} gap={6} overflow={'auto'}>
+            <Box px={2}>
+              <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
+                <FormLabel>{t('common:core.module.Http request settings')}</FormLabel>
+                <Button size={'sm'} onClick={onOpenCurlImport}>
+                  {t('common:core.module.http.curl import')}
+                </Button>
+              </Flex>
+              <Flex gap={2}>
+                <MySelect
+                  h={9}
+                  w={'100px'}
+                  value={method}
+                  list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
+                  onChange={(e) => setValue('method', e)}
+                />
+                <Input
+                  {...register('path', { required: true })}
+                  placeholder={t('common:core.module.input.label.Http Request Url')}
+                />
+              </Flex>
             </Box>
-            {hasBody && (
-              <Box>
-                <FormLabel mb={2}>Body</FormLabel>
-                <Flex
-                  mb={2}
-                  p={1}
-                  flexWrap={'nowrap'}
-                  bg={'myGray.25'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  borderRadius={'8px'}
+
+            <Accordion allowMultiple>
+              <AccordionItem border={'none'}>
+                <AccordionButton
+                  fontSize={'sm'}
+                  fontWeight={'500'}
+                  color={'myGray.900'}
                   justifyContent={'space-between'}
+                  alignItems={'center'}
+                  borderRadius={'md'}
+                  px={2}
+                  py={2}
+                  _hover={{ bg: 'myGray.50' }}
                 >
-                  {Object.values(ContentTypes).map((type) => (
-                    <Box
-                      key={type}
-                      cursor={'pointer'}
-                      px={3}
-                      py={1.5}
-                      fontSize={'12px'}
-                      fontWeight={'medium'}
-                      color={'myGray.500'}
-                      borderRadius={'6px'}
-                      bg={bodyType === type ? 'white' : 'none'}
-                      boxShadow={
-                        bodyType === type
-                          ? '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
-                          : ''
-                      }
-                      onClick={() => setValue('bodyType', type)}
-                    >
-                      {type}
-                    </Box>
-                  ))}
-                </Flex>
-                {isContentBody && (
-                  <Textarea
-                    value={bodyContent}
-                    onChange={(e) => setValue('bodyContent', e.target.value)}
-                    onBlur={(e) => {
-                      if (bodyType === ContentTypes.json && e.target.value) {
-                        try {
-                          JSON.parse(e.target.value);
-                        } catch (error) {
-                          toast({
-                            status: 'warning',
-                            title: t('common:json_parse_error')
-                          });
-                        }
-                      }
+                  {t('common:auth_config')}
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel py={1} px={2} mb={5}>
+                  <HeaderAuthForm
+                    headerSecretValue={storeHeader2HeaderValue(headerSecret)}
+                    onChange={(data) => {
+                      const storeData = headerValue2StoreHeader(data);
+                      setValue('headerSecret', storeData);
                     }}
-                    minH={'100px'}
-                    maxH={'200px'}
+                    fontWeight="normal"
                   />
-                )}
-                {isFormBody && (
+                </AccordionPanel>
+              </AccordionItem>
+
+              <AccordionItem border={'none'}>
+                <AccordionButton
+                  fontSize={'sm'}
+                  fontWeight={'500'}
+                  color={'myGray.900'}
+                  justifyContent={'space-between'}
+                  alignItems={'center'}
+                  borderRadius={'md'}
+                  px={2}
+                  py={2}
+                  _hover={{ bg: 'myGray.50' }}
+                >
+                  Params
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel py={1} px={2} mb={5}>
                   <ParamsTable
-                    list={bodyFormData}
-                    setList={(newFormData) => setValue('bodyFormData', newFormData)}
+                    list={params}
+                    setList={(newParams) => setValue('params', newParams)}
+                    variableLabels={formatVariables}
                   />
-                )}
-              </Box>
-            )}
-            <Box>
-              <FormLabel mb={2}>Headers</FormLabel>
-              <ParamsTable
-                list={headers}
-                setList={(newHeaders) => setValue('headers', newHeaders)}
-              />
-            </Box>
+                </AccordionPanel>
+              </AccordionItem>
+
+              {hasBody && (
+                <AccordionItem border={'none'}>
+                  <AccordionButton
+                    fontSize={'sm'}
+                    fontWeight={'500'}
+                    color={'myGray.900'}
+                    justifyContent={'space-between'}
+                    alignItems={'center'}
+                    borderRadius={'md'}
+                    px={2}
+                    py={2}
+                    _hover={{ bg: 'myGray.50' }}
+                  >
+                    Body
+                    <AccordionIcon />
+                  </AccordionButton>
+                  <AccordionPanel py={1} px={2} mb={5}>
+                    <Flex
+                      mb={2}
+                      p={1}
+                      flexWrap={'nowrap'}
+                      bg={'myGray.25'}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                      borderRadius={'8px'}
+                      justifyContent={'space-between'}
+                    >
+                      {Object.values(ContentTypes).map((type) => (
+                        <Box
+                          key={type}
+                          cursor={'pointer'}
+                          px={3}
+                          py={1.5}
+                          fontSize={'12px'}
+                          fontWeight={'medium'}
+                          color={'myGray.500'}
+                          borderRadius={'6px'}
+                          bg={bodyType === type ? 'white' : 'none'}
+                          boxShadow={
+                            bodyType === type
+                              ? '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
+                              : ''
+                          }
+                          onClick={() => setValue('bodyType', type)}
+                        >
+                          {type}
+                        </Box>
+                      ))}
+                    </Flex>
+                    {isContentBody && (
+                      <PromptEditor
+                        bg={'white'}
+                        showOpenModal={false}
+                        variableLabels={formatVariables}
+                        minH={100}
+                        maxH={200}
+                        value={bodyContent}
+                        placeholder={t('workflow:http_body_placeholder')}
+                        onChange={(e) => setValue('bodyContent', e)}
+                      />
+                    )}
+                    {isFormBody && (
+                      <ParamsTable
+                        list={bodyFormData}
+                        setList={(newFormData) => setValue('bodyFormData', newFormData)}
+                        variableLabels={formatVariables}
+                      />
+                    )}
+                  </AccordionPanel>
+                </AccordionItem>
+              )}
+
+              <AccordionItem border={'none'}>
+                <AccordionButton
+                  fontSize={'sm'}
+                  fontWeight={'500'}
+                  color={'myGray.900'}
+                  justifyContent={'space-between'}
+                  alignItems={'center'}
+                  borderRadius={'md'}
+                  px={2}
+                  py={2}
+                  _hover={{ bg: 'myGray.50' }}
+                >
+                  Headers
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel py={1} px={2}>
+                  <ParamsTable
+                    list={headers}
+                    setList={(newHeaders) => setValue('headers', newHeaders)}
+                    variableLabels={formatVariables}
+                  />
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
           </Flex>
         </Flex>
       </ModalBody>
@@ -419,6 +510,9 @@ const ManualToolModal = ({
             }
             if (result.headers) {
               setValue('headers', result.headers);
+            }
+            if (result.headerSecret) {
+              setValue('headerSecret', result.headerSecret);
             }
             setValue('bodyType', result.bodyType as ContentTypes);
             if (result.bodyContent) {
@@ -603,10 +697,12 @@ const CustomParamsTable = ({
 
 const ParamsTable = ({
   list,
-  setList
+  setList,
+  variableLabels
 }: {
   list: ParamItemType[];
   setList: (list: ParamItemType[]) => void;
+  variableLabels?: EditorVariableLabelPickerType[];
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -631,9 +727,9 @@ const ParamsTable = ({
                     value={item.key}
                     onBlur={(val) => {
                       if (!val) return;
+                      setUpdateTrigger((prev) => !prev);
 
                       if (list.find((item, i) => i !== index && item.key === val)) {
-                        setUpdateTrigger((prev) => !prev);
                         toast({
                           status: 'warning',
                           title: t('common:core.module.http.Key already exists')
@@ -643,12 +739,12 @@ const ParamsTable = ({
 
                       if (index === list.length) {
                         setList([...list, { key: val, value: '' }]);
-                        setUpdateTrigger((prev) => !prev);
                       } else {
                         setList(list.map((p, i) => (i === index ? { ...p, key: val } : p)));
                       }
                     }}
                     updateTrigger={updateTrigger}
+                    variableLabels={variableLabels}
                   />
                 </Td>
                 <Td w={1 / 2} p={0} borderColor={'myGray.150'}>
@@ -656,9 +752,12 @@ const ParamsTable = ({
                     <HttpInput
                       placeholder={'value'}
                       value={item.value}
-                      onBlur={(val) =>
-                        setList(list.map((p, i) => (i === index ? { ...p, value: val } : p)))
-                      }
+                      onBlur={(val) => {
+                        setUpdateTrigger((prev) => !prev);
+                        setList(list.map((p, i) => (i === index ? { ...p, value: val } : p)));
+                      }}
+                      updateTrigger={updateTrigger}
+                      variableLabels={variableLabels}
                     />
                     {index !== list.length && (
                       <MyIcon
