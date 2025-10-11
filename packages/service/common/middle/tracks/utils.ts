@@ -68,6 +68,12 @@ export const pushTrack = {
       data
     });
   },
+  active: (data: PushTrackCommonType) => {
+    return createTrack({
+      event: TrackEnum.active,
+      data
+    });
+  },
   createApp: (
     data: PushTrackCommonType &
       ShortUrlParams & {
