@@ -1,12 +1,14 @@
-import { ObjectIdSchema } from '../../../../../../type';
+import z from 'zod';
 import {
-  ChatFavouriteAppResponseItemSchema,
-  ChatFavouriteAppUpdateSchema
-} from '../../../../../../../core/chat/favouriteApp/type';
-import { c } from '../../../../../init';
-import { z } from 'zod';
+  ChatSettingResponseSchema,
+  ChatSettingSchema
+} from '../../../../../../core/chat/setting/type';
+import { ChatFavouriteAppResponseItemSchema } from '../../../../../../core/chat/favouriteApp/type';
+import { ObjectIdSchema } from '../../../../../type';
+import { initContract } from '@ts-rest/core';
 
-export const favouriteContract = c.router({
+const c = initContract();
+const favouriteContract = c.router({
   list: {
     path: '/proApi/core/chat/setting/favourite/list',
     method: 'GET',
@@ -23,13 +25,17 @@ export const favouriteContract = c.router({
     description: '获取精选应用列表',
     summary: '获取精选应用列表'
   },
-
   update: {
     path: '/proApi/core/chat/setting/favourite/update',
     method: 'PUT',
-    body: ChatFavouriteAppUpdateSchema,
+    body: z.array(
+      z.object({
+        appId: z.string(),
+        order: z.number()
+      })
+    ),
     responses: {
-      200: c.type<void>()
+      200: z.void()
     },
     metadata: {
       tags: ['chat']
@@ -37,7 +43,6 @@ export const favouriteContract = c.router({
     description: '更新精选应用',
     summary: '更新精选应用'
   },
-
   delete: {
     path: '/proApi/core/chat/setting/favourite/delete',
     method: 'DELETE',
@@ -45,7 +50,7 @@ export const favouriteContract = c.router({
       id: ObjectIdSchema
     }),
     responses: {
-      200: c.type<void>()
+      200: z.void()
     },
     metadata: {
       tags: ['chat']
@@ -53,7 +58,6 @@ export const favouriteContract = c.router({
     description: '删除精选应用',
     summary: '删除精选应用'
   },
-
   order: {
     path: '/proApi/core/chat/setting/favourite/order',
     method: 'PUT',
@@ -64,7 +68,7 @@ export const favouriteContract = c.router({
       })
     ),
     responses: {
-      200: c.type<void>()
+      200: z.void()
     },
     metadata: {
       tags: ['chat']
@@ -72,7 +76,6 @@ export const favouriteContract = c.router({
     description: '更新精选应用顺序',
     summary: '更新精选应用顺序'
   },
-
   tags: {
     path: '/proApi/core/chat/setting/favourite/tags',
     method: 'PUT',
@@ -83,12 +86,42 @@ export const favouriteContract = c.router({
       })
     ),
     responses: {
-      200: c.type<void>()
+      200: z.void()
     },
     metadata: {
       tags: ['chat']
     },
     description: '更新精选应用标签',
     summary: '更新精选应用标签'
+  }
+});
+
+export const settingContract = c.router({
+  favourite: favouriteContract,
+
+  detail: {
+    path: '/proApi/core/chat/setting/detail',
+    method: 'GET',
+    responses: {
+      200: ChatSettingResponseSchema
+    },
+    metadata: {
+      tags: ['chat']
+    },
+    description: '获取聊天设置',
+    summary: '获取聊天设置'
+  },
+  update: {
+    path: '/proApi/core/chat/setting/update',
+    method: 'PUT',
+    body: ChatSettingSchema.partial(),
+    responses: {
+      200: z.void()
+    },
+    metadata: {
+      tags: ['chat']
+    },
+    description: '更新聊天设置',
+    summary: '更新聊天设置'
   }
 });

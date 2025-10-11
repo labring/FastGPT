@@ -1,18 +1,18 @@
-import type { contract } from './fastgpt/contracts';
+import { fastgptContract, type FadtGPTContractType } from './contracts';
 import { generateOpenApi } from '@ts-rest/open-api';
 
 const hasCustomTags = (metadata: unknown): metadata is { tags: string[] } => {
   return !!metadata && typeof metadata === 'object' && 'tags' in metadata;
 };
 
-export type OpenAPIObject = ReturnType<typeof generateOpenApi>;
-export function generateOpenApiDocument(c: typeof contract): OpenAPIObject {
+type OpenAPIObject = ReturnType<typeof generateOpenApi>;
+function generateOpenApiDocument(c: FadtGPTContractType): OpenAPIObject {
   return generateOpenApi(
     c,
     {
       info: {
         title: 'FastGPT OpenAPI',
-        version: '4.12.4',
+        version: '4.13.2',
         description: 'FastGPT OpenAPI'
       },
       servers: [{ url: '/api' }]
@@ -32,3 +32,5 @@ export function generateOpenApiDocument(c: typeof contract): OpenAPIObject {
     }
   );
 }
+
+export const fastgptOpenApiDocument = generateOpenApiDocument(fastgptContract);
