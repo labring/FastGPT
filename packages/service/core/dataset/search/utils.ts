@@ -3,6 +3,7 @@ import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { getLLMModel } from '../../ai/model';
 
 export const datasetSearchQueryExtension = async ({
   query,
@@ -85,4 +86,27 @@ Human: ${query}
     rewriteQuery,
     aiExtensionResult
   };
+};
+
+// Calculate dynamic limit based on LLM model's max context and safety factor
+export const calculateDynamicLimit = ({
+  generateSqlModel,
+  safetyFactor = 0.6,
+  estimatedTokensPerItem = 512
+}: {
+  generateSqlModel?: string;
+  safetyFactor?: number;
+  estimatedTokensPerItem?: number;
+}): number => {
+  // Get the LLM model configuration
+  const llmModel = getLLMModel(generateSqlModel);
+
+  // Calculate safe limit based on model's maxContext
+  const modelMaxToken = llmModel.maxContext;
+  const safeLimit = Math.floor((modelMaxToken * safetyFactor) / estimatedTokensPerItem);
+
+  // Ensure minimum limit of 5 and maximum of 50 for reasonable performance
+  const finalLimit = Math.max(5, Math.min(safeLimit, 50));
+
+  return finalLimit;
 };
