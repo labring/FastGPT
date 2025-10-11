@@ -64,9 +64,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       hasDatabaseKnowledge: knowledgeInfoList.some(
         (item) => item.datasetType === DatasetTypeEnum.database
       ),
-      hasOtherKnowledge: knowledgeInfoList.some(
-        (item) => item.datasetType !== DatasetTypeEnum.database
-      )
+      // 没选择知识库时展示通用知识库配置
+      hasOtherKnowledge:
+        knowledgeInfoList.some((item) => item.datasetType !== DatasetTypeEnum.database) ||
+        knowledgeInfoList.length === 0
     };
   }, [nodeList, nodeId]);
 
