@@ -125,7 +125,9 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     tableSchema: TableTransformer.toPlainObject(
                       TableTransformer.fromPlainObject(table),
                       { exist: true, lastUpdated: new Date() }
-                    ) as TableSchemaType
+                    ) as TableSchemaType,
+                    trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
+                    updateTime: new Date()
                   }
                 ],
                 { session }

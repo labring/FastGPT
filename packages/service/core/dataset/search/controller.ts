@@ -52,6 +52,8 @@ import type {
 } from '@fastgpt/global/core/dataset/database/api';
 import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
 
+export const dativeUrl = process.env.DATIVE_BASE_URL;
+
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
   teamId: string;
@@ -91,6 +93,7 @@ export type SearchDatabaseDataProps = {
   datasetIds: string[];
   queries: string[];
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
+  [NodeInputKeyEnum.searchColumnslLimitRatio]?: number; // default 0.3
 };
 
 export type SearchDatasetDataResponse = {
@@ -1013,24 +1016,23 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
 };
 export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);
 
-/**
- * Database Embedding Recall Function
- *
- * Supports multiple vector databases (PG, Milvus, OceanBase) for database schema retrieval.
- * Automatically detects the vector database type based on environment configuration.
- *
- * @param teamId - Team identifier
- * @param datasetIds - Array of dataset identifiers
- * @param query - Search query for finding relevant database tables
- * @param limit - Maximum number of results to return (default: 10)
- * @returns DatabaseEmbedRecallResult containing schema mapping and token usage
- */
 export const SearchDatabaseData = async (
   props: SearchDatabaseDataProps
 ): Promise<SearchDatabaseDataResponse> => {
-  let { histories, teamId, model, datasetIds, queries, limit = 50 } = props;
+  let { histories, teamId, model, datasetIds, queries, limit = 50, searchRatio = 0.3 } = props;
+  const desLimit = Math.floor(limit * (1 - searchRatio));
   try {
-    // Get forbid collection list for database search
+    await fetch(`${dativeUrl}/healthz`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error: any) {
+    addLog.error('[SearchDatabaseData] fetch error,reason:', error?.message || error);
+    return Promise.reject(DatabaseErrEnum.dativeServiceError);
+  }
+  try {
     const forbidCollections = await MongoDatasetCollection.find(
       {
         teamId,
@@ -1039,10 +1041,8 @@ export const SearchDatabaseData = async (
       },
       '_id'
     );
-    // Step 1: Get embedding model from dataset configuration
     const vectorModel = getEmbeddingModel(model);
     let totalTokens = 0;
-    // Step 2: Generate embedding vector for the query
     const columnDescriptionRecallResList: DatabaseEmbeddingRecallItemType[] = [];
     const columnValueRecallResultList: DatabaseEmbeddingRecallItemType[] = [];
 
@@ -1058,21 +1058,19 @@ export const SearchDatabaseData = async (
         totalTokens += tokens;
         const q_vector = vectors[0];
 
-        // Step 3: Column description search using unified interface
         const columnDescriptionResults = await columnDescriptionRecall({
           teamId,
           datasetIds,
           vector: q_vector,
-          limit: limit,
+          limit: desLimit,
           forbidCollectionIdList
         });
 
-        // Step 4: Column value search using unified interface
         const columnValueResults = await columnValueRecall({
           teamId,
           datasetIds,
           vector: q_vector,
-          limit: limit,
+          limit: limit - desLimit,
           forbidCollectionIdList
         });
 
@@ -1081,7 +1079,6 @@ export const SearchDatabaseData = async (
       })
     );
 
-    // Step 5: Merge and integrate results
     const schema = await mergeAndGetSchema({
       columnDescriptionRecallResList,
       columnValueRecallResultList,
@@ -1099,7 +1096,6 @@ export const SearchDatabaseData = async (
   }
 };
 
-// Helper function for column description recall
 const columnDescriptionRecall = async ({
   teamId,
   datasetIds,
@@ -1134,7 +1130,6 @@ const columnDescriptionRecall = async ({
   }
 };
 
-// Helper function for column value recall
 const columnValueRecall = async ({
   teamId,
   datasetIds,
@@ -1170,7 +1165,7 @@ const columnValueRecall = async ({
   }
 };
 
-// Helper function to merge results and get schema
+// merge results and get schema
 const mergeAndGetSchema = async ({
   columnDescriptionRecallResList,
   columnValueRecallResultList,
@@ -1258,10 +1253,7 @@ const mergeAndGetSchema = async ({
   return schema;
 };
 
-/**
- * Generate SQL and execute query with Dative Plugin
- *
- */
+// Generate SQL and execute query with Dative Plugin
 export const generateAndExecuteSQL = async ({
   datasetId,
   query,
@@ -1370,17 +1362,6 @@ export const generateAndExecuteSQL = async ({
   // Sort by score (highest first) for better SQL generation
   retrievedMetadata.sort((a, b) => b.score - a.score);
 
-  // Get Python service URL from environment
-  const dativeUrl = process.env.DATIVE_BASE_URL;
-
-  // Get LLM config from model
-  const llmModelData = getLLMModel(generate_sql_llm.model);
-  if (!llmModelData) {
-    addLog.error(`Invalid LLM model specified for SQL generation ${generate_sql_llm.model}`);
-    return Promise.reject(
-      `Invalid LLM model specified for SQL generation ${generate_sql_llm.model}`
-    );
-  }
   // Update request payload to include all table schemas
   const requestPayload: SqlGenerationRequest = {
     source_config: {
