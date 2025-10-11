@@ -176,26 +176,38 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   }, [isEvaluating, isSavingBeforeRetest]);
 
   // 轮询获取数据详情 - 在评测中或排队中时才轮询
-  const { runAsync: getDetail } = useRequest2(() => getEvaluationDatasetDataDetail(formData._id), {
-    pollingInterval: 3000,
-    pollingWhenHidden: false,
-    manual: true,
-    ready: isOpen,
-    onSuccess: (data: any) => {
-      if (data?.qualityMetadata?.status !== currentEvaluationStatus) {
-        const newStatus =
-          data?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated;
-        const newQualityResult = data?.qualityResult || '';
-        setCurrentEvaluationStatus(newStatus);
-        setCurrentQualityReason(data?.qualityMetadata?.reason || '');
-        setCurrentQualityResult(newQualityResult);
-        updateButtonsByStatus(newStatus, newQualityResult);
-        newStatus === EvalDatasetDataQualityStatusEnum.error &&
-          setErrorMsg(data?.qualityMetadata?.error);
+  const { runAsync: getDetail, cancel } = useRequest2(
+    () => getEvaluationDatasetDataDetail(formData._id),
+    {
+      pollingInterval: 3000,
+      pollingWhenHidden: false,
+      manual: true,
+      ready: isOpen,
+      onSuccess: (data: any) => {
+        if (data?.qualityMetadata?.status !== currentEvaluationStatus) {
+          const newStatus =
+            data?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated;
+          const newQualityResult = data?.qualityResult || '';
+          setCurrentEvaluationStatus(newStatus);
+          setCurrentQualityReason(data?.qualityMetadata?.reason || '');
+          setCurrentQualityResult(newQualityResult);
+          updateButtonsByStatus(newStatus, newQualityResult);
+          newStatus === EvalDatasetDataQualityStatusEnum.error &&
+            setErrorMsg(data?.qualityMetadata?.error);
+        }
+
+        // 非评估中、排队中状态停止轮询
+        if (
+          !(
+            data?.qualityMetadata?.status == EvalDatasetDataQualityStatusEnum.evaluating ||
+            data?.qualityMetadata?.status === EvalDatasetDataQualityStatusEnum.queuing
+          )
+        ) {
+          cancel();
+        }
       }
     }
-  });
-
+  );
   const {
     register,
     handleSubmit,
@@ -225,6 +237,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         question: defaultQuestion,
         referenceAnswer: defaultReferenceAnswer
       });
+      cancel();
       setCurrentEvaluationStatus(evaluationStatus);
       setCurrentQualityReason(qualityReason);
       setCurrentQualityResult(formData?.qualityResult || '');
@@ -629,8 +642,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
         defaultValues={{
           evaluationStatus:
             currentQualityResult === EvalDatasetDataQualityResultEnum.highQuality
-              ? EvaluationStatus.HighQuality
-              : EvaluationStatus.NeedsImprovement,
+              ? EvaluationStatus.NeedsImprovement
+              : EvaluationStatus.HighQuality,
           evaluationResult: ''
         }}
       />
