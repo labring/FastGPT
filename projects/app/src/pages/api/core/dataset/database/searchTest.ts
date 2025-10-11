@@ -6,11 +6,12 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { getDefaultLLMModel, getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import {
   generateAndExecuteSQL,
   SearchDatabaseData
 } from '@fastgpt/service/core/dataset/search/controller';
+import { calculateDynamicLimit } from '@fastgpt/service/core/dataset/search/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -22,7 +23,7 @@ async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>
 ): Promise<DatabaseSearchTestResponse> {
   // 未选择model时使用默认模型
-  const { datasetId, query, model = getDefaultLLMModel().name } = req.body;
+  const { datasetId, query, model } = req.body;
 
   // auth dataset role
   const { dataset, teamId, tmbId, apikey } = await authDataset({
@@ -36,10 +37,23 @@ async function handler(
   // auth balance
   await checkTeamAIPoints(teamId);
   const vectorModel = getEmbeddingModel(dataset.vectorModel);
+  const sqlLLM = getLLMModel(model);
+
+  // Calculate dynamic limit based on generateSqlModel's maxContext
+  const dynamicLimit = calculateDynamicLimit({
+    generateSqlModel: model,
+    safetyFactor: 0.6,
+    estimatedTokensPerItem: 1024
+  });
 
   addLog.debug('Dataset Search Test', {
     datasetId: datasetId,
-    vectorModel: vectorModel
+    vectorModel: vectorModel,
+    model: sqlLLM.model,
+    name: sqlLLM.name,
+    apikey: sqlLLM.requestAuth,
+    baseurl: sqlLLM.requestUrl,
+    calculatedDynamicLimit: dynamicLimit
   });
 
   const { schema, tokens: embeddingTokens } = await SearchDatabaseData({
@@ -47,19 +61,29 @@ async function handler(
     teamId: teamId,
     queries: [query],
     model: vectorModel.model,
-    limit: 50,
+    limit: dynamicLimit,
     datasetIds: [datasetId]
   });
   if (schema) {
     const start = Date.now();
+    const key = sqlLLM.requestAuth || undefined;
+    const url =  sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
     const generateSqlResult = await generateAndExecuteSQL({
       datasetId,
       query: query,
       schema: schema,
       teamId,
       limit: 50,
-      generate_sql_llm: { model: model ?? getDefaultLLMModel().name },
-      evaluate_sql_llm: { model: model ?? getDefaultLLMModel().name }
+      generate_sql_llm: {
+        model: sqlLLM.model,
+        api_key: key,
+        base_url: url
+      },
+      evaluate_sql_llm: {
+        model: sqlLLM.model,
+        api_key: key,
+        base_url: url
+      }
     });
     if (generateSqlResult) {
       const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
@@ -75,7 +99,7 @@ async function handler(
         tmbId,
         inputTokens: generateSqlResult.input_tokens,
         outputTokens: generateSqlResult.output_tokens,
-        model: model
+        model: sqlLLM.model
       });
 
       if (apikey) {
@@ -100,7 +124,7 @@ async function handler(
         answer: generateSqlResult.answer,
         sql_result: generateSqlResult.sql,
         duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-        limit: 50,
+        limit: dynamicLimit,
         searchMode: DatasetSearchModeEnum.database
       } as DatabaseSearchTestResponse;
     } else {
