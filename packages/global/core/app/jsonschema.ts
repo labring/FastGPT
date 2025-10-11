@@ -5,6 +5,7 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { OpenApiJsonSchema } from './httpTools/type';
+import { i18nT } from '../../../web/i18n/utils';
 
 type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
 export type JsonSchemaPropertiesItemType = {
@@ -180,7 +181,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
       .filter(Boolean) as OpenApiJsonSchema['pathData'];
     return { pathData, serverPath };
   } catch (err) {
-    throw new Error('Invalid Schema');
+    return Promise.reject(i18nT('common:plugin.Invalid Schema'));
   }
 };
 export const getSchemaValueType = (schema: { type: string; items?: { type: string } }) => {
