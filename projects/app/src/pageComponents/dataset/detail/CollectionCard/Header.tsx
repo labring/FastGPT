@@ -177,7 +177,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       isDatabase
         ? t('dataset:database_tables')
         : t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any),
-    []
+    [isDatabase, t, datasetDetail?.type]
   );
 
   const handleRefreshDataSource = async () => {
