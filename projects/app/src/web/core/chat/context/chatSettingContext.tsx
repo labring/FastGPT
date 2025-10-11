@@ -7,7 +7,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/types';
+import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';

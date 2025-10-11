@@ -30,7 +30,7 @@ import type {
   GetCollectionQuoteProps,
   GetCollectionQuoteRes
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
-import { RestAPI, client } from '@fastgpt/global/common/tsRest/client';
+import { RestAPI, client } from '@fastgpt/global/common/tsRest/fastgpt/client';
 
 /**
  * 获取初始化聊天内容
@@ -111,14 +111,24 @@ export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
 /*---------- chat setting ------------*/
 export const getChatSetting = RestAPI(client.chat.setting.detail);
 
-export const updateChatSetting = RestAPI(client.chat.setting.update);
+export const updateChatSetting = RestAPI(client.chat.setting.update, (params) => ({
+  body: params
+}));
 
 export const getFavouriteApps = RestAPI(client.chat.setting.favourite.list);
 
-export const updateFavouriteApps = RestAPI(client.chat.setting.favourite.update);
+export const updateFavouriteApps = RestAPI(client.chat.setting.favourite.update, (params) => ({
+  body: params
+}));
 
-export const updateFavouriteAppOrder = RestAPI(client.chat.setting.favourite.order);
+export const updateFavouriteAppOrder = RestAPI(client.chat.setting.favourite.order, (params) => ({
+  body: params
+}));
 
-export const updateFavouriteAppTags = RestAPI(client.chat.setting.favourite.tags);
+export const updateFavouriteAppTags = RestAPI(client.chat.setting.favourite.tags, (params) => ({
+  body: params
+}));
 
-export const deleteFavouriteApp = RestAPI(client.chat.setting.favourite.delete);
+export const deleteFavouriteApp = RestAPI(client.chat.setting.favourite.delete, (params) => ({
+  query: params
+}));

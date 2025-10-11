@@ -1,12 +1,12 @@
-import { ObjectIdSchema } from '../../../../../../common/tsRest/types';
+import { ObjectIdSchema } from '../../../../../type';
 import {
   ChatFavouriteAppResponseItemSchema,
   ChatFavouriteAppUpdateSchema
-} from '../../../../../../core/chat/favouriteApp/types';
-import { c } from '../../../../init';
+} from '../../../../../../../core/chat/favouriteApp/type';
+import { c } from '../../../../../init';
 import { z } from 'zod';
 
-export const favouriteContract = c.router({
+export const favouriteProContract = c.router({
   list: {
     path: '/proApi/core/chat/setting/favourite/list',
     method: 'GET',

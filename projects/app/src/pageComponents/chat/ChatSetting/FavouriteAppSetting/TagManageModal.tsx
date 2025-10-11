@@ -18,12 +18,12 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/types';
+import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFavouriteApps, updateChatSetting, updateFavouriteAppTags } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { ChatFavouriteAppResponseItemType } from '@fastgpt/global/core/chat/favouriteApp/types';
+import type { ChatFavouriteAppResponseItemType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';

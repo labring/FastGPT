@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@anatine/zod-openapi';
-import { ObjectIdSchema } from '../../../common/tsRest/types';
+import { ObjectIdSchema } from '../../../common/tsRest/type';
 
 extendZodWithOpenApi(z);
 

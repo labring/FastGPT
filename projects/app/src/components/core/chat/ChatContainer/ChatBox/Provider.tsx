@@ -24,7 +24,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
-import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/types';
+import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 
 export type ChatProviderProps = {
   appId: string;

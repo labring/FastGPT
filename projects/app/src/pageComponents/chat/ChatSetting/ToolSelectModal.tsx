@@ -44,7 +44,7 @@ import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
-import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/types';
+import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/type';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

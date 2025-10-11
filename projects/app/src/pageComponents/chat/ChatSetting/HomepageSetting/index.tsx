@@ -19,8 +19,8 @@ import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import type {
   ChatQuickAppType,
   ChatSelectedToolType
-} from '@fastgpt/global/core/chat/setting/types';
-import type { ChatSettingUpdateType } from '@fastgpt/global/core/chat/setting/types';
+} from '@fastgpt/global/core/chat/setting/type';
+import type { ChatSettingUpdateType } from '@fastgpt/global/core/chat/setting/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -35,7 +35,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
-import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/types';
+import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/type';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')

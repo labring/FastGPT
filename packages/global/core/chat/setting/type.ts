@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@anatine/zod-openapi';
-import { ObjectIdSchema } from '../../../common/tsRest/types';
-import { ChatFavouriteTagSchema } from '../favouriteApp/types';
+import { ObjectIdSchema } from '../../../common/tsRest/type';
+import { ChatFavouriteTagSchema } from '../favouriteApp/type';
 
 extendZodWithOpenApi(z);
 

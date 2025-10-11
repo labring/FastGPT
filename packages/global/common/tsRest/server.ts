@@ -1,27 +1,23 @@
 import { createNextRoute, createNextRouter } from '@ts-rest/next';
-import { contract, coreContract, proContract } from './contract';
+import { contract, proContract } from './contract';
 import { generateOpenApi } from '@ts-rest/open-api';
 
+/**
+ * 创建 FastGPT 单个路由
+ */
 export function createServerRoute(
   implementation: Parameters<typeof createNextRoute<typeof contract>>[1]
 ) {
   return createNextRoute(contract, implementation);
 }
 
+/**
+ * 创建 FastGPT 路由器
+ */
 export function createServerRouter(
   router: Parameters<typeof createNextRouter<typeof contract>>[1]
 ) {
   return createNextRouter(contract, router);
-}
-
-/**
- * 创建开源版路由器
- * 只需实现开源接口，Pro 接口通过 /proApi/[...path].ts 转发
- */
-export function createCoreRouter(
-  router: Parameters<typeof createNextRouter<typeof coreContract>>[1]
-) {
-  return createNextRouter(coreContract, router);
 }
 
 /**

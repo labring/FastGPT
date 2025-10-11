@@ -1,11 +1,11 @@
-import { contract } from './contract';
+import { contract } from '../contract';
 import { initClient, tsRestFetchApi } from '@ts-rest/core';
-import { getWebReqUrl } from '../../../web/common/system/utils';
-import { TOKEN_ERROR_CODE } from '../error/errorCode';
-import { getNanoid } from '../string/tools';
+import { TOKEN_ERROR_CODE } from '../../error/errorCode';
+import { getNanoid } from '../../string/tools';
 import { type ApiFetcherArgs } from '@ts-rest/core';
-import { AnyResponseSchema } from './types';
+import { AnyResponseSchema } from '../type';
 import { ZodError } from 'zod';
+import { getWebReqUrl } from '../../../../web/common/system/utils';
 
 export const client = initClient(contract, {
   baseUrl: getWebReqUrl('/api'),
@@ -23,10 +23,10 @@ export const client = initClient(contract, {
 });
 
 const WHITE_LIST = ['/chat/share', '/chat', '/login'];
-function isTokenExpired() {
+async function isTokenExpired() {
   if (WHITE_LIST.includes(window.location.pathname)) return;
 
-  // client.support.user.logout();
+  await client.support.user.account.logout();
   const lastRoute = encodeURIComponent(location.pathname + location.search);
   window.location.replace(getWebReqUrl(`/login?lastRoute=${lastRoute}`));
 }
@@ -156,12 +156,16 @@ const call = async <T extends Endpoints>(
   return res.body as RestAPIResult<T>;
 };
 
-export const RestAPI = <T extends Endpoints>(endpoint: T) => {
+export const RestAPI = <T extends Endpoints>(
+  endpoint: T,
+  transform?: (params: Params<T>) => {
+    body?: ExtractBodySchema<T> extends never ? any : ExtractBodySchema<T>;
+    query?: ExtractQuerySchema<T> extends never ? any : ExtractQuerySchema<T>;
+  }
+) => {
   return (params?: Params<T>, options?: Options<T>) => {
-    const finalOptions = {
-      ...options,
-      ...(params && Object.keys(params).length > 0 ? { body: params, query: params } : {})
-    } as _Options<T>;
+    const transformedData = params && transform ? transform(params) : {};
+    const finalOptions = { ...options, ...transformedData } as _Options<T>;
 
     return call(endpoint, finalOptions);
   };

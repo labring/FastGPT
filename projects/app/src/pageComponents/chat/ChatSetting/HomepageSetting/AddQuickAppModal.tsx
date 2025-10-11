@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/types';
+import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';

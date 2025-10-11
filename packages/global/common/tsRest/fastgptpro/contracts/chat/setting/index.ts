@@ -1,12 +1,12 @@
 import {
   ChatSettingResponseSchema,
   ChatSettingSchema
-} from '../../../../../core/chat/setting/types';
-import { c } from '../../../init';
-import { favouriteContract } from './favourite';
+} from '../../../../../../core/chat/setting/type';
+import { c } from '../../../../init';
+import { favouriteProContract } from './favourite';
 
-export const settingContract = c.router({
-  favourite: favouriteContract,
+export const settingProContract = c.router({
+  favourite: favouriteProContract,
 
   detail: {
     path: '/proApi/core/chat/setting/detail',
@@ -23,7 +23,7 @@ export const settingContract = c.router({
 
   update: {
     path: '/proApi/core/chat/setting/update',
-    method: 'POST',
+    method: 'PUT',
     body: ChatSettingSchema.partial(),
     responses: {
       200: c.type<void>()

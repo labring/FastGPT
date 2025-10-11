@@ -29,10 +29,10 @@ import { deleteFavouriteApp, getFavouriteApps, updateFavouriteAppOrder } from '@
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Box, Wrap } from '@chakra-ui/react';
-import type { ChatFavouriteAppResponseItemType } from '@fastgpt/global/core/chat/favouriteApp/types';
+import type { ChatFavouriteAppResponseItemType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/types';
+import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';

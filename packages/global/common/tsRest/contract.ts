@@ -1,15 +1,34 @@
+import { supportContract } from './fastgpt/contracts/support';
+import { chatProContract } from './fastgptpro/contracts/chat';
 import { c } from './init';
-import { chatContract, chatCoreContract, chatProContract } from './contracts/chat';
-import type { AppRouter } from '@ts-rest/core';
 
 // 前端使用的完整合约（开源 + Pro）
+// FastGPT 后端使用的合约
 export const contract = c.router({
-  chat: chatContract
+  chat: {
+    ...chatProContract
+  },
+  support: {
+    ...supportContract
+  }
 });
 
-// 开源版后端使用的合约
-export const coreContract = c.router({
-  chat: chatCoreContract
+// 通过 FastGPT 后端转发到 Pro 后端使用的合约
+const transformedProContract = c.router({
+  chat: transformPaths(chatProContract)
+});
+
+// Pro 后端独有的接口
+const proOnlyContract = c.router({
+  // TODO
+  // admin: adminContract,
+});
+
+// 最终的 Pro 合约 = 转换后的 Pro 接口 + Pro 后端独有的接口
+// Pro 后端使用的合约
+export const proContract = c.router({
+  ...transformedProContract,
+  ...proOnlyContract
 });
 
 /**
@@ -46,19 +65,3 @@ function transformPaths<T extends Record<string, any>>(
 
   return transform(router) as T;
 }
-
-// Pro 后端使用的合约
-const transformedProContract = c.router({
-  chat: transformPaths(chatProContract)
-});
-
-// Pro 独有的接口
-const proOnlyContract = c.router({
-  // admin: adminContract,
-});
-
-// 最终的 Pro 合约 = 转换后的 Pro 接口 + Pro 独有接口
-export const proContract = c.router({
-  ...transformedProContract,
-  ...proOnlyContract
-});

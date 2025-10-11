@@ -1,7 +1,9 @@
 import { NextEntry } from '@fastgpt/service/common/middle/entry';
-import type { AppRoute, Args, Handler, Endpoint } from '@fastgpt/global/common/tsRest/types';
+import type { AppRoute, Args, Handler, Endpoint } from '@fastgpt/global/common/tsRest/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
+import { processError } from '@fastgpt/service/common/response';
+import { clearCookie } from '@fastgpt/service/support/permission/auth/common';
 
 export const NextAPI = NextEntry({ beforeCallback: [] });
 
@@ -35,15 +37,26 @@ export function RestAPI<T extends AppRoute>(handler: Handler<T>): Endpoint<T> {
       } as any;
     } catch (error) {
       const duration = Date.now() - start;
-      addLog.error(`RestAPI Request error ${url}, time: ${duration}ms`, error);
+
+      // 使用统一的错误处理逻辑
+      const processedError = processError({
+        error,
+        url: `${url} (${duration}ms)`,
+        defaultCode: 500
+      });
+
+      // 如果需要清除 cookie
+      if (processedError.shouldClearCookie) {
+        clearCookie(args.res);
+      }
 
       return {
         status: 200 as const,
         body: {
-          code: 500,
-          message: 'Internal Server Error',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          statusText: 'error'
+          code: processedError.code,
+          statusText: processedError.statusText,
+          message: processedError.message,
+          data: processedError.data
         }
       } as any;
     }
