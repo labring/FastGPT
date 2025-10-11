@@ -53,22 +53,17 @@ const ChatTest = ({
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
-      try {
-        const result = await postRunHTTPTool({
-          baseUrl,
-          params: data,
-          headerSecret: currentTool.headerSecret || headerSecret,
-          toolPath: currentTool.path,
-          method: currentTool.method,
-          customHeaders: customHeaders,
-          staticParams: currentTool.staticParams,
-          staticHeaders: currentTool.staticHeaders,
-          staticBody: currentTool.staticBody
-        });
-        return result;
-      } catch (error) {
-        return Promise.reject(error);
-      }
+      return postRunHTTPTool({
+        baseUrl,
+        params: data,
+        headerSecret: currentTool.headerSecret || headerSecret,
+        toolPath: currentTool.path,
+        method: currentTool.method,
+        customHeaders: customHeaders,
+        staticParams: currentTool.staticParams,
+        staticHeaders: currentTool.staticHeaders,
+        staticBody: currentTool.staticBody
+      });
     },
     {
       onSuccess: (res) => {
@@ -79,8 +74,7 @@ const ChatTest = ({
         } catch (error) {
           console.error(error);
         }
-      },
-      errorToast: 'test'
+      }
     }
   );
   console.log(currentTool);

@@ -245,100 +245,152 @@ const ManualToolModal = ({
       iconSrc={isEditMode ? 'modal/edit' : 'common/addLight'}
       iconColor={'primary.600'}
       title={isEditMode ? t('app:Edit_tool') : t('app:Add_tool')}
-      maxW={'1167px'}
+      w={'100%'}
+      h={'100%'}
+      maxW={['90vh', '1080px']}
+      minH={['90vh', '600px']}
     >
-      <ModalBody display={'flex'} minH={['90vh', '600px']}>
-        <Flex w={'1167px'} overflow={'hidden'}>
-          <Flex
-            w={'500px'}
-            px={9}
-            py={3}
-            flexDirection={'column'}
-            gap={6}
-            borderRight={'1px solid'}
-            borderColor={'myGray.200'}
-            overflow={'auto'}
-          >
-            <Flex gap={8} alignItems={'center'}>
-              <FormLabel>{t('app:Tool_name')}</FormLabel>
+      <ModalBody display={'flex'} h={'100%'} px={0} py={5}>
+        <Flex
+          flex={4}
+          px={10}
+          flexDirection={'column'}
+          gap={6}
+          borderRight={'base'}
+          h={'100%'}
+          overflow={'auto'}
+        >
+          <Flex gap={8} alignItems={'center'}>
+            <FormLabel>{t('app:Tool_name')}</FormLabel>
+            <Input
+              h={8}
+              {...register('name', { required: true })}
+              placeholder={t('app:Tool_name')}
+            />
+          </Flex>
+          <Box>
+            <FormLabel mb={2}>{t('app:Tool_description')}</FormLabel>
+            <Textarea
+              {...register('description')}
+              rows={6}
+              minH={'100px'}
+              placeholder={t('app:Tool_description')}
+            />
+          </Box>
+          <Box>
+            <Flex alignItems={'center'} mb={2}>
+              <FormLabel flex={1} alignItems={'center'}>
+                {t('app:Custom_params')}
+                <QuestionTip ml={1} label={t('app:input_params_tips')} />
+              </FormLabel>
+              <Button
+                size={'sm'}
+                variant={'whitePrimary'}
+                leftIcon={<MyIcon name={'common/addLight'} w={'14px'} />}
+                onClick={() => {
+                  setEditingParam({
+                    key: '',
+                    description: '',
+                    type: 'string',
+                    required: false,
+                    isTool: true
+                  });
+                }}
+              >
+                {t('common:add_new')}
+              </Button>
+            </Flex>
+            <CustomParamsTable
+              list={customParams}
+              onEdit={(param) => {
+                setEditingParam(param);
+              }}
+              onDelete={(index) => {
+                setValue(
+                  'customParams',
+                  customParams.filter((_, i) => i !== index)
+                );
+              }}
+            />
+          </Box>
+        </Flex>
+
+        <Flex flex={5} px={10} flexDirection={'column'} gap={6} h={'100%'} overflow={'auto'}>
+          <Box px={2}>
+            <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
+              <FormLabel>{t('common:core.module.Http request settings')}</FormLabel>
+              <Button size={'sm'} onClick={onOpenCurlImport}>
+                {t('common:core.module.http.curl import')}
+              </Button>
+            </Flex>
+            <Flex gap={2}>
+              <MySelect
+                h={9}
+                w={'100px'}
+                value={method}
+                list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
+                onChange={(e) => setValue('method', e)}
+              />
               <Input
-                h={8}
-                {...register('name', { required: true })}
-                placeholder={t('app:Tool_name')}
+                {...register('path', { required: true })}
+                placeholder={t('common:core.module.input.label.Http Request Url')}
               />
             </Flex>
-            <Box>
-              <FormLabel mb={2}>{t('app:Tool_description')}</FormLabel>
-              <Textarea
-                {...register('description')}
-                rows={8}
-                minH={'100px'}
-                maxH={'200px'}
-                placeholder={t('app:Tool_description')}
-              />
-            </Box>
-            <Box>
-              <Flex alignItems={'center'} mb={2}>
-                <FormLabel flex={1} alignItems={'center'}>
-                  {t('app:Custom_params')}
-                  <QuestionTip ml={1} label={t('app:input_params_tips')} />
-                </FormLabel>
-                <Button
-                  size={'sm'}
-                  variant={'whitePrimary'}
-                  leftIcon={<MyIcon name={'common/addLight'} w={'14px'} />}
-                  onClick={() => {
-                    setEditingParam({
-                      key: '',
-                      description: '',
-                      type: 'string',
-                      required: false,
-                      isTool: true
-                    });
+          </Box>
+
+          <Accordion allowMultiple defaultIndex={[0, 1, 2]}>
+            <AccordionItem border={'none'}>
+              <AccordionButton
+                fontSize={'sm'}
+                fontWeight={'500'}
+                color={'myGray.900'}
+                justifyContent={'space-between'}
+                alignItems={'center'}
+                borderRadius={'md'}
+                px={2}
+                py={2}
+                _hover={{ bg: 'myGray.50' }}
+              >
+                {t('common:auth_config')}
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel py={1} px={2} mb={5}>
+                <HeaderAuthForm
+                  headerSecretValue={storeHeader2HeaderValue(headerSecret)}
+                  onChange={(data) => {
+                    const storeData = headerValue2StoreHeader(data);
+                    setValue('headerSecret', storeData);
                   }}
-                >
-                  {t('common:add_new')}
-                </Button>
-              </Flex>
-              <CustomParamsTable
-                list={customParams}
-                onEdit={(param) => {
-                  setEditingParam(param);
-                }}
-                onDelete={(index) => {
-                  setValue(
-                    'customParams',
-                    customParams.filter((_, i) => i !== index)
-                  );
-                }}
-              />
-            </Box>
-          </Flex>
-
-          <Flex flex={1} px={7} py={3} flexDirection={'column'} gap={6} overflow={'auto'}>
-            <Box px={2}>
-              <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
-                <FormLabel>{t('common:core.module.Http request settings')}</FormLabel>
-                <Button size={'sm'} onClick={onOpenCurlImport}>
-                  {t('common:core.module.http.curl import')}
-                </Button>
-              </Flex>
-              <Flex gap={2}>
-                <MySelect
-                  h={9}
-                  w={'100px'}
-                  value={method}
-                  list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
-                  onChange={(e) => setValue('method', e)}
+                  fontWeight="normal"
                 />
-                <Input
-                  {...register('path', { required: true })}
-                  placeholder={t('common:core.module.input.label.Http Request Url')}
-                />
-              </Flex>
-            </Box>
+              </AccordionPanel>
+            </AccordionItem>
 
-            <Accordion allowMultiple>
+            <AccordionItem border={'none'}>
+              <AccordionButton
+                fontSize={'sm'}
+                fontWeight={'500'}
+                color={'myGray.900'}
+                justifyContent={'space-between'}
+                alignItems={'center'}
+                borderRadius={'md'}
+                px={2}
+                py={2}
+                _hover={{ bg: 'myGray.50' }}
+              >
+                Params
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel py={1} px={2} mb={5}>
+                <ParamsTable
+                  list={params}
+                  setList={(newParams) => setValue('params', newParams)}
+                  variableLabels={formatVariables}
+                />
+              </AccordionPanel>
+            </AccordionItem>
+
+            {hasBody && (
               <AccordionItem border={'none'}>
                 <AccordionButton
                   fontSize={'sm'}
@@ -351,142 +403,89 @@ const ManualToolModal = ({
                   py={2}
                   _hover={{ bg: 'myGray.50' }}
                 >
-                  {t('common:auth_config')}
+                  Body
                   <AccordionIcon />
                 </AccordionButton>
                 <AccordionPanel py={1} px={2} mb={5}>
-                  <HeaderAuthForm
-                    headerSecretValue={storeHeader2HeaderValue(headerSecret)}
-                    onChange={(data) => {
-                      const storeData = headerValue2StoreHeader(data);
-                      setValue('headerSecret', storeData);
-                    }}
-                    fontWeight="normal"
-                  />
-                </AccordionPanel>
-              </AccordionItem>
-
-              <AccordionItem border={'none'}>
-                <AccordionButton
-                  fontSize={'sm'}
-                  fontWeight={'500'}
-                  color={'myGray.900'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  px={2}
-                  py={2}
-                  _hover={{ bg: 'myGray.50' }}
-                >
-                  Params
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel py={1} px={2} mb={5}>
-                  <ParamsTable
-                    list={params}
-                    setList={(newParams) => setValue('params', newParams)}
-                    variableLabels={formatVariables}
-                  />
-                </AccordionPanel>
-              </AccordionItem>
-
-              {hasBody && (
-                <AccordionItem border={'none'}>
-                  <AccordionButton
-                    fontSize={'sm'}
-                    fontWeight={'500'}
-                    color={'myGray.900'}
+                  <Flex
+                    mb={2}
+                    p={1}
+                    flexWrap={'nowrap'}
+                    bg={'myGray.25'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    borderRadius={'8px'}
                     justifyContent={'space-between'}
-                    alignItems={'center'}
-                    borderRadius={'md'}
-                    px={2}
-                    py={2}
-                    _hover={{ bg: 'myGray.50' }}
                   >
-                    Body
-                    <AccordionIcon />
-                  </AccordionButton>
-                  <AccordionPanel py={1} px={2} mb={5}>
-                    <Flex
-                      mb={2}
-                      p={1}
-                      flexWrap={'nowrap'}
-                      bg={'myGray.25'}
-                      border={'1px solid'}
-                      borderColor={'myGray.200'}
-                      borderRadius={'8px'}
-                      justifyContent={'space-between'}
-                    >
-                      {Object.values(ContentTypes).map((type) => (
-                        <Box
-                          key={type}
-                          cursor={'pointer'}
-                          px={3}
-                          py={1.5}
-                          fontSize={'12px'}
-                          fontWeight={'medium'}
-                          color={'myGray.500'}
-                          borderRadius={'6px'}
-                          bg={bodyType === type ? 'white' : 'none'}
-                          boxShadow={
-                            bodyType === type
-                              ? '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
-                              : ''
-                          }
-                          onClick={() => setValue('bodyType', type)}
-                        >
-                          {type}
-                        </Box>
-                      ))}
-                    </Flex>
-                    {isContentBody && (
-                      <PromptEditor
-                        bg={'white'}
-                        showOpenModal={false}
-                        variableLabels={formatVariables}
-                        minH={100}
-                        maxH={200}
-                        value={bodyContent}
-                        placeholder={t('workflow:http_body_placeholder')}
-                        onChange={(e) => setValue('bodyContent', e)}
-                      />
-                    )}
-                    {isFormBody && (
-                      <ParamsTable
-                        list={bodyFormData}
-                        setList={(newFormData) => setValue('bodyFormData', newFormData)}
-                        variableLabels={formatVariables}
-                      />
-                    )}
-                  </AccordionPanel>
-                </AccordionItem>
-              )}
-
-              <AccordionItem border={'none'}>
-                <AccordionButton
-                  fontSize={'sm'}
-                  fontWeight={'500'}
-                  color={'myGray.900'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  px={2}
-                  py={2}
-                  _hover={{ bg: 'myGray.50' }}
-                >
-                  Headers
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel py={1} px={2}>
-                  <ParamsTable
-                    list={headers}
-                    setList={(newHeaders) => setValue('headers', newHeaders)}
-                    variableLabels={formatVariables}
-                  />
+                    {Object.values(ContentTypes).map((type) => (
+                      <Box
+                        key={type}
+                        cursor={'pointer'}
+                        px={3}
+                        py={1.5}
+                        fontSize={'12px'}
+                        fontWeight={'medium'}
+                        color={'myGray.500'}
+                        borderRadius={'6px'}
+                        bg={bodyType === type ? 'white' : 'none'}
+                        boxShadow={
+                          bodyType === type
+                            ? '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
+                            : ''
+                        }
+                        onClick={() => setValue('bodyType', type)}
+                      >
+                        {type}
+                      </Box>
+                    ))}
+                  </Flex>
+                  {isContentBody && (
+                    <PromptEditor
+                      bg={'white'}
+                      showOpenModal={false}
+                      variableLabels={formatVariables}
+                      minH={100}
+                      maxH={200}
+                      value={bodyContent}
+                      placeholder={t('workflow:http_body_placeholder')}
+                      onChange={(e) => setValue('bodyContent', e)}
+                    />
+                  )}
+                  {isFormBody && (
+                    <ParamsTable
+                      list={bodyFormData}
+                      setList={(newFormData) => setValue('bodyFormData', newFormData)}
+                      variableLabels={formatVariables}
+                    />
+                  )}
                 </AccordionPanel>
               </AccordionItem>
-            </Accordion>
-          </Flex>
+            )}
+
+            <AccordionItem border={'none'}>
+              <AccordionButton
+                fontSize={'sm'}
+                fontWeight={'500'}
+                color={'myGray.900'}
+                justifyContent={'space-between'}
+                alignItems={'center'}
+                borderRadius={'md'}
+                px={2}
+                py={2}
+                _hover={{ bg: 'myGray.50' }}
+              >
+                Headers
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel py={1} px={2}>
+                <ParamsTable
+                  list={headers}
+                  setList={(newHeaders) => setValue('headers', newHeaders)}
+                  variableLabels={formatVariables}
+                />
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
         </Flex>
       </ModalBody>
 
@@ -657,7 +656,7 @@ const CustomParamsTable = ({
               <Th px={2}>{t('common:core.module.http.Props name')}</Th>
               <Th px={2}>{t('common:plugin.Description')}</Th>
               <Th px={2}>{t('common:support.standard.type')}</Th>
-              <Th px={2}>{t('app:type.Tool')}</Th>
+              <Th px={2}>{t('workflow:tool_input')}</Th>
               <Th px={2}>{t('common:Operation')}</Th>
             </Tr>
           </Thead>
