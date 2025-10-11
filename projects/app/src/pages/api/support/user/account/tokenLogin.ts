@@ -23,7 +23,6 @@ async function handler(
     const activeKey = `user_daily_active:${userId}:${today}`;
 
     const hasRecorded = await redis.get(activeKey);
-    console.log('hasRecorded', hasRecorded);
 
     if (!hasRecorded) {
       console.log('dddd');
