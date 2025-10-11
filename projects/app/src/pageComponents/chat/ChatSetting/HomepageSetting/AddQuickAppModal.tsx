@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -20,7 +20,7 @@ import { ChevronRightIcon } from '@chakra-ui/icons';
 type Props = {
   selectedIds: string[];
   onClose: () => void;
-  onConfirm: (list: QuickAppType[]) => void;
+  onConfirm: (list: ChatQuickAppType[]) => void;
 };
 
 const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
@@ -28,7 +28,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(selectedIds);
 
-  const [selectedInfo, setSelectedInfo] = useState<Record<string, QuickAppType>>({});
+  const [selectedInfo, setSelectedInfo] = useState<Record<string, ChatQuickAppType>>({});
 
   const { watch, setValue } = useForm<{ name: string }>({
     defaultValues: {
@@ -78,7 +78,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
         if (exists) {
           // remove id and its cached info
           setSelectedInfo((old) => {
-            const next: Record<string, QuickAppType> = { ...old };
+            const next: Record<string, ChatQuickAppType> = { ...old };
             delete next[id];
             return next;
           });
@@ -99,7 +99,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
     [availableAppsMap]
   );
 
-  const checkedQuickApps = useMemo<QuickAppType[]>(() => {
+  const checkedQuickApps = useMemo<ChatQuickAppType[]>(() => {
     return localSelectedIds
       .map((id) => {
         const cached = selectedInfo[id];
@@ -108,7 +108,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
         const app = availableAppsMap.get(id);
         if (app) return { _id: app._id, name: app.name, avatar: app.avatar };
       })
-      .filter(Boolean) as QuickAppType[];
+      .filter(Boolean) as ChatQuickAppType[];
   }, [localSelectedIds, selectedInfo, availableAppsMap]);
 
   useEffect(() => {
@@ -117,7 +117,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
     getAppBasicInfoByIds(missing)
       .then((list) => {
         setSelectedInfo((old) => {
-          const next: Record<string, QuickAppType> = { ...old };
+          const next: Record<string, ChatQuickAppType> = { ...old };
           list.forEach((item) => {
             next[item.id] = { _id: item.id, name: item.name, avatar: item.avatar };
           });
@@ -306,7 +306,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   {checkedQuickApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('chat:setting.home.no_selected_app')} />
                   )}
-                  <DndDrag<QuickAppType>
+                  <DndDrag<ChatQuickAppType>
                     dataList={checkedQuickApps}
                     renderInnerPlaceholder={false}
                     onDragEndCb={(list) => {
