@@ -78,7 +78,7 @@ export const pushTrack = {
   dailyUserActive: async (data: PushTrackCommonType) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const key = `dailyUserActive_${data.uid}_${today}`;
+      const key = `dailyUserActive:${data.uid}_${today}`;
       const cache = await getRedisCache(key);
       if (cache) return;
 
