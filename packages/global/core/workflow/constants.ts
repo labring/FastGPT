@@ -197,6 +197,7 @@ export enum NodeInputKeyEnum {
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
+  searchColumnslLimitRatio = 'searchRatio',
   generateSqlModel = 'generateSqlModel',
   datasetDeepSearch = 'datasetDeepSearch',
   datasetDeepSearchModel = 'datasetDeepSearchModel',

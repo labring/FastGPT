@@ -1,5 +1,4 @@
 import type { ColumnType } from 'typeorm';
-import { truncateText } from './utils';
 import type { DatabaseCollectionsTable } from '@fastgpt/global/core/dataset/database/api';
 import type { ColumnSchemaType } from '@fastgpt/global/core/dataset/type';
 
@@ -121,11 +120,6 @@ export class DBTable extends TableKeyInfo {
 }
 
 export class TableColumnTransformer {
-  /**
-   * Convert TableColumn Object to plain object
-   * @param tableColumn TableColumn Object
-   * @returns plain object
-   */
   static toPlainObject(tableColumn: TableColumn): any {
     if (!tableColumn) return null;
     return {
