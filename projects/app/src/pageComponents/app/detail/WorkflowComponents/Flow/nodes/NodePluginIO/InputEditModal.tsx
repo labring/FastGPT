@@ -41,7 +41,7 @@ const FieldEditModal = ({
   onClose: () => void;
   onSubmit: (data: FlowNodeInputItemType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
   const inputTypeList = useMemo(
@@ -264,7 +264,9 @@ const FieldEditModal = ({
                   <Box
                     key={index}
                     display={'grid'}
-                    gridTemplateColumns={'repeat(3, 1fr)'}
+                    gridTemplateColumns={
+                      i18n.language === 'en' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'
+                    }
                     gap={4}
                     mt={5}
                   >
