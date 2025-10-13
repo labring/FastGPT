@@ -19,6 +19,7 @@ export async function register() {
         { startTrainingQueue },
         { preLoadWorker },
         { loadSystemModels },
+        { loadSystemBuiltinMetrics },
         { connectSignoz }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
@@ -32,6 +33,7 @@ export async function register() {
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
+        import('@fastgpt/service/core/evaluation/metric/provider'),
         import('@fastgpt/service/common/otel/trace/register')
       ]);
 
@@ -46,8 +48,14 @@ export async function register() {
       await connectMongo(connectionMongo, MONGO_URL);
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
-      //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
+      //init system config；init vector database；init root user；init models；init builtin metrics
+      await Promise.all([
+        getInitConfig(),
+        initVectorStore(),
+        initRootUser(),
+        loadSystemModels(),
+        loadSystemBuiltinMetrics()
+      ]);
 
       try {
         await preLoadWorker();

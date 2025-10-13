@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/core/ai/model.d';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { WorkerNameEnum, WorkerPool } from './worker/utils';
+import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
 import { Worker } from 'worker_threads';
 
 declare global {
@@ -22,6 +23,7 @@ declare global {
   var systemEnv: SystemEnvType;
   var subPlans: SubPlanType | undefined;
   var licenseData: LicenseDataType | undefined;
+  var builtinMetrics: EvalMetricSchemaType[];
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
 }
