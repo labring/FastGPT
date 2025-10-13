@@ -90,6 +90,7 @@
   "summary_no_valid_metrics_found": "No valid metrics found.",
   "summary_stream_response_not_supported": "Streaming response is not supported.",
   "summary_weight_sum_must_be_100": "The total weight of all metrics must be 100.",
+  "summary_model_invalid": "Evaluation summary generation failed. Please check the evaluation model configuration.",
 
   "dataset_collection_id_required": "Dataset ID is required.",
   "dataset_collection_update_failed": "Failed to update dataset.",

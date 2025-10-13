@@ -28,13 +28,18 @@ export interface RuntimeConfig {
 
 // Summary configuration type
 export interface SummaryConfig {
-  metricId: string; // Metric ID for mapping relationship
-  metricName: string; // Metric name for display
+  metricId: string;
+  metricName: string;
   weight: number;
-  calculateType: CalculateMethodEnum;
   summary: string;
   summaryStatus: SummaryStatusEnum;
   errorReason: string;
+}
+
+// SummaryData type containing calculation method and configs
+export interface SummaryData {
+  calculateType: CalculateMethodEnum; // Calculation method for all metrics
+  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
 }
 
 // Evaluator configuration type
@@ -64,7 +69,7 @@ export type EvaluationSchemaType = {
   evalDatasetCollectionId: string; // Associated evaluation dataset collection
   target: EvalTarget; // Embedded evaluation target
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
-  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
+  summaryData: SummaryData; // Summary configuration containing calculateType and summaryConfigs
   usageId: string;
   status: EvaluationStatusEnum;
   createTime: Date;
@@ -152,12 +157,14 @@ export interface SummaryConfigDisplay extends SummaryConfig {
   overThresholdItemCount: number; // Real-time calculated over threshold items count
 }
 
-export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryConfigs'> & {
+export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryData'> & {
   evalDatasetCollectionName?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
-  summaryConfigs: SummaryConfigDisplay[]; // Use extended version for display
+  summaryData: Omit<SummaryData, 'summaryConfigs'> & {
+    summaryConfigs: SummaryConfigDisplay[]; // Use extended version for display
+  };
   aggregateScore?: number; // Real-time calculated aggregate score
 };
 
@@ -177,6 +184,15 @@ export interface CreateEvaluationParams {
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
   autoStart?: boolean; // Whether to automatically start the evaluation task after creation (default: true)
 }
+
+type EvaluationParamsType = Omit<CreateEvaluationParams, 'autoStart'>;
+
+type EvaluationParamsWithDeafultConfigType = Omit<CreateEvaluationParams, 'autoStart'> & {
+  summaryData: {
+    calculateType: CalculateMethodEnum;
+    summaryConfigs: SummaryConfig[];
+  };
+};
 
 // Queue job data types
 export interface EvaluationTaskJobData {
@@ -198,7 +214,6 @@ export interface GenerateSummaryParams {
 export interface GenerateSummaryResponse {
   success: boolean;
   message: string;
-  taskId?: string;
 }
 
 export interface SummaryGenerationTaskData {

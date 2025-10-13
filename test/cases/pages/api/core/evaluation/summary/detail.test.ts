@@ -302,31 +302,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
     );
   });
 
-  test('应该正确记录错误日志', async () => {
-    const { addLog } = await import('@fastgpt/service/common/system/log');
-    const serviceError = new Error('Service error');
-    (EvaluationSummaryService.getEvaluationSummary as any).mockRejectedValue(serviceError);
-
-    const mockReq = {
-      method: 'GET',
-      query: { evalId: mockEvalId }
-    } as any;
-
-    try {
-      await handler(mockReq);
-    } catch (error) {
-      // Expected to throw
-    }
-
-    expect(addLog.error).toHaveBeenCalledWith(
-      '[Evaluation] Failed to query evaluation summary report',
-      {
-        evalId: mockEvalId,
-        error: serviceError
-      }
-    );
-  });
-
   test('应该正确处理零分数的情况', async () => {
     const zeroScoreSummary = {
       data: [

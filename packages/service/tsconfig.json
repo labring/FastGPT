@@ -1,7 +1,18 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "typeRoots": [
+      "../../node_modules/@types",
+      "./types"
+    ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../../**/*.d.ts"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    "../../**/*.d.ts",
+    "types/**/*.d.ts"
+  ]
 }

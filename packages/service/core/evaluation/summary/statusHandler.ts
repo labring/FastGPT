@@ -2,16 +2,7 @@ import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { addLog } from '../../../common/system/log';
 
-// 状态更新处理器
 export class SummaryStatusHandler {
-  /**
-   * 更新评估总结状态
-   * @param evalId 评估任务ID
-   * @param metricId 指标ID
-   * @param status 新状态
-   * @param errorReason 错误原因（可选）
-   * @param timestamp 时间戳（可选）
-   */
   static async updateStatus(
     evalId: string,
     metricId: string,
@@ -35,23 +26,21 @@ export class SummaryStatusHandler {
         return false;
       }
 
-      // 构建更新对象
       const updateObj: Record<string, any> = {
-        [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
+        [`summaryData.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
       };
 
-      // 根据状态设置不同的字段
       switch (status) {
         case SummaryStatusEnum.generating:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.completed:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.failed:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] =
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] =
             errorReason || 'Unknown error';
           break;
       }
@@ -79,11 +68,6 @@ export class SummaryStatusHandler {
     }
   }
 
-  /**
-   * 批量更新多个指标的状态
-   * @param evalId 评估任务ID
-   * @param updates 更新列表
-   */
   static async batchUpdateStatus(
     evalId: string,
     updates: Array<{
@@ -108,11 +92,6 @@ export class SummaryStatusHandler {
     return results.map((result) => result.status === 'fulfilled' && result.value);
   }
 
-  /**
-   * 获取指标的当前状态
-   * @param evalId 评估任务ID
-   * @param metricId 指标ID
-   */
   static async getStatus(evalId: string, metricId: string): Promise<SummaryStatusEnum | null> {
     try {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
@@ -129,7 +108,8 @@ export class SummaryStatusHandler {
       }
 
       return (
-        evaluation.summaryConfigs?.[evaluatorIndex]?.summaryStatus || SummaryStatusEnum.pending
+        evaluation.summaryData?.summaryConfigs?.[evaluatorIndex]?.summaryStatus ||
+        SummaryStatusEnum.pending
       );
     } catch (error) {
       addLog.error('[SummaryStatusHandler] Failed to get status', {
