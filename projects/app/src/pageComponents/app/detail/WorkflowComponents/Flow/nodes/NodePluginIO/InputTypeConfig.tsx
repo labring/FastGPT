@@ -602,7 +602,6 @@ const InputTypeConfig = ({
           <Button
             fontWeight={'medium'}
             onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
-            w={20}
           >
             {t('common:Continue_Adding')}
           </Button>

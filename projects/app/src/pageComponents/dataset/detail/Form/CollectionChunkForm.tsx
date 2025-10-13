@@ -116,7 +116,7 @@ export type CollectionChunkFormType = {
 };
 
 const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkFormType> }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
@@ -287,7 +287,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
         <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
           {t('dataset:enhanced_indexes')}
         </Box>
-        <Grid gridTemplateColumns={'1fr 1fr'} rowGap={[2, 4]} columnGap={[3, 7]}>
+        <Grid
+          gridTemplateColumns={i18n.language === 'en' ? '1fr' : '1fr 1fr'}
+          rowGap={[1, 4]}
+          columnGap={[3, 7]}
+        >
           <HStack flex={'1'} spacing={1}>
             <Checkbox isChecked={indexPrefixTitle} {...register('indexPrefixTitle')}>
               <FormLabel>{t('dataset:index_prefix_title')}</FormLabel>
