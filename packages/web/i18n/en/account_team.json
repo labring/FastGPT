@@ -230,7 +230,7 @@
   "log_update_app_publish_channel": "{{name}} updated the channel ({{channelName}}) for the {{appType}} ({{appName}}).",
   "log_update_collection": "{{name}} updated the collection {{collectionName}} in the {{datasetType}} ({{datasetName}}).",
   "log_update_data": "{{name}} updated data in the collection {{collectionName}} in the {{datasetType}} ({{datasetName}}).",
-  "log_update_dataset": "{{name}} updated the {{datasetType}}({{datasetName}}).",
+  "log_update_dataset": "{{name}} updated the {{datasetType}} ({{datasetName}}).",
   "log_update_dataset_collaborator": "{{name}} updated the {{datasetType}} ({{datasetName}}) collaborator (Department: {{orgList}}, Group: {{groupList}}, Member: {{tmbList}}) permissions ({{readPermission}}, {{writePermission}}, {{managePermission}}).",
   "log_update_evaluation_dataset_collection": "{{name}} updated the evaluation dataset ({{collectionName}}).",
   "log_update_evaluation_dataset_data": "{{name}} updated evaluation data in the evaluation dataset ({{collectionName}}).",

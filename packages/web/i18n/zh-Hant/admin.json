@@ -577,6 +577,7 @@
   "create_time": "創建時間",
   "no_team_data": "無團隊記錄～",
   "add_user": "添加用戶",
+  "add_user_btn": "添加用戶",
   "password": "密碼",
   "password_requirements": "密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字符",
   "account_deactivated": "賬號已註銷",

@@ -577,6 +577,7 @@
   "create_time": "Time created",
   "no_team_data": "No data available.",
   "add_user": "Add user",
+  "add_user_btn": "Add",
   "password": "Password",
   "password_requirements": "Must be at least 8 characters long and contain at least 2 of the following: digits, letters, and special characters.",
   "account_deactivated": "Account logged out.",

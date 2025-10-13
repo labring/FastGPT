@@ -596,7 +596,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                         label: t('account_model:avg_response_time'),
                         dataKey: 'avgResponseTime',
                         color: '#36B37E',
-                        formatter: (value: number) => `${value.toFixed(2)}s`
+                        formatter: (value: number) => `${value.toFixed(2)}`
                       }
                     ]}
                   />
