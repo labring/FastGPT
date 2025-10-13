@@ -20,7 +20,7 @@ export function createDitingClient(config: HttpConfig = loadHttpConfigFromEnv())
   return {
     async runEvaluation(request: EvaluationRequest): Promise<EvaluationResponse> {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), config.timeout || 30000);
+      const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
       try {
         const res = await fetch(getFullUrl('/api/v1/evaluations/runs'), {
@@ -61,7 +61,7 @@ export function createDitingClient(config: HttpConfig = loadHttpConfigFromEnv())
         }
 
         if (Object.values(EvaluationErrEnum).includes(err.message)) {
-          throw err;
+          new Error(err.message);
         }
 
         throw new Error(EvaluationErrEnum.evaluatorServiceUnavailable);
