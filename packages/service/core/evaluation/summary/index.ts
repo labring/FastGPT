@@ -4,30 +4,39 @@ import {
   CalculateMethodEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvaluation, MongoEvalItem } from '../task/schema';
-import type {
-  EvaluationSchemaType,
-  EvaluationItemSchemaType
-} from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
-import { SummaryStatusEnum, PERFECT_SCORE } from '@fastgpt/global/core/evaluation/constants';
-import { getEvaluationSummaryTokenLimit } from '../utils/tokenLimiter';
+import {
+  SummaryStatusEnum,
+  PERFECT_SCORE,
+  MAX_TOKEN_FOR_EVALUATION_SUMMARY,
+  TEMPERATURE_FOR_EVALUATION_SUMMARY
+} from '@fastgpt/global/core/evaluation/constants';
+import { getEvaluationSummaryTokenLimit, getEvaluationSummaryModel } from '../utils/tokenLimiter';
 import { createChatCompletion } from '../../ai/config';
-import { getLLMModel, getEvaluationModel } from '../../ai/model';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { loadRequestMessages } from '../../chat/utils';
 import {
-  problemAnalysisTemplate,
-  strengthAnalysisTemplate,
-  goodExample,
-  badExample
+  problemAnalysisTemplateZhCN,
+  strengthAnalysisTemplateZhCN,
+  goodExampleZhCN,
+  badExampleZhCN,
+  problemAnalysisTemplateZhTW,
+  strengthAnalysisTemplateZhTW,
+  goodExampleZhTW,
+  badExampleZhTW,
+  problemAnalysisTemplateEn,
+  strengthAnalysisTemplateEn,
+  goodExampleEn,
+  badExampleEn
 } from '@fastgpt/global/core/ai/prompt/eval';
+import { LanguageType, LanguageDisplayNameMap } from './util/languageUtil';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
@@ -38,7 +47,6 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { ClientSession } from '../../../common/mongo';
 
 export class EvaluationSummaryService {
-  // Get evaluation summary report
   static async getEvaluationSummary(evalId: string): Promise<{
     data: Array<{
       metricId: string;
@@ -59,42 +67,38 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-    // Real-time calculate metric scores
     const calculatedData = await this.calculateMetricScores(evaluation);
 
-    // Build return data using real-time calculated values
     const data = evaluation.evaluators.map((evaluator, index) => {
       const metricId = evaluator.metric._id.toString();
-      const summaryConfig = evaluation.summaryConfigs[index];
+      const summaryConfig = evaluation.summaryData.summaryConfigs[index];
 
-      // Find calculated metric data
       const metricData = calculatedData.metricsData.find((m) => m.metricId === metricId);
       const completedItemCount = metricData?.totalCount || 0;
       const overThresholdItemCount = metricData?.aboveThresholdCount || 0;
+      const underThresholdItemCount = metricData?.belowThresholdCount || 0;
       const metricScore = metricData?.metricScore || 0;
 
       const threshold = evaluator.thresholdValue || 0;
       const underThresholdRate =
         completedItemCount > 0
-          ? Math.round(((completedItemCount - overThresholdItemCount) / completedItemCount) * 100)
+          ? Math.round((underThresholdItemCount / completedItemCount) * 100)
           : 0;
-      const underThresholdItemCount = completedItemCount - overThresholdItemCount;
-      // Generate customSummary in format: "(完成个数个)summary"
-      const customSummary = `${underThresholdRate}%(${underThresholdItemCount}个)${summaryConfig.summary || ''}`;
+      const customSummary = `${underThresholdRate}%(${underThresholdItemCount})${summaryConfig.summary || ''}`;
 
       return {
         metricId: metricId,
         metricName: evaluator.metric.name,
-        metricScore: metricScore, // Use real-time calculated score
+        metricScore: metricScore,
         summary: summaryConfig.summary,
         summaryStatus: summaryConfig.summaryStatus,
         errorReason: summaryConfig.errorReason,
-        completedItemCount: completedItemCount, // Use real-time calculated count
-        overThresholdItemCount: overThresholdItemCount, // Use real-time calculated count
-        underThresholdRate: underThresholdRate, // Percentage of items that failed the threshold (0-100)
-        threshold: threshold, // Add threshold field
-        weight: summaryConfig.weight || 0, // Add weight field
-        customSummary: customSummary // Add customSummary field with specified format
+        completedItemCount: completedItemCount,
+        overThresholdItemCount: overThresholdItemCount,
+        underThresholdRate: underThresholdRate,
+        threshold: threshold,
+        weight: summaryConfig.weight || 0,
+        customSummary: customSummary
       };
     });
 
@@ -104,7 +108,7 @@ export class EvaluationSummaryService {
     };
   }
 
-  // Real-time calculation of metricScore and aggregateScore (pure calculation, no database updates)
+  // Pure calculation of metric scores and aggregate score without database updates
   static async calculateMetricScores(evaluation: EvaluationSchemaType): Promise<{
     metricsData: Array<{
       metricId: string;
@@ -113,6 +117,7 @@ export class EvaluationSummaryService {
       weight: number;
       thresholdValue: number;
       aboveThresholdCount: number;
+      belowThresholdCount: number;
       totalCount: number;
     }>;
     aggregateScore: number;
@@ -120,7 +125,6 @@ export class EvaluationSummaryService {
     try {
       const evalId = new Types.ObjectId(evaluation._id);
 
-      // Check if evaluation has required fields
       if (!evaluation.evaluators || !Array.isArray(evaluation.evaluators)) {
         addLog.warn('[calculateMetricScores] Evaluation has no evaluators', {
           evalId: evaluation._id
@@ -131,8 +135,12 @@ export class EvaluationSummaryService {
         };
       }
 
-      if (!evaluation.summaryConfigs || !Array.isArray(evaluation.summaryConfigs)) {
-        addLog.warn('[calculateMetricScores] Evaluation has no summaryConfigs', {
+      if (
+        !evaluation.summaryData ||
+        !evaluation.summaryData.summaryConfigs ||
+        !Array.isArray(evaluation.summaryData.summaryConfigs)
+      ) {
+        addLog.warn('[calculateMetricScores] Evaluation has no summary or summaryConfigs', {
           evalId: evaluation._id
         });
         return {
@@ -141,19 +149,16 @@ export class EvaluationSummaryService {
         };
       }
 
-      // MongoDB aggregation pipeline - Calculate both successful scores and total completed count per metric
+      // Calculate successful scores and total completed count per metric
       const pipeline = [
-        // Step 1: Filter evaluation items that have evaluator outputs
         {
           $match: {
             evalId: evalId,
             evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },
-        // Step 2: Add fields to find matching metric results
         {
           $addFields: {
-            // Create an array of metric results for easier processing
             metricResults: {
               $map: {
                 input: '$evaluatorOutputs',
@@ -173,28 +178,20 @@ export class EvaluationSummaryService {
             }
           }
         },
-        // Step 3: Unwind the metric results
         {
           $unwind: '$metricResults'
         },
-        // Step 4: Group by metric name and calculate statistics
         {
           $group: {
             _id: '$metricResults.metricName',
-            // Collect all valid scores for this metric
             successfulScores: {
               $push: {
                 $cond: ['$metricResults.hasValidScore', '$metricResults.score', '$$REMOVE']
               }
             },
-            // Count unique evaluation items that have this metric (regardless of success/failure)
-            uniqueItemIds: {
-              $addToSet: '$_id'
-            },
             metricName: { $first: '$metricResults.metricName' }
           }
         },
-        // Step 5: Calculate final statistics
         {
           $addFields: {
             avgScore: {
@@ -204,15 +201,13 @@ export class EvaluationSummaryService {
                 0
               ]
             },
-            successCount: { $size: '$successfulScores' },
-            totalCompletedCount: { $size: '$uniqueItemIds' }
+            successCount: { $size: '$successfulScores' }
           }
         }
       ];
 
       const metricsStats = await MongoEvalItem.aggregate(pipeline as any);
 
-      // Calculate median for each statistic (since different evaluators may have different calculation methods)
       const processedStats = metricsStats.map((stats) => {
         let medianScore = 0;
 
@@ -221,12 +216,10 @@ export class EvaluationSummaryService {
           const length = sortedScores.length;
 
           if (length % 2 === 0) {
-            // Even number of data points, take average of the two middle values
             const mid1 = sortedScores[length / 2 - 1];
             const mid2 = sortedScores[length / 2];
             medianScore = (mid1 + mid2) / 2;
           } else {
-            // Odd number of data points, take the middle value
             medianScore = sortedScores[Math.floor(length / 2)];
           }
         }
@@ -237,7 +230,6 @@ export class EvaluationSummaryService {
         };
       });
 
-      // Process results, combine with evaluators configuration
       const metricsData: Array<{
         metricId: string;
         metricName: string;
@@ -245,6 +237,7 @@ export class EvaluationSummaryService {
         weight: number;
         thresholdValue: number;
         aboveThresholdCount: number;
+        belowThresholdCount: number;
         totalCount: number;
       }> = [];
 
@@ -255,25 +248,28 @@ export class EvaluationSummaryService {
         const metricId = evaluator.metric._id.toString();
         const metricName = evaluator.metric.name;
         const stats = processedStats.find((s) => s._id === metricName);
-        const summaryConfig = evaluation.summaryConfigs[index];
+        const summaryConfig = evaluation.summaryData.summaryConfigs[index];
 
         if (stats) {
-          // Select score based on current evaluator's calculation method with NaN protection
           let rawScore =
-            summaryConfig.calculateType === CalculateMethodEnum.median
+            evaluation.summaryData.calculateType === CalculateMethodEnum.median
               ? stats.medianScore
               : stats.avgScore;
 
-          // Ensure score is valid number
           if (isNaN(rawScore) || rawScore === null || rawScore === undefined) {
             rawScore = 0;
           }
 
           const metricScore = Math.round(rawScore * 100) / 100;
 
-          // Calculate threshold statistics - count successful scores that meet threshold
+          const thresholdValue = evaluator.thresholdValue || 0;
           const aboveThresholdCount = stats.successfulScores.filter(
-            (score: number) => score >= (evaluator.thresholdValue || 0)
+            (score: number) => score >= thresholdValue
+          ).length;
+
+          // Calculate belowThresholdCount from successful scores that are below threshold
+          const belowThresholdCount = stats.successfulScores.filter(
+            (score: number) => score < thresholdValue
           ).length;
 
           const weight = summaryConfig.weight;
@@ -283,16 +279,15 @@ export class EvaluationSummaryService {
             metricName: evaluator.metric.name,
             metricScore,
             weight,
-            thresholdValue: evaluator.thresholdValue || 0,
+            thresholdValue: thresholdValue,
             aboveThresholdCount,
-            totalCount: stats.totalCompletedCount
+            belowThresholdCount,
+            totalCount: stats.successCount
           });
 
-          // Accumulate weighted scores
           totalWeightedScore += metricScore * weight;
           totalWeight += weight;
         } else {
-          // Metrics with no data
           const weight = summaryConfig.weight;
 
           metricsData.push({
@@ -302,16 +297,15 @@ export class EvaluationSummaryService {
             weight: weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
+            belowThresholdCount: 0,
             totalCount: 0
           });
 
-          // Accumulate weighted scores for metrics with no data (score = 0)
           totalWeightedScore += 0 * weight;
           totalWeight += weight;
         }
       });
 
-      // Calculate aggregate score with NaN protection
       let aggregateScore = 0;
       if (totalWeight > 0 && !isNaN(totalWeightedScore) && !isNaN(totalWeight)) {
         const rawScore = totalWeightedScore / totalWeight;
@@ -328,9 +322,8 @@ export class EvaluationSummaryService {
         error
       });
 
-      // Return default values
       const defaultData = evaluation.evaluators.map((evaluator, index) => {
-        const summaryConfig = evaluation.summaryConfigs[index];
+        const summaryConfig = evaluation.summaryData.summaryConfigs[index];
         return {
           metricId: evaluator.metric._id.toString(),
           metricName: evaluator.metric.name,
@@ -338,6 +331,7 @@ export class EvaluationSummaryService {
           weight: summaryConfig.weight,
           thresholdValue: evaluator.thresholdValue || 0,
           aboveThresholdCount: 0,
+          belowThresholdCount: 0,
           totalCount: 0
         };
       });
@@ -349,15 +343,13 @@ export class EvaluationSummaryService {
     }
   }
 
-  // Update evaluation summary configuration (threshold, weight, calculation method)
-  // 使用MongoDB事务保证配置更新的原子性
   static async updateEvaluationSummaryConfig(
     evalId: string,
+    calculateType: CalculateMethodEnum,
     metricsConfig: Array<{
       metricId: string;
       thresholdValue: number;
       weight?: number;
-      calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
     addLog.info('[Evaluation] Starting configuration update', {
@@ -365,7 +357,6 @@ export class EvaluationSummaryService {
       metricsCount: metricsConfig.length
     });
 
-    // 检查基本参数有效性
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
@@ -378,18 +369,15 @@ export class EvaluationSummaryService {
       }
     }
 
-    // 使用事务更新配置
     await mongoSessionRun(async (session: ClientSession) => {
       const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
-      // 更新evaluators
       const updatedEvaluators = evaluation.evaluators.map((evaluator: any) => {
         const config = configMap.get(evaluator.metric._id.toString());
         return config ? { ...evaluator, thresholdValue: config.thresholdValue } : evaluator;
       });
 
-      // 更新summaryConfigs
-      const updatedSummaryConfigs = evaluation.summaryConfigs.map(
+      const updatedSummaryConfigs = evaluation.summaryData.summaryConfigs.map(
         (summaryConfig: any, index: number) => {
           const metricId = evaluation.evaluators[index].metric._id.toString();
           const config = configMap.get(metricId);
@@ -397,8 +385,7 @@ export class EvaluationSummaryService {
           if (config) {
             return {
               ...summaryConfig,
-              ...(config.weight !== undefined && { weight: config.weight }),
-              ...(config.calculateType !== undefined && { calculateType: config.calculateType })
+              ...(config.weight !== undefined && { weight: config.weight })
             };
           }
           return summaryConfig;
@@ -407,7 +394,13 @@ export class EvaluationSummaryService {
 
       await MongoEvaluation.updateOne(
         { _id: evalId },
-        { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } },
+        {
+          $set: {
+            'summaryData.calculateType': calculateType,
+            evaluators: updatedEvaluators,
+            'summaryData.summaryConfigs': updatedSummaryConfigs
+          }
+        },
         { session }
       );
 
@@ -424,7 +417,6 @@ export class EvaluationSummaryService {
     });
   }
 
-  // Get evaluation summary configuration details
   static async getEvaluationSummaryConfig(evalId: string): Promise<{
     calculateType: CalculateMethodEnum;
     calculateTypeName: string;
@@ -439,14 +431,11 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-    // Get calculation type from first summary config (since all metrics use the same type)
-    const firstSummaryConfig = evaluation.summaryConfigs[0];
-    const calculateType = firstSummaryConfig.calculateType;
+    const calculateType = evaluation.summaryData.calculateType;
     const calculateTypeName = CaculateMethodMap[calculateType]?.name || 'Unknown';
 
-    // Build return data, remove calculation type from individual metrics
     const metricsConfig = evaluation.evaluators.map((evaluator, index) => {
-      const summaryConfig = evaluation.summaryConfigs[index];
+      const summaryConfig = evaluation.summaryData.summaryConfigs[index];
       return {
         metricId: evaluator.metric._id.toString(),
         metricName: evaluator.metric.name,
@@ -463,9 +452,7 @@ export class EvaluationSummaryService {
     };
   }
 
-  /**
-   * 生成多个指标的总结报告 - 使用BullMQ队列化处理，解决系统崩溃导致状态卡死问题
-   */
+  // Generate summary reports for multiple metrics using BullMQ queue to prevent status deadlock on system crashes
   static async generateSummaryReports(evalId: string, metricIds: string[]): Promise<void> {
     try {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
@@ -483,7 +470,6 @@ export class EvaluationSummaryService {
         }
       );
 
-      // Validate metric ownership and find corresponding evaluator index
       const validMetricIds: string[] = [];
       const skippedMetrics: Array<{
         metricId: string;
@@ -509,13 +495,9 @@ export class EvaluationSummaryService {
           return;
         }
 
-        // Get metric name for logging
-        const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
-
         validMetricIds.push(metricId);
       });
 
-      // 记录跳过的指标信息
       if (skippedMetrics.length > 0) {
         addLog.info('[EvaluationSummary] Some metrics were skipped', {
           evalId,
@@ -535,12 +517,11 @@ export class EvaluationSummaryService {
             totalRequested: metricIds.length,
             skippedCount: skippedMetrics.length
           });
-          return; // 如果所有指标都被跳过，直接返回而不抛出错误
+          return;
         }
         throw new Error(EvaluationErrEnum.summaryNoValidMetricsFound);
       }
 
-      // 将任务添加到BullMQ队列中，让队列负责状态管理
       await addSummaryTaskToQueue(evalId, validMetricIds);
 
       addLog.info('[EvaluationSummary] Task successfully added to queue', {
@@ -559,137 +540,110 @@ export class EvaluationSummaryService {
     }
   }
 
-  /**
-   * 生成单个指标的总结报告
-   */
   static async generateSingleMetricSummary(
     evaluation: EvaluationSchemaType,
     metricId: string,
     evaluatorIndex: number,
-    evaluator: any
+    evaluator: any,
+    languageType: LanguageType
   ): Promise<void> {
     const evalId = evaluation._id.toString();
 
+    addLog.info('[EvaluationSummary] Starting single metric report generation', {
+      evalId,
+      metricId,
+      metricName: evaluator.metric.name,
+      languageType
+    });
+
+    const { filteredData, totalDataCount } = await this.getFilteredEvaluationData(
+      evalId,
+      metricId,
+      evaluator.thresholdValue || 0,
+      evaluator
+    );
+
+    if (filteredData.length === 0) {
+      addLog.warn('[EvaluationSummary] No matching data found', {
+        evalId,
+        metricId
+      });
+      throw new Error('No matching evaluation data found, cannot generate summary report');
+    }
+
+    // Use languageType from job data instead of detecting again
+    addLog.info('[EvaluationSummary] Using language type from job data', {
+      evalId,
+      metricId,
+      language: languageType
+    });
+
+    const modelData = getEvaluationSummaryModel();
+    const tokenLimit = getEvaluationSummaryTokenLimit(modelData.name);
+    const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
+      filteredData,
+      tokenLimit,
+      languageType
+    );
+
     try {
-      addLog.info('[EvaluationSummary] Starting single metric report generation', {
+      await checkTeamAIPoints(evaluation.teamId);
+      addLog.info('[EvaluationSummary] Balance check passed, starting LLM call', {
         evalId,
         metricId,
         metricName: evaluator.metric.name
       });
-
-      // 1. Get and filter data
-      const { filteredData, totalDataCount } = await this.getFilteredEvaluationData(
+    } catch (balanceError) {
+      addLog.error('[EvaluationSummary] Insufficient balance, cannot generate summary report', {
         evalId,
         metricId,
-        evaluator.thresholdValue || 0,
-        evaluator
-      );
-
-      if (filteredData.length === 0) {
-        addLog.warn('[EvaluationSummary] No matching data found', {
-          evalId,
-          metricId
-        });
-        throw new Error('No matching evaluation data found, cannot generate summary report');
-      }
-
-      // 2. Token control and content preparation
-      const tokenLimit = getEvaluationSummaryTokenLimit(evaluator.runtimeConfig?.llm);
-      const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
-        filteredData,
-        tokenLimit,
-        evaluator.thresholdValue || 0,
-        evaluator.runtimeConfig?.llm
-      );
-
-      // 3. Check balance
-      try {
-        await checkTeamAIPoints(evaluation.teamId);
-        addLog.info('[EvaluationSummary] Balance check passed, starting LLM call', {
-          evalId,
-          metricId,
-          metricName: evaluator.metric.name
-        });
-      } catch (balanceError) {
-        addLog.error('[EvaluationSummary] Insufficient balance, cannot generate summary report', {
-          evalId,
-          metricId,
-          metricName: evaluator.metric.name,
-          error: balanceError
-        });
-        await this.updateSummaryResult(
-          evalId,
-          evaluatorIndex,
-          SummaryStatusEnum.failed,
-          '',
-          'Insufficient balance'
-        );
-        return;
-      }
-
-      // 4. Call LLM to generate report
-      const { summary, usage } = await this.callLLMForSummary(
-        evaluator,
-        truncatedData,
-        totalDataCount,
-        truncatedCount
-      );
-
-      // 5. Record costs and usage
-      const llmModel = evaluator.runtimeConfig?.llm;
-      await this.recordUsage(evaluation, evaluator, usage, llmModel);
-
-      // 6. Update results
-      await this.updateSummaryResult(evalId, evaluatorIndex, SummaryStatusEnum.completed, summary);
-
-      // 7. Add audit log
-      (async () => {
-        addAuditLog({
-          tmbId: evaluation.tmbId,
-          teamId: evaluation.teamId.toString(),
-          event: AuditEventEnum.GENERATE_EVALUATION_SUMMARY,
-          params: {
-            evalName: evaluation.name,
-            metricName: evaluator.metric.name
-          }
-        });
-      })();
-
-      addLog.info('[EvaluationSummary] Single metric report generated successfully', {
-        evalId,
-        metricId,
-        summaryLength: summary.length,
-        tokensUsed: usage?.total_tokens || 0
+        metricName: evaluator.metric.name,
+        error: balanceError
       });
-    } catch (error) {
-      addLog.error('[EvaluationSummary] Single metric report generation failed', {
-        evalId,
-        metricId,
-        error
-      });
-
-      // Update to failed status
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'string'
-            ? error
-            : 'Unknown error';
       await this.updateSummaryResult(
         evalId,
         evaluatorIndex,
         SummaryStatusEnum.failed,
         '',
-        errorMessage
+        'Insufficient balance'
       );
-
-      throw error;
+      return;
     }
+
+    // 4. Call LLM to generate report
+    const summaryModel = undefined;
+    const { summary, usage } = await this.callLLMForSummary(
+      truncatedData,
+      languageType,
+      summaryModel
+    );
+
+    // undefine will use deafulatevaluation model
+    const llmModel = undefined;
+    await this.recordUsage(evaluation, evaluator, usage, llmModel);
+
+    await this.updateSummaryResult(evalId, evaluatorIndex, SummaryStatusEnum.completed, summary);
+
+    (async () => {
+      addAuditLog({
+        tmbId: evaluation.tmbId,
+        teamId: evaluation.teamId.toString(),
+        event: AuditEventEnum.GENERATE_EVALUATION_SUMMARY,
+        params: {
+          evalName: evaluation.name,
+          metricName: evaluator.metric.name
+        }
+      });
+    })();
+
+    addLog.info('[EvaluationSummary] Single metric report generated successfully', {
+      evalId,
+      metricId,
+      summaryLength: summary.length,
+      tokensUsed: usage?.total_tokens || 0
+    });
   }
 
-  /**
-   * 更新摘要结果
-   */
   private static async updateSummaryResult(
     evalId: string,
     evaluatorIndex: number,
@@ -698,22 +652,19 @@ export class EvaluationSummaryService {
     errorReason?: string
   ): Promise<void> {
     const updateData: any = {
-      [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
-      [`summaryConfigs.${evaluatorIndex}.summary`]: summary
+      [`summaryData.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
+      [`summaryData.summaryConfigs.${evaluatorIndex}.summary`]: summary
     };
 
     if (errorReason) {
-      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
+      updateData[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
     } else {
-      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
+      updateData[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
     }
 
     await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateData });
   }
 
-  /**
-   * 获取和筛选评估数据
-   */
   private static async getFilteredEvaluationData(
     evalId: string,
     metricId: string,
@@ -723,21 +674,13 @@ export class EvaluationSummaryService {
     filteredData: any[];
     totalDataCount: number;
   }> {
-    addLog.debug('[getFilteredEvaluationData] 入参:', {
-      evalId,
-      metricId,
-      metricName: evaluator.metric.name,
-      thresholdValue
-    });
     try {
-      // Get evaluation to check metric count
       const evaluation = await MongoEvaluation.findById(evalId).lean();
       if (!evaluation) {
         throw new Error('Evaluation not found');
       }
 
-      // Query successfully completed evaluation items for specific metric, sorted by score (low priority)
-      // Note: evaluator.metric._id is stored as string, not ObjectId
+      // Query evaluation items for specific metric, sorted by threshold then score
       const pipeline = [
         {
           $match: {
@@ -747,7 +690,6 @@ export class EvaluationSummaryService {
         },
         {
           $addFields: {
-            // Find the matching metric result in evaluatorOutputs array
             matchingMetricResult: {
               $arrayElemAt: [
                 {
@@ -782,8 +724,8 @@ export class EvaluationSummaryService {
         },
         {
           $sort: {
-            isBelowThreshold: -1, // Below threshold items come first
-            score: 1 // Score from low to high
+            isBelowThreshold: -1,
+            score: 1
           }
         },
         {
@@ -821,14 +763,11 @@ export class EvaluationSummaryService {
     }
   }
 
-  /**
-   * 根据Token限制截断数据
-   */
+  // Truncate data to fit within token limit while selecting optimal items
   private static async truncateDataByTokens(
     data: any[],
     tokenLimit: number,
-    thresholdValue: number,
-    llmModel?: string
+    language: LanguageType
   ): Promise<{
     truncatedData: any[];
     truncatedCount: number;
@@ -838,16 +777,29 @@ export class EvaluationSummaryService {
     }
 
     try {
-      // Check if all scores are perfect (calculated only once)
       const isAllPerfect = this.isAllPerfectScores(data);
-
-      // Select optimal data and example type
       const optimizedData = this.selectOptimalDataWithFlag(data, isAllPerfect);
-      const selectedExample = isAllPerfect ? goodExample : badExample;
 
-      // Calculate base template tokens (excluding specific data)
-      const selectedTemplate = isAllPerfect ? strengthAnalysisTemplate : problemAnalysisTemplate;
+      let selectedTemplate: string;
+      let selectedExample: string;
+
+      if (language === LanguageType.English) {
+        selectedTemplate = isAllPerfect ? strengthAnalysisTemplateEn : problemAnalysisTemplateEn;
+        selectedExample = isAllPerfect ? goodExampleEn : badExampleEn;
+      } else if (language === LanguageType.TraditionalChinese) {
+        selectedTemplate = isAllPerfect
+          ? strengthAnalysisTemplateZhTW
+          : problemAnalysisTemplateZhTW;
+        selectedExample = isAllPerfect ? goodExampleZhTW : badExampleZhTW;
+      } else {
+        selectedTemplate = isAllPerfect
+          ? strengthAnalysisTemplateZhCN
+          : problemAnalysisTemplateZhCN;
+        selectedExample = isAllPerfect ? goodExampleZhCN : badExampleZhCN;
+      }
+
       const baseTemplate = selectedTemplate
+        .replace('{language}', LanguageDisplayNameMap[language])
         .replace('{example}', selectedExample)
         .replace('{evaluation_result_for_single_metric}', '');
 
@@ -892,7 +844,6 @@ export class EvaluationSummaryService {
       addLog.error('[EvaluationSummary] Token calculation failed', {
         error
       });
-      // If token calculation fails, select data based on perfect score status
       const optimizedData = this.selectOptimalData(data);
       const fallbackCount = Math.ceil(optimizedData.length * 0.5);
       return {
@@ -902,23 +853,17 @@ export class EvaluationSummaryService {
     }
   }
 
-  /**
-   * 调用LLM生成总结
-   */
   private static async callLLMForSummary(
-    evaluator: any,
     data: any[],
-    totalDataCount: number,
-    includedDataCount: number
+    language: LanguageType,
+    llmModel?: string
   ): Promise<{
     summary: string;
     usage: any;
   }> {
     try {
-      const llmModel = evaluator.runtimeConfig?.llm;
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
-
-      const userPrompt = this.buildUserPrompt(data);
+      const modelData = getEvaluationSummaryModel(llmModel);
+      const userPrompt = this.buildUserPrompt(data, language);
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -927,7 +872,6 @@ export class EvaluationSummaryService {
         }
       ];
 
-      // Convert messages to SDK compatible format
       const requestMessages = await loadRequestMessages({
         messages,
         useVision: false
@@ -935,13 +879,14 @@ export class EvaluationSummaryService {
 
       const { response, isStreamResponse } = await createChatCompletion({
         body: {
-          model: llmModel,
+          model: modelData.model,
           messages: requestMessages,
-          temperature: 1e-7,
-          max_tokens: 1000,
+          temperature: TEMPERATURE_FOR_EVALUATION_SUMMARY,
+          max_tokens: MAX_TOKEN_FOR_EVALUATION_SUMMARY,
           stream: false
         },
-        modelData
+        modelData,
+        timeout: 30000
       });
 
       if (isStreamResponse) {
@@ -960,9 +905,6 @@ export class EvaluationSummaryService {
     }
   }
 
-  /**
-   * 记录使用量和费用
-   */
   private static async recordUsage(
     evaluation: EvaluationSchemaType,
     evaluator: any,
@@ -972,20 +914,17 @@ export class EvaluationSummaryService {
     if (!usage) return;
 
     try {
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
+      const modelData = getEvaluationSummaryModel(llmModel);
       const inputTokens = usage?.prompt_tokens || 0;
       const outputTokens = usage?.completion_tokens || 0;
-      const totalTokens = inputTokens + outputTokens;
 
-      // Convert tokens to points using standard utility function
       const { totalPoints } = formatModelChars2Points({
-        model: llmModel || modelData?.model || '',
+        model: modelData.model,
         inputTokens,
         outputTokens,
-        modelType: (modelData?.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
+        modelType: (modelData.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
       });
 
-      // Use unified evaluation usage recording
       await createMergedEvaluationUsage({
         evalId: evaluation._id.toString(),
         teamId: evaluation.teamId.toString(),
@@ -1009,55 +948,46 @@ export class EvaluationSummaryService {
         metricId: evaluator.metric._id.toString(),
         error
       });
-      // Don't affect main flow
     }
   }
 
-  /**
-   * 构建用户提示词
-   */
-  private static buildUserPrompt(data: any[]): string {
-    // Check if all scores are perfect to determine which template to use
+  private static buildUserPrompt(data: any[], language: LanguageType): string {
     const isAllPerfect = this.isAllPerfectScores(data);
 
-    // Select appropriate template and example based on data quality
-    const selectedTemplate = isAllPerfect ? strengthAnalysisTemplate : problemAnalysisTemplate;
-    const selectedExample = isAllPerfect ? goodExample : badExample;
+    let selectedTemplate: string;
+    let selectedExample: string;
 
-    // Format evaluation data
+    if (language === LanguageType.English) {
+      selectedTemplate = isAllPerfect ? strengthAnalysisTemplateEn : problemAnalysisTemplateEn;
+      selectedExample = isAllPerfect ? goodExampleEn : badExampleEn;
+    } else if (language === LanguageType.TraditionalChinese) {
+      selectedTemplate = isAllPerfect ? strengthAnalysisTemplateZhTW : problemAnalysisTemplateZhTW;
+      selectedExample = isAllPerfect ? goodExampleZhTW : badExampleZhTW;
+    } else {
+      selectedTemplate = isAllPerfect ? strengthAnalysisTemplateZhCN : problemAnalysisTemplateZhCN;
+      selectedExample = isAllPerfect ? goodExampleZhCN : badExampleZhCN;
+    }
+
     const evaluationResult = data.map((item) => this.formatDataItemForPrompt(item)).join('\n\n');
 
-    // Render template variables
     return selectedTemplate
+      .replace('{language}', LanguageDisplayNameMap[language])
       .replace('{example}', selectedExample)
       .replace('{evaluation_result_for_single_metric}', evaluationResult);
   }
 
-  /**
-   * 格式化数据项用于提示词
-   */
   private static formatDataItemForPrompt(item: any): string {
-    // const score = item.matchingMetricResult?.data?.score || 0;
-    // const userInput = item.dataItem?.userInput || '无';
-    // const expectedOutput = item.dataItem?.expectedOutput || '无';
-    // const actualOutput = item.targetOutput?.actualOutput || '无';
-    const reason = item.matchingMetricResult?.data?.reason || '无评估原因';
+    const reason = item.matchingMetricResult?.data?.reason || 'no content';
 
     return `
-评估原因: ${reason}`;
+eval_reason: ${reason}`;
   }
 
-  /**
-   * 判断数据是否全部满分
-   */
   private static isAllPerfectScores(data: any[]): boolean {
     if (data.length === 0) return false;
     return data.every((item) => (item.matchingMetricResult?.data?.score || 0) >= PERFECT_SCORE);
   }
 
-  /**
-   * 优化数据选择策略 - 根据满分情况选择最合适的数据用于分析
-   */
   private static selectOptimalData(data: any[]): any[] {
     if (data.length === 0) return [];
 
@@ -1066,31 +996,23 @@ export class EvaluationSummaryService {
     return this.selectOptimalDataWithFlag(data, isAllPerfect);
   }
 
-  /**
-   * 优化数据选择策略 - 使用预计算的满分标志
-   */
   private static selectOptimalDataWithFlag(data: any[], isAllPerfect: boolean): any[] {
     if (data.length === 0) return [];
 
     if (isAllPerfect) {
-      // When all perfect scores, return original data (quantity will be controlled by token limit later)
       return data;
     } else {
-      // When non-perfect scores exist, prioritize non-perfect score data
+      // Prioritize non-perfect score data for problem analysis
       const nonPerfectData = data.filter(
         (item) => (item.matchingMetricResult?.data?.score || 0) < PERFECT_SCORE
       );
-      // Return non-perfect score data first (sorted by score from low to high)
       return [...nonPerfectData];
     }
   }
 
-  /**
-   * Trigger summary generation for completed evaluation task
-   */
-  static async triggerSummaryGeneration(evalId: string, completedCount: number): Promise<void> {
+  // Trigger summary generation when evaluation completes, only for metrics without existing summaries
+  static async triggerSummaryGeneration(evalId: string): Promise<void> {
     try {
-      // Check if all evaluation items have error status - skip summary generation if true
       const allEvalItemsStatus = await MongoEvalItem.find(
         { evalId: new Types.ObjectId(evalId) },
         { status: 1 }
@@ -1108,10 +1030,9 @@ export class EvaluationSummaryService {
             totalItems: allEvalItemsStatus.length
           }
         );
-        return; // Skip summary generation entirely
+        return;
       }
 
-      // Check if there are any successful evaluatorOutputs, regardless of overall item status
       const itemsWithSuccessfulOutputs = await MongoEvalItem.countDocuments({
         evalId: new Types.ObjectId(evalId),
         evaluatorOutputs: {
@@ -1122,37 +1043,28 @@ export class EvaluationSummaryService {
         }
       });
 
-      if (completedCount === 0 && itemsWithSuccessfulOutputs === 0) {
-        return; // No successful items, skip summary generation
+      if (itemsWithSuccessfulOutputs === 0) {
+        return;
       }
-      // Scores are now calculated in real-time when getEvaluationSummary is called
-      // No need to pre-calculate and save scores
 
-      // Check which metrics need summary generation
-      const currentEvaluation = await MongoEvaluation.findById(
-        evalId,
-        'evaluators summaryConfigs'
-      ).lean();
+      const currentEvaluation = await MongoEvaluation.findById(evalId).lean();
 
       if (!currentEvaluation?.evaluators || currentEvaluation.evaluators.length === 0) {
-        return; // No evaluators to process
+        return;
       }
 
-      // Find metrics with empty summaries
       const metricsNeedingSummary: string[] = [];
 
       currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
         const metricId = evaluator.metric._id.toString();
-        const summaryConfig = currentEvaluation.summaryConfigs[index];
+        const summaryConfig = currentEvaluation.summaryData.summaryConfigs[index];
 
-        // Check if summary is empty
         if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
           metricsNeedingSummary.push(metricId);
         }
       });
 
       if (metricsNeedingSummary.length > 0) {
-        // Trigger async summary generation for metrics with empty summaries
         await EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary);
       } else {
         addLog.debug(
@@ -1160,7 +1072,6 @@ export class EvaluationSummaryService {
         );
       }
     } catch (error) {
-      // Log error without affecting main completion flow
       addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
         error
       });

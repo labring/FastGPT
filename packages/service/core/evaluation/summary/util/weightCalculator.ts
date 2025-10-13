@@ -1,13 +1,12 @@
-import { CalculateMethodEnum, SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
-import { MongoEvalMetric } from '../../metric/schema';
-import type { EvaluatorSchema, SummaryConfig } from '@fastgpt/global/core/evaluation/type';
+import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import type {
+  EvaluatorSchema,
+  EvaluationParamsType,
+  EvaluationParamsWithDeafultConfigType
+} from '@fastgpt/global/core/evaluation/type';
 import { addLog } from '../../../../common/system/log';
+import { CalculateMethodEnum } from '@fastgpt/global/core/evaluation/constants';
 
-/**
- * Automatically assign metric weights
- * @param metricCount Number of metrics
- * @returns Weight array, each element is an integer percentage
- */
 export function calculateMetricWeights(metricCount: number): number[] {
   if (metricCount <= 0) {
     return [];
@@ -17,28 +16,16 @@ export function calculateMetricWeights(metricCount: number): number[] {
     return [100];
   }
 
-  // Calculate base weight (rounded down)
   const baseWeight = Math.floor(100 / metricCount);
-
-  // Calculate remaining weight
   const remainder = 100 - baseWeight * metricCount;
-
-  // Assign weights
   const weights: number[] = new Array(metricCount).fill(baseWeight);
-
-  // Assign remaining weight to the last metric
   weights[metricCount - 1] += remainder;
 
   return weights;
 }
 
-/**
- * Get default threshold from environment variables or use fallback
- * @returns Default threshold value
- */
 function getDefaultThreshold(): number {
   const threshold = global.systemEnv?.evalConfig?.caseResultThreshold || 0.8;
-  // Validate threshold is within valid range
   if (isNaN(threshold) || threshold < 0 || threshold > 1) {
     addLog.warn(
       `[getDefaultThreshold] Invalid caseResultThreshold value: ${threshold}. Using default: 0.8`
@@ -48,40 +35,39 @@ function getDefaultThreshold(): number {
   return threshold;
 }
 
-/**
- * Build evaluation default configuration
- * Returns both cleaned evaluators (without summaryConfig) and separate summaryConfigs array
- */
-export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
-  evaluators: EvaluatorSchema[];
-  summaryConfigs: SummaryConfig[];
-} {
+// Build evaluation configuration with cleaned evaluators and separate summaryConfigs
+export function buildEvalDataConfig(
+  evaluationParams: EvaluationParamsType
+): EvaluationParamsWithDeafultConfigType {
+  const evaluators = evaluationParams?.evaluators || [];
+
   if (!evaluators || evaluators.length === 0) {
-    return { evaluators: [], summaryConfigs: [] };
+    return {
+      ...evaluationParams,
+      evaluators: [],
+      summaryData: {
+        calculateType: CalculateMethodEnum.mean,
+        summaryConfigs: []
+      }
+    };
   }
 
   const weights = calculateMetricWeights(evaluators.length);
   const caseResultThreshold = getDefaultThreshold();
 
-  // Clean evaluators without summaryConfig
-  const cleanedEvaluators = evaluators.map((evaluator) => ({
+  const cleanedEvaluators: EvaluatorSchema[] = evaluators.map((evaluator) => ({
     metric: evaluator.metric,
     runtimeConfig: evaluator.runtimeConfig,
     thresholdValue: evaluator.thresholdValue ?? caseResultThreshold
   }));
 
-  // Create separate summaryConfigs array with metric relationship
   const summaryConfigs = evaluators.map((evaluator, index) => ({
     metricId: evaluator.metric._id.toString(),
     metricName: evaluator.metric.name,
     weight: weights[index],
-    calculateType: CalculateMethodEnum.mean,
-    score: 0,
     summary: '',
     summaryStatus: SummaryStatusEnum.pending,
-    errorReason: '',
-    completedItemCount: 0,
-    overThresholdItemCount: 0
+    errorReason: ''
   }));
 
   addLog.debug('[buildEvalDataConfig] Processed configuration:', {
@@ -94,7 +80,11 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): {
   });
 
   return {
+    ...evaluationParams,
     evaluators: cleanedEvaluators,
-    summaryConfigs
+    summaryData: {
+      calculateType: CalculateMethodEnum.mean,
+      summaryConfigs
+    }
   };
 }

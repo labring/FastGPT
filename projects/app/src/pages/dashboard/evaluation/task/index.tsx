@@ -162,9 +162,9 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     }
 
     // 3. 其他场景判断summaryConfigs
-    if (task.summaryConfigs && task.summaryConfigs.length > 0) {
+    if (task.summaryData?.summaryConfigs && task.summaryData?.summaryConfigs.length > 0) {
       // 如果summaryConfigs数组长度大于等于3，显示aggregateScore
-      if (task.summaryConfigs.length >= 3) {
+      if (task.summaryData?.summaryConfigs.length >= 3) {
         return (
           <Box color={'myGray.900'}>
             {task.aggregateScore !== undefined ? formatScoreToPercentage(task.aggregateScore) : '-'}
@@ -175,7 +175,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
       // summaryConfigs数组长度小于3，显示各个维度的分数（换行显示）
       return (
         <Box color={'myGray.900'}>
-          {task.summaryConfigs.map((config, index) => {
+          {task.summaryData?.summaryConfigs.map((config, index) => {
             const builtinInfo = getBuiltinDimensionInfo(config.metricName);
             const displayName = builtinInfo?.name || config.metricName;
             const score = formatScoreToPercentage(config.score);

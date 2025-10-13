@@ -83,23 +83,22 @@ describe('Update Evaluation Summary Config API Handler', () => {
 
     expect(EvaluationSummaryService.updateEvaluationSummaryConfig).toHaveBeenCalledWith(
       mockEvalId,
+      CalculateMethodEnum.mean,
       [
         {
           metricId: 'metric-1',
           thresholdValue: 0.8,
-          weight: 60,
-          calculateType: CalculateMethodEnum.mean
+          weight: 60
         },
         {
           metricId: 'metric-2',
           thresholdValue: 0.7,
-          weight: 40,
-          calculateType: CalculateMethodEnum.mean
+          weight: 40
         }
       ]
     );
 
-    expect(result).toEqual({ message: 'ok' });
+    expect(result).toEqual({ message: 'Evaluation summary config updated successfully' });
   });
 
   test('应该拒绝缺少 evalId 的请求', async () => {
@@ -296,7 +295,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
     } as any;
 
     const result = await handler(mockReq);
-    expect(result).toEqual({ message: 'ok' });
+    expect(result).toEqual({ message: 'Evaluation summary config updated successfully' });
   });
 
   test('应该要求所有指标都有权重当任一指标提供权重时', async () => {
@@ -326,7 +325,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
     } as any;
 
     const result = await handler(mockReq);
-    expect(result).toEqual({ message: 'ok' });
+    expect(result).toEqual({ message: 'Evaluation summary config updated successfully' });
   });
 
   test('应该正确添加审计日志', async () => {
@@ -422,16 +421,16 @@ describe('Update Evaluation Summary Config API Handler', () => {
 
     expect(EvaluationSummaryService.updateEvaluationSummaryConfig).toHaveBeenCalledWith(
       mockEvalId,
+      CalculateMethodEnum.median,
       [
         {
           metricId: 'metric-1',
           thresholdValue: 0.9,
-          weight: 100,
-          calculateType: CalculateMethodEnum.median
+          weight: 100
         }
       ]
     );
 
-    expect(result).toEqual({ message: 'ok' });
+    expect(result).toEqual({ message: 'Evaluation summary config updated successfully' });
   });
 });

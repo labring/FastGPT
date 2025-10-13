@@ -90,6 +90,7 @@
   "summary_no_valid_metrics_found": "没有找到有效的指标",
   "summary_stream_response_not_supported": "不支持流式响应",
   "summary_weight_sum_must_be_100": "所有指标的权重总和必须等于100",
+  "summary_model_invalid": "评估总结生成异常，请检查评估模型配置",
 
   "dataset_collection_id_required": "数据集合 ID 是必需的",
   "dataset_collection_update_failed": "数据集合更新失败",

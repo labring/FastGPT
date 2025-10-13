@@ -65,7 +65,7 @@ export const finishEvaluationTask = async (evalId: string) => {
     }
 
     // Trigger summary generation for completed task
-    await EvaluationSummaryService.triggerSummaryGeneration(evalId, stats.completed);
+    await EvaluationSummaryService.triggerSummaryGeneration(evalId);
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, {
       error: getErrText(error)
