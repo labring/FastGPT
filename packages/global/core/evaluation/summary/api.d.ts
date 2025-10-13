@@ -17,7 +17,7 @@ export interface MetricConfigItemWithName extends Omit<MetricConfigItem, 'calcul
 
 export interface UpdateMetricConfigItem extends Omit<MetricConfigItem, 'calculateType'> {
   metricId: string;
-  thresholdValue?: number;
+  thresholdValue: number;
   weight?: number;
 }
 
@@ -25,7 +25,7 @@ export interface UpdateMetricConfigItem extends Omit<MetricConfigItem, 'calculat
 
 export interface UpdateSummaryConfigBody {
   evalId: string;
-  calculateType?: CalculateMethodEnum;
+  calculateType: CalculateMethodEnum;
   metricsConfig: UpdateMetricConfigItem[];
 }
 

@@ -11,6 +11,7 @@ import type {
 } from '@fastgpt/global/core/evaluation/type';
 import { Types } from '@fastgpt/service/common/mongo';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { CalculateMethodEnum } from '@fastgpt/global/core/evaluation/constants';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
 // Mock all external dependencies
@@ -184,26 +185,32 @@ describe('EvaluationTaskService Integration Tests', () => {
       queuing: 2,
       error: 0
     });
-    (buildEvalDataConfig as any).mockImplementation((evaluators) => ({
-      evaluators: evaluators.map((evaluator) => ({
+    (buildEvalDataConfig as any).mockImplementation((evaluationParams) => {
+      const inputEvaluators = evaluationParams.evaluators || [];
+      const sanitizedEvaluators = inputEvaluators.map((evaluator: any) => ({
         metric: evaluator.metric,
         runtimeConfig: evaluator.runtimeConfig,
         thresholdValue: evaluator.thresholdValue ?? 0.8
-      })),
-      summaryConfigs: evaluators.map((evaluator, index) => ({
+      }));
+
+      const summaryConfigs = inputEvaluators.map((evaluator: any, index: number) => ({
         metricId: evaluator.metric._id.toString(),
         metricName: evaluator.metric.name,
         weight: 100,
-        calculateType: 'mean',
-        score: 0,
         summary: '',
         summaryStatus: 'pending',
-        errorReason: '',
-        completedItemCount: 0,
-        overThresholdItemCount: 0,
-        thresholdPassRate: 0
-      }))
-    }));
+        errorReason: ''
+      }));
+
+      return {
+        ...evaluationParams,
+        evaluators: sanitizedEvaluators,
+        summaryData: {
+          calculateType: CalculateMethodEnum.mean,
+          summaryConfigs
+        }
+      };
+    });
 
     // Mock BullMQ operations to resolve immediately
     (removeEvaluationTaskJob as any).mockResolvedValue({
