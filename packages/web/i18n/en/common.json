@@ -420,7 +420,7 @@
   "core.chat.response.module limit": "Max entries per search",
   "core.chat.response.module maxToken": "Max output tokens",
   "core.chat.response.module model": "Model",
-  "core.chat.response.module name": "Model name",
+  "core.chat.response.module name": "Node name",
   "core.chat.response.module query": "Question/keyword",
   "core.chat.response.module similarity": "Similarity",
   "core.chat.response.module temperature": "Temperature",
