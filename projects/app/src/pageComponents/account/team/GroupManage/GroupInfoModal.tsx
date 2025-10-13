@@ -92,7 +92,7 @@ function GroupInfoModal({
       iconSrc={editGroup?.avatar ?? DEFAULT_TEAM_AVATAR}
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
-        <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
+        <FormLabel>{t('user:team.avatar_and_name')}</FormLabel>
         <HStack>
           <Avatar
             src={getValues('avatar')}

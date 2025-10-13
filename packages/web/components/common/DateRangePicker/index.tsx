@@ -5,6 +5,8 @@ import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import zhCN from 'date-fns/locale/zh-CN';
+import zhTW from 'date-fns/locale/zh-TW';
+import enUS from 'date-fns/locale/en-US';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 
@@ -32,10 +34,24 @@ const DateRangePicker = ({
   dateRange?: DateRangeType;
   formLabel?: string;
 } & BoxProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const OutRangeRef = useRef(null);
   const [range, setRange] = useState<DateRangeType>(defaultDate);
   const [showSelected, setShowSelected] = useState(false);
+
+  // 根据当前语言配置获取对应的 locale
+  const getLocale = () => {
+    switch (i18n.language) {
+      case 'zh-TW':
+      case 'zh-Hant':
+        return zhTW;
+      case 'en':
+        return enUS;
+      case 'zh-CN':
+      default:
+        return zhCN;
+    }
+  };
 
   useEffect(() => {
     if (dateRange) {
@@ -100,7 +116,7 @@ const DateRangePicker = ({
             : {})}
         >
           <DayPicker
-            locale={zhCN}
+            locale={getLocale()}
             id="test"
             mode="range"
             defaultMonth={defaultDate.to}
