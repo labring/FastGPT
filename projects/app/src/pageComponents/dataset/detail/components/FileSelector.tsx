@@ -216,7 +216,7 @@ const FileSelector = ({
             )}
             <Box color={'myGray.500'} fontSize={'xs'}>
               {/* max count */}
-              {formatMaxCount && <>{t('file:support_max_count', { maxCount: formatMaxCount })}, </>}
+              {formatMaxCount && <>{t('file:support_max_count', { maxCount: formatMaxCount })} </>}
               {/* max size */}
               {t('file:support_max_size', { maxSize: displayMaxSize })}
             </Box>

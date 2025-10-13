@@ -228,7 +228,7 @@
   "stream_response": "Stream output",
   "stream_response_tip": "If disabled, the model will not output contents immediately, but wait until the entire response is generated. Therefore, it can obtain the output contents for further processing.",
   "sync_log_keys_popover_text": "The field configuration will apply only to your account. Would you like to save it as the team configuration?",
-  "sync_team_app_log_keys": "Restore to team config",
+  "sync_team_app_log_keys": "Restore defaults",
   "system_secret": "System secret key",
   "systemval_conflict_globalval": "The variable name conflicts with a system variable name. Please use another one.",
   "team_tags_set": "Team tag",

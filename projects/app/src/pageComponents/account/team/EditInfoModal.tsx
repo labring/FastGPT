@@ -101,7 +101,7 @@ function EditModal({
           {t('account_team:set_name_avatar')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={t('common:set_avatar')}>
+          <MyTooltip label={t('common:set_avatar_in_edit_modal')}>
             <Avatar
               flexShrink={0}
               src={avatar}

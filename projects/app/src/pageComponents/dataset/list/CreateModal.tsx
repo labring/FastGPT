@@ -105,7 +105,9 @@ const CreateModal = ({
             src={DatasetTypeMap[type].avatar}
             pr={'10px'}
           />
-          {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
+          {t('common:core.dataset.Create dataset', {
+            name: t(DatasetTypeMap[type].label).toLowerCase()
+          })}
         </Flex>
       }
       isOpen

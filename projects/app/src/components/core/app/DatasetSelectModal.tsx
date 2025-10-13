@@ -355,7 +355,7 @@ export const DatasetSelectModal = ({
             <Flex h="100%" py={4} direction="column" overflow="hidden" minH={0}>
               {/* Selected count display */}
               <Box mb={3} px={4} fontSize="sm" color="myGray.600">
-                {t('app:Selected')}: {selectedDatasets.length} {t('app:dataset')}
+                {t('app:Selected')}: {selectedDatasets.length}
               </Box>
               {/* Selected dataset list */}
               <VStack align="stretch" spacing={1} flex={1} px={4} overflowY="auto" h={0} minH={0}>

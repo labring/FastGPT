@@ -70,7 +70,7 @@ const PluginCard = ({
         mt={3}
         pr={1}
         textAlign={'justify'}
-        wordBreak={'break-all'}
+        wordBreak={'break-word'}
         fontSize={'xs'}
         color={'myGray.500'}
       >

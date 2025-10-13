@@ -15,8 +15,11 @@ type FormType = {
 };
 
 const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
+
+  // 根据语言设置不同的标签宽度
+  const labelWidth = i18n.language === 'en' ? '120px' : '70px';
 
   const { register, handleSubmit, getValues } = useForm<FormType>({
     defaultValues: {
@@ -51,17 +54,18 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       onClose={onClose}
       iconSrc="/imgs/modal/password.svg"
+      width={'500px'}
       title={t('account_info:update_password')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 70px'} fontSize={'sm'}>
+          <Box flex={`0 0 ${labelWidth}`} mr={3} fontSize={'sm'} minWidth="70px">
             {t('account_info:old_password') + ':'}
           </Box>
           <Input flex={1} type={'password'} {...register('oldPsw', { required: true })}></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'} fontSize={'sm'}>
+          <Box flex={`0 0 ${labelWidth}`} mr={3} fontSize={'sm'} minWidth="70px">
             {t('account_info:new_password') + ':'}
           </Box>
           <Input
@@ -80,13 +84,12 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
           ></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'} fontSize={'sm'}>
+          <Box flex={`0 0 ${labelWidth}`} mr={3} fontSize={'sm'} minWidth="70px">
             {t('account_info:confirm_password') + ':'}
           </Box>
           <Input
             flex={1}
             type={'password'}
-            placeholder={t('user:password.confirm')}
             {...register('confirmPsw', {
               required: true,
               validate: (val) => (getValues('newPsw') === val ? true : t('user:password.not_match'))
