@@ -19,24 +19,19 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: vi.fn()
 }));
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamEvalDatasetLimit: vi.fn(),
-  checkTeamAIPoints: vi.fn()
+  checkTeamEvalDatasetLimit: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getDefaultEvaluationModel: vi.fn()
 }));
 
-import {
-  checkTeamEvalDatasetLimit,
-  checkTeamAIPoints
-} from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamEvalDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 const mockAuthEvaluationDatasetCreate = vi.mocked(authEvaluationDatasetCreate);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
 const mockCheckTeamEvalDatasetLimit = vi.mocked(checkTeamEvalDatasetLimit);
-const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
 const mockAddAuditLog = vi.mocked(addAuditLog);
 
 describe('EvalDatasetCollection Create API', () => {
@@ -63,7 +58,6 @@ describe('EvalDatasetCollection Create API', () => {
 
     // Mock team limit checks to pass by default
     mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
-    mockCheckTeamAIPoints.mockResolvedValue(undefined);
   });
 
   describe('Parameter Validation', () => {
@@ -358,7 +352,6 @@ describe('EvalDatasetCollection Create API', () => {
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
       mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
       mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
-      mockCheckTeamAIPoints.mockResolvedValue(undefined);
     });
 
     it('should reject invalid evaluation model', async () => {
@@ -432,32 +425,6 @@ describe('EvalDatasetCollection Create API', () => {
       );
       expect(mockCheckTeamEvalDatasetLimit).toHaveBeenCalledWith(validTeamId);
     });
-
-    it('should propagate team AI points errors', async () => {
-      const pointsError = new Error('Insufficient AI points');
-      mockCheckTeamAIPoints.mockRejectedValue(pointsError);
-
-      const req = {
-        body: { name: 'Test Dataset' }
-      };
-
-      await expect(handler_test(req as any)).rejects.toThrow('Insufficient AI points');
-      expect(mockCheckTeamAIPoints).toHaveBeenCalledWith(validTeamId);
-    });
-
-    it('should call both team limit checks successfully', async () => {
-      mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
-      mockCheckTeamAIPoints.mockResolvedValue(undefined);
-
-      const req = {
-        body: { name: 'Test Dataset' }
-      };
-
-      const result = await handler_test(req as any);
-      expect(result).toBe(mockDatasetId);
-      expect(mockCheckTeamEvalDatasetLimit).toHaveBeenCalledWith(validTeamId);
-      expect(mockCheckTeamAIPoints).toHaveBeenCalledWith(validTeamId);
-    });
   });
 
   describe('Audit Logging', () => {
@@ -470,7 +437,6 @@ describe('EvalDatasetCollection Create API', () => {
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
       mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
       mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
-      mockCheckTeamAIPoints.mockResolvedValue(undefined);
     });
 
     it('should create audit log with correct parameters', async () => {
@@ -520,7 +486,6 @@ describe('EvalDatasetCollection Create API', () => {
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(null);
       mockMongoEvalDatasetCollection.create.mockResolvedValue([{ _id: mockDatasetId }] as any);
       mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
-      mockCheckTeamAIPoints.mockResolvedValue(undefined);
     });
 
     it('should reject when evaluation model is not a string', async () => {

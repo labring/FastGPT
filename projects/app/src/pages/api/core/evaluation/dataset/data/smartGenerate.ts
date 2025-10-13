@@ -5,7 +5,7 @@ import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/e
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
-  addEvalDatasetDataSynthesizeJob,
+  addEvalDatasetDataSynthesizeBulk,
   checkEvalDatasetDataSynthesizeQueueHealth
 } from '@fastgpt/service/core/evaluation/dataset/dataSynthesizeMq';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -24,7 +24,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@fastgpt/global/core/evaluation/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getDefaultEvaluationModel } from '@fastgpt/service/core/ai/model';
 import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import {
@@ -275,9 +274,6 @@ async function handler(
 
     // Create collection now that we have confirmed valid data to process
     if (!collectionId) {
-      const defaultEvaluationModel = getDefaultEvaluationModel();
-      const evaluationModelToUse = intelligentGenerationModel || defaultEvaluationModel?.model;
-
       const collectionData = await mongoSessionRun(async (session) => {
         const [collection] = await MongoEvalDatasetCollection.create(
           [
@@ -286,7 +282,7 @@ async function handler(
               tmbId,
               name: name!.trim(),
               description: (description || '').trim(),
-              evaluationModel: evaluationModelToUse
+              evaluationModel: intelligentGenerationModel
             }
           ],
           { session, ordered: true }
@@ -322,12 +318,10 @@ async function handler(
 
     // Queue synthesis jobs for Q-only data
     let queuedSynthesizeJobs = 0;
-    for (const synthData of synthesizeJobs) {
-      await addEvalDatasetDataSynthesizeJob(synthData);
-      queuedSynthesizeJobs++;
-    }
+    if (synthesizeJobs.length > 0) {
+      await addEvalDatasetDataSynthesizeBulk(synthesizeJobs);
+      queuedSynthesizeJobs = synthesizeJobs.length;
 
-    if (queuedSynthesizeJobs > 0) {
       addLog.debug('Queued synthesis jobs for Q-only data', {
         collectionId: targetCollectionId,
         queuedCount: queuedSynthesizeJobs

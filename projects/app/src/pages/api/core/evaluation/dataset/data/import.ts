@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import type { importEvalDatasetFromFileBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import {
-  addEvalDatasetDataQualityJob,
+  addEvalDatasetDataQualityBulk,
   checkEvalDatasetDataQualityQueueHealth
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -187,7 +187,7 @@ async function handler(
     files.forEach((file) => filePaths.push(file.path));
 
     if (!files || files.length === 0) {
-      return Promise.reject(EvaluationErrEnum.fileIdRequired);
+      return Promise.reject(EvaluationErrEnum.fileRequired);
     }
 
     for (const file of files) {
@@ -387,13 +387,11 @@ async function handler(
 
     // Queue quality evaluation jobs if enabled
     if (enableQualityEvaluation && evaluationModel) {
-      const evaluationJobs = insertedRecords.map((record) =>
-        addEvalDatasetDataQualityJob({
-          dataId: record._id.toString(),
-          evaluationModel: evaluationModel
-        })
-      );
-      await Promise.allSettled(evaluationJobs);
+      const qualityJobsData = insertedRecords.map((record) => ({
+        dataId: record._id.toString(),
+        evaluationModel: evaluationModel
+      }));
+      await addEvalDatasetDataQualityBulk(qualityJobsData);
     }
 
     (async () => {

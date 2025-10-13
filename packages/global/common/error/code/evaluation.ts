@@ -124,7 +124,7 @@ export enum EvaluationErrEnum {
   evalItemJobNotFound = 'evaluationItemJobNotFound',
 
   // File/Import related errors
-  fileIdRequired = 'evaluationFileIdRequired',
+  fileRequired = 'evaluationFileRequired',
   fileMustBeCSV = 'evaluationFileMustBeCSV',
   csvInvalidStructure = 'evaluationCSVInvalidStructure',
   csvParsingError = 'evaluationCSVParsingError',
@@ -544,8 +544,8 @@ const evaluationErrList = [
 
   // File/Import related errors
   {
-    statusText: EvaluationErrEnum.fileIdRequired,
-    message: i18nT('evaluation:file_id_required')
+    statusText: EvaluationErrEnum.fileRequired,
+    message: i18nT('evaluation:file_required')
   },
   {
     statusText: EvaluationErrEnum.fileMustBeCSV,
