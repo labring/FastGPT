@@ -9,6 +9,14 @@ vi.mock('@/web/common/api/request', () => ({
   PUT: vi.fn()
 }));
 
+vi.mock('@/web/common/api/client', () => ({
+  client: new Proxy(
+    {},
+    { get: () => new Proxy({}, { get: () => new Proxy({}, { get: () => vi.fn() }) }) }
+  ),
+  RestAPI: vi.fn(() => vi.fn())
+}));
+
 describe('user api', () => {
   it('should send auth code', async () => {
     const data = {
