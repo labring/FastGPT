@@ -68,10 +68,7 @@ function CreateInvitationModal({
         <Grid gap={6} templateColumns="max-content 1fr" alignItems="center">
           <>
             <FormLabel required={true}>{t('account_team:invitation_link_description')}</FormLabel>
-            <Input
-              placeholder={t('account_team:invitation_link_description')}
-              {...register('description', { required: true })}
-            />
+            <Input {...register('description', { required: true })} />
           </>
 
           <>

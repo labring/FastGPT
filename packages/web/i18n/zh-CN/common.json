@@ -421,7 +421,7 @@
   "core.chat.response.module limit": "单次搜索上限",
   "core.chat.response.module maxToken": "最大响应 tokens",
   "core.chat.response.module model": "模型",
-  "core.chat.response.module name": "模型名",
+  "core.chat.response.module name": "节点名",
   "core.chat.response.module query": "问题/检索词",
   "core.chat.response.module similarity": "相似度",
   "core.chat.response.module temperature": "温度",
