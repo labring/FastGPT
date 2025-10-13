@@ -455,7 +455,7 @@
   "core.dataset.collection.Start Sync Tip": "確認開始同步資料？將會刪除舊資料後重新取得，請確認！",
   "core.dataset.collection.Sync": "同步資料",
   "core.dataset.collection.Sync Collection": "資料同步",
-  "core.dataset.collection.Website Empty Tip": "還沒有關聯網站",
+  "core.dataset.collection.Website Empty Tip": "還沒有關聯網站，",
   "core.dataset.collection.Website Link": "網站網址",
   "core.dataset.collection.id": "集合 ID",
   "core.dataset.collection.metadata.Createtime": "建立時間",
@@ -1368,5 +1368,7 @@
   "core.dataset.import.databaseSchema Tip": "對資料庫中的表資訊進行自動處理，使其更利於檢索，以提高SQL產生的準確率",
   "semicolon": "；",
   "database_search_results": "數據庫搜索結果",
-  "other_knowledge_base_search_results": "其他知識庫搜索結果"
+  "other_knowledge_base_search_results": "其他知識庫搜索結果",
+  "comma": "、",
+   "set_avatar_in_edit_modal": "點擊設置頭像"
 }

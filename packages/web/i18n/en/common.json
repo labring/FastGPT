@@ -1368,5 +1368,7 @@
   "core.dataset.import.databaseSchema Tip": "Automatically processes data in database tables to enhance searching, improving the accuracy of SQL statements generated.",
   "semicolon": "；",
   "database_sql_query": "数据库检索的 SQL 语句",
-  "search_result": "检索结果"
+  "search_result": "检索结果",
+  "comma": ", ",
+  "set_avatar_in_edit_modal": "Click to upload an avatar."
 }

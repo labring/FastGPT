@@ -8,7 +8,7 @@ import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const EmptyCollectionTip = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const onOpenWebsiteModal = useContextSelector(CollectionPageContext, (v) => v.onOpenWebsiteModal);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const hasDatabaseConfig = useContextSelector(CollectionPageContext, (v) => v.hasDatabaseConfig);
@@ -26,7 +26,7 @@ const EmptyCollectionTip = () => {
       {datasetDetail.type === DatasetTypeEnum.websiteDataset && (
         <EmptyTip
           text={
-            <Flex>
+            <Flex whiteSpace={'pre-wrap'}>
               {datasetDetail.status === DatasetStatusEnum.syncing && (
                 <>{t('common:core.dataset.status.syncing')}</>
               )}
@@ -38,7 +38,7 @@ const EmptyCollectionTip = () => {
                   {!datasetDetail?.websiteConfig?.url ? (
                     <>
                       {t('common:core.dataset.collection.Website Empty Tip')}
-                      {', '}
+                      {i18n.language === 'en' ? ' ' : ''}
                       <Box
                         textDecoration={'underline'}
                         cursor={'pointer'}
@@ -62,6 +62,7 @@ const EmptyCollectionTip = () => {
             !hasDatabaseConfig ? (
               <Flex>
                 {t('common:no_database_connection')}
+                {i18n.language === 'en' ? ' ' : ''}
                 <Box
                   textDecoration={'underline'}
                   cursor={'pointer'}
