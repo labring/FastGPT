@@ -1,12 +1,10 @@
 import type { Handler } from '@fastgpt/global/common/tsRest/type';
-import { RestAPI } from '@/service/middleware/entry';
-import { request } from 'http';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
-const handler: Handler<any> = async ({ req, res }) => {
-  return new Promise((resolve, reject) => {
+const handler: Handler<any> = async ({ req, res, headers: _headers }) => {
+  return new Promise(async (resolve, reject) => {
     try {
-      const requestPath = req.url || '';
+      const requestPath = (req.url || '').replace('/proApi', '');
 
       if (!requestPath) {
         throw new Error('url is empty');
@@ -18,36 +16,18 @@ const handler: Handler<any> = async ({ req, res }) => {
       const parsedUrl = new URL(FastGPTProUrl);
 
       // 删除敏感的 header
-      const requestHeaders = { ...req.headers };
-      delete requestHeaders?.rootkey;
+      const headers = new Headers(_headers as Record<string, string>);
+      headers.delete('rootkey');
 
-      const requestResult = request({
-        protocol: parsedUrl.protocol,
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port,
-        path: requestPath,
+      const response = await fetch(`${parsedUrl.origin}${requestPath}`, {
+        headers,
         method: req.method,
-        headers: requestHeaders
+        body: req.method === 'GET' || req.method === 'HEAD' ? undefined : JSON.stringify(req.body)
       });
 
-      req.pipe(requestResult);
-
-      requestResult.on('response', (response) => {
-        Object.keys(response.headers).forEach((key) => {
-          // @ts-ignore
-          res.setHeader(key, response.headers[key]);
-        });
-        response.statusCode && res.writeHead(response.statusCode);
-        response.pipe(res);
-
-        // 代理完成后 resolve
-        response.on('end', () => {
-          resolve({} as any);
-        });
-      });
-
-      requestResult.on('error', (e) => {
-        reject(e);
+      resolve({
+        status: response.status,
+        body: await response.json()
       });
     } catch (error) {
       reject(error);
@@ -55,4 +35,4 @@ const handler: Handler<any> = async ({ req, res }) => {
   });
 };
 
-export const proApi = RestAPI(handler);
+export const proApi: (...args: any[]) => Promise<any> = handler;

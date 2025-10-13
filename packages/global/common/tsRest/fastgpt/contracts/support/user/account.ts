@@ -3,10 +3,9 @@ import z from 'zod';
 const c = initContract();
 
 export const accountContract = c.router({
-  logout: {
-    path: '/support/user/account/login',
-    method: 'POST',
-    body: z.undefined(),
+  loginout: {
+    path: '/support/user/account/loginout',
+    method: 'GET',
     responses: {
       200: z.void()
     },

@@ -4,7 +4,7 @@ import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
 import type { accountContract } from '@fastgpt/global/common/tsRest/fastgpt/contracts/support/user/account';
 
-const handler: Handler<typeof accountContract.logout> = async ({ req, res }) => {
+const handler: Handler<typeof accountContract.loginout> = async ({ req, res }) => {
   try {
     const { userId } = await authCert({ req, authToken: true });
     await delUserAllSession(userId);

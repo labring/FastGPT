@@ -33,6 +33,28 @@ NODE_OPTIONS=--no-node-snapshot pnpm i
 
 https://fael3z0zfze.feishu.cn/docx/ZOI1dABpxoGhS7xzhkXcKPxZnDL
 
+## API
+
+### Create an API
+
+1. declare a contract at `packages/global/tsRest/fastgpt/contracts`
+
+2. implement handler for the contract at `projects/app/src/pages/apiRouters`
+
+By the way, you can use `restapi` snippet to quickly create a template of the handler implementation
+
+3. import the handler to the relative api router object structure
+
+4. create API, like `const getChatSetting = RestAPI(client.chat.setting.detail);`, at the relative `api` folder or `api.ts`
+
+### If you need to forward a Pro API to fastgpt-pro
+
+the steps of [Create an API](#create-an-api) should also be followed, and then:
+
+1. declare the handler as `proApi` in the fastgpt's api router
+
+2. implement handler at fastgpt-pro
+
 ## I18N
 
 ### Install i18n-ally Plugin

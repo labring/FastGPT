@@ -95,7 +95,7 @@ export const postLogin = ({ password, ...props }: PostLoginProps) =>
     password: hashStr(password)
   });
 
-export const loginOut = RestAPI(client.support.user.account.logout);
+export const loginOut = RestAPI(client.support.user.account.loginout);
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
 
