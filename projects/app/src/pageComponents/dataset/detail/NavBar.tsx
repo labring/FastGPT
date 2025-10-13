@@ -235,7 +235,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   )}
                   <Box mb={3}>
                     <Box fontSize={'sm'} pb={1}>
-                      {t('common:core.dataset.training.Agent queue')}({qaTrainingMap.tip})
+                      {t('common:core.dataset.training.Agent queue')} ({qaTrainingMap.tip})
                     </Box>
                     <Progress
                       value={100}
@@ -248,7 +248,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   </Box>
                   <Box mb={3}>
                     <Box fontSize={'sm'} pb={1}>
-                      {t('dataset:auto_training_queue')}({autoTrainingMap.tip})
+                      {t('dataset:auto_training_queue')} ({autoTrainingMap.tip})
                     </Box>
                     <Progress
                       value={100}
@@ -261,7 +261,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   </Box>
                   <Box mb={3}>
                     <Box fontSize={'sm'} pb={1}>
-                      {t('dataset:image_training_queue')}({imageTrainingMap.tip})
+                      {t('dataset:image_training_queue')} ({imageTrainingMap.tip})
                     </Box>
                     <Progress
                       value={100}
@@ -274,7 +274,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   </Box>
                   <Box>
                     <Box fontSize={'sm'} pb={1}>
-                      {t('common:core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
+                      {t('common:core.dataset.training.Vector queue')} ({vectorTrainingMap.tip})
                     </Box>
                     <Progress
                       value={100}

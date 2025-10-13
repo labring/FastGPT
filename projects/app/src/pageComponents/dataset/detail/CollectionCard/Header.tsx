@@ -285,7 +285,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               >
                 <Flex align={'center'}>
                   {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
-                  {titleLabel}({total})
+                  {titleLabel} ({total})
                 </Flex>
                 {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (

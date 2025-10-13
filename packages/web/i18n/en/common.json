@@ -243,7 +243,7 @@
   "core.app.Publish app tip": "The app version will be updated across all publishing channels.",
   "core.app.QG.Custom prompt tip": "To ensure the generated content follows the required format, the prompts highlighted in yellow cannot be modified.",
   "core.app.QG.Custom prompt tip1": "To ensure the generated content follows the required format,",
-  "core.app.QG.Custom prompt tip2": "the prompts highlighted in yellow",
+  "core.app.QG.Custom prompt tip2": " the prompts highlighted in yellow ",
   "core.app.QG.Custom prompt tip3": "cannot be modified.",
   "core.app.QG.Fixed Prompt": "Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3'].",
   "core.app.Question Guide": "Follow-up",
