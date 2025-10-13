@@ -114,7 +114,7 @@ const ExtractFieldModal = ({
           <Box mt={5}>
             <Flex alignItems={'center'}>
               <FormLabel>
-                {t('common:core.module.extract.Enum Value')}({t('common:choosable')})
+                {t('common:core.module.extract.Enum Value')} ({t('common:choosable')})
               </FormLabel>
               <QuestionTip
                 ml={1}

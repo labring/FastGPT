@@ -177,7 +177,7 @@ const OptionItem = ({
           />
         </MyTooltip>
         <Box color={'myGray.600'} fontWeight={'medium'} fontSize={'sm'}>
-          {t('common:option') + (index + 1)}
+          {t('common:option') + ' ' + (index + 1)}
         </Box>
       </HStack>
       <Box position={'relative'} mt={1}>
