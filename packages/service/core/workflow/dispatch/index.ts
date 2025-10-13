@@ -47,6 +47,7 @@ import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
+import { result } from 'lodash';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -164,7 +165,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
   const isDebugMode = data.mode === 'debug';
 
-  /* 
+  /*
     工作流队列控制
     特点：
       1. 可以控制一个 team 下，并发 run 的节点数量。
@@ -576,14 +577,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
         }
 
-        if (toolResponses !== undefined && toolResponses !== null) {
-          if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
-          if (
-            !Array.isArray(toolResponses) &&
+        if (
+          (toolResponses !== undefined && toolResponses !== null) ||
+          (Array.isArray(toolResponses) && toolResponses.length > 0) ||
+          (!Array.isArray(toolResponses) &&
             typeof toolResponses === 'object' &&
-            Object.keys(toolResponses).length === 0
-          )
-            return;
+            Object.keys(toolResponses).length > 0)
+        ) {
           this.toolRunResponse = toolResponses;
         }
 
@@ -608,6 +608,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             });
           }
         }
+
+        console.log('chatAssistantResponse:', this.chatAssistantResponse);
 
         if (rewriteHistories) {
           histories = rewriteHistories;
@@ -915,6 +917,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     externalProvider.externalWorkflowVariables,
     data.chatConfig?.variables
   );
+
+  console.log('chatAssistantResponse:', workflowQueue.chatAssistantResponse);
 
   return {
     flowResponses: workflowQueue.chatResponses,
