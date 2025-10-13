@@ -115,7 +115,7 @@
   "dataset_task_delete_failed": "数据集任务删除失败",
   "fetch_failed_tasks_error": "获取失败任务列表失败",
   "item_job_not_found": "未找到评估项作业",
-  "file_id_required": "文件 ID 是必需的",
+  "file_required": "文件是必需的",
   "file_must_be_csv": "文件必须是 CSV 文件",
   "csv_invalid_structure": "CSV 文件结构无效",
   "csv_parsing_error": "CSV 解析错误",

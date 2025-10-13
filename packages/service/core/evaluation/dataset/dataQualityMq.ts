@@ -28,9 +28,7 @@ export const getEvalDatasetDataQualityWorker = (
     processor,
     {
       maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3,
-      removeOnFail: {
-        count: 1000 // Keep last 1000 failed jobs
-      },
+      removeOnFail: {},
       concurrency: concurrency
     }
   );
@@ -116,6 +114,16 @@ export const addEvalDatasetDataQualityJob = (data: EvalDatasetDataQualityData) =
   const dataId = String(data.dataId);
 
   return evalDatasetDataQualityQueue.add(dataId, data, { deduplication: { id: dataId } });
+};
+
+export const addEvalDatasetDataQualityBulk = (dataArray: EvalDatasetDataQualityData[]) => {
+  const jobs = dataArray.map((data) => ({
+    name: String(data.dataId),
+    data,
+    opts: { deduplication: { id: String(data.dataId) } }
+  }));
+
+  return evalDatasetDataQualityQueue.addBulk(jobs);
 };
 
 export const checkEvalDatasetDataQualityJobActive = async (dataId: string): Promise<boolean> => {
