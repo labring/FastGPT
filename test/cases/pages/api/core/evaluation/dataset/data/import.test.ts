@@ -19,7 +19,7 @@ import {
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
-  addEvalDatasetDataQualityJob,
+  addEvalDatasetDataQualityBulk,
   checkEvalDatasetDataQualityQueueHealth
 } from '@fastgpt/service/core/evaluation/dataset/dataQualityMq';
 
@@ -49,7 +49,7 @@ vi.mock(
   }
 );
 vi.mock('@fastgpt/service/core/evaluation/dataset/dataQualityMq', () => ({
-  addEvalDatasetDataQualityJob: vi.fn(),
+  addEvalDatasetDataQualityBulk: vi.fn(),
   checkEvalDatasetDataQualityQueueHealth: vi.fn()
 }));
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -66,7 +66,7 @@ const mockGetDefaultEvaluationModel = vi.mocked(getDefaultEvaluationModel);
 const mockMongoSessionRun = vi.mocked(mongoSessionRun);
 const mockMongoEvalDatasetData = vi.mocked(MongoEvalDatasetData);
 const mockMongoEvalDatasetCollection = vi.mocked(MongoEvalDatasetCollection);
-const mockAddEvalDatasetDataQualityJob = vi.mocked(addEvalDatasetDataQualityJob);
+const mockAddEvalDatasetDataQualityBulk = vi.mocked(addEvalDatasetDataQualityBulk);
 const mockCheckEvalDatasetDataQualityQueueHealth = vi.mocked(
   checkEvalDatasetDataQualityQueueHealth
 );
@@ -177,7 +177,7 @@ describe('EvalDatasetData Import API', () => {
     mockCheckTeamEvalDatasetLimit.mockResolvedValue(undefined);
     mockGetDefaultEvaluationModel.mockReturnValue({ model: 'gpt-3.5-turbo' });
     mockRemoveFilesByPaths.mockResolvedValue(undefined);
-    mockAddEvalDatasetDataQualityJob.mockResolvedValue({} as any);
+    mockAddEvalDatasetDataQualityBulk.mockResolvedValue([] as any);
     mockCheckEvalDatasetDataQualityQueueHealth.mockResolvedValue(undefined);
   });
 
@@ -191,7 +191,7 @@ describe('EvalDatasetData Import API', () => {
       const req = { body: {} };
       const res = {};
 
-      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationFileIdRequired');
+      await expect(handler_test(req as any, res as any)).rejects.toBe('evaluationFileRequired');
     });
 
     it('should reject when files are not CSV', async () => {
@@ -482,7 +482,7 @@ describe('EvalDatasetData Import API', () => {
 
       await handler_test(req as any, res as any);
 
-      expect(mockAddEvalDatasetDataQualityJob).not.toHaveBeenCalled();
+      expect(mockAddEvalDatasetDataQualityBulk).not.toHaveBeenCalled();
     });
 
     it('should trigger quality evaluation when enabled', async () => {
@@ -501,11 +501,17 @@ describe('EvalDatasetData Import API', () => {
       await handler_test(req as any, res as any);
 
       expect(mockCheckTeamAIPoints).toHaveBeenCalledWith(validTeamId);
-      expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledTimes(2);
-      expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
-        dataId: '65f5b5b5b5b5b5b5b5b5b5b6',
-        evaluationModel: 'gpt-4'
-      });
+      expect(mockAddEvalDatasetDataQualityBulk).toHaveBeenCalledTimes(1);
+      expect(mockAddEvalDatasetDataQualityBulk).toHaveBeenCalledWith([
+        {
+          dataId: '65f5b5b5b5b5b5b5b5b5b5b6',
+          evaluationModel: 'gpt-4'
+        },
+        {
+          dataId: '65f5b5b5b5b5b5b5b5b5b5b7',
+          evaluationModel: 'gpt-4'
+        }
+      ]);
     });
   });
 

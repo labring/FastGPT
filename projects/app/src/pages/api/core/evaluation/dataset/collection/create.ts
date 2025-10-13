@@ -6,10 +6,7 @@ import type { createEvalDatasetCollectionBody } from '@fastgpt/global/core/evalu
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetCreate } from '@fastgpt/service/core/evaluation/common';
-import {
-  checkTeamEvalDatasetLimit,
-  checkTeamAIPoints
-} from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamEvalDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { getDefaultEvaluationModel } from '@fastgpt/service/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import {
@@ -84,9 +81,6 @@ async function handler(
 
   // Check evaluation dataset limit
   await checkTeamEvalDatasetLimit(teamId);
-
-  // Check AI points availability
-  await checkTeamAIPoints(teamId);
 
   const defaultEvaluationModel = getDefaultEvaluationModel();
   const modelToUse = evaluationModel || defaultEvaluationModel?.model;

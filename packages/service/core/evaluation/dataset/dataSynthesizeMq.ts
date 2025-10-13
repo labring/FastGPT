@@ -25,19 +25,21 @@ export const getEvalDatasetDataSynthesizeWorker = (
 ) => {
   return getWorker<EvalDatasetDataSynthesizeData>(QueueNames.evalDatasetDataSynthesize, processor, {
     maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3,
-    removeOnFail: {
-      age: 30 * 60 * 60 * 24 // 30 day
-    },
+    removeOnFail: {},
     concurrency: concurrency
   });
 };
 
-export const addEvalDatasetDataSynthesizeJob = (data: EvalDatasetDataSynthesizeData) => {
-  const jobId = `synthesize-${data.dataId}-${Date.now()}`;
+export const addEvalDatasetDataSynthesizeBulk = (dataArray: EvalDatasetDataSynthesizeData[]) => {
+  const jobs = dataArray.map((data, index) => ({
+    name: `synthesize-${data.dataId}-${Date.now()}-${index}`,
+    data,
+    opts: {
+      deduplication: { id: `synthesize-${data.dataId}-${Date.now()}-${index}` }
+    }
+  }));
 
-  return evalDatasetDataSynthesizeQueue.add(jobId, data, {
-    deduplication: { id: jobId }
-  });
+  return evalDatasetDataSynthesizeQueue.addBulk(jobs);
 };
 
 export const checkEvalDatasetDataSynthesizeJobActive = async (

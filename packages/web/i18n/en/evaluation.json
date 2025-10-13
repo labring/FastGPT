@@ -114,7 +114,7 @@
   "dataset_task_operation_failed": "Failed to execute the task.",
   "dataset_task_delete_failed": "Failed to delete the dataset task.",
   "fetch_failed_tasks_error": "Failed to obtain failed tasks.",
-  "file_id_required": "File ID is required.",
+  "file_required": "File is required.",
   "file_must_be_csv": "The file must be in CSV format.",
   "csv_invalid_structure": "The CSV file structure is invalid.",
   "csv_parsing_error": "CSV file parsing error occurred.",

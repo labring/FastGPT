@@ -139,15 +139,13 @@ export const cleanupOrphanedJobs = async () => {
     // 4. Clean orphaned data synthesize jobs
     for (const job of dataSynthesizeJobs) {
       try {
-        const { dataId, evalDatasetCollectionId } = job.data;
-        const [dataExists, collectionExists] = await Promise.all([
-          MongoEvalDatasetData.exists({ _id: dataId }),
-          MongoEvalDatasetCollection.exists({ _id: evalDatasetCollectionId })
-        ]);
+        const { evalDatasetCollectionId } = job.data;
+        const collectionExists = await MongoEvalDatasetCollection.exists({
+          _id: evalDatasetCollectionId
+        });
 
-        if (!dataExists || !collectionExists) {
+        if (!collectionExists) {
           const result = await cleanupJob(job, 'dataSynthesize', {
-            dataId,
             evalDatasetCollectionId
           });
           if (result.cleaned) cleanedCount++;
