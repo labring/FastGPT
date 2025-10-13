@@ -12,7 +12,7 @@ import {
   type ValidationResult,
   type ValidationError
 } from '@fastgpt/global/core/evaluation/validate';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getEvaluationModel, getEmbeddingModel } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
@@ -97,7 +97,10 @@ export abstract class Evaluator extends Validatable {
           });
         } else {
           try {
-            getLLMModel(this.llmConfig.name);
+            const llm = getEvaluationModel(this.llmConfig.name);
+            if (!llm) {
+              throw new Error(`Evaluation model '${this.llmConfig.name}' not found`);
+            }
           } catch (err) {
             errors.push({
               code: EvaluationErrEnum.evaluatorLLmModelNotFound,
@@ -242,7 +245,10 @@ export async function createEvaluatorInstance(
 
   if (evaluatorConfig.runtimeConfig?.llm) {
     try {
-      const llm = getLLMModel(evaluatorConfig.runtimeConfig.llm);
+      const llm = getEvaluationModel(evaluatorConfig.runtimeConfig.llm);
+      if (!llm) {
+        throw new Error(`Evaluation model '${evaluatorConfig.runtimeConfig.llm}' not found`);
+      }
       llmConfig = {
         name: evaluatorConfig.runtimeConfig.llm,
         baseUrl: llm.requestUrl ?? undefined,
