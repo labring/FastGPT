@@ -103,11 +103,13 @@ const requestFinish = (prepare?: ReturnType<typeof beforeFetch>) => {
 
 const responseError = (err: any) => {
   console.log('error->', '请求错误', err);
-  const isOutlinkPage = {
-    [`${subRoute}/chat/share`]: true,
-    [`${subRoute}/chat`]: true,
-    [`${subRoute}/login`]: true
-  }[window.location.pathname];
+  const isOutlinkPage =
+    typeof window !== 'undefined' &&
+    {
+      [`${subRoute}/chat/share`]: true,
+      [`${subRoute}/chat`]: true,
+      [`${subRoute}/login`]: true
+    }[window.location.pathname];
 
   const data = err?.response?.data || err;
 
@@ -123,7 +125,7 @@ const responseError = (err: any) => {
 
   // 有报错响应
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!isOutlinkPage) {
+    if (!isOutlinkPage && typeof window !== 'undefined') {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -152,7 +154,10 @@ const responseError = (err: any) => {
 };
 
 export const client = createFastGPTClient({
-  baseUrl: getWebReqUrl('/api'),
+  baseUrl:
+    typeof window === 'undefined'
+      ? 'http://localhost:3000/api' // For Node.js test environment
+      : getWebReqUrl('/api'),
   throwOnUnknownStatus: true,
   validateResponse: false,
   credentials: 'include',
@@ -165,9 +170,21 @@ export const client = createFastGPTClient({
 // Simplified types to reduce TS computation overhead
 type AnyEndpointFn = (options?: any) => Promise<any>;
 
-// Helper to infer response body type
+// Helper to extract the successful response (status: 200)
+type ExtractSuccessResponse<T extends AnyEndpointFn> = Extract<
+  Awaited<ReturnType<T>>,
+  { status: 200 }
+>;
+
+// Helper to infer response body type, extracting data from body if it exists
 type InferResponseBody<T extends AnyEndpointFn> =
-  Awaited<ReturnType<T>> extends { status: 200; body: infer B } ? B : never;
+  ExtractSuccessResponse<T> extends {
+    body: infer B;
+  }
+    ? B extends { data: infer D }
+      ? D
+      : B
+    : never;
 
 // Helper to infer options type
 type InferOptions<T extends AnyEndpointFn> = NonNullable<Parameters<T>[0]>;
@@ -205,7 +222,7 @@ export const RestAPI = <T extends AnyEndpointFn>(
     body?: InferBody<T> extends never ? any : InferBody<T>;
     query?: InferQuery<T> extends never ? any : InferQuery<T>;
   }
-) => {
+): ((params?: Params<T>, options?: Options<T>) => Promise<InferResponseBody<T>>) => {
   return (params?: Params<T>, options?: Options<T>): Promise<InferResponseBody<T>> => {
     const transformedData = params && transform ? transform(params) : {};
     const finalOptions = { ...options, ...transformedData } as InferOptions<T>;
