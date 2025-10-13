@@ -103,8 +103,8 @@ function MemberModal({
   const [selectedRole, setSelectedRole] = useState<number | undefined>(roleList?.read?.value);
   const roleLabel = useMemo(() => {
     if (selectedRole === undefined) return '';
-    return getRoleLabelList(selectedRole!).join('、');
-  }, [getRoleLabelList, selectedRole]);
+    return getRoleLabelList(selectedRole!).join(t('common:comma'));
+  }, [getRoleLabelList, selectedRole, t]);
 
   const onUpdateCollaborators = useContextSelector(
     CollaboratorContext,

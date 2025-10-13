@@ -458,7 +458,7 @@
   "core.dataset.collection.Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
   "core.dataset.collection.Sync": "同步数据",
   "core.dataset.collection.Sync Collection": "数据同步",
-  "core.dataset.collection.Website Empty Tip": "还没有关联网站",
+  "core.dataset.collection.Website Empty Tip": "还没有关联网站，",
   "core.dataset.collection.Website Link": "Web 站点地址",
   "core.dataset.collection.id": "集合 ID",
   "core.dataset.collection.metadata.Createtime": "创建时间",
@@ -1368,5 +1368,7 @@
   "core.app.workflow.search_knowledge.database": "数据库",
   "semicolon": "；",
   "database_sql_query": "数据库检索的 SQL 语句",
-  "search_result": "检索结果"
+  "search_result": "检索结果",
+  "comma": "、",
+  "set_avatar_in_edit_modal": "点击设置头像"
 }
