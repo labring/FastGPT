@@ -187,7 +187,66 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/* 
+/**
+ * Slice string while respecting JSON structure
+ */
+export const truncateStrRespectingJson = (str: string, start: number, end: number) => {
+  const overSize = str.length > start + end;
+
+  if (!overSize) return str;
+
+  let obj: any;
+  try {
+    obj = JSON.parse(str);
+  } catch (e) {
+    // Not a valid JSON, fallback to normal slicing
+    return sliceStrStartEnd(str, start, end);
+  }
+
+  let tooLongStrings = 0;
+
+  function forEachString(obj: any, operation: (s: string) => string): any {
+    if (typeof obj === 'string') {
+      return operation(obj);
+    } else if (Array.isArray(obj)) {
+      return obj.map((item) => forEachString(item, operation));
+    } else if (typeof obj === 'object' && obj) {
+      const newObj: any = {};
+      for (const key in obj) {
+        newObj[key] = forEachString(obj[key], operation);
+      }
+      return newObj;
+    }
+    return obj;
+  }
+
+  forEachString(obj, (s) => {
+    if (s.length > 200) {
+      tooLongStrings++;
+      return s;
+    }
+    return s;
+  });
+
+  if (tooLongStrings === 0) {
+    return str;
+  }
+
+  forEachString(obj, (s) => {
+    if (s.length > (start + end) / tooLongStrings) {
+      return sliceStrStartEnd(
+        s,
+        Math.floor(start / tooLongStrings),
+        Math.floor(end / tooLongStrings)
+      );
+    }
+    return s;
+  });
+
+  return JSON.stringify(obj);
+};
+
+/*
   Parse file extension from url
   Test：
   1. https://xxx.com/file.pdf?token=123
