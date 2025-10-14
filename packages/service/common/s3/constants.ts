@@ -1,3 +1,5 @@
+import { S3PrivateBucket } from './buckets/private';
+import { S3PublicBucket } from './buckets/public';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import type { ClientOptions } from 'minio';
@@ -43,7 +45,6 @@ export const defaultS3Options: { externalBaseURL?: string; maxFileSize?: number 
   };
 
 export const S3Buckets = {
-  plugin: process.env.S3_PLUGIN_BUCKET || 'fastgpt-plugin',
   public: process.env.S3_PUBLIC_BUCKET || 'fastgpt-public',
   private: process.env.S3_PRIVATE_BUCKET || 'fastgpt-private'
 } as const;

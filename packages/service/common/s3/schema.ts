@@ -1,7 +1,7 @@
-import { Schema, getMongoModel } from '../../mongo';
+import { Schema, getMongoModel } from '../mongo';
 import { type S3TtlSchemaType } from '@fastgpt/global/common/file/s3TTL/type';
 
-const collectionName = 's3_ttl_files';
+const collectionName = 's3_ttls';
 
 const S3TTLSchema = new Schema({
   bucketName: {

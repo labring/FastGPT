@@ -201,7 +201,7 @@ export const onCreateApp = async ({
       });
     })();
 
-    await refreshSourceAvatarS3(avatar, undefined, session);
+    await refreshSourceAvatarS3(avatar, undefined);
 
     return appId;
   };

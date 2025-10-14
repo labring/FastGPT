@@ -202,9 +202,7 @@ async function handler(
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
-    if (avatar) {
-      await refreshSourceAvatarS3(avatar, dataset.avatar, session);
-    }
+    await refreshSourceAvatarS3(avatar, dataset.avatar);
 
     await MongoDataset.findByIdAndUpdate(
       id,

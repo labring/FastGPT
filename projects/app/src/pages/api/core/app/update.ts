@@ -111,9 +111,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       nodes
     });
 
-    if (avatar) {
-      await refreshSourceAvatarS3(avatar, app.avatar, session);
-    }
+    await refreshSourceAvatarS3(avatar, app.avatar);
 
     if (app.type === AppTypeEnum.toolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });

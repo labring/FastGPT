@@ -1,5 +1,4 @@
 import { S3BaseBucket } from './base';
-import { createS3PublicBucketPolicy } from '../helpers';
 import { S3Buckets } from '../constants';
 import { type S3OptionsType } from '../type';
 
@@ -7,20 +6,28 @@ export class S3PublicBucket extends S3BaseBucket {
   constructor(options?: Partial<S3OptionsType>) {
     super(
       S3Buckets.public,
-      [
-        // set bucket policy
-        async () => {
-          const bucket = this.name;
-          const policy = createS3PublicBucketPolicy(bucket);
-          try {
-            await this.client.setBucketPolicy(bucket, policy);
-          } catch (error) {
-            // NOTE: maybe it was a cloud S3 that doesn't allow us to set the policy, so that cause the error,
-            // maybe we can ignore the error, or we have other plan to handle this.
-            console.error('Failed to set bucket policy:', error);
-          }
+      // set bucket policy
+      async () => {
+        const bucket = this.name;
+        const policy = JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: '*',
+              Action: 's3:GetObject',
+              Resource: `arn:aws:s3:::${bucket}/*`
+            }
+          ]
+        });
+        try {
+          await this.client.setBucketPolicy(bucket, policy);
+        } catch (error) {
+          // NOTE: maybe it was a cloud S3 that doesn't allow us to set the policy, so that cause the error,
+          // maybe we can ignore the error, or we have other plan to handle this.
+          console.error('Failed to set bucket policy:', error);
         }
-      ],
+      },
       options
     );
   }

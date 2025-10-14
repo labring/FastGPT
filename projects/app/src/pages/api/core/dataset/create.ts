@@ -103,7 +103,7 @@ async function handler(
       resourceType: PerResourceTypeEnum.dataset
     });
 
-    await refreshSourceAvatarS3(avatar, undefined, session);
+    await refreshSourceAvatarS3(avatar, undefined);
 
     return dataset._id;
   });

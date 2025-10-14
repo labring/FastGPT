@@ -24,8 +24,9 @@ export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
 export const CreateObjectKeyParamsSchema = z.object({
   filename: z.string().min(1),
-  source: S3SourcesSchema,
-  teamId: z.string().length(16)
+  source: S3SourcesSchema.optional(),
+  rawKey: z.string().min(1).optional(),
+  teamId: z.string().length(16).optional()
 });
 export type CreateObjectKeyParams = z.infer<typeof CreateObjectKeyParamsSchema>;
 
@@ -44,8 +45,3 @@ export const CreatePostPresignedUrlResultSchema = z.object({
   fields: z.record(z.string(), z.string())
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
-
-export const S3APIPrefix = {
-  avatar: '/api/system/img/'
-} as const;
-export type S3APIPrefixType = (typeof S3APIPrefix)[keyof typeof S3APIPrefix];

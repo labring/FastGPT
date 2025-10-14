@@ -8,9 +8,9 @@ import {
   type S3OptionsType
 } from '../type';
 import { defaultS3Options, Mimes } from '../constants';
-import { createObjectKey } from '../helpers';
 import path from 'node:path';
-import { MongoS3TTL } from '../../file/s3Ttl/schema';
+import { MongoS3TTL } from '../schema';
+import crypto from 'node:crypto';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -24,7 +24,7 @@ export class S3BaseBucket {
    */
   constructor(
     private readonly _bucket: S3BucketName,
-    private readonly afterInits?: (() => Promise<void> | void)[],
+    private readonly afterInits?: () => Promise<void> | void,
     public options: Partial<S3OptionsType> = defaultS3Options
   ) {
     options = { ...defaultS3Options, ...options };
@@ -50,7 +50,7 @@ export class S3BaseBucket {
       if (!(await this.exist())) {
         await this.client.makeBucket(this._bucket);
       }
-      await Promise.all(afterInits?.map((afterInit) => afterInit()) ?? []);
+      await afterInits?.();
     };
     init();
   }
@@ -89,7 +89,11 @@ export class S3BaseBucket {
     const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
     const contentType = Mimes[ext] ?? 'application/octet-stream';
     const maxFileSize = this.options.maxFileSize as number;
-    const key = createObjectKey(params);
+
+    const key = (() => {
+      const { rawKey, source, teamId } = params;
+      return rawKey ?? `${source}/${teamId}/${crypto.randomBytes(16).toString('hex')}`;
+    })();
 
     const policy = this.client.newPostPolicy();
     policy.setKey(key);

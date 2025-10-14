@@ -37,7 +37,7 @@ async function handler(
     }
     // if avatar, update team member avatar
     if (avatar) {
-      await refreshSourceAvatarS3(avatar, tmb?.avatar, session);
+      await refreshSourceAvatarS3(avatar, tmb?.avatar);
       await MongoTeamMember.updateOne({ _id: tmbId }, { avatar }).session(session);
     }
   });

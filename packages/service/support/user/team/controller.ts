@@ -244,7 +244,7 @@ export async function updateTeam({
         { session }
       );
 
-      await refreshSourceAvatarS3(avatar, team?.avatar, session);
+      await refreshSourceAvatarS3(avatar, team?.avatar);
     }
   });
 }

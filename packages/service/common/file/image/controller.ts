@@ -110,14 +110,22 @@ const getIdFromPath = (path?: string) => {
 
   return id;
 };
-export const refreshSourceAvatarS3 = async (
-  path?: string,
-  oldPath?: string,
-  session?: ClientSession
-) => {
+export const refreshSourceAvatarS3 = async (newAvatar?: string, oldAvatar?: string) => {
+  if (newAvatar === oldAvatar) return;
+
   const s3AvatarSource = getS3AvatarSource();
-  await s3AvatarSource.deleteAvatar(oldPath || '', session);
-  await s3AvatarSource.removeAvatarTTL(path || '', session);
+
+  // delete the old avatar
+  if (oldAvatar) {
+    // if the Promise is rejected, it will throw an error
+    // and we won't catch this error, so that the follwing action, like removing TTL will not be executed
+    await s3AvatarSource.deleteAvatar(oldAvatar);
+  }
+
+  // remove the TTL for the temporary avatar, make it permanent
+  if (newAvatar) {
+    await s3AvatarSource.removeAvatarTTL(newAvatar);
+  }
 };
 // 删除旧的头像，新的头像去除过期时间
 export const refreshSourceAvatar = async (
