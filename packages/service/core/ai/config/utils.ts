@@ -236,7 +236,7 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async () => {
       try {
