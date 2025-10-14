@@ -7,7 +7,7 @@ import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 
-const changeStreams: any[] = [];
+let changeStreams: any[] = [];
 
 export const startMongoWatch = async () => {
   cleanupMongoWatch();
@@ -56,4 +56,5 @@ const cleanupMongoWatch = () => {
   changeStreams.forEach((changeStream) => {
     changeStream?.close();
   });
+  changeStreams = [];
 };
