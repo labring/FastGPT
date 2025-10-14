@@ -972,7 +972,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     externalProvider.externalWorkflowVariables,
     data.chatConfig?.variables
   );
-  console.log(workflowQueue.chatAssistantResponse, 11);
+
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
