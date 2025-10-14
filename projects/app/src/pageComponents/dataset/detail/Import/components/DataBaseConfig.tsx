@@ -264,7 +264,11 @@ const DataBaseConfig = () => {
                       onChange={() => handleTableSelect(originalIndex)}
                     >
                       <HStack spacing={1}>
-                        <Text>{tableInfo.tableData.tableName}</Text>
+                        <MyTooltip label={tableInfo.tableData.tableName} shouldWrapChildren={false}>
+                          <Text className={'textEllipsis'} maxW="180px">
+                            {tableInfo.tableData.tableName}
+                          </Text>
+                        </MyTooltip>
                       </HStack>
                     </Checkbox>
                     <Box ml="auto">
@@ -392,7 +396,7 @@ const DataBaseConfig = () => {
               <Table variant={'simple'} draggable={false}>
                 <Thead>
                   <Tr>
-                    <Th py={4} w="154px">
+                    <Th py={4} w="200px">
                       {t('dataset:column_name')}
                     </Th>
                     <Th py={4} w="120px">
@@ -426,15 +430,11 @@ const DataBaseConfig = () => {
                     );
                     return (
                       <Tr key={column.columnName} borderRadius="0" _hover={{ bg: 'myGray.50' }}>
-                        <Td maxW={'154px'} bg="white">
+                        <Td maxW={'200'} bg="white">
                           {column.status === StatusEnum.add ? (
                             <Flex>
-                              <MyTooltip
-                                shouldWrapChildren={false}
-                                placement={'auto'}
-                                label={t(column.columnName)}
-                              >
-                                <Text maxW={'80px'} overflow={'hidden'}>
+                              <MyTooltip label={column.columnName} shouldWrapChildren={false}>
+                                <Text className={'textEllipsis'} maxW={'170px'}>
                                   {column.columnName}
                                 </Text>
                               </MyTooltip>
@@ -443,12 +443,8 @@ const DataBaseConfig = () => {
                               </MyTag>
                             </Flex>
                           ) : (
-                            <MyTooltip
-                              shouldWrapChildren={false}
-                              placement={'auto'}
-                              label={t(column.columnName)}
-                            >
-                              <Text maxW={'80px'} overflow={'hidden'}>
+                            <MyTooltip label={column.columnName} shouldWrapChildren={false}>
+                              <Text className={'textEllipsis'} maxW={'170px'}>
                                 {column.columnName}
                               </Text>
                             </MyTooltip>

@@ -93,7 +93,7 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
 });
 
 const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const {
     source = ImportDataSourceEnum.fileLocal,
@@ -333,7 +333,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             </Text>
           </Box>
           <Flex flex="1" justifyContent="center" mr="70px">
-            <Box w={'232px'}>
+            <Box w={i18n.language === 'en' ? '350px' : '232px'}>
               <LightRowTabs
                 px={4}
                 py={1}
