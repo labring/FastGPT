@@ -7,7 +7,13 @@ const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 /**
  * connect MongoDB and init data
  */
-export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose> {
+export async function connectMongo(props: {
+  db: Mongoose;
+  url: string;
+  connectedCb?: () => void;
+}): Promise<Mongoose> {
+  const { db, url, connectedCb } = props;
+
   /* Connecting, connected will return */
   if (db.connection.readyState !== 0) {
     return db;
@@ -31,7 +37,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
           RemoveListeners();
           await db.disconnect();
           await delay(1000);
-          await connectMongo(db, url);
+          await connectMongo(props);
         }
       } catch (error) {}
     });
@@ -42,7 +48,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
           RemoveListeners();
           await db.disconnect();
           await delay(1000);
-          await connectMongo(db, url);
+          await connectMongo(props);
         }
       } catch (error) {}
     });
@@ -60,9 +66,11 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
       retryReads: true
     };
 
-    db.connect(url, options);
-
+    await db.connect(url, options);
     console.log('mongo connected');
+
+    connectedCb?.();
+
     return db;
   } catch (error) {
     addLog.error('Mongo connect error', error);
@@ -70,6 +78,6 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     await db.disconnect();
 
     await delay(1000);
-    return connectMongo(db, url);
+    return connectMongo(props);
   }
 }
