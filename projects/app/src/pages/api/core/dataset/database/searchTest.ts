@@ -67,7 +67,7 @@ async function handler(
   if (schema) {
     const start = Date.now();
     const key = sqlLLM.requestAuth || undefined;
-    const url =  sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
+    const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
     const generateSqlResult = await generateAndExecuteSQL({
       datasetId,
       query: query,

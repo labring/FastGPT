@@ -10,6 +10,7 @@ import {
   postDetectDatabaseChanges
 } from '@/web/core/dataset/api';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
+import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatabaseFormData } from './ConnectDatabaseForm';
 import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -121,7 +122,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   const { runAsync: testConnection, loading: isConnecting } = useRequest2(
     async () => {
       const databaseConfig: DatabaseConfig = {
-        client: 'mysql',
+        clientType: DatabaseTypeEnum.mysql,
         host: formData.host,
         port: formData.port,
         database: formData.database,
@@ -156,7 +157,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest2(
     async (data: any) => {
       const databaseConfig: DatabaseConfig = {
-        client: 'mysql',
+        clientType: DatabaseTypeEnum.mysql,
         host: data.host,
         port: data.port,
         database: data.database,

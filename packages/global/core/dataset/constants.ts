@@ -34,7 +34,7 @@ interface DatasetTypeConfig {
   };
 }
 /* ------------ database_dataset -------------- */
-export enum DatabaseType {
+export enum DatabaseTypeEnum {
   mysql = 'mysql',
   postgresql = 'postgresql',
   mssql = 'mssql',
