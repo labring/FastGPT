@@ -8,7 +8,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   insertCoulmnDescriptionVector,
-  insertTableValueVector,
+  insertColumnValueVector,
   deleteDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
 import {
@@ -340,29 +340,27 @@ const processDatabaseSchema = async ({
       if (columnInfo.examples && Array.isArray(columnInfo.examples)) {
         if (!columnInfo.valueIndex || columnInfo.forbid) continue; // Skip if valueIndex is not true
 
-        const valuePromises = columnInfo.examples
-          .slice(0, 3)
-          .map(async (example: string, index: number) => {
-            const valueIndex = `${tableName}<sep>${columnName}<sep>example${index}`;
-            const valueText = truncateText(`${columnName}:${example}`, MAX_EMBEDDING_STRING_LENGTH);
+        const valuePromises = columnInfo.examples.map(async (example: string, index: number) => {
+          const valueIndex = `${tableName}<sep>${columnName}<sep>example${index}`;
+          const valueText = truncateText(`${columnName}:${example}`, MAX_EMBEDDING_STRING_LENGTH);
 
-            const valueResult = await insertTableValueVector({
-              query: valueText,
-              model,
-              teamId,
-              datasetId,
-              collectionId,
-              column_val_index: valueIndex
-            });
-
-            return {
-              columnName,
-              index,
-              result: valueResult,
-              valIndex: valueIndex,
-              text: valueText
-            };
+          const valueResult = await insertColumnValueVector({
+            query: valueText,
+            model,
+            teamId,
+            datasetId,
+            collectionId,
+            column_val_index: valueIndex
           });
+
+          return {
+            columnName,
+            index,
+            result: valueResult,
+            valIndex: valueIndex,
+            text: valueText
+          };
+        });
 
         const valueResults = await Promise.all(valuePromises);
         valueIndexResults.push(...valueResults);

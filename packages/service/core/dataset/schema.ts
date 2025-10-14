@@ -2,6 +2,7 @@ import { getMongoModel, Schema } from '../../common/mongo';
 import {
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
+  DatabaseTypeEnum,
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetTypeEnum,
@@ -125,9 +126,10 @@ const DatasetSchema = new Schema({
   },
   databaseConfig: {
     type: {
-      client: {
+      clientType: {
         type: String,
-        required: true
+        required: true,
+        enum: Object.values(DatabaseTypeEnum)
       },
       version: {
         type: String,

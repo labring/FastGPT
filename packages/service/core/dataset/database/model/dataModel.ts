@@ -99,7 +99,6 @@ export class DBTable extends TableKeyInfo {
   description: string;
   forbid: boolean;
   constraints: Array<TableConstraint>;
-  rowCount?: number;
   estimatedSize?: string;
 
   constructor(

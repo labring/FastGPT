@@ -111,8 +111,6 @@ const DatasetCollectionSchema = new Schema({
       foreignKeys: { type: [ForeignKeySchema], default: [] },
       primaryKeys: { type: [String], default: [] },
       constraints: { type: [ConstraintSchema], default: [] },
-      rowCount: Number,
-      estimatedSize: String,
       lastUpdated: { type: Date, default: Date.now }
     }
   },

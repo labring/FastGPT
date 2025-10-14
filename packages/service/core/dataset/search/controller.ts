@@ -11,6 +11,7 @@ import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import type {
+  DatabaseConfig,
   DatasetCollectionSchemaType,
   DatasetDataSchemaType
 } from '@fastgpt/global/core/dataset/type';
@@ -1022,17 +1023,6 @@ export const SearchDatabaseData = async (
   let { histories, teamId, model, datasetIds, queries, limit = 50, searchRatio = 0.3 } = props;
   const desLimit = Math.floor(limit * (1 - searchRatio));
   try {
-    await fetch(`${dativeUrl}/healthz`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  } catch (error: any) {
-    addLog.error('[SearchDatabaseData] fetch error,reason:', error?.message || error);
-    return Promise.reject(DatabaseErrEnum.dativeServiceError);
-  }
-  try {
     const forbidCollections = await MongoDatasetCollection.find(
       {
         teamId,
@@ -1287,7 +1277,7 @@ export const generateAndExecuteSQL = async ({
     return Promise.reject(DatabaseErrEnum.dbConfigNotFound);
   }
 
-  const dbConfig: any = dataset.databaseConfig;
+  const dbConfig: DatabaseConfig = dataset.databaseConfig;
 
   // Get table schema from collections
   const tableNames = Object.keys(schema);
@@ -1309,9 +1299,8 @@ export const generateAndExecuteSQL = async ({
     return Promise.reject(`${tableNames} not found or has been deleted`);
   }
 
-  // Build table schemas for Python service
+  // Build table schemas for Dative
   const retrievedMetadata = collections.map((collection) => {
-    // columns: Record<string, DativeTableColumns>
     const columns: Record<string, DativeTableColumns> = {};
     if (collection.tableSchema?.columns) {
       Object.values(collection.tableSchema.columns).forEach((col) => {
@@ -1365,7 +1354,7 @@ export const generateAndExecuteSQL = async ({
   // Update request payload to include all table schemas
   const requestPayload: SqlGenerationRequest = {
     source_config: {
-      type: dbConfig.client,
+      type: dbConfig.clientType,
       host: dbConfig.host,
       port: dbConfig.port || 3306,
       username: dbConfig.user,
@@ -1403,10 +1392,9 @@ export const generateAndExecuteSQL = async ({
       statusText: response.statusText,
       error: errorText
     });
-    if (response.status == 404) return Promise.reject(i18nT('chat:language_model_error'));
     const detail = JSON.parse(errorText).detail?.error;
 
-    return Promise.reject(`dative error: ${detail}`);
+    return Promise.reject(`dative error: ${detail ?? 'Request failed'}`);
   }
 
   const result: SqlGenerationResponse = await response.json();

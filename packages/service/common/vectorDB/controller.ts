@@ -94,47 +94,6 @@ export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) 
 };
 
 /*Database Dataset specific operations*/
-
-// Beta
-export const insertTableDescriptionVector = async ({
-  model,
-  query,
-  teamId,
-  datasetId,
-  collectionId,
-  table_des_index
-}: {
-  model: EmbeddingModelItemType;
-  query: string;
-  teamId: string;
-  datasetId: string;
-  collectionId: string;
-  table_des_index: string;
-}) => {
-  return retryFn(async () => {
-    const { vectors, tokens } = await getVectorsByText({
-      model,
-      input: query,
-      type: 'db'
-    });
-    const { insertIds } = await Vector.insert({
-      teamId,
-      datasetId,
-      collectionId,
-      vectors: vectors,
-      table_des_index,
-      tableName: DBDatasetVectorTableName
-    });
-
-    onIncrCache(teamId);
-
-    return {
-      tokens,
-      insertIds
-    };
-  });
-};
-
 export const insertCoulmnDescriptionVector = async ({
   model,
   query,
@@ -175,7 +134,7 @@ export const insertCoulmnDescriptionVector = async ({
   });
 };
 
-export const insertTableValueVector = async ({
+export const insertColumnValueVector = async ({
   model,
   query,
   teamId,

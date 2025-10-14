@@ -11,6 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import FormBottomButtons from './FormBottomButtons';
 import { databaseAddrValidator } from '../utils';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
+import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyInput from '@/components/MyInput';
@@ -19,7 +20,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type DatabaseFormData = {
-  client: DatabaseConfig['client'];
+  clientType: DatabaseConfig['clientType'];
   host: string;
   port: number;
   database: string;
@@ -45,7 +46,7 @@ const ConnectDatabaseConfig = () => {
   );
 
   const defaultValues = {
-    client: databaseConfig?.client || 'mysql',
+    clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
     host: databaseConfig?.host || '',
     port: databaseConfig?.port || 3306,
     database: databaseConfig?.database || '',
@@ -72,7 +73,7 @@ const ConnectDatabaseConfig = () => {
       loadDatasetDetail(datasetId).then((res) => {
         const databaseConfig = res.databaseConfig;
         const defaultValues = {
-          client: databaseConfig?.client || 'mysql',
+          clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
           host: databaseConfig?.host || '',
           port: databaseConfig?.port || 3306,
           database: databaseConfig?.database || '',

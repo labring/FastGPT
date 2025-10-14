@@ -5,10 +5,11 @@ import { MysqlClient } from './model/mysql';
 import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
 import { i18nT } from '../../../../web/i18n/utils';
+import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export async function createDatabaseClient(config: DatabaseConfig): Promise<AsyncDB> {
-  switch (config.client) {
-    case 'mysql':
+  switch (config.clientType) {
+    case DatabaseTypeEnum.mysql:
       return MysqlClient.fromConfig(config);
     default:
       return Promise.reject(DatabaseErrEnum.notSupportType);

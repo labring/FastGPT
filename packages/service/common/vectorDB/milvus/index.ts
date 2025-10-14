@@ -1,7 +1,9 @@
-import { DataType, LoadState, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { LoadState, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import {
   DatasetVectorDbName,
   DatasetVectorTableName,
+  DBDatasetVectorTableName,
+  DBDatasetValueVectorTableName,
   MILVUS_ADDRESS,
   MILVUS_TOKEN
 } from '../constants';
@@ -13,9 +15,14 @@ import type {
   EmbeddingRecallResponse,
   InsertVectorControllerProps
 } from '../controller.d';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  milvusCollectionDefinitions,
+  type MilvusCollectionConfig,
+  type MilvusInsertRow
+} from './config';
 
 export class MilvusCtrl {
   constructor() {}
@@ -35,6 +42,38 @@ export class MilvusCtrl {
 
     return global.milvusClient;
   };
+  private acreateCollection = async (client: MilvusClient, config: MilvusCollectionConfig) => {
+    const { name, description, fields, indexParams } = config;
+
+    const { value: hasCollection } = await client.hasCollection({
+      collection_name: name
+    });
+
+    if (!hasCollection) {
+      const result = await client.createCollection({
+        collection_name: name,
+        description,
+        enableDynamicField: true,
+        fields,
+        index_params: indexParams
+      });
+      addLog.info(`Create milvus collection ${name}`, result);
+      return;
+    }
+  };
+
+  private LoadCollection = async (client: MilvusClient, collectionName: string) => {
+    const { state } = await client.getLoadState({
+      collection_name: collectionName
+    });
+
+    if (state === LoadState.LoadStateNotExist || state === LoadState.LoadStateNotLoad) {
+      await client.loadCollectionSync({
+        collection_name: collectionName
+      });
+      addLog.info(`Milvus collection ${collectionName} load success`);
+    }
+  };
   init = async () => {
     const client = await this.getClient();
 
@@ -53,83 +92,23 @@ export class MilvusCtrl {
       });
     } catch (error) {}
 
-    // init collection and index
-    const { value: hasCollection } = await client.hasCollection({
-      collection_name: DatasetVectorTableName
-    });
-    if (!hasCollection) {
-      const result = await client.createCollection({
-        collection_name: DatasetVectorTableName,
-        description: 'Store dataset vector',
-        enableDynamicField: true,
-        fields: [
-          {
-            name: 'id',
-            data_type: DataType.Int64,
-            is_primary_key: true,
-            autoID: false // disable auto id, and we need to set id in insert
-          },
-          {
-            name: 'vector',
-            data_type: DataType.FloatVector,
-            dim: 1536
-          },
-          { name: 'teamId', data_type: DataType.VarChar, max_length: 64 },
-          { name: 'datasetId', data_type: DataType.VarChar, max_length: 64 },
-          { name: 'collectionId', data_type: DataType.VarChar, max_length: 64 },
-          {
-            name: 'createTime',
-            data_type: DataType.Int64
-          }
-        ],
-        index_params: [
-          {
-            field_name: 'vector',
-            index_name: 'vector_HNSW',
-            index_type: 'HNSW',
-            metric_type: 'IP',
-            params: { efConstruction: 32, M: 64 }
-          },
-          {
-            field_name: 'teamId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'datasetId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'collectionId',
-            index_type: 'Trie'
-          },
-          {
-            field_name: 'createTime',
-            index_type: 'STL_SORT'
-          }
-        ]
-      });
-
-      addLog.info(`Create milvus collection: `, result);
-    }
-
-    const { state: colLoadState } = await client.getLoadState({
-      collection_name: DatasetVectorTableName
-    });
-
-    if (
-      colLoadState === LoadState.LoadStateNotExist ||
-      colLoadState === LoadState.LoadStateNotLoad
-    ) {
-      await client.loadCollectionSync({
-        collection_name: DatasetVectorTableName
-      });
-      addLog.info(`Milvus collection load success`);
+    for (const config of milvusCollectionDefinitions) {
+      await this.acreateCollection(client, config);
+      await this.LoadCollection(client, config.name);
     }
   };
 
   insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
     const client = await this.getClient();
-    const { teamId, datasetId, collectionId, vectors } = props;
+    const {
+      teamId,
+      datasetId,
+      collectionId,
+      vectors,
+      tableName = DatasetVectorTableName,
+      column_des_index,
+      column_val_index
+    } = props;
 
     const generateId = () => {
       // in js, the max safe integer is 2^53 - 1: 9007199254740991
@@ -140,16 +119,28 @@ export class MilvusCtrl {
       return Number(`${firstDigit}${restDigits}`);
     };
 
-    const result = await client.insert({
-      collection_name: DatasetVectorTableName,
-      data: vectors.map((vector) => ({
+    const now = Date.now();
+    const data: MilvusInsertRow[] = vectors.map((vector) => {
+      const row: MilvusInsertRow = {
         id: generateId(),
         vector,
         teamId: String(teamId),
         datasetId: String(datasetId),
         collectionId: String(collectionId),
-        createTime: Date.now()
-      }))
+        createTime: now
+      };
+      if (column_des_index) {
+        row.columnDesIndex = column_des_index;
+      }
+      if (column_val_index) {
+        row.columnValIndex = column_val_index;
+      }
+      return row;
+    });
+
+    const result = await client.insert({
+      collection_name: tableName,
+      data
     });
 
     const insertIds = (() => {
@@ -164,7 +155,7 @@ export class MilvusCtrl {
     };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId } = props;
+    const { teamId, tableName = DatasetVectorTableName } = props;
     const client = await this.getClient();
 
     const teamIdWhere = `(teamId=="${String(teamId)}")`;
@@ -197,7 +188,7 @@ export class MilvusCtrl {
     const concatWhere = `${teamIdWhere} and ${where}`;
 
     await client.delete({
-      collection_name: DatasetVectorTableName,
+      collection_name: tableName,
       filter: concatWhere
     });
   };
@@ -259,7 +250,69 @@ export class MilvusCtrl {
     };
   };
 
-  databaseEmbRecall = async (props: DatabaseEmbeddingRecallCtrlProps): Promise<DatabaseEmbeddingRecallResponse> => {return Promise.reject('TO-DO')}
+  databaseEmbRecall = async (
+    props: DatabaseEmbeddingRecallCtrlProps
+  ): Promise<DatabaseEmbeddingRecallResponse> => {
+    const client = await this.getClient();
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      tableName,
+      retry = 2,
+      forbidCollectionIdList
+    } = props;
+
+    const forbidFilter =
+      forbidCollectionIdList.length > 0
+        ? `and (collectionId not in [${forbidCollectionIdList.map((id) => `"${String(id)}"`).join(',')}])`
+        : '';
+
+    const outputFields = ['collectionId'];
+    if (tableName === DBDatasetVectorTableName) {
+      outputFields.push('columnDesIndex');
+    }
+    if (tableName === DBDatasetValueVectorTableName) {
+      outputFields.push('columnValIndex');
+    }
+
+    try {
+      const { results } = await retryFn(
+        () =>
+          client.search({
+            collection_name: tableName,
+            data: vector,
+            limit,
+            filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds
+              .map((id) => `"${String(id)}"`)
+              .join(',')}]) ${forbidFilter}`,
+            output_fields: outputFields
+          }),
+        retry
+      );
+
+      const rows = results as Array<{
+        score: number;
+        id: string;
+        collectionId: string;
+        columnDesIndex?: string;
+        columnValIndex?: string;
+      }>;
+
+      return {
+        results: rows.map((item) => ({
+          id: String(item.id),
+          collectionId: item.collectionId,
+          score: item.score,
+          ...(item.columnDesIndex ? { columnDesIndex: item.columnDesIndex } : {}),
+          ...(item.columnValIndex ? { columnValIndex: item.columnValIndex } : {})
+        }))
+      };
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
 
   getVectorCountByTeamId = async (teamId: string) => {
     const client = await this.getClient();

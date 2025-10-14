@@ -64,6 +64,7 @@ async function handler(
     return Promise.reject(`System not embedding model`);
   }
   if (!agentModelStore && type !== DatasetTypeEnum.database) {
+    // database type not check llm model
     return Promise.reject(`System not llm model`);
   }
 

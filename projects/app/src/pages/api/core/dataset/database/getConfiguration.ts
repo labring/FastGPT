@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<GetConfigurationRes
     // Fetch detailed info for each table
     const tableList = [];
     for (const tableName of tableNames) {
-      const tableInfo: DBTable = await dbClient.aget_table_info(tableName, true);
+      const tableInfo: DBTable = await dbClient.get_table_info(tableName, true);
 
       // Convert Map to plain object for columns
       const columnsObj: Record<string, any> = {};
