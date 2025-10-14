@@ -1,34 +1,25 @@
-import { S3BaseSource } from './base';
-import {
-  S3Sources,
-  S3APIPrefix,
-  type CreatePostPresignedUrlOptions,
-  type CreatePostPresignedUrlParams,
-  type CreatePostPresignedUrlResult,
-  type S3Options
-} from '../type';
-import type { S3PublicBucket } from '../buckets/public';
-import { MongoS3TTL } from '../../file/s3TTL/schema';
+import { S3Sources } from '../type';
+import { MongoS3TTL } from '../../file/s3Ttl/schema';
+import { S3PublicBucket } from '../buckets/public';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
+import type { ClientSession } from '../../mongo';
 
-class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
-  constructor(options?: Partial<S3Options>) {
-    super(S3Sources.avatar, true, options);
+class S3AvatarSource {
+  private bucket: S3PublicBucket;
+  private static instance: S3AvatarSource;
+
+  constructor() {
+    this.bucket = new S3PublicBucket();
   }
 
-  static getInstance(options?: Partial<S3Options>): S3AvatarSource {
-    return S3BaseSource._getInstance(S3AvatarSource, options);
+  static getInstance() {
+    return (this.instance ??= new S3AvatarSource());
   }
 
-  override createPostPresignedUrl(
-    params: Omit<CreatePostPresignedUrlParams, 'source' | 'visibility'>,
-    options: CreatePostPresignedUrlOptions = {}
-  ): Promise<CreatePostPresignedUrlResult> {
+  async createPostPresignedUrl(params: { filename: string; teamId: string }) {
     return this.bucket.createPostPresignedUrl(
-      {
-        ...params,
-        source: S3Sources.avatar
-      },
-      options
+      { ...params, source: S3Sources.avatar },
+      { expiredHours: 1 * 24 } // 1 day
     );
   }
 
@@ -36,36 +27,17 @@ class S3AvatarSource extends S3BaseSource<S3PublicBucket> {
     return this.bucket.createPublicUrl(objectKey);
   }
 
-  createAvatarObjectKey(avatarWithPrefix: string): string {
-    return avatarWithPrefix.replace(S3APIPrefix.avatar, '');
+  async deleteAvatar(avatar: string, session?: ClientSession): Promise<string> {
+    const key = avatar.slice(imageBaseUrl.length);
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, { session });
+    await this.bucket.delete(key);
+    return key;
   }
 
-  async removeAvatar(avatarWithPrefix: string): Promise<void> {
-    const avatarObjectKey = this.createAvatarObjectKey(avatarWithPrefix);
-    await MongoS3TTL.deleteOne({ minioKey: avatarObjectKey, bucketName: this.bucketName });
-    await this.bucket.delete(avatarObjectKey);
-  }
-
-  async moveAvatarFromTemp(tempAvatarWithPrefix: string): Promise<string> {
-    const tempAvatarObjectKey = this.createAvatarObjectKey(tempAvatarWithPrefix);
-    const avatarObjectKey = tempAvatarObjectKey.replace(`${S3Sources.temp}/`, '');
-
-    try {
-      const file = await MongoS3TTL.findOne({
-        bucketName: this.bucketName,
-        minioKey: tempAvatarObjectKey
-      });
-      if (file) {
-        file.set({ expiredTime: undefined, minioKey: avatarObjectKey });
-        await file.save();
-      }
-    } catch (error) {
-      console.error('Failed to convert TTL to permanent:', error);
-    }
-
-    await this.bucket.move(tempAvatarObjectKey, avatarObjectKey);
-
-    return S3APIPrefix.avatar + avatarObjectKey;
+  async removeAvatarTTL(avatar: string, session?: ClientSession): Promise<string> {
+    const key = avatar.slice(imageBaseUrl.length);
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, { session });
+    return key;
   }
 }
 

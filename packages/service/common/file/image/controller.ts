@@ -8,6 +8,7 @@ import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getS3AvatarSource } from '../../s3/sources/avatar';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -108,6 +109,15 @@ const getIdFromPath = (path?: string) => {
   if (!id || !Types.ObjectId.isValid(id)) return;
 
   return id;
+};
+export const refreshSourceAvatarS3 = async (
+  path?: string,
+  oldPath?: string,
+  session?: ClientSession
+) => {
+  const s3AvatarSource = getS3AvatarSource();
+  await s3AvatarSource.deleteAvatar(oldPath || '', session);
+  await s3AvatarSource.removeAvatarTTL(path || '', session);
 };
 // 删除旧的头像，新的头像去除过期时间
 export const refreshSourceAvatar = async (

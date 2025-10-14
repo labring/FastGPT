@@ -17,7 +17,7 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
-import { refreshSourceAvatar } from '../../../common/file/image/controller';
+import { refreshSourceAvatarS3 } from '../../../common/file/image/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
@@ -244,7 +244,7 @@ export async function updateTeam({
         { session }
       );
 
-      await refreshSourceAvatar(avatar, team?.avatar, session);
+      await refreshSourceAvatarS3(avatar, team?.avatar, session);
     }
   });
 }

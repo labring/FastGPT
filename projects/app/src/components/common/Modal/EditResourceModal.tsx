@@ -50,10 +50,7 @@ const EditResourceModal = ({
     [setValue]
   );
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
-    useUploadAvatar(getUploadAvatarPresignedUrl, {
-      temporay: true,
-      onSuccess: afterUploadAvatar
-    });
+    useUploadAvatar(getUploadAvatarPresignedUrl, { onSuccess: afterUploadAvatar });
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>

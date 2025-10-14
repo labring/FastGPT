@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 import { type CreateObjectKeyParams } from './type';
-import dayjs from 'dayjs';
 
 /**
  * use public policy or just a custom policy
@@ -40,19 +39,23 @@ export const createBucketPolicy = (
   }
 };
 
+export const createS3PublicBucketPolicy = (bucket: string) =>
+  JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: '*',
+        Action: 's3:GetObject',
+        Resource: `arn:aws:s3:::${bucket}/*`
+      }
+    ]
+  });
+
 /**
  * create s3 object key by source, team ID and filename
  */
-export function createObjectKey({ source, teamId, filename }: CreateObjectKeyParams): string {
-  const date = dayjs().format('YYYY_MM_DD');
+export function createObjectKey({ source, teamId }: CreateObjectKeyParams): string {
   const id = crypto.randomBytes(16).toString('hex');
-  return `${source}/${teamId}/${date}/${id}_${filename}`;
-}
-
-/**
- * create temporary s3 object key by source, team ID and filename
- */
-export function createTempObjectKey(params: CreateObjectKeyParams): string {
-  const origin = createObjectKey(params);
-  return `temp/${origin}`;
+  return `${source}/${teamId}/${id}`;
 }

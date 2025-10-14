@@ -8,7 +8,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
+import { refreshSourceAvatarS3 } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
@@ -103,7 +103,7 @@ async function handler(
       resourceType: PerResourceTypeEnum.dataset
     });
 
-    await refreshSourceAvatar(avatar, undefined, session);
+    await refreshSourceAvatarS3(avatar, undefined, session);
 
     return dataset._id;
   });

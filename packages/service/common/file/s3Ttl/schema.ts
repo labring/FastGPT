@@ -1,9 +1,9 @@
 import { Schema, getMongoModel } from '../../mongo';
-import { type S3TtlSchemaType } from '@fastgpt/global/common/file/minioTtl/type';
+import { type S3TtlSchemaType } from '@fastgpt/global/common/file/s3TTL/type';
 
 const collectionName = 's3_ttl_files';
 
-const S3TtlSchema = new Schema({
+const S3TTLSchema = new Schema({
   bucketName: {
     type: String,
     required: true
@@ -18,7 +18,7 @@ const S3TtlSchema = new Schema({
   }
 });
 
-S3TtlSchema.index({ expiredTime: 1 });
-S3TtlSchema.index({ bucketName: 1, minioKey: 1 });
+S3TTLSchema.index({ expiredTime: 1 });
+S3TTLSchema.index({ bucketName: 1, minioKey: 1 });
 
-export const MongoS3TTL = getMongoModel<S3TtlSchemaType>(collectionName, S3TtlSchema);
+export const MongoS3TTL = getMongoModel<S3TtlSchemaType>(collectionName, S3TTLSchema);

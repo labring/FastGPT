@@ -4,7 +4,7 @@ import path from 'path';
 
 import { readMongoImg } from '@fastgpt/service/common/file/image/controller';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 // get the models available to the system
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

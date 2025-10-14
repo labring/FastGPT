@@ -1,21 +1,20 @@
 import { Client, type RemoveOptions, type CopyConditions, type LifecycleConfig } from 'minio';
 import {
-  defaultS3Options,
   type ExtensionType,
-  Mimes,
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3BucketName,
-  type S3Options
+  type S3OptionsType
 } from '../type';
-import type { BucketBasicOperationsType } from '../interface';
-import { createObjectKey, createTempObjectKey } from '../helpers';
+import { defaultS3Options, Mimes } from '../constants';
+import { createObjectKey } from '../helpers';
 import path from 'node:path';
-import { MongoS3TTL } from 'common/file/s3TTL/schema';
+import { MongoS3TTL } from '../../file/s3Ttl/schema';
 
-export class S3BaseBucket implements BucketBasicOperationsType {
-  public client: Client;
+export class S3BaseBucket {
+  private _client: Client;
+  private _externalClient: Client | undefined;
 
   /**
    *
@@ -26,17 +25,32 @@ export class S3BaseBucket implements BucketBasicOperationsType {
   constructor(
     private readonly _bucket: S3BucketName,
     private readonly afterInits?: (() => Promise<void> | void)[],
-    public options: Partial<S3Options> = defaultS3Options
+    public options: Partial<S3OptionsType> = defaultS3Options
   ) {
     options = { ...defaultS3Options, ...options };
-    this.options = options as S3Options;
-    this.client = new Client(options as S3Options);
+    this.options = options;
+    this._client = new Client(options as S3OptionsType);
+
+    if (this.options.externalBaseURL) {
+      const externalBaseURL = new URL(this.options.externalBaseURL);
+      const endpoint = externalBaseURL.hostname;
+      const useSSL = externalBaseURL.protocol === 'https';
+
+      this._externalClient = new Client({
+        useSSL: useSSL,
+        endPoint: endpoint,
+        port: options.port,
+        accessKey: options.accessKey,
+        secretKey: options.secretKey,
+        transportAgent: options.transportAgent
+      });
+    }
 
     const init = async () => {
       if (!(await this.exist())) {
         await this.client.makeBucket(this._bucket);
       }
-      await Promise.all(this.afterInits?.map((afterInit) => afterInit()) ?? []);
+      await Promise.all(afterInits?.map((afterInit) => afterInit()) ?? []);
     };
     init();
   }
@@ -45,10 +59,14 @@ export class S3BaseBucket implements BucketBasicOperationsType {
     return this._bucket;
   }
 
-  async move(src: string, dst: string, options?: CopyConditions): Promise<void> {
+  protected get client(): Client {
+    return this._externalClient ?? this._client;
+  }
+
+  move(src: string, dst: string, options?: CopyConditions): Promise<void> {
     const bucket = this.name;
-    await this.client.copyObject(bucket, dst, `/${bucket}/${src}`, options);
-    await this.delete(src);
+    this.client.copyObject(bucket, dst, `/${bucket}/${src}`, options);
+    return this.delete(src);
   }
 
   copy(src: string, dst: string, options?: CopyConditions): ReturnType<Client['copyObject']> {
@@ -59,27 +77,19 @@ export class S3BaseBucket implements BucketBasicOperationsType {
     return this.client.bucketExists(this.name);
   }
 
-  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
-    await this.client.removeObject(this.name, objectKey, options);
-  }
-
-  get(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  getLifecycle(): Promise<LifecycleConfig | null> {
-    return this.client.getBucketLifecycle(this.name);
+  delete(objectKey: string, options?: RemoveOptions): Promise<void> {
+    return this.client.removeObject(this.name, objectKey, options);
   }
 
   async createPostPresignedUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
-    const { temporary, ttl = 7 * 24 } = options;
+    const { expiredHours } = options;
     const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
     const contentType = Mimes[ext] ?? 'application/octet-stream';
     const maxFileSize = this.options.maxFileSize as number;
-    const key = temporary ? createTempObjectKey(params) : createObjectKey(params);
+    const key = createObjectKey(params);
 
     const policy = this.client.newPostPolicy();
     policy.setKey(key);
@@ -88,17 +98,19 @@ export class S3BaseBucket implements BucketBasicOperationsType {
     policy.setContentLengthRange(1, maxFileSize);
     policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
     policy.setUserMetaData({
-      filename: encodeURIComponent(params.filename),
-      visibility: params.visibility
+      'content-type': contentType,
+      'content-disposition': `attachment; filename="${encodeURIComponent(params.filename)}"`,
+      'origin-filename': encodeURIComponent(params.filename),
+      'upload-time': new Date().toISOString()
     });
 
     const { formData, postURL } = await this.client.presignedPostPolicy(policy);
 
-    if (temporary) {
+    if (expiredHours) {
       await MongoS3TTL.create({
         minioKey: key,
         bucketName: this.name,
-        expiredTime: new Date(Date.now() + ttl * 3.6e6)
+        expiredTime: new Date(Date.now() + expiredHours * 3.6e6)
       });
     }
 

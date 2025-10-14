@@ -22,12 +22,11 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources';
+import { refreshSourceAvatarS3 } from '@fastgpt/service/common/file/image/controller';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -112,22 +111,12 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       nodes
     });
 
-    const permanentAvatar = await (async () => {
-      if (avatar) {
-        const s3AvatarSource = getS3AvatarSource();
-        await s3AvatarSource.removeAvatar(app.avatar); // 移除旧的头像
-        return await s3AvatarSource.moveAvatarFromTemp(avatar); // 永久化临时的预览头像
-      }
-    })();
+    if (avatar) {
+      await refreshSourceAvatarS3(avatar, app.avatar, session);
+    }
 
     if (app.type === AppTypeEnum.toolSet && avatar) {
-      await MongoApp.updateMany(
-        { parentId: appId, teamId: app.teamId },
-        {
-          avatar: permanentAvatar
-        },
-        { session }
-      );
+      await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }
 
     return MongoApp.findByIdAndUpdate(
@@ -136,7 +125,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         ...parseParentIdInMongo(parentId),
         ...(name && { name }),
         ...(type && { type }),
-        ...(avatar && { avatar: permanentAvatar }),
+        ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
         ...(teamTags && { teamTags }),
         ...(nodes && {

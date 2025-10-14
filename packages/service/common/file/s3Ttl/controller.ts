@@ -1,9 +1,10 @@
 import { MongoS3TTL } from './schema';
-import { S3BucketManager } from '../../s3/buckets/manager';
 import { addLog } from '../../system/log';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
+import { S3PublicBucket } from '../../s3/buckets/public';
+import { S3PrivateBucket } from '../../s3/buckets/private';
 
 export async function clearExpiredMinioFiles() {
   try {
@@ -17,7 +18,6 @@ export async function clearExpiredMinioFiles() {
 
     addLog.info(`Found ${expiredFiles.length} expired minio files to clean`);
 
-    const s3Manager = S3BucketManager.getInstance();
     let success = 0;
     let fail = 0;
 
@@ -25,10 +25,10 @@ export async function clearExpiredMinioFiles() {
       try {
         const bucket = (() => {
           if (file.bucketName === process.env.S3_PUBLIC_BUCKET) {
-            return s3Manager.getPublicBucket();
+            return new S3PublicBucket();
           }
           if (file.bucketName === process.env.S3_PRIVATE_BUCKET) {
-            return s3Manager.getPrivateBucket();
+            return new S3PrivateBucket();
           }
           throw new Error(`Unknown bucket name: ${file.bucketName}`);
         })();

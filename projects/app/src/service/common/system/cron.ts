@@ -14,7 +14,7 @@ import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { clearExpiredRawTextBufferCron } from '@fastgpt/service/common/buffer/rawText/controller';
 import { clearExpiredDatasetImageCron } from '@fastgpt/service/core/dataset/image/controller';
 import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
-import { clearExpiredMinioFilesCron } from '@fastgpt/service/common/file/minioTtl/controller';
+import { clearExpiredMinioFilesCron } from '@fastgpt/service/common/file/s3Ttl/controller';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {

@@ -51,10 +51,7 @@ export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) =
     uploading: loading,
     handleFileSelectorOpen: onOpenSelectFile,
     handleUploadAvatar: handleFileSelect
-  } = useUploadAvatar(getUploadAvatarPresignedUrl, {
-    temporay: true,
-    onSuccess: afterUploadAvatar
-  });
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, { onSuccess: afterUploadAvatar });
 
   // handle file select - immediate upload if enabled
   // const handleFileSelect = useMemoizedFn(async (files: File[]) => {
