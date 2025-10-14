@@ -2,6 +2,7 @@ import { S3Sources } from '../type';
 import { MongoS3TTL } from '../schema';
 import { S3PublicBucket } from '../buckets/public';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
+import type { ClientSession } from 'mongoose';
 
 class S3AvatarSource {
   private bucket: S3PublicBucket;
@@ -30,38 +31,29 @@ class S3AvatarSource {
     return this.bucket.createPublicUrl(objectKey);
   }
 
-  async deleteAvatar(avatar: string): Promise<string> {
+  async removeAvatarTTL(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
-
-    // check if the avatar has a TTL record
-    const snapshot = await MongoS3TTL.findOne({ minioKey: key, bucketName: this.bucket.name });
-    if (snapshot) {
-      // if has, delete both of the TTL record and the avatar in S3
-      await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name });
-
-      try {
-        await this.bucket.delete(key);
-      } catch (error) {
-        // do the compensate
-        await MongoS3TTL.insertOne({
-          minioKey: snapshot.minioKey,
-          bucketName: snapshot.bucketName,
-          expiredTime: snapshot.expiredTime
-        });
-        return Promise.reject(error);
-      }
-    } else {
-      // if hasn't, only delete the avatar in S3 is enough
-      await this.bucket.delete(key);
-    }
-
-    return key;
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, session);
   }
 
-  async removeAvatarTTL(avatar: string): Promise<string> {
+  async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
-    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name });
-    return key;
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, session);
+    await this.bucket.delete(key);
+  }
+
+  async refreshAvatar(newAvatar?: string, oldAvatar?: string, session?: ClientSession) {
+    if (!newAvatar || newAvatar === oldAvatar) return;
+
+    // remove the TTL for the new avatar
+    await this.removeAvatarTTL(newAvatar, session);
+
+    if (oldAvatar) {
+      // delete the old avatar
+      // 1. delete the TTL record if it exists
+      // 2. delete the avatar in S3
+      await this.deleteAvatar(oldAvatar, session);
+    }
   }
 }
 

@@ -20,11 +20,9 @@ export class S3BaseBucket {
    *
    * @param _bucket the bucket you want to operate
    * @param options the options for the s3 client
-   * @param afterInits the function to be called after instantiating the s3 service
    */
   constructor(
     private readonly _bucket: S3BucketName,
-    private readonly afterInits?: () => Promise<void> | void,
     public options: Partial<S3OptionsType> = defaultS3Options
   ) {
     options = { ...defaultS3Options, ...options };
@@ -50,7 +48,7 @@ export class S3BaseBucket {
       if (!(await this.exist())) {
         await this.client.makeBucket(this._bucket);
       }
-      await afterInits?.();
+      await this.options.afterInit?.();
     };
     init();
   }

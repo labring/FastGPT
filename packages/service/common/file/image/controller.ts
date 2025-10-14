@@ -8,7 +8,6 @@ import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getS3AvatarSource } from '../../s3/sources/avatar';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -109,40 +108,6 @@ const getIdFromPath = (path?: string) => {
   if (!id || !Types.ObjectId.isValid(id)) return;
 
   return id;
-};
-export const refreshSourceAvatarS3 = async (newAvatar?: string, oldAvatar?: string) => {
-  if (newAvatar === oldAvatar) return;
-
-  const s3AvatarSource = getS3AvatarSource();
-
-  // delete the old avatar
-  if (oldAvatar) {
-    // if the Promise is rejected, it will throw an error
-    // and we won't catch this error, so that the follwing action, like removing TTL will not be executed
-    await s3AvatarSource.deleteAvatar(oldAvatar);
-  }
-
-  // remove the TTL for the temporary avatar, make it permanent
-  if (newAvatar) {
-    await s3AvatarSource.removeAvatarTTL(newAvatar);
-  }
-};
-// 删除旧的头像，新的头像去除过期时间
-export const refreshSourceAvatar = async (
-  path?: string,
-  oldPath?: string,
-  session?: ClientSession
-) => {
-  const newId = getIdFromPath(path);
-  const oldId = getIdFromPath(oldPath);
-
-  if (!newId || newId === oldId) return;
-
-  await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
-
-  if (oldId) {
-    await MongoImage.deleteOne({ _id: oldId }, { session });
-  }
 };
 export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!path) return;

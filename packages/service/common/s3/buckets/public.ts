@@ -4,10 +4,9 @@ import { type S3OptionsType } from '../type';
 
 export class S3PublicBucket extends S3BaseBucket {
   constructor(options?: Partial<S3OptionsType>) {
-    super(
-      S3Buckets.public,
-      // set bucket policy
-      async () => {
+    super(S3Buckets.public, {
+      ...options,
+      afterInit: async () => {
         const bucket = this.name;
         const policy = JSON.stringify({
           Version: '2012-10-17',
@@ -27,9 +26,8 @@ export class S3PublicBucket extends S3BaseBucket {
           // maybe we can ignore the error, or we have other plan to handle this.
           console.error('Failed to set bucket policy:', error);
         }
-      },
-      options
-    );
+      }
+    });
   }
 
   createPublicUrl(objectKey: string): string {

@@ -7,7 +7,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { refreshSourceAvatarS3 } from '@fastgpt/service/common/file/image/controller';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type UserAccountUpdateQuery = {};
 export type UserAccountUpdateBody = UserUpdateParams;
@@ -37,8 +37,9 @@ async function handler(
     }
     // if avatar, update team member avatar
     if (avatar) {
-      await refreshSourceAvatarS3(avatar, tmb?.avatar);
       await MongoTeamMember.updateOne({ _id: tmbId }, { avatar }).session(session);
+
+      await getS3AvatarSource().refreshAvatar(avatar, tmb?.avatar, session);
     }
   });
 

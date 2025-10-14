@@ -25,7 +25,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { refreshSourceAvatarS3 } from '@fastgpt/service/common/file/image/controller';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   removeDatasetSyncJobScheduler,
@@ -39,6 +38,7 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -202,8 +202,6 @@ async function handler(
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
-    await refreshSourceAvatarS3(avatar, dataset.avatar);
-
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -222,10 +220,13 @@ async function handler(
       },
       { session }
     );
+
     await updateSyncSchedule({
       dataset,
       autoSync
     });
+
+    await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
   await mongoSessionRun(async (session) => {

@@ -6,6 +6,12 @@ import { TimerIdEnum } from '../system/timerLock/constants';
 import { S3PrivateBucket } from './buckets/private';
 import { S3PublicBucket } from './buckets/public';
 
+function getBucket(bucketName: string) {
+  if (bucketName === process.env.S3_PUBLIC_BUCKET) return new S3PublicBucket();
+  if (bucketName === process.env.S3_PRIVATE_BUCKET) return new S3PrivateBucket();
+  throw new Error(`Unknown bucket name: ${bucketName}`);
+}
+
 export async function clearExpiredMinioFiles() {
   try {
     const now = new Date();
@@ -23,11 +29,7 @@ export async function clearExpiredMinioFiles() {
 
     for (const file of expiredFiles) {
       try {
-        const bucket = (() => {
-          if (file.bucketName === process.env.S3_PUBLIC_BUCKET) return new S3PublicBucket();
-          if (file.bucketName === process.env.S3_PRIVATE_BUCKET) return new S3PrivateBucket();
-          throw new Error(`Unknown bucket name: ${file.bucketName}`);
-        })();
+        const bucket = getBucket(file.bucketName);
         await bucket.delete(file.minioKey);
         await MongoS3TTL.deleteOne({ _id: file._id });
 
