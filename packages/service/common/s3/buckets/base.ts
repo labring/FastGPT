@@ -10,8 +10,9 @@ import {
 import { defaultS3Options, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
-import crypto from 'node:crypto';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { addHours } from 'date-fns';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -97,7 +98,7 @@ export class S3BaseBucket {
         if (!source || !teamId) {
           throw new UserError('source and teamId are required');
         }
-        return `${source}/${teamId}/${crypto.randomBytes(16).toString('hex')}`;
+        return `${source}/${teamId}/${getNanoid(16)}`;
       })();
 
       const policy = this.client.newPostPolicy();
@@ -119,7 +120,7 @@ export class S3BaseBucket {
         await MongoS3TTL.create({
           minioKey: key,
           bucketName: this.name,
-          expiredTime: new Date(Date.now() + expiredHours * 3.6e6)
+          expiredTime: addHours(new Date(), expiredHours)
         });
       }
 
