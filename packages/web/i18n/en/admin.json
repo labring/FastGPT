@@ -295,7 +295,7 @@
   "token_calc_max_process": "Max token computation processes (set according to expected concurrency)）",
   "custom_pdf_parse_url": "Custom PDF parsing URL",
   "custom_pdf_parse_key": "Custom PDF parsing key",
-  "custom_pdf_parse_timeout": "Custom PDF parsing timeout",
+  "custom_pdf_parse_timeout": "Custom PDF parsing timeout (minutes)",
   "doc2x_pdf_parse_key": "Doc2x PDF parsing key (lower priority than custom PDF parsing)",
   "custom_pdf_parse_price": "Custom PDF parsing price (n points/page)",
   "eval_config": "Evaluation Configuration",
