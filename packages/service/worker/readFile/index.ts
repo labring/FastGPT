@@ -27,6 +27,7 @@ parentPort?.on(
         case 'pdf':
           return readPdfFile(params);
         case 'docx':
+        case 'doc':
           return readDocsFile(params);
         case 'pptx':
           return readPptxRawText(params);
@@ -36,7 +37,7 @@ parentPort?.on(
           return readCsvRawText(params);
         default:
           return Promise.reject(
-            `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+            `Only support .txt, .md, .html, .pdf, .doc, .docx, .pptx, .csv, .xlsx. "${params.extension}" is not supported.`
           );
       }
     };
