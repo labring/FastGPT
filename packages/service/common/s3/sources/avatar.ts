@@ -20,10 +20,18 @@ class S3AvatarSource {
     return imageBaseUrl;
   }
 
-  async createUploadAvatarURL(params: { filename: string; teamId: string }) {
+  async createUploadAvatarURL({
+    filename,
+    teamId,
+    autoExpired = true
+  }: {
+    filename: string;
+    teamId: string;
+    autoExpired?: boolean;
+  }) {
     return this.bucket.createPostPresignedUrl(
-      { ...params, source: S3Sources.avatar },
-      { expiredHours: 1 * 24 } // 1 day
+      { filename, teamId, source: S3Sources.avatar },
+      { expiredHours: autoExpired ? 1 : undefined } // 1 Hourse
     );
   }
 

@@ -8,6 +8,7 @@ export type updateAvatarQuery = {};
 
 export type updateAvatarBody = {
   filename: string;
+  autoExpired?: boolean;
 };
 
 export type updateAvatarResponse = CreatePostPresignedUrlResult;
@@ -16,9 +17,9 @@ async function handler(
   req: ApiRequestProps<updateAvatarBody, updateAvatarQuery>,
   _: ApiResponseType<updateAvatarResponse>
 ): Promise<updateAvatarResponse> {
-  const { filename } = req.body;
+  const { filename, autoExpired } = req.body;
   const { teamId } = await authCert({ req, authToken: true });
-  return await getS3AvatarSource().createUploadAvatarURL({ teamId, filename });
+  return await getS3AvatarSource().createUploadAvatarURL({ teamId, filename, autoExpired });
 }
 
 export default NextAPI(handler);

@@ -33,6 +33,9 @@ export const postS3UploadFile = (
     onUploadProgress
   });
 
-export const getUploadAvatarPresignedUrl = (params: { filename: string }) => {
+export const getUploadAvatarPresignedUrl = (params: {
+  filename: string;
+  autoExpired?: boolean;
+}) => {
   return POST<CreatePostPresignedUrlResult>('/common/file/updateAvatar', params);
 };
