@@ -47,8 +47,15 @@ export async function register() {
       initGlobalVariables();
 
       // Connect to MongoDB
-      await connectMongo(connectionMongo, MONGO_URL);
-      connectMongo(connectionLogMongo, MONGO_LOG_URL);
+      await connectMongo({
+        db: connectionMongo,
+        url: MONGO_URL,
+        connectedCb: () => startMongoWatch()
+      });
+      connectMongo({
+        db: connectionLogMongo,
+        url: MONGO_LOG_URL
+      });
 
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
@@ -60,7 +67,6 @@ export async function register() {
         initAppTemplateTypes()
       ]);
 
-      startMongoWatch();
       startCron();
       startTrainingQueue(true);
       trackTimerProcess();
