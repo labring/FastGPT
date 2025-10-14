@@ -86,6 +86,7 @@ const StructureRender = ({ code }: { code: string }) => {
     <>
       {jsonObjList.map((jsonObj, index) => {
         const { type, content } = jsonObj;
+        if (!content) return '';
         if (type === 'TABLE') return <Table data={content.data} key={index}></Table>;
         if (type === 'INDICATOR')
           return <Indicator dataList={content.dataList} key={index}></Indicator>;
