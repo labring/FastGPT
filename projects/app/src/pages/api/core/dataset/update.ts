@@ -9,11 +9,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import {
-  DatasetCollectionTypeEnum,
-  DatasetTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -26,8 +22,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { addDays } from 'date-fns';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';

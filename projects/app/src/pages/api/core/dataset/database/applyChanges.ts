@@ -85,14 +85,6 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
           mongoCollectionsMap.set(coll.tableSchema.tableName, coll);
         }
       });
-      console.debug(
-        '[applyChanges] ',
-        mongoCollections.map((coll) => coll.name)
-      );
-      console.debug(
-        '[applyChanges] ',
-        tables.map((t) => t.tableName)
-      );
       const collectionsToDelete = mongoCollections.filter(
         (mongoCollection) => !tables.some((table) => table.tableName === mongoCollection.name)
       );
@@ -187,22 +179,12 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                   DBTableColumn
                 ][]) {
                   const intersectCol = intersectColumns.get(colName);
-                  if (intersectCol && intersectCol.description !== newCol.description) {
-                    console.debug(`[applyChanges] column description change:
-                      ${colName}, 
-                      intersectCol:${intersectCol.description}, newCol:${newCol.description}`);
-                    needsReindex = true;
-                    break;
-                  } else if (intersectCol && intersectCol.isPrimaryKey !== newCol.isPrimaryKey) {
-                    console.debug(`[applyChanges] column isPrimaryKey change:
-                      ${colName}, 
-                      intersectCol:${intersectCol.isPrimaryKey}, newCol:${newCol.isPrimaryKey}`);
-                    needsReindex = true;
-                    break;
-                  } else if (intersectCol && intersectCol.isForeignKey !== newCol.isForeignKey) {
-                    console.debug(`[applyChanges] column isForeignKey change:
-                      ${colName}, 
-                      intersectCol:${intersectCol.isForeignKey}, newCol:${newCol.isForeignKey}`);
+                  if (
+                    intersectCol &&
+                    (intersectCol.description !== newCol.description ||
+                      intersectCol.isPrimaryKey !== newCol.isPrimaryKey ||
+                      intersectCol.isForeignKey !== newCol.isForeignKey)
+                  ) {
                     needsReindex = true;
                     break;
                   }
@@ -211,24 +193,15 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                 // Check for added/deleted columns
                 const intersectColNames = new Set(intersectColumns.keys());
                 const newColNames = new Set(Object.keys(table.columns));
-                console.debug('[applyChanges] intersectColNames', intersectColNames);
-                console.debug('[applyChanges] newColNames', newColNames);
                 if (
                   intersectColNames.size !== newColNames.size ||
                   [...intersectColNames].some((name) => !newColNames.has(name)) ||
-                  [...newColNames].some((name) => !intersectColNames.has(name))
+                  [...newColNames].some((name) => !intersectColNames.has(name)) ||
+                  hasColumnForbidInconsistency(intersectCollection, table) // Check column forbid status inconsistency
                 ) {
-                  console.debug(`[applyChanges] column added/deleted: ${table.tableName}`);
                   needsReindex = true;
                 }
 
-                // Check column forbid status inconsistency
-                if (hasColumnForbidInconsistency(intersectCollection, table)) {
-                  console.debug(
-                    `[applyChanges] column forbid status inconsistency: ${table.tableName}`
-                  );
-                  needsReindex = true;
-                }
                 if (needsReindex) {
                   // Delete collection
                   await delCollection({

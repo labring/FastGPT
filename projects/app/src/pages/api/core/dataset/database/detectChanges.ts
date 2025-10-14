@@ -89,10 +89,9 @@ async function handler(
         // 检查新增和修改的表
         for (const tableName of databaseTableNames) {
           const intersectTable = mongoTablesMap.get(tableName);
-          console.debug('[detectChanges] intersectTable', intersectTable);
           if (!intersectTable) {
             // 新增的表
-            const tableInfo = await dbClient.aget_table_info(tableName, true);
+            const tableInfo = await dbClient.get_table_info(tableName, true);
 
             const columnsObj: Record<string, DBTableColumn> = {};
             if (tableInfo.columns instanceof Map) {
@@ -118,7 +117,7 @@ async function handler(
             addedTables++;
           } else {
             // 检查现有表的变更
-            const databaseTableInfo = await dbClient.aget_table_info(tableName, false);
+            const databaseTableInfo = await dbClient.get_table_info(tableName, false);
 
             const columnsObj: Record<string, DBTableColumn> = {};
             let tableModified = false;
