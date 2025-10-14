@@ -5,7 +5,7 @@
   "Failed_to_get_token": "获取令牌失败",
   "Image_ID_copied": "已复制ID",
   "Image_Preview": "图片预览",
-  "Image_dataset_requires_VLM_model_to_be_configured": "图片数据集需要配置图片理解模型(VLM)才能使用，请先在模型配置中添加支持图片理解的模型",
+  "Image_dataset_requires_VLM_model_to_be_configured": "图片数据集需要配置图片理解模型（VLM）才能使用，请先在模型配置中添加支持图片理解的模型",
   "Image_does_not_belong_to_current_team": "图片不属于当前团队",
   "Image_file_does_not_exist": "图片不存在",
   "Loading_image": "加载图片中...",

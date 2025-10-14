@@ -69,7 +69,7 @@
   "dataset.ReTrain": "重试",
   "dataset.Training Process": "训练状态",
   "dataset.Training_Count": "{{count}} 组训练中",
-  "dataset.Training_Errors": "异常 ({{count}})",
+  "dataset.Training_Errors": "异常（{{count}}）",
   "dataset.Training_QA": "{{count}} 组问答对训练中",
   "dataset.Training_Status": "训练状态",
   "dataset.Training_Waiting": "需等待 {{count}} 组数据",

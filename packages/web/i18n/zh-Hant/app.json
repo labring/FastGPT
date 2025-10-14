@@ -282,7 +282,7 @@
   "transition_to_workflow_create_new_placeholder": "建立新的應用程式，而不是修改目前應用程式",
   "transition_to_workflow_create_new_tip": "轉換成工作流程後，將無法轉換回簡易模式，請確認！",
   "tts_ai_model": "使用語音合成模型",
-  "tts_browser": "瀏覽器自帶 (免費)",
+  "tts_browser": "瀏覽器自帶（免費）",
   "tts_close": "關閉",
   "type.All": "全部",
   "type.Create http plugin tip": "透過 OpenAPI Schema 批次建立外掛，相容 GPTs 格式",
