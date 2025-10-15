@@ -8,7 +8,7 @@ import { ObjectIdSchema } from '../../../../../type';
 import { initContract } from '@ts-rest/core';
 
 const c = initContract();
-const favouriteContract = c.router({
+export const favouriteContract = c.router({
   list: {
     path: '/proApi/core/chat/setting/favourite/list',
     method: 'GET',
