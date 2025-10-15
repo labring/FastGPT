@@ -1,16 +1,8 @@
-import { S3Service } from './controller';
+import { S3PublicBucket } from './buckets/public';
+import { S3BucketMap } from './constants';
+import { S3PrivateBucket } from './buckets/private';
 
-export const PluginS3Service = (() => {
-  if (!global.pluginS3Service) {
-    global.pluginS3Service = new S3Service({
-      bucket: process.env.S3_PLUGIN_BUCKET || 'fastgpt-plugin',
-      maxFileSize: 50 * 1024 * 1024 // 50MB
-    });
-  }
-
-  return global.pluginS3Service;
-})();
-
-declare global {
-  var pluginS3Service: S3Service;
+export function initS3Buckets() {
+  S3BucketMap.public = new S3PublicBucket();
+  S3BucketMap.private = new S3PrivateBucket();
 }

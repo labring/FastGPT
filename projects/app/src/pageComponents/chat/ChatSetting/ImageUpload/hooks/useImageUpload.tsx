@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type UploadedFileItem = {
   url: string;
@@ -32,47 +32,13 @@ export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) =
   const finalMaxSize = Math.min(configMaxSize, clientLimitMB);
   const maxSizeBytes = finalMaxSize * 1024 * 1024;
 
+  const afterUploadAvatar = useCallback((avatar: string) => onFileSelect(avatar), [onFileSelect]);
   const {
-    File: SelectFileComponent,
-    onOpen: onOpenSelectFile,
-    onSelectImage,
-    loading
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false,
-    maxCount: 1
-  });
-
-  // validate file size
-  const validateFile = useMemoizedFn((file: File): string | null => {
-    if (file.size > maxSizeBytes) {
-      return t('chat:setting.copyright.file_size_exceeds_limit', {
-        maxSize: formatFileSize(maxSizeBytes)
-      });
-    }
-    return null;
-  });
-
-  // handle file select - immediate upload if enabled
-  const handleFileSelect = useMemoizedFn(async (files: File[]) => {
-    const file = files[0];
-
-    const validationError = validateFile(file);
-    if (validationError) {
-      toast({
-        status: 'warning',
-        title: validationError
-      });
-    }
-
-    try {
-      // 立即上传文件，带TTL
-      const url = await onSelectImage([file], { maxW: 1000, maxH: 1000 });
-      onFileSelect(url);
-    } catch (error) {
-      console.error('Failed to upload file:', error);
-    }
-  });
+    Component: SelectFileComponent,
+    uploading: loading,
+    handleFileSelectorOpen: onOpenSelectFile,
+    handleUploadAvatar: handleFileSelect
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, { onSuccess: afterUploadAvatar });
 
   // 拖拽处理
   const handleDragEnter = useMemoizedFn((e: React.DragEvent) => {
@@ -106,7 +72,7 @@ export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) =
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
-      await handleFileSelect(files);
+      await handleFileSelect(files[0]);
     }
   });
 

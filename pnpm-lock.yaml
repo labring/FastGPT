@@ -297,6 +297,9 @@ importers:
       winston:
         specifier: ^3.17.0
         version: 3.17.0
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.51
     devDependencies:
       '@types/cookie':
         specifier: ^0.5.2

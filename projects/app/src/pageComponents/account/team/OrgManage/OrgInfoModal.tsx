@@ -1,7 +1,8 @@
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
 import { Button, HStack, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -90,26 +91,14 @@ function OrgInfoModal({
   );
 
   const {
-    File: AvatarSelect,
-    onOpen: onOpenSelectAvatar,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg, .jpeg, .png',
-    multiple: false
-  });
-  const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
-    async (file: File[]) => {
-      return onSelectImage(file, {
-        maxW: 300,
-        maxH: 300
-      });
-    },
-    {
-      onSuccess: (src: string) => {
-        setValue('avatar', src);
-      }
+    Component: AvatarUploader,
+    uploading: uploadingAvatar,
+    handleFileSelectorOpen: handleAvatarSelectorOpen
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, {
+    onSuccess: (avatar) => {
+      setValue('avatar', avatar);
     }
-  );
+  });
 
   const isLoading = uploadingAvatar || isLoadingUpdate || isLoadingCreate;
 
@@ -125,7 +114,7 @@ function OrgInfoModal({
         <HStack>
           <Avatar
             src={avatar || DEFAULT_ORG_AVATAR}
-            onClick={onOpenSelectAvatar}
+            onClick={handleAvatarSelectorOpen}
             cursor={'pointer'}
             borderRadius={'md'}
           />
@@ -158,7 +147,7 @@ function OrgInfoModal({
           {isEdit ? t('common:Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
-      <AvatarSelect onSelect={onSelectAvatar} />
+      <AvatarUploader />
     </MyModal>
   );
 }
