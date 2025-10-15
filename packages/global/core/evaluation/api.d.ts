@@ -55,8 +55,28 @@ export type EvaluationStatsResponse = EvaluationStatistics & {
 };
 
 // Export Evaluation Items
-export type ExportEvaluationItemsRequest = EvalIdQuery & {
-  format?: string;
+export type ExportEvaluationItemsRequest = {
+  evalId: string;
+  filters?: {
+    status?: EvaluationStatusEnum;
+    belowThreshold?: boolean;
+    userInput?: string;
+    expectedOutput?: string;
+    actualOutput?: string;
+  };
+  headers?: {
+    itemId?: string;
+    userInput?: string;
+    expectedOutput?: string;
+    actualOutput?: string;
+    status?: string;
+    errorMessage?: string;
+  };
+  metricColumns?: Array<{
+    key: string;
+    label: string;
+  }>;
+  statusLabelMap?: Record<string, string>;
 };
 
 // Retry Failed Evaluation Items

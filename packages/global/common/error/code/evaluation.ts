@@ -6,6 +6,7 @@ export enum EvaluationErrEnum {
   // Validation errors
   evalNameRequired = 'evaluationNameRequired',
   evalNameTooLong = 'evaluationNameTooLong',
+  evalNameDuplicate = 'evaluationNameDuplicate',
   evalDescriptionTooLong = 'evaluationDescriptionTooLong',
   evalDescriptionInvalidType = 'evaluationDescriptionInvalidType',
   evalTargetRequired = 'evaluationTargetRequired',
@@ -26,7 +27,7 @@ export enum EvaluationErrEnum {
   evalTaskNotFound = 'evaluationTaskNotFound',
   evalItemNotFound = 'evaluationItemNotFound',
 
-  // Business logic errors
+  // Task related errors
   evalInvalidStatus = 'evaluationInvalidStatus',
   evalInvalidStateTransition = 'evaluationInvalidStateTransition',
   evalOnlyRunningCanStop = 'evaluationOnlyRunningCanStop',
@@ -120,9 +121,6 @@ export enum EvaluationErrEnum {
   datasetTaskDeleteFailed = 'evaluationDatasetTaskDeleteFailed',
   fetchFailedTasksError = 'evaluationFetchFailedTasksError',
 
-  // Evaluation task job related errors
-  evalItemJobNotFound = 'evaluationItemJobNotFound',
-
   // File/Import related errors
   fileRequired = 'evaluationFileRequired',
   fileMustBeCSV = 'evaluationFileMustBeCSV',
@@ -171,6 +169,10 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.evalNameTooLong,
     message: i18nT('evaluation:name_too_long')
+  },
+  {
+    statusText: EvaluationErrEnum.evalNameDuplicate,
+    message: i18nT('evaluation:name_duplicate')
   },
   {
     statusText: EvaluationErrEnum.evalDescriptionTooLong,
@@ -534,12 +536,6 @@ const evaluationErrList = [
   {
     statusText: EvaluationErrEnum.fetchFailedTasksError,
     message: i18nT('evaluation:fetch_failed_tasks_error')
-  },
-
-  // Evaluation task job related errors
-  {
-    statusText: EvaluationErrEnum.evalItemJobNotFound,
-    message: i18nT('evaluation:item_job_not_found')
   },
 
   // File/Import related errors

@@ -1093,12 +1093,12 @@ export class EvaluationSummaryService {
       // Check if all evaluation items have error status - skip summary generation if true
       const allEvalItemsStatus = await MongoEvalItem.find(
         { evalId: new Types.ObjectId(evalId) },
-        { 'metadata.status': 1 }
+        { status: 1 }
       ).lean();
 
       const allItemsAbnormal =
         allEvalItemsStatus.length > 0 &&
-        allEvalItemsStatus.every((item) => item.metadata?.status === EvaluationStatusEnum.error);
+        allEvalItemsStatus.every((item) => item.status === EvaluationStatusEnum.error);
 
       if (allItemsAbnormal) {
         addLog.warn(
