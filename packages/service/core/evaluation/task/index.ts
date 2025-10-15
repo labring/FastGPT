@@ -4,24 +4,19 @@ import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
   CreateEvaluationParams,
-  EvaluationParamsType,
   EvaluationItemDisplayType,
   TargetCallParams,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { Types } from 'mongoose';
+import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
-  EvaluationStatusEnum,
-  CalculateMethodEnum
-} from '@fastgpt/global/core/evaluation/constants';
-import {
-  removeEvaluationTaskJob,
   removeEvaluationItemJobs,
   removeEvaluationItemJobsByItemId,
-  addEvaluationTaskJob,
   addEvaluationItemJob,
-  evaluationItemQueue
+  evaluationItemQueue,
+  checkEvaluationItemQueueHealth
 } from './mq';
 import { createEvaluationUsage } from '../../../support/wallet/usage/controller';
 import { addLog } from '../../../common/system/log';
@@ -232,12 +227,7 @@ export class EvaluationTaskService {
   static async deleteEvaluation(evalId: string, teamId: string): Promise<void> {
     const del = async (session: ClientSession) => {
       // Remove tasks from queue to prevent further processing
-      const [taskCleanupResult, itemCleanupResult, summaryCleanupResult] = await Promise.all([
-        removeEvaluationTaskJob(evalId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        }),
+      const [itemCleanupResult, summaryCleanupResult] = await Promise.all([
         removeEvaluationItemJobs(evalId, {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
@@ -252,7 +242,6 @@ export class EvaluationTaskService {
 
       addLog.debug('Queue cleanup completed for evaluation deletion', {
         evalId,
-        taskCleanup: taskCleanupResult,
         itemCleanup: itemCleanupResult,
         summaryCleanup: summaryCleanupResult
       });
@@ -600,9 +589,7 @@ export class EvaluationTaskService {
       throw new Error(EvaluationErrEnum.evalInvalidStateTransition);
     }
 
-    await addEvaluationTaskJob({
-      evalId: evalId
-    });
+    await enqueueEvaluationItems(evalId);
 
     const action =
       evaluation.status === EvaluationStatusEnum.error
@@ -624,12 +611,7 @@ export class EvaluationTaskService {
 
     const stopEval = async (session: ClientSession) => {
       // Remove tasks from queue
-      const [taskCleanupResult, itemCleanupResult, summaryCleanupResult] = await Promise.all([
-        removeEvaluationTaskJob(evalId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        }),
+      const [itemCleanupResult, summaryCleanupResult] = await Promise.all([
         removeEvaluationItemJobs(evalId, {
           forceCleanActiveJobs: true,
           retryAttempts: 3,
@@ -644,7 +626,6 @@ export class EvaluationTaskService {
 
       addLog.debug('Queue cleanup completed for evaluation stop', {
         evalId,
-        taskCleanup: taskCleanupResult,
         itemCleanup: itemCleanupResult,
         summaryCleanup: summaryCleanupResult
       });

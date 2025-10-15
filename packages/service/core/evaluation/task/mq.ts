@@ -1,30 +1,15 @@
 import { addLog } from '../../../common/system/log';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { UnrecoverableError } from 'bullmq';
-import type {
-  EvaluationTaskJobData,
-  EvaluationItemJobData
-} from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationItemJobData } from '@fastgpt/global/core/evaluation/type';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
   createJobCleaner,
   type JobCleanupResult,
-  type JobCleanupOptions
-} from '../utils/jobCleanup';
-import { MongoEvaluation } from './schema';
+  type JobCleanupOptions,
+  checkBullMQHealth
+} from '../utils/mq';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-
-export const evaluationTaskQueue = getQueue<EvaluationTaskJobData>(QueueNames.evalTask, {
-  defaultJobOptions: {
-    attempts: 0, // Disable retry for task level
-    backoff: {
-      type: 'exponential',
-      delay: 2000
-    },
-    removeOnComplete: true,
-    removeOnFail: false
-  }
-});
 
 export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.evalTaskItem, {
   defaultJobOptions: {
@@ -37,50 +22,6 @@ export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.ev
     removeOnFail: false
   }
 });
-
-export const getEvaluationTaskWorker = (processor: any) => {
-  const worker = getWorker<EvaluationTaskJobData>(QueueNames.evalTask, processor, {
-    concurrency: global.systemEnv?.evalConfig?.taskConcurrency || 3,
-    stalledInterval: 30000, // 30 seconds
-    maxStalledCount: global.systemEnv?.evalConfig?.maxStalledCount || 3
-  });
-
-  worker.on('stalled', async (jobId: string) => {
-    const job = await evaluationTaskQueue.getJob(jobId);
-    addLog.warn('[Evaluation] Task job stalled, will be retried', {
-      jobId,
-      evalId: job?.data?.evalId
-    });
-  });
-
-  worker.on('failed', async (job, error) => {
-    try {
-      const evalId = job?.data.evalId;
-      addLog.error('[Evaluation] Task job failed after all retries', {
-        jobId: job?.id,
-        evalId,
-        error
-      });
-      await MongoEvaluation.updateOne(
-        { _id: evalId },
-        {
-          $set: {
-            errorMessage: getErrText(error),
-            finishTime: new Date()
-          }
-        }
-      );
-    } catch (updateError) {
-      addLog.error('[Evaluation] Task job failed after all retries (could not get job data)', {
-        jobId: job?.id,
-        error,
-        updateError
-      });
-    }
-  });
-
-  return worker;
-};
 
 export const getEvaluationItemWorker = (processor: any) => {
   const worker = getWorker<EvaluationItemJobData>(QueueNames.evalTaskItem, processor, {
@@ -284,30 +225,6 @@ export const getEvaluationItemWorker = (processor: any) => {
   });
 };
 
-export const removeEvaluationTaskJob = async (
-  evalId: string,
-  options?: JobCleanupOptions
-): Promise<JobCleanupResult> => {
-  const cleaner = createJobCleaner(options);
-
-  const filterFn = (job: any) => {
-    return String(job.data?.evalId) === String(evalId);
-  };
-
-  const result = await cleaner.cleanAllJobsByFilter(
-    evaluationTaskQueue,
-    filterFn,
-    QueueNames.evalTask
-  );
-
-  addLog.debug('Evaluation task jobs cleanup completed', {
-    evalId,
-    result
-  });
-
-  return result;
-};
-
 export const removeEvaluationItemJobs = async (
   evalId: string,
   options?: JobCleanupOptions
@@ -356,12 +273,6 @@ export const removeEvaluationItemJobsByItemId = async (
   return result;
 };
 
-export const addEvaluationTaskJob = (data: EvaluationTaskJobData) => {
-  const evalId = String(data.evalId);
-
-  return evaluationTaskQueue.add(evalId, data, { deduplication: { id: evalId, ttl: 5000 } });
-};
-
 export const addEvaluationItemJob = (data: EvaluationItemJobData, options?: { delay?: number }) => {
   const evalItemId = String(data.evalItemId);
 
@@ -393,4 +304,8 @@ export const addEvaluationItemJobs = (
   });
 
   return evaluationItemQueue.addBulk(bulkJobs);
+};
+
+export const checkEvaluationItemQueueHealth = (): Promise<void> => {
+  return checkBullMQHealth(evaluationItemQueue, 'evaluation-item');
 };

@@ -26,7 +26,7 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
 }));
 
 // Mock job cleanup
-vi.mock('@fastgpt/service/core/evaluation/utils/jobCleanup', () => ({
+vi.mock('@fastgpt/service/core/evaluation/utils/mq', () => ({
   createJobCleaner: vi.fn(() => ({
     cleanAllJobsByFilter: vi.fn().mockResolvedValue({
       queue: 'test-queue',
@@ -35,7 +35,8 @@ vi.mock('@fastgpt/service/core/evaluation/utils/jobCleanup', () => ({
       failedRemovals: 0,
       errors: []
     })
-  }))
+  })),
+  checkBullMQHealth: vi.fn().mockResolvedValue(true)
 }));
 
 // Mock system log
@@ -48,31 +49,12 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
-// Create a mock worker
-const mockWorker = {
-  on: vi.fn(),
-  id: 'mock-worker-id'
-};
-
-vi.mock('@fastgpt/service/core/evaluation/task/mq', async () => {
-  const actual = (await vi.importActual('@fastgpt/service/core/evaluation/task/mq')) as any;
-  return {
-    ...actual,
-    getEvaluationTaskWorker: vi.fn(() => mockWorker),
-    getEvaluationItemWorker: vi.fn(() => mockWorker)
-  };
-});
-
 import {
-  evaluationTaskQueue,
   evaluationItemQueue,
-  addEvaluationTaskJob,
   addEvaluationItemJob,
   addEvaluationItemJobs,
-  removeEvaluationTaskJob,
   removeEvaluationItemJobs,
   removeEvaluationItemJobsByItemId,
-  getEvaluationTaskWorker,
   getEvaluationItemWorker
 } from '@fastgpt/service/core/evaluation/task/mq';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -165,11 +147,6 @@ describe('Evaluation MQ System', () => {
   });
 
   describe('队列初始化', () => {
-    test('应该正确初始化评估任务队列', () => {
-      expect(evaluationTaskQueue).toBeDefined();
-      expect(typeof evaluationTaskQueue.add).toBe('function');
-    });
-
     test('应该正确初始化评估项队列', () => {
       expect(evaluationItemQueue).toBeDefined();
       expect(typeof evaluationItemQueue.add).toBe('function');
@@ -178,16 +155,6 @@ describe('Evaluation MQ System', () => {
   });
 
   describe('任务添加', () => {
-    test('应该成功添加评估任务到队列', async () => {
-      const jobData = { evalId: evaluationId };
-
-      await addEvaluationTaskJob(jobData);
-
-      expect(evaluationTaskQueue.add).toHaveBeenCalledWith(evaluationId, jobData, {
-        deduplication: { id: evaluationId, ttl: 5000 }
-      });
-    });
-
     test('应该成功添加评估项到队列', async () => {
       const evalItem = await MongoEvalItem.create({
         evalId: new Types.ObjectId(evaluationId),
@@ -300,22 +267,6 @@ describe('Evaluation MQ System', () => {
   });
 
   describe('任务清理', () => {
-    test('应该成功清理评估任务', async () => {
-      const result = await removeEvaluationTaskJob(evaluationId);
-
-      expect(result).toEqual({
-        queue: 'test-queue',
-        totalJobs: 2,
-        removedJobs: 2,
-        failedRemovals: 0,
-        errors: []
-      });
-      expect(addLog.debug).toHaveBeenCalledWith('Evaluation task jobs cleanup completed', {
-        evalId: evaluationId,
-        result
-      });
-    });
-
     test('应该成功清理评估项任务', async () => {
       const result = await removeEvaluationItemJobs(evaluationId);
 
@@ -356,39 +307,23 @@ describe('Evaluation MQ System', () => {
         }
       );
     });
-
-    test('应该支持清理选项', async () => {
-      const options = {
-        forceCleanActiveJobs: true,
-        retryAttempts: 5,
-        retryDelay: 500
-      };
-
-      await removeEvaluationTaskJob(evaluationId, options);
-
-      // 验证选项被传递给了 createJobCleaner
-      const { createJobCleaner } = await import(
-        '@fastgpt/service/core/evaluation/utils/jobCleanup'
-      );
-      expect(createJobCleaner).toHaveBeenCalledWith(options);
-    });
   });
 
   describe('Worker初始化', () => {
-    test('应该创建评估任务Worker', () => {
+    test('应该创建评估项Worker', async () => {
       const mockProcessor = vi.fn();
-      getEvaluationTaskWorker(mockProcessor);
+      const { getWorker } = await import('@fastgpt/service/common/bullmq');
+      (getWorker as any).mockClear();
 
-      // 验证Worker创建函数被调用
-      expect(getEvaluationTaskWorker).toHaveBeenCalledWith(mockProcessor);
-    });
-
-    test('应该创建评估项Worker', () => {
-      const mockProcessor = vi.fn();
       getEvaluationItemWorker(mockProcessor);
 
-      // 验证Worker创建函数被调用
-      expect(getEvaluationItemWorker).toHaveBeenCalledWith(mockProcessor);
+      expect(getWorker).toHaveBeenCalledWith(
+        'evalTaskItem',
+        mockProcessor,
+        expect.objectContaining({
+          concurrency: expect.any(Number)
+        })
+      );
     });
   });
 
