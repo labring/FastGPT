@@ -22,17 +22,19 @@ export const S3SourcesSchema = z.enum(['avatar']);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
-export const CreateObjectKeyParamsSchema = z.object({
-  filename: z.string().min(1),
-  source: S3SourcesSchema.optional(),
-  rawKey: z.string().min(1).optional(),
-  teamId: z.string().length(16).optional()
-});
-export type CreateObjectKeyParams = z.infer<typeof CreateObjectKeyParamsSchema>;
-
-export const CreatePostPresignedUrlParamsSchema = z.object({
-  ...CreateObjectKeyParamsSchema.shape
-});
+export const CreatePostPresignedUrlParamsSchema = z.union([
+  // Option 1: Only rawKey
+  z.object({
+    filename: z.string().min(1),
+    rawKey: z.string().min(1)
+  }),
+  // Option 2: filename with optional source and teamId
+  z.object({
+    filename: z.string().min(1),
+    source: S3SourcesSchema.optional(),
+    teamId: z.string().length(16).optional()
+  })
+]);
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;
 
 export const CreatePostPresignedUrlOptionsSchema = z.object({

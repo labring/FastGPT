@@ -87,18 +87,15 @@ export class S3BaseBucket {
   ): Promise<CreatePostPresignedUrlResult> {
     try {
       const { expiredHours } = options;
-      const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
+      const filename = params.filename;
+      const ext = path.extname(filename).toLowerCase() as ExtensionType;
       const contentType = Mimes[ext] ?? 'application/octet-stream';
       const maxFileSize = this.options.maxFileSize as number;
 
       const key = (() => {
-        const { rawKey, source, teamId } = params;
-        if (rawKey) return rawKey;
+        if ('rawKey' in params) return params.rawKey;
 
-        if (!source || !teamId) {
-          throw new UserError('source and teamId are required');
-        }
-        return `${source}/${teamId}/${getNanoid(16)}`;
+        return `${params.source}/${params.teamId}/${getNanoid(6)}-${filename}`;
       })();
 
       const policy = this.client.newPostPolicy();
@@ -109,8 +106,8 @@ export class S3BaseBucket {
       policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
       policy.setUserMetaData({
         'content-type': contentType,
-        'content-disposition': `attachment; filename="${encodeURIComponent(params.filename)}"`,
-        'origin-filename': encodeURIComponent(params.filename),
+        'content-disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+        'origin-filename': encodeURIComponent(filename),
         'upload-time': new Date().toISOString()
       });
 
