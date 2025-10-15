@@ -5,7 +5,7 @@ import {
   RobustJobCleaner,
   createJobCleaner,
   type JobCleanupOptions
-} from '@fastgpt/service/core/evaluation/utils/jobCleanup';
+} from '@fastgpt/service/core/evaluation/utils/mq';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
