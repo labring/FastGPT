@@ -5,6 +5,8 @@ function embedChatbot() {
   const botSrc = script?.getAttribute('data-bot-src');
   const defaultOpen = script?.getAttribute('data-default-open') === 'true';
   const canDrag = script?.getAttribute('data-drag') === 'true';
+  const heightPercent = script?.getAttribute('data-height-percent') || '80';
+  const aspectRatio = script?.getAttribute('data-aspect-ratio') || '9:16';
   const MessageIcon =
     script?.getAttribute('data-open-icon') ||
     `data:image/svg+xml;base64,PHN2ZyB0PSIxNjkwNTMyNzg1NjY0IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjQxMzIiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj48cGF0aCBkPSJNNTEyIDMyQzI0Ny4wNCAzMiAzMiAyMjQgMzIgNDY0QTQxMC4yNCA0MTAuMjQgMCAwIDAgMTcyLjQ4IDc2OEwxNjAgOTY1LjEyYTI1LjI4IDI1LjI4IDAgMCAwIDM5LjA0IDIyLjRsMTY4LTExMkE1MjguNjQgNTI4LjY0IDAgMCAwIDUxMiA4OTZjMjY0Ljk2IDAgNDgwLTE5MiA0ODAtNDMyUzc3Ni45NiAzMiA1MTIgMzJ6IG0yNDQuOCA0MTZsLTM2MS42IDMwMS43NmExMi40OCAxMi40OCAwIDAgMS0xOS44NC0xMi40OGw1OS4yLTIzMy45MmgtMTYwYTEyLjQ4IDEyLjQ4IDAgMCAxLTcuMzYtMjMuMzZsMzYxLjYtMzAxLjc2YTEyLjQ4IDEyLjQ4IDAgMCAxIDE5Ljg0IDEyLjQ4bC01OS4yIDIzMy45MmgxNjBhMTIuNDggMTIuNDggMCAwIDEgOCAyMi4wOHoiIGZpbGw9IiM0ZTgzZmQiIHAtaWQ9IjQxMzMiPjwvcGF0aD48L3N2Zz4=`;
@@ -37,8 +39,31 @@ function embedChatbot() {
   iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;
   iframe.src = botSrc;
-  iframe.style.cssText =
-    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
+  // 计算实际尺寸
+  const calculateDimensions = () => {
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const [ratioWidth, ratioHeight] = aspectRatio.split(':').map(Number);
+
+    // 根据窗口高度百分比计算高度
+    const height = Math.floor(vh * (parseInt(heightPercent) / 100));
+
+    // 根据宽高比计算宽度
+    const width = Math.floor(height * (ratioWidth / ratioHeight));
+
+    // 确保不超过视窗限制
+    const maxWidth = Math.floor(vw * 0.9);
+    const maxHeight = Math.floor(vh * 0.85);
+
+    const finalWidth = Math.min(width, maxWidth);
+    const finalHeight = Math.min(height, maxHeight);
+
+    return { width: finalWidth, height: finalHeight };
+  };
+
+  const { width: iframeWidth, height: iframeHeight } = calculateDimensions();
+
+  iframe.style.cssText = `border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: ${iframeWidth}px; height: ${iframeHeight}px; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;`;
   iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
 
   document.body.appendChild(iframe);
@@ -66,12 +91,12 @@ function embedChatbot() {
   const updateChatWindowPosition = () => {
     const chatWindow = document.getElementById(chatWindowId);
     const btn = ChatBtn.getBoundingClientRect();
-    const [vw, vh, ww, wh] = [
-      window.innerWidth,
-      window.innerHeight,
-      chatWindow.offsetWidth,
-      chatWindow.offsetHeight
-    ];
+    const [vw, vh] = [window.innerWidth, window.innerHeight];
+
+    // 重新计算窗口尺寸（响应式）
+    const { width: ww, height: wh } = calculateDimensions();
+    chatWindow.style.width = `${ww}px`;
+    chatWindow.style.height = `${wh}px`;
 
     let right = 0;
     if (btn.left >= ww) {
@@ -145,5 +170,8 @@ function embedChatbot() {
   ChatBtn.appendChild(ChatBtnDiv);
   document.body.appendChild(ChatBtn);
   updateChatWindowPosition();
+
+  // 监听窗口大小变化，响应式调整
+  window.addEventListener('resize', updateChatWindowPosition);
 }
 window.addEventListener('load', embedChatbot);

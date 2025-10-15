@@ -2,7 +2,17 @@ import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import React, { useCallback, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, type FlexProps, Grid, ModalBody, Switch, useTheme } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  type FlexProps,
+  Grid,
+  Input,
+  ModalBody,
+  Select,
+  Switch,
+  useTheme
+} from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -46,12 +56,21 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
 
   const [refresh, setRefresh] = useState(false);
 
+  // 宽高比配置选项
+  const aspectRatioOptions = [
+    { label: t('common:core.app.outLink.AspectRatio.Mobile'), value: '9:16' },
+    { label: t('common:core.app.outLink.AspectRatio.Desktop'), value: '12:16' },
+    { label: t('common:core.app.outLink.AspectRatio.Wide'), value: '15:16' }
+  ];
+
   const { getValues, setValue, register, watch } = useForm({
     defaultValues: {
       usingWay: UsingWayEnum.link,
       showHistory: true,
       scriptIconCanDrag: false,
       scriptDefaultOpen: false,
+      scriptHeightPercent: 80,
+      scriptAspectRatio: '9:16',
       scriptOpenIcon:
         'data:image/svg+xml;base64,PHN2ZyB0PSIxNjkwNTMyNzg1NjY0IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjQxMzIiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj48cGF0aCBkPSJNNTEyIDMyQzI0Ny4wNCAzMiAzMiAyMjQgMzIgNDY0QTQxMC4yNCA0MTAuMjQgMCAwIDAgMTcyLjQ4IDc2OEwxNjAgOTY1LjEyYTI1LjI4IDI1LjI4IDAgMCAwIDM5LjA0IDIyLjRsMTY4LTExMkE1MjguNjQgNTI4LjY0IDAgMCAwIDUxMiA4OTZjMjY0Ljk2IDAgNDgwLTE5MiA0ODAtNDMyUzc3Ni45NiAzMiA1MTIgMzJ6IG0yNDQuOCA0MTZsLTM2MS42IDMwMS43NmExMi40OCAxMi40OCAwIDAgMS0xOS44NC0xMi40OGw1OS4yLTIzMy45MmgtMTYwYTEyLjQ4IDEyLjQ4IDAgMCAxLTcuMzYtMjMuMzZsMzYxLjYtMzAxLjc2YTEyLjQ4IDEyLjQ4IDAgMCAxIDE5Ljg0IDEyLjQ4bC01OS4yIDIzMy45MmgxNjBhMTIuNDggMTIuNDggMCAwIDEgOCAyMi4wOHoiIGZpbGw9IiM0ZTgzZmQiIHAtaWQ9IjQxMzMiPjwvcGF0aD48L3N2Zz4=',
       scriptCloseIcon:
@@ -102,6 +121,8 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
   data-bot-src="${linkUrl}" 
   data-default-open="${getValues('scriptDefaultOpen') ? 'true' : 'false'}"
   data-drag="${getValues('scriptIconCanDrag') ? 'true' : 'false'}"
+  data-height-percent="${getValues('scriptHeightPercent') || 80}"
+  data-aspect-ratio="${getValues('scriptAspectRatio') || '9:16'}"
   data-open-icon="${getValues('scriptOpenIcon')}"
   data-close-icon="${getValues('scriptCloseIcon')}"
   defer
@@ -159,6 +180,29 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
               <Flex {...gridItemStyle}>
                 <Box flex={1}>{t('common:core.app.outLink.Default open')}</Box>
                 <Switch {...register('scriptDefaultOpen')} />
+              </Flex>
+              <Flex {...gridItemStyle}>
+                <Box flex={1}>{t('common:core.app.outLink.HeightPercent')} (%)</Box>
+                <Input
+                  {...register('scriptHeightPercent', {
+                    valueAsNumber: true,
+                    min: 30,
+                    max: 95
+                  })}
+                  type="number"
+                  w={'100px'}
+                  placeholder="80"
+                />
+              </Flex>
+              <Flex {...gridItemStyle}>
+                <Box flex={1}>{t('common:core.app.outLink.AspectRatio')}</Box>
+                <Select {...register('scriptAspectRatio')} w={'120px'} size="sm">
+                  {aspectRatioOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </Flex>
               <Flex {...gridItemStyle}>
                 <Box flex={1}>{t('common:core.app.outLink.Script Open Icon')}</Box>
