@@ -70,7 +70,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   placement={'auto'}
                   label={collection.tableSchema?.description}
                 >
-                  <Text>{collection.tableSchema?.description}</Text>
+                  <Text className={'textEllipsis'}>{collection.tableSchema?.description}</Text>
                 </MyTooltip>
               </Td>
               <Td fontSize={'xs'} py={2} color={'myGray.500'}>
