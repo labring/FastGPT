@@ -152,7 +152,7 @@ export default function Editor({
                 fontSize={'mini'}
                 userSelect={'none'}
                 whiteSpace={'pre-wrap'}
-                wordBreak={'break-all'}
+                wordBreak={'break-word'}
                 h={'100%'}
               >
                 {placeholder}
