@@ -95,7 +95,7 @@
   "dataset_collection_id_required": "Dataset ID is required.",
   "dataset_collection_update_failed": "Failed to update dataset.",
   "dataset_model_not_found": "Model not found.",
-  "dataset_no_data": "The dataset is empty.",
+  "dataset_no_data": "No dataset yet.",
   "dataset_data_id_required": "Data ID is required.",
   "data_quality_status_invalid": "The data quality is invalid.",
   "dataset_data_user_input_required": "Question is required.",

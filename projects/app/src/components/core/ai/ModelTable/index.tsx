@@ -69,14 +69,14 @@ const ModelTable = () => {
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                 {item.inputPrice || 0}
               </Box>
-              {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+              {`${t('common:support.wallet.subscription.point')}/1K tokens`}
             </Flex>
             <Flex>
               {`${t('common:Output')}: `}
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                 {item.outputPrice || 0}
               </Box>
-              {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+              {`${t('common:support.wallet.subscription.point')}/1K tokens`}
             </Flex>
           </Box>
         ) : (
@@ -84,7 +84,7 @@ const ModelTable = () => {
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
               {item.charsPointsPrice || 0}
             </Box>
-            {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+            {`${t('common:support.wallet.subscription.point')}/1K tokens`}
           </Flex>
         ),
       tagColor: 'blue'
@@ -98,7 +98,7 @@ const ModelTable = () => {
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
             {item.charsPointsPrice || 0}
           </Box>
-          {` ${t('common:support.wallet.subscription.point')}/1K Tokens`}
+          {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
         </Flex>
       ),
       tagColor: 'yellow'
@@ -138,7 +138,7 @@ const ModelTable = () => {
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
             {item.charsPointsPrice}
           </Box>
-          {` ${t('common:support.wallet.subscription.point')}/1K Tokens`}
+          {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
         </Flex>
       ) : (
         '-'

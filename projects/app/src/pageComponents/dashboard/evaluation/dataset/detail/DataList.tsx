@@ -321,7 +321,7 @@ const DataListContent = () => {
                 {t('dashboard_evaluation:settings')}
               </Button>
               <Button h={'36px'} variant={'whitePrimary'} onClick={onQualityEvaluationModalOpen}>
-                {t('dashboard_evaluation:quality_evaluation')}
+                {t('dashboard_evaluation:quality_evaluation_btn_text')}
               </Button>
               <MyMenu
                 Button={

@@ -18,7 +18,7 @@
   "detail": "Details",
   "email_address": "Email address",
   "extra_ai_points": "Additional credits",
-  "extra_dataset_size": "Additional knowledge base indexes",
+  "extra_dataset_size": "Additional knowledge base index capacity",
   "generation_time": "Time generated",
   "has_invoice": "Invoice issued",
   "invoice_amount": "Invoice amount",

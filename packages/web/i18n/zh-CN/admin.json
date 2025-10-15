@@ -621,5 +621,7 @@
   "platform_certificate_serial_mismatch": "平台证书序列号不相符",
   "extra_knowledge_base_storage": "额外知识库存储",
   "image_compression_error": "压缩图片异常",
-  "image_too_large": "图片太大了"
+  "image_too_large": "图片太大了",
+  "password_min_length": "密码至少 8 位",
+  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
 }
