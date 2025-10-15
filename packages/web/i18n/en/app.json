@@ -174,7 +174,7 @@
   "module.No Modules": "Plugin not found.",
   "module.type": "{{type}} type\n{{description}}",
   "modules.Title is required": "Module name is required.",
-  "month.unit": "Day",
+  "month.unit": "",
   "move.hint": "If moved, the app or folder will inherit the permissions of the destination folder, invalidating its current permissions.",
   "move_app": "Move",
   "no_mcp_tools_list": "No data available. The MCP address must be parsed first.",
