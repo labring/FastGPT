@@ -19,7 +19,6 @@ import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 
 // Mock all external dependencies
 vi.mock('@fastgpt/service/common/system/log');
-vi.mock('@fastgpt/service/core/evaluation/task/mq');
 vi.mock('@fastgpt/service/core/evaluation/target');
 vi.mock('@fastgpt/service/core/evaluation/evaluator');
 vi.mock('@fastgpt/service/support/permission/teamLimit');
@@ -34,7 +33,9 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
     add: vi.fn().mockResolvedValue({ id: 'test-job-id' }),
     addBulk: vi.fn().mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }]),
     getJob: vi.fn(),
-    getJobs: vi.fn().mockResolvedValue([])
+    getJobs: vi.fn().mockResolvedValue([]),
+    isPaused: vi.fn().mockResolvedValue(false),
+    getWaiting: vi.fn().mockResolvedValue([])
   })),
   getWorker: vi.fn(() => ({
     on: vi.fn()
@@ -47,7 +48,7 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
 
 import {
   finishEvaluationTask,
-  evaluationTaskProcessor,
+  enqueueEvaluationItems,
   evaluationItemProcessor
 } from '@fastgpt/service/core/evaluation/task/processor';
 
@@ -158,7 +159,6 @@ describe('EvaluationTaskProcessor', () => {
     evaluationId = evaluation._id.toString();
 
     // Setup mocks
-    const { addEvaluationItemJobs } = await import('@fastgpt/service/core/evaluation/task/mq');
     const { createTargetInstance } = await import('@fastgpt/service/core/evaluation/target');
     const { createEvaluatorInstance } = await import('@fastgpt/service/core/evaluation/evaluator');
     const { checkTeamAIPoints } = await import('@fastgpt/service/support/permission/teamLimit');
@@ -170,10 +170,15 @@ describe('EvaluationTaskProcessor', () => {
     );
     const { createEvaluationError } = await import('@fastgpt/service/core/evaluation/task/errors');
 
-    (addEvaluationItemJobs as any).mockResolvedValue(undefined);
     (checkTeamAIPoints as any).mockResolvedValue(undefined);
     (createMergedEvaluationUsage as any).mockResolvedValue(undefined);
-    (getEvaluationTaskStats as any).mockResolvedValue(new Map());
+    (getEvaluationTaskStats as any).mockResolvedValue({
+      total: 0,
+      completed: 0,
+      evaluating: 0,
+      queuing: 0,
+      error: 0
+    });
     (createEvaluationError as any).mockImplementation((error: any) => new Error(error));
 
     // Mock target instance
@@ -380,10 +385,9 @@ describe('EvaluationTaskProcessor', () => {
     });
   });
 
-  describe('evaluationTaskProcessor', () => {
-    test('应该成功处理评估任务（已有评估项目）', async () => {
-      // 创建现有评估项目
-      const existingItems = await MongoEvalItem.create([
+  describe('enqueueEvaluationItems', () => {
+    test('应该提交评估项到队列', async () => {
+      await MongoEvalItem.create([
         {
           evalId: new Types.ObjectId(evaluationId),
           dataItem: { userInput: 'Q1', expectedOutput: 'A1' }
@@ -394,41 +398,18 @@ describe('EvaluationTaskProcessor', () => {
         }
       ]);
 
-      const { getEvaluationTaskStats } = await import(
-        '@fastgpt/service/core/evaluation/task/statusCalculator'
-      );
-      (getEvaluationTaskStats as any).mockResolvedValue({
-        total: 2,
-        completed: 0,
-        evaluating: 0,
-        queuing: 2,
-        error: 0
-      });
+      await enqueueEvaluationItems(evaluationId);
 
-      const mockJob = {
-        data: { evalId: evaluationId }
-      };
-
-      await evaluationTaskProcessor(mockJob as any);
-
-      const { addEvaluationItemJobs } = await import('@fastgpt/service/core/evaluation/task/mq');
-      expect(addEvaluationItemJobs).toHaveBeenCalled();
+      const { evaluationItemQueue } = await import('@fastgpt/service/core/evaluation/task/mq');
+      expect(evaluationItemQueue.addBulk).toHaveBeenCalled();
     });
 
     test('应该处理评估任务不存在的情况', async () => {
       const nonExistentId = new Types.ObjectId().toString();
-      const mockJob = {
-        data: { evalId: nonExistentId }
-      };
-
-      await evaluationTaskProcessor(mockJob as any);
-
-      const { addLog } = await import('@fastgpt/service/common/system/log');
-      expect(addLog.warn).toHaveBeenCalledWith(expect.stringContaining('no longer exists'));
+      await expect(enqueueEvaluationItems(nonExistentId)).rejects.toThrow();
     });
 
     test('应该验证目标配置', async () => {
-      // 创建无效目标配置的评估任务
       const invalidEvaluationDoc = new MongoEvaluation({
         teamId: new Types.ObjectId(teamId),
         tmbId: new Types.ObjectId(tmbId),
@@ -437,26 +418,18 @@ describe('EvaluationTaskProcessor', () => {
         evalDatasetCollectionId: new Types.ObjectId(evalDatasetCollectionId),
         target: {
           type: 'workflow'
-          // 缺少 config 字段
         } as any,
         evaluators: evaluators,
         usageId: new Types.ObjectId(),
         status: EvaluationStatusEnum.queuing,
         createTime: new Date()
       });
-
-      // Save without validation to test the processor's validation logic
       const invalidEvaluation = await invalidEvaluationDoc.save({ validateBeforeSave: false });
 
-      const mockJob = {
-        data: { evalId: invalidEvaluation._id.toString() }
-      };
-
-      await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
+      await expect(enqueueEvaluationItems(invalidEvaluation._id.toString())).rejects.toThrow();
     });
 
     test('应该验证评估器配置', async () => {
-      // 创建无效评估器配置的评估任务
       const invalidEvaluation = await MongoEvaluation.create({
         teamId: new Types.ObjectId(teamId),
         tmbId: new Types.ObjectId(tmbId),
@@ -464,21 +437,16 @@ describe('EvaluationTaskProcessor', () => {
         description: 'Evaluation with invalid evaluators',
         evalDatasetCollectionId: new Types.ObjectId(evalDatasetCollectionId),
         target,
-        evaluators: [], // 空评估器
+        evaluators: [],
         usageId: new Types.ObjectId(),
         status: EvaluationStatusEnum.queuing,
         createTime: new Date()
       });
 
-      const mockJob = {
-        data: { evalId: invalidEvaluation._id.toString() }
-      };
-
-      await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
+      await expect(enqueueEvaluationItems(invalidEvaluation._id.toString())).rejects.toThrow();
     });
 
     test('应该处理数据集为空的情况', async () => {
-      // 创建空数据集
       const emptyDataset = await MongoEvalDatasetCollection.create({
         teamId: new Types.ObjectId(teamId),
         tmbId: new Types.ObjectId(tmbId),
@@ -499,11 +467,7 @@ describe('EvaluationTaskProcessor', () => {
         createTime: new Date()
       });
 
-      const mockJob = {
-        data: { evalId: emptyEvaluation._id.toString() }
-      };
-
-      await expect(evaluationTaskProcessor(mockJob as any)).rejects.toThrow();
+      await expect(enqueueEvaluationItems(emptyEvaluation._id.toString())).rejects.toThrow();
     });
   });
 

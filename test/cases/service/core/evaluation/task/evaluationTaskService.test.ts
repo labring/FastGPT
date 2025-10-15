@@ -14,21 +14,39 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 import { CalculateMethodEnum } from '@fastgpt/global/core/evaluation/constants';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
+const { addMock, addBulkMock } = vi.hoisted(() => ({
+  addMock: vi.fn().mockResolvedValue({ id: 'test-job-id' }),
+  addBulkMock: vi.fn().mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }])
+}));
+
 // Mock all external dependencies
-vi.mock('@fastgpt/service/core/evaluation/task/mq');
 vi.mock('@fastgpt/service/support/wallet/usage/controller');
 vi.mock('@fastgpt/service/common/system/log');
 vi.mock('@fastgpt/service/core/evaluation/summary/util/weightCalculator');
 vi.mock('@fastgpt/service/core/evaluation/task/statusCalculator');
 vi.mock('@fastgpt/service/core/evaluation/summary/queue');
+vi.mock('@fastgpt/service/core/evaluation/utils/mq', () => ({
+  createJobCleaner: vi.fn(() => ({
+    cleanAllJobsByFilter: vi.fn().mockResolvedValue({
+      queue: 'test-queue',
+      totalJobs: 0,
+      removedJobs: 0,
+      failedRemovals: 0,
+      errors: []
+    })
+  })),
+  checkBullMQHealth: vi.fn().mockResolvedValue(true)
+}));
 
 // Mock BullMQ
 vi.mock('@fastgpt/service/common/bullmq', () => ({
   getQueue: vi.fn(() => ({
-    add: vi.fn().mockResolvedValue({ id: 'test-job-id' }),
-    addBulk: vi.fn().mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }]),
+    add: addMock,
+    addBulk: addBulkMock,
     getJob: vi.fn(),
-    getJobs: vi.fn().mockResolvedValue([])
+    getJobs: vi.fn().mockResolvedValue([]),
+    isPaused: vi.fn().mockResolvedValue(false),
+    getWaiting: vi.fn().mockResolvedValue([])
   })),
   getWorker: vi.fn(() => ({
     on: vi.fn()
@@ -106,6 +124,10 @@ describe('EvaluationTaskService Integration Tests', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    addMock.mockReset();
+    addBulkMock.mockReset();
+    addMock.mockResolvedValue({ id: 'test-job-id' });
+    addBulkMock.mockResolvedValue([{ id: 'bulk-job-1' }, { id: 'bulk-job-2' }]);
 
     // Setup test data
     const dataset = await MongoEvalDatasetCollection.create({
@@ -171,8 +193,6 @@ describe('EvaluationTaskService Integration Tests', () => {
     const { buildEvalDataConfig } = await import(
       '@fastgpt/service/core/evaluation/summary/util/weightCalculator'
     );
-    const { removeEvaluationTaskJob, removeEvaluationItemJobs, addEvaluationTaskJob } =
-      await import('@fastgpt/service/core/evaluation/task/mq');
     const { removeEvaluationSummaryJobs } = await import(
       '@fastgpt/service/core/evaluation/summary/queue'
     );
@@ -212,23 +232,11 @@ describe('EvaluationTaskService Integration Tests', () => {
       };
     });
 
-    // Mock BullMQ operations to resolve immediately
-    (removeEvaluationTaskJob as any).mockResolvedValue({
-      removed: 1,
-      failed: 0,
-      activeJobsCleaned: 0
-    });
-    (removeEvaluationItemJobs as any).mockResolvedValue({
-      removed: 1,
-      failed: 0,
-      activeJobsCleaned: 0
-    });
     (removeEvaluationSummaryJobs as any).mockResolvedValue({
       removed: 1,
       failed: 0,
       activeJobsCleaned: 0
     });
-    (addEvaluationTaskJob as any).mockResolvedValue(undefined);
   });
 
   describe('基本CRUD操作', () => {
@@ -266,6 +274,41 @@ describe('EvaluationTaskService Integration Tests', () => {
       expect(evaluation.teamId.toString()).toBe(teamId);
       expect(evaluation.tmbId.toString()).toBe(tmbId);
       expect(Types.ObjectId.isValid(evaluation.usageId)).toBe(true);
+    });
+
+    test('自动启动任务会在提交后入队评估项', async () => {
+      addBulkMock.mockImplementationOnce(async (jobs) => {
+        expect(jobs).toHaveLength(2);
+        const evalItemIds = jobs.map((job: any) => job.data.evalItemId);
+        const foundItems = await MongoEvalItem.find({
+          _id: { $in: evalItemIds.map((id: string) => new Types.ObjectId(id)) }
+        });
+        expect(foundItems).toHaveLength(2);
+        return jobs.map((_, index) => ({ id: `bulk-job-${index + 1}` }));
+      });
+
+      const params: CreateEvaluationParams = {
+        name: 'AutoStart Evaluation',
+        description: 'Evaluation with autoStart enabled',
+        evalDatasetCollectionId,
+        target,
+        evaluators: evaluators,
+        autoStart: true
+      };
+
+      const evaluation = await retryOnLockError(() =>
+        EvaluationTaskService.createEvaluation({
+          ...params,
+          teamId: teamId,
+          tmbId: tmbId
+        })
+      );
+
+      expect(addBulkMock).toHaveBeenCalledTimes(1);
+      const queuedJobs = addBulkMock.mock.calls[0][0];
+      expect(queuedJobs.every((job: any) => job.data.evalId === evaluation._id.toString())).toBe(
+        true
+      );
     });
 
     test('应该成功获取评估任务', async () => {

@@ -262,3 +262,15 @@ export class RobustJobCleaner {
 export const createJobCleaner = (options?: JobCleanupOptions): RobustJobCleaner => {
   return new RobustJobCleaner(options);
 };
+
+export const checkBullMQHealth = async (queue: Queue, queueName: string): Promise<void> => {
+  try {
+    await queue.isPaused();
+    await queue.getWaiting(0, 0);
+  } catch (error) {
+    addLog.error(`BullMQ ${queueName} queue health check failed:`, error);
+    throw new Error(
+      `BullMQ ${queueName} queue is not responding. Please check Redis connection and queue status.`
+    );
+  }
+};

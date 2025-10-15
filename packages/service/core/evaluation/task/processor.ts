@@ -1,11 +1,7 @@
 import { addLog } from '../../../common/system/log';
 import type { Job } from '../../../common/bullmq';
-import type {
-  EvaluationTaskJobData,
-  EvaluationItemJobData,
-  TargetOutput
-} from '@fastgpt/global/core/evaluation/type';
-import { getEvaluationItemWorker, getEvaluationTaskWorker, addEvaluationItemJobs } from './mq';
+import type { EvaluationItemJobData, TargetOutput } from '@fastgpt/global/core/evaluation/type';
+import { getEvaluationItemWorker, addEvaluationItemJobs } from './mq';
 import { MongoEvaluation, MongoEvalItem } from './schema';
 import { createTargetInstance } from '../target';
 import { createEvaluatorInstance } from '../evaluator';
@@ -18,7 +14,6 @@ import { createMergedEvaluationUsage } from '../utils/usage';
 import { EvaluationSummaryService } from '../summary';
 import { createEvaluationError } from './errors';
 import { getEvaluationTaskStats } from './statusCalculator';
-
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
@@ -90,19 +85,13 @@ export const finishEvaluationTask = async (evalId: string) => {
   }
 };
 
-/**
- * Process evaluation task: validate config and submit items to queue
- */
-const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
-  const { evalId } = job.data;
-
+export const enqueueEvaluationItems = async (evalId: string) => {
   // Get evaluation data
   const evaluation = await MongoEvaluation.findById(evalId).lean();
 
   // Skip if task doesn't exist
   if (!evaluation) {
-    addLog.warn(`[Evaluation] Task ${evalId} no longer exists, skipping`);
-    return;
+    throw createEvaluationError(EvaluationErrEnum.evalTaskNotFound, 'ResourceCheck');
   }
 
   addLog.debug(`[Evaluation] Task ${evalId} now evaluating`);
@@ -117,7 +106,8 @@ const evaluationTaskProcessor = async (job: Job<EvaluationTaskJobData>) => {
   }
 
   // Check if evaluation items exist
-  const existingItems = await MongoEvalItem.find({ evalId }).lean();
+  let existingItems = await MongoEvalItem.find({ evalId }).lean();
+
   if (existingItems.length === 0) {
     throw createEvaluationError(EvaluationErrEnum.evalItemNotFound, 'ResourceCheck');
   }
@@ -346,12 +336,8 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 };
 
 /**
- * Initialize evaluation task workers
+ * Initialize evaluation item workers
  */
-export const initEvalTaskWorker = () => {
-  return getEvaluationTaskWorker(evaluationTaskProcessor);
-};
-
 export const initEvalTaskItemWorker = () => {
   return getEvaluationItemWorker(evaluationItemProcessor);
 };
@@ -359,4 +345,4 @@ export const initEvalTaskItemWorker = () => {
 /**
  * Export processors for testing
  */
-export { evaluationTaskProcessor, evaluationItemProcessor };
+export { evaluationItemProcessor };

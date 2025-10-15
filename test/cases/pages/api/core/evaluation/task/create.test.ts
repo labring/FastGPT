@@ -52,7 +52,8 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
   MongoEvalDatasetCollection: {
     findOne: vi.fn()
-  }
+  },
+  EvalDatasetCollectionName: 'eval_dataset_collections'
 }));
 
 describe('Create Evaluation Task API Handler', () => {
