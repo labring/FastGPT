@@ -24,11 +24,17 @@ export async function clearExpiredMinioFiles() {
       try {
         const bucketName = file.bucketName as keyof typeof S3BucketMap;
         const bucket = S3BucketMap[bucketName];
-        await bucket.delete(file.minioKey);
-        await MongoS3TTL.deleteOne({ _id: file._id });
+        if (bucket) {
+          await bucket.delete(file.minioKey);
+          await MongoS3TTL.deleteOne({ _id: file._id });
 
-        success++;
-        addLog.info(`Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`);
+          success++;
+          addLog.info(
+            `Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`
+          );
+        } else {
+          addLog.warn(`Bucket not found: ${file.bucketName}`);
+        }
       } catch (error) {
         fail++;
         addLog.error(`Failed to delete minio file: ${file.minioKey}`, error);
