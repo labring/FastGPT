@@ -109,23 +109,6 @@ const getIdFromPath = (path?: string) => {
 
   return id;
 };
-// 删除旧的头像，新的头像去除过期时间
-export const refreshSourceAvatar = async (
-  path?: string,
-  oldPath?: string,
-  session?: ClientSession
-) => {
-  const newId = getIdFromPath(path);
-  const oldId = getIdFromPath(oldPath);
-
-  if (!newId || newId === oldId) return;
-
-  await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
-
-  if (oldId) {
-    await MongoImage.deleteOne({ _id: oldId }, { session });
-  }
-};
 export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!path) return;
 

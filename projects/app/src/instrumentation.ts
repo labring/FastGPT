@@ -21,7 +21,8 @@ export async function register() {
         { loadSystemModels },
         { connectSignoz },
         { getSystemTools },
-        { trackTimerProcess }
+        { trackTimerProcess },
+        { initS3Buckets }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -36,7 +37,8 @@ export async function register() {
         import('@fastgpt/service/core/ai/config/utils'),
         import('@fastgpt/service/common/otel/trace/register'),
         import('@fastgpt/service/core/app/plugin/controller'),
-        import('@fastgpt/service/common/middle/tracks/processor')
+        import('@fastgpt/service/common/middle/tracks/processor'),
+        import('@fastgpt/service/common/s3')
       ]);
 
       // connect to signoz
@@ -45,6 +47,9 @@ export async function register() {
       // 执行初始化流程
       systemStartCb();
       initGlobalVariables();
+
+      // init s3 buckets
+      initS3Buckets();
 
       // Connect to MongoDB
       await connectMongo({
