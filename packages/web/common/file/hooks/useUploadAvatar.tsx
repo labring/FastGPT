@@ -41,8 +41,10 @@ export const useUploadAvatar = (
         const formData = new FormData();
         Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
         formData.set('file', compressed);
-        await fetch(url, { method: 'POST', body: formData }); // 204
-        onSuccess?.(`${imageBaseUrl}${fields.key}`);
+        const res = await fetch(url, { method: 'POST', body: formData }); // 204
+        if (res.ok && res.status === 204) {
+          onSuccess?.(`${imageBaseUrl}${fields.key}`);
+        }
       });
     },
     [t, toast, api, onSuccess]

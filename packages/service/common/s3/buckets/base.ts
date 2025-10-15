@@ -11,6 +11,7 @@ import { defaultS3Options, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import crypto from 'node:crypto';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -83,42 +84,51 @@ export class S3BaseBucket {
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
-    const { expiredHours } = options;
-    const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
-    const contentType = Mimes[ext] ?? 'application/octet-stream';
-    const maxFileSize = this.options.maxFileSize as number;
+    try {
+      const { expiredHours } = options;
+      const ext = path.extname(params.filename).toLowerCase() as ExtensionType;
+      const contentType = Mimes[ext] ?? 'application/octet-stream';
+      const maxFileSize = this.options.maxFileSize as number;
 
-    const key = (() => {
-      const { rawKey, source, teamId } = params;
-      return rawKey ?? `${source}/${teamId}/${crypto.randomBytes(16).toString('hex')}`;
-    })();
+      const key = (() => {
+        const { rawKey, source, teamId } = params;
+        if (rawKey) return rawKey;
 
-    const policy = this.client.newPostPolicy();
-    policy.setKey(key);
-    policy.setBucket(this.name);
-    policy.setContentType(contentType);
-    policy.setContentLengthRange(1, maxFileSize);
-    policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
-    policy.setUserMetaData({
-      'content-type': contentType,
-      'content-disposition': `attachment; filename="${encodeURIComponent(params.filename)}"`,
-      'origin-filename': encodeURIComponent(params.filename),
-      'upload-time': new Date().toISOString()
-    });
+        if (!source || !teamId) {
+          throw new UserError('source and teamId are required');
+        }
+        return `${source}/${teamId}/${crypto.randomBytes(16).toString('hex')}`;
+      })();
 
-    const { formData, postURL } = await this.client.presignedPostPolicy(policy);
-
-    if (expiredHours) {
-      await MongoS3TTL.create({
-        minioKey: key,
-        bucketName: this.name,
-        expiredTime: new Date(Date.now() + expiredHours * 3.6e6)
+      const policy = this.client.newPostPolicy();
+      policy.setKey(key);
+      policy.setBucket(this.name);
+      policy.setContentType(contentType);
+      policy.setContentLengthRange(1, maxFileSize);
+      policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
+      policy.setUserMetaData({
+        'content-type': contentType,
+        'content-disposition': `attachment; filename="${encodeURIComponent(params.filename)}"`,
+        'origin-filename': encodeURIComponent(params.filename),
+        'upload-time': new Date().toISOString()
       });
-    }
 
-    return {
-      url: postURL,
-      fields: formData
-    };
+      const { formData, postURL } = await this.client.presignedPostPolicy(policy);
+
+      if (expiredHours) {
+        await MongoS3TTL.create({
+          minioKey: key,
+          bucketName: this.name,
+          expiredTime: new Date(Date.now() + expiredHours * 3.6e6)
+        });
+      }
+
+      return {
+        url: postURL,
+        fields: formData
+      };
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 }

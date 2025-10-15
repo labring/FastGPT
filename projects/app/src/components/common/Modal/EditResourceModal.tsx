@@ -44,7 +44,6 @@ const EditResourceModal = ({
 
   const afterUploadAvatar = useCallback(
     (avatar: string) => {
-      console.log('avatar', avatar);
       setValue('avatar', avatar);
     },
     [setValue]
