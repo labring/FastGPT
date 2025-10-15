@@ -88,4 +88,4 @@ export const config = {
   }
 };
 
-export default NextAPI(handler);
+export default NextAPI(handler, { isCSRFCheck: false });

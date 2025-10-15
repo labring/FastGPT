@@ -113,7 +113,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   removeFilesByPaths(filePaths);
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, { isCSRFCheck: false });
 
 export const config = {
   api: {

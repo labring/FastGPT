@@ -130,5 +130,6 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
 
 export default NextAPI(
   useIPFrequencyLimit({ id: 'export-usage', seconds: 60, limit: 1, force: true }),
-  handler
+  handler,
+  { isCSRFCheck: false }
 );
