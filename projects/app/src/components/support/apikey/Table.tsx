@@ -151,7 +151,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
-              <Th>Api Key</Th>
+              <Th>API key</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>

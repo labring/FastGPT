@@ -1,5 +1,14 @@
 import React from 'react';
-import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
+import {
+  ModalBody,
+  Box,
+  Flex,
+  Input,
+  ModalFooter,
+  Button,
+  UnorderedList,
+  ListItem
+} from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -7,6 +16,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 type FormType = {
   oldPsw: string;
@@ -21,7 +31,12 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   // 根据语言设置不同的标签宽度
   const labelWidth = i18n.language === 'en' ? '120px' : '70px';
 
-  const { register, handleSubmit, getValues } = useForm<FormType>({
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors }
+  } = useForm<FormType>({
     defaultValues: {
       oldPsw: '',
       newPsw: '',
@@ -48,7 +63,6 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       });
     }
   };
-
   return (
     <MyModal
       isOpen
@@ -68,20 +82,30 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
           <Box flex={`0 0 ${labelWidth}`} mr={3} fontSize={'sm'} minWidth="70px">
             {t('account_info:new_password') + ':'}
           </Box>
-          <Input
-            flex={1}
-            type={'password'}
-            placeholder={t('account_info:password_tip')}
-            {...register('newPsw', {
-              required: true,
-              validate: (val) => {
-                if (!checkPasswordRule(val)) {
-                  return t('login:password_tip');
+          <MyTooltip
+            shouldWrapChildren={false}
+            label={
+              <UnorderedList>
+                <ListItem>{t('account_info:password_min_length')}</ListItem>
+                <ListItem>{t('account_info:password_requirement')}</ListItem>
+              </UnorderedList>
+            }
+          >
+            <Input
+              flex={1}
+              isInvalid={!!errors.newPsw}
+              type={'password'}
+              {...register('newPsw', {
+                required: true,
+                validate: (val) => {
+                  if (!checkPasswordRule(val)) {
+                    return t('login:password_tip');
+                  }
+                  return true;
                 }
-                return true;
-              }
-            })}
-          ></Input>
+              })}
+            ></Input>
+          </MyTooltip>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={`0 0 ${labelWidth}`} mr={3} fontSize={'sm'} minWidth="70px">
@@ -101,7 +125,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           {t('account_info:cancel')}
         </Button>
-        <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data), onSubmitErr)}>
+        <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
           {t('account_info:confirm')}
         </Button>
       </ModalFooter>
