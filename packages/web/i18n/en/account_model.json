@@ -41,7 +41,8 @@
   "detail": "Details",
   "duration": "Time taken",
   "edit": "Edit",
-  "edit_channel": "Add channel",
+  "add_channel": "Add channel",
+  "edit_channel": "Channel settings",
   "enable_channel": "Enable",
   "forbid_channel": "Disable",
   "input": "Input",
@@ -90,6 +91,6 @@
   "vlm_model_tip": "Generates additional indexes for images in documents within the knowledge base.",
   "volunme_of_failed_calls": "Failed calls",
   "waiting_test": "Waiting for test",
-  "evaluation_model": "Model",
+  "evaluation_model": "Evaluation model",
   "evaluation_model_tip": "Used to evaluate apps and quality of data in datasets."
 }

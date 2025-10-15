@@ -209,6 +209,7 @@
   "enter_reference_answer": "請輸入參考答案",
   "reference_answer_required": "參考答案不能為空",
   "quality_evaluation": "質量測評",
+  "quality_evaluation_btn_text": "質量測評",
   "cancel": "取消",
   "save": "僅保存",
   "save_and_next": "保存並下一個",

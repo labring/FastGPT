@@ -352,7 +352,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
           >
             {/* 第一行 */}
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>RequestID</Title>
+              <Title>Request ID</Title>
               <Container>{detailData?.request_id}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px">

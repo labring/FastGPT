@@ -152,7 +152,7 @@
   "no_audit_records": "No data available.",
   "audit_details": "Audit details",
   "details": "Details",
-  "close": "Disable",
+  "close": "Cancel",
   "total_users": "Users",
   "registered_users": "Registered users",
   "payment_amount": "Total amount",
@@ -181,7 +181,7 @@
   "modify_success": "Modified successfully.",
   "modify_failed": "Modification failed.",
   "send_success": "Sent successfully.",
-  "send_failed": "Sending failed.",
+  "send_failed": "Failed",
   "system_announcement_config": "System announcement",
   "system_announcement_description": "It will pop up after users log in to FastGPT, and will not appear again after being closed. Only 1 announcement is allowed. Supported format: Markdown",
   "send_system_notification": "System notification",
@@ -621,5 +621,7 @@
   "platform_certificate_serial_mismatch": "Certificate serial numbers do not match.",
   "extra_knowledge_base_storage": "Additional knowledge base storage",
   "image_compression_error": "Image compression error occurred.",
-  "image_too_large": "The image size is too large."
+  "image_too_large": "The image size is too large.",
+  "password_min_length": "密码至少 8 位",
+  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
 }

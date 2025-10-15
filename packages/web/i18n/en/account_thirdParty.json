@@ -12,7 +12,7 @@
   "third_party_account": "Third-party accounts",
   "third_party_account.configured": "Configured",
   "third_party_account.not_configured": "Not configured",
-  "third_party_account_desc": "The admin can configure third-party accounts or variables, and these accounts will be available to all team members.",
+  "third_party_account_desc": "The admin can configure third-party accounts, which will be available to all team members.",
   "unavailable": "Failed to obtain usage.",
   "usage": "Usage:",
   "value_not_return_tip": "The configured parameter will not be shared with other members because it will not be returned to the frontend.",

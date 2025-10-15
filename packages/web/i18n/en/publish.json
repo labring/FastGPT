@@ -35,11 +35,11 @@
   "wecom.bot_desc": "Connect to WeCom bot via API",
   "wecom.create_modal_title": "Create WeCom bot",
   "wecom.edit_modal_title": "Edit WeCom bot",
-  "wecom.title": "Publish app via WeCom bot",
+  "wecom.title": "WeCom bots",
   "dingtalk.bot": "DingTalk bot",
   "dingtalk.bot_desc": "Connect to DingTalk bot via API",
   "dingtalk.create_modal_title": "Create DingTalk bot",
   "dingtalk.edit_modal_title": "Edit DingTalk bot",
-  "dingtalk.title": "Publish app via DingTalk bot",
+  "dingtalk.title": "DingTalk bots",
   "dingtalk.api": "DingTalk API"
 }

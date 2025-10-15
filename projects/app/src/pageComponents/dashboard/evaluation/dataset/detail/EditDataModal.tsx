@@ -74,7 +74,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   const defaultQuestion = useMemo(() => formData?.userInput || '', [formData]);
   const defaultReferenceAnswer = useMemo(() => formData?.expectedOutput || '', [formData]);
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [currentEvaluationStatus, setCurrentEvaluationStatus] = useState<string>(
     formData?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated
   );
@@ -401,8 +401,9 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
             <Box borderRadius="full" display="flex" alignItems="center" justifyContent="center">
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             </Box>
-            <Flex fontSize={'14px'}>
+            <Flex fontSize={'14px'} whiteSpace={'break-spaces'}>
               <Text color="gray.500">{t('dashboard_evaluation:no_evaluation_result_click')}</Text>
+              {i18n.language === 'en' ? ' ' : ''}
               <Text
                 as="ins"
                 color="gray.500"

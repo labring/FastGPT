@@ -55,7 +55,7 @@
   "model.reasoning": "Reasoning output",
   "model.reasoning_tip": "For example, Deepseek-reasoner can output the reasoning process.",
   "model.request_auth": "Custom request key",
-  "model.request_auth_tip": "TThe header Authorization: Bearer xxx will be included in the requests sent to the custom request URL.",
+  "model.request_auth_tip": "The header Authorization: Bearer xxx will be included in the requests sent to the custom request URL, where xxx will be replaced by the specified request key.",
   "model.request_url": "Custom request URL",
   "model.request_url_tip": "If specified, requests will be sent directly to this address without going through OneAPI. Follow the OpenAI API format and provide a complete request URL. Example:\nLLM: {{host}}/v1/chat/completions\nEmbedding: {{host}}/v1/embeddings\nSTT: {{host}}/v1/audio/transcriptions\nTTS: {{host}}/v1/audio/speech\nRerank: {{host}}/v1/rerank",
   "model.response_format": "Response format",
@@ -75,12 +75,12 @@
   "model.voices": "Voice role",
   "model.voices_tip": "Configure multiple roles using an array. Example:\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
   "model_provider": "Models",
-  "notifications": "Notification",
+  "notifications": "Notifications",
   "personal_information": "Profile",
   "personalization": "Personalization",
   "promotion_records": "Promotion records",
   "reset_default": "Restore defaults",
   "team": "Teams",
-  "third_party": "Third-party account",
+  "third_party": "Third-party accounts",
   "usage_records": "Usage"
 }

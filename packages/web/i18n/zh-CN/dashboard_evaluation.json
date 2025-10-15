@@ -216,6 +216,7 @@
   "enter_reference_answer": "请输入参考答案",
   "reference_answer_required": "参考答案不能为空",
   "quality_evaluation": "质量评测",
+  "quality_evaluation_btn_text": "质量评测",
   "cancel": "取消",
   "save": "仅保存",
   "save_and_next": "保存并下一个",

@@ -268,7 +268,7 @@ const DatasetParamsModal = ({
                               <Box fontSize={'sm'} color={'myGray.900'}>
                                 {t('common:core.dataset.search.mode.embedding')}
                               </Box>
-                              <Box fontSize={'xs'} color={'myGray.500'}>
+                              <Box ml={1} fontSize={'xs'} color={'myGray.500'}>
                                 {embeddingWeightWatch}
                               </Box>
                             </Flex>
@@ -276,7 +276,7 @@ const DatasetParamsModal = ({
                               <Box fontSize={'sm'} color={'myGray.900'}>
                                 {t('common:core.dataset.search.score.fullText')}
                               </Box>
-                              <Box fontSize={'xs'} color={'myGray.500'}>
+                              <Box ml={1} fontSize={'xs'} color={'myGray.500'}>
                                 {fullTextWeightWatch}
                               </Box>
                             </Flex>

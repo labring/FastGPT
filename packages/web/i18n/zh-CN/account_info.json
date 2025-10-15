@@ -78,5 +78,7 @@
   "user_team_team_name": "团队",
   "verification_code": "验证码",
   "you_can_convert": "您可以兑换",
-  "yuan": "元"
+  "yuan": "元",
+  "password_min_length": "密码至少 8 位",
+  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
 }

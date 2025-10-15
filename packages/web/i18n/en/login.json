@@ -9,7 +9,7 @@
   "no_remind": "Do not show this again",
   "password_condition": "Password cannot exceed 60 characters.",
   "password_tip": "Must be at least 8 characters long and contain at least 2 of the following: digits, letters, and special characters.",
-  "policy_tip": "Your use of this product indicates that you have read and accept the <termsLink>EULA</termsLink> and <privacyLink>DPA</privacyLink>",
+  "policy_tip": "By logging in, you have read and accept the <termsLink>EULA</termsLink> and <privacyLink>DPA</privacyLink>",
   "privacy": "DPA",
   "privacy_policy": "DPA",
   "redirect": "Go now",
