@@ -153,7 +153,7 @@
   "file_import_success": "File imported successfully.",
   "file_import_file_label": "File",
   "file_import_download_template": "Download sample",
-  "file_import_download_template_tip": "一行一个词条，第1列为【提问】，第2列为【答案】，第1行默认为表头，不会作为词条内容。例如：",
+  "file_import_download_template_tip": "One entry per line. First column: Question, Second column: Answer. The first row is the table header by default and will not be included in the entries. Example:",
   "file_import_auto_evaluation_label": "Automatically evaluate the quality of the imported data.",
   "file_import_auto_evaluation_tip": "If enabled, a quality evaluation will be automatically performed on the imported data.",
   "file_import_evaluation_model_label": "Evaluation model",
@@ -373,7 +373,7 @@
   "evaluation_created": "Evaluation task created successfully.",
   "evaluation_dimension_missing_model_config": "Metric configuration incomplete",
   "evaluation_dimension_missing_model_config_desc": "The following metrics are missing model configuration. Please complete the configuration: {{names}}",
-  "example_highest_mountain_question": "世界最高峰是什么",
-  "example_highest_mountain_answer": "珠穆朗玛峰",
-  "data_updated_before_retest": "数据已更新，重新评测前将先自动保存"
+  "example_highest_mountain_question": "What is the highest mountain in the world",
+  "example_highest_mountain_answer": "Mount Everest",
+  "data_updated_before_retest": "Data has been updated and will be automatically saved before evaluation again."
 }
