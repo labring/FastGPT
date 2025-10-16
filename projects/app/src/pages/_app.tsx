@@ -27,6 +27,8 @@ type AppPropsWithLayout = AppProps & {
 
 // 哪些路由有自定义 Head
 const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail/', '/dataset/detail'];
+// 哪些路由不需要 Layout
+const routesWithoutLayout = ['/openapi'];
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -49,6 +51,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
   const router = useRouter();
   const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
+  const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
 
   if (router.pathname === '/openapi') {
     return (
@@ -80,7 +83,11 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
       <QueryClientContext>
         <SystemStoreContextProvider device={pageProps.deviceSize}>
           <ChakraUIContext>
-            <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
+            {shouldUseLayout ? (
+              <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
+            ) : (
+              setLayout(<Component {...pageProps} />)
+            )}
           </ChakraUIContext>
         </SystemStoreContextProvider>
       </QueryClientContext>

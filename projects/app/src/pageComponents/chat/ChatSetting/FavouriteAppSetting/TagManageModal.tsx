@@ -23,7 +23,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFavouriteApps, updateChatSetting, updateFavouriteAppTags } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { ChatFavouriteAppResponseItemType } from '@fastgpt/global/core/chat/favouriteApp/type';
+import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
@@ -211,9 +211,7 @@ const SaveTagForAppSubPanel = ({
     }
   );
 
-  const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteAppResponseItemType[]>(
-    []
-  );
+  const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteAppType[]>([]);
 
   useEffect(() => {
     setLocalAllFavourites(favouriteApps);
