@@ -57,7 +57,7 @@ const BackupImportModal = dynamic(() => import('./BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { isPc } = useSystem();
 
@@ -285,7 +285,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               >
                 <Flex align={'center'}>
                   {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
-                  {titleLabel} ({total})
+                  {titleLabel}
+                  {i18n.language === 'en' ? '  ' : ''}({total})
                 </Flex>
                 {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (

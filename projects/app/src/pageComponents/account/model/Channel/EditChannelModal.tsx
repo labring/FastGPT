@@ -170,7 +170,7 @@ const EditChannelModal = ({
       <MyModal
         isLoading={isLoading}
         iconSrc={'modal/setting'}
-        title={t('account_model:edit_channel')}
+        title={isEdit ? t('account_model:edit_channel') : t('account_model:add_channel')}
         onClose={onClose}
         w={'100%'}
         maxW={['90vw', '800px']}
