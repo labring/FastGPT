@@ -11,7 +11,7 @@ import type {
   TrainingModeEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
-  DatabaseType
+  DatabaseTypeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
@@ -56,7 +56,7 @@ export type ChunkSettingsType = {
 };
 
 export type DatabaseConfig = {
-  client: `${DatabaseType}`;
+  clientType: DatabaseTypeEnum;
   version?: string;
   host: string;
   port?: number;
@@ -106,8 +106,6 @@ export type TableSchemaType = {
   foreignKeys: ForeignKeySchemaType[];
   primaryKeys: string[];
   constraints: ConstraintSchemaType[];
-  rowCount?: number;
-  estimatedSize?: string;
   lastUpdated: Date;
 };
 

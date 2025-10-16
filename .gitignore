@@ -38,3 +38,4 @@ files/helm/fastgpt/charts/*.tgz
 tmp/
 coverage
 document/.source
+AGENTS.md
