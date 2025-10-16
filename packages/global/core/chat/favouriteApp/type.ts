@@ -1,29 +1,30 @@
 import { z } from 'zod';
-import { extendZodWithOpenApi } from '@anatine/zod-openapi';
-import { ObjectIdSchema } from '../../../common/type';
-
-extendZodWithOpenApi(z);
+import { ObjectIdSchema } from '../../../common/type/mongo';
 
 export const ChatFavouriteTagSchema = z.object({
-  id: z.string().openapi({ example: 'i7Ege2W2' }),
-  name: z.string().openapi({ example: '游戏' })
+  id: z.string().meta({ example: 'ptqn6v4I', description: '精选应用标签 ID' }),
+  name: z.string().meta({ example: '效率', description: '精选应用标签名称' })
 });
 export type ChatFavouriteTagType = z.infer<typeof ChatFavouriteTagSchema>;
 
-export const ChatFavouriteAppSchema = z.object({
+export const ChatFavouriteAppModelSchema = z.object({
   _id: ObjectIdSchema,
   teamId: ObjectIdSchema,
   appId: ObjectIdSchema,
-  favouriteTags: z.array(z.string()).openapi({ example: ['i7Ege2W2', 'i7Ege2W3'] }),
-  order: z.number().openapi({ example: 1 })
+  favouriteTags: z
+    .array(z.string())
+    .meta({ example: ['ptqn6v4I', 'jHLWiqff'], description: '精选应用标签' }),
+  order: z.number().meta({ example: 1, description: '排序' })
+});
+export type ChatFavouriteAppModelType = z.infer<typeof ChatFavouriteAppModelSchema>;
+
+export const ChatFavouriteAppSchema = z.object({
+  ...ChatFavouriteAppModelSchema.shape,
+  name: z.string().meta({ example: 'Jina 网页阅读', description: '精选应用名称' }),
+  intro: z.string().optional().meta({ example: '', description: '精选应用简介' }),
+  avatar: z.string().optional().meta({
+    example: '/api/system/img/avatar/68ad85a7463006c963799a05/79183cf9face95d336816f492409ed29',
+    description: '精选应用头像'
+  })
 });
 export type ChatFavouriteAppType = z.infer<typeof ChatFavouriteAppSchema>;
-
-export const ChatFavouriteAppResponseItemSchema = z.object({
-  ...ChatFavouriteAppSchema.shape,
-  name: z.string().openapi({ example: 'FastGPT' }),
-  intro: z.string().openapi({ example: 'FastGPT' }),
-  avatar: z.string().openapi({ example: 'https://fastgpt.com/avatar.png' })
-});
-
-export type ChatFavouriteAppResponseItemType = z.infer<typeof ChatFavouriteAppResponseItemSchema>;

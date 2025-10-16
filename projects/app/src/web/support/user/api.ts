@@ -16,7 +16,6 @@ import type {
 } from '@fastgpt/global/support/user/login/api.d';
 import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
 import type { WxLoginProps } from '@fastgpt/global/support/user/api.d';
-import { client, RestAPI } from '@/web/common/api/client';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -95,7 +94,7 @@ export const postLogin = ({ password, ...props }: PostLoginProps) =>
     password: hashStr(password)
   });
 
-export const loginOut = RestAPI(client.support.user.account.logout);
+export const loginOut = () => GET('/support/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
 
