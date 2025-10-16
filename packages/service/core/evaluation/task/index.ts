@@ -4,12 +4,16 @@ import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType,
   CreateEvaluationParams,
+  EvaluationParamsType,
   EvaluationItemDisplayType,
   TargetCallParams,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
 import { Types } from 'mongoose';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  CalculateMethodEnum
+} from '@fastgpt/global/core/evaluation/constants';
 import {
   removeEvaluationTaskJob,
   removeEvaluationItemJobs,
@@ -89,27 +93,22 @@ export class EvaluationTaskService {
       tmbId: string;
     }
   ): Promise<EvaluationSchemaType> {
-    const { teamId, tmbId, autoStart = true, ...evaluationParams } = params;
+    const { teamId, tmbId, autoStart = true, ...evaluationParamsInput } = params;
 
-    // Create evaluation usage record
+    const evaluationParams = buildEvalDataConfig(evaluationParamsInput);
+
     const { billId } = await createEvaluationUsage({
       teamId,
       tmbId,
       appName: evaluationParams.name
     });
 
-    // Apply default configuration to evaluators
-    const { evaluators: evaluatorsWithDefaultConfig, summaryConfigs } = buildEvalDataConfig(
-      evaluationParams.evaluators
-    );
     const createAndStart = async (session: ClientSession) => {
       // Create evaluation in transaction
       const evaluation = await MongoEvaluation.create(
         [
           {
             ...evaluationParams,
-            evaluators: evaluatorsWithDefaultConfig,
-            summaryConfigs,
             teamId,
             tmbId,
             usageId: billId,
@@ -394,7 +393,7 @@ export class EvaluationTaskService {
             },
             metricNames: 1,
             evaluators: 1, // Add evaluators field for real-time calculation
-            summaryConfigs: 1,
+            summaryData: 1,
             aggregateScore: 1,
             tmbId: 1
           }
@@ -433,21 +432,26 @@ export class EvaluationTaskService {
           const calculatedData = await EvaluationSummaryService.calculateMetricScores(evaluation);
 
           // Update summaryConfigs with real-time calculated values
-          const updatedSummaryConfigs = evaluation.summaryConfigs.map((summaryConfig: any) => {
-            const metricData = calculatedData.metricsData.find(
-              (m) => m.metricId === summaryConfig.metricId
-            );
-            return {
-              ...summaryConfig,
-              score: metricData?.metricScore || 0,
-              completedItemCount: metricData?.totalCount || 0,
-              overThresholdItemCount: metricData?.aboveThresholdCount || 0
-            };
-          });
+          const updatedSummaryConfigs = evaluation.summaryData.summaryConfigs.map(
+            (summaryConfig: any) => {
+              const metricData = calculatedData.metricsData.find(
+                (m) => m.metricId === summaryConfig.metricId
+              );
+              return {
+                ...summaryConfig,
+                score: metricData?.metricScore || 0,
+                completedItemCount: metricData?.totalCount || 0,
+                overThresholdItemCount: metricData?.aboveThresholdCount || 0
+              };
+            }
+          );
 
           return {
             ...evaluation,
-            summaryConfigs: updatedSummaryConfigs,
+            summaryData: {
+              ...evaluation.summaryData,
+              summaryConfigs: updatedSummaryConfigs
+            },
             aggregateScore: calculatedData.aggregateScore
           };
         } catch (error) {
@@ -456,16 +460,20 @@ export class EvaluationTaskService {
             error
           });
           // Return evaluation with default score values if calculation fails
-          const defaultSummaryConfigs = evaluation.summaryConfigs.map((summaryConfig: any) => ({
-            ...summaryConfig,
-            score: 0,
-            completedItemCount: 0,
-            overThresholdItemCount: 0
-          }));
+          const defaultSummaryConfigs =
+            evaluation.summaryData?.summaryConfigs?.map((summaryConfig: any) => ({
+              ...summaryConfig,
+              score: 0,
+              completedItemCount: 0,
+              overThresholdItemCount: 0
+            })) || [];
 
           return {
             ...evaluation,
-            summaryConfigs: defaultSummaryConfigs,
+            summaryData: {
+              ...evaluation.summaryData,
+              summaryConfigs: defaultSummaryConfigs
+            },
             aggregateScore: 0
           };
         }
@@ -545,7 +553,7 @@ export class EvaluationTaskService {
             }
           },
           evaluators: 1,
-          summaryConfigs: 1,
+          summary: 1,
           usageId: 1,
           createTime: 1,
           finishTime: 1,
@@ -757,10 +765,10 @@ export class EvaluationTaskService {
           metric: evaluator.metric,
           thresholdValue: evaluator.thresholdValue,
           //check mongo schema need to change or not,add this for Front-end calculate aggreatescore threshold
-          weight: evaluation.summaryConfigs[index]?.weight || 0
+          weight: evaluation.summaryData.summaryConfigs[index]?.weight || 0
         })),
-        // Add summary configs
-        summaryConfigs: evaluation.summaryConfigs
+        // Add summaryData
+        summaryData: evaluation.summaryData
       }));
 
       return { items, total };

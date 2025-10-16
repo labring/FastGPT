@@ -8,37 +8,32 @@ import {
   type JobCleanupResult,
   type JobCleanupOptions
 } from '../utils/jobCleanup';
+import type { LanguageType } from './util/languageUtil';
+import { detectEvaluationLanguage } from './util/languageUtil';
 
-// 评估总结任务数据接口
 export interface EvaluationSummaryJobData {
   evalId: string;
   metricId: string;
-  timestamp: number;
+  languageType: LanguageType;
 }
 
-// 获取评估总结队列
 export function getEvaluationSummaryQueue() {
   return getQueue<EvaluationSummaryJobData>(QueueNames.evaluationSummary, {
     defaultJobOptions: {
       removeOnComplete: {
-        count: 0 // 立即删除完成的任务，不保留数据
+        count: 0
       },
       removeOnFail: {
-        count: 0 // 立即删除失败的任务，不保留数据
+        count: 0
       }
     }
   });
 }
 
-// 检查是否有运行中的 summary 任务
 async function checkActiveSummaryJob(evalId: string, metricId: string): Promise<boolean> {
   try {
     const queue = getEvaluationSummaryQueue();
-
-    // 获取所有运行中的任务
     const activeJobs = await queue.getJobs(['active', 'waiting', 'delayed', 'prioritized']);
-
-    // 检查是否有匹配的任务
     const existingJob = activeJobs.find(
       (job) => job.data.evalId === evalId && job.data.metricId === metricId
     );
@@ -50,28 +45,29 @@ async function checkActiveSummaryJob(evalId: string, metricId: string): Promise<
       metricId,
       error
     });
-    return false; // 检查失败时假设没有运行中的任务
+    return false;
   }
 }
 
-// 添加评估总结任务到队列
 export async function addSummaryTaskToQueue(evalId: string, metricIds: string[]): Promise<void> {
   try {
     const queue = getEvaluationSummaryQueue();
 
-    // 为每个metricId创建单独的job
+    // Detect language once for the entire evaluation
+    addLog.info('[EvaluationSummary] Detecting evaluation language', { evalId });
+    const { language: languageType } = await detectEvaluationLanguage(evalId);
+    addLog.info('[EvaluationSummary] Language detected', { evalId, languageType });
+
     const addPromises = metricIds.map(async (metricId) => {
-      // 检查是否已有运行中的任务
       const hasActiveJob = await checkActiveSummaryJob(evalId, metricId);
       if (hasActiveJob) {
         addLog.warn('[EvaluationSummary] Task already in progress, skipping', {
           evalId,
           metricId
         });
-        return null; // 跳过重复任务
+        return null;
       }
 
-      // 设置 pending 状态
       await SummaryStatusHandler.updateStatus(
         evalId,
         metricId,
@@ -82,22 +78,22 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
 
       addLog.info('[EvaluationSummary] Adding new task to queue', {
         evalId,
-        metricId
+        metricId,
+        languageType
       });
 
-      // 参考 taskitem 的写法：不指定 jobId，使用 deduplication 去重
       return queue.add(
         'generateSummary',
         {
           evalId,
           metricId,
-          timestamp: Date.now()
+          languageType
         },
         {
-          attempts: 1, // 不自动重试，由用户通过API主动重试
+          attempts: 1,
           deduplication: {
-            id: `${evalId}_${metricId}`, // 使用 evalId+metricId 去重
-            ttl: 5000 // 5秒内防止重复提交
+            id: `${evalId}_${metricId}`,
+            ttl: 5000
           }
         }
       );
@@ -123,7 +119,6 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
   }
 }
 
-// 清理评估总结任务 jobs
 export const removeEvaluationSummaryJobs = async (
   evalId: string,
   options?: JobCleanupOptions

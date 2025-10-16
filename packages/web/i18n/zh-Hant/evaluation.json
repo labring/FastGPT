@@ -90,6 +90,7 @@
   "summary_no_valid_metrics_found": "沒有找到有效的指標",
   "summary_stream_response_not_supported": "不支持流式響應",
   "summary_weight_sum_must_be_100": "所有指標的權重總和必須等於100",
+  "summary_model_invalid": "評估總結生成失敗，請檢查評估模型配置",
 
   "dataset_collection_id_required": "數據集合 ID 是必需的",
   "dataset_collection_update_failed": "數據集合更新失敗",

@@ -13,7 +13,8 @@ import {
   EvaluationStatusValues,
   SummaryStatusValues,
   SummaryStatusEnum,
-  CaculateMethodValues
+  CaculateMethodValues,
+  CalculateMethodEnum
 } from '@fastgpt/global/core/evaluation/constants';
 import { EvalDatasetCollectionName } from '../dataset/evalDatasetCollectionSchema';
 
@@ -126,6 +127,44 @@ export const EvaluationTaskSchema = new Schema({
   },
   target: EvaluationTargetSchema,
   evaluators: [EvaluationEvaluatorSchema],
+  summaryData: {
+    calculateType: {
+      type: String,
+      enum: CaculateMethodValues,
+      required: true,
+      default: CalculateMethodEnum.mean
+    },
+    summaryConfigs: [
+      {
+        metricId: {
+          type: String,
+          required: true
+        },
+        metricName: {
+          type: String,
+          required: true
+        },
+        weight: {
+          type: Number,
+          required: true
+        },
+        summary: {
+          type: String,
+          default: ''
+        },
+        summaryStatus: {
+          type: String,
+          enum: SummaryStatusValues,
+          default: SummaryStatusEnum.pending
+        },
+        errorReason: {
+          type: String,
+          default: ''
+        },
+        _id: false
+      }
+    ]
+  },
   usageId: {
     type: Schema.Types.ObjectId,
     ref: UsageCollectionName,
@@ -137,43 +176,7 @@ export const EvaluationTaskSchema = new Schema({
     default: () => new Date()
   },
   finishTime: Date,
-  errorMessage: String,
-  // Summary configuration for each evaluator
-  summaryConfigs: [
-    {
-      metricId: {
-        type: String,
-        required: true
-      },
-      metricName: {
-        type: String,
-        required: true
-      },
-      weight: {
-        type: Number,
-        required: true
-      },
-      calculateType: {
-        type: String,
-        enum: CaculateMethodValues,
-        required: true
-      },
-      summary: {
-        type: String,
-        default: ''
-      },
-      summaryStatus: {
-        type: String,
-        enum: SummaryStatusValues,
-        default: SummaryStatusEnum.pending
-      },
-      errorReason: {
-        type: String,
-        default: ''
-      },
-      _id: false
-    }
-  ]
+  errorMessage: String
 });
 
 /**

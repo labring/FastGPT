@@ -2,81 +2,43 @@ import { getWorker, QueueNames } from '../../../common/bullmq';
 import { addLog } from '../../../common/system/log';
 import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
-import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { type EvaluationSummaryJobData, getEvaluationSummaryQueue } from './queue';
 import { EvaluationSummaryService } from './index';
 import { SummaryStatusHandler } from './statusHandler';
 
-// 准备单个评估器任务
-async function prepareSingleEvaluatorTask(
-  evaluation: EvaluationSchemaType,
-  metricId: string
-): Promise<{
-  metricId: string;
-  evaluatorIndex: number;
-  evaluator: any;
-} | null> {
-  const evaluatorIndex = evaluation.evaluators.findIndex(
-    (evaluator: any) => evaluator.metric._id.toString() === metricId
-  );
-
-  if (evaluatorIndex === -1) {
-    addLog.warn('[EvaluationSummary] Metric does not belong to this evaluation task', {
-      evalId: evaluation._id.toString(),
-      metricId
-    });
-    return null;
-  }
-
-  // Get metric name for logging
-  const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
-
-  return {
-    metricId,
-    evaluatorIndex,
-    evaluator: evaluation.evaluators[evaluatorIndex]
-  };
-}
-
-// 初始化评估总结Worker
 export function initEvaluationSummaryWorker() {
   const worker = getWorker<EvaluationSummaryJobData>(
     QueueNames.evaluationSummary,
     async (job) => {
-      const { evalId, metricId } = job.data;
+      const { evalId, metricId, languageType } = job.data;
 
       addLog.info('[EvaluationSummary] Worker processing single metric task', {
         jobId: job.id,
         evalId,
-        metricId
+        metricId,
+        languageType
       });
 
       try {
-        // 获取评估任务数据
         const evaluation = await MongoEvaluation.findById(evalId).lean();
         if (!evaluation) {
           throw new Error(`Evaluation task not found: ${evalId}`);
         }
 
-        // 验证和准备单个评估器任务
-        const evaluatorTask = await prepareSingleEvaluatorTask(evaluation, metricId);
+        const evaluatorIndex = evaluation.evaluators.findIndex(
+          (evaluator: any) => evaluator.metric._id.toString() === metricId
+        );
 
-        if (!evaluatorTask) {
-          addLog.warn('[EvaluationSummary] No valid metric to process', {
-            evalId,
-            metricId
-          });
-          return;
+        if (evaluatorIndex === -1) {
+          throw new Error(`Metric ${metricId} does not belong to evaluation ${evalId}`);
         }
 
-        // 状态更新将通过BullMQ事件监听器自动处理
-
-        // 执行单个指标的评估总结生成
         await EvaluationSummaryService.generateSingleMetricSummary(
           evaluation,
-          evaluatorTask.metricId,
-          evaluatorTask.evaluatorIndex,
-          evaluatorTask.evaluator
+          metricId,
+          evaluatorIndex,
+          evaluation.evaluators[evaluatorIndex],
+          languageType
         );
 
         addLog.info('[EvaluationSummary] Worker task completed successfully', {
@@ -85,7 +47,6 @@ export function initEvaluationSummaryWorker() {
           metricId
         });
       } catch (error) {
-        // 状态更新将通过BullMQ的failed事件监听器自动处理
         addLog.error('[EvaluationSummary] Worker task failed', {
           jobId: job.id,
           evalId,
@@ -96,12 +57,11 @@ export function initEvaluationSummaryWorker() {
       }
     },
     {
-      stalledInterval: 30000, // 30 seconds
-      maxStalledCount: 3 // BullMQ recommended
+      stalledInterval: 30000,
+      maxStalledCount: 3
     }
   );
 
-  // 监听任务开始事件
   worker.on('active', async (job) => {
     if (job?.data) {
       const { evalId, metricId } = job.data;
@@ -109,11 +69,9 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task started', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
-      // 更新状态为generating
       await SummaryStatusHandler.updateStatus(
         evalId,
         metricId,
@@ -124,7 +82,6 @@ export function initEvaluationSummaryWorker() {
     }
   });
 
-  // 监听任务完成事件
   worker.on('completed', async (job) => {
     if (job?.data) {
       const { evalId, metricId } = job.data;
@@ -132,11 +89,9 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task completed', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
-      // 更新状态为completed
       await SummaryStatusHandler.updateStatus(
         evalId,
         metricId,
@@ -147,7 +102,6 @@ export function initEvaluationSummaryWorker() {
     }
   });
 
-  // 监听任务停滞事件
   worker.on('stalled', async (jobId: string) => {
     try {
       const summaryQueue = getEvaluationSummaryQueue();
@@ -159,11 +113,9 @@ export function initEvaluationSummaryWorker() {
         addLog.warn('[EvaluationSummary] Task job stalled, will be retried', {
           jobId,
           evalId,
-          metricId,
-          timestamp: new Date().toISOString()
+          metricId
         });
 
-        // 将状态重置为pending，等待重试
         await SummaryStatusHandler.updateStatus(
           evalId,
           metricId,
@@ -175,8 +127,7 @@ export function initEvaluationSummaryWorker() {
         addLog.warn(
           '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
           {
-            jobId,
-            timestamp: new Date().toISOString()
+            jobId
           }
         );
       }
@@ -185,14 +136,12 @@ export function initEvaluationSummaryWorker() {
         '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
         {
           jobId,
-          error,
-          timestamp: new Date().toISOString()
+          error
         }
       );
     }
   });
 
-  // 监听任务失败事件
   worker.on('failed', async (job, error) => {
     if (job?.data) {
       const { evalId, metricId } = job.data;
@@ -201,11 +150,9 @@ export function initEvaluationSummaryWorker() {
         jobId: job.id,
         evalId,
         metricId,
-        error: error.message,
-        timestamp: new Date().toISOString()
+        error: error.message
       });
 
-      // 更新状态为failed
       await SummaryStatusHandler.updateStatus(
         evalId,
         metricId,

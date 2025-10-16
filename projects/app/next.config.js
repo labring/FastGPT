@@ -103,8 +103,8 @@ const nextConfig = {
     return config;
   },
   // 需要转译的包
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
-  experimental: {
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', 'chinese-conv'],
+  experimental: { 
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
     serverComponentsExternalPackages: [
       'mongoose',
