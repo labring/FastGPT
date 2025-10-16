@@ -2,44 +2,36 @@ import { readConfigData } from '../../../../../projects/app/src/service/common/s
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
 
-let cachedBuiltinMetrics: EvalMetricSchemaType[] | null = null;
-let loadingPromise: Promise<EvalMetricSchemaType[]> | null = null;
-
-export async function getBuiltinMetrics(): Promise<EvalMetricSchemaType[]> {
-  if (cachedBuiltinMetrics) {
-    return cachedBuiltinMetrics;
-  }
-
-  if (loadingPromise) {
-    return loadingPromise;
-  }
-
-  loadingPromise = loadBuiltinMetrics();
-
+export async function loadSystemBuiltinMetrics(): Promise<void> {
   try {
-    const result = await loadingPromise;
-    cachedBuiltinMetrics = result;
-    return result;
-  } finally {
-    loadingPromise = null;
+    const metricContent = await readConfigData('metric.json');
+    const { builtinMetrics } = JSON.parse(metricContent);
+
+    global.builtinMetrics = (builtinMetrics || []).map((metric: any) => ({
+      _id: `builtin_${metric.name}`,
+      teamId: '',
+      tmbId: '',
+      name: metric.name,
+      description: metric.description || '',
+      type: EvalMetricTypeEnum.Builtin,
+      createTime: new Date(),
+      updateTime: new Date(),
+      ...Object.fromEntries(
+        Object.entries(metric).filter(([key, value]) => key.endsWith('Required') && value === true)
+      )
+    })) as EvalMetricSchemaType[];
+
+    console.log(`Loaded ${global.builtinMetrics.length} builtin metrics`);
+  } catch (error) {
+    console.error('Failed to load builtin metrics:', error);
+    global.builtinMetrics = [];
   }
 }
 
-async function loadBuiltinMetrics(): Promise<EvalMetricSchemaType[]> {
-  const metricContent = await readConfigData('metric.json');
-  const { builtinMetrics } = JSON.parse(metricContent);
+export async function getBuiltinMetrics(): Promise<EvalMetricSchemaType[]> {
+  if (!global.builtinMetrics) {
+    return [];
+  }
 
-  return (builtinMetrics || []).map((metric: any) => ({
-    _id: `builtin_${metric.name}`,
-    teamId: '',
-    tmbId: '',
-    name: metric.name,
-    description: metric.description || '',
-    type: EvalMetricTypeEnum.Builtin,
-    createTime: new Date(),
-    updateTime: new Date(),
-    ...Object.fromEntries(
-      Object.entries(metric).filter(([key, value]) => key.endsWith('Required') && value === true)
-    )
-  })) as EvalMetricSchemaType[];
+  return global.builtinMetrics;
 }
