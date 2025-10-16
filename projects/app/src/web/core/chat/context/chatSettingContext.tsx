@@ -7,7 +7,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,8 +22,8 @@ export type ChatSettingContextValue = {
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
-  chatSettings: ChatSettingResponseType | undefined;
-  refreshChatSetting: () => Promise<ChatSettingResponseType | undefined>;
+  chatSettings: ChatSettingType | undefined;
+  refreshChatSetting: () => Promise<ChatSettingType | undefined>;
   logos: { wideLogoUrl?: string; squareLogoUrl?: string };
 };
 
@@ -34,7 +34,7 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
   onTriggerCollapse: () => {},
   chatSettings: undefined,
   logos: { wideLogoUrl: '', squareLogoUrl: '' },
-  refreshChatSetting: function (): Promise<ChatSettingResponseType | undefined> {
+  refreshChatSetting: function (): Promise<ChatSettingType | undefined> {
     throw new Error('Function not implemented.');
   }
 });
@@ -113,7 +113,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     }
   }, [pane, handlePaneChange]);
 
-  const logos: Pick<ChatSettingResponseType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
+  const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({
       wideLogoUrl: chatSettings?.wideLogoUrl,
       squareLogoUrl: chatSettings?.squareLogoUrl

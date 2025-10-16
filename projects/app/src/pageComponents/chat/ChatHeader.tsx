@@ -31,7 +31,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { usePathname } from 'next/navigation';
-import type { ChatSettingResponseType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
@@ -45,7 +45,7 @@ const ChatHeader = ({
   chatSettings
 }: {
   pane: ChatSidebarPaneEnum;
-  chatSettings?: ChatSettingResponseType;
+  chatSettings?: ChatSettingType;
 
   history: ChatItemType[];
   showHistory?: boolean;

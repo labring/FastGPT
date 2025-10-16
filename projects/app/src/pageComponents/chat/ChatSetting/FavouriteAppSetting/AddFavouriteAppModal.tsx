@@ -63,7 +63,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
     manual: false,
     onSuccess(res) {
       setSelectedApps(
-        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar }))
+        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar || '' }))
       );
     }
   });
@@ -81,7 +81,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
   const { run: updateFavourites, loading: isUpdating } = useRequest2(
     async () => {
       await updateFavouriteApps(
-        selectedApps.map((app, index) => ({ appId: app.id, order: index + 1 }))
+        selectedApps.map((app, order) => ({ appId: app.id, order: order + 1 }))
       );
     },
     {
