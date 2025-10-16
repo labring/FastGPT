@@ -1,13 +1,14 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
-import { type Processor, type Queue } from 'bullmq';
+import { type Processor } from 'bullmq';
 import { addLog } from '../../../common/system/log';
 import { MongoEvalDatasetData } from './evalDatasetDataSchema';
 import { EvalDatasetDataQualityStatusEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
   createJobCleaner,
   type JobCleanupResult,
-  type JobCleanupOptions
-} from '../utils/jobCleanup';
+  type JobCleanupOptions,
+  checkBullMQHealth
+} from '../utils/mq';
 
 export type EvalDatasetDataQualityData = {
   dataId: string;
@@ -183,18 +184,6 @@ export const removeEvalDatasetDataQualityJobsRobust = async (
   });
 
   return result;
-};
-
-export const checkBullMQHealth = async (queue: Queue, queueName: string): Promise<void> => {
-  try {
-    await queue.isPaused();
-    await queue.getWaiting(0, 0);
-  } catch (error) {
-    addLog.error(`BullMQ ${queueName} queue health check failed:`, error);
-    throw new Error(
-      `BullMQ ${queueName} queue is not responding. Please check Redis connection and queue status.`
-    );
-  }
 };
 
 export const checkEvalDatasetDataQualityQueueHealth = (): Promise<void> => {

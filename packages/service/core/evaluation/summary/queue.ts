@@ -7,9 +7,8 @@ import {
   createJobCleaner,
   type JobCleanupResult,
   type JobCleanupOptions
-} from '../utils/jobCleanup';
-import type { LanguageType } from './util/languageUtil';
-import { detectEvaluationLanguage } from './util/languageUtil';
+} from '../utils/mq';
+import { type LanguageType, detectEvaluationLanguage } from './util/languageUtil';
 
 export interface EvaluationSummaryJobData {
   evalId: string;

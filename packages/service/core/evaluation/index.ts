@@ -2,11 +2,11 @@ import { addLog } from '../../common/system/log';
 import { setCron } from '../../common/system/cron';
 import { initEvalDatasetDataQualityWorker } from './dataset/dataQualityProcessor';
 import { initEvalDatasetDataSynthesizeWorker } from './dataset/dataSynthesizeProcessor';
-import { initEvalTaskWorker, initEvalTaskItemWorker } from './task/processor';
+import { initEvalTaskItemWorker } from './task/processor';
 import { initEvaluationSummaryWorker } from './summary/worker';
 
 // Import all queues for cleanup
-import { evaluationTaskQueue, evaluationItemQueue } from './task/mq';
+import { evaluationItemQueue } from './task/mq';
 import { evalDatasetDataQualityQueue } from './dataset/dataQualityMq';
 import { evalDatasetDataSynthesizeQueue } from './dataset/dataSynthesizeMq';
 import { getEvaluationSummaryQueue } from './summary/queue';
@@ -21,7 +21,6 @@ import { MongoEvalDatasetCollection } from './dataset/evalDatasetCollectionSchem
 export const initEvaluationWorkers = () => {
   addLog.info('Init Evaluation Workers...');
 
-  initEvalTaskWorker();
   initEvalTaskItemWorker();
 
   initEvalDatasetDataQualityWorker();
@@ -57,51 +56,25 @@ export const cleanupOrphanedJobs = async () => {
     const summaryQueue = getEvaluationSummaryQueue();
 
     // Get all jobs from all evaluation queues
-    const [taskJobs, itemJobs, dataQualityJobs, dataSynthesizeJobs, summaryJobs] =
-      await Promise.all([
-        evaluationTaskQueue.getJobs(
-          ['active', 'waiting', 'delayed', 'completed', 'failed'],
-          0,
-          1000
-        ),
-        evaluationItemQueue.getJobs(
-          ['active', 'waiting', 'delayed', 'completed', 'failed'],
-          0,
-          2000
-        ),
-        evalDatasetDataQualityQueue.getJobs(
-          ['active', 'waiting', 'delayed', 'completed', 'failed'],
-          0,
-          1000
-        ),
-        evalDatasetDataSynthesizeQueue.getJobs(
-          ['active', 'waiting', 'delayed', 'completed', 'failed'],
-          0,
-          1000
-        ),
-        summaryQueue.getJobs(['active', 'waiting', 'delayed', 'completed', 'failed'], 0, 500)
-      ]);
+    const [itemJobs, dataQualityJobs, dataSynthesizeJobs, summaryJobs] = await Promise.all([
+      evaluationItemQueue.getJobs(['active', 'waiting', 'delayed', 'completed', 'failed'], 0, 2000),
+      evalDatasetDataQualityQueue.getJobs(
+        ['active', 'waiting', 'delayed', 'completed', 'failed'],
+        0,
+        1000
+      ),
+      evalDatasetDataSynthesizeQueue.getJobs(
+        ['active', 'waiting', 'delayed', 'completed', 'failed'],
+        0,
+        1000
+      ),
+      summaryQueue.getJobs(['active', 'waiting', 'delayed', 'completed', 'failed'], 0, 500)
+    ]);
 
     let cleanedCount = 0;
     let skippedActiveCount = 0;
 
-    // 1. Clean orphaned task jobs
-    for (const job of taskJobs) {
-      try {
-        const { evalId } = job.data;
-        const evaluation = await MongoEvaluation.exists({ _id: evalId });
-
-        if (!evaluation) {
-          const result = await cleanupJob(job, 'task', { evalId });
-          if (result.cleaned) cleanedCount++;
-          if (result.skippedActive) skippedActiveCount++;
-        }
-      } catch (error) {
-        addLog.warn('[Evaluation] Failed to cleanup task job', { jobId: job.id, error });
-      }
-    }
-
-    // 2. Clean orphaned item jobs
+    // 1. Clean orphaned eval task item jobs
     for (const job of itemJobs) {
       try {
         const { evalId, evalItemId } = job.data;
@@ -120,7 +93,7 @@ export const cleanupOrphanedJobs = async () => {
       }
     }
 
-    // 3. Clean orphaned data quality jobs
+    // 2. Clean orphaned data quality jobs
     for (const job of dataQualityJobs) {
       try {
         const { dataId } = job.data;
@@ -136,7 +109,7 @@ export const cleanupOrphanedJobs = async () => {
       }
     }
 
-    // 4. Clean orphaned data synthesize jobs
+    // 3. Clean orphaned data synthesize jobs
     for (const job of dataSynthesizeJobs) {
       try {
         const { evalDatasetCollectionId } = job.data;
@@ -156,7 +129,7 @@ export const cleanupOrphanedJobs = async () => {
       }
     }
 
-    // 5. Clean orphaned summary jobs
+    // 4. Clean orphaned summary jobs
     for (const job of summaryJobs) {
       try {
         const { evalId } = job.data;
@@ -174,15 +147,10 @@ export const cleanupOrphanedJobs = async () => {
 
     const result = {
       totalJobs:
-        taskJobs.length +
-        itemJobs.length +
-        dataQualityJobs.length +
-        dataSynthesizeJobs.length +
-        summaryJobs.length,
+        itemJobs.length + dataQualityJobs.length + dataSynthesizeJobs.length + summaryJobs.length,
       cleanedJobs: cleanedCount,
       skippedActiveJobs: skippedActiveCount,
       breakdown: {
-        taskJobs: taskJobs.length,
         itemJobs: itemJobs.length,
         dataQualityJobs: dataQualityJobs.length,
         dataSynthesizeJobs: dataSynthesizeJobs.length,
