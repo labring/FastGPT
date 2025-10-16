@@ -134,6 +134,6 @@
   "language_model_error": "Error occurred while requesting the LLM. Please check the model configuration.",
   "database_sql_query": "SQL statement",
   "search_result": "Search result",
-  "database_search_results": "数据库搜索结果",
-  "other_knowledge_base_search_results": "其他知识库搜索结果"
+  "database_search_results": "Database search results",
+  "other_knowledge_base_search_results": "Search results from other knowledge bases"
 }
