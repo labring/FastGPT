@@ -84,15 +84,11 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 
 ## 通用规则
 
-- 如果你不清楚答案，你需要澄清。
-- 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
+- 回答请参考 <Cites></Cites> 中的内容, 但是要避免提及你是从 <Cites></Cites> 获取的知识。
+- <Cites></Cites>中的内容仅供参考, 如果 <Cites></Cites> 内容为空或与问题无关, 请结合自身知识回答。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
 - 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
-
-## 严格要求
-
-你只能使用 <Cites></Cites> 标记中的内容作为参考，不能使用自身的知识，并且回答的内容需严格与 <Cites></Cites> 中的内容一致。
 
 <Cites>
 {{quote}}
@@ -119,10 +115,6 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 - 如果没有相关的问答对，你需要澄清。
 - 避免提及你是从 <QA></QA> 获取的知识，只需要回复答案。
 - 使用与问题相同的语言回答。
-
-## 严格要求
-
-你只能使用 <QA></QA> 标记中的内容作为参考，不能使用自身的知识，并且回答的内容需严格与 <QA></QA> 中的内容一致。
 
 <QA>
 {{quote}}
@@ -157,7 +149,6 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 
 ## 通用规则
 
-- 如果你不清楚答案，你需要澄清。
 - 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
 - <Cites></Cites>中的内容仅供参考, 如果 <Cites></Cites> 内容为空, 或内容与问题无关, 请结合自身知识回答。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
@@ -193,8 +184,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     desc: '',
     value: {
       ['4.9.7']: `## 任务描述
-你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
-同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
+- 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
+- 为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
 
 ## 追溯展示规则
 
@@ -206,15 +197,11 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 
 ## 通用规则
 
-- 如果你不清楚答案，你需要澄清。
 - 保持答案与 <Cites></Cites> 中描述的一致。但是要避免提及你是从 <Cites></Cites> 获取的知识。
+- <Cites></Cites>中的内容仅供参考, 如果 <Cites></Cites> 内容为空, 或内容与问题无关, 请结合自身知识回答。
 - 使用 Markdown 语法优化回答格式。尤其是图片、表格、序列号等内容，需严格完整输出。
 - 如果有合适的图片作为回答，则必须输出图片。输出图片时，仅需输出图片的 url，不要输出图片描述，例如：[](url)。
 - 使用与问题相同的语言回答。
-
-## 严格要求
-
-你只能使用 <Cites></Cites> 标记中的内容作为参考，不能使用自身的知识，并且回答的内容需严格与 <Cites></Cites> 中的内容一致。
 
 <Cites>
 {{quote}}
@@ -234,10 +221,6 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 - 如果没有相关的问答对，你需要澄清。
 - 避免提及你是从 <QA></QA> 获取的知识，只需要回复答案。
 - 使用与问题相同的语言回答。
-
-## 严格要求
-
-你只能使用 <QA></QA> 标记中的内容作为参考，不能使用自身的知识，并且回答的内容需严格与 <QA></QA> 中的内容一致。
 
 <QA>
 {{quote}}
