@@ -27,14 +27,14 @@ export interface RuntimeConfig {
 }
 
 // Summary configuration type
-export interface SummaryConfig {
+export type SummaryConfig = {
   metricId: string;
   metricName: string;
   weight: number;
   summary: string;
   summaryStatus: SummaryStatusEnum;
   errorReason: string;
-}
+};
 
 export type UpdateStatusParams = {
   evalId: string;
@@ -44,10 +44,10 @@ export type UpdateStatusParams = {
 };
 
 // SummaryData type containing calculation method and configs
-export interface SummaryData {
+export type SummaryData = {
   calculateType: CalculateMethodEnum; // Calculation method for all metrics
   summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
-}
+};
 
 // Evaluator configuration type
 export interface EvaluatorSchema {
@@ -158,11 +158,11 @@ export type EvaluationWithPerType = EvaluationSchemaType & {
 // ===== Display Types =====
 
 // Extended SummaryConfig for display purposes (includes runtime calculated fields)
-export interface SummaryConfigDisplay extends SummaryConfig {
+export type SummaryConfigDisplay = SummaryConfig & {
   score: number; // Real-time calculated metric score
   completedItemCount: number; // Real-time calculated completed items count
   overThresholdItemCount: number; // Real-time calculated over threshold items count
-}
+};
 
 export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryData'> & {
   evalDatasetCollectionName?: string;
@@ -213,18 +213,18 @@ export interface EvaluationItemJobData {
 
 // ===== Summary Generate API Types =====
 
-export interface GenerateSummaryParams {
+export type GenerateSummaryParams = {
   evalId: string;
   metricIds: string[];
-}
+};
 
-export interface GenerateSummaryResponse {
+export type GenerateSummaryResponse = {
   success: boolean;
   message: string;
-}
+};
 
-export interface SummaryGenerationTaskData {
+export type SummaryGenerationTaskData = {
   evalId: string;
   metricId: string;
   evaluatorIndex: number;
-}
+};

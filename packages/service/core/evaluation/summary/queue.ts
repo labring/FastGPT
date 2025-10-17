@@ -11,11 +11,11 @@ import {
 import type { LanguageType } from './util/languageUtil';
 import { detectEvaluationLanguage } from './util/languageUtil';
 
-export interface EvaluationSummaryJobData {
+export type EvaluationSummaryJobData = {
   evalId: string;
   metricId: string;
   languageType: LanguageType;
-}
+};
 
 export function getEvaluationSummaryQueue() {
   return getQueue<EvaluationSummaryJobData>(QueueNames.evaluationSummary, {
