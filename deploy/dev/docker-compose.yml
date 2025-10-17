@@ -48,6 +48,12 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
       - ./mongo/data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     entrypoint:
       - bash
       - -c
