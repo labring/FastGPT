@@ -1,15 +1,15 @@
 import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { addLog } from '../../../common/system/log';
+import type { UpdateStatusParams } from '@fastgpt/global/core/evaluation/type';
 
 export class SummaryStatusHandler {
-  static async updateStatus(
-    evalId: string,
-    metricId: string,
-    status: SummaryStatusEnum,
-    errorReason?: string,
-    timestamp?: Date
-  ): Promise<boolean> {
+  static async updateStatus({
+    evalId,
+    metricId,
+    status,
+    errorReason
+  }: UpdateStatusParams): Promise<boolean> {
     try {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
       if (!evaluation) {
@@ -52,8 +52,7 @@ export class SummaryStatusHandler {
         metricId,
         status,
         errorReason,
-        evaluatorIndex,
-        timestamp: timestamp || new Date()
+        evaluatorIndex
       });
 
       return true;
@@ -74,18 +73,16 @@ export class SummaryStatusHandler {
       metricId: string;
       status: SummaryStatusEnum;
       errorReason?: string;
-      timestamp?: Date;
     }>
   ): Promise<boolean[]> {
     const results = await Promise.allSettled(
       updates.map((update) =>
-        this.updateStatus(
+        this.updateStatus({
           evalId,
-          update.metricId,
-          update.status,
-          update.errorReason,
-          update.timestamp
-        )
+          metricId: update.metricId,
+          status: update.status,
+          errorReason: update.errorReason
+        })
       )
     );
 

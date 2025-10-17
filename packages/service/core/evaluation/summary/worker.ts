@@ -2,6 +2,7 @@ import { getWorker, QueueNames } from '../../../common/bullmq';
 import { addLog } from '../../../common/system/log';
 import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type EvaluationSummaryJobData, getEvaluationSummaryQueue } from './queue';
 import { EvaluationSummaryService } from './index';
 import { SummaryStatusHandler } from './statusHandler';
@@ -72,13 +73,11 @@ export function initEvaluationSummaryWorker() {
         metricId
       });
 
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.generating,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.generating
+      });
     }
   });
 
@@ -92,13 +91,11 @@ export function initEvaluationSummaryWorker() {
         metricId
       });
 
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.completed,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.completed
+      });
     }
   });
 
@@ -116,13 +113,11 @@ export function initEvaluationSummaryWorker() {
           metricId
         });
 
-        await SummaryStatusHandler.updateStatus(
+        await SummaryStatusHandler.updateStatus({
           evalId,
           metricId,
-          SummaryStatusEnum.pending,
-          undefined,
-          new Date()
-        );
+          status: SummaryStatusEnum.pending
+        });
       } else {
         addLog.warn(
           '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
@@ -153,13 +148,12 @@ export function initEvaluationSummaryWorker() {
         error: error.message
       });
 
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.failed,
-        error.message,
-        new Date()
-      );
+        status: SummaryStatusEnum.failed,
+        errorReason: getErrText(error)
+      });
     }
   });
 

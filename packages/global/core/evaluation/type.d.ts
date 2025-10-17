@@ -36,6 +36,13 @@ export interface SummaryConfig {
   errorReason: string;
 }
 
+export type UpdateStatusParams = {
+  evalId: string;
+  metricId: string;
+  status: SummaryStatusEnum;
+  errorReason?: string;
+};
+
 // SummaryData type containing calculation method and configs
 export interface SummaryData {
   calculateType: CalculateMethodEnum; // Calculation method for all metrics
