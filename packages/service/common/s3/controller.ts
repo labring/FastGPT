@@ -3,13 +3,12 @@ import { addLog } from '../system/log';
 import { setCron } from '../system/cron';
 import { checkTimerLock } from '../system/timerLock/utils';
 import { TimerIdEnum } from '../system/timerLock/constants';
-import { S3BucketMap } from './constants';
 
 export async function clearExpiredMinioFiles() {
   try {
-    const now = new Date();
-
-    const expiredFiles = await MongoS3TTL.find({ expiredTime: { $lte: now } }).lean();
+    const expiredFiles = await MongoS3TTL.find({
+      expiredTime: { $lte: new Date() }
+    }).lean();
     if (expiredFiles.length === 0) {
       addLog.info('No expired minio files to clean');
       return;
@@ -22,8 +21,9 @@ export async function clearExpiredMinioFiles() {
 
     for (const file of expiredFiles) {
       try {
-        const bucketName = file.bucketName as keyof typeof S3BucketMap;
-        const bucket = S3BucketMap[bucketName];
+        const bucketName = file.bucketName;
+        const bucket = global.s3BucketMap[bucketName];
+
         if (bucket) {
           await bucket.delete(file.minioKey);
           await MongoS3TTL.deleteOne({ _id: file._id });
@@ -47,7 +47,7 @@ export async function clearExpiredMinioFiles() {
   }
 }
 
-export function clearExpiredMinioFilesCron() {
+export function clearExpiredS3FilesCron() {
   // 每小时执行一次
   setCron('0 */1 * * *', async () => {
     if (

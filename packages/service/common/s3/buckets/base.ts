@@ -4,7 +4,6 @@ import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
-  type S3BucketName,
   type S3OptionsType
 } from '../type';
 import { defaultS3Options, Mimes } from '../constants';
@@ -20,11 +19,11 @@ export class S3BaseBucket {
 
   /**
    *
-   * @param _bucket the bucket you want to operate
+   * @param bucketName the bucket you want to operate
    * @param options the options for the s3 client
    */
   constructor(
-    private readonly _bucket: S3BucketName,
+    private readonly bucketName: string,
     public options: Partial<S3OptionsType> = defaultS3Options
   ) {
     options = { ...defaultS3Options, ...options };
@@ -48,7 +47,7 @@ export class S3BaseBucket {
 
     const init = async () => {
       if (!(await this.exist())) {
-        await this.client.makeBucket(this._bucket);
+        await this.client.makeBucket(this.bucketName);
       }
       await this.options.afterInit?.();
     };
@@ -56,7 +55,7 @@ export class S3BaseBucket {
   }
 
   get name(): string {
-    return this._bucket;
+    return this.bucketName;
   }
 
   protected get client(): Client {

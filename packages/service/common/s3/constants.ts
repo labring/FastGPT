@@ -51,8 +51,3 @@ export const S3Buckets = {
   public: process.env.S3_PUBLIC_BUCKET || 'fastgpt-public',
   private: process.env.S3_PRIVATE_BUCKET || 'fastgpt-private'
 } as const;
-
-export const S3BucketMap = {
-  public: null as unknown as S3PublicBucket,
-  private: null as unknown as S3PrivateBucket
-};

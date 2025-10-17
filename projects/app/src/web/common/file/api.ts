@@ -37,5 +37,5 @@ export const getUploadAvatarPresignedUrl = (params: {
   filename: string;
   autoExpired?: boolean;
 }) => {
-  return POST<CreatePostPresignedUrlResult>('/common/file/updateAvatar', params);
+  return POST<CreatePostPresignedUrlResult>('/common/file/getAvatarPresign', params);
 };

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { defaultS3Options, Mimes, S3Buckets } from './constants';
+import type { defaultS3Options, Mimes } from './constants';
+import type { S3BaseBucket } from './buckets/base';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -15,8 +16,6 @@ export type ContentType = (typeof Mimes)[keyof typeof Mimes];
 export type ExtensionType = keyof typeof Mimes;
 
 export type S3OptionsType = typeof defaultS3Options;
-
-export type S3BucketName = (typeof S3Buckets)[keyof typeof S3Buckets];
 
 export const S3SourcesSchema = z.enum(['avatar']);
 export const S3Sources = S3SourcesSchema.enum;
@@ -47,3 +46,9 @@ export const CreatePostPresignedUrlResultSchema = z.object({
   fields: z.record(z.string(), z.string())
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
+
+declare global {
+  var s3BucketMap: {
+    [key: string]: S3BaseBucket;
+  };
+}
