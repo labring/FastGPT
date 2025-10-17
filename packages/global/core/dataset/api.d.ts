@@ -135,6 +135,11 @@ export type PgSearchRawType = {
   collection_id: string;
   score: number;
 };
+export type VastbaseSearchRawType = {
+  id: string;
+  collection_id: string;
+  score: number;
+};
 export type PushDatasetDataChunkProps = {
   q?: string;
   a?: string;
