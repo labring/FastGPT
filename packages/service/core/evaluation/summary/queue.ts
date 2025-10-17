@@ -10,11 +10,11 @@ import {
 } from '../utils/mq';
 import { type LanguageType, detectEvaluationLanguage } from './util/languageUtil';
 
-export interface EvaluationSummaryJobData {
+export type EvaluationSummaryJobData = {
   evalId: string;
   metricId: string;
   languageType: LanguageType;
-}
+};
 
 export function getEvaluationSummaryQueue() {
   return getQueue<EvaluationSummaryJobData>(QueueNames.evaluationSummary, {
@@ -67,13 +67,11 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
         return null;
       }
 
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.pending,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.pending
+      });
 
       addLog.info('[EvaluationSummary] Adding new task to queue', {
         evalId,
