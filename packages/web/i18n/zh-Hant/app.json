@@ -361,5 +361,8 @@
   "logs_timespan_week": "按週",
   "logs_total_avg_duration": "平均時長",
   "logs_total_feedback": "共 {{goodFeedBack}} 讚 ｜ 共 {{badFeedBack}} 踩",
-  "logs_user_callback": "用戶回饋"
+  "logs_user_callback": "用戶回饋",
+  "team.menu.plugin": "外掛",
+  "team.menu.app": "簡易應用程式",
+  "team.menu.workflow": "工作流程"
 }
