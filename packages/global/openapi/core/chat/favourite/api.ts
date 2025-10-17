@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ObjectIdSchema } from '../../../common/type/mongo';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
 
 export const GetChatFavouriteListParamsSchema = z.object({
   name: z.string().optional().meta({ example: '测试应用', description: '精选应用名称' }),
@@ -11,7 +11,6 @@ export const UpdateFavouriteAppTagsParamsSchema = z.object({
   id: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '精选应用 ID' }),
   tags: z.array(z.string()).meta({ example: ['效率', '工具'], description: '精选应用标签' })
 });
-export type UpdateFavouriteAppTagsParamsType = z.infer<typeof UpdateFavouriteAppTagsParamsSchema>;
 
 export const UpdateFavouriteAppParamsSchema = z.object({
   appId: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '精选应用 ID' }),

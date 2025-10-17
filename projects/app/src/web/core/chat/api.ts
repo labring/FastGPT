@@ -34,7 +34,7 @@ import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core
 import type {
   GetChatFavouriteListParamsType,
   UpdateFavouriteAppParamsType
-} from '@fastgpt/global/core/chat/favouriteApp/api';
+} from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 
 /**

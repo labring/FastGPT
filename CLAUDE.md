@@ -82,7 +82,8 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 
 ### API 结构
 - NextJS API 路由在 `projects/app/src/pages/api/`
-- 核心业务逻辑在 `packages/service/core/`
+- API 路由合约定义在`packages/global/openapi/`, 对应的
+- 通用服务端业务逻辑在 `packages/service/`和`projects/app/src/service`
 - 数据库模型在 `packages/service/` 中,使用 MongoDB/Mongoose
 
 ### 前端架构
@@ -90,12 +91,6 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - 使用 Chakra UI 进行样式设计,自定义主题在 `packages/web/styles/theme.ts`
 - 国际化支持文件在 `packages/web/i18n/`
 - 使用 React Context 和 Zustand 进行状态管理
-
-### 工作流系统
-- 使用 ReactFlow 的可视化工作流编辑器
-- 工作流引擎在 `packages/service/core/workflow/`
-- 节点定义在 `packages/global/core/workflow/template/`
-- 用于执行工作流节点的调度系统
 
 ## 开发注意事项
 
