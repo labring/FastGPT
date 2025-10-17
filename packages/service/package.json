@@ -36,7 +36,7 @@
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "mammoth": "^1.6.0",
+    "mammoth": "^1.11.0",
     "minio": "^8.0.5",
     "mongoose": "^8.10.1",
     "multer": "2.0.2",
