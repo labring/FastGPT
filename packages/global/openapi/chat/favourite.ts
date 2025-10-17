@@ -13,7 +13,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
     get: {
       summary: '获取精选应用列表',
       description: '获取团队配置的精选应用列表，支持按名称和标签筛选',
-      tags: ['对话'],
+      tags: ['对话页配置'],
       requestParams: {
         query: GetChatFavouriteListParamsSchema
       },
@@ -33,7 +33,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
     post: {
       summary: '更新精选应用',
       description: '批量创建或更新精选应用配置，包括应用 ID、标签和排序信息',
-      tags: ['对话'],
+      tags: ['对话页配置'],
       requestBody: {
         content: {
           'application/json': {
@@ -57,7 +57,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
     put: {
       summary: '更新精选应用排序',
       description: '批量更新精选应用的显示顺序',
-      tags: ['对话'],
+      tags: ['对话页配置'],
       requestBody: {
         content: {
           'application/json': {
@@ -89,7 +89,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
     put: {
       summary: '更新精选应用标签',
       description: '批量更新精选应用的标签分类',
-      tags: ['对话'],
+      tags: ['对话页配置'],
       requestBody: {
         content: {
           'application/json': {
@@ -113,7 +113,7 @@ export const ChatFavouriteAppPath: OpenAPIPath = {
     delete: {
       summary: '删除精选应用',
       description: '根据 ID 删除指定的精选应用配置',
-      tags: ['对话'],
+      tags: ['对话页配置'],
       requestParams: {
         query: z.object({
           id: ObjectIdSchema
