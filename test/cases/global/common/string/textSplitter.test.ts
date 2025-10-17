@@ -949,3 +949,37 @@ it(`Test splitText2Chunks 13 - Table split with empty lastText`, () => {
 
   expect(chunks).toEqual(mock.result);
 });
+
+// Test for lastText handling when all strategies exhausted (Issue #5770)
+it(`Test splitText2Chunks 14 - lastText not lost when strategies exhausted`, () => {
+  // This test verifies that when all splitting strategies are exhausted
+  // and forced character-based splitting occurs, lastText is not lost.
+  // The bug was: step >= stepReges.length returned [text] ignoring lastText
+
+  const mock = {
+    // Create text with NO good split points (no punctuation, newlines, etc.)
+    // This forces the algorithm to exhaust all strategies
+    text: 'A'.repeat(1800),
+    chunkSize: 500
+  };
+
+  const { chunks, chars } = splitText2Chunks({
+    text: mock.text,
+    chunkSize: mock.chunkSize,
+    overlapRatio: 0
+  });
+
+  // Critical test: No data loss - total characters in chunks should equal input
+  // This would fail with the bug because lastText would be dropped
+  // Even if the text is not split (treated as one chunk), data should not be lost
+  const totalCharsInChunks = chunks.join('').length;
+  expect(totalCharsInChunks).toBe(mock.text.length);
+
+  // Also verify the chars count is correct
+  expect(chars).toBe(mock.text.length);
+
+  // Verify no chunk is empty
+  chunks.forEach((chunk) => {
+    expect(chunk.length).toBeGreaterThan(0);
+  });
+});
