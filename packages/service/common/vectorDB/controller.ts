@@ -1,11 +1,12 @@
 /* vector crud */
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
+import { VastbaseVectorCtrl } from './vastbase';
 import { getVectorsByText } from '../../core/ai/embedding';
 import type { EmbeddingRecallCtrlProps } from './controller.d';
 import { type DelDatasetVectorCtrlProps, type InsertVectorProps } from './controller.d';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
+import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS, VASTBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
 import {
   setRedisCache,
@@ -18,7 +19,13 @@ import {
 import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
+/**
+ * 获取向量数据库适配器实例
+ * 根据环境变量动态选择数据库类型
+ * 优先级：Vastbase > PostgreSQL > OceanBase > Milvus
+ */
 const getVectorObj = () => {
+  if (VASTBASE_ADDRESS) return new VastbaseVectorCtrl();
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (OCEANBASE_ADDRESS) return new ObVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
