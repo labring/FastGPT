@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { OpenAPIPath } from '../type';
-import { ChatFavouriteAppSchema } from '../../core/chat/favouriteApp/type';
+import type { OpenAPIPath } from '../../type';
+import { ChatFavouriteAppSchema } from '../../../core/chat/favouriteApp/type';
 import {
   GetChatFavouriteListParamsSchema,
   UpdateFavouriteAppParamsSchema,
   UpdateFavouriteAppTagsParamsSchema
-} from '../../core/chat/favouriteApp/api';
-import { ObjectIdSchema } from '../../common/type/mongo';
+} from '../../../core/chat/favouriteApp/api';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 
 export const ChatFavouriteAppPath: OpenAPIPath = {
   '/proApi/core/chat/setting/favourite/list': {

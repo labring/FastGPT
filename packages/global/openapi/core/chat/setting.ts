@@ -1,5 +1,5 @@
-import type { OpenAPIPath } from '../type';
-import { ChatSettingSchema, ChatSettingModelSchema } from '../../core/chat/setting/type';
+import type { OpenAPIPath } from '../../type';
+import { ChatSettingSchema, ChatSettingModelSchema } from '../../../core/chat/setting/type';
 
 export const ChatSettingPath: OpenAPIPath = {
   '/proApi/core/chat/setting/detail': {

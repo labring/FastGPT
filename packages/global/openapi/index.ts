@@ -1,15 +1,17 @@
 import { createDocument } from 'zod-openapi';
-import { ChatPath } from './chat';
+import { ChatPath } from './core/chat';
+import { ApiKeyPath } from './support/openapi';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
   info: {
     title: 'FastGPT API',
-    version: '1.0.0',
+    version: '0.1.0',
     description: 'FastGPT API 文档'
   },
   paths: {
-    ...ChatPath
+    ...ChatPath,
+    ...ApiKeyPath
   },
   servers: [{ url: '/api' }]
 });
