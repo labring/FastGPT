@@ -301,11 +301,11 @@
   "type.Import from json_loading": "Loading, please wait.",
   "type.MCP tools": "MCP toolkit",
   "type.MCP_tools_url": "MCP address",
-  "type.Plugin": "Plugins",
-  "type.Simple bot": "Simple apps",
+  "type.Plugin": "Plugin",
+  "type.Simple bot": "Simple app",
   "type.Tool": "Tool",
   "type.Tool set": "toolkit",
-  "type.Workflow bot": "Workflows",
+  "type.Workflow bot": "Workflow",
   "type.error.Workflow data is empty": "Failed to obtain workflow data.",
   "type.error.workflowresponseempty": "Response is empty.",
   "type.hidden": "Hidden app",
@@ -361,5 +361,8 @@
   "logs_timespan_week": "Weekly",
   "logs_total_avg_duration": "Avg duration",
   "logs_total_feedback": "Likes: {{goodFeedBack}} | Dislikes: {{badFeedBack}}",
-  "logs_user_callback": "Feedback"
+  "logs_user_callback": "Feedback",
+  "team.menu.plugin": "Plugins",
+  "team.menu.app": "Simple apps",
+  "team.menu.workflow": "Workflows"
 }

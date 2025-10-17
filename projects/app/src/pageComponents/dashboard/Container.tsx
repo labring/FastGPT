@@ -133,15 +133,15 @@ const DashboardContainer = ({
           },
           {
             typeId: AppTypeEnum.simple,
-            typeName: t('app:type.Simple bot')
+            typeName: t('app:team.menu.app')
           },
           {
             typeId: AppTypeEnum.workflow,
-            typeName: t('app:type.Workflow bot')
+            typeName: t('app:team.menu.workflow')
           },
           {
             typeId: AppTypeEnum.plugin,
-            typeName: t('app:type.Plugin')
+            typeName: t('app:team.menu.plugin')
           }
         ]
       },

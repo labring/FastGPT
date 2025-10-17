@@ -361,5 +361,8 @@
   "files_cascader_select_first": "请先选择知识库",
   "files_cascader_dataset_empty": "该知识库数据集为空",
   "select_join_location": "选择加入位置",
-  "no_data_for_smart_generate": "该知识库中没有可用于智能生成的数据"
+  "no_data_for_smart_generate": "该知识库中没有可用于智能生成的数据",
+  "team.menu.plugin": "插件",
+  "team.menu.app": "简易应用",
+  "team.menu.workflow": "工作流"
 }
