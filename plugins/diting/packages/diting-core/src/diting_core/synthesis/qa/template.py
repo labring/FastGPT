@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 from typing import List, Optional
+from diting_core.metrics.utils import Language
 
 
 class QAGenerateTemplate:
@@ -10,11 +11,13 @@ class QAGenerateTemplate:
         context: List[str],
         max_generation_per_context: int,
         themes: Optional[List[str]] = None,
+        language: Language = Language.ENGLISH,
     ) -> str:
-        theme_part = ""
-        if themes:
-            theme_part = f"""5. 请优先围绕以下主题生成问答：{themes}。如果主题与上下文完全无关，可以忽略主题，但应尽量保证问题与这些主题相关。"""
-        return f"""任务: 根据给定的上下文（一个字符串列表），生成一个包含 `question` 和 `answer`键的JSON对象(问答对)列表。
+        if language == Language.CHINESE:
+            theme_part = ""
+            if themes:
+                theme_part = f"""5. 请优先围绕以下主题生成问答：{themes}。如果主题与上下文完全无关，可以忽略主题，但应尽量保证问题与这些主题相关。"""
+            return f"""任务: 根据给定的上下文（一个字符串列表），生成一个包含 `question` 和 `answer`键的JSON对象(问答对)列表。
                 输入: 上下文（一个字符串列表）
 
                 输出格式: 每个JSON对象应包含两个键：
@@ -85,6 +88,81 @@ class QAGenerateTemplate:
 
                 JSON:
                 """
+        else:
+            theme_part = ""
+            if themes:
+                theme_part = f"""5. Please prioritize generating Q&A around the following themes: {themes}. If the themes are completely unrelated to the context, you may ignore the themes, but try to ensure the questions relate to these themes."""
+            return f"""Task: Based on the given context (a list of strings), generate a list of JSON objects containing `question` and `answer` keys (Q&A pairs).
+                Input: Context (a list of strings)
+
+                Output format: Each JSON object should contain two keys:
+                1. `question`: Question content
+                2. `answer`: Answer content
+
+                Requirements:
+
+                1. Questions should be **self-sufficient**, answerable based solely on information from the given context without requiring additional context or external references. This means they should not depend on specific documents, tables, or prior knowledge not included in the question.
+                2. Questions should have **clear objectives**, clearly communicating their intent so they can be answered or executed directly and appropriately without ambiguity.
+                3. Answers should be **concise and clear**, directly responding to the question, ensuring strong relevance to the question, avoiding additional explanations or comments, and ensuring answer information is consistent with the context.
+                4. Answers should be **complete and accurate**, not missing question-related answers, providing complete solutions to questions based on the context.
+                {theme_part}
+
+                *Important Notes*:
+
+                - Please ensure to return only in JSON format, with the 'qa_pairs' key being a list of JSON objects.
+                - You must attempt to generate {max_generation_per_context} Q&A pairs.
+                - The generated JSON object `question` cannot be repeated
+
+                Example context:
+                ```
+                ["Einstein won the Nobel Prize for his discovery of penicillin.", "Einstein won the Nobel Prize in 1968."]
+                ```
+
+                Example number of Q&A pairs to generate: 2
+
+                Example JSON:
+                {{
+                    "qa_pairs": [
+                        {{
+                            "question": "What was Einstein known for?",
+                            "answer": "Einstein was a smart guy huh."
+                        }},
+                        {{
+                            "question": "Why Einstein won the Nobel Prize?",
+                            "answer": "Einstein won the Nobel Prize for his discovery of penicillin."
+                        }},
+                    ]
+                }}
+
+
+                Example context:
+                ```
+                ["Python is a widely used scripting language. Scripting languages are typically used for automating tasks, rapid development, and simplifying program design.", "Its advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities.", "However, scripting languages also have some disadvantages, such as lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."]
+                ```
+
+                Example number of Q&A pairs to generate: 1
+
+                Example JSON:
+                ```
+                {{
+                  "qa_pairs": [
+                    {{
+                        "question":"What are the advantages and disadvantages of Python as a scripting language?",
+                        "answer":"Python's advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities. Disadvantages include lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."
+                    }}
+                  ]
+                }}
+                ```
+
+
+                -----
+                Context:
+                ```
+                {context}
+                ```
+
+                JSON:
+                """
 
     @staticmethod
     def rewrite_qa(
@@ -93,8 +171,10 @@ class QAGenerateTemplate:
         answer: str,
         feedback: str,
         max_rewrite_qa: int = 1,
+        language: Language = Language.ENGLISH,
     ) -> str:
-        return f"""我希望你充当一个问题重写器。根据提供的上下文、原始问题、原始答案和反馈，生成一至多个重写的QA，基于所提供的反馈来提高其清晰度、可回答性以及答案的准确性。
+        if language == Language.CHINESE:
+            return f"""我希望你充当一个问题重写器。根据提供的上下文、原始问题、原始答案和反馈，生成一至多个重写的QA，基于所提供的反馈来提高其清晰度、可回答性以及答案的准确性。
                 **
                 重要提示：请确保仅以 JSON 格式返回。
                 
@@ -163,5 +243,77 @@ class QAGenerateTemplate:
                 {feedback}
                 示例重写问答对数量: {max_rewrite_qa}
                 
+                JSON
+                """
+        else:
+            return f"""I want you to act as a question rewriter. Based on the provided context, original question, original answer, and feedback, generate one or more rewritten QAs to improve their clarity, answerability, and answer accuracy based on the provided feedback.
+                **
+                Important note: Please ensure to return only in JSON format.
+
+                Example context: "The Golden Gate Bridge is located in San Francisco, completed in 1937, and known for its Art Deco style. It connects San Francisco and Marin County, spanning the Golden Gate Strait."
+                Example question: "When was this bridge completed?"
+                Example answer: "The Golden Gate Bridge was completed in 1937."
+                Example feedback: "This question asks about when 'this bridge' was completed, but doesn't specifically state which bridge it refers to. There are many famous bridges, and without specifying the name, the question is too vague. To improve clarity, please include the bridge's name."
+                Example number of rewritten Q&A pairs: 1
+                Example JSON:
+                {{
+                  "qa_pairs": [
+                    {{
+                        "question":"When was the Golden Gate Bridge completed?",
+                        "answer":"The Golden Gate Bridge was completed in 1937."
+                    }}
+                  ]
+                }}
+
+                Example context: "The paper 'Advances in Quantum Computing' was written by Dr. Alice Thompson and published in 2022. It explores potential applications of quantum computing in cryptography and drug discovery."
+                Example question: "What applications of quantum computing are discussed in the paper?"
+                Example answer: "The paper 'Advances in Quantum Computing' explores potential applications of quantum computing in cryptography and drug discovery."
+                Example feedback: "The question asks about applications of quantum computing but doesn't specifically mention which paper is being referenced. Since many papers might discuss quantum computing, specifying the paper's title or author would help improve clarity."
+                Example number of rewritten Q&A pairs: 2
+                Example JSON:
+                {{
+                   "qa_pairs": [
+                    {{
+                        "question":"What applications of quantum computing are discussed in the paper 'Advances in Quantum Computing'?",
+                        "answer":"The paper 'Advances in Quantum Computing' explores potential applications of quantum computing in cryptography and drug discovery."
+                    }},
+                    {{
+                        "question":"Who wrote the paper 'Advances in Quantum Computing'?",
+                        "answer":"The paper 'Advances in Quantum Computing' was written by Dr. Alice Thompson."
+                    }}
+                  ]
+                }}
+
+                Example context: "The paper 'Advances in Quantum Computing' was written by Dr. Alice Thompson and published in 2022. It explores potential applications of quantum computing in cryptography and drug discovery."
+                Example question: "What applications of quantum computing are discussed in the paper 'Advances in Quantum Computing'?"
+                Example answer: "The paper 'Advances in Quantum Computing' was written by Dr. Alice Thompson and published in 2022."
+                Example feedback: "The question specifically asks about 'what applications of quantum computing', but the answer provides 'author and publication time', which is off-topic."
+                Example number of rewritten Q&A pairs: 1
+                Example JSON:
+                {{
+                   "qa_pairs": [
+                    {{
+                        "question":"What applications of quantum computing are discussed in the paper 'Advances in Quantum Computing'?",
+                        "answer":"The paper 'Advances in Quantum Computing' explores potential applications of quantum computing in cryptography and drug discovery."
+                    }}
+                  ]
+                }}
+
+                You should not incorporate any prior knowledge. The rewritten questions should be based solely on the provided context and feedback.
+                **
+
+                Context:
+                {context}
+
+                Question:
+                {question}
+
+                Answer:
+                {answer}
+
+                Feedback:
+                {feedback}
+                Example number of rewritten Q&A pairs: {max_rewrite_qa}
+
                 JSON
                 """

@@ -48,4 +48,4 @@ class ModelConfig(BaseSchema):
     base_url: Optional[str] = Field(None, description="模型API基础URL")
     api_key: Optional[str] = Field(None, description="API密钥")
     parameters: Optional[Dict[str, Any]] = Field(None, description="模型参数")
-    timeout: Optional[int] = Field(600, description="超时时间(秒)")
+    timeout: Optional[float] = Field(600, description="超时时间(秒)")

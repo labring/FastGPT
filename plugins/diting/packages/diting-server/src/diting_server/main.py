@@ -12,6 +12,7 @@ from diting_server.common.logging_config.config import (
     get_uvicorn_log_config,
 )
 from diting_server.config.settings import Settings, get_settings, settings
+from diting_server.middleware.request_tracking import XRequestIdMiddleware
 
 
 def create_app() -> FastAPI:
@@ -28,6 +29,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add request tracking middleware
+    app.add_middleware(XRequestIdMiddleware)
 
     app.include_router(v1_router)
     return app

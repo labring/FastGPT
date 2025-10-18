@@ -15,6 +15,7 @@ from diting_core.metrics.answer_relevancy.schema import (
 from diting_core.metrics.answer_relevancy.template import AnswerRelevancyTemplate
 from diting_core.metrics.base_metric import BaseMetric, MetricValue
 from diting_core.models.llms.base_model import BaseLLM
+from diting_core.metrics.utils import Language, detect_language
 
 
 def _calculate_score(verdicts: List[AnswerRelevancyVerdict]) -> float:
@@ -70,17 +71,20 @@ class AnswerRelevancy(BaseMetric):
         assert test_case.user_input, "user_input cannot be empty"
         assert test_case.actual_output, "actual_output cannot be empty"
 
+        # 检测语言 - 基于用户问题
+        language = detect_language(test_case.user_input)
+
         statements: List[str] = await self._a_generate_statements(
-            test_case.actual_output, callbacks
+            test_case.actual_output, language, callbacks
         )
         verdicts: List[AnswerRelevancyVerdict] = await self._a_generate_verdicts(
-            test_case.user_input, statements, callbacks
+            test_case.user_input, statements, language, callbacks
         )
         score = _calculate_score(verdicts)
         reason = None
         if self.include_reason:
             reason = await self._a_generate_reason(
-                test_case.user_input, score, verdicts, callbacks=callbacks
+                test_case.user_input, score, verdicts, language, callbacks=callbacks
             )
         metric_value = MetricValue(
             score=score,
@@ -96,11 +100,13 @@ class AnswerRelevancy(BaseMetric):
     async def _a_generate_statements(
         self,
         actual_output: str,
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> List[str]:
         assert self.model is not None, "llm is not set"
         prompt = self.evaluation_template.generate_statements(
             actual_output=actual_output,
+            language=language,
         )
 
         run_mgt, grp_cb = await new_group(
@@ -126,6 +132,7 @@ class AnswerRelevancy(BaseMetric):
         self,
         user_input: str,
         statements: List[str],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> List[AnswerRelevancyVerdict]:
         assert self.model is not None, "llm is not set"
@@ -135,6 +142,7 @@ class AnswerRelevancy(BaseMetric):
         prompt = self.evaluation_template.generate_verdicts(
             user_input=user_input,
             statements=statements,
+            language=language,
         )
 
         run_mgt, grp_cb = await new_group(
@@ -160,6 +168,7 @@ class AnswerRelevancy(BaseMetric):
         user_input: str,
         score: float,
         verdicts: List[AnswerRelevancyVerdict],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> str:
         assert self.model is not None, "llm is not set"
@@ -172,6 +181,7 @@ class AnswerRelevancy(BaseMetric):
             irrelevant_statements=irrelevant_statements,
             input=user_input,
             score=round(score, 2),
+            language=language,
         )
         run_mgt, grp_cb = await new_group(
             name="generate_reason",

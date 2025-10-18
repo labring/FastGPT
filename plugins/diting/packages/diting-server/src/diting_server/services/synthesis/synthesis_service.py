@@ -97,7 +97,7 @@ class SynthesizerService:
             raise SynthesizerNotFoundException(
                 f"Failed to load the synthesizer {synthesizer_config.synthesizer_name}. "
                 "Please ensure that this synthesizer is supported and correctly configured. "
-                f"Original error: {error}",
+                f"Original error: {error}"
             )
 
         is_llm_required = hasattr(synthesizer, "model")

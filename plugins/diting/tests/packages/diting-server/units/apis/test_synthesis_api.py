@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from diting_server.apis.v1.synthesis.api import router, run_synthesis
 from diting_server.apis.v1.synthesis.data_models import (
     DatasetSynthesisRequest,
@@ -12,6 +12,7 @@ from diting_server.apis.v1.synthesis.data_models import (
     SyntheticQAResult,
 )
 from diting_server.common.schema import StatusEnum
+from diting_server.middleware.request_tracking import XRequestIdMiddleware
 
 
 class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
@@ -20,6 +21,8 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.app = FastAPI()
+        # Add middleware for testing
+        self.app.add_middleware(XRequestIdMiddleware)
         self.app.include_router(router)
         self.client = TestClient(self.app)
 
@@ -59,11 +62,17 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
 
+        # Mock http_request with scope
+        mock_http_request = MagicMock(spec=Request)
+        mock_http_request.scope = {"diting_request_id": "test-id"}
+
         with patch(
             "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ) as mock_service:
-            response = await run_synthesis(DatasetSynthesisRequest(**request_data))
+            response = await run_synthesis(
+                DatasetSynthesisRequest(**request_data), mock_http_request
+            )
 
         self.assertIsInstance(response, DatasetSynthesisResponse)
         self.assertEqual(response.request_id, "test-id")
@@ -84,13 +93,19 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
             "inputData": {"context": ["test context"]},
         }
 
+        # Mock http_request with scope
+        mock_http_request = MagicMock(spec=Request)
+        mock_http_request.scope = {"diting_request_id": "test-id"}
+
         # Mock service to raise exception
         with patch(
             "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             side_effect=Exception("Service error"),
         ):
             with self.assertRaises(Exception):
-                await run_synthesis(DatasetSynthesisRequest(**request_data))
+                await run_synthesis(
+                    DatasetSynthesisRequest(**request_data), mock_http_request
+                )
 
     def test_run_synthesis_with_test_client_success(self):
         """Test synthesis endpoint using TestClient."""
@@ -267,29 +282,32 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
             "diting_server.apis.v1.synthesis.api.synthesizer_service.run_synthesizer",
             return_value=mock_response,
         ) as _mock_service:
-            with patch("diting_server.apis.v1.synthesis.api.logger") as mock_logger:
-                response = self.client.post(
-                    "/api/v1/dataset-synthesis/runs", json=request_data
-                )
+            # Mock both API logger and middleware logger
+            with patch("diting_server.apis.v1.synthesis.api.logger"):
+                with patch(
+                    "diting_server.middleware.request_tracking.logger"
+                ) as middleware_logger:
+                    response = self.client.post(
+                        "/api/v1/dataset-synthesis/runs", json=request_data
+                    )
 
         self.assertEqual(response.status_code, 200)
 
-        # Verify logging calls
+        # Verify middleware logging calls
+        # The middleware logs "Request started" and "Request completed"
         self.assertGreaterEqual(
-            mock_logger.info.call_count, 2
-        )  # Start and completion logs
+            middleware_logger.info.call_count, 2
+        )  # Start and completion logs from middleware
 
-        # Check that logging calls contain the expected patterns
-        call_args_list = [call[0][0] for call in mock_logger.info.call_args_list]
-        start_log_found = any(
-            "Starting synthesis task, request_id:" in call for call in call_args_list
-        )
+        # Check that middleware logging calls contain the expected patterns
+        call_args_list = [call[0][0] for call in middleware_logger.info.call_args_list]
+        start_log_found = any("Request started" in call for call in call_args_list)
         completion_log_found = any(
-            "Synthesis task completed, request_id:" in call for call in call_args_list
+            "Request completed" in call for call in call_args_list
         )
 
-        self.assertTrue(start_log_found, "Starting synthesis task log not found")
-        self.assertTrue(completion_log_found, "Synthesis task completed log not found")
+        self.assertTrue(start_log_found, "Request started log not found")
+        self.assertTrue(completion_log_found, "Request completed log not found")
 
     def test_run_synthesis_error_logging(self):
         """Test that synthesis errors are properly logged."""
@@ -310,11 +328,14 @@ class TestSynthesisAPI(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 500)
 
-        # Verify error logging
+        # Verify error logging - now we expect structured logging
         mock_logger.error.assert_called_once()
-        error_call_args = mock_logger.error.call_args[0]
-        self.assertIn("Synthesis failed", error_call_args[0])
-        self.assertIn("Service error", error_call_args[0])
+        error_call_args = mock_logger.error.call_args
+        # Check the structured log format
+        self.assertEqual(error_call_args[0][0], "Synthesis failed")
+        self.assertIn("request_id", error_call_args[1])
+        self.assertIn("error", error_call_args[1])
+        self.assertEqual(error_call_args[1]["error"], "Service error")
 
     def test_run_synthesis_with_synthesizer_config(self):
         """Test synthesis endpoint with synthesizer configuration."""

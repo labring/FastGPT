@@ -419,3 +419,15 @@ diting-core/
 ├── models/             # LLM clients (OpenAI, Hugging Face)
 └── synthesis/          # Synthetic data generation (QA, summarization)
 ```
+
+
+## 🔄 Integration with DiTing Ecosystem  
+- Works with `diting-dataset` to manage evaluation datasets (import/export, versioning).  
+- Powers the GUI in `diting-inspect` by exposing evaluation results via APIs.  
+
+
+## 📄 License  
+Part of the DiTing project, licensed under the [MIT License](LICENSE).  
+
+
+For more details, see the main [DiTing documentation](https://your-repo.com/org/diting) or contact the maintainers.

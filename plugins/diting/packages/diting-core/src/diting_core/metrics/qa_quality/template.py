@@ -2,11 +2,16 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
 
+from diting_core.metrics.utils import Language
+
 
 class QAQualityTemplate:
     @staticmethod
-    def evaluate_question_self(question: str) -> str:
-        return f"""任务: 评估给出的查询/问题的清晰度和可回答性，假设具备足够的领域知识。使用以下标准来指导你的评估：
+    def evaluate_question_self(
+        question: str, language: Language = Language.ENGLISH
+    ) -> str:
+        if language == Language.CHINESE:
+            return f"""任务: 评估给出的查询/问题的清晰度和可回答性，假设具备足够的领域知识。使用以下标准来指导你的评估：
         1. **自给自足**：该问题是否可以在不需要额外上下文或外部参考的情况下理解和完成？它应该是自足的，意味着它不依赖于任何先验知识，避免问题宽泛。
         2. **明确目标**：该问题是否清楚地传达了其意图？它应该明确说明请求什么信息、行动或响应，以便能够直接和恰当地回答，而没有歧义，避免问题模糊。
 
@@ -21,7 +26,7 @@ class QAQualityTemplate:
         1. `score`: 质量得分，必须是一个介于 0 到 1 之间的浮点数。
         2. `feedback`: 原因或反馈 ，必须是一个字符串
 
-        示例问题： 
+        示例问题：
         ```
         "在过去 20 年中，哪些技术创新改变了通信？"
         ```
@@ -78,10 +83,86 @@ class QAQualityTemplate:
 
         JSON:
         """
+        else:
+            return f"""Task: Evaluate the clarity and answerability of the given query/question, assuming sufficient domain knowledge. Use the following criteria to guide your evaluation:
+        1. **Self-sufficiency**: Can the question be understood and answered without requiring additional context or external references? It should be self-contained, meaning it doesn't rely on any prior knowledge, avoiding broad questions.
+        2. **Clear objective**: Does the question clearly communicate its intent? It should explicitly state what information, action, or response is requested so it can be answered directly and appropriately without ambiguity, avoiding vague questions.
+
+        Based on these criteria, provide a score between 0 and 1, where:
+        - "1" indicates the question is clear, self-sufficient, and answerable;
+        - "0" indicates the question is vague, relies on external references, or has unclear intent;
+        - Scores between 0 and 1 indicate partial clarity or answerability, where the query meets some but not all criteria.
+
+        Input: Question (string)
+
+        Output format: A JSON object containing 'score' and 'feedback' keys:
+        1. `score`: Quality score, must be a float between 0 and 1.
+        2. `feedback`: Reason or feedback, must be a string
+
+        Example question:
+        ```
+        "What technological innovations have changed communication in the past 20 years?"
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The query is somewhat vague as it asks about 'technological innovations' without specifying particular areas of communication (e.g., social media, messaging apps). This query could be improved by narrowing the focus to specific types of innovations or timeframes.",
+            "score": 0.5
+        }}
+        ```
+
+        Example question:
+        ```
+        "Explain the impact of renewable energy policies on Germany's local economy in 2021."
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The query clearly specifies the focus (renewable energy policies), region (Germany), and timeframe (2021). It is self-sufficient and answerable without additional context, making it clear and effective.",
+            "score": 1.0
+        }}
+        ```
+
+        Example question:
+        ```
+        "What are the main criticisms of the current U.S. education system?"
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The question is broad and lacks specificity, as 'main criticisms' could refer to multiple aspects (e.g., funding, curriculum, equity). To improve clarity, it could specify which aspect of the education system is being criticized.",
+            "score": 0.4
+        }}
+        ```
+
+        Example question:
+        ```
+        "Discuss the role of artificial intelligence in healthcare, particularly in diagnostics, as mentioned in the last report."
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The question mentions 'the last report' without providing context or details, making it unclear and dependent on external information. It would be clearer if some background about the report was provided or if specific aspects of AI in diagnostics were defined for discussion.",
+            "score": 0.3
+        }}
+        ```
+
+        -----
+
+        Question:
+        ```
+        {question}
+        ```
+
+        JSON:
+        """
 
     @staticmethod
-    def evaluate_answer_no_context(question: str, answer: str) -> str:
-        return f"""任务: 基于给出的问题，评估其关联的答案相关度，假设具备足够的领域知识。使用以下标准来指导你的评估：
+    def evaluate_answer_no_context(
+        question: str, answer: str, language: Language = Language.ENGLISH
+    ) -> str:
+        if language == Language.CHINESE:
+            return f"""任务: 基于给出的问题，评估其关联的答案相关度，假设具备足够的领域知识。使用以下标准来指导你的评估：
         1. **相关性**：答案是否直接与问题相关？是否包含了问题的关键词或主题？
         2. **完整性**：答案是否提供了足够的信息来全面回答问题？是否遗漏了重要的细节或背景信息？
         3. **清晰度**：答案是否表达清晰，易于理解？是否合乎逻辑？
@@ -184,12 +265,117 @@ class QAQualityTemplate:
 
         JSON:
         """
+        else:
+            return f"""Task: Based on the given question, evaluate the relevance of the associated answer, assuming sufficient domain knowledge. Use the following criteria to guide your evaluation:
+        1. **Relevance**: Is the answer directly related to the question? Does it contain key terms or themes from the question?
+        2. **Completeness**: Does the answer provide sufficient information to comprehensively answer the question? Are important details or background information missing?
+        3. **Clarity**: Is the answer clearly expressed and easy to understand? Is it logical?
+        4. **Conciseness**: Is the answer expressed concisely, or does it contain a lot of irrelevant information causing noise?
+
+        Based on these criteria, provide a score between 0 and 1, where:
+        - "1" indicates the answer is concise and clear, strongly relevant to the question, and provides sufficient information to comprehensively answer it.
+        - "0" indicates the answer is redundant, logically confused, has missing information, or is off-topic.
+        - Scores between 0 and 1 indicate partial relevance, completeness, clarity, and conciseness, meeting some but not all criteria.
+
+        Input: Question (string), Answer (string)
+
+        Output format: A JSON object containing 'score' and 'feedback' keys:
+        1. `score`: Quality score, must be a float between 0 and 1.
+        2. `feedback`: Reason or feedback, must be a string
+
+        Example question:
+        ```
+        "What are the advantages and disadvantages of Python as a scripting language?"
+        ```
+        Example answer:
+        ```
+        "Python's advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities. Disadvantages include lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The answer clearly and concisely addresses the question, providing sufficient information to comprehensively answer it.",
+            "score": 1.0
+        }}
+        ```
+
+        Example question:
+        ```
+        "What are the main criticisms of the current U.S. education system?"
+        ```
+        Example answer:
+        ```
+        "The main criticisms of the current U.S. education system include:
+
+        1. Weak foundational education
+
+        U.S. elementary and secondary education generally remains at a very basic level, especially in science education, with some students not encountering linear equations until high school. Many people don't start learning foreign languages until high school either.
+
+        ```
+        Example JSON:
+
+        ```
+        {{
+            "feedback": "The answer clearly addresses the question, but the content provided is insufficient to completely answer the question.",
+            "score": 0.5
+        }}
+        ```
+
+
+        Example question:
+        ```
+        "Explain the impact of renewable energy policies on Germany's local economy in 2021."
+        ```
+        Example answer:
+        ```
+        "The German government invested significant funds in subsidies and project support to promote renewable energy development. Although EEG2021 plans to gradually transition to market-driven approaches, it still required substantial fiscal funding support in 2021."
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The answer does not clearly address the question and is off-topic (the question asks about impact on local economy, but the answer discusses funding requirements).",
+            "score": 0.0
+        }}
+        ```
+
+        Example question:
+        ```
+        "Discuss the role of artificial intelligence in healthcare, particularly in diagnostics and treatment."
+        ```
+        Example answer:
+        ```
+        "In diagnostics, artificial intelligence can analyze medical images (such as X-rays, CT scans, and MRIs) to help doctors more accurately identify diseases. For example, AI can detect early signs of cancer through deep learning models, thereby improving early diagnosis rates; at the same time, AI can automate repetitive and tedious tasks, improving work efficiency and reducing labor costs; AI can also process and analyze large amounts of data, helping businesses and organizations extract valuable information and make more informed decisions; through machine learning, AI can provide personalized recommendations and services based on user behavior and preferences, enhancing user experience."
+        ```
+        Example JSON:
+        ```
+        {{
+            "feedback": "The answer content is partially relevant to the question, lacks conciseness, and shows logical confusion and redundancy.",
+            "score": 0.3
+        }}
+        ```
+        -----
+
+        Question:
+        ```
+        {question}
+        ```
+
+        Answer:
+        ```
+        {answer}
+        ```
+
+        JSON:
+        """
 
     @staticmethod
     def evaluate_question_with_context(
-        question: str, retrieval_context: list[str]
+        question: str,
+        retrieval_context: list[str],
+        language: Language = Language.ENGLISH,
     ) -> str:
-        return f"""任务: 基于给出的上下文，评估其关联的查询/问题的可回答性。使用以下步骤来指导你的评估：
+        if language == Language.CHINESE:
+            return f"""任务: 基于给出的上下文，评估其关联的查询/问题的可回答性。使用以下步骤来指导你的评估：
 
             1. 识别关键要素：确定问题中的关键概念和要素，这些要素通常包括主题、时间、地点和特定细节。
             2. 遍历上下文：仔细阅读给定的上下文，寻找与问题关键要素相关的信息。注意上下文中是否包含直接的答案或相关的细节。
@@ -291,12 +477,118 @@ class QAQualityTemplate:
 
             JSON:
             """
+        else:
+            return f"""Task: Based on the given context, evaluate the answerability of the associated query/question. Use the following steps to guide your evaluation:
+
+            1. Identify key elements: Determine the key concepts and elements in the question, which typically include topics, time, location, and specific details.
+            2. Traverse the context: Carefully read the given context, looking for information related to the key elements of the question. Note whether the context contains direct answers or relevant details.
+            3. Look for direct answers: Try to find information in the context that can directly answer the question. This can be explicit sentences, data, or descriptions.
+            4. Assess information relevance: Judge whether the information in the context is sufficiently relevant to directly address the question's request. If the information is irrelevant, even if it exists in the text, it cannot provide an effective answer.
+            5. Consider context completeness: Confirm whether the context is comprehensive enough to support a correct answer to the question. If the context information is too limited or one-sided, it may not be possible to find an answer.
+            6. Identify implicit information: In some cases, the answer to the question may not be directly given but needs to be inferred from the context. Evaluate whether the answer can be derived through logical reasoning.
+            7. Avoid assuming external knowledge: Ensure that the answer does not rely on any external knowledge or information and is completely based on the provided context. If the question requires additional information to understand, it may not be suitable for finding an answer in that context.
+
+            Based on these steps, provide a score between 0 and 1, where:
+            - "1" indicates the question can be completely answered based on the given context without additional prior knowledge;
+            - "0" indicates the question cannot find an answer in the given context;
+            - Scores between 0 and 1 indicate partial answerability, where the question meets some but not all criteria.
+
+            Input: Context (a list of strings), Question (string)
+
+            Output format: A JSON object containing 'score' and 'feedback' keys:
+            1. `score`: Quality score, must be a float between 0 and 1.
+            2. `feedback`: Reason or feedback, must be a string
+
+            Example context:
+            ```
+            ["Python is a widely used scripting language. Scripting languages are typically used for automating tasks, rapid development, and simplifying program design.", "Its advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities.", "However, scripting languages also have some disadvantages, such as lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."]
+            ```
+            Example question:
+            ```
+            "What are the advantages and disadvantages of Python as a scripting language?"
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The question's focus is strongly related to the context themes (Python, scripting language, advantages and disadvantages), and can be answered without additional context.",
+                "score": 1.0
+            }}
+            ```
+
+            Example context:
+            ```
+            ["Artificial intelligence algorithms can analyze medical images (such as X-rays, CT scans, and MRIs) to help doctors more accurately identify diseases. For example, AI can detect early signs of cancer through deep learning models, thereby improving early diagnosis rates.", "AI can develop personalized treatment plans based on patients' genetic information, medical history, and other data. This approach helps optimize drug selection and dosage, thereby improving treatment effectiveness.", "Artificial intelligence accelerates the drug development process by analyzing large amounts of data to discover new drug targets, optimize drug compound design, and predict clinical trial effects."]
+            ```
+            Example question:
+            ```
+            "Discuss the role of artificial intelligence in healthcare, particularly in diagnostics, as mentioned in the last report."
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The question mentions 'the last report' without providing context or details, making it unclear and dependent on external information.",
+                "score": 0.3
+            }}
+            ```
+
+            Example context:
+            ```
+            ["The education environment centered on 'love' and 'respect' in America has created thousands of self-centered individualists.", "The school district system for public schools and the annual tuition of $50,000-60,000 for private schools discourage many families. Without superior economic conditions, children don't even have the opportunity to receive a good education."]
+            ```
+            Example question:
+            ```
+            "What are the main criticisms of current American society?"
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The question's focus 'main criticisms' may involve multiple aspects (e.g., human rights, education, equity). Additionally, the context theme is American education, while the question background is American society, with low relevance.",
+                "score": 0.2
+            }}
+            ```
+
+
+            Example context:
+            ```
+            ["Germany has long been committed to energy transition, and the new version of the Renewable Energy Act (EEG2021) that came into effect in 2021 is of great significance. The bill was passed by parliament on December 17, 2020, with the goal of further accelerating renewable energy development while reducing the burden on electricity users.", "The impact of renewable energy policies on Germany's local economy in 2021 was mainly in the following two aspects: 1. Renewable energy industry expansion: Under policy promotion, Germany's renewable energy industry continued to expand in 2021. Taking the solar photovoltaic industry as an example, EEG2021's plan to significantly increase photovoltaic power generation stimulated related companies to expand production scale and increase R&D investment", "2. Increased employment opportunities: The development of the renewable energy industry created a large number of job opportunities. Direct employment positions covered multiple links from energy equipment manufacturing, project construction, to later operation and maintenance."]
+            ```
+            Example question:
+            ```
+            "Explain the impact of renewable energy policies on the UK's central finances in 2022."
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The question's focus has low relevance to the context theme and cannot be answered based on the given context.",
+                "score": 0.0
+            }}
+            ```
+
+            -----
+
+
+            Context:
+            ```
+            {retrieval_context}
+            ```
+
+            Question:
+            ```
+            {question}
+            ```
+
+            JSON:
+            """
 
     @staticmethod
     def evaluate_answer_with_context(
-        question: str, answer: str, retrieval_context: list[str]
+        question: str,
+        answer: str,
+        retrieval_context: list[str],
+        language: Language = Language.ENGLISH,
     ) -> str:
-        return f"""任务: 基于给出的上下文和问题，评估其关联的答案质量，假设具备足够的领域知识。使用以下标准来指导你的评估：
+        if language == Language.CHINESE:
+            return f"""任务: 基于给出的上下文和问题，评估其关联的答案质量，假设具备足够的领域知识。使用以下标准来指导你的评估：
             1. **简洁明了**：该答案是否直接回应了问题？它应该和问题强相关，避免答非所问。
             2. **完整无误**：该答案是否完整且准确地回答了问题？它应当避免回答噪声或回答不全。
 
@@ -419,6 +711,135 @@ class QAQualityTemplate:
             ```
 
             答案：
+            ```
+            {answer}
+            ```
+
+            JSON:
+            """
+        else:
+            return f"""Task: Based on the given context and question, evaluate the quality of the associated answer, assuming sufficient domain knowledge. Use the following criteria to guide your evaluation:
+            1. **Concise and clear**: Does the answer directly respond to the question? It should be strongly relevant to the question, avoiding off-topic responses.
+            2. **Complete and accurate**: Does the answer completely and accurately respond to the question? It should avoid answer noise or incomplete responses.
+
+            Based on these criteria, provide a score between 0 and 1, where:
+            - "1" indicates the answer is concise and completely accurate compared to the question.
+            - "0" indicates the answer is redundant, has missing information, or is off-topic.
+            - Scores between 0 and 1 indicate partial clarity or answerability, meeting some but not all criteria.
+
+            Input: Context (a list of strings), Question (string), Answer (string)
+
+            Output format: A JSON object containing 'score' and 'feedback' keys:
+            1. `score`: Quality score, must be a float between 0 and 1.
+            2. `feedback`: Reason or feedback, must be a string
+
+            Example context:
+            ```
+            ["Python is a widely used scripting language. Scripting languages are typically used for automating tasks, rapid development, and simplifying program design.", "Its advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities.", "However, scripting languages also have some disadvantages, such as lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."]
+            ```
+            Example question:
+            ```
+            "What are the advantages and disadvantages of Python as a scripting language?"
+            ```
+            Example answer:
+            ```
+            "Python's advantages include ease of learning and use, rapid development, cross-platform compatibility, dynamic typing, rich libraries and frameworks, and good integration capabilities. Disadvantages include lower performance, insufficient error checking, unsuitability for large projects, security issues, and environment dependencies."
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The answer clearly addresses the question, and the content is completely within the context scope, with no missing or incorrect answers.",
+                "score": 1.0
+            }}
+            ```
+
+            Example context:
+            ```
+            ["The education environment centered on 'love' and 'respect' in America has created thousands of self-centered individualists.", "The school district system for public schools and the annual tuition of $50,000-60,000 for private schools discourage many families. Without superior economic conditions, children don't even have the opportunity to receive a good education."]
+            ```
+            Example question:
+            ```
+            "What are the main criticisms of the current U.S. education system?"
+            ```
+            Example answer:
+            ```
+            "The main criticisms of the current U.S. education system include:
+
+            1. Weak foundational education
+
+            U.S. elementary and secondary education generally remains at a very basic level, especially in science education, with some students not encountering linear equations until high school. Many people don't start learning foreign languages until high school either.
+
+            2. Widespread individualism
+
+            The education environment centered on 'love' and 'respect' in America has created thousands of self-centered individualists.
+
+            3. High education costs
+
+            The school district system for public schools and the annual tuition of $50,000-60,000 for private schools discourage many families. Without superior economic conditions, children don't even have the opportunity to receive a good education."
+            ```
+            Example JSON:
+
+            ```
+            {{
+                "feedback": "The answer clearly addresses the question without missing or incorrect answers, but the response content exceeds the context scope ('weak foundational education' is not mentioned in the context).",
+                "score": 0.6
+            }}
+            ```
+
+
+            Example context:
+            ```
+            ["Germany has long been committed to energy transition, and the new version of the Renewable Energy Act (EEG2021) that came into effect in 2021 is of great significance. The bill was passed by parliament on December 17, 2020, with the goal of further accelerating renewable energy development while reducing the burden on electricity users.", "The impact of renewable energy policies on Germany's local economy in 2021 was mainly in the following two aspects: 1. Renewable energy industry expansion: Under policy promotion, Germany's renewable energy industry continued to expand in 2021. Taking the solar photovoltaic industry as an example, EEG2021's plan to significantly increase photovoltaic power generation stimulated related companies to expand production scale and increase R&D investment", "2. Increased employment opportunities: The development of the renewable energy industry created a large number of job opportunities. Direct employment positions covered multiple links from energy equipment manufacturing, project construction, to later operation and maintenance."]
+            ```
+            Example question:
+            ```
+            "Explain the impact of renewable energy policies on Germany's local economy in 2021."
+            ```
+            Example answer:
+            ```
+            "The German government invested significant funds in subsidies and project support to promote renewable energy development. Although EEG2021 plans to gradually transition to market-driven approaches, it still required substantial fiscal funding support in 2021."
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The answer does not clearly address the question and is off-topic (the question asks about impact on local economy, but the answer discusses funding requirements). Additionally, the response content exceeds the context scope ('requires substantial fiscal funding support' is not mentioned in the context).",
+                "score": 0.0
+            }}
+            ```
+
+            Example context:
+            ```
+            ["Artificial intelligence algorithms can analyze medical images (such as X-rays, CT scans, and MRIs) to help doctors more accurately identify diseases. For example, AI can detect early signs of cancer through deep learning models, thereby improving early diagnosis rates.", "AI can develop personalized treatment plans based on patients' genetic information, medical history, and other data. This approach helps optimize drug selection and dosage, thereby improving treatment effectiveness.", "Artificial intelligence accelerates the drug development process by analyzing large amounts of data to discover new drug targets, optimize drug compound design, and predict clinical trial effects."]
+            ```
+            Example question:
+            ```
+            "Discuss the role of artificial intelligence in healthcare, particularly in diagnostics and treatment."
+            ```
+            Example answer:
+            ```
+            "In diagnostics, artificial intelligence can analyze medical images (such as X-rays, CT scans, and MRIs) to help doctors more accurately identify diseases. For example, AI can detect early signs of cancer through deep learning models, thereby improving early diagnosis rates."
+            ```
+            Example JSON:
+            ```
+            {{
+                "feedback": "The answer content is within the context scope, but it only partially addresses the question, with missing answers (does not address the role of artificial intelligence in treatment).",
+                "score": 0.5
+            }}
+            ```
+            -----
+
+
+            Context:
+            ```
+            {retrieval_context}
+            ```
+
+            Question:
+            ```
+            {question}
+            ```
+
+            Answer:
             ```
             {answer}
             ```

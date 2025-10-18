@@ -16,6 +16,11 @@ def llm_factory(
     is_guided_json_support: bool = False,
     **kwargs: Any,
 ) -> BaseLLM:
+    # 统一设置 enable_thinking 为 false 以避免非流式调用错误
+    extra_body = kwargs.get("extra_body", {})
+    extra_body["enable_thinking"] = False
+    kwargs["extra_body"] = extra_body
+
     if api_key:
         llm = ChatOpenAI(
             model=model,

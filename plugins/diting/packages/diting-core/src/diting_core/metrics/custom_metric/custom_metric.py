@@ -31,7 +31,9 @@ class CustomMetric(BaseMetric):
         assert test_case.user_input, "user_input cannot be empty"
         assert test_case.actual_output, "actual_output cannot be empty"
         assert test_case.expected_output, "expected_output cannot be empty"
-        assert test_case.metadata, "metadata cannot be empty"
+        assert test_case.metadata is not None and test_case.metadata.get("prompt"), (
+            "prompt cannot be empty"
+        )
         prompt = self.evaluation_template.generate_verdict(
             test_case.metadata.get("prompt", ""),
             test_case.user_input,

@@ -17,6 +17,7 @@ from diting_core.models.llms.base_model import (
     PydanticClass,
 )
 from diting_core.models.utils import filter_model_output
+from diting_core.utilities.json_retry import JsonRetryHandler, create_enhanced_prompt
 
 MULTIPLE_COMPLETION_SUPPORTED = [
     OpenAI,
@@ -48,10 +49,12 @@ class LangchainLLMWrapper(BaseLLM):
         self,
         llm: BaseLanguageModel[BaseMessage],
         is_guided_json_support: bool = False,
+        json_retry_handler: Optional[JsonRetryHandler] = None,
     ):
         super().__init__()
         self.llm = llm
         self.is_guided_json_support: bool = is_guided_json_support
+        self.json_retry_handler = json_retry_handler or JsonRetryHandler()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(llm={self.llm.__class__.__name__}(...))"
@@ -133,6 +136,7 @@ class LangchainLLMWrapper(BaseLLM):
         prompt: str,
         schema: Optional[PydanticClass] = None,
         use_guided_json: bool = False,
+        enable_retry: bool = True,
         **kwargs: Any,
     ) -> Any:
         run_manager, grp_cb = await new_group(
@@ -150,9 +154,30 @@ class LangchainLLMWrapper(BaseLLM):
                 )
                 fmt_output = filter_model_output(content)
                 output_model = json_repair.loads(fmt_output)
+            elif enable_retry and not use_guided_json:
+
+                async def generate_func(current_prompt: str):
+                    return cast(
+                        str,
+                        await self.generate(current_prompt, callbacks=grp_cb, **kwargs),
+                    )
+
+                def enhance_prompt_func(
+                    original_prompt: str, error_info: dict[str, Any]
+                ) -> str:
+                    return create_enhanced_prompt(original_prompt, error_info)
+
+                output_model = await self.json_retry_handler.generate_and_validate(
+                    generate_func=generate_func,
+                    schema=schema,
+                    enhance_prompt_func=enhance_prompt_func,
+                    original_prompt=prompt,
+                )
             elif use_guided_json:
                 json_schema = schema.model_json_schema()
-                self.llm.extra_body = {"guided_json": json_schema}  # type: ignore
+                current_extra_body = getattr(self.llm, "extra_body", {}) or {}
+                current_extra_body["guided_json"] = json_schema
+                self.llm.extra_body = current_extra_body  # type: ignore
                 content = cast(
                     str, await self.generate(prompt, callbacks=grp_cb, **kwargs)
                 )
@@ -177,11 +202,13 @@ class LangchainLLMWrapper(BaseLLM):
         self,
         prompt: str,
         schema: Optional[PydanticClass] = None,
+        enable_retry: bool = True,
         **kwargs: Any,
     ) -> DictOrPydantic:
         return await self._generate_parse(
             prompt,
             schema=schema,
             use_guided_json=self.is_guided_json_support,
+            enable_retry=enable_retry,
             **kwargs,
         )

@@ -29,7 +29,6 @@ def embedding_factory(
     api_key : str
         API key for authenticating with the embedding service.
     timeout: float
-
     Returns
     -------
     BaseEmbeddings

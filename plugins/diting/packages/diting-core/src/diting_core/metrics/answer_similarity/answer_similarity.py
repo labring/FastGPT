@@ -6,6 +6,7 @@ from diting_core.callbacks.base import Callbacks
 from diting_core.cases.llm_case import LLMCase, LLMCaseParams
 from diting_core.metrics.base_metric import BaseMetric, MetricValue
 from diting_core.models.embeddings.base_model import BaseEmbeddings
+from diting_core.metrics.utils import Language, detect_language
 
 
 @dataclass
@@ -55,7 +56,13 @@ class AnswerSimilarity(BaseMetric):
         assert isinstance(similarity, np.floating), "Expects np.floating"
         score = float(similarity)
 
+        language = detect_language(test_case.expected_output)
+        if language == Language.CHINESE:
+            reason = f"实际回答与参考答案在语义上的余弦相似度为 {score:.4f}"
+        else:
+            reason = f"The cosine similarity between the actual output and the expected output is {score:.4f}"
+
         return MetricValue(
             score=score,
-            reason=f"The cosine similarity score between the question and the answer is {score:.4f}",
+            reason=reason,
         )

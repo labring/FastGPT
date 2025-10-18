@@ -10,7 +10,11 @@ class Statements(BaseModel):
 
 class FaithfulnessVerdict(BaseModel):
     statement: str = Field(..., description="the original statement, word-by-word")
-    reason: str = Field(..., description="the reason of the verdict")
+    reason: str = Field(
+        default="",
+        description="the reason of the verdict",
+        json_schema_extra={"required": True},
+    )
     verdict: int = Field(..., description="the verdict(0/1) of the faithfulness.")
 
 

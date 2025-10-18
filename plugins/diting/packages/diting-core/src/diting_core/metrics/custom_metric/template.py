@@ -33,5 +33,6 @@ Do not use single quotes in your response but double quotes, properly escaped wi
 
 --------Example JSON--------:
 {example_json}
+**IMPORTANT**: Do not mention specific numeric scores in your reasoning. Use natural language to explain the evaluation rationale.
 """
         return prompt + eval_case + json_constraint

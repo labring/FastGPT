@@ -10,6 +10,7 @@ from diting_core.metrics.base_metric import BaseMetric, MetricValue
 from diting_core.metrics.qa_quality.schema import QAQualityFeedback
 from diting_core.metrics.qa_quality.template import QAQualityTemplate
 from diting_core.models.llms.base_model import BaseLLM
+from diting_core.metrics.utils import detect_language, Language
 
 
 @dataclass
@@ -74,8 +75,12 @@ class QAQuality(BaseMetric):
             callbacks=callbacks,
         )
         try:
+            # Detect language from user input and expected output
+            combined_text = f"{user_input} {expected_output}"
+            language = detect_language(combined_text)
+
             evaluation_question_prompt = (
-                self.evaluation_template.evaluate_question_self(user_input)
+                self.evaluation_template.evaluate_question_self(user_input, language)
             )
             question_feedback = await self.model.generate_structured_output(
                 evaluation_question_prompt, QAQualityFeedback, callbacks=grp_cb
@@ -84,7 +89,7 @@ class QAQuality(BaseMetric):
 
             evaluation_answer_prompt = (
                 self.evaluation_template.evaluate_answer_no_context(
-                    user_input, expected_output
+                    user_input, expected_output, language
                 )
             )
             answer_feedback = await self.model.generate_structured_output(
@@ -92,7 +97,10 @@ class QAQuality(BaseMetric):
             )
             answer_feedback = QAQualityFeedback.model_validate(answer_feedback)
 
-            feedback = f"问题简洁性/自给自足:\n - {question_feedback.feedback}\n答案合理性:\n -{answer_feedback.feedback}"
+            if language == Language.CHINESE:
+                feedback = f"问题简洁性/自给自足:\n - {question_feedback.feedback}\n答案合理性:\n -{answer_feedback.feedback}"
+            else:
+                feedback = f"Question clarity/self-sufficiency:\n - {question_feedback.feedback}\nAnswer reasonableness:\n - {answer_feedback.feedback}"
             score = round(
                 question_feedback.score * 0.5 + answer_feedback.score * 0.5, 1
             )
@@ -130,8 +138,12 @@ class QAQuality(BaseMetric):
             callbacks=callbacks,
         )
         try:
+            # Detect language from user input, expected output and context
+            combined_text = f"{user_input} {expected_output} {' '.join(context)}"
+            language = detect_language(combined_text)
+
             evaluation_question_self_prompt = (
-                self.evaluation_template.evaluate_question_self(user_input)
+                self.evaluation_template.evaluate_question_self(user_input, language)
             )
             question_self_feedback = await self.model.generate_structured_output(
                 evaluation_question_self_prompt, QAQualityFeedback, callbacks=grp_cb
@@ -142,7 +154,7 @@ class QAQuality(BaseMetric):
 
             evaluation_question_context_prompt = (
                 self.evaluation_template.evaluate_question_with_context(
-                    user_input, context
+                    user_input, context, language
                 )
             )
             question_context_feedback = await self.model.generate_structured_output(
@@ -156,7 +168,7 @@ class QAQuality(BaseMetric):
 
             evaluation_answer_prompt = (
                 self.evaluation_template.evaluate_answer_with_context(
-                    user_input, expected_output, context
+                    user_input, expected_output, context, language
                 )
             )
 
@@ -165,14 +177,24 @@ class QAQuality(BaseMetric):
             )
             answer_feedback = QAQualityFeedback.model_validate(answer_feedback)
 
-            feedback = (
-                f"问题简洁性/自给自足:\n"
-                f" - {question_self_feedback.feedback}\n"
-                f"问题和上下文的联系:\n"
-                f" - {question_context_feedback.feedback}\n"
-                f"答案正确性:\n"
-                f" -{answer_feedback.feedback}"
-            )
+            if language == Language.CHINESE:
+                feedback = (
+                    f"问题简洁性/自给自足:\n"
+                    f" - {question_self_feedback.feedback}\n"
+                    f"问题和上下文的联系:\n"
+                    f" - {question_context_feedback.feedback}\n"
+                    f"答案正确性:\n"
+                    f" -{answer_feedback.feedback}"
+                )
+            else:
+                feedback = (
+                    f"Question clarity/self-sufficiency:\n"
+                    f" - {question_self_feedback.feedback}\n"
+                    f"Question-context relevance:\n"
+                    f" - {question_context_feedback.feedback}\n"
+                    f"Answer correctness:\n"
+                    f" - {answer_feedback.feedback}"
+                )
             question_score = round(
                 0.4 * question_self_feedback.score
                 + 0.6 * question_context_feedback.score,

@@ -22,7 +22,6 @@ RUN apt-get update \
     && apt-get install -y curl vim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
 # Copy the environment, but not the source code
 COPY --from=builder --chown=diting:diting /app/.venv /app/.venv
 # ENV DT_SERVER_DATA="/app/data"

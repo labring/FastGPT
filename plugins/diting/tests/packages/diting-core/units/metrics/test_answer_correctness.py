@@ -8,6 +8,8 @@ from diting_core.metrics.answer_correctness.schema import (
     StatementsWithReason,
     Statements,
     Reason,
+    EvaluationStrategySelection,
+    EvaluationStrategy,
 )
 from diting_core.metrics.base_metric import MetricValue
 from diting_core.cases.llm_case import LLMCase
@@ -176,12 +178,21 @@ class TestAnswerCorrectness(unittest.IsolatedAsyncioTestCase):
         self.answer_correctness.include_reason = False
         with (
             patch.object(
+                AnswerCorrectness,
+                "_a_select_evaluation_strategy",
+                new_callable=AsyncMock,
+            ) as mock_strategy,
+            patch.object(
                 AnswerCorrectness, "_a_generate_statements", new_callable=AsyncMock
             ) as mock_statements,
             patch.object(
                 AnswerCorrectness, "_a_generate_verdicts", new_callable=AsyncMock
             ) as mock_verdicts,
         ):
+            mock_strategy.return_value = EvaluationStrategySelection(
+                strategy=EvaluationStrategy.STRICT,
+                reason="Using strict strategy for testing",
+            )
             mock_statements.side_effect = [
                 ["statement1"],  # For actual
                 ["statement2"],  # For expected
@@ -194,6 +205,11 @@ class TestAnswerCorrectness(unittest.IsolatedAsyncioTestCase):
         self.answer_correctness.include_reason = True
         with (
             patch.object(
+                AnswerCorrectness,
+                "_a_select_evaluation_strategy",
+                new_callable=AsyncMock,
+            ) as mock_strategy,
+            patch.object(
                 AnswerCorrectness, "_a_generate_statements", new_callable=AsyncMock
             ) as mock_statements,
             patch.object(
@@ -203,6 +219,10 @@ class TestAnswerCorrectness(unittest.IsolatedAsyncioTestCase):
                 AnswerCorrectness, "_a_generate_reason", new_callable=AsyncMock
             ) as mock_reason,
         ):
+            mock_strategy.return_value = EvaluationStrategySelection(
+                strategy=EvaluationStrategy.STRICT,
+                reason="Using strict strategy for testing",
+            )
             mock_statements.side_effect = [
                 ["statement1"],  # For actual
                 ["statement2"],  # For expected

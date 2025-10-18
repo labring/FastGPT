@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from diting_server.apis.v1.evaluation.api import router, run_evaluation
 from diting_server.apis.v1.evaluation.data_models import (
     EvaluationRequest,
@@ -11,6 +11,7 @@ from diting_server.apis.v1.evaluation.data_models import (
     EvaluationResult,
 )
 from diting_server.common.schema import StatusEnum
+from diting_server.middleware.request_tracking import XRequestIdMiddleware
 
 
 class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
@@ -19,6 +20,8 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.app = FastAPI()
+        # Add middleware for testing
+        self.app.add_middleware(XRequestIdMiddleware)
         self.app.include_router(router)
         self.client = TestClient(self.app)
 
@@ -63,11 +66,17 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
 
+        # Mock http_request with scope
+        mock_http_request = MagicMock(spec=Request)
+        mock_http_request.scope = {"diting_request_id": "eval-test-id"}
+
         with patch(
             "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as mock_service:
-            response = await run_evaluation(EvaluationRequest(**request_data))
+            response = await run_evaluation(
+                EvaluationRequest(**request_data), mock_http_request
+            )
 
         self.assertIsInstance(response, EvaluationResponse)
         self.assertEqual(response.request_id, "eval-test-id")
@@ -87,13 +96,19 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
             "evalCase": {"userInput": "test input", "actualOutput": "test output"},
         }
 
+        # Mock http_request with scope
+        mock_http_request = MagicMock(spec=Request)
+        mock_http_request.scope = {"diting_request_id": "eval-test-id"}
+
         # Mock service to raise exception
         with patch(
             "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             side_effect=Exception("Service error"),
         ):
             with self.assertRaises(Exception):
-                await run_evaluation(EvaluationRequest(**request_data))
+                await run_evaluation(
+                    EvaluationRequest(**request_data), mock_http_request
+                )
 
     async def test_run_evaluation_request_id_generation(self):
         """Test that request ID is generated for each request."""
@@ -111,18 +126,21 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
 
+        # Mock http_request with scope
+        mock_http_request = MagicMock(spec=Request)
+        mock_http_request.scope = {"diting_request_id": "eval-test-id"}
+
         with patch(
             "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as mock_service:
-            await run_evaluation(EvaluationRequest(**request_data))
+            await run_evaluation(EvaluationRequest(**request_data), mock_http_request)
 
-            # Verify that the service was called with a generated request_id
+            # Verify that the service was called with the request_id from scope
             call_args = mock_service.call_args
             self.assertEqual(len(call_args[0]), 2)  # request and request_id
             request_id = call_args[0][1]
-            self.assertIsInstance(request_id, str)
-            self.assertGreater(len(request_id), 0)
+            self.assertEqual(request_id, "eval-test-id")
 
     def test_run_evaluation_with_test_client_success(self):
         """Test evaluation endpoint using TestClient."""
@@ -291,29 +309,32 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
             "diting_server.apis.v1.evaluation.api.evaluation_service.run_evaluation",
             return_value=mock_response,
         ) as _mock_service:
-            with patch("diting_server.apis.v1.evaluation.api.logger") as mock_logger:
-                response = self.client.post(
-                    "/api/v1/evaluations/runs", json=request_data
-                )
+            # Mock both API logger and middleware logger
+            with patch("diting_server.apis.v1.evaluation.api.logger"):
+                with patch(
+                    "diting_server.middleware.request_tracking.logger"
+                ) as middleware_logger:
+                    response = self.client.post(
+                        "/api/v1/evaluations/runs", json=request_data
+                    )
 
-                self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.status_code, 200)
 
-        # Verify logging calls
+        # Verify middleware logging calls
+        # The middleware logs "Request started" and "Request completed"
         self.assertGreaterEqual(
-            mock_logger.info.call_count, 2
-        )  # Start and completion logs
+            middleware_logger.info.call_count, 2
+        )  # Start and completion logs from middleware
 
-        # Check that logging calls contain the expected patterns
-        call_args_list = [call[0][0] for call in mock_logger.info.call_args_list]
-        start_log_found = any(
-            "Starting evaluation task, request_id:" in call for call in call_args_list
-        )
+        # Check that middleware logging calls contain the expected patterns
+        call_args_list = [call[0][0] for call in middleware_logger.info.call_args_list]
+        start_log_found = any("Request started" in call for call in call_args_list)
         completion_log_found = any(
-            "Evaluation task completed, request_id:" in call for call in call_args_list
+            "Request completed" in call for call in call_args_list
         )
 
-        self.assertTrue(start_log_found, "Starting evaluation task log not found")
-        self.assertTrue(completion_log_found, "Evaluation task completed log not found")
+        self.assertTrue(start_log_found, "Request started log not found")
+        self.assertTrue(completion_log_found, "Request completed log not found")
 
     def test_run_evaluation_error_logging(self):
         """Test that evaluation errors are properly logged."""
@@ -334,8 +355,11 @@ class TestEvaluationAPI(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 500)
 
-        # Verify error logging
+        # Verify error logging - now we expect structured logging
         mock_logger.error.assert_called_once()
-        error_call_args = mock_logger.error.call_args[0]
-        self.assertIn("Evaluation failed", error_call_args[0])
-        self.assertIn("Service error", error_call_args[0])
+        error_call_args = mock_logger.error.call_args
+        # Check the structured log format
+        self.assertEqual(error_call_args[0][0], "Evaluation failed")
+        self.assertIn("request_id", error_call_args[1])
+        self.assertIn("error", error_call_args[1])
+        self.assertEqual(error_call_args[1]["error"], "Service error")

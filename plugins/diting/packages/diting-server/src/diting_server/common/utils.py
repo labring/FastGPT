@@ -57,9 +57,16 @@ def resolve_model_config(
     if base_url:
         parsed = urlparse(base_url)
         if parsed.path and parsed.path != "/v1":
-            if "/v1" in parsed.path:
-                base_url = f"{parsed.scheme}://{parsed.netloc}/v1"
+            if "/v1/" in parsed.path:
+                # URL contains /v1/ followed by more path, truncate to /v1
+                v1_index = parsed.path.find("/v1/")
+                truncated_path = parsed.path[: v1_index + 3]  # +3 to include "/v1"
+                base_url = f"{parsed.scheme}://{parsed.netloc}{truncated_path}"
+            elif parsed.path.endswith("/v1"):
+                # URL ends with /v1, use as-is
+                base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
             else:
+                # Append /v1 to the existing path
                 base_url = (
                     f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
                     + "/v1"

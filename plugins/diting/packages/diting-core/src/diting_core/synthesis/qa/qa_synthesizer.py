@@ -13,6 +13,7 @@ from diting_core.synthesis.base_synthesizer import BaseSynthesizer
 from diting_core.synthesis.base_corpus import BaseCorpus
 from diting_core.synthesis.qa.schema import QAPairs, QAWithScore, QA
 from diting_core.synthesis.qa.template import QAGenerateTemplate
+from diting_core.metrics.utils import detect_language
 
 
 @dataclass
@@ -89,8 +90,12 @@ class QASynthesizer(BaseSynthesizer):
         assert corpus.context, "context cannot be empty"
 
         context = corpus.context
+        # Detect language from context
+        combined_text = " ".join(context)
+        language = detect_language(combined_text)
+
         prompt = self.generate_template.generate_qa(
-            context, self.max_generation_per_context
+            context, self.max_generation_per_context, language=language
         )
         qa_pairs = await self.model.generate_structured_output(
             prompt, schema=QAPairs, callbacks=callbacks
@@ -170,8 +175,12 @@ class QASynthesizer(BaseSynthesizer):
             # vote by the best score
             if len(scores) == 0:
                 # retry generate and measure
+                # Detect language from context
+                combined_text = " ".join(context)
+                language = detect_language(combined_text)
+
                 prompt = self.generate_template.generate_qa(
-                    context, self.max_generation_per_context
+                    context, self.max_generation_per_context, language=language
                 )
                 qa_pair_res = await self.model.generate_structured_output(
                     prompt, schema=QAPairs, callbacks=callbacks
@@ -182,11 +191,16 @@ class QASynthesizer(BaseSynthesizer):
             best_candidate = max(scores, key=lambda x: x.score)
             if best_candidate.score < self.quality_threshold:
                 # rewrite the generations with reason
+                # Detect language from context and question
+                combined_text = " ".join(context) + " " + best_candidate.QA.question
+                language = detect_language(combined_text)
+
                 rewrite_prompt = self.generate_template.rewrite_qa(
                     context,
                     best_candidate.QA.question,
                     best_candidate.QA.answer,
                     best_candidate.reason,
+                    language=language,
                 )
                 rewritten_qa_pairs = await self.model.generate_structured_output(
                     rewrite_prompt, schema=QAPairs, callbacks=callbacks
