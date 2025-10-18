@@ -7,7 +7,6 @@ import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils
 import { WorkflowDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useCreation } from 'ahooks';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
@@ -15,12 +14,13 @@ import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, llmModelList } = useSystemStore();
 
@@ -40,15 +40,16 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     return getWebDefaultLLMModel(modelList).model;
   }, [modelList]);
 
-  const editorVariables = useCreation(() => {
+  const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
       nodeList,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, nodeList, getNodeById, edges, appDetail, t]);
 
   const externalVariables = useMemo(() => {
     return (

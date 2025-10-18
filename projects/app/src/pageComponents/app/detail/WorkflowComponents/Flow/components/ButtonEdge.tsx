@@ -8,10 +8,14 @@ import { useThrottleEffect } from 'ahooks';
 import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ButtonEdge = (props: EdgeProps) => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const { onEdgesChange, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { onEdgesChange, nodeList, getNodeById } = useContextSelector(
+    WorkflowDataContext,
+    (v) => v
+  );
   const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
@@ -32,19 +36,19 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   // If parentNode is folded, the edge will not be displayed
-  const parentNode = useMemo(() => {
+  const parentNode = useMemoEnhance(() => {
     for (const node of nodeList) {
       if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
-        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
+        return getNodeById(node.parentNodeId);
       }
     }
     return undefined;
-  }, [nodeList, source, target]);
+  }, [getNodeById, nodeList, source, target]);
 
-  const defaultZIndex = useMemo(
-    () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 2002 : 0),
-    [nodeList, source]
-  );
+  const defaultZIndex = useMemo(() => {
+    const node = getNodeById(source, (node) => !!node.parentNodeId);
+    return node ? 2002 : 0;
+  }, [getNodeById, source]);
 
   const onDelConnect = useCallback(
     (id: string) => {

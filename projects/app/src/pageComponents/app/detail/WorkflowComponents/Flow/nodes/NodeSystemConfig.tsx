@@ -248,10 +248,9 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
-  const workflowStartNode = nodeList.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.workflowStart
-  )!;
+  const workflowStartNode = useContextSelector(WorkflowDataContext, (v) => v.workflowStartNode);
+
+  if (!workflowStartNode) return null;
 
   return (
     <FileSelect
@@ -267,9 +266,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
 
         // Dynamic add or delete userFilesInput
         const canUploadFiles = e.canSelectFile || e.canSelectImg;
-        const repeatKey = workflowStartNode?.outputs.find(
-          (item) => item.key === userFilesInput.key
-        );
+        const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
         if (canUploadFiles) {
           !repeatKey &&
             onChangeNode({

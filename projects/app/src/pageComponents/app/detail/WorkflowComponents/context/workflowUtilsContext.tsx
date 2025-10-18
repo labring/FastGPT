@@ -168,7 +168,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         commonInputs
       };
     },
-    [edges]
+    [toolNodesMap]
   );
 
   // 将 UI 流程数据转换为存储格式

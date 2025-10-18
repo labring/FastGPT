@@ -65,13 +65,14 @@ export const useReference = ({
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
 
   // 获取可选的变量列表
   const referenceList = useMemo(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
-      nodes: nodeList,
+      nodeList,
+      getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
       t
@@ -109,7 +110,7 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
+  }, [appDetail.chatConfig, edges, nodeId, getNodeById, t, valueType]);
 
   return {
     referenceList
@@ -119,7 +120,7 @@ export const useReference = ({
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
 
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const getNodeById = useContextSelector(WorkflowDataContext, (v) => v.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const isArray = item.valueType?.includes('array') ?? false;
@@ -145,10 +146,10 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   });
 
   const popDirection = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
+    const node = getNodeById(nodeId);
     if (!node) return 'bottom';
     return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
-  }, [nodeId, nodeList]);
+  }, [nodeId, getNodeById]);
 
   return (
     <ReferSelector

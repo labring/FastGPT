@@ -278,10 +278,8 @@ export const useWorkflow = () => {
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const { onNodesChange, nodeList, edges, setEdges, onEdgesChange } = useContextSelector(
-    WorkflowDataContext,
-    (state) => state
-  );
+  const { onNodesChange, workflowStartNode, getNodeById, edges, setEdges, onEdgesChange } =
+    useContextSelector(WorkflowDataContext, (state) => state);
 
   const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
   const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
@@ -587,7 +585,7 @@ export const useWorkflow = () => {
       if (!nodeId) return;
 
       // If node is folded, unfold it when connecting
-      const sourceNode = nodeList.find((node) => node.nodeId === nodeId);
+      const sourceNode = getNodeById(nodeId);
       if (sourceNode?.isFolded) {
         onChangeNode({
           nodeId,
@@ -631,7 +629,7 @@ export const useWorkflow = () => {
       }
     },
     [
-      nodeList,
+      getNodeById,
       setConnectingEdge,
       onChangeNode,
       getTemplatesListPopoverPosition,
@@ -655,7 +653,7 @@ export const useWorkflow = () => {
       );
 
       // Add default input
-      const node = nodeList.find((n) => n.nodeId === connect.target);
+      const node = getNodeById(connect.target);
       if (!node) return;
 
       // 1. Add file input
@@ -666,9 +664,6 @@ export const useWorkflow = () => {
       ) {
         const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
         if (input && (!input?.value || input.value.length === 0)) {
-          const workflowStartNode = nodeList.find(
-            (n) => n.flowNodeType === FlowNodeTypeEnum.workflowStart
-          );
           if (!workflowStartNode) return;
           onChangeNode({
             nodeId: node.nodeId,
@@ -682,7 +677,7 @@ export const useWorkflow = () => {
         }
       }
     },
-    [nodeList, onChangeNode, setEdges]
+    [setEdges, getNodeById, workflowStartNode, onChangeNode]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {

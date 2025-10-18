@@ -348,17 +348,18 @@ const ConditionSelect = ({
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
   const { t } = useTranslation();
-  const { nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
   const { valueType, required } = useMemo(() => {
     return getRefData({
       variable,
+      getNodeById,
       nodeList,
       chatConfig: appDetail.chatConfig
     });
-  }, [appDetail.chatConfig, nodeList, variable]);
+  }, [appDetail.chatConfig, getNodeById, nodeList, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;

@@ -34,13 +34,14 @@ import {
 } from '@/components/core/app/formRender/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
 
@@ -57,15 +58,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     }
   ]);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
       nodeList,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, nodeList, getNodeById, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -144,6 +146,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       })();
       const { valueType } = getRefData({
         variable: updateItem.variable,
+        getNodeById,
         nodeList,
         chatConfig: appDetail.chatConfig
       });
@@ -181,6 +184,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         value: ['', ''],
                         valueType: getRefData({
                           variable: value as ReferenceItemValueType,
+                          getNodeById,
                           nodeList,
                           chatConfig: appDetail.chatConfig
                         }).valueType,

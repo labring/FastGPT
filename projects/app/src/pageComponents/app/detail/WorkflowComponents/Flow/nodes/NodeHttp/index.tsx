@@ -87,7 +87,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { edges, nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -167,11 +167,12 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     return getEditorVariables({
       nodeId,
       nodeList,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, getNodeById, edges, appDetail, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -253,7 +254,7 @@ export function RenderHttpProps({
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -285,11 +286,12 @@ export function RenderHttpProps({
     return getEditorVariables({
       nodeId,
       nodeList,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, getNodeById, edges, appDetail, t]);
 
   const variableText = useMemo(() => {
     return variables

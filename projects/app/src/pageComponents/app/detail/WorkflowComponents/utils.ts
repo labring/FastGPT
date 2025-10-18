@@ -92,17 +92,19 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 export const getEditorVariables = ({
   nodeId,
   nodeList,
+  getNodeById,
   edges,
   appDetail,
   t
 }: {
   nodeId: string;
   nodeList: FlowNodeItemType[];
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
   t: TFunction;
 }) => {
-  const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+  const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
 
   const nodeVariables = currentNode.inputs
@@ -119,7 +121,8 @@ export const getEditorVariables = ({
 
   const sourceNodes = getNodeAllSource({
     nodeId,
-    nodes: nodeList,
+    nodeList,
+    getNodeById,
     edges: edges,
     chatConfig: appDetail.chatConfig,
     t

@@ -11,7 +11,8 @@ import React, {
   type ReactNode,
   useMemo,
   useCallback,
-  useRef
+  useRef,
+  useEffect
 } from 'react';
 import {
   type Edge,
@@ -23,6 +24,7 @@ import {
 } from 'reactflow';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -33,11 +35,15 @@ export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
   nodes: []
 });
 
-type WorkflowDataContextType = {
+export type WorkflowDataContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
+  workflowStartNode: FlowNodeItemType | undefined;
   nodeList: FlowNodeItemType[];
   toolNodesMap: Record<string, boolean>;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  getNodeById: (
+    nodeId: string | null | undefined,
+    condition?: (node: FlowNodeItemType) => boolean
+  ) => FlowNodeItemType | undefined;
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
@@ -48,6 +54,7 @@ type WorkflowDataContextType = {
 };
 export const WorkflowDataContext = createContext<WorkflowDataContextType>({
   basicNodeTemplates: [],
+  workflowStartNode: undefined,
   nodeList: [],
   toolNodesMap: {},
   getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
@@ -85,24 +92,46 @@ const WorkflowInitContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);
 
-  const nodeList = useMemoEnhance(() => {
-    return nodes.map((node) => node.data);
+  const nodeFormat = useMemo(() => {
+    const nodeList: FlowNodeItemType[] = [];
+    const nodesMap: Record<string, FlowNodeItemType> = {};
+    let workflowStartNode: FlowNodeItemType | undefined = undefined;
+
+    nodes.forEach((node) => {
+      nodeList.push(node.data);
+      nodesMap[node.data.nodeId] = node.data;
+
+      if (node.data.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+        workflowStartNode = node.data;
+      }
+    });
+
+    return { nodeList, nodesMap, workflowStartNode };
   }, [nodes]);
-  const nodesMap = useMemoEnhance(() => {
-    return nodes.reduce(
-      (acc, node) => {
-        acc[node.data.nodeId] = node.data;
-        return acc;
-      },
-      {} as Record<string, FlowNodeItemType>
-    );
-  }, [nodeList]);
+  const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat]);
+  const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat]);
+  const workflowStartNode = useMemoEnhance(() => nodeFormat.workflowStartNode, [nodeFormat]);
+
   const getNodeById = useCallback(
-    (nodeId: string | null | undefined) => {
-      return nodeId ? nodesMap[nodeId] : undefined;
+    (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
+      if (!nodeId) return undefined;
+
+      const node = nodesMap[nodeId];
+      if (node) {
+        if (condition) {
+          return condition(node) ? node : undefined;
+        }
+        return node;
+      }
+
+      return undefined;
     },
     [nodesMap]
   );
+
+  useEffect(() => {
+    console.log(121212);
+  }, [nodeList]);
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -157,6 +186,7 @@ const WorkflowInitContextProvider = ({
   const workflowDataContextValue = useMemoEnhance(() => {
     return {
       basicNodeTemplates,
+      workflowStartNode,
       nodeList,
       nodesMap,
       toolNodesMap,

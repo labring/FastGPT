@@ -30,7 +30,7 @@ const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const { getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const { workflowControlMode, setWorkflowControlMode, mouseInCanvas } = useContextSelector(
     WorkflowUIContext,
     (v) => v
@@ -71,17 +71,15 @@ const FlowController = React.memo(function FlowController() {
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
       // If the node parentNode is folded, the child node will not be displayed
-      const node = nodeList.find((node) => node.nodeId === id);
-      const parentNode = node?.parentNodeId
-        ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
-        : undefined;
+      const node = getNodeById(id);
+      const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
       if (parentNode?.isFolded) {
         return null;
       }
 
       return <rect x={x} y={y} width={width} height={height} fill={color} />;
     },
-    [nodeList]
+    [getNodeById]
   );
 
   const Render = useMemo(() => {
