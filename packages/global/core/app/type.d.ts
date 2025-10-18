@@ -2,6 +2,7 @@ import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/n
 import type { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import type {
+  ContentTypes,
   NodeInputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -127,6 +128,16 @@ export type HttpToolConfigType = {
   outputSchema: JSONSchemaOutputType;
   path: string;
   method: string;
+
+  // manual
+  staticParams?: Array<{ key: string; value: string }>;
+  staticHeaders?: Array<{ key: string; value: string }>;
+  staticBody?: {
+    type: ContentTypes;
+    content?: string;
+    formData?: Array<{ key: string; value: string }>;
+  };
+  headerSecret?: StoreSecretValueType;
 };
 
 /* app chat config type */

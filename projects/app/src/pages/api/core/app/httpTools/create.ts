@@ -4,7 +4,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { onCreateApp, type CreateAppBody } from '../create';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -14,13 +13,15 @@ import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/httpTools/ut
 
 export type createHttpToolsQuery = {};
 
-export type createHttpToolsBody = Omit<CreateAppBody, 'type' | 'modules' | 'edges' | 'chatConfig'>;
+export type createHttpToolsBody = {
+  createType: 'batch' | 'manual';
+} & Omit<CreateAppBody, 'type' | 'modules' | 'edges' | 'chatConfig'>;
 
 async function handler(
   req: ApiRequestProps<createHttpToolsBody, createHttpToolsQuery>,
   res: ApiResponseType<string>
 ): Promise<string> {
-  const { name, avatar, intro, parentId } = req.body;
+  const { name, avatar, intro, parentId, createType } = req.body;
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
@@ -40,7 +41,14 @@ async function handler(
       modules: [
         getHTTPToolSetRuntimeNode({
           name,
-          avatar
+          avatar,
+          toolList: [],
+          ...(createType === 'batch' && {
+            baseUrl: '',
+            apiSchemaStr: '',
+            customHeaders: '{}',
+            headerSecret: {}
+          })
         })
       ],
       session

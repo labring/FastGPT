@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styles from '../SimpleApp/styles.module.scss';
 import { cardStyles } from '../constants';
 import AppCard from './AppCard';
@@ -27,7 +27,7 @@ const Edit = () => {
   );
   const baseUrl = toolSetData?.baseUrl ?? '';
   const toolList = toolSetData?.toolList ?? [];
-  const apiSchemaStr = toolSetData?.apiSchemaStr ?? '';
+  const apiSchemaStr = toolSetData?.apiSchemaStr;
   const headerSecret = toolSetData?.headerSecret ?? {};
   const customHeaders = useMemo(() => {
     try {
@@ -36,6 +36,20 @@ const Edit = () => {
       return {};
     }
   }, [appDetail.pluginData?.customHeaders]);
+
+  useEffect(() => {
+    if (!currentTool || toolList.length === 0) {
+      setCurrentTool(toolList[0]);
+      return;
+    }
+
+    const updatedTool = toolList.find((tool) => tool.name === currentTool.name);
+    if (updatedTool) {
+      setCurrentTool(updatedTool);
+    } else {
+      setCurrentTool(toolList[0]);
+    }
+  }, [toolSetData]);
 
   return (
     <MyBox

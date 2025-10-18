@@ -8,7 +8,6 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
@@ -26,6 +25,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -103,7 +103,7 @@ async function handler(
       resourceType: PerResourceTypeEnum.dataset
     });
 
-    await refreshSourceAvatar(avatar, undefined, session);
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
     return dataset._id;
   });

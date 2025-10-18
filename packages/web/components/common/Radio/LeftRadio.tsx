@@ -25,6 +25,7 @@ const LeftRadio = <T = any,>({
   align = 'center',
   px = 3.5,
   py = 4,
+  gridGap = [3, 5],
   defaultBg = 'myGray.50',
   activeBg = 'primary.50',
   onChange,
@@ -75,7 +76,7 @@ const LeftRadio = <T = any,>({
   );
 
   return (
-    <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
+    <Grid gridGap={gridGap} fontSize={['sm', 'md']} {...props}>
       {list.map((item) => {
         const isActive = value === item.value;
         return (
@@ -131,7 +132,7 @@ const LeftRadio = <T = any,>({
                     lineHeight={1}
                     color={'myGray.900'}
                   >
-                    <Box>{t(item.title as any)}</Box>
+                    <Box mb={1}>{t(item.title as any)}</Box>
                     {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
                   </HStack>
                 ) : (

@@ -24,7 +24,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
-import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 
 export type ChatProviderProps = {
   appId: string;
@@ -39,7 +39,7 @@ export type ChatProviderProps = {
   slogan?: string;
 
   currentQuickAppId?: string;
-  quickAppList?: QuickAppType[];
+  quickAppList?: ChatQuickAppType[];
   onSwitchQuickApp?: (appId: string) => Promise<void>;
 };
 

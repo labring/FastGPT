@@ -12,7 +12,6 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -29,6 +28,7 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -201,7 +201,7 @@ export const onCreateApp = async ({
       });
     })();
 
-    await refreshSourceAvatar(avatar, undefined, session);
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
     return appId;
   };

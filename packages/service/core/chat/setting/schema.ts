@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { type ChatSettingModelType } from '@fastgpt/global/core/chat/setting/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
 
@@ -55,7 +55,7 @@ ChatSettingSchema.virtual('quickAppList', {
 
 ChatSettingSchema.index({ teamId: 1 });
 
-export const MongoChatSetting = getMongoModel<ChatSettingType>(
+export const MongoChatSetting = getMongoModel<ChatSettingModelType>(
   ChatSettingCollectionName,
   ChatSettingSchema
 );

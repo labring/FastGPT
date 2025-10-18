@@ -41,7 +41,6 @@ import {
 } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { defaultRunningStatus } from '../constants';
-import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '@/pageComponents/app/detail/context';

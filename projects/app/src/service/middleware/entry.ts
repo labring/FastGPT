@@ -1,5 +1,3 @@
 import { NextEntry } from '@fastgpt/service/common/middle/entry';
 
-export const NextAPI = NextEntry({
-  beforeCallback: []
-});
+export const NextAPI = NextEntry({ beforeCallback: [] });

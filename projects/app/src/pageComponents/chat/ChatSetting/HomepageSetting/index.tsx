@@ -16,11 +16,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
-import type {
-  ChatSettingUpdateParams,
-  QuickAppType,
-  SelectedToolType
-} from '@fastgpt/global/core/chat/setting/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -35,8 +30,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
-import type { ChatSettingReturnType } from '@fastgpt/global/core/chat/setting/type';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
@@ -45,11 +39,6 @@ const AddQuickAppModal = dynamic(
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
   onDiagramShow: (show: boolean) => void;
-};
-
-type FormValues = Omit<ChatSettingUpdateParams, 'selectedTools' | 'quickAppIds'> & {
-  selectedTools: SelectedToolType[];
-  quickAppList: QuickAppType[];
 };
 
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
@@ -61,7 +50,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
 
   const chatSettings2Form = useCallback(
-    (data?: ChatSettingReturnType) => {
+    (data?: ChatSettingType) => {
       return {
         enableHome: data?.enableHome,
         slogan: data?.slogan || t('chat:setting.home.slogan.default'),
@@ -76,7 +65,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [t]
   );
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue, watch } = useForm<ChatSettingType>({
     defaultValues: chatSettings2Form(chatSettings)
   });
 
@@ -124,7 +113,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   );
 
   const { runAsync: onSubmit, loading: isSaving } = useRequest2(
-    async (values: FormValues) => {
+    async (values: ChatSettingType) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({
         ...params,

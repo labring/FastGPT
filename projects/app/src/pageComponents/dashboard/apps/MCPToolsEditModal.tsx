@@ -1,4 +1,3 @@
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
 import {
   Box,
@@ -28,6 +27,8 @@ import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type MCPToolSetData = {
   url: string;
@@ -91,14 +92,12 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess: (avatar: string) => {
+        setValue('avatar', avatar);
+      }
+    });
 
   return (
     <>
@@ -123,7 +122,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
                 h={['28px', '32px']}
                 cursor={'pointer'}
                 borderRadius={'md'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
@@ -260,15 +259,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </ModalFooter>
       </MyModal>
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </>
   );
 };

@@ -47,7 +47,6 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
-import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type Props = {
