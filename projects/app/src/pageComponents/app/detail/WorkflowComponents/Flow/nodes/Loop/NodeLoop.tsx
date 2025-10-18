@@ -150,52 +150,37 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }, 50);
   }, [size?.height]);
 
-  const RenderInputDom = useMemo(() => {
-    return (
-      <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
-        <RenderInput nodeId={nodeId} flowInputList={inputs} />
-      </Box>
-    );
-  }, [inputs, nodeId]);
-  const RenderChildrenNodes = useMemo(() => {
-    return (
-      <>
-        <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
-          {t('workflow:loop_body')}
-        </FormLabel>
-        <Box
-          flex={1}
-          position={'relative'}
-          border={'base'}
-          bg={'myGray.100'}
-          rounded={'8px'}
-          {...(!isFolded && {
-            minW: nodeWidth,
-            minH: nodeHeight
-          })}
-        >
-          <Background />
-        </Box>
-      </>
-    );
-  }, [isFolded, nodeHeight, nodeWidth, t]);
-
-  const MemoRenderOutput = useMemo(() => {
-    return (
-      <Container>
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-    );
-  }, [nodeId, outputs]);
-
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
-        {RenderInputDom}
-        {RenderChildrenNodes}
+
+        <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
+          <RenderInput nodeId={nodeId} flowInputList={inputs} />
+        </Box>
+
+        <>
+          <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
+            {t('workflow:loop_body')}
+          </FormLabel>
+          <Box
+            flex={1}
+            position={'relative'}
+            border={'base'}
+            bg={'myGray.100'}
+            rounded={'8px'}
+            {...(!isFolded && {
+              minW: nodeWidth,
+              minH: nodeHeight
+            })}
+          >
+            <Background />
+          </Box>
+        </>
       </Container>
-      {MemoRenderOutput}
+      <Container>
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
     </NodeCard>
   );
 };

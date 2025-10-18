@@ -5,14 +5,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
-import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const { onEdgesChange, nodeList, getNodeById } = useContextSelector(
+  const { onEdgesChange, nodeList, getNodeById, selectedNodesMap } = useContextSelector(
     WorkflowDataContext,
     (v) => v
   );
@@ -66,12 +65,11 @@ const ButtonEdge = (props: EdgeProps) => {
   const [highlightEdge, setHighlightEdge] = useState(false);
   useThrottleEffect(
     () => {
-      const connectNode = nodes.find((node) => {
-        return node.selected && (node.id === props.source || node.id === props.target);
-      });
-      setHighlightEdge(!!connectNode || !!selected);
+      const isSourceSelected = selectedNodesMap[props.source];
+      const isTargetSelected = selectedNodesMap[props.target];
+      setHighlightEdge(isSourceSelected || isTargetSelected || !!selected);
     },
-    [nodes, selected, props.source, props.target],
+    [selectedNodesMap, props.source, props.target, selected],
     {
       wait: 100
     }

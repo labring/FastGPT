@@ -73,21 +73,12 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
   nodeId: string;
 }) {
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const getNodeById = useContextSelector(WorkflowDataContext, (v) => v.getNodeById);
   const connectingEdge = useContextSelector(WorkflowActionsContext, (v) => v.connectingEdge);
 
   const { LeftHandle } = useMemo(() => {
-    let node: FlowNodeItemType | undefined = undefined,
-      connectingNode: FlowNodeItemType | undefined = undefined;
-    for (const item of nodeList) {
-      if (item.nodeId === nodeId) {
-        node = item;
-      }
-      if (item.nodeId === connectingEdge?.nodeId) {
-        connectingNode = item;
-      }
-      if (node && (connectingNode || !connectingEdge?.nodeId)) break;
-    }
+    const node = getNodeById(nodeId);
+    const connectingNode = getNodeById(connectingEdge?.nodeId);
 
     let forbidConnect = false;
     for (const edge of edges) {
@@ -145,7 +136,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       showHandle,
       LeftHandle
     };
-  }, [connectingEdge, edges, nodeId, nodeList]);
+  }, [connectingEdge, edges, nodeId, getNodeById]);
 
   return <>{LeftHandle}</>;
 });

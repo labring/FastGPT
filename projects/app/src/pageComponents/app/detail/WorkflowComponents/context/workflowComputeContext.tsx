@@ -11,6 +11,7 @@ import {
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { WorkflowActionsContext } from './workflowActionsContext';
+import { useMemoizedFn } from 'ahooks';
 
 // 创建 Context
 type WorkflowComputeContextValue = {
@@ -129,53 +130,49 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
    * 重置父节点的大小和位置
    * 调用 getParentNodeSizeAndPosition 计算新的大小和位置并更新
    */
-  const resetParentNodeSizeAndPosition = useCallback(
-    (parentId: string) => {
-      const res = getParentNodeSizeAndPosition({ nodes, parentId });
-      if (!res) return;
-      const { parentX, parentY, childWidth, childHeight } = res;
+  const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
+    const res = getParentNodeSizeAndPosition({ nodes, parentId });
+    if (!res) return;
+    const { parentX, parentY, childWidth, childHeight } = res;
 
-      // Update parentNode size and position
-      onChangeNode({
-        nodeId: parentId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.nodeWidth,
-        value: {
-          ...Input_Template_Node_Width,
-          value: childWidth
+    // Update parentNode size and position
+    onChangeNode({
+      nodeId: parentId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nodeWidth,
+      value: {
+        ...Input_Template_Node_Width,
+        value: childWidth
+      }
+    });
+    onChangeNode({
+      nodeId: parentId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nodeHeight,
+      value: {
+        ...Input_Template_Node_Height,
+        value: childHeight
+      }
+    });
+    // Update parentNode position
+    onNodesChange([
+      {
+        id: parentId,
+        type: 'position',
+        position: {
+          x: parentX,
+          y: parentY
         }
-      });
-      onChangeNode({
-        nodeId: parentId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.nodeHeight,
-        value: {
-          ...Input_Template_Node_Height,
-          value: childHeight
-        }
-      });
-      // Update parentNode position
-      onNodesChange([
-        {
-          id: parentId,
-          type: 'position',
-          position: {
-            x: parentX,
-            y: parentY
-          }
-        }
-      ]);
-    },
-    [nodes, getParentNodeSizeAndPosition, onChangeNode, onNodesChange]
-  );
+      }
+    ]);
+  });
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemo(() => {
+    return {
       resetParentNodeSizeAndPosition,
       getParentNodeSizeAndPosition
-    }),
-    [resetParentNodeSizeAndPosition, getParentNodeSizeAndPosition]
-  );
+    };
+  }, [resetParentNodeSizeAndPosition, getParentNodeSizeAndPosition]);
 
   return (
     <WorkflowLayoutContext.Provider value={contextValue}>{children}</WorkflowLayoutContext.Provider>

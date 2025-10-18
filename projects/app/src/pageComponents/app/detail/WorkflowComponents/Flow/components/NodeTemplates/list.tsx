@@ -347,7 +347,7 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [computedNewNodeName, handleParams?.nodeId, nodeList, onAddNode, t, toast]
+    [computedNewNodeName, getNodeById, handleParams?.nodeId, nodeList, onAddNode, t, toast]
   );
 
   const formatTemplatesArrayData = useMemo(() => {

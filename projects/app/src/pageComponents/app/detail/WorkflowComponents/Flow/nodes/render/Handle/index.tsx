@@ -3,7 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowDataContext, WorkflowInitContext } from '../../../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
@@ -53,19 +53,24 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 }: Props) {
   const { t } = useTranslation();
 
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const node = useContextSelector(WorkflowDataContext, (v) => v.getNodeById(nodeId));
+  const selected = useContextSelector(WorkflowDataContext, (v) => v.selectedNodesMap[nodeId]);
   const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-  const node = useContextSelector(WorkflowInitContext, (v) =>
-    v.nodes.find((node) => node.data.nodeId === nodeId)
-  );
   const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
 
-  const connected = edges.some((edge) => edge.sourceHandle === handleId);
-  const nodeFolded = node?.data.isFolded && edges.some((edge) => edge.source === nodeId);
+  const edgesData = useContextSelector(WorkflowDataContext, (v) => {
+    return {
+      connected: v.edges.some((edge) => edge.sourceHandle === handleId),
+      nodeFolded: node?.isFolded && v.edges.some((edge) => edge.source === nodeId)
+    };
+  });
+  const connected = edgesData.connected;
+  const nodeFolded = edgesData.nodeFolded;
+
   const nodeIsHover = hoverNodeId === nodeId;
   const active = useMemo(
-    () => nodeIsHover || node?.selected || connectingEdge?.handleId === handleId,
-    [nodeIsHover, node?.selected, connectingEdge, handleId]
+    () => nodeIsHover || selected || connectingEdge?.handleId === handleId,
+    [nodeIsHover, selected, connectingEdge, handleId]
   );
 
   const translateStr = useMemo(() => {

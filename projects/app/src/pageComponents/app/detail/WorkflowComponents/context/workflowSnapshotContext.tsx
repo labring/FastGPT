@@ -91,7 +91,7 @@ export const WorkflowSnapshotContext = createContext<WorkflowSnapshotContextValu
 
 // 配置
 const maxSnapshots = 100;
-const snapshotDebounceTime = 500;
+const snapshotDebounceTime = 1000;
 
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();

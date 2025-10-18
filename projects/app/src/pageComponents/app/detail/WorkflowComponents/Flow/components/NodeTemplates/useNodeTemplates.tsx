@@ -22,12 +22,7 @@ export const useNodeTemplates = () => {
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const basicNodeTemplates = useContextSelector(WorkflowDataContext, (v) => v.basicNodeTemplates);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
-
-  const hasToolNode = useMemo(
-    () => nodeList.some((node) => node.flowNodeType === FlowNodeTypeEnum.agent),
-    [nodeList]
-  );
+  const { nodeList, hasToolNode } = useContextSelector(WorkflowDataContext, (v) => v);
 
   const { data: basicNodes } = useRequest2(
     async () => {

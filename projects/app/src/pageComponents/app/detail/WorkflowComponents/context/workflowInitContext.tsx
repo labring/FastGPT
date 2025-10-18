@@ -30,15 +30,28 @@ type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
 type WorkflowNodeContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
+  rawNodesMap: Record<string, Node<FlowNodeItemType, string | undefined>>;
+  getRawNodeById: (
+    nodeId: string | null | undefined
+  ) => Node<FlowNodeItemType, string | undefined> | undefined;
 };
 export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
-  nodes: []
+  nodes: [],
+  rawNodesMap: {},
+  getRawNodeById: function (
+    nodeId: string | null | undefined
+  ): Node<FlowNodeItemType, string | undefined> | undefined {
+    throw new Error('Function not implemented.');
+  }
 });
 
 export type WorkflowDataContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   workflowStartNode: FlowNodeItemType | undefined;
+  selectedNodesMap: Record<string, boolean>;
   nodeList: FlowNodeItemType[];
+  allNodeFolded: boolean;
+  hasToolNode: boolean;
   toolNodesMap: Record<string, boolean>;
   getNodeById: (
     nodeId: string | null | undefined,
@@ -47,6 +60,7 @@ export type WorkflowDataContextType = {
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
+  getNodeList: () => FlowNodeItemType[];
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
@@ -55,7 +69,10 @@ export type WorkflowDataContextType = {
 export const WorkflowDataContext = createContext<WorkflowDataContextType>({
   basicNodeTemplates: [],
   workflowStartNode: undefined,
+  selectedNodesMap: {},
   nodeList: [],
+  allNodeFolded: false,
+  hasToolNode: false,
   toolNodesMap: {},
   getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
     throw new Error('Function not implemented.');
@@ -69,6 +86,9 @@ export const WorkflowDataContext = createContext<WorkflowDataContextType>({
     throw new Error('Function not implemented.');
   },
   getNodes: function (): Node<FlowNodeItemType, string | undefined>[] {
+    throw new Error('Function not implemented.');
+  },
+  getNodeList: function (): FlowNodeItemType[] {
     throw new Error('Function not implemented.');
   },
   edges: [],
@@ -95,23 +115,49 @@ const WorkflowInitContextProvider = ({
   const nodeFormat = useMemo(() => {
     const nodeList: FlowNodeItemType[] = [];
     const nodesMap: Record<string, FlowNodeItemType> = {};
+    const selectedNodesMap: Record<string, boolean> = {};
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
+    let allNodeFolded = true;
+    let hasToolNode = false;
 
     nodes.forEach((node) => {
       nodeList.push(node.data);
       nodesMap[node.data.nodeId] = node.data;
 
+      if (node.selected) {
+        selectedNodesMap[node.data.nodeId] = true;
+      }
+
       if (node.data.flowNodeType === FlowNodeTypeEnum.workflowStart) {
         workflowStartNode = node.data;
       }
+
+      if (!node.data.isFolded) {
+        allNodeFolded = false;
+      }
+
+      if (node.data.flowNodeType === FlowNodeTypeEnum.agent) {
+        hasToolNode = true;
+      }
     });
 
-    return { nodeList, nodesMap, workflowStartNode };
+    return {
+      nodeList,
+      nodesMap,
+      selectedNodesMap,
+      workflowStartNode,
+      allNodeFolded,
+      hasToolNode
+    };
   }, [nodes]);
   const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat]);
   const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat]);
+  const selectedNodesMap = useMemoEnhance(() => nodeFormat.selectedNodesMap, [nodeFormat]);
   const workflowStartNode = useMemoEnhance(() => nodeFormat.workflowStartNode, [nodeFormat]);
+  const allNodeFolded = nodeFormat.allNodeFolded;
+  const hasToolNode = nodeFormat.hasToolNode;
 
+  const getNodeList = useCallback(() => nodeList, [nodeList]);
   const getNodeById = useCallback(
     (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
       if (!nodeId) return undefined;
@@ -129,9 +175,23 @@ const WorkflowInitContextProvider = ({
     [nodesMap]
   );
 
-  useEffect(() => {
-    console.log(121212);
-  }, [nodeList]);
+  const rawNodesMap = useMemoEnhance(
+    () =>
+      nodes.reduce(
+        (acc, node) => {
+          acc[node.id] = node;
+          return acc;
+        },
+        {} as Record<string, Node<FlowNodeItemType, string | undefined>>
+      ),
+    [nodes]
+  );
+  const getRawNodeById = useCallback(
+    (nodeId: string | null | undefined) => {
+      return nodeId ? rawNodesMap[nodeId] : undefined;
+    },
+    [rawNodesMap]
+  );
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -178,22 +238,28 @@ const WorkflowInitContextProvider = ({
   // 数据Context - 只包含数据
   const nodeContextValue = useMemo(
     () => ({
-      nodes
+      nodes,
+      rawNodesMap,
+      getRawNodeById
     }),
-    [nodes]
+    [nodes, rawNodesMap, getRawNodeById]
   );
 
   const workflowDataContextValue = useMemoEnhance(() => {
     return {
       basicNodeTemplates,
       workflowStartNode,
+      selectedNodesMap,
       nodeList,
+      allNodeFolded,
+      hasToolNode,
       nodesMap,
       toolNodesMap,
       getNodeById,
       setNodes,
       onNodesChange,
       getNodes,
+      getNodeList,
       edges,
       setEdges,
       onEdgesChange,
@@ -201,12 +267,16 @@ const WorkflowInitContextProvider = ({
     };
   }, [
     setNodes,
+    selectedNodesMap,
     nodeList,
+    allNodeFolded,
+    hasToolNode,
     toolNodesMap,
     getNodeById,
     edges,
     onNodesChange,
     getNodes,
+    getNodeList,
     setEdges,
     onEdgesChange,
     forbiddenSaveSnapshot

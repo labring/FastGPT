@@ -270,6 +270,8 @@ const computeHelperLines = (
 
 export const popoverWidth = 400;
 export const popoverHeight = 600;
+// Loop 类型的父节点类型集合
+const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -277,9 +279,17 @@ export const useWorkflow = () => {
 
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
-  const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const { onNodesChange, workflowStartNode, getNodeById, edges, setEdges, onEdgesChange } =
-    useContextSelector(WorkflowDataContext, (state) => state);
+  const { nodes, getRawNodeById } = useContextSelector(WorkflowInitContext, (state) => state);
+  const {
+    onNodesChange,
+    workflowStartNode,
+    getNodeById,
+    edges,
+    setEdges,
+    onEdgesChange,
+    selectedNodesMap,
+    getNodes
+  } = useContextSelector(WorkflowDataContext, (state) => state);
 
   const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
   const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
@@ -302,26 +312,25 @@ export const useWorkflow = () => {
     const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
     if (positionChange?.position) {
-      // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
-      const filterNodes = nodes
-        .filter((node) => {
-          if (!positionChange.position) return false;
+      const dragPos = positionChange.position;
 
-          return (
-            Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
-            Math.abs(node.position.y - positionChange.position.y) <= 3000
-          );
-        })
-        .sort((a, b) => {
-          if (!positionChange.position) return 0;
-          return (
-            Math.abs(a.position.x - positionChange.position.x) +
-            Math.abs(a.position.y - positionChange.position.y) -
-            Math.abs(b.position.x - positionChange.position.x) -
-            Math.abs(b.position.y - positionChange.position.y)
-          );
-        })
-        .slice(0, 15);
+      // 一次遍历: 过滤 3000px 范围内的节点 + 计算距离 (曼哈顿距离只计算一次)
+      const candidateNodes: Array<{ node: Node; distance: number }> = [];
+
+      for (const node of nodes) {
+        const dx = Math.abs(node.position.x - dragPos.x);
+        const dy = Math.abs(node.position.y - dragPos.y);
+
+        // 3000px 范围内判断
+        if (dx <= 3000 && dy <= 3000) {
+          const distance = dx + dy; // 曼哈顿距离
+          candidateNodes.push({ node, distance });
+        }
+      }
+
+      // 部分排序: 按距离从近到远排序,只取前 15 个
+      candidateNodes.sort((a, b) => a.distance - b.distance);
+      const filterNodes = candidateNodes.slice(0, 15).map((item) => item.node);
 
       const helperLines = computeHelperLines(positionChange, filterNodes);
 
@@ -377,7 +386,7 @@ export const useWorkflow = () => {
   });
 
   const getTemplatesListPopoverPosition = useMemoizedFn(({ nodeId }: { nodeId: string | null }) => {
-    const node = nodes.find((n) => n.id === nodeId);
+    const node = getRawNodeById(nodeId);
     if (!node) return { x: 0, y: 0 };
 
     const position = flowToScreenPosition({
@@ -414,7 +423,7 @@ export const useWorkflow = () => {
   });
   const getAddNodePosition = useMemoizedFn(
     ({ nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
-      const node = nodes.find((n) => n.id === nodeId);
+      const node = getRawNodeById(nodeId);
       if (!node) return { x: 0, y: 0 };
 
       if (handleId === 'selectedTools') {
@@ -433,37 +442,40 @@ export const useWorkflow = () => {
 
   /* node */
   // Remove change node and its child nodes and edges
-  const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, nodeId: string) => {
-    // If the node has child nodes, remove the child nodes
-    const deletedNodeIdList = [nodeId];
-    const deletedEdgeIdList = edges
-      .filter((edge) => edge.source === nodeId || edge.target === nodeId)
-      .map((edge) => edge.id);
+  const handleRemoveNode = useCallback(
+    (change: NodeRemoveChange, nodeId: string) => {
+      // If the node has child nodes, remove the child nodes
+      const deletedNodeIdList = [nodeId];
+      const deletedEdgeIdList = edges
+        .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+        .map((edge) => edge.id);
 
-    const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
-    if (childNodes.length > 0) {
-      const childNodeIds = childNodes.map((node) => node.id);
-      deletedNodeIdList.push(...childNodeIds);
+      const childNodes = getNodes().filter((n) => n.data.parentNodeId === nodeId);
+      if (childNodes.length > 0) {
+        const childNodeIds = childNodes.map((node) => node.id);
+        deletedNodeIdList.push(...childNodeIds);
 
-      const childEdges = edges.filter(
-        (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+        const childEdges = edges.filter(
+          (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+        );
+        deletedEdgeIdList.push(...childEdges.map((edge) => edge.id));
+      }
+
+      onNodesChange(
+        deletedNodeIdList.map<NodeRemoveChange>((id) => ({
+          type: 'remove',
+          id
+        }))
       );
-      deletedEdgeIdList.push(...childEdges.map((edge) => edge.id));
-    }
-
-    onNodesChange(
-      deletedNodeIdList.map<NodeRemoveChange>((id) => ({
-        type: 'remove',
-        id
-      }))
-    );
-    onEdgesChange(
-      deletedEdgeIdList.map<EdgeRemoveChange>((id) => ({
-        type: 'remove',
-        id
-      }))
-    );
-  });
+      onEdgesChange(
+        deletedEdgeIdList.map<EdgeRemoveChange>((id) => ({
+          type: 'remove',
+          id
+        }))
+      );
+    },
+    [edges, getNodes, onNodesChange, onEdgesChange]
+  );
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
     if (change.selected === false && isDowningCtrl) {
@@ -472,65 +484,78 @@ export const useWorkflow = () => {
   });
   const handlePositionNode = useMemoizedFn(
     (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
-      const parentNode: Record<string, 1> = {
-        [FlowNodeTypeEnum.loop]: 1
-      };
+      const nodes = getNodes();
 
-      // If node is a child node, move child node and reset parent node
+      // 场景1: 子节点拖拽 - 在父节点内移动
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
         checkNodeHelpLine(change, childNodes);
-
         resetParentNodeSizeAndPosition(parentId);
+        return;
       }
-      // If node is parent node, move parent node and child nodes
-      else if (parentNode[node.data.flowNodeType]) {
-        // It will update the change value.
-        checkNodeHelpLine(
-          change,
-          nodes.filter((node) => !node.data.parentNodeId)
-        );
 
-        // Compute the child nodes' position
+      // 场景2: Loop 父节点拖拽 - 联动子节点
+      if (PARENT_NODE_TYPES.has(node.data.flowNodeType)) {
         const parentId = node.id;
-        const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
-        const initPosition = node.position;
-        const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
-        const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
-        const childNodesChange: NodePositionChange[] = childNodes.map((node) => {
-          if (change.dragging) {
-            const position = {
-              x: node.position.x + deltaX,
-              y: node.position.y + deltaY
-            };
-            return {
-              ...change,
-              id: node.id,
-              position,
-              positionAbsolute: position
-            };
-          } else {
-            return {
-              ...change,
-              id: node.id
-            };
-          }
-        });
 
-        onNodesChange(childNodesChange);
-      } else {
-        checkNodeHelpLine(
-          change,
-          nodes.filter((node) => !node.data.parentNodeId)
+        // 一次 reduce 同时获取 topLevelNodes 和 childNodes
+        const { topLevelNodes, childNodes } = nodes.reduce(
+          (acc, n) => {
+            if (n.data.parentNodeId === parentId) {
+              acc.childNodes.push(n);
+            } else if (!n.data.parentNodeId) {
+              acc.topLevelNodes.push(n);
+            }
+            return acc;
+          },
+          { topLevelNodes: [] as Node[], childNodes: [] as Node[] }
         );
+
+        // 计算对齐辅助线 (仅针对顶层节点)
+        checkNodeHelpLine(change, topLevelNodes);
+
+        // 计算子节点的位置变化
+        if (childNodes.length > 0) {
+          const initPosition = node.position;
+          const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
+          const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
+
+          const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
+            if (change.dragging) {
+              const position = {
+                x: childNode.position.x + deltaX,
+                y: childNode.position.y + deltaY
+              };
+              return {
+                ...change,
+                id: childNode.id,
+                position,
+                positionAbsolute: position
+              };
+            }
+            return {
+              ...change,
+              id: childNode.id
+            };
+          });
+
+          onNodesChange(childNodesChange);
+        }
+        return;
       }
+
+      // 场景3: 普通节点拖拽 - 显示对齐辅助线
+      checkNodeHelpLine(
+        change,
+        nodes.filter((node) => !node.data.parentNodeId)
+      );
     }
   );
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
     for (const change of changes) {
       if (change.type === 'remove') {
-        const node = nodes.find((n) => n.id === change.id);
+        const node = getRawNodeById(change.id);
         if (!node) continue;
 
         const parentNodeDeleted = changes.find(
@@ -548,7 +573,7 @@ export const useWorkflow = () => {
       } else if (change.type === 'select') {
         handleSelectNode(change);
       } else if (change.type === 'position') {
-        const node = nodes.find((n) => n.id === change.id);
+        const node = getRawNodeById(change.id);
         if (node) {
           handlePositionNode(change, node);
         }
@@ -562,13 +587,14 @@ export const useWorkflow = () => {
   const handleEdgeChange = useCallback(
     (changes: EdgeChange[]) => {
       // If any node is selected, don't remove edges
+      const hasSelectedNode = Object.keys(selectedNodesMap).length > 0;
       const changesFiltered = changes.filter(
-        (change) => !(change.type === 'remove' && nodes.some((node) => node.selected))
+        (change) => !(change.type === 'remove' && hasSelectedNode)
       );
 
       onEdgesChange(changesFiltered);
     },
-    [nodes, onEdgesChange]
+    [selectedNodesMap, onEdgesChange]
   );
 
   const onNodeDragStop = useCallback(

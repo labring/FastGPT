@@ -130,9 +130,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         }
         // Node output: 根据数据类型决定
         else if (value[0] && value[1]) {
-          const output = nodeList
-            .find((node) => node.nodeId === value[0])
-            ?.outputs.find((output) => output.id === value[1]);
+          const output = getNodeById(value[0])?.outputs.find((output) => output.id === value[1]);
           if (output) {
             return {
               inputType: valueTypeToInputType(output.valueType)

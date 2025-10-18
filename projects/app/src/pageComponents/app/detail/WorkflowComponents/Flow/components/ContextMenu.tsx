@@ -1,5 +1,5 @@
 import { Box, HStack, type StackProps } from '@chakra-ui/react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
@@ -19,19 +19,13 @@ const ContextMenu = () => {
   const { t } = useTranslation();
   const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
   const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
-  const setNodes = useContextSelector(WorkflowDataContext, (v) => v.setNodes);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
-  const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
+  const { setNodes, setEdges, allNodeFolded } = useContextSelector(WorkflowDataContext, (v) => v);
   const getParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
     (v) => v.getParentNodeSizeAndPosition
   );
 
   const { fitView, screenToFlowPosition } = useReactFlow();
-
-  const allUnFolded = useMemo(() => {
-    return !!menu ? nodeList.some((node) => node.isFolded) : false;
-  }, [nodeList, menu]);
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -231,7 +225,7 @@ const ContextMenu = () => {
     setTimeout(() => {
       fitView();
     });
-  }, []);
+  }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
     const newNode = nodeTemplate2FlowNode({
@@ -250,7 +244,7 @@ const ContextMenu = () => {
         .concat(newNode);
       return newState;
     });
-  }, [menu]);
+  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
 
   const onFold = useCallback(() => {
     setNodes((state) => {
@@ -258,11 +252,11 @@ const ContextMenu = () => {
         ...node,
         data: {
           ...node.data,
-          isFolded: !allUnFolded
+          isFolded: !allNodeFolded
         }
       }));
     });
-  }, [allUnFolded]);
+  }, [allNodeFolded, setNodes]);
 
   const ContextMenuItem = useCallback(
     ({
@@ -339,7 +333,7 @@ const ContextMenu = () => {
         />
         <ContextMenuItem
           icon="common/select"
-          label={allUnFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
+          label={allNodeFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
           onClick={onFold}
         />
       </Box>

@@ -89,7 +89,7 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { hasToolNode, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -99,10 +99,7 @@ const NodeCard = (props: Props) => {
     [inputs]
   );
 
-  const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.agent),
-    [isTool, nodeList]
-  );
+  const showToolHandle = isTool && hasToolNode;
 
   // Current node and parent node
   const { node, parentNode } = useMemo(() => {
@@ -547,7 +544,7 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { nodeList, setNodes, setEdges } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { setNodes, setEdges, getNodeList } = useContextSelector(WorkflowDataContext, (v) => v);
 
   const { computedNewNodeName } = useWorkflowUtils();
 
@@ -629,7 +626,7 @@ const MenuRender = React.memo(function MenuRender({
       );
 
       // Remove edges connected to the node and its child nodes
-      const childNodeIds = nodeList
+      const childNodeIds = getNodeList()
         .filter((node) => node.parentNodeId === nodeId)
         .map((node) => node.nodeId);
       setEdges((state) =>
@@ -642,7 +639,7 @@ const MenuRender = React.memo(function MenuRender({
         )
       );
     },
-    [nodeList, setEdges, setNodes]
+    [getNodeList, setEdges, setNodes]
   );
 
   const Render = useMemo(() => {
