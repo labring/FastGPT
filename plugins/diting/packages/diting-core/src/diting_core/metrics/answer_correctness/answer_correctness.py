@@ -9,8 +9,15 @@ from diting_core.cases.llm_case import LLMCase, LLMCaseParams
 from diting_core.metrics.base_metric import BaseMetric, MetricValue
 from diting_core.metrics.answer_similarity.answer_similarity import AnswerSimilarity
 from diting_core.metrics.answer_correctness.template import AnswerCorrectnessTemplate
-from diting_core.metrics.answer_correctness.schema import Statements, Verdicts, Reason
-from diting_core.metrics.utils import fbeta_score
+from diting_core.metrics.answer_correctness.schema import (
+    Statements,
+    Verdicts,
+    Reason,
+    EvaluationStrategySelection,
+    EvaluationStrategy,
+    LenientCorrectnessResult,
+)
+from diting_core.metrics.utils import fbeta_score, Language, detect_language
 from diting_core.models.llms.base_model import BaseLLM
 from diting_core.models.embeddings.base_model import BaseEmbeddings
 
@@ -75,12 +82,97 @@ class AnswerCorrectness(BaseMetric):
         score = fbeta_score(tp, fp, fn, self.beta)
         return score
 
+    async def _a_select_evaluation_strategy(
+        self,
+        user_input: str,
+        expected_output: str,
+        actual_output: str,
+        language: Language = Language.ENGLISH,
+        callbacks: Optional[Callbacks] = None,
+    ) -> EvaluationStrategySelection:
+        assert self.model is not None, "llm is not set"
+        prompt = self.evaluation_template.generate_evaluation_strategy_selection(
+            user_input=user_input,
+            expected_output=expected_output,
+            actual_output=actual_output,
+            language=language,
+        )
+        run_mgt, grp_cb = await new_group(
+            name="select_evaluation_strategy",
+            inputs={
+                "user_input": user_input,
+                "expected_output": expected_output,
+                "actual_output": actual_output,
+            },
+            callbacks=callbacks,
+        )
+        try:
+            res = cast(
+                EvaluationStrategySelection,
+                await self.model.generate_structured_output(
+                    prompt, schema=EvaluationStrategySelection, callbacks=grp_cb
+                ),
+            )
+        except Exception as e:
+            await run_mgt.on_chain_error(e)
+            res = EvaluationStrategySelection(
+                strategy=EvaluationStrategy.STRICT,
+                reason="Strategy selection failed, defaulting to strict strategy",
+            )
+
+        await run_mgt.on_chain_end(
+            outputs={"strategy": res.strategy, "reason": res.reason}
+        )
+        return res
+
+    async def _a_evaluate_with_lenient_strategy(
+        self,
+        user_input: str,
+        expected_output: str,
+        actual_output: str,
+        language: Language = Language.ENGLISH,
+        callbacks: Optional[Callbacks] = None,
+    ) -> LenientCorrectnessResult:
+        assert self.model is not None, "llm is not set"
+        prompt = self.evaluation_template.generate_lenient_correctness_evaluation(
+            user_input=user_input,
+            expected_output=expected_output,
+            actual_output=actual_output,
+            language=language,
+        )
+        run_mgt, grp_cb = await new_group(
+            name="evaluate_lenient_correctness",
+            inputs={
+                "user_input": user_input,
+                "expected_output": expected_output,
+                "actual_output": actual_output,
+            },
+            callbacks=callbacks,
+        )
+        try:
+            res = cast(
+                LenientCorrectnessResult,
+                await self.model.generate_structured_output(
+                    prompt, schema=LenientCorrectnessResult, callbacks=grp_cb
+                ),
+            )
+        except Exception as e:
+            await run_mgt.on_chain_error(e)
+            raise e
+
+        await run_mgt.on_chain_end(outputs={"score": res.score, "reason": res.reason})
+        return res
+
     async def _a_generate_statements(
-        self, user_input: str, text: str, callbacks: Optional[Callbacks] = None
+        self,
+        user_input: str,
+        text: str,
+        language: Language = Language.ENGLISH,
+        callbacks: Optional[Callbacks] = None,
     ) -> List[str]:
         assert self.model is not None, "llm is not set"
         prompt = self.evaluation_template.generate_statements(
-            user_input=user_input, text=text
+            user_input=user_input, text=text, language=language
         )
         run_mgt, grp_cb = await new_group(
             name="generate_statements",
@@ -107,6 +199,7 @@ class AnswerCorrectness(BaseMetric):
         user_input: str,
         actual_output_statements: List[str],
         expected_output_statements: List[str],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> Verdicts:
         assert self.model is not None, "llm is not set"
@@ -114,6 +207,7 @@ class AnswerCorrectness(BaseMetric):
             user_input=user_input,
             actual_output_statements=actual_output_statements,
             expected_output_statements=expected_output_statements,
+            language=language,
         )
         run_mgt, grp_cb = await new_group(
             name="generate_verdicts",
@@ -138,6 +232,7 @@ class AnswerCorrectness(BaseMetric):
         self,
         score: float,
         verdicts: Optional[Verdicts],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> str:
         assert self.model is not None, "llm is not set"
@@ -149,6 +244,7 @@ class AnswerCorrectness(BaseMetric):
             tp_reasons=tp_reasons,
             fp_reasons=fp_reasons,
             fn_reasons=fn_reasons,
+            language=language,
         )
         run_mgt, grp_cb = await new_group(
             name="generate_reason",
@@ -182,60 +278,94 @@ class AnswerCorrectness(BaseMetric):
         assert test_case.actual_output, "actual_output cannot be empty"
         assert test_case.expected_output, "expected_output cannot be empty"
 
-        actual_output_statements: List[str] = await self._a_generate_statements(
+        language = detect_language(test_case.user_input)
+
+        strategy_selection = await self._a_select_evaluation_strategy(
             user_input=test_case.user_input,
-            text=test_case.actual_output,
+            expected_output=test_case.expected_output,
+            actual_output=test_case.actual_output,
+            language=language,
             callbacks=callbacks,
         )
-        expected_output_statements: List[str] = await self._a_generate_statements(
-            user_input=test_case.user_input,
-            text=test_case.expected_output,
-            callbacks=callbacks,
-        )
-        if actual_output_statements or expected_output_statements:
-            verdicts: Verdicts | None = await self._a_generate_verdicts(
+        strategy = strategy_selection.strategy
+        strategy_reason = strategy_selection.reason
+
+        if strategy == EvaluationStrategy.LENIENT:
+            lenient_result = await self._a_evaluate_with_lenient_strategy(
                 user_input=test_case.user_input,
-                actual_output_statements=actual_output_statements,
-                expected_output_statements=expected_output_statements,
+                expected_output=test_case.expected_output,
+                actual_output=test_case.actual_output,
+                language=language,
                 callbacks=callbacks,
             )
-            f1_score = self._compute_statement_presence(verdicts)
-        else:
-            # edge case
+            score = lenient_result.score
+            reason = lenient_result.reason if self.include_reason else None
             verdicts = None
-            f1_score = 1.0
-
-        if self.weights[1] == 0:
-            similarity_score = 0.0
+            actual_output_statements = []
+            expected_output_statements = []
         else:
-            if self.answer_similarity is None:
-                self.answer_similarity = AnswerSimilarity(
-                    embedding_model=self.embedding_model
-                )
-            similarity_value = await self.answer_similarity.compute(
-                test_case=test_case, callbacks=callbacks
-            )
-            similarity_score = similarity_value.score
-
-        try:
-            import numpy as np
-        except ImportError:
-            raise ImportError(
-                "This function requires 'numpy'. Install it with: pip install numpy"
-            )
-        arr = np.array([f1_score, similarity_score], dtype=float)
-        score = float(np.average(arr, weights=self.weights))
-        reason = None
-        if self.include_reason:
-            reason = await self._a_generate_reason(
-                score,
-                verdicts,
+            actual_output_statements = await self._a_generate_statements(
+                user_input=test_case.user_input,
+                text=test_case.actual_output,
+                language=language,
                 callbacks=callbacks,
             )
+            expected_output_statements = await self._a_generate_statements(
+                user_input=test_case.user_input,
+                text=test_case.expected_output,
+                language=language,
+                callbacks=callbacks,
+            )
+
+            if actual_output_statements or expected_output_statements:
+                verdicts = await self._a_generate_verdicts(
+                    user_input=test_case.user_input,
+                    actual_output_statements=actual_output_statements,
+                    expected_output_statements=expected_output_statements,
+                    language=language,
+                    callbacks=callbacks,
+                )
+                f1_score = self._compute_statement_presence(verdicts)
+            else:
+                verdicts = None
+                f1_score = 1.0
+
+            if self.weights[1] == 0:
+                similarity_score = 0.0
+            else:
+                if self.answer_similarity is None:
+                    self.answer_similarity = AnswerSimilarity(
+                        embedding_model=self.embedding_model
+                    )
+                similarity_value = await self.answer_similarity.compute(
+                    test_case=test_case, callbacks=callbacks
+                )
+                similarity_score = similarity_value.score
+
+            try:
+                import numpy as np
+            except ImportError:
+                raise ImportError(
+                    "This function requires 'numpy'. Install it with: pip install numpy"
+                )
+            arr = np.array([f1_score, similarity_score], dtype=float)
+            score = float(np.average(arr, weights=self.weights))
+
+            reason = None
+            if self.include_reason:
+                reason = await self._a_generate_reason(
+                    f1_score,
+                    verdicts,
+                    language=language,
+                    callbacks=callbacks,
+                )
+
         metric_value = MetricValue(
             score=score,
             reason=reason,
             run_logs={
+                "evaluation_strategy": strategy.value,
+                "strategy_reason": strategy_reason,
                 "actual_output_statements": actual_output_statements,
                 "expected_output_statements": expected_output_statements,
                 "verdicts": verdicts,

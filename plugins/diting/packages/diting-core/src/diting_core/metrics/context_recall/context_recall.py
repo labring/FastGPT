@@ -14,6 +14,7 @@ from diting_core.metrics.context_recall.schema import (
     Reason,
 )
 from diting_core.models.llms.base_model import BaseLLM
+from diting_core.metrics.utils import Language, detect_language
 
 
 @dataclass
@@ -68,6 +69,7 @@ class ContextRecall(BaseMetric):
         user_input: str,
         expected_output: str,
         retrieval_context: List[str],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> Verdicts:
         assert self.model is not None, "llm is not set"
@@ -75,6 +77,7 @@ class ContextRecall(BaseMetric):
             user_input=user_input,
             expected_output=expected_output,
             retrieval_context=retrieval_context,
+            language=language,
         )
         run_mgt, grp_cb = await new_group(
             name="generate_verdicts",
@@ -103,6 +106,7 @@ class ContextRecall(BaseMetric):
         expected_output: str,
         score: float,
         verdicts: List[ContextRecallVerdict],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> str:
         assert self.model is not None, "llm is not set"
@@ -119,6 +123,7 @@ class ContextRecall(BaseMetric):
             supportive_reasons=supportive_reasons,
             unsupportive_reasons=unsupportive_reasons,
             score=round(score, 2),
+            language=language,
         )
         run_mgt, grp_cb = await new_group(
             name="generate_reason",
@@ -151,19 +156,39 @@ class ContextRecall(BaseMetric):
     ) -> MetricValue:
         assert test_case.user_input, "user_input cannot be empty"
         assert test_case.expected_output, "expected_output cannot be empty"
-        assert test_case.retrieval_context, "retrieval_context cannot be empty"
+        assert test_case.retrieval_context is not None, (
+            "retrieval_context cannot be None"
+        )
+
+        language = detect_language(test_case.user_input)
+        if not test_case.retrieval_context:
+            reason = (
+                "检索内容为空"
+                if language == Language.CHINESE
+                else "Retrieval Context is empty"
+            )
+            metric_value = MetricValue(
+                score=0.0,
+                reason=reason,
+            )
+            return metric_value
 
         verdicts = await self._a_generate_verdicts(
             user_input=test_case.user_input,
             expected_output=test_case.expected_output,
             retrieval_context=test_case.retrieval_context,
+            language=language,
             callbacks=callbacks,
         )
         score = self._compute_score(verdicts)
         reason = None
         if self.include_reason:
             reason = await self._a_generate_reason(
-                test_case.expected_output, score, verdicts.verdicts, callbacks=callbacks
+                test_case.expected_output,
+                score,
+                verdicts.verdicts,
+                language=language,
+                callbacks=callbacks,
             )
         metric_value = MetricValue(
             score=score,

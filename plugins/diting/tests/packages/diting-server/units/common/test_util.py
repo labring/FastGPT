@@ -191,7 +191,7 @@ class TestResolveModelConfig(unittest.TestCase):
 
         expected = {
             "model": "test-model",
-            "base_url": "https://api.example.com/v1",
+            "base_url": "https://api.example.com/custom/v1",
             "api_key": "test-key",
         }
         self.assertEqual(result, expected)

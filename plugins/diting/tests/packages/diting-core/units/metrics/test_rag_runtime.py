@@ -26,7 +26,9 @@ class TestRagRuntime(unittest.IsolatedAsyncioTestCase):
 
     async def test__evaluate_answer_correctness(self):
         with patch.object(
-            AnswerCorrectness, "compute", AsyncMock(return_value=MetricValue(score=1.0))
+            AnswerCorrectness,
+            "compute",
+            AsyncMock(return_value=MetricValue(score=1.0)),
         ):
             result = await self.rag_runtime._evaluate_answer_correctness(self.test_case)
             self.assertEqual(result, MetricValue(score=1.0))

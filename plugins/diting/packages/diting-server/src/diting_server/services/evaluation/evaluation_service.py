@@ -63,7 +63,7 @@ class EvaluationService:
         )
         status = StatusEnum.FAILED if error_msg else StatusEnum.SUCCESS
         response = EvaluationResponse(
-            request_id=f"eval-{request_id}",
+            request_id=request_id,
             data=data,
             usages=usages,
             status=status,
