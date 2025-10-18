@@ -65,7 +65,9 @@ class RagRuntime(BaseMetric):
         assert test_case.user_input, "user_input cannot be empty"
         assert test_case.actual_output, "actual_output cannot be empty"
         assert test_case.expected_output, "expected_output cannot be empty"
-        assert test_case.retrieval_context, "retrieval_context cannot be empty"
+        assert test_case.retrieval_context is not None, (
+            "retrieval_context cannot be None"
+        )
         assert self.model is not None, "llm is not set"
         run_logs: dict[str, Any] = {
             "answer_correctness": await self._evaluate_answer_correctness(test_case)

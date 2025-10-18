@@ -58,7 +58,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
             response = await self.service.run_evaluation(request, request_id)
 
         self.assertIsInstance(response, EvaluationResponse)
-        self.assertEqual(response.request_id, f"eval-{request_id}")
+        self.assertEqual(response.request_id, request_id)
         self.assertEqual(response.status, StatusEnum.SUCCESS)
         self.assertIsNotNone(response.data)
         if response.data is not None:  # Type guard for linter
@@ -93,7 +93,7 @@ class TestEvaluationService(unittest.IsolatedAsyncioTestCase):
             response = await self.service.run_evaluation(request, request_id)
 
         self.assertIsInstance(response, EvaluationResponse)
-        self.assertEqual(response.request_id, f"eval-{request_id}")
+        self.assertEqual(response.request_id, request_id)
         self.assertEqual(response.status, StatusEnum.FAILED)
         self.assertIsNotNone(response.data)
         if response.data is not None:  # Type guard for linter

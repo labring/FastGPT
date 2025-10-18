@@ -15,6 +15,7 @@ from diting_core.metrics.faithfulness.schema import (
     FaithfulnessVerdict,
     Reason,
 )
+from diting_core.metrics.utils import Language, detect_language
 
 
 @dataclass
@@ -71,11 +72,15 @@ class Faithfulness(BaseMetric):
         return score
 
     async def _a_generate_statements(
-        self, user_input: str, text: str, callbacks: Optional[Callbacks] = None
+        self,
+        user_input: str,
+        text: str,
+        language: Language = Language.ENGLISH,
+        callbacks: Optional[Callbacks] = None,
     ) -> List[str]:
         assert self.model is not None, "llm is not set"
         prompt = self.evaluation_template.generate_statements(
-            user_input=user_input, text=text
+            user_input=user_input, text=text, language=language
         )
         run_mgt, grp_cb = await new_group(
             name="generate_statements",
@@ -101,12 +106,13 @@ class Faithfulness(BaseMetric):
         self,
         retrieval_context: List[str],
         statements: List[str],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> Verdicts:
         assert self.model is not None, "llm is not set"
         contexts_str: str = "\n".join(retrieval_context)
         prompt = self.evaluation_template.generate_verdicts(
-            retrieval_context=contexts_str, statements=statements
+            retrieval_context=contexts_str, statements=statements, language=language
         )
         run_mgt, grp_cb = await new_group(
             name="generate_verdicts",
@@ -127,15 +133,20 @@ class Faithfulness(BaseMetric):
         self,
         score: float,
         verdicts: List[FaithfulnessVerdict],
+        language: Language = Language.ENGLISH,
         callbacks: Optional[Callbacks] = None,
     ) -> str:
         assert self.model is not None, "llm is not set"
-        contradictions: List[str] = []
-        for verdict in verdicts:
-            if verdict.verdict == 0:
-                contradictions.append(verdict.reason)
+        faithfulness_verdicts = [
+            {
+                "statement": verdict.statement,
+                "reason": verdict.reason,
+                "verdict": verdict.verdict,
+            }
+            for verdict in verdicts
+        ]
         prompt = self.evaluation_template.generate_reason(
-            score=round(score, 2), contradictions=contradictions
+            score=round(score, 2), verdicts=faithfulness_verdicts, language=language
         )
         run_mgt, grp_cb = await new_group(
             name="generate_reason",
@@ -167,10 +178,27 @@ class Faithfulness(BaseMetric):
     ) -> MetricValue:
         assert test_case.user_input, "user_input cannot be empty"
         assert test_case.actual_output, "actual_output cannot be empty"
-        assert test_case.retrieval_context, "retrieval_context cannot be empty"
+        assert test_case.retrieval_context is not None, (
+            "retrieval_context cannot be None"
+        )
+
+        language = detect_language(test_case.user_input)
+        if not test_case.retrieval_context:
+            reason = (
+                "检索内容为空"
+                if language == Language.CHINESE
+                else "Retrieval Context is empty"
+            )
+            metric_value = MetricValue(
+                score=0.0,
+                reason=reason,
+            )
+            return metric_value
+
         statements = await self._a_generate_statements(
             user_input=test_case.user_input,
             text=test_case.actual_output,
+            language=language,
             callbacks=callbacks,
         )
         try:
@@ -190,13 +218,14 @@ class Faithfulness(BaseMetric):
         verdicts = await self._a_generate_verdicts(
             retrieval_context=test_case.retrieval_context,
             statements=statements,
+            language=language,
             callbacks=callbacks,
         )
         score = self._compute_score(verdicts)
         reason = None
         if self.include_reason:
             reason = await self._a_generate_reason(
-                score, verdicts.verdicts, callbacks=callbacks
+                score, verdicts.verdicts, language=language, callbacks=callbacks
             )
         metric_value = MetricValue(
             score=score,

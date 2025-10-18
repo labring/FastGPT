@@ -16,7 +16,7 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(settings.log_level, "INFO")
         self.assertEqual(settings.log_format, "plain")
         self.assertEqual(settings.host, "0.0.0.0")
-        self.assertEqual(settings.port, 3001)
+        self.assertEqual(settings.port, 3000)
 
     def test_custom_settings(self):
         """Test custom settings values."""
