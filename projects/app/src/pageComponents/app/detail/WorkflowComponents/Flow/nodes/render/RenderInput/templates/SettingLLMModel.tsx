@@ -4,10 +4,10 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
 const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) => {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const onChangeModel = useCallback(
     (e: SettingAIDataType) => {

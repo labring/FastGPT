@@ -1,5 +1,8 @@
 import { createContext } from 'use-context-selector';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  type FlowNodeTemplateType,
+  type FlowNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
@@ -7,7 +10,8 @@ import React, {
   type SetStateAction,
   type ReactNode,
   useMemo,
-  useCallback
+  useCallback,
+  useRef
 } from 'react';
 import {
   type Edge,
@@ -18,6 +22,7 @@ import {
   useNodesState
 } from 'reactflow';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -29,7 +34,9 @@ export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
 });
 
 type WorkflowDataContextType = {
+  basicNodeTemplates: FlowNodeTemplateType[];
   nodeList: FlowNodeItemType[];
+  toolNodesMap: Record<string, boolean>;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
@@ -37,10 +44,15 @@ type WorkflowDataContextType = {
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
+  forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
 };
 export const WorkflowDataContext = createContext<WorkflowDataContextType>({
+  basicNodeTemplates: [],
   nodeList: [],
-  getNodeById: () => undefined,
+  toolNodesMap: {},
+  getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
+    throw new Error('Function not implemented.');
+  },
   setNodes: function (
     value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
   ): void {
@@ -58,10 +70,17 @@ export const WorkflowDataContext = createContext<WorkflowDataContextType>({
   },
   onEdgesChange: function (changes: EdgeChange[]): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  forbiddenSaveSnapshot: { current: false }
 });
 
-const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
+const WorkflowInitContextProvider = ({
+  children,
+  basicNodeTemplates
+}: {
+  children: ReactNode;
+  basicNodeTemplates: FlowNodeTemplateType[];
+}) => {
   // Nodes
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);
@@ -88,6 +107,28 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  const toolNodesMap = useMemoEnhance(() => {
+    const selectedToolEdgeMap: Record<string, boolean> = {};
+    edges.forEach((edge) => {
+      if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
+        selectedToolEdgeMap[edge.target] = true;
+      }
+    });
+
+    return nodeList.reduce(
+      (acc, node) => {
+        if (selectedToolEdgeMap[node.nodeId]) {
+          acc[node.nodeId] = true;
+        }
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+  }, [nodeList, edges]);
+
+  // 快照阻塞标志
+  const forbiddenSaveSnapshot = useRef(false);
+
   // Elevate childNodes
   useDeepCompareEffect(() => {
     setNodes((nodes) =>
@@ -113,20 +154,33 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
     [nodes]
   );
 
-  // 操作Context - 只包含函数
   const workflowDataContextValue = useMemoEnhance(() => {
     return {
+      basicNodeTemplates,
       nodeList,
       nodesMap,
+      toolNodesMap,
       getNodeById,
       setNodes,
       onNodesChange,
       getNodes,
       edges,
       setEdges,
-      onEdgesChange
+      onEdgesChange,
+      forbiddenSaveSnapshot
     };
-  }, [setNodes, nodeList, getNodeById, edges, onNodesChange, getNodes, setEdges, onEdgesChange]);
+  }, [
+    setNodes,
+    nodeList,
+    toolNodesMap,
+    getNodeById,
+    edges,
+    onNodesChange,
+    getNodes,
+    setEdges,
+    onEdgesChange,
+    forbiddenSaveSnapshot
+  ]);
 
   return (
     <WorkflowInitContext.Provider value={nodeContextValue}>

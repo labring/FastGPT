@@ -9,14 +9,13 @@ import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
-import { WorkflowEventContext } from '../context/workflowEventContext';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
+import { WorkflowModalContext } from '../context/workflowModalContext';
 
 const NodeTemplatesPopover = () => {
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
-  const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
+  const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
   const { setNodes, setEdges } = useContextSelector(WorkflowDataContext, (v) => v);
 

@@ -5,9 +5,9 @@ import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowDataContext } from '../../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../../context/workflowEventContext';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
 const handleSize = '16px';
 const activeHandleSize = '20px';
@@ -19,7 +19,7 @@ type ToolHandleProps = BoxProps & {
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const toolConnecting = useContextSelector(
-    WorkflowContext,
+    WorkflowActionsContext,
     (ctx) => ctx.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
   const connected = useContextSelector(WorkflowDataContext, (v) =>
@@ -73,10 +73,10 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
   const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
   const connectingEdge = useContextSelector(
-    WorkflowContext,
+    WorkflowActionsContext,
     (ctx) => ctx.connectingEdge?.nodeId === nodeId
   );
-  const nodeIsHover = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId === nodeId);
+  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
 
   const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
 

@@ -3,7 +3,6 @@ import { useTranslation } from 'next-i18next';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
@@ -17,6 +16,7 @@ import {
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
@@ -30,7 +30,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
   const { getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const loopStartNode = getNodeById(nodeId);
 

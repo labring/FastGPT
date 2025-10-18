@@ -4,13 +4,13 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect } from 'ahooks';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 const RenderOutput = ({
   nodeId,
@@ -20,7 +20,7 @@ const RenderOutput = ({
   flowOutputList: FlowNodeOutputItemType[];
 }) => {
   const { llmModelList } = useSystemStore();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const copyOutputs = useMemoEnhance(() => {
     return flowOutputList;

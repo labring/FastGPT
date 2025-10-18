@@ -40,6 +40,14 @@ const nextConfig = {
       }
     ];
   },
+
+  ...(isDev && {
+    // 禁用 source map（可选，根据需要）
+    productionBrowserSourceMaps: false,
+    // 优化编译性能
+    swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
+  }),
+
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
@@ -99,6 +107,28 @@ const nextConfig = {
       asyncWebAssembly: true,
       layers: true
     };
+
+    if (isDev && !isServer) {
+      // 使用更快的 source map
+      config.devtool = 'eval-cheap-module-source-map';
+      // 减少文件监听范围
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules',
+          '**/.git',
+          '**/dist',
+          '**/coverage'
+        ],
+      };
+      // 启用持久化缓存
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+      };
+    }
 
     return config;
   },

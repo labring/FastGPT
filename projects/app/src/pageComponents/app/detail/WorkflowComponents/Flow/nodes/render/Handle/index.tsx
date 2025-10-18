@@ -2,13 +2,13 @@ import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowDataContext, WorkflowInitContext } from '../../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
 const handleSizeConnected = 16;
 const handleSizeConnecting = 30;
@@ -54,11 +54,11 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   const { t } = useTranslation();
 
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
   const node = useContextSelector(WorkflowInitContext, (v) =>
     v.nodes.find((node) => node.data.nodeId === nodeId)
   );
-  const hoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId);
+  const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
 
   const connected = edges.some((edge) => edge.sourceHandle === handleId);
   const nodeFolded = node?.data.isFolded && edges.some((edge) => edge.source === nodeId);
@@ -156,7 +156,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
   const connected = useContextSelector(WorkflowDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';

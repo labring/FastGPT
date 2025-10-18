@@ -20,7 +20,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
@@ -28,8 +27,11 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
-import { WorkflowStatusContext } from '../../context/workflowStatusContext';
+import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { WorkflowModalContext } from '../../context/workflowModalContext';
+import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -276,23 +278,20 @@ export const useWorkflow = () => {
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const onNodesChange = useContextSelector(WorkflowDataContext, (state) => state.onNodesChange);
-  const edges = useContextSelector(WorkflowDataContext, (state) => state.edges);
-  const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
-  const onEdgesChange = useContextSelector(WorkflowDataContext, (v) => v.onEdgesChange);
+  const { onNodesChange, nodeList, edges, setEdges, onEdgesChange } = useContextSelector(
+    WorkflowDataContext,
+    (state) => state
+  );
 
-  const setConnectingEdge = useContextSelector(WorkflowContext, (v) => v.setConnectingEdge);
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const pushPastSnapshot = useContextSelector(WorkflowContext, (v) => v.pushPastSnapshot);
+  const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
 
-  const setHoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverEdgeId);
-  const setMenu = useContextSelector(WorkflowEventContext, (v) => v.setMenu);
+  const { setHoverEdgeId, setMenu } = useContextSelector(WorkflowUIContext, (v) => v);
   const resetParentNodeSizeAndPosition = useContextSelector(
-    WorkflowStatusContext,
+    WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
-  const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
+  const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
 
   const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();

@@ -20,7 +20,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -31,6 +30,9 @@ import {
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -48,9 +50,8 @@ export const useDebug = () => {
   const setNodes = useContextSelector(WorkflowDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowDataContext, (v) => v.getNodes);
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
-  const onRemoveError = useContextSelector(WorkflowContext, (v) => v.onRemoveError);
-  const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
+  const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

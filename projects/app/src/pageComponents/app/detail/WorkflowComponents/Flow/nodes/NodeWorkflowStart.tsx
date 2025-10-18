@@ -7,7 +7,6 @@ import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { useCreation } from 'ahooks';
 import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';

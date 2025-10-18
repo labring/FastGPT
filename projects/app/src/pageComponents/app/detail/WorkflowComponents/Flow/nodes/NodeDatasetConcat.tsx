@@ -18,7 +18,6 @@ import {
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -27,12 +26,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const CustomComponent = useMemo(() => {
     const quoteList = inputs.filter((item) => item.canEdit);
@@ -165,7 +165,7 @@ const VariableSelector = ({
   inputChildren: FlowNodeInputItemType;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { referenceList } = useReference({
     nodeId,

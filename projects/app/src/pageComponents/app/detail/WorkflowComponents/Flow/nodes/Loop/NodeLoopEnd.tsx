@@ -10,11 +10,11 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
@@ -27,7 +27,7 @@ const typeMap = {
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
   const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 

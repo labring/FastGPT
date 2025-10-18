@@ -43,11 +43,11 @@ import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -77,7 +77,7 @@ const NodeTemplateListItem = ({
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
 
@@ -222,7 +222,7 @@ const NodeTemplateList = ({
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false

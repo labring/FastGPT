@@ -10,13 +10,13 @@ import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
 
   const { t } = useTranslation();

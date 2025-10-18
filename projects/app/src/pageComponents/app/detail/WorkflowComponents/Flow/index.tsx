@@ -6,7 +6,6 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d
 import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowEventContext } from '../context/workflowEventContext';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
 import SearchButton from '../../Workflow/components/SearchButton';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -20,8 +19,14 @@ import type { NodeProps } from 'reactflow';
 import ReactFlow, { SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
+import { WorkflowUIContext } from '../context/workflowUIContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
+const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
+  <NodeSimple {...props} minW={'100px'} maxW={'300px'} />
+));
+NodeStopTool.displayName = 'NodeStopTool';
+
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
@@ -45,9 +50,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
   [FlowNodeTypeEnum.agent]: dynamic(() => import('./nodes/NodeAgent')),
-  [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
-    <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
-  ),
+  [FlowNodeTypeEnum.stopTool]: NodeStopTool,
   [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
@@ -69,12 +72,10 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const reactFlowWrapper = useContextSelector(WorkflowEventContext, (v) => v.reactFlowWrapper);
-  const workflowControlMode = useContextSelector(
-    WorkflowEventContext,
-    (v) => v.workflowControlMode
+  const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
+    WorkflowUIContext,
+    (v) => v
   );
-  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
 
   const {
     handleNodesChange,

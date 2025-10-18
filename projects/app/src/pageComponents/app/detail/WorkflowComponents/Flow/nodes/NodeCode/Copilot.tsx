@@ -27,10 +27,10 @@ import {
   JS_TEMPLATE,
   SandboxCodeTypeEnum
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -45,7 +45,7 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const { toast } = useToast();
   const { llmModelList, defaultModels } = useSystemStore();
   const { nodeList, edges, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const [optimizerInput, setOptimizerInput] = useState('');

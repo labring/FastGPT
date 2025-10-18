@@ -22,13 +22,11 @@ import { getPreviewPluginNode, getToolVersionList } from '@/web/core/app/api/plu
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
@@ -42,6 +40,9 @@ import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -89,9 +90,9 @@ const NodeCard = (props: Props) => {
   } = props;
 
   const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
+  const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
 
   const inputConfig = useMemo(
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
@@ -282,7 +283,7 @@ const NodeFoldButton = React.memo<{
   nodeId: string;
   isFolded?: boolean;
 }>(({ nodeId, isFolded }) => {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const handleClick = useCallback(() => {
     onChangeNode({
@@ -323,7 +324,7 @@ const NodeTitleSection = React.memo<{
 }>(({ nodeId, avatar, name, searchedText }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -389,8 +390,8 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const NodeIsTool = useMemo(() => {
     const { isTool } = splitToolInputs([], nodeId);
@@ -449,7 +450,7 @@ const NodeIntro = React.memo(function NodeIntro({
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
   const { t } = useTranslation();
 
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+  const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -845,7 +846,7 @@ const NodeSecret = React.memo(function NodeSecret({
   inputConfig: FlowNodeInputItemType | undefined;
 }) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [
     isOpenToolParamConfigModal,

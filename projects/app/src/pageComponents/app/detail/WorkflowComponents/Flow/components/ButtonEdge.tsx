@@ -4,16 +4,16 @@ import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { useThrottleEffect } from 'ahooks';
 import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
+import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
 
 const ButtonEdge = (props: EdgeProps) => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const { onEdgesChange, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
-  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
-  const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);
+  const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
+  const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
   const {
     id,

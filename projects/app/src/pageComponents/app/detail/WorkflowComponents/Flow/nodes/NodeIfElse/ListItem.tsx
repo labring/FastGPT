@@ -23,7 +23,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
 import React, { useMemo } from 'react';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
@@ -36,6 +35,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const ListItem = ({
   provided,
@@ -56,7 +56,7 @@ const ListItem = ({
 }) => {
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
-  const onDelEdge = useContextSelector(WorkflowContext, (v) => v.onDelEdge);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const handleId = getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex));
 
   const Render = useMemo(() => {

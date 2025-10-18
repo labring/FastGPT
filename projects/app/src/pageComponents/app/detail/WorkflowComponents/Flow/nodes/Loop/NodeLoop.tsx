@@ -25,23 +25,23 @@ import {
   Input_Template_LOOP_NODE_OFFSET
 } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useSize } from 'ahooks';
-import { WorkflowStatusContext } from '../../../context/workflowStatusContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowLayoutContext } from '../../../context/workflowComputeContext';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
   const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const resetParentNodeSizeAndPosition = useContextSelector(
-    WorkflowStatusContext,
+    WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
 

@@ -6,10 +6,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getTeamPlugTemplates, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 export const useNodeTemplates = () => {
   const { feConfigs } = useSystemStore();
@@ -20,8 +20,8 @@ export const useNodeTemplates = () => {
 
   const [parentId, setParentId] = useState<ParentIdType>('');
 
-  const basicNodeTemplates = useContextSelector(WorkflowContext, (v) => v.basicNodeTemplates);
-  const appId = useContextSelector(WorkflowContext, (state) => state.appId || '');
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const basicNodeTemplates = useContextSelector(WorkflowDataContext, (v) => v.basicNodeTemplates);
   const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
 
   const hasToolNode = useMemo(

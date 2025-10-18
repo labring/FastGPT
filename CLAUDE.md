@@ -114,3 +114,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - 配置文件在 `projects/app/data/config.json`
 - 支持特定环境配置
 - 模型配置在 `packages/service/core/ai/config/`
+
+## 代码规范
+
+- 尽可能使用 type 进行类型声明，而不是 interface。

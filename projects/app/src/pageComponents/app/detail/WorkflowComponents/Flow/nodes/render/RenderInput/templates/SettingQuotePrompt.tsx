@@ -21,7 +21,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
@@ -37,6 +36,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -49,7 +49,7 @@ const selectTemplateBtn: BoxProps = {
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const node = getNodeById(nodeId);
   const nodeVersion = node?.version;
