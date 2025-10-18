@@ -27,7 +27,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
-import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -41,6 +41,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -87,7 +88,7 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
@@ -96,16 +97,6 @@ const NodeCard = (props: Props) => {
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
     [inputs]
   );
-  const [
-    isOpenToolParamConfigModal,
-    { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
-  ] = useBoolean(false);
-
-  // custom title edit
-  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:custom_title'),
-    placeholder: t('app:module.Custom Title Tip') || ''
-  });
 
   const showToolHandle = useMemo(
     () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.agent),
@@ -114,13 +105,11 @@ const NodeCard = (props: Props) => {
 
   // Current node and parent node
   const { node, parentNode } = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
-    const parentNode = node?.parentNodeId
-      ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
-      : undefined;
+    const node = getNodeById(nodeId);
+    const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
 
     return { node, parentNode };
-  }, [nodeList, nodeId]);
+  }, [getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
@@ -168,186 +157,10 @@ const NodeCard = (props: Props) => {
     }
   );
 
-  /* Node header */
-  const Header = useMemo(() => {
-    const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
-    const error = formatToolError(node?.pluginData?.error);
+  /* Node header - 重构后的版本,依赖项大幅减少 */
+  const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
+  const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
-    // Header buttons array
-    const headerButtons = [
-      ...(nodeTemplate?.diagram
-        ? [
-            <MyTooltip
-              key="diagram"
-              label={
-                <MyImage src={nodeTemplate?.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
-              }
-            >
-              <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
-                {t('common:core.module.Diagram')}
-              </Button>
-            </MyTooltip>
-          ]
-        : []),
-      ...(node?.courseUrl || nodeTemplate?.userGuide
-        ? [
-            <UseGuideModal
-              key="userGuide"
-              title={nodeTemplate?.name}
-              iconSrc={nodeTemplate?.avatar}
-              text={nodeTemplate?.userGuide}
-              link={nodeTemplate?.courseUrl}
-            >
-              {({ onClick }) => (
-                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                  <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
-                </MyTooltip>
-              )}
-            </UseGuideModal>
-          ]
-        : []),
-      ...(rtDoms ?? [])
-    ];
-
-    return (
-      <Box position={'relative'}>
-        {/* debug */}
-        {showHeader && (
-          <Box px={3} pt={4}>
-            {/* tool target handle */}
-            <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-
-            {/* avatar and name */}
-            <Flex alignItems={'center'} mb={1}>
-              {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
-                <Flex
-                  alignItems={'center'}
-                  mr={1}
-                  p={1}
-                  cursor={'pointer'}
-                  rounded={'sm'}
-                  _hover={{ bg: 'myGray.200' }}
-                  onClick={() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'isFolded',
-                      value: !isFolded
-                    });
-                  }}
-                >
-                  <MyIcon
-                    name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
-                    w={'16px'}
-                    h={'16px'}
-                    color={'myGray.500'}
-                  />
-                </Flex>
-              )}
-              <Avatar
-                src={avatar}
-                borderRadius={'sm'}
-                objectFit={'contain'}
-                w={'24px'}
-                h={'24px'}
-              />
-              <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
-                <HighlightText
-                  rawText={t(name as any)}
-                  matchText={searchedText ?? ''}
-                  mode={'bg'}
-                  color={'#ffe82d'}
-                />
-              </Box>
-              <Button
-                display={'none'}
-                variant={'grayGhost'}
-                size={'xs'}
-                ml={0.5}
-                className="controller-rename"
-                cursor={'pointer'}
-                onClick={() => {
-                  onOpenCustomTitleModal({
-                    defaultVal: name,
-                    onSuccess: (e) => {
-                      if (!e) {
-                        return toast({
-                          title: t('app:modules.Title is required'),
-                          status: 'warning'
-                        });
-                      }
-                      onChangeNode({
-                        nodeId,
-                        type: 'attr',
-                        key: 'name',
-                        value: e
-                      });
-                    }
-                  });
-                }}
-              >
-                <MyIcon name={'edit'} w={'14px'} />
-              </Button>
-              <Box flex={1} mr={1} />
-              {showVersion && <NodeVersion node={node!} />}
-              {headerButtons.map((Node, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
-                  {Node}
-                </React.Fragment>
-              ))}
-              {!!error && (
-                <Flex
-                  bg={'red.50'}
-                  alignItems={'center'}
-                  h={8}
-                  px={2}
-                  rounded={'6px'}
-                  fontSize={'xs'}
-                  fontWeight={'medium'}
-                >
-                  <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                  <Box color={'red.600'}>{t(error as any)}</Box>
-                </Flex>
-              )}
-            </Flex>
-            <NodeIntro nodeId={nodeId} intro={intro} />
-          </Box>
-        )}
-        <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
-      </Box>
-    );
-  }, [
-    node,
-    showToolHandle,
-    nodeId,
-    isFolded,
-    avatar,
-    searchedText,
-    t,
-    name,
-    showVersion,
-    nodeTemplate?.diagram,
-    nodeTemplate?.userGuide,
-    nodeTemplate?.name,
-    nodeTemplate?.avatar,
-    nodeTemplate?.courseUrl,
-    intro,
-    menuForbid,
-    nodeList,
-    onChangeNode,
-    onOpenCustomTitleModal,
-    toast
-  ]);
-
-  const RenderHandle = useMemo(() => {
-    return (
-      <>
-        <ConnectionSourceHandle nodeId={nodeId} />
-        <ConnectionTargetHandle nodeId={nodeId} />
-      </>
-    );
-  }, [nodeId]);
   const RenderToolHandle = useMemo(
     () =>
       node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
@@ -395,27 +208,56 @@ const NodeCard = (props: Props) => {
       {...customStyle}
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
-      {Header}
+      {/* Header */}
+      <Box position={'relative'}>
+        {showHeader && (
+          <Box px={3} pt={4}>
+            <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
+
+            <Flex alignItems={'center'} mb={1}>
+              {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
+                <NodeFoldButton nodeId={nodeId} isFolded={isFolded} />
+              )}
+
+              <NodeTitleSection
+                nodeId={nodeId}
+                avatar={avatar}
+                name={name}
+                searchedText={searchedText}
+              />
+
+              <Box flex={1} mr={1} />
+
+              {showVersion && <NodeVersion node={node!} />}
+
+              <NodeActionButtons
+                nodeTemplate={nodeTemplate}
+                courseUrl={node?.courseUrl}
+                rtDoms={rtDoms}
+              />
+
+              <NodeErrorBadge error={error} />
+            </Flex>
+
+            <NodeIntro nodeId={nodeId} intro={intro} />
+          </Box>
+        )}
+        <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
+      </Box>
 
       <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
         {!isFolded ? (
           <>
             {inputConfig && !inputConfig?.value ? (
-              <Flex
-                alignItems={'center'}
-                flexDirection={'column'}
-                justifyContent={'center'}
-                borderRadius={'lg'}
-                h={'200px'}
-                bg={'myGray.25'}
-                border={'base'}
-                mx={4}
-              >
-                <Box>{t('app:tool_not_active')}</Box>
-                <Button w={'83px'} mt={2} size={'lg'} onClick={onOpenToolParamConfigModal}>
-                  {t('app:too_to_active')}
-                </Button>
-              </Flex>
+              <NodeSecret
+                nodeId={nodeId}
+                isFolder={node?.isFolder}
+                courseUrl={node?.courseUrl}
+                hasSystemSecret={node?.hasSystemSecret}
+                pluginId={node?.pluginId}
+                systemKeyCost={node?.systemKeyCost}
+                inputConfig={inputConfig}
+              />
             ) : (
               children
             )}
@@ -425,59 +267,287 @@ const NodeCard = (props: Props) => {
         )}
       </Flex>
 
-      {RenderHandle}
+      {/* Handle */}
+      <ConnectionSourceHandle nodeId={nodeId} />
+      <ConnectionTargetHandle nodeId={nodeId} />
       {RenderToolHandle}
-
-      <EditTitleModal maxLength={100} />
-      {inputConfig && isOpenToolParamConfigModal && (
-        <SecretInputModal
-          isFolder={node?.isFolder}
-          onClose={onCloseToolParamConfigModal}
-          onSubmit={(data) => {
-            onChangeNode({
-              nodeId: nodeId as string,
-              type: 'updateInput',
-              key: inputConfig.key,
-              value: {
-                ...inputConfig,
-                value: data
-              }
-            });
-            onCloseToolParamConfigModal();
-          }}
-          courseUrl={node?.courseUrl}
-          inputConfig={inputConfig}
-          hasSystemSecret={node?.hasSystemSecret}
-          parentId={node?.pluginId}
-          secretCost={node?.systemKeyCost}
-        />
-      )}
     </Flex>
   );
 };
 
 export default React.memo(NodeCard);
 
+// 节点折叠按钮组件
+const NodeFoldButton = React.memo<{
+  nodeId: string;
+  isFolded?: boolean;
+}>(({ nodeId, isFolded }) => {
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const handleClick = useCallback(() => {
+    onChangeNode({
+      nodeId,
+      type: 'attr',
+      key: 'isFolded',
+      value: !isFolded
+    });
+  }, [nodeId, isFolded, onChangeNode]);
+
+  return (
+    <Flex
+      alignItems={'center'}
+      mr={1}
+      p={1}
+      cursor={'pointer'}
+      rounded={'sm'}
+      _hover={{ bg: 'myGray.200' }}
+      onClick={handleClick}
+    >
+      <MyIcon
+        name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+        w={'16px'}
+        h={'16px'}
+        color={'myGray.500'}
+      />
+    </Flex>
+  );
+});
+NodeFoldButton.displayName = 'NodeFoldButton';
+
+// 节点标题区域组件
+const NodeTitleSection = React.memo<{
+  nodeId: string;
+  avatar: string;
+  name: string;
+  searchedText?: string;
+}>(({ nodeId, avatar, name, searchedText }) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  // custom title edit
+  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
+    title: t('common:custom_title'),
+    placeholder: t('app:module.Custom Title Tip') || ''
+  });
+
+  const handleRenameClick = useCallback(() => {
+    onOpenCustomTitleModal({
+      defaultVal: name,
+      onSuccess: (newName) => {
+        if (!newName) {
+          return toast({
+            title: t('app:modules.Title is required'),
+            status: 'warning'
+          });
+        }
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'name',
+          value: newName
+        });
+      }
+    });
+  }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
+
+  return (
+    <>
+      <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
+      <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
+        <HighlightText
+          rawText={t(name as any)}
+          matchText={searchedText ?? ''}
+          mode={'bg'}
+          color={'#ffe82d'}
+        />
+      </Box>
+      <Button
+        display={'none'}
+        variant={'grayGhost'}
+        size={'xs'}
+        ml={0.5}
+        className="controller-rename"
+        cursor={'pointer'}
+        onClick={handleRenameClick}
+      >
+        <MyIcon name={'edit'} w={'14px'} />
+      </Button>
+
+      <EditTitleModal maxLength={100} />
+    </>
+  );
+});
+NodeTitleSection.displayName = 'NodeTitleSection';
+
+// 节点介绍组件
+const NodeIntro = React.memo(function NodeIntro({
+  nodeId,
+  intro = ''
+}: {
+  nodeId: string;
+  intro?: string;
+}) {
+  const { t } = useTranslation();
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const NodeIsTool = useMemo(() => {
+    const { isTool } = splitToolInputs([], nodeId);
+    return isTool;
+  }, [nodeId, splitToolInputs]);
+
+  // edit intro
+  const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
+    title: t('common:core.module.Edit intro'),
+    tip: t('common:info.node_info'),
+    canEmpty: false
+  });
+
+  const Render = useMemo(() => {
+    return (
+      <>
+        <Flex alignItems={'center'}>
+          <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
+            {t(intro as any) || t('app:node_not_intro')}
+          </Box>
+          {NodeIsTool && (
+            <Flex
+              p={'7px'}
+              rounded={'sm'}
+              alignItems={'center'}
+              _hover={{
+                bg: 'myGray.100'
+              }}
+              cursor={'pointer'}
+              onClick={() => {
+                onOpenIntroModal({
+                  defaultVal: intro,
+                  onSuccess(e) {
+                    onChangeNode({
+                      nodeId,
+                      type: 'attr',
+                      key: 'intro',
+                      value: e
+                    });
+                  }
+                });
+              }}
+            >
+              <MyIcon name={'edit'} w={'18px'} />
+            </Flex>
+          )}
+        </Flex>
+        <EditIntroModal maxLength={500} />
+      </>
+    );
+  }, [EditIntroModal, intro, NodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
+
+  return Render;
+});
+
+const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
+  const { t } = useTranslation();
+
+  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Load version list
+  const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
+    pageSize: 20,
+    params: {
+      pluginId: node.pluginId
+    },
+    refreshDeps: [node.pluginId, isOpen],
+    disabled: !isOpen,
+    manual: false
+  });
+
+  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
+    async (versionId: string) => {
+      if (!node) return;
+
+      if (node.pluginId) {
+        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
+
+        if (!!template) {
+          onResetNode({
+            id: node.nodeId,
+            node: {
+              ...template,
+              name: node.name,
+              intro: node.intro,
+              avatar: node.avatar
+            }
+          });
+        }
+      }
+    },
+    {
+      refreshDeps: [node, onResetNode]
+    }
+  );
+
+  const renderVersionList = useCreation(
+    () => [
+      {
+        label: t('app:keep_the_latest'),
+        value: ''
+      },
+      ...versionList.map((item) => ({
+        label: item.versionName,
+        value: item._id
+      }))
+    ],
+    [node.isLatestVersion, node.version, t, versionList]
+  );
+  const valueLabel = useMemo(() => {
+    return (
+      <Flex alignItems={'center'} gap={0.5}>
+        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
+        {!node.isLatestVersion && (
+          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
+            {t('app:not_the_newest')}
+          </MyTag>
+        )}
+      </Flex>
+    );
+  }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
+
+  return (
+    <MySelect
+      className="nowheel"
+      value={node.version}
+      onChange={onUpdateVersion}
+      isLoading={isUpdating}
+      customOnOpen={onOpen}
+      customOnClose={onClose}
+      placeholder={node?.versionLabel}
+      variant={'whitePrimaryOutline'}
+      size={'sm'}
+      list={renderVersionList}
+      ScrollData={(props) => (
+        <ScrollData minH={'100px'} maxH={'40vh'}>
+          {props.children}
+        </ScrollData>
+      )}
+      valueLabel={valueLabel}
+    />
+  );
+});
+
 const MenuRender = React.memo(function MenuRender({
   nodeId,
-  menuForbid,
-  nodeList
+  menuForbid
 }: {
   nodeId: string;
   menuForbid?: Props['menuForbid'];
-  nodeList: FlowNodeItemType[];
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
+  const { nodeList, setNodes, setEdges } = useContextSelector(WorkflowDataContext, (v) => v);
 
-  const {
-    isOpen: isNodeCopilotOpen,
-    onOpen: onOpenNodeCopilot,
-    onClose: onCloseNodeCopilot
-  } = useDisclosure();
-
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(
@@ -643,7 +713,6 @@ const MenuRender = React.memo(function MenuRender({
       </>
     );
   }, [
-    menuForbid?.copilot,
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
@@ -652,167 +721,178 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode,
-    onOpenNodeCopilot,
-    isNodeCopilotOpen,
-    onCloseNodeCopilot
+    onDelNode
   ]);
 
   return Render;
 });
 
-const NodeIntro = React.memo(function NodeIntro({
-  nodeId,
-  intro = ''
-}: {
-  nodeId: string;
-  intro?: string;
-}) {
-  const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
-  const NodeIsTool = useMemo(() => {
-    const { isTool } = splitToolInputs([], nodeId);
-    return isTool;
-  }, [nodeId, splitToolInputs]);
-
-  // edit intro
-  const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
-    title: t('common:core.module.Edit intro'),
-    tip: t('common:info.node_info'),
-    canEmpty: false
-  });
-
-  const Render = useMemo(() => {
-    return (
-      <>
-        <Flex alignItems={'center'}>
-          <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
-            {t(intro as any) || t('app:node_not_intro')}
-          </Box>
-          {NodeIsTool && (
-            <Flex
-              p={'7px'}
-              rounded={'sm'}
-              alignItems={'center'}
-              _hover={{
-                bg: 'myGray.100'
-              }}
-              cursor={'pointer'}
-              onClick={() => {
-                onOpenIntroModal({
-                  defaultVal: intro,
-                  onSuccess(e) {
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'intro',
-                      value: e
-                    });
-                  }
-                });
-              }}
-            >
-              <MyIcon name={'edit'} w={'18px'} />
-            </Flex>
-          )}
-        </Flex>
-        <EditIntroModal maxLength={500} />
-      </>
-    );
-  }, [EditIntroModal, intro, NodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
-
-  return Render;
-});
-
-const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
+// 节点操作按钮组组件
+const NodeActionButtons = React.memo<{
+  nodeTemplate?: {
+    diagram?: string;
+    userGuide?: string;
+    name?: string;
+    avatar?: string;
+    courseUrl?: string;
+  };
+  courseUrl?: string;
+  rtDoms?: React.ReactNode[];
+}>(({ nodeTemplate, courseUrl, rtDoms }) => {
   const { t } = useTranslation();
 
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+  const buttons = useMemo(() => {
+    const result: React.ReactNode[] = [];
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  // Load version list
-  const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
-    pageSize: 20,
-    params: {
-      pluginId: node.pluginId
-    },
-    refreshDeps: [node.pluginId, isOpen],
-    disabled: !isOpen,
-    manual: false
-  });
-
-  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
-    async (versionId: string) => {
-      if (!node) return;
-
-      if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
-
-        if (!!template) {
-          onResetNode({
-            id: node.nodeId,
-            node: {
-              ...template,
-              name: node.name,
-              intro: node.intro,
-              avatar: node.avatar
-            }
-          });
-        }
-      }
-    },
-    {
-      refreshDeps: [node, onResetNode]
+    if (nodeTemplate?.diagram) {
+      result.push(
+        <MyTooltip
+          key="diagram"
+          label={
+            <MyImage src={nodeTemplate.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
+          }
+        >
+          <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
+            {t('common:core.module.Diagram')}
+          </Button>
+        </MyTooltip>
+      );
     }
-  );
 
-  const renderVersionList = useCreation(
-    () => [
-      {
-        label: t('app:keep_the_latest'),
-        value: ''
-      },
-      ...versionList.map((item) => ({
-        label: item.versionName,
-        value: item._id
-      }))
-    ],
-    [node.isLatestVersion, node.version, t, versionList]
-  );
-  const valueLabel = useMemo(() => {
-    return (
-      <Flex alignItems={'center'} gap={0.5}>
-        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
-        {!node.isLatestVersion && (
-          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
-            {t('app:not_the_newest')}
-          </MyTag>
-        )}
-      </Flex>
-    );
-  }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
+    if (courseUrl || nodeTemplate?.userGuide) {
+      result.push(
+        <UseGuideModal
+          key="userGuide"
+          title={nodeTemplate?.name}
+          iconSrc={nodeTemplate?.avatar}
+          text={nodeTemplate?.userGuide}
+          link={nodeTemplate?.courseUrl || courseUrl}
+        >
+          {({ onClick }) => (
+            <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+              <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
+            </MyTooltip>
+          )}
+        </UseGuideModal>
+      );
+    }
+
+    if (rtDoms) {
+      result.push(...rtDoms);
+    }
+
+    return result;
+  }, [nodeTemplate, courseUrl, rtDoms, t]);
+
+  if (buttons.length === 0) {
+    return null;
+  }
 
   return (
-    <MySelect
-      className="nowheel"
-      value={node.version}
-      onChange={onUpdateVersion}
-      isLoading={isUpdating}
-      customOnOpen={onOpen}
-      customOnClose={onClose}
-      placeholder={node?.versionLabel}
-      variant={'whitePrimaryOutline'}
-      size={'sm'}
-      list={renderVersionList}
-      ScrollData={(props) => (
-        <ScrollData minH={'100px'} maxH={'40vh'}>
-          {props.children}
-        </ScrollData>
+    <>
+      {buttons.map((button, index) => (
+        <React.Fragment key={index}>
+          {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
+          {button}
+        </React.Fragment>
+      ))}
+    </>
+  );
+});
+NodeActionButtons.displayName = 'NodeActionButtons';
+
+// 节点错误徽章组件
+const NodeErrorBadge = React.memo<{ error?: string | null }>(({ error }) => {
+  const { t } = useTranslation();
+
+  if (!error) {
+    return null;
+  }
+
+  return (
+    <Flex
+      bg={'red.50'}
+      alignItems={'center'}
+      h={8}
+      px={2}
+      rounded={'6px'}
+      fontSize={'xs'}
+      fontWeight={'medium'}
+    >
+      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+      <Box color={'red.600'}>{t(error as any)}</Box>
+    </Flex>
+  );
+});
+NodeErrorBadge.displayName = 'NodeErrorBadge';
+
+// 节点 Secret 组件
+const NodeSecret = React.memo(function NodeSecret({
+  nodeId,
+  isFolder,
+  courseUrl,
+  hasSystemSecret,
+  pluginId,
+  systemKeyCost,
+  inputConfig
+}: {
+  nodeId: string;
+  isFolder?: boolean;
+  courseUrl?: string;
+  hasSystemSecret?: boolean;
+  pluginId?: string;
+  systemKeyCost?: number;
+  inputConfig: FlowNodeInputItemType | undefined;
+}) {
+  const { t } = useTranslation();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const [
+    isOpenToolParamConfigModal,
+    { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
+  ] = useBoolean(false);
+
+  return (
+    <>
+      <Flex
+        alignItems={'center'}
+        flexDirection={'column'}
+        justifyContent={'center'}
+        borderRadius={'lg'}
+        h={'200px'}
+        bg={'myGray.25'}
+        border={'base'}
+        mx={4}
+      >
+        <Box>{t('app:tool_not_active')}</Box>
+        <Button w={'83px'} mt={2} size={'lg'} onClick={onOpenToolParamConfigModal}>
+          {t('app:too_to_active')}
+        </Button>
+      </Flex>
+
+      {inputConfig && isOpenToolParamConfigModal && (
+        <SecretInputModal
+          isFolder={isFolder}
+          onClose={onCloseToolParamConfigModal}
+          onSubmit={(data) => {
+            onChangeNode({
+              nodeId,
+              type: 'updateInput',
+              key: inputConfig.key,
+              value: {
+                ...inputConfig,
+                value: data
+              }
+            });
+            onCloseToolParamConfigModal();
+          }}
+          courseUrl={courseUrl}
+          inputConfig={inputConfig}
+          hasSystemSecret={hasSystemSecret}
+          parentId={pluginId}
+          secretCost={systemKeyCost}
+        />
       )}
-      valueLabel={valueLabel}
-    />
+    </>
   );
 });

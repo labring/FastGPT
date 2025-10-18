@@ -5,7 +5,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
-import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../../../context/workflowInitContext';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const ConnectionSourceHandle = ({
@@ -15,11 +15,11 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   sourceType?: 'source' | 'source_catch';
 }) => {
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
+  const { edges, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const connectingEdge = useContextSelector(WorkflowContext, (v) => v.connectingEdge);
 
   const { showSourceHandle, RightHandle } = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
+    const node = getNodeById(nodeId);
 
     /* not node/not connecting node, hidden */
     const showSourceHandle = (() => {
@@ -62,7 +62,7 @@ export const ConnectionSourceHandle = ({
       showSourceHandle,
       RightHandle
     };
-  }, [nodeList, nodeId, connectingEdge, sourceType, edges]);
+  }, [getNodeById, nodeId, connectingEdge, sourceType, edges]);
 
   return showSourceHandle ? <>{RightHandle}</> : null;
 };
@@ -72,8 +72,9 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
+  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const connectingEdge = useContextSelector(WorkflowContext, (v) => v.connectingEdge);
 
   const { LeftHandle } = useMemo(() => {
     let node: FlowNodeItemType | undefined = undefined,

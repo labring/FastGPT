@@ -10,6 +10,7 @@ import {
 } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
@@ -32,7 +33,7 @@ const FlowController = React.memo(function FlowController() {
   const redo = useContextSelector(WorkflowContext, (v) => v.redo);
   const canRedo = useContextSelector(WorkflowContext, (v) => v.canRedo);
   const canUndo = useContextSelector(WorkflowContext, (v) => v.canUndo);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
   const workflowControlMode = useContextSelector(
     WorkflowEventContext,
     (v) => v.workflowControlMode

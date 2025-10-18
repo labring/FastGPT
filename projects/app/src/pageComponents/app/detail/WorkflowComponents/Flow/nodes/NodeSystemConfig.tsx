@@ -13,6 +13,7 @@ import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import {
   type AppChatConfigType,
   type AppDetailType,
@@ -247,7 +248,7 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
   const workflowStartNode = nodeList.find(
     (item) => item.flowNodeType === FlowNodeTypeEnum.workflowStart
   )!;

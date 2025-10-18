@@ -21,7 +21,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -64,8 +64,8 @@ export const useReference = ({
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
 
   // 获取可选的变量列表
   const referenceList = useMemo(() => {
@@ -119,7 +119,7 @@ export const useReference = ({
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
 
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const isArray = item.valueType?.includes('array') ?? false;

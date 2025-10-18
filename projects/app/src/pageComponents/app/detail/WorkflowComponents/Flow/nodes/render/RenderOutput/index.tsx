@@ -5,10 +5,12 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import { WorkflowDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useDeepCompareEffect } from 'ahooks';
 
 const RenderOutput = ({
   nodeId,
@@ -25,17 +27,16 @@ const RenderOutput = ({
   }, [flowOutputList]);
 
   // Condition check
-  const inputs = useContextSelector(WorkflowContext, (v) => {
-    const node = v.nodeList.find((node) => node.nodeId === nodeId);
-    return JSON.stringify(node?.inputs);
+  const inputs = useContextSelector(WorkflowDataContext, (v) => {
+    const node = v.getNodeById(nodeId);
+    return node?.inputs;
   });
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     flowOutputList.forEach((output) => {
       if (!output.invalidCondition || !inputs) return;
-      const parsedInputs = JSON.parse(inputs);
 
       const invalid = output.invalidCondition({
-        inputs: parsedInputs,
+        inputs,
         llmModelList
       });
       onChangeNode({
@@ -48,8 +49,7 @@ const RenderOutput = ({
         }
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [copyOutputs, nodeId, inputs, llmModelList]);
+  }, [copyOutputs, nodeId, inputs, llmModelList, flowOutputList, onChangeNode]);
 
   const RenderDynamicOutputs = useMemo(() => {
     const dynamicOutputs = copyOutputs.filter(

@@ -4,6 +4,7 @@ import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -28,22 +29,19 @@ const typeMap = {
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const loopStartNode = useMemo(
-    () => nodeList.find((node) => node.nodeId === nodeId),
-    [nodeList, nodeId]
-  );
+  const loopStartNode = getNodeById(nodeId);
 
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
-    const parentNode = nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId);
+    const parentNode = getNodeById(loopStartNode?.parentNodeId);
     const parentArrayInput = parentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.loopInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [loopStartNode?.parentNodeId, nodeList]);
+  }, [getNodeById, loopStartNode?.parentNodeId]);
 
   // Auth update loopStartInput output
   useEffect(() => {

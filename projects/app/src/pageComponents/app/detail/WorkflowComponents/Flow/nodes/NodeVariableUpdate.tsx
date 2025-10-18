@@ -26,15 +26,13 @@ import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import { isArray } from 'lodash';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import {
   valueTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
-import { isValidReferenceValueFormat } from '@fastgpt/global/core/workflow/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -42,9 +40,9 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
 
   const menuList = useRef([
     {

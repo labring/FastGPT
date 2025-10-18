@@ -25,7 +25,7 @@ import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
@@ -276,13 +276,13 @@ export const useWorkflow = () => {
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.edges);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
-  const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
+  const onNodesChange = useContextSelector(WorkflowDataContext, (state) => state.onNodesChange);
+  const edges = useContextSelector(WorkflowDataContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
+  const onEdgesChange = useContextSelector(WorkflowDataContext, (v) => v.onEdgesChange);
 
   const setConnectingEdge = useContextSelector(WorkflowContext, (v) => v.setConnectingEdge);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const pushPastSnapshot = useContextSelector(WorkflowContext, (v) => v.pushPastSnapshot);
 

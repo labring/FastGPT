@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
@@ -25,7 +26,8 @@ const typeMap = {
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
-  const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
@@ -50,7 +52,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   useEffect(() => {
     if (!valueType) return;
 
-    const parentNode = nodeList.find((node) => node.nodeId === parentNodeId);
+    const parentNode = getNodeById(parentNodeId);
     const parentNodeOutput = parentNode?.outputs.find(
       (output) => output.key === NodeOutputKeyEnum.loopArray
     );
@@ -66,7 +68,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       });
     }
-  }, [valueType, nodeList, nodeId, onChangeNode, parentNodeId]);
+  }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
   const Render = useMemo(() => {
     return (

@@ -49,9 +49,8 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { useTranslation } from 'next-i18next';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
-import { cloneDeep } from 'lodash';
 import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
+import WorkflowInitContextProvider, { WorkflowDataContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -63,7 +62,7 @@ import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispa
 /* 
   Context
   1. WorkflowInitContext: 带 nodes
-  2. WorkflowNodeEdgeContext: 除了 nodes 外的，nodes 操作。以及 edges 和其操作
+  2. WorkflowDataContext: 除了 nodes 外的，nodes 操作。以及 edges 和其操作
   3. WorkflowContextProvider: 旧的 context，未拆分
   4. WorkflowEventContextProvider：一些边缘的 event
 */
@@ -151,9 +150,6 @@ type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
-
-  // nodes
-  nodeList: FlowNodeItemType[];
 
   onUpdateNodeError: (node: string, isError: Boolean) => void;
   onRemoveError: () => void;
@@ -282,7 +278,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   basicNodeTemplates: [],
-  nodeList: [],
   onUpdateNodeError: function (node: string, isError: Boolean): void {
     throw new Error('Function not implemented.');
   },
@@ -426,9 +421,14 @@ const WorkflowContextProvider = ({
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const appId = appDetail._id;
 
-  /* edge */
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.edges);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setEdges);
+  /* connect */
+  const [connectingEdge, setConnectingEdge] = useState<OnConnectStartParams>();
+
+  /* Nodes,Edge */
+  const { edges, setEdges, getNodeById, setNodes, getNodes } = useContextSelector(
+    WorkflowDataContext,
+    (v) => v
+  );
   const onDelEdge = useCallback(
     ({
       nodeId,
@@ -450,21 +450,6 @@ const WorkflowContextProvider = ({
       );
     },
     [setEdges]
-  );
-
-  /* connect */
-  const [connectingEdge, setConnectingEdge] = useState<OnConnectStartParams>();
-
-  /* node */
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
-  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.getNodes);
-  const nodeListString = useContextSelector(
-    WorkflowNodeEdgeContext,
-    (state) => state.nodeListString
-  );
-  const nodeList = useMemo(
-    () => JSON.parse(nodeListString) as FlowNodeItemType[],
-    [nodeListString]
   );
 
   const onUpdateNodeError = useMemoizedFn((nodeId: string, isError: Boolean) => {
@@ -493,6 +478,9 @@ const WorkflowContextProvider = ({
 
   // reset a node data. delete edge and replace it
   const onResetNode = useMemoizedFn(({ id, node }: { id: string; node: FlowNodeTemplateType }) => {
+    // 确保重置时不阻塞快照保存 - 修复快照系统竞态条件
+    forbiddenSaveSnapshot.current = false;
+
     setNodes((state) =>
       state.map((item) => {
         if (item.id === id) {
@@ -523,66 +511,90 @@ const WorkflowContextProvider = ({
       return nodes.map((node) => {
         if (node.id !== nodeId) return node;
 
-        const updateObj = cloneDeep(node.data);
+        // ✅ 使用结构共享，只拷贝变化的部分
+        let updateObj = node.data;
 
         if (type === 'attr') {
-          if (props.key) {
-            // @ts-ignore
-            updateObj[props.key] = props.value;
-          }
+          // 浅拷贝 + 更新单个属性
+          updateObj = {
+            ...node.data,
+            [props.key]: props.value
+          };
         } else if (type === 'updateInput') {
-          updateObj.inputs = node.data.inputs.map((item) =>
-            item.key === props.key ? props.value : item
-          );
+          // 只拷贝inputs数组
+          updateObj = {
+            ...node.data,
+            inputs: node.data.inputs.map((item) => (item.key === props.key ? props.value : item))
+          };
         } else if (type === 'replaceInput') {
-          if (!updateObj.inputs.find((item) => item.key === props.key)) {
-            updateObj.inputs.push(props.value);
-          } else {
-            updateObj.inputs = updateObj.inputs.map((item) =>
-              item.key === props.key ? props.value : item
-            );
-          }
+          const existingIndex = node.data.inputs.findIndex((item) => item.key === props.key);
+
+          updateObj = {
+            ...node.data,
+            inputs:
+              existingIndex === -1
+                ? [...node.data.inputs, props.value]
+                : node.data.inputs.map((item) => (item.key === props.key ? props.value : item))
+          };
         } else if (type === 'addInput') {
-          const input = node.data.inputs.find((input) => input.key === props.value.key);
-          if (input) {
+          const hasInput = node.data.inputs.some((input) => input.key === props.value.key);
+          if (hasInput) {
             toast({
               status: 'warning',
               title: t('common:key_repetition')
             });
+            updateObj = node.data; // 不修改
           } else {
-            updateObj.inputs.push(props.value);
+            updateObj = {
+              ...node.data,
+              inputs: [...node.data.inputs, props.value]
+            };
           }
         } else if (type === 'delInput') {
-          updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
+          updateObj = {
+            ...node.data,
+            inputs: node.data.inputs.filter((item) => item.key !== props.key)
+          };
         } else if (type === 'updateOutput') {
-          updateObj.outputs = node.data.outputs.map((item) =>
-            item.key === props.key ? props.value : item
-          );
+          updateObj = {
+            ...node.data,
+            outputs: node.data.outputs.map((item) => (item.key === props.key ? props.value : item))
+          };
         } else if (type === 'replaceOutput') {
           onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
-          updateObj.outputs = updateObj.outputs.map((item) =>
-            item.key === props.key ? props.value : item
-          );
+          updateObj = {
+            ...node.data,
+            outputs: node.data.outputs.map((item) => (item.key === props.key ? props.value : item))
+          };
         } else if (type === 'addOutput') {
-          const output = node.data.outputs.find((output) => output.key === props.value.key);
-          if (output) {
+          const hasOutput = node.data.outputs.some((output) => output.key === props.value.key);
+          if (hasOutput) {
             toast({
               status: 'warning',
               title: t('common:key_repetition')
             });
-            updateObj.outputs = node.data.outputs;
+            updateObj = node.data; // 不修改
           } else {
             if (props.index !== undefined) {
               const outputs = [...node.data.outputs];
               outputs.splice(props.index, 0, props.value);
-              updateObj.outputs = outputs;
+              updateObj = {
+                ...node.data,
+                outputs
+              };
             } else {
-              updateObj.outputs = node.data.outputs.concat(props.value);
+              updateObj = {
+                ...node.data,
+                outputs: [...node.data.outputs, props.value]
+              };
             }
           }
         } else if (type === 'delOutput') {
           onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
-          updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
+          updateObj = {
+            ...node.data,
+            outputs: node.data.outputs.filter((item) => item.key !== props.key)
+          };
         }
 
         return {
@@ -594,14 +606,14 @@ const WorkflowContextProvider = ({
   });
   const getNodeDynamicInputs = useCallback(
     (nodeId: string) => {
-      const node = nodeList.find((node) => node.nodeId === nodeId);
+      const node = getNodeById(nodeId);
       if (!node) return [];
 
       const dynamicInputs = node.inputs.filter((input) => input.canEdit);
 
       return dynamicInputs;
     },
-    [nodeList]
+    [getNodeById]
   );
 
   /* If the module is connected by a tool, the tool input and the normal input are separated */
@@ -844,11 +856,24 @@ const WorkflowContextProvider = ({
     onOpenTest();
   }, [workflowTestData]);
 
-  /* snapshots */
+  /* snapshots - 优先保证数据保存策略 */
   const forbiddenSaveSnapshot = useRef(false);
   const [past, setPast] = useState<WorkflowSnapshotsType[]>([]);
   const [future, setFuture] = useState<WorkflowSnapshotsType[]>([]);
 
+  // 待保存快照队列机制 - 解决竞态条件，确保数据不丢失
+  const pendingSnapshotRef = useRef<{
+    data: {
+      pastNodes: Node[];
+      pastEdges: Edge[];
+      chatConfig: AppChatConfigType;
+      customTitle?: string;
+      isSaved?: boolean;
+    } | null;
+    timeoutId?: NodeJS.Timeout;
+  }>({ data: null });
+
+  // 重置快照状态
   const resetSnapshot = useMemoizedFn((state: WorkflowStateType) => {
     setNodes(state.nodes);
     setEdges(state.edges);
@@ -858,14 +883,53 @@ const WorkflowContextProvider = ({
     }));
   });
 
+  // 增强的快照保存函数 - 优先保证数据保存
   const pushPastSnapshot = useMemoizedFn(
     ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
-      if (!pastNodes || !pastEdges || !chatConfig) return false;
-      if (forbiddenSaveSnapshot.current) {
-        forbiddenSaveSnapshot.current = false;
+      // 1. 基础数据验证 - 仅确保基本结构存在
+      if (!pastNodes || !pastEdges || !chatConfig) {
+        console.warn('[Snapshot] Invalid snapshot data:', {
+          hasPastNodes: !!pastNodes,
+          hasPastEdges: !!pastEdges,
+          hasChatConfig: !!chatConfig
+        });
         return false;
       }
 
+      // 2. 节点数量验证 - 允许空节点数组但记录日志
+      if (pastNodes.length === 0) {
+        console.debug('[Snapshot] Empty nodes array, still saving snapshot');
+      }
+
+      // 3. 处理被阻塞的快照
+      if (forbiddenSaveSnapshot.current) {
+        console.warn('[Snapshot] Snapshot creation blocked, adding to pending queue');
+
+        // 将快照加入待处理队列
+        pendingSnapshotRef.current = {
+          data: { pastNodes, pastEdges, chatConfig, customTitle, isSaved }
+        };
+
+        // 500ms后尝试处理待保存的快照
+        if (pendingSnapshotRef.current.timeoutId) {
+          clearTimeout(pendingSnapshotRef.current.timeoutId);
+        }
+
+        pendingSnapshotRef.current.timeoutId = setTimeout(() => {
+          if (pendingSnapshotRef.current?.data) {
+            const snapshot = pendingSnapshotRef.current.data;
+            console.log('[Snapshot] Processing pending snapshot from queue');
+            pushPastSnapshot(snapshot);
+            pendingSnapshotRef.current = { data: null };
+          } else {
+            console.log('[Snapshot] No pending snapshot to process');
+          }
+        }, 500);
+
+        return false;
+      }
+
+      // 4. 检查快照是否与之前相同
       const isPastEqual = compareSnapshot(
         {
           nodes: pastNodes,
@@ -879,21 +943,39 @@ const WorkflowContextProvider = ({
         }
       );
 
-      if (isPastEqual) return false;
+      if (isPastEqual) {
+        console.debug('[Snapshot] Snapshot is identical to previous, skipping');
+        return false;
+      }
 
-      setFuture([]);
-      setPast((past) => [
-        {
+      try {
+        // 5. 更新快照历史
+        const newSnapshot = {
           nodes: pastNodes,
           edges: pastEdges,
           title: customTitle || formatTime2YMDHMS(new Date()),
           chatConfig,
           isSaved
-        },
-        ...past.slice(0, 99)
-      ]);
+        };
 
-      return true;
+        setFuture([]);
+        setPast((past) => [
+          newSnapshot,
+          ...past.slice(0, 99) // 保留最近100个快照
+        ]);
+
+        console.debug('[Snapshot] Snapshot saved successfully:', {
+          title: newSnapshot.title,
+          nodeCount: newSnapshot.nodes.length,
+          edgeCount: newSnapshot.edges.length,
+          isSaved
+        });
+
+        return true;
+      } catch (error) {
+        console.error('[Snapshot] Failed to save snapshot:', error);
+        return false;
+      }
     }
   );
 
@@ -1000,13 +1082,12 @@ const WorkflowContextProvider = ({
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, t]
   );
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    return {
       appId,
       basicNodeTemplates,
 
       // node
-      nodeList,
       onUpdateNodeError,
       onRemoveError,
       onResetNode,
@@ -1045,36 +1126,34 @@ const WorkflowContextProvider = ({
 
       // chat test
       setWorkflowTestData
-    }),
-    [
-      appId,
-      basicNodeTemplates,
-      connectingEdge,
-      flowData2StoreData,
-      flowData2StoreDataAndCheck,
-      future,
-      getNodeDynamicInputs,
-      initData,
-      nodeList,
-      onChangeNode,
-      onDelEdge,
-      onNextNodeDebug,
-      onRemoveError,
-      onResetNode,
-      onStartNodeDebug,
-      onStopNodeDebug,
-      onSwitchCloudVersion,
-      onSwitchTmpVersion,
-      onUpdateNodeError,
-      past,
-      pushPastSnapshot,
-      redo,
-      splitOutput,
-      splitToolInputs,
-      undo,
-      workflowDebugData
-    ]
-  );
+    };
+  }, [
+    appId,
+    basicNodeTemplates,
+    connectingEdge,
+    flowData2StoreData,
+    flowData2StoreDataAndCheck,
+    future,
+    getNodeDynamicInputs,
+    initData,
+    onChangeNode,
+    onDelEdge,
+    onNextNodeDebug,
+    onRemoveError,
+    onResetNode,
+    onStartNodeDebug,
+    onStopNodeDebug,
+    onSwitchCloudVersion,
+    onSwitchTmpVersion,
+    onUpdateNodeError,
+    past,
+    pushPastSnapshot,
+    redo,
+    splitOutput,
+    splitToolInputs,
+    undo,
+    workflowDebugData
+  ]);
 
   return (
     <WorkflowContext.Provider value={value}>

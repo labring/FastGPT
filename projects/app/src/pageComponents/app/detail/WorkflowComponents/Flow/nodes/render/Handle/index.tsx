@@ -4,10 +4,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  WorkflowNodeEdgeContext,
-  WorkflowInitContext
-} from '../../../../context/workflowInitContext';
+import { WorkflowDataContext, WorkflowInitContext } from '../../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -56,7 +53,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 }: Props) {
   const { t } = useTranslation();
 
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
   const node = useContextSelector(WorkflowInitContext, (v) =>
     v.nodes.find((node) => node.data.nodeId === nodeId)
@@ -156,7 +153,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
-  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+  const connected = useContextSelector(WorkflowDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);

@@ -31,7 +31,7 @@ import {
   AppNodeFlowNodeTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -221,7 +221,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
@@ -274,7 +274,7 @@ const NodeTemplateList = ({
           }
         });
 
-        const currentNode = nodeList.find((node) => node.nodeId === handleParams?.nodeId);
+        const currentNode = getNodeById(handleParams?.nodeId);
         if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
           toast({
             status: 'warning',

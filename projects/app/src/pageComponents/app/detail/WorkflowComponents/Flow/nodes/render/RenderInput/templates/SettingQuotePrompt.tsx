@@ -22,6 +22,7 @@ import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -49,8 +50,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const node = nodeList.find((item) => item.id === nodeId);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const node = getNodeById(nodeId);
   const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({

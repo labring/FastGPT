@@ -1,7 +1,7 @@
 import { useDebounceEffect, useLockFn, useMemoizedFn } from 'ahooks';
 import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { WorkflowInitContext, WorkflowNodeEdgeContext } from './workflowInitContext';
+import { WorkflowInitContext, WorkflowDataContext } from './workflowInitContext';
 import { WorkflowContext } from '.';
 import { AppContext } from '../../context';
 import { compareSnapshot } from '@/web/core/workflow/utils';
@@ -47,7 +47,7 @@ export const WorkflowStatusContext = createContext<WorkflowStatusContextType>({
 const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
   const past = useContextSelector(WorkflowContext, (v) => v.past);
   const future = useContextSelector(WorkflowContext, (v) => v.future);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -108,7 +108,7 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
     callback: autoSaveFn
   });
 
-  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
+  const onNodesChange = useContextSelector(WorkflowDataContext, (state) => state.onNodesChange);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const getParentNodeSizeAndPosition = useMemoizedFn(
     ({ nodes, parentId }: { nodes: Node<FlowNodeItemType>[]; parentId: string }) => {

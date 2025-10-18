@@ -1,13 +1,13 @@
 import { createContext } from 'use-context-selector';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
-import { useCreation, useMemoizedFn } from 'ahooks';
+import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
   type Dispatch,
   type SetStateAction,
   type ReactNode,
-  useEffect,
-  useMemo
+  useMemo,
+  useCallback
 } from 'react';
 import {
   type Edge,
@@ -17,26 +17,30 @@ import {
   useEdgesState,
   useNodesState
 } from 'reactflow';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
-type WorkflowInitContextType = {
+type WorkflowNodeContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
 };
-export const WorkflowInitContext = createContext<WorkflowInitContextType>({
+export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
   nodes: []
 });
 
-type WorkflowActionContextType = {
+type WorkflowDataContextType = {
+  nodeList: FlowNodeItemType[];
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
-  nodeListString: string;
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
 };
-export const WorkflowNodeEdgeContext = createContext<WorkflowActionContextType>({
+export const WorkflowDataContext = createContext<WorkflowDataContextType>({
+  nodeList: [],
+  getNodeById: () => undefined,
   setNodes: function (
     value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
   ): void {
@@ -48,7 +52,6 @@ export const WorkflowNodeEdgeContext = createContext<WorkflowActionContextType>(
   getNodes: function (): Node<FlowNodeItemType, string | undefined>[] {
     throw new Error('Function not implemented.');
   },
-  nodeListString: JSON.stringify([]),
   edges: [],
   setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
     throw new Error('Function not implemented.');
@@ -62,55 +65,74 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
   // Nodes
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);
-  const nodeListString = JSON.stringify(nodes.map((node) => node.data));
-  const nodeList = useCreation(
-    () => JSON.parse(nodeListString) as FlowNodeItemType[],
-    [nodeListString]
+
+  const nodeList = useMemoEnhance(() => {
+    return nodes.map((node) => node.data);
+  }, [nodes]);
+  const nodesMap = useMemoEnhance(() => {
+    return nodes.reduce(
+      (acc, node) => {
+        acc[node.data.nodeId] = node.data;
+        return acc;
+      },
+      {} as Record<string, FlowNodeItemType>
+    );
+  }, [nodeList]);
+  const getNodeById = useCallback(
+    (nodeId: string | null | undefined) => {
+      return nodeId ? nodesMap[nodeId] : undefined;
+    },
+    [nodesMap]
   );
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   // Elevate childNodes
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     setNodes((nodes) =>
       nodes.map((node) => (node.data.parentNodeId ? { ...node, zIndex: 1001 } : node))
     );
   }, [nodeList]);
-  // Elevate edges of childNodes
-  useEffect(() => {
-    setEdges((state) =>
-      state.map((item) =>
-        nodeList.some((node) => item.source === node.nodeId && node.parentNodeId)
-          ? { ...item, zIndex: 1001 }
-          : item
-      )
-    );
-  }, [nodeList, edges.length]);
 
-  const actionContextValue = useMemo(
+  // Elevate edges of childNodes - 使用nodesMap优化O(n)查找为O(1)
+  useDeepCompareEffect(() => {
+    setEdges((state) =>
+      state.map((item) => {
+        const sourceNode = nodesMap[item.source];
+        return sourceNode?.parentNodeId ? { ...item, zIndex: 1001 } : item;
+      })
+    );
+  }, [nodesMap, edges.length, setEdges]);
+
+  // 数据Context - 只包含数据
+  const nodeContextValue = useMemo(
     () => ({
+      nodes
+    }),
+    [nodes]
+  );
+
+  // 操作Context - 只包含函数
+  const workflowDataContextValue = useMemoEnhance(() => {
+    return {
+      nodeList,
+      nodesMap,
+      getNodeById,
       setNodes,
       onNodesChange,
       getNodes,
-      nodeListString,
-
       edges,
       setEdges,
       onEdgesChange
-    }),
-    [setNodes, onNodesChange, getNodes, nodeListString, edges, setEdges, onEdgesChange]
-  );
+    };
+  }, [setNodes, nodeList, getNodeById, edges, onNodesChange, getNodes, setEdges, onEdgesChange]);
 
   return (
-    <WorkflowInitContext.Provider
-      value={{
-        nodes
-      }}
-    >
-      <WorkflowNodeEdgeContext.Provider value={actionContextValue}>
+    <WorkflowInitContext.Provider value={nodeContextValue}>
+      <WorkflowDataContext.Provider value={workflowDataContextValue}>
         {children}
-      </WorkflowNodeEdgeContext.Provider>
+      </WorkflowDataContext.Provider>
     </WorkflowInitContext.Provider>
   );
 };

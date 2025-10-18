@@ -6,7 +6,7 @@ import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { useContextSelector } from 'use-context-selector';
 import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
 import { WorkflowContext } from '../../context';
 import dagre from '@dagrejs/dagre';
@@ -18,11 +18,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const menu = useContextSelector(WorkflowEventContext, (v) => v.menu!);
   const setMenu = useContextSelector(WorkflowEventContext, (ctx) => ctx.setMenu);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const setNodes = useContextSelector(WorkflowDataContext, (v) => v.setNodes);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
   const getParentNodeSizeAndPosition = useContextSelector(
     WorkflowStatusContext,
     (v) => v.getParentNodeSizeAndPosition

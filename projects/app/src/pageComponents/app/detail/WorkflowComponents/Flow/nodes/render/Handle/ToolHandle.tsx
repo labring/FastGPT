@@ -6,7 +6,7 @@ import { type Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
+import { WorkflowDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 
 const handleSize = '16px';
@@ -22,7 +22,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
     WorkflowContext,
     (ctx) => ctx.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
-  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+  const connected = useContextSelector(WorkflowDataContext, (v) =>
     v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
   );
 
@@ -71,7 +71,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const setEdges = useContextSelector(WorkflowDataContext, (v) => v.setEdges);
   const connectingEdge = useContextSelector(
     WorkflowContext,
     (ctx) => ctx.connectingEdge?.nodeId === nodeId

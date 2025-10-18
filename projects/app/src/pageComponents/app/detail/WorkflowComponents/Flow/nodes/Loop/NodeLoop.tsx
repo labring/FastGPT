@@ -26,6 +26,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { WorkflowDataContext } from '../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
@@ -36,7 +37,7 @@ import { WorkflowStatusContext } from '../../../context/workflowStatusContext';
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const resetParentNodeSizeAndPosition = useContextSelector(
@@ -89,13 +90,13 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       if (value?.[0] === VARIABLE_NODE_ID) {
         return globalVariables.find((item) => item.key === value[1])?.valueType;
       } else {
-        const node = nodeList.find((node) => node.nodeId === value?.[0]);
+        const node = getNodeById(value?.[0]);
         const output = node?.outputs.find((output) => output.id === value?.[1]);
         return output?.valueType;
       }
     })(value[0]);
     return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
-  }, [appDetail.chatConfig, loopInputArray, nodeList]);
+  }, [appDetail.chatConfig, getNodeById, loopInputArray, nodeList]);
   useEffect(() => {
     if (!loopInputArray) return;
     onChangeNode({

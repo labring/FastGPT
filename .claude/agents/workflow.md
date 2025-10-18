@@ -341,7 +341,7 @@ WorkflowStatusContextProvider → children
 
 // 2. 四层核心Context
 - WorkflowInitContext: 节点数据和基础状态
-- WorkflowNodeEdgeContext: 节点/边操作和状态
+- WorkflowDataContext: 节点/边操作和状态
 - WorkflowEventContext: 事件处理和UI控制
 - WorkflowStatusContext: 保存状态和父节点管理
 ```

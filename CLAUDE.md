@@ -2,9 +2,10 @@
 
 本文件为 Claude Code (claude.ai/code) 在本仓库中工作时提供指导说明。
 
-## 语言
+## 输出要求
 
-中文
+1. 输出语言：中文
+2. 输出的设计文档位置：.claude/design，以 Markdown 文件为主。
 
 ## 项目概述
 

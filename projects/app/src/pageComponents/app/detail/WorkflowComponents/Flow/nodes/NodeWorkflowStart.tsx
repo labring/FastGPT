@@ -8,6 +8,7 @@ import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { WorkflowDataContext } from '../../context/workflowInitContext';
 import { useCreation } from 'ahooks';
 import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -25,7 +26,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
 
   const customGlobalVariables = useCreation(() => {
     const globalVariables = formatEditorVariablePickerIcon(
