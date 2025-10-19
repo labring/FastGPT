@@ -127,7 +127,9 @@ const nextConfig = {
       buildDependencies: {
         config: [__filename]
       },
-      cacheDirectory: path.resolve(__dirname, '.next/cache/webpack')
+      cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
+      maxMemoryGenerations: isDev ? 5 : Infinity,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
     };
 
     return config;
