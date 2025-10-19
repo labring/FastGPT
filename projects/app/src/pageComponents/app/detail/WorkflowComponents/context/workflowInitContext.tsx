@@ -55,6 +55,7 @@ export type WorkflowDataContextType = {
   toolNodesMap: Record<string, boolean>;
   nodeIds: string[];
   nodeAmount: number;
+  foldedNodesMap: Record<string, boolean>;
   getNodeById: (
     nodeId: string | null | undefined,
     condition?: (node: FlowNodeItemType) => boolean
@@ -78,6 +79,7 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   toolNodesMap: {},
   nodeIds: [],
   nodeAmount: 0,
+  foldedNodesMap: {},
   getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
     throw new Error('Function not implemented.');
   },
@@ -122,6 +124,7 @@ const WorkflowInitContextProvider = ({
     const nodeList: FlowNodeItemType[] = [];
     const nodesMap: Record<string, FlowNodeItemType> = {};
     const selectedNodesMap: Record<string, boolean> = {};
+    const foldedNodesMap: Record<string, boolean> = {};
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
     let systemConfigNode: StoreNodeItemType | undefined = undefined;
     let allNodeFolded = true;
@@ -129,6 +132,8 @@ const WorkflowInitContextProvider = ({
     let llmMaxQuoteContext = 0;
 
     nodes.forEach((node) => {
+      const flowNodeType = node.data.flowNodeType;
+
       nodeIds.push(node.data.nodeId);
       nodeList.push(node.data);
       nodesMap[node.data.nodeId] = node.data;
@@ -136,11 +141,14 @@ const WorkflowInitContextProvider = ({
       if (node.selected) {
         selectedNodesMap[node.data.nodeId] = true;
       }
+      if (node.data.isFolded) {
+        foldedNodesMap[node.data.nodeId] = true;
+      }
 
-      if (node.data.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+      if (flowNodeType === FlowNodeTypeEnum.workflowStart) {
         workflowStartNode = node.data;
       }
-      if (node.data.flowNodeType === FlowNodeTypeEnum.systemConfig) {
+      if (flowNodeType === FlowNodeTypeEnum.systemConfig) {
         systemConfigNode = node.data;
       }
       // Max context computed
@@ -148,7 +156,7 @@ const WorkflowInitContextProvider = ({
         [FlowNodeTypeEnum.chatNode]: true,
         [FlowNodeTypeEnum.agent]: true
       };
-      if (map[node.data.flowNodeType]) {
+      if (map[flowNodeType]) {
         const model =
           node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
         const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
@@ -159,7 +167,7 @@ const WorkflowInitContextProvider = ({
         allNodeFolded = false;
       }
 
-      if (node.data.flowNodeType === FlowNodeTypeEnum.agent) {
+      if (flowNodeType === FlowNodeTypeEnum.agent) {
         hasToolNode = true;
       }
     });
@@ -173,7 +181,8 @@ const WorkflowInitContextProvider = ({
       systemConfigNode,
       allNodeFolded,
       hasToolNode,
-      llmMaxQuoteContext
+      llmMaxQuoteContext,
+      foldedNodesMap
     };
   }, [nodes]);
 
@@ -184,6 +193,7 @@ const WorkflowInitContextProvider = ({
   const selectedNodesMap = useMemoEnhance(() => nodeFormat.selectedNodesMap, [nodeFormat]);
   const workflowStartNode = useMemoEnhance(() => nodeFormat.workflowStartNode, [nodeFormat]);
   const systemConfigNode = useMemoEnhance(() => nodeFormat.systemConfigNode, [nodeFormat]);
+  const foldedNodesMap = useMemoEnhance(() => nodeFormat.foldedNodesMap, [nodeFormat]);
   const allNodeFolded = nodeFormat.allNodeFolded;
   const hasToolNode = nodeFormat.hasToolNode;
   const llmMaxQuoteContext = nodeFormat.llmMaxQuoteContext;
@@ -205,17 +215,20 @@ const WorkflowInitContextProvider = ({
     }
   );
 
-  const rawNodesMap = useMemoEnhance(
-    () =>
-      nodes.reduce(
-        (acc, node) => {
-          acc[node.id] = node;
-          return acc;
-        },
-        {} as Record<string, Node<FlowNodeItemType, string | undefined>>
-      ),
-    [nodes]
-  );
+  const rawNodeFormat = useMemo(() => {
+    const rawNodesMap: Record<string, Node<FlowNodeItemType, string | undefined>> = {};
+
+    nodes.forEach((node) => {
+      const flowNodeType = node.data.flowNodeType;
+
+      rawNodesMap[node.id] = node;
+    });
+
+    return {
+      rawNodesMap
+    };
+  }, [nodes]);
+  const rawNodesMap = useMemoEnhance(() => rawNodeFormat.rawNodesMap, [rawNodeFormat]);
   const getRawNodeById = useMemoizedFn((nodeId: string | null | undefined) => {
     return nodeId ? rawNodesMap[nodeId] : undefined;
   });
@@ -289,6 +302,7 @@ const WorkflowInitContextProvider = ({
       allNodeFolded,
       hasToolNode,
       toolNodesMap,
+      foldedNodesMap,
       getNodeById,
       setNodes,
       onNodesChange,
@@ -309,6 +323,7 @@ const WorkflowInitContextProvider = ({
     allNodeFolded,
     hasToolNode,
     toolNodesMap,
+    foldedNodesMap,
     getNodeById,
     setNodes,
     onNodesChange,

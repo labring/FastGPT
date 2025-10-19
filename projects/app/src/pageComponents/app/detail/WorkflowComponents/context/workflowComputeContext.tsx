@@ -54,8 +54,7 @@ export const WorkflowLayoutContext = createContext<WorkflowComputeContextValue>(
 
 export const WorkflowComputeProvider = ({ children }: { children: React.ReactNode }) => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const onNodesChange = useContextSelector(WorkflowBufferDataContext, (v) => v.onNodesChange);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { setNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   /**
    * 获取父节点(Loop节点)的大小和位置
@@ -133,42 +132,36 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
   const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
     const res = getParentNodeSizeAndPosition({ nodes, parentId });
     if (!res) return;
+
     const { parentX, parentY, childWidth, childHeight } = res;
 
-    // Update parentNode size and position
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeWidth,
-      value: {
-        ...Input_Template_Node_Width,
-        value: childWidth
-      }
-    });
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeHeight,
-      value: {
-        ...Input_Template_Node_Height,
-        value: childHeight
-      }
-    });
-    // Update parentNode position
-    onNodesChange([
-      {
-        id: parentId,
-        type: 'position',
-        position: {
-          x: parentX,
-          y: parentY
-        }
-      }
-    ]);
+    // 一次性更新 inputs + position
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== parentId) return node;
+
+        // 更新 inputs 中的 width 和 height
+        const updatedInputs = node.data.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.nodeWidth) {
+            return { ...Input_Template_Node_Width, value: childWidth };
+          }
+          if (input.key === NodeInputKeyEnum.nodeHeight) {
+            return { ...Input_Template_Node_Height, value: childHeight };
+          }
+          return input;
+        });
+
+        // 同时更新 position 和 data
+        return {
+          ...node,
+          position: { x: parentX, y: parentY },
+          data: { ...node.data, inputs: updatedInputs }
+        };
+      })
+    );
   });
 
   const contextValue = useMemo(() => {
-    console.log('WorkflowComputeContextValue 更新了');
     return {
       resetParentNodeSizeAndPosition,
       getParentNodeSizeAndPosition

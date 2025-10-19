@@ -11,11 +11,13 @@ import {
 } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
-  const { onEdgesChange, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { onEdgesChange, getNodeById, foldedNodesMap } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
@@ -36,17 +38,17 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   // If parentNode is folded, the edge will not be displayed
-  const parentNode = useMemoEnhance(() => {
+  const isFolded = useMemo(() => {
     const sourceNode = getNodeById(source);
     const targetNode = getNodeById(target);
     if (sourceNode?.parentNodeId) {
-      return getNodeById(sourceNode.parentNodeId);
+      return foldedNodesMap[sourceNode.parentNodeId];
     }
     if (targetNode?.parentNodeId) {
-      return getNodeById(targetNode.parentNodeId);
+      return foldedNodesMap[targetNode.parentNodeId];
     }
-    return undefined;
-  }, [source, target, getNodeById]);
+    return false;
+  }, [foldedNodesMap, getNodeById, source, target]);
 
   const defaultZIndex = useMemo(() => {
     const node = getNodeById(source, (node) => !!node.parentNodeId);
@@ -140,7 +142,7 @@ const ButtonEdge = (props: EdgeProps) => {
 
     return (
       <EdgeLabelRenderer>
-        <Box hidden={parentNode?.isFolded}>
+        <Box hidden={isFolded}>
           <Flex
             display={isHover || highlightEdge ? 'flex' : 'none'}
             alignItems={'center'}
@@ -180,7 +182,7 @@ const ButtonEdge = (props: EdgeProps) => {
       </EdgeLabelRenderer>
     );
   }, [
-    parentNode?.isFolded,
+    isFolded,
     isHover,
     highlightEdge,
     labelX,
@@ -226,7 +228,7 @@ const ButtonEdge = (props: EdgeProps) => {
         style={{
           ...edgeStyle,
           stroke: edgeColor,
-          display: parentNode?.isFolded ? 'none' : 'block'
+          display: isFolded ? 'none' : 'block'
         }}
       />
     );
@@ -240,7 +242,7 @@ const ButtonEdge = (props: EdgeProps) => {
     target,
     style,
     highlightEdge,
-    parentNode?.isFolded
+    isFolded
   ]);
 
   return (

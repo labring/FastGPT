@@ -45,21 +45,23 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
                       onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'updateInput',
-                          key: agentKey,
-                          value: {
-                            ...props,
+                        onChangeNode([
+                          {
+                            nodeId,
+                            type: 'updateInput',
                             key: agentKey,
-                            value: agents.filter((input) => input.key !== item.key)
+                            value: {
+                              ...props,
+                              key: agentKey,
+                              value: agents.filter((input) => input.key !== item.key)
+                            }
+                          },
+                          {
+                            nodeId,
+                            type: 'delOutput',
+                            key: item.key
                           }
-                        });
-                        onChangeNode({
-                          nodeId,
-                          type: 'delOutput',
-                          key: item.key
-                        });
+                        ]);
                       }}
                     />
                   </MyTooltip>

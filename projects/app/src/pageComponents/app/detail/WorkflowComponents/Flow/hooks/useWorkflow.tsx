@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   type Connection,
   type NodeChange,
@@ -272,6 +272,186 @@ const computeHelperLines = (
     );
 };
 
+const useParentChildDragRaf = () => {
+  const { resetParentNodeSizeAndPosition } = useContextSelector(WorkflowLayoutContext, (v) => v);
+  const { setNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+
+  // Loop child drag RAF 节流相关
+  const childRafIdRef = useRef<number>();
+  const pendingUpdateRef = useRef<{ parentId: string } | null>(null);
+  const scheduleParentSizeUpdate = useCallback(
+    (parentId: string) => {
+      // 记录待更新的 parentId
+      pendingUpdateRef.current = { parentId };
+
+      // 如果已有待执行的 RAF，不重复请求
+      if (childRafIdRef.current) return;
+
+      // 请求下一帧执行更新
+      childRafIdRef.current = requestAnimationFrame(() => {
+        childRafIdRef.current = undefined;
+
+        if (pendingUpdateRef.current) {
+          const { parentId } = pendingUpdateRef.current;
+          pendingUpdateRef.current = null;
+
+          // 执行实际的尺寸更新（使用批量版本）
+          resetParentNodeSizeAndPosition(parentId);
+        }
+      });
+    },
+    [resetParentNodeSizeAndPosition]
+  );
+
+  // Loop parent drag RAF 节流相关
+  // 批量更新父节点和所有子节点的位置
+  const updateParentAndChildrenBatch = useMemoizedFn(
+    (parentId: string, change: NodePositionChange, childNodesChange: NodePositionChange[]) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((n) => {
+          // 更新父节点位置
+          if (n.id === parentId && change.position) {
+            return {
+              ...n,
+              position: change.position
+            };
+          }
+
+          // 更新子节点位置
+          const childChange = childNodesChange.find((c) => c.id === n.id);
+          if (childChange && childChange.position) {
+            return {
+              ...n,
+              position: childChange.position
+            };
+          }
+
+          return n;
+        })
+      );
+    }
+  );
+  const parentDragRafIdRef = useRef<number>();
+  const pendingParentDragRef = useRef<{
+    parentId: string;
+    change: NodePositionChange;
+    childNodesChange: NodePositionChange[];
+  } | null>(null);
+  const scheduleParentDrag = useCallback(
+    (parentId: string, change: NodePositionChange, childNodesChange: NodePositionChange[]) => {
+      // 记录待更新的父节点拖拽信息
+      pendingParentDragRef.current = { parentId, change, childNodesChange };
+
+      // 如果已有待执行的 RAF,不重复请求
+      if (parentDragRafIdRef.current) return;
+
+      // 请求下一帧执行更新
+      parentDragRafIdRef.current = requestAnimationFrame(() => {
+        parentDragRafIdRef.current = undefined;
+
+        if (pendingParentDragRef.current) {
+          const { parentId, change, childNodesChange } = pendingParentDragRef.current;
+          pendingParentDragRef.current = null;
+
+          // 执行批量更新父节点和子节点
+          updateParentAndChildrenBatch(parentId, change, childNodesChange);
+        }
+      });
+    },
+    [updateParentAndChildrenBatch]
+  );
+
+  // Helper line RAF 节流相关
+  const helperLineRafIdRef = useRef<number>();
+  const pendingHelperLineRef = useRef<{
+    change: NodeChange;
+    nodes: Node[];
+    setHorizontal: (line?: THelperLine) => void;
+    setVertical: (line?: THelperLine) => void;
+  } | null>(null);
+
+  const scheduleHelperLineUpdate = useCallback(
+    (
+      change: NodeChange,
+      nodes: Node[],
+      setHorizontal: (line?: THelperLine) => void,
+      setVertical: (line?: THelperLine) => void
+    ) => {
+      // 记录待更新的辅助线信息
+      pendingHelperLineRef.current = { change, nodes, setHorizontal, setVertical };
+
+      // 如果已有待执行的 RAF,不重复请求
+      if (helperLineRafIdRef.current) return;
+
+      // 请求下一帧执行更新
+      helperLineRafIdRef.current = requestAnimationFrame(() => {
+        helperLineRafIdRef.current = undefined;
+
+        if (pendingHelperLineRef.current) {
+          const { change, nodes, setHorizontal, setVertical } = pendingHelperLineRef.current;
+          pendingHelperLineRef.current = null;
+
+          // 执行实际的辅助线计算
+          const positionChange = change.type === 'position' && change.dragging ? change : undefined;
+
+          if (positionChange?.position) {
+            const dragPos = positionChange.position;
+
+            // 一次遍历: 过滤 3000px 范围内的节点 + 计算距离
+            const candidateNodes: Array<{ node: Node; distance: number }> = [];
+
+            for (const node of nodes) {
+              const dx = Math.abs(node.position.x - dragPos.x);
+              const dy = Math.abs(node.position.y - dragPos.y);
+
+              if (dx <= 3000 && dy <= 3000) {
+                const distance = dx + dy;
+                candidateNodes.push({ node, distance });
+              }
+            }
+
+            // 部分排序: 按距离从近到远排序,只取前 15 个
+            candidateNodes.sort((a, b) => a.distance - b.distance);
+            const filterNodes = candidateNodes.slice(0, 15).map((item) => item.node);
+
+            const helperLines = computeHelperLines(positionChange, filterNodes);
+
+            positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
+            positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
+
+            setHorizontal(helperLines.horizontal);
+            setVertical(helperLines.vertical);
+          } else {
+            setHorizontal(undefined);
+            setVertical(undefined);
+          }
+        }
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      if (childRafIdRef.current) {
+        cancelAnimationFrame(childRafIdRef.current);
+      }
+      if (parentDragRafIdRef.current) {
+        cancelAnimationFrame(parentDragRafIdRef.current);
+      }
+      if (helperLineRafIdRef.current) {
+        cancelAnimationFrame(helperLineRafIdRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    scheduleParentSizeUpdate,
+    scheduleParentDrag,
+    scheduleHelperLineUpdate
+  };
+};
+
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 // Loop 类型的父节点类型集合
@@ -299,55 +479,24 @@ export const useWorkflow = () => {
   const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
 
   const { setHoverEdgeId, setMenu } = useContextSelector(WorkflowUIContext, (v) => v);
-  const resetParentNodeSizeAndPosition = useContextSelector(
-    WorkflowLayoutContext,
-    (v) => v.resetParentNodeSizeAndPosition
-  );
   const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
 
   const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
+  const { scheduleParentSizeUpdate, scheduleParentDrag, scheduleHelperLineUpdate } =
+    useParentChildDragRaf();
+
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
-  const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
-    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
-
-    if (positionChange?.position) {
-      const dragPos = positionChange.position;
-
-      // 一次遍历: 过滤 3000px 范围内的节点 + 计算距离 (曼哈顿距离只计算一次)
-      const candidateNodes: Array<{ node: Node; distance: number }> = [];
-
-      for (const node of nodes) {
-        const dx = Math.abs(node.position.x - dragPos.x);
-        const dy = Math.abs(node.position.y - dragPos.y);
-
-        // 3000px 范围内判断
-        if (dx <= 3000 && dy <= 3000) {
-          const distance = dx + dy; // 曼哈顿距离
-          candidateNodes.push({ node, distance });
-        }
-      }
-
-      // 部分排序: 按距离从近到远排序,只取前 15 个
-      candidateNodes.sort((a, b) => a.distance - b.distance);
-      const filterNodes = candidateNodes.slice(0, 15).map((item) => item.node);
-
-      const helperLines = computeHelperLines(positionChange, filterNodes);
-
-      positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
-      positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
-
-      setHelperLineHorizontal(helperLines.horizontal);
-      setHelperLineVertical(helperLines.vertical);
-    } else {
-      setHelperLineHorizontal(undefined);
-      setHelperLineVertical(undefined);
-    }
-  });
+  const checkNodeHelpLine = useCallback(
+    (change: NodeChange, nodes: Node[]) => {
+      scheduleHelperLineUpdate(change, nodes, setHelperLineHorizontal, setHelperLineVertical);
+    },
+    [scheduleHelperLineUpdate]
+  );
 
   // Check if a node is placed on top of a loop node
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
@@ -495,7 +644,9 @@ export const useWorkflow = () => {
         const parentId = node.data.parentNodeId;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
         checkNodeHelpLine(change, childNodes);
-        resetParentNodeSizeAndPosition(parentId);
+
+        // 使用 RAF 节流的更新
+        scheduleParentSizeUpdate(parentId);
         return;
       }
 
@@ -534,8 +685,7 @@ export const useWorkflow = () => {
               return {
                 ...change,
                 id: childNode.id,
-                position,
-                positionAbsolute: position
+                position
               };
             }
             return {
@@ -544,7 +694,7 @@ export const useWorkflow = () => {
             };
           });
 
-          onNodesChange(childNodesChange);
+          scheduleParentDrag(parentId, change, childNodesChange);
         }
         return;
       }

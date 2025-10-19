@@ -65,7 +65,6 @@ type Props = FlowNodeItemType & {
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const {
     children,
     avatar = LOGO_ICON,
@@ -89,7 +88,10 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  const { hasToolNode, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -102,12 +104,12 @@ const NodeCard = (props: Props) => {
   const showToolHandle = isTool && hasToolNode;
 
   // Current node and parent node
-  const { node, parentNode } = useMemo(() => {
+  const { node, hidden } = useMemo(() => {
     const node = getNodeById(nodeId);
-    const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
+    const hidden = node?.parentNodeId ? foldedNodesMap[node.parentNodeId] : false;
 
-    return { node, parentNode };
-  }, [getNodeById, nodeId]);
+    return { node, hidden };
+  }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
@@ -167,7 +169,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
-      hidden={parentNode?.isFolded}
+      hidden={hidden}
       flexDirection={'column'}
       minW={minW}
       maxW={maxW}
@@ -613,7 +615,7 @@ const MenuRender = React.memo(function MenuRender({
               catchError: template.catchError
             },
             selected: true,
-            parentNodeId: undefined,
+            parentNodeId: template.parentNodeId,
             t
           })
         ];

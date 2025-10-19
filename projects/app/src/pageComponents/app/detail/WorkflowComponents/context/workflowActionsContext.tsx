@@ -70,7 +70,7 @@ type WorkflowActionsContextValue = {
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
 
   /** 修改节点 */
-  onChangeNode: (props: FlowNodeChangeProps) => void;
+  onChangeNode: (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => void;
 
   /** 删除边 */
   onDelEdge: (e: { nodeId: string; sourceHandle?: string; targetHandle?: string }) => void;
@@ -91,7 +91,7 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
   onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
     throw new Error('Function not implemented.');
   },
-  onChangeNode: function (props: FlowNodeChangeProps): void {
+  onChangeNode: function (props: FlowNodeChangeProps | FlowNodeChangeProps[]): void {
     throw new Error('Function not implemented.');
   },
   onDelEdge: function (e: { nodeId: string; sourceHandle?: string; targetHandle?: string }): void {
@@ -215,12 +215,14 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   // 使用结构共享优化的节点更改
   const onChangeNode = useCallback(
-    (props: Parameters<WorkflowActionsContextValue['onChangeNode']>[0]) => {
-      const { nodeId, type } = props;
+    (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
+      const updateData = Array.isArray(props) ? props : [props];
 
       setNodes((nodes) => {
         return nodes.map((node) => {
-          if (node.id !== nodeId) return node;
+          const updateItem = updateData.find((item) => item.nodeId === node.data.nodeId);
+          if (!updateItem) return node;
+          const { nodeId, type } = updateItem;
 
           // ✅ 使用结构共享，只拷贝变化的部分
           let updateObj = node.data;
@@ -229,26 +231,30 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             // 浅拷贝 + 更新单个属性
             updateObj = {
               ...node.data,
-              [props.key]: props.value
+              [updateItem.key]: updateItem.value
             };
           } else if (type === 'updateInput') {
             // 只拷贝inputs数组
             updateObj = {
               ...node.data,
-              inputs: node.data.inputs.map((item) => (item.key === props.key ? props.value : item))
+              inputs: node.data.inputs.map((item) =>
+                item.key === updateItem.key ? updateItem.value : item
+              )
             };
           } else if (type === 'replaceInput') {
-            const existingIndex = node.data.inputs.findIndex((item) => item.key === props.key);
+            const existingIndex = node.data.inputs.findIndex((item) => item.key === updateItem.key);
 
             updateObj = {
               ...node.data,
               inputs:
                 existingIndex === -1
-                  ? [...node.data.inputs, props.value]
-                  : node.data.inputs.map((item) => (item.key === props.key ? props.value : item))
+                  ? [...node.data.inputs, updateItem.value]
+                  : node.data.inputs.map((item) =>
+                      item.key === updateItem.key ? updateItem.value : item
+                    )
             };
           } else if (type === 'addInput') {
-            const hasInput = node.data.inputs.some((input) => input.key === props.value.key);
+            const hasInput = node.data.inputs.some((input) => input.key === updateItem.value.key);
             if (hasInput) {
               toast({
                 status: 'warning',
@@ -258,31 +264,33 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             } else {
               updateObj = {
                 ...node.data,
-                inputs: [...node.data.inputs, props.value]
+                inputs: [...node.data.inputs, updateItem.value]
               };
             }
           } else if (type === 'delInput') {
             updateObj = {
               ...node.data,
-              inputs: node.data.inputs.filter((item) => item.key !== props.key)
+              inputs: node.data.inputs.filter((item) => item.key !== updateItem.key)
             };
           } else if (type === 'updateOutput') {
             updateObj = {
               ...node.data,
               outputs: node.data.outputs.map((item) =>
-                item.key === props.key ? props.value : item
+                item.key === updateItem.key ? updateItem.value : item
               )
             };
           } else if (type === 'replaceOutput') {
-            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
+            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
             updateObj = {
               ...node.data,
               outputs: node.data.outputs.map((item) =>
-                item.key === props.key ? props.value : item
+                item.key === updateItem.key ? updateItem.value : item
               )
             };
           } else if (type === 'addOutput') {
-            const hasOutput = node.data.outputs.some((output) => output.key === props.value.key);
+            const hasOutput = node.data.outputs.some(
+              (output) => output.key === updateItem.value.key
+            );
             if (hasOutput) {
               toast({
                 status: 'warning',
@@ -290,9 +298,9 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
               });
               updateObj = node.data; // 不修改
             } else {
-              if (props.index !== undefined) {
+              if (updateItem.index !== undefined) {
                 const outputs = [...node.data.outputs];
-                outputs.splice(props.index, 0, props.value);
+                outputs.splice(updateItem.index, 0, updateItem.value);
                 updateObj = {
                   ...node.data,
                   outputs
@@ -300,15 +308,15 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
               } else {
                 updateObj = {
                   ...node.data,
-                  outputs: [...node.data.outputs, props.value]
+                  outputs: [...node.data.outputs, updateItem.value]
                 };
               }
             }
           } else if (type === 'delOutput') {
-            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
+            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
             updateObj = {
               ...node.data,
-              outputs: node.data.outputs.filter((item) => item.key !== props.key)
+              outputs: node.data.outputs.filter((item) => item.key !== updateItem.key)
             };
           }
 
