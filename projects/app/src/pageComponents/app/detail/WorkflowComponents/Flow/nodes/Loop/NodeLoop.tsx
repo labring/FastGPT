@@ -146,7 +146,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     setTimeout(() => {
       resetParentNodeSizeAndPosition(nodeId);
     }, 50);
-  }, [loopNodeInputHeight, nodeId, onChangeNode, resetParentNodeSizeAndPosition, size?.height]);
+  }, [size?.height]);
 
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>

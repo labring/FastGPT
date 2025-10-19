@@ -272,9 +272,8 @@ const computeHelperLines = (
     );
 };
 
-const useParentChildDragRaf = () => {
+const useRAF = () => {
   const { resetParentNodeSizeAndPosition } = useContextSelector(WorkflowLayoutContext, (v) => v);
-  const { setNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   // Loop child drag RAF 节流相关
   const childRafIdRef = useRef<number>();
@@ -301,57 +300,6 @@ const useParentChildDragRaf = () => {
       });
     },
     [resetParentNodeSizeAndPosition]
-  );
-
-  // Loop parent drag RAF 节流相关
-  // 批量更新父节点和所有子节点的位置
-  const updateParentAndChildrenBatch = useMemoizedFn(
-    (parentId: string, change: NodePositionChange, childNodesChange: NodePositionChange[]) => {
-      setNodes((currentNodes) =>
-        currentNodes.map((n) => {
-          // 更新子节点位置
-          const childChange = childNodesChange.find((c) => c.id === n.id);
-          if (childChange && childChange.position) {
-            return {
-              ...n,
-              position: childChange.position,
-              positionAbsolute: childChange.position
-            };
-          }
-
-          return n;
-        })
-      );
-    }
-  );
-  const parentDragRafIdRef = useRef<number>();
-  const pendingParentDragRef = useRef<{
-    parentId: string;
-    change: NodePositionChange;
-    childNodesChange: NodePositionChange[];
-  } | null>(null);
-  const scheduleParentDrag = useCallback(
-    (parentId: string, change: NodePositionChange, childNodesChange: NodePositionChange[]) => {
-      // 记录待更新的父节点拖拽信息
-      pendingParentDragRef.current = { parentId, change, childNodesChange };
-
-      // 如果已有待执行的 RAF,不重复请求
-      if (parentDragRafIdRef.current) return;
-
-      // 请求下一帧执行更新
-      parentDragRafIdRef.current = requestAnimationFrame(() => {
-        parentDragRafIdRef.current = undefined;
-
-        if (pendingParentDragRef.current) {
-          const { parentId, change, childNodesChange } = pendingParentDragRef.current;
-          pendingParentDragRef.current = null;
-
-          // 执行批量更新父节点和子节点
-          updateParentAndChildrenBatch(parentId, change, childNodesChange);
-        }
-      });
-    },
-    [updateParentAndChildrenBatch]
   );
 
   // Helper line RAF 节流相关
@@ -429,9 +377,6 @@ const useParentChildDragRaf = () => {
       if (childRafIdRef.current) {
         cancelAnimationFrame(childRafIdRef.current);
       }
-      if (parentDragRafIdRef.current) {
-        cancelAnimationFrame(parentDragRafIdRef.current);
-      }
       if (helperLineRafIdRef.current) {
         cancelAnimationFrame(helperLineRafIdRef.current);
       }
@@ -440,7 +385,6 @@ const useParentChildDragRaf = () => {
 
   return {
     scheduleParentSizeUpdate,
-    scheduleParentDrag,
     scheduleHelperLineUpdate
   };
 };
@@ -457,15 +401,8 @@ export const useWorkflow = () => {
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   const { nodes, getRawNodeById } = useContextSelector(WorkflowInitContext, (state) => state);
-  const {
-    onNodesChange,
-    workflowStartNode,
-    getNodeById,
-    edges,
-    setEdges,
-    onEdgesChange,
-    getNodes
-  } = useContextSelector(WorkflowBufferDataContext, (state) => state);
+  const { onNodesChange, workflowStartNode, getNodeById, edges, setEdges, onEdgesChange } =
+    useContextSelector(WorkflowBufferDataContext, (state) => state);
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
 
   const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
@@ -477,8 +414,7 @@ export const useWorkflow = () => {
   const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
-  const { scheduleParentSizeUpdate, scheduleParentDrag, scheduleHelperLineUpdate } =
-    useParentChildDragRaf();
+  const { scheduleParentSizeUpdate, scheduleHelperLineUpdate } = useRAF();
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
@@ -596,7 +532,7 @@ export const useWorkflow = () => {
         .filter((edge) => edge.source === nodeId || edge.target === nodeId)
         .map((edge) => edge.id);
 
-      const childNodes = getNodes().filter((n) => n.data.parentNodeId === nodeId);
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
       if (childNodes.length > 0) {
         const childNodeIds = childNodes.map((node) => node.id);
         deletedNodeIdList.push(...childNodeIds);
@@ -620,7 +556,7 @@ export const useWorkflow = () => {
         }))
       );
     },
-    [edges, getNodes, onNodesChange, onEdgesChange]
+    [edges, nodes, onNodesChange, onEdgesChange]
   );
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
@@ -630,8 +566,6 @@ export const useWorkflow = () => {
   });
   const handlePositionNode = useMemoizedFn(
     (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
-      const nodes = getNodes();
-
       // 场景1: 子节点拖拽 - 在父节点内移动
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
@@ -640,7 +574,7 @@ export const useWorkflow = () => {
 
         // 使用 RAF 节流的更新
         scheduleParentSizeUpdate(parentId);
-        return;
+        return [];
       }
 
       // 场景2: Loop 父节点拖拽 - 联动子节点
@@ -678,7 +612,8 @@ export const useWorkflow = () => {
               return {
                 ...change,
                 id: childNode.id,
-                position
+                position,
+                positionAbsolute: position
               };
             }
             return {
@@ -687,9 +622,9 @@ export const useWorkflow = () => {
             };
           });
 
-          scheduleParentDrag(parentId, change, childNodesChange);
+          return childNodesChange;
         }
-        return;
+        return [];
       }
 
       // 场景3: 普通节点拖拽 - 显示对齐辅助线
@@ -697,9 +632,13 @@ export const useWorkflow = () => {
         change,
         nodes.filter((node) => !node.data.parentNodeId)
       );
+
+      return [];
     }
   );
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
+    const childChanges: NodeChange[] = [];
+
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = getRawNodeById(change.id);
@@ -722,13 +661,13 @@ export const useWorkflow = () => {
       } else if (change.type === 'position') {
         const node = getRawNodeById(change.id);
         if (node) {
-          handlePositionNode(change, node);
+          childChanges.push(...handlePositionNode(change, node));
         }
       }
     }
 
     // Remove separately
-    onNodesChange(changes.filter((c) => c.type !== 'remove'));
+    onNodesChange(changes.filter((c) => c.type !== 'remove').concat(childChanges as any));
   });
 
   const handleEdgeChange = useCallback(
