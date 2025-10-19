@@ -2,9 +2,11 @@
 
 本文件为 Claude Code (claude.ai/code) 在本仓库中工作时提供指导说明。
 
-## 语言
+## 输出要求
 
-中文
+1. 输出语言：中文
+2. 输出的设计文档位置：.claude/design，以 Markdown 文件为主。
+3. 输出 Plan 时，均需写入 .claude/plan 目录下，以 Markdown 文件为主。
 
 ## 项目概述
 
@@ -113,3 +115,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - 配置文件在 `projects/app/data/config.json`
 - 支持特定环境配置
 - 模型配置在 `packages/service/core/ai/config/`
+
+## 代码规范
+
+- 尽可能使用 type 进行类型声明，而不是 interface。

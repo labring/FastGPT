@@ -41,17 +41,21 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -86,9 +90,11 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { feConfigs } = useSystemStore();
@@ -163,15 +169,16 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     }
   };
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -252,9 +259,9 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
@@ -281,15 +288,16 @@ export function RenderHttpProps({
     );
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const variableText = useMemo(() => {
     return variables
@@ -426,7 +434,7 @@ const RenderHttpTimeout = ({
   const { t } = useTranslation();
   const timeout = inputs.find((item) => item.key === NodeInputKeyEnum.httpTimeout)!;
   const [isEditTimeout, setIsEditTimeout] = useState(false);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   return (
     <Flex alignItems={'center'} justifyContent={'space-between'}>
@@ -486,7 +494,7 @@ const RenderForm = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [list, setList] = useState<PropsArrType[]>(input.value || []);
   const [updateTrigger, setUpdateTrigger] = useState(false);
@@ -671,7 +679,7 @@ const RenderBody = ({
   }[];
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const [_, startSts] = useTransition();
 
   useEffect(() => {
@@ -819,12 +827,11 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
+  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (v) => v);
   const { commonInputs, isTool } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),
     [inputs, nodeId, splitToolInputs]
   );
-  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitOutput(outputs),
     [splitOutput, outputs]

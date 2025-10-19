@@ -11,7 +11,7 @@ import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import type { WorkflowSnapshotsType } from './WorkflowComponents/context';
+import type { WorkflowSnapshotsType } from './WorkflowComponents/context/workflowSnapshotContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';

@@ -2,7 +2,7 @@ import React from 'react';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import { ReactFlowCustomProvider, WorkflowContext } from '../WorkflowComponents/context';
+import { ReactFlowCustomProvider } from '../WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
@@ -14,6 +14,7 @@ import { cloneDeep } from 'lodash';
 
 import Flow from '../WorkflowComponents/Flow';
 import { useTranslation } from 'next-i18next';
+import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -28,7 +29,7 @@ const WorkflowEdit = () => {
     content: t('common:info.old_version_attention')
   });
 
-  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
+  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
 
   useMount(() => {
     if (!isV2Workflow) {

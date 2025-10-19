@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowNodeEdgeContext } from '../../WorkflowComponents/context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../WorkflowComponents/context/workflowInitContext';
 import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,7 +11,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (state) => state.setNodes);
   const { fitView } = useReactFlow();
   const { isMac } = useSystem();
 

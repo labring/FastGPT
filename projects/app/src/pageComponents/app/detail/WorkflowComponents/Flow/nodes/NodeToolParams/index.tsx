@@ -23,13 +23,13 @@ import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import ToolParamsEditModal from './ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
   const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const Render = useMemo(() => {
     return (

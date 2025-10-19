@@ -24,11 +24,11 @@ import type { TFunction } from 'next-i18next';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 export const getGlobalVariableNode = ({
-  nodes,
+  systemConfigNode,
   chatConfig,
   t
 }: {
-  nodes: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
   t: TFunction;
 }) => {
@@ -48,7 +48,7 @@ export const getGlobalVariableNode = ({
     outputs: []
   };
 
-  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig });
+  const globalVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,

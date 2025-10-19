@@ -1,38 +1,34 @@
 import { Box, HStack, type StackProps } from '@chakra-ui/react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { useContextSelector } from 'use-context-selector';
 import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowStatusContext } from '../../context/workflowStatusContext';
 import { cloneDeep } from 'lodash';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu!);
-  const setMenu = useContextSelector(WorkflowEventContext, (ctx) => ctx.setMenu);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
+  const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
+  const { setNodes, setEdges, allNodeFolded } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const getParentNodeSizeAndPosition = useContextSelector(
-    WorkflowStatusContext,
+    WorkflowLayoutContext,
     (v) => v.getParentNodeSizeAndPosition
   );
 
   const { fitView, screenToFlowPosition } = useReactFlow();
-
-  const allUnFolded = useMemo(() => {
-    return !!menu ? nodeList.some((node) => node.isFolded) : false;
-  }, [nodeList, menu]);
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -232,7 +228,7 @@ const ContextMenu = () => {
     setTimeout(() => {
       fitView();
     });
-  }, []);
+  }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
     const newNode = nodeTemplate2FlowNode({
@@ -251,7 +247,7 @@ const ContextMenu = () => {
         .concat(newNode);
       return newState;
     });
-  }, [menu]);
+  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
 
   const onFold = useCallback(() => {
     setNodes((state) => {
@@ -259,11 +255,11 @@ const ContextMenu = () => {
         ...node,
         data: {
           ...node.data,
-          isFolded: !allUnFolded
+          isFolded: !allNodeFolded
         }
       }));
     });
-  }, [allUnFolded]);
+  }, [allNodeFolded, setNodes]);
 
   const ContextMenuItem = useCallback(
     ({
@@ -340,7 +336,7 @@ const ContextMenu = () => {
         />
         <ContextMenuItem
           icon="common/select"
-          label={allUnFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
+          label={allNodeFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
           onClick={onFold}
         />
       </Box>

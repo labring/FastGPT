@@ -9,12 +9,12 @@ import { useTranslation } from 'next-i18next';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const ToolParamsEditModal = ({
   defaultValue = defaultEditFormData,
@@ -27,7 +27,7 @@ const ToolParamsEditModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
     defaultValues: defaultValue

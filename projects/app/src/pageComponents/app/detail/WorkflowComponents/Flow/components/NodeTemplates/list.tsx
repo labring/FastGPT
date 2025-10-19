@@ -31,7 +31,7 @@ import {
   AppNodeFlowNodeTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -43,11 +43,11 @@ import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -77,7 +77,7 @@ const NodeTemplateListItem = ({
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
 
@@ -221,8 +221,8 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
@@ -262,7 +262,7 @@ const NodeTemplateList = ({
           [NodeInputKeyEnum.fileUrlList]: undefined
         };
 
-        nodeList.forEach((node) => {
+        getNodeList().forEach((node) => {
           if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
             defaultValueMap[NodeInputKeyEnum.userChatInput] = [
               node.nodeId,
@@ -274,7 +274,7 @@ const NodeTemplateList = ({
           }
         });
 
-        const currentNode = nodeList.find((node) => node.nodeId === handleParams?.nodeId);
+        const currentNode = getNodeById(handleParams?.nodeId);
         if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
           toast({
             status: 'warning',
@@ -347,7 +347,7 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [computedNewNodeName, handleParams?.nodeId, nodeList, onAddNode, t, toast]
+    [computedNewNodeName, getNodeById, handleParams?.nodeId, getNodeList, onAddNode, t, toast]
   );
 
   const formatTemplatesArrayData = useMemo(() => {
