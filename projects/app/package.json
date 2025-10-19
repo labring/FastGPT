@@ -4,7 +4,7 @@
   "private": false,
   "scripts": {
     "dev": "npm run build:workers && next dev",
-    "build": "next build",
+    "build": "npm run build:workers && next build",
     "start": "next start",
     "lint": "next lint",
     "build:workers": "npx tsx scripts/build-workers.ts",

@@ -43,10 +43,12 @@ async function buildWorkers(watch: boolean = false) {
     format: 'cjs',
     target: 'node18',
     sourcemap: false,
-    minify: false,
-    // 外部化的依赖 (不打包到 worker 中)
-    // 注意: @fastgpt/* 包会被打包进去,因为 worker 需要它们
-    external: ['worker_threads', '@node-rs/jieba', 'mongoose', 'pg', 'bullmq']
+    // Tree Shaking 和代码压缩优化
+    minify: true,
+    treeShaking: true,
+    keepNames: false,
+    // 移除调试代码
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   };
 
   if (watch) {
