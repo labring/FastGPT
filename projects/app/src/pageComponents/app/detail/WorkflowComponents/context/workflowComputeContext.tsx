@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext, WorkflowInitContext } from './workflowInitContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   Input_Template_Node_Height,
@@ -54,7 +54,7 @@ export const WorkflowLayoutContext = createContext<WorkflowComputeContextValue>(
 
 export const WorkflowComputeProvider = ({ children }: { children: React.ReactNode }) => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const onNodesChange = useContextSelector(WorkflowDataContext, (v) => v.onNodesChange);
+  const onNodesChange = useContextSelector(WorkflowBufferDataContext, (v) => v.onNodesChange);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   /**
@@ -168,6 +168,7 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
   });
 
   const contextValue = useMemo(() => {
+    console.log('WorkflowComputeContextValue 更新了');
     return {
       resetParentNodeSizeAndPosition,
       getParentNodeSizeAndPosition

@@ -4,7 +4,7 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DynamicOutputs from './DynamicOutputs';
@@ -27,7 +27,7 @@ const RenderOutput = ({
   }, [flowOutputList]);
 
   // Condition check
-  const inputs = useContextSelector(WorkflowDataContext, (v) => {
+  const inputs = useContextSelector(WorkflowBufferDataContext, (v) => {
     const node = v.getNodeById(nodeId);
     return node?.inputs;
   });

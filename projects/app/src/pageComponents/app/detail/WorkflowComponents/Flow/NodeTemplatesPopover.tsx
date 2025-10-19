@@ -4,7 +4,7 @@ import { useContextSelector } from 'use-context-selector';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node } from 'reactflow';
-import { WorkflowDataContext } from '../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
@@ -17,7 +17,7 @@ import { WorkflowModalContext } from '../context/workflowModalContext';
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const { setNodes, setEdges } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { setNodes, setEdges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   const {
     templateType,

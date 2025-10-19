@@ -21,7 +21,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -37,6 +40,7 @@ import {
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -50,8 +54,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
-  const node = getNodeById(nodeId);
+  const { systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({
@@ -69,14 +73,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const aiChatQuoteRole = watch('quoteRole');
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     const globalVariables = getWorkflowGlobalVariables({
-      nodes: nodeList,
+      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
 
     return globalVariables;
-  }, [nodeList]);
+  }, [systemConfigNode]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;

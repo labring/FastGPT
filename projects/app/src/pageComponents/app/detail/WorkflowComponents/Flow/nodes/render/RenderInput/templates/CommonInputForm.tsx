@@ -4,7 +4,10 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import { WorkflowDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
@@ -19,8 +22,10 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById, edges, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, llmModelList } = useSystemStore();
 
@@ -43,13 +48,13 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, getNodeById, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const externalVariables = useMemo(() => {
     return (

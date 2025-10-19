@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { OnConnectStartParams } from 'reactflow';
-import { WorkflowDataContext } from './workflowInitContext';
+import { WorkflowBufferDataContext } from './workflowInitContext';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -111,9 +111,9 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  // 获取 WorkflowDataContext 的数据
+  // 获取 WorkflowBufferDataContext 的数据
   const { forbiddenSaveSnapshot, setEdges, setNodes, getNodeById } = useContextSelector(
-    WorkflowDataContext,
+    WorkflowBufferDataContext,
     (v) => v
   );
 
@@ -322,8 +322,9 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [setNodes, toast, t, onDelEdge]
   );
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemo(() => {
+    console.log('WorkflowActionsContextValue 更新了');
+    return {
       onUpdateNodeError,
       onRemoveError,
       onResetNode,
@@ -331,9 +332,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       onDelEdge,
       connectingEdge,
       setConnectingEdge
-    }),
-    [onUpdateNodeError, onRemoveError, onResetNode, onChangeNode, onDelEdge, connectingEdge]
-  );
+    };
+  }, [onUpdateNodeError, onRemoveError, onResetNode, onChangeNode, onDelEdge, connectingEdge]);
 
   return (
     <WorkflowActionsContext.Provider value={contextValue}>

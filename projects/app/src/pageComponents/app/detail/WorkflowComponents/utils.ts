@@ -91,14 +91,14 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
 export const getEditorVariables = ({
   nodeId,
-  nodeList,
+  systemConfigNode,
   getNodeById,
   edges,
   appDetail,
   t
 }: {
   nodeId: string;
-  nodeList: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
@@ -121,7 +121,7 @@ export const getEditorVariables = ({
 
   const sourceNodes = getNodeAllSource({
     nodeId,
-    nodeList,
+    systemConfigNode,
     getNodeById,
     edges: edges,
     chatConfig: appDetail.chatConfig,

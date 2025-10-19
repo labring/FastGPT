@@ -25,7 +25,10 @@ import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import {
@@ -41,9 +44,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
 
   const menuList = useRef([
     {
@@ -61,13 +66,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, getNodeById, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -145,7 +150,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       const { valueType } = getRefData({
         variable: updateItem.variable,
         getNodeById,
-        nodeList,
+        systemConfigNode,
         chatConfig: appDetail.chatConfig
       });
       const renderTypeData = menuList.current.find(
@@ -183,7 +188,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         valueType: getRefData({
                           variable: value as ReferenceItemValueType,
                           getNodeById,
-                          nodeList,
+                          systemConfigNode,
                           chatConfig: appDetail.chatConfig
                         }).valueType,
                         variable: value as ReferenceItemValueType

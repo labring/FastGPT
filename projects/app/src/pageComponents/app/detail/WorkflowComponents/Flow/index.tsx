@@ -9,7 +9,7 @@ import { useContextSelector } from 'use-context-selector';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
 import SearchButton from '../../Workflow/components/SearchButton';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowInitContext, WorkflowDataContext } from '../context/workflowInitContext';
+import { WorkflowInitContext, WorkflowBufferDataContext } from '../context/workflowInitContext';
 import ContextMenu from './components/ContextMenu';
 import FlowController from './components/FlowController';
 import HelperLines from './components/HelperLines';
@@ -71,7 +71,7 @@ const edgeTypes = {
 
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
     WorkflowUIContext,
     (v) => v

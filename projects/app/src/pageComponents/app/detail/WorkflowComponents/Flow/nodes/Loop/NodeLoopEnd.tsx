@@ -10,11 +10,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
@@ -26,12 +27,12 @@ const typeMap = {
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
-  const inputItem = useMemo(
+  const inputItem = useMemoEnhance(
     () => inputs.find((input) => input.key === NodeInputKeyEnum.loopEndInput),
     [inputs]
   );
@@ -40,14 +41,21 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const valueType = useMemo(() => {
     if (!inputItem) return;
 
-    const referenceNode = [
-      ...nodeList,
-      getGlobalVariableNode({ nodes: nodeList, t, chatConfig: appDetail.chatConfig })
-    ].find((node) => node.nodeId === inputItem.value[0]);
+    const targetId = inputItem.value[0];
 
-    return referenceNode?.outputs.find((output) => output.id === inputItem?.value[1])
+    const globalNode = getGlobalVariableNode({
+      systemConfigNode,
+      t,
+      chatConfig: appDetail.chatConfig
+    });
+    const node = (() => {
+      if (targetId === globalNode.nodeId) return globalNode;
+      return getNodeById(targetId);
+    })();
+
+    return node?.outputs.find((output) => output.id === inputItem?.value[1])
       ?.valueType as keyof typeof typeMap;
-  }, [appDetail.chatConfig, inputItem, nodeList, t]);
+  }, [appDetail.chatConfig, getNodeById, inputItem, systemConfigNode, t]);
 
   useEffect(() => {
     if (!valueType) return;
@@ -70,26 +78,22 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
-  const Render = useMemo(() => {
-    return (
-      <NodeCard
-        selected={selected}
-        {...data}
-        w={'420px'}
-        menuForbid={{
-          copy: true,
-          delete: true,
-          debug: true
-        }}
-      >
-        <Box px={4} pb={4} pt={2}>
-          {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
-        </Box>
-      </NodeCard>
-    );
-  }, [data, inputItem, nodeId, selected]);
-
-  return Render;
+  return (
+    <NodeCard
+      selected={selected}
+      {...data}
+      w={'420px'}
+      menuForbid={{
+        copy: true,
+        delete: true,
+        debug: true
+      }}
+    >
+      <Box px={4} pb={4} pt={2}>
+        {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
+      </Box>
+    </NodeCard>
+  );
 };
 
 export default React.memo(NodeLoopEnd);

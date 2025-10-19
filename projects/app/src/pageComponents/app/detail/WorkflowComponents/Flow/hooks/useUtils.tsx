@@ -1,10 +1,10 @@
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useCallback } from 'react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const useWorkflowUtils = () => {
-  const getNodeList = useContextSelector(WorkflowDataContext, (v) => v.getNodeList);
+  const getNodeList = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeList);
 
   const computedNewNodeName = useCallback(
     ({
@@ -16,10 +16,7 @@ export const useWorkflowUtils = () => {
       flowNodeType: FlowNodeTypeEnum;
       pluginId?: string;
     }) => {
-      // Get nodes when needed
-      const nodeList = getNodeList();
-
-      const nodeLength = nodeList.filter((node) => {
+      const nodeLength = getNodeList().filter((node) => {
         if (node.flowNodeType === flowNodeType) {
           if (
             [

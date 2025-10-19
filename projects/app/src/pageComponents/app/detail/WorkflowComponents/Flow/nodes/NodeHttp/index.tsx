@@ -47,7 +47,10 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -87,7 +90,10 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -163,16 +169,16 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     }
   };
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -253,8 +259,8 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -282,16 +288,16 @@ export function RenderHttpProps({
     );
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const variableText = useMemo(() => {
     return variables

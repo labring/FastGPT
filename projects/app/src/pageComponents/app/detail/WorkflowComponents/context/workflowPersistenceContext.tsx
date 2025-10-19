@@ -15,7 +15,7 @@ import React, {
 } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useDebounceEffect } from 'ahooks';
-import { WorkflowDataContext, WorkflowInitContext } from './workflowInitContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
@@ -45,7 +45,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   // 获取依赖的 context
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const { past, future } = useContextSelector(WorkflowSnapshotContext, (v) => v);
 
   // 保存状态
@@ -117,13 +117,13 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     callback: autoSaveFn
   });
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemo(() => {
+    console.log('WorkflowPersistenceContextValue 更新了');
+    return {
       isSaved,
       leaveSaveSign
-    }),
-    [isSaved]
-  );
+    };
+  }, [isSaved]);
 
   return (
     <WorkflowPersistenceContext.Provider value={contextValue}>

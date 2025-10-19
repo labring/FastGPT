@@ -1,19 +1,12 @@
 import { createContext } from 'use-context-selector';
-import {
-  type FlowNodeTemplateType,
-  type FlowNodeItemType
+import type {
+  FlowNodeTemplateType,
+  FlowNodeItemType,
+  StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
-import React, {
-  type Dispatch,
-  type SetStateAction,
-  type ReactNode,
-  useMemo,
-  useCallback,
-  useRef,
-  useEffect
-} from 'react';
+import React, { type Dispatch, type SetStateAction, type ReactNode, useMemo, useRef } from 'react';
 import {
   type Edge,
   type EdgeChange,
@@ -23,8 +16,9 @@ import {
   useNodesState
 } from 'reactflow';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -45,14 +39,22 @@ export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
   }
 });
 
+export type WorkflowNodeDataType = {
+  selectedNodesMap: Record<string, boolean>;
+};
+export const WorkflowNodeDataContext = createContext<WorkflowNodeDataType>({
+  selectedNodesMap: {}
+});
+
 export type WorkflowDataContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   workflowStartNode: FlowNodeItemType | undefined;
-  selectedNodesMap: Record<string, boolean>;
-  nodeList: FlowNodeItemType[];
+  systemConfigNode: StoreNodeItemType | undefined;
   allNodeFolded: boolean;
   hasToolNode: boolean;
   toolNodesMap: Record<string, boolean>;
+  nodeIds: string[];
+  nodeAmount: number;
   getNodeById: (
     nodeId: string | null | undefined,
     condition?: (node: FlowNodeItemType) => boolean
@@ -65,15 +67,17 @@ export type WorkflowDataContextType = {
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
+  llmMaxQuoteContext: number;
 };
-export const WorkflowDataContext = createContext<WorkflowDataContextType>({
+export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>({
   basicNodeTemplates: [],
   workflowStartNode: undefined,
-  selectedNodesMap: {},
-  nodeList: [],
+  systemConfigNode: undefined,
   allNodeFolded: false,
   hasToolNode: false,
   toolNodesMap: {},
+  nodeIds: [],
+  nodeAmount: 0,
   getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
     throw new Error('Function not implemented.');
   },
@@ -98,7 +102,8 @@ export const WorkflowDataContext = createContext<WorkflowDataContextType>({
   onEdgesChange: function (changes: EdgeChange[]): void {
     throw new Error('Function not implemented.');
   },
-  forbiddenSaveSnapshot: { current: false }
+  forbiddenSaveSnapshot: { current: false },
+  llmMaxQuoteContext: 0
 });
 
 const WorkflowInitContextProvider = ({
@@ -113,14 +118,18 @@ const WorkflowInitContextProvider = ({
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {
+    const nodeIds: string[] = [];
     const nodeList: FlowNodeItemType[] = [];
     const nodesMap: Record<string, FlowNodeItemType> = {};
     const selectedNodesMap: Record<string, boolean> = {};
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
+    let systemConfigNode: StoreNodeItemType | undefined = undefined;
     let allNodeFolded = true;
     let hasToolNode = false;
+    let llmMaxQuoteContext = 0;
 
     nodes.forEach((node) => {
+      nodeIds.push(node.data.nodeId);
       nodeList.push(node.data);
       nodesMap[node.data.nodeId] = node.data;
 
@@ -130,6 +139,20 @@ const WorkflowInitContextProvider = ({
 
       if (node.data.flowNodeType === FlowNodeTypeEnum.workflowStart) {
         workflowStartNode = node.data;
+      }
+      if (node.data.flowNodeType === FlowNodeTypeEnum.systemConfig) {
+        systemConfigNode = node.data;
+      }
+      // Max context computed
+      const map: Record<string, boolean> = {
+        [FlowNodeTypeEnum.chatNode]: true,
+        [FlowNodeTypeEnum.agent]: true
+      };
+      if (map[node.data.flowNodeType]) {
+        const model =
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
+        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
+        llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
       if (!node.data.isFolded) {
@@ -142,23 +165,31 @@ const WorkflowInitContextProvider = ({
     });
 
     return {
+      nodeIds,
       nodeList,
       nodesMap,
       selectedNodesMap,
       workflowStartNode,
+      systemConfigNode,
       allNodeFolded,
-      hasToolNode
+      hasToolNode,
+      llmMaxQuoteContext
     };
   }, [nodes]);
+
+  // 拆解出常用的数据，避免重复计算
+  const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat]);
   const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat]);
   const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat]);
   const selectedNodesMap = useMemoEnhance(() => nodeFormat.selectedNodesMap, [nodeFormat]);
   const workflowStartNode = useMemoEnhance(() => nodeFormat.workflowStartNode, [nodeFormat]);
+  const systemConfigNode = useMemoEnhance(() => nodeFormat.systemConfigNode, [nodeFormat]);
   const allNodeFolded = nodeFormat.allNodeFolded;
   const hasToolNode = nodeFormat.hasToolNode;
+  const llmMaxQuoteContext = nodeFormat.llmMaxQuoteContext;
 
-  const getNodeList = useCallback(() => nodeList, [nodeList]);
-  const getNodeById = useCallback(
+  const getNodeList = useMemoizedFn(() => nodeList);
+  const getNodeById = useMemoizedFn(
     (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
       if (!nodeId) return undefined;
 
@@ -171,8 +202,7 @@ const WorkflowInitContextProvider = ({
       }
 
       return undefined;
-    },
-    [nodesMap]
+    }
   );
 
   const rawNodesMap = useMemoEnhance(
@@ -186,12 +216,9 @@ const WorkflowInitContextProvider = ({
       ),
     [nodes]
   );
-  const getRawNodeById = useCallback(
-    (nodeId: string | null | undefined) => {
-      return nodeId ? rawNodesMap[nodeId] : undefined;
-    },
-    [rawNodesMap]
-  );
+  const getRawNodeById = useMemoizedFn((nodeId: string | null | undefined) => {
+    return nodeId ? rawNodesMap[nodeId] : undefined;
+  });
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -235,8 +262,8 @@ const WorkflowInitContextProvider = ({
     );
   }, [nodesMap, edges.length, setEdges]);
 
-  // 数据Context - 只包含数据
-  const nodeContextValue = useMemo(
+  // 数据Context - 只包含 原始nodes
+  const rawNodeContextValue = useMemo(
     () => ({
       nodes,
       rawNodesMap,
@@ -245,15 +272,22 @@ const WorkflowInitContextProvider = ({
     [nodes, rawNodesMap, getRawNodeById]
   );
 
-  const workflowDataContextValue = useMemoEnhance(() => {
+  const nodeDataContextValue = useMemoEnhance(() => {
+    console.log('WoworkflowNodeDataContextValue 更新了');
     return {
+      selectedNodesMap
+    };
+  }, [selectedNodesMap]);
+
+  const workflowBufferDataContextValue = useMemoEnhance(() => {
+    console.log('WoworkflowBufferDataContextValue 更新了');
+    return {
+      nodeIds,
       basicNodeTemplates,
       workflowStartNode,
-      selectedNodesMap,
-      nodeList,
+      systemConfigNode,
       allNodeFolded,
       hasToolNode,
-      nodesMap,
       toolNodesMap,
       getNodeById,
       setNodes,
@@ -263,30 +297,37 @@ const WorkflowInitContextProvider = ({
       edges,
       setEdges,
       onEdgesChange,
-      forbiddenSaveSnapshot
+      forbiddenSaveSnapshot,
+      llmMaxQuoteContext,
+      nodeAmount: nodeList.length
     };
   }, [
-    setNodes,
-    selectedNodesMap,
-    nodeList,
+    nodeIds,
+    basicNodeTemplates,
+    workflowStartNode,
+    systemConfigNode,
     allNodeFolded,
     hasToolNode,
     toolNodesMap,
     getNodeById,
-    edges,
+    setNodes,
     onNodesChange,
     getNodes,
     getNodeList,
+    edges,
     setEdges,
     onEdgesChange,
-    forbiddenSaveSnapshot
+    llmMaxQuoteContext,
+    nodeList.length
   ]);
 
   return (
-    <WorkflowInitContext.Provider value={nodeContextValue}>
-      <WorkflowDataContext.Provider value={workflowDataContextValue}>
-        {children}
-      </WorkflowDataContext.Provider>
+    <WorkflowInitContext.Provider value={rawNodeContextValue}>
+      <WorkflowNodeDataContext.Provider value={nodeDataContextValue}>
+        <WorkflowBufferDataContext.Provider value={workflowBufferDataContextValue}>
+          {children}
+        </WorkflowBufferDataContext.Provider>
+      </WorkflowNodeDataContext.Provider>
     </WorkflowInitContext.Provider>
   );
 };

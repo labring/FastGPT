@@ -6,7 +6,7 @@ import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { useContextSelector } from 'use-context-selector';
 import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash';
@@ -19,7 +19,10 @@ const ContextMenu = () => {
   const { t } = useTranslation();
   const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
   const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
-  const { setNodes, setEdges, allNodeFolded } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { setNodes, setEdges, allNodeFolded } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const getParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
     (v) => v.getParentNodeSizeAndPosition

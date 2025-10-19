@@ -5,16 +5,17 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { onEdgesChange, nodeList, getNodeById, selectedNodesMap } = useContextSelector(
-    WorkflowDataContext,
-    (v) => v
-  );
+  const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
+  const { onEdgesChange, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
@@ -36,13 +37,16 @@ const ButtonEdge = (props: EdgeProps) => {
 
   // If parentNode is folded, the edge will not be displayed
   const parentNode = useMemoEnhance(() => {
-    for (const node of nodeList) {
-      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
-        return getNodeById(node.parentNodeId);
-      }
+    const sourceNode = getNodeById(source);
+    const targetNode = getNodeById(target);
+    if (sourceNode?.parentNodeId) {
+      return getNodeById(sourceNode.parentNodeId);
+    }
+    if (targetNode?.parentNodeId) {
+      return getNodeById(targetNode.parentNodeId);
     }
     return undefined;
-  }, [getNodeById, nodeList, source, target]);
+  }, [source, target, getNodeById]);
 
   const defaultZIndex = useMemo(() => {
     const node = getNodeById(source, (node) => !!node.parentNodeId);

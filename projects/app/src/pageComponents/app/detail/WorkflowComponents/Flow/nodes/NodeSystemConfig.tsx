@@ -12,7 +12,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import {
   type AppChatConfigType,
   type AppDetailType,
@@ -248,7 +248,10 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const workflowStartNode = useContextSelector(WorkflowDataContext, (v) => v.workflowStartNode);
+  const workflowStartNode = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.workflowStartNode
+  );
 
   if (!workflowStartNode) return null;
 

@@ -14,7 +14,7 @@ import { WorkflowComputeProvider } from './workflowComputeContext';
 /* 
   ReactFlowProvider
   └── WorkflowInitContextProvider          // Layer 1: 基础数据
-      └── WorkflowDataContext              // Layer 2: 节点边数据
+      └── WorkflowBufferDataContext              // Layer 2: 节点边数据
           └── WorkflowSnapshotProvider     // Layer 3: 快照管理
               └── WorkflowActionsProvider  // Layer 4: 节点边操作
                 └── WorkflowUtilsProvider    // Layer 5: 纯函数工具

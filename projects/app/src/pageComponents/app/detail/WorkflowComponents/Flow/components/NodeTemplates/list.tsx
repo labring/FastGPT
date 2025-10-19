@@ -31,7 +31,7 @@ import {
   AppNodeFlowNodeTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -221,7 +221,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
@@ -262,7 +262,7 @@ const NodeTemplateList = ({
           [NodeInputKeyEnum.fileUrlList]: undefined
         };
 
-        nodeList.forEach((node) => {
+        getNodeList().forEach((node) => {
           if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
             defaultValueMap[NodeInputKeyEnum.userChatInput] = [
               node.nodeId,
@@ -347,7 +347,7 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [computedNewNodeName, getNodeById, handleParams?.nodeId, nodeList, onAddNode, t, toast]
+    [computedNewNodeName, getNodeById, handleParams?.nodeId, getNodeList, onAddNode, t, toast]
   );
 
   const formatTemplatesArrayData = useMemo(() => {

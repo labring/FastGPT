@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -29,11 +29,11 @@ const typeMap = {
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
-  const { getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const loopStartNode = getNodeById(nodeId);
-
+  console.log(111111111111);
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
     const parentNode = getNodeById(loopStartNode?.parentNodeId);
@@ -85,56 +85,50 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
-  const Render = useMemo(() => {
-    return (
-      <NodeCard
-        selected={selected}
-        {...data}
-        menuForbid={{
-          copy: true,
-          delete: true,
-          debug: true
-        }}
-      >
-        <Box px={4} pt={2} w={'420px'}>
-          <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-            <TableContainer>
-              <Table bg={'white'}>
-                <Thead>
-                  <Tr>
-                    <Th borderBottomLeftRadius={'none !important'}>
-                      {t('workflow:Variable_name')}
-                    </Th>
-                    <Th>{t('common:core.workflow.Value type')}</Th>
+  return (
+    <NodeCard
+      selected={selected}
+      {...data}
+      menuForbid={{
+        copy: true,
+        delete: true,
+        debug: true
+      }}
+    >
+      <Box px={4} pt={2} w={'420px'}>
+        <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
+          <TableContainer>
+            <Table bg={'white'}>
+              <Thead>
+                <Tr>
+                  <Th borderBottomLeftRadius={'none !important'}>{t('workflow:Variable_name')}</Th>
+                  <Th>{t('common:core.workflow.Value type')}</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {outputs.map((output) => (
+                  <Tr key={output.id}>
+                    <Td>
+                      <Flex alignItems={'center'}>
+                        <MyIcon
+                          name={'core/workflow/inputType/array'}
+                          w={'14px'}
+                          mr={1}
+                          color={'primary.600'}
+                        />
+                        {t(output.label as any)}
+                      </Flex>
+                    </Td>
+                    {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}
                   </Tr>
-                </Thead>
-                <Tbody>
-                  {outputs.map((output) => (
-                    <Tr key={output.id}>
-                      <Td>
-                        <Flex alignItems={'center'}>
-                          <MyIcon
-                            name={'core/workflow/inputType/array'}
-                            w={'14px'}
-                            mr={1}
-                            color={'primary.600'}
-                          />
-                          {t(output.label as any)}
-                        </Flex>
-                      </Td>
-                      {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
         </Box>
-      </NodeCard>
-    );
-  }, [data, outputs, selected, t]);
-
-  return Render;
+      </Box>
+    </NodeCard>
+  );
 };
 
 export default React.memo(NodeLoopStart);

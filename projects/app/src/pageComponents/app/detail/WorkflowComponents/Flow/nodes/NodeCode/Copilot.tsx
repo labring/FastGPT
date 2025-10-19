@@ -27,7 +27,10 @@ import {
   JS_TEMPLATE,
   SandboxCodeTypeEnum
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
@@ -45,7 +48,10 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const { t } = useTranslation();
   const { toast } = useToast();
   const { llmModelList, defaultModels } = useSystemStore();
-  const { edges, nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { edges, systemConfigNode, getNodeById } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
@@ -61,13 +67,13 @@ const NodeCopilot = ({ nodeId, trigger }: { nodeId: string; trigger: React.React
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     }).filter((item) => item.parent.id !== nodeId);
-  }, [nodeId, nodeList, getNodeById, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
 
   const { codeType, code, dynamicInputs, dynamicOutputs } = useMemo(() => {
     const currentNode = getNodeById(nodeId);

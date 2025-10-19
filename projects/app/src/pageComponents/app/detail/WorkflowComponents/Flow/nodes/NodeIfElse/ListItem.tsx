@@ -23,7 +23,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
 import React, { useMemo } from 'react';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -36,6 +36,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ListItem = ({
   provided,
@@ -348,18 +349,18 @@ const ConditionSelect = ({
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
   const { t } = useTranslation();
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
-  const { valueType, required } = useMemo(() => {
+  const { valueType, required } = useMemoEnhance(() => {
     return getRefData({
       variable,
       getNodeById,
-      nodeList,
+      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
-  }, [appDetail.chatConfig, getNodeById, nodeList, variable]);
+  }, [appDetail.chatConfig, getNodeById, systemConfigNode, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
@@ -429,15 +430,17 @@ const ConditionValueInput = ({
   nodeId: string;
 }) => {
   const { t } = useTranslation();
-  const { nodeList, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const isReference = useMemo(() => type === 'reference', [type]);
 
-  const globalVariables = getWorkflowGlobalVariables({
-    nodes: nodeList,
-    chatConfig: appDetail.chatConfig
-  });
+  const globalVariables = useMemoEnhance(() => {
+    return getWorkflowGlobalVariables({
+      systemConfigNode,
+      chatConfig: appDetail.chatConfig
+    });
+  }, [systemConfigNode, appDetail.chatConfig]);
 
   // get value type
   const valueType = useMemo(() => {

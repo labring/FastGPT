@@ -24,7 +24,11 @@ import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowInitContext,
+  WorkflowNodeDataContext
+} from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
 import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
@@ -287,9 +291,9 @@ export const useWorkflow = () => {
     edges,
     setEdges,
     onEdgesChange,
-    selectedNodesMap,
     getNodes
-  } = useContextSelector(WorkflowDataContext, (state) => state);
+  } = useContextSelector(WorkflowBufferDataContext, (state) => state);
+  const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
 
   const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
   const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);

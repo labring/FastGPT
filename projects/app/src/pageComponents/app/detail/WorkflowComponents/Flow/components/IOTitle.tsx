@@ -4,7 +4,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
@@ -23,8 +23,8 @@ const IOTitle = ({
 } & StackProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const onEdgesChange = useContextSelector(WorkflowDataContext, (v) => v.onEdgesChange);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const onEdgesChange = useContextSelector(WorkflowBufferDataContext, (v) => v.onEdgesChange);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
 
   const handleCatchErrorChange = (checked: boolean) => {
     if (!nodeId) return;

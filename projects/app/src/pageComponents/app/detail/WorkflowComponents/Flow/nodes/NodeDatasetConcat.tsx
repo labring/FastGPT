@@ -9,8 +9,6 @@ import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import MySlider from '@/components/Slider';
 import {
   type FlowNodeInputItemType,
   type ReferenceItemValueType
@@ -18,52 +16,40 @@ import {
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const nodeList = useContextSelector(WorkflowDataContext, (v) => v.nodeList);
+  const llmMaxQuoteContext = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.llmMaxQuoteContext
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
+  const quoteList = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
+
+  const maxTokenStep = useMemo(() => {
+    if (!llmMaxQuoteContext || llmMaxQuoteContext < 8000) return 80;
+    return Math.ceil(llmMaxQuoteContext / 80 / 100) * 100;
+  }, [llmMaxQuoteContext]);
+
   const CustomComponent = useMemo(() => {
-    const quoteList = inputs.filter((item) => item.canEdit);
-    const maxTokens = (() => {
-      let maxTokens = 0;
-
-      nodeList.forEach((item) => {
-        if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.agent].includes(item.flowNodeType)) {
-          const model =
-            item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
-
-          maxTokens = Math.max(maxTokens, quoteMaxToken);
-        }
-      });
-
-      return maxTokens ? maxTokens : undefined;
-    })();
-
-    const maxTokenStep = (() => {
-      if (!maxTokens || maxTokens < 8000) return 80;
-      return Math.ceil(maxTokens / 80 / 100) * 100;
-    })();
-
     return {
       [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) =>
-        maxTokens ? (
+        llmMaxQuoteContext ? (
           <Box px={2} bg={'white'} py={2} border={'base'} borderRadius={'md'}>
             <InputSlider
               min={100}
-              max={maxTokens}
+              max={llmMaxQuoteContext}
               step={maxTokenStep}
               value={item.value}
               onChange={(e) => {
@@ -136,7 +122,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [inputs, nodeId, nodeList, onChangeNode, t]);
+  }, [maxTokenStep, llmMaxQuoteContext, nodeId, onChangeNode, quoteList, t]);
 
   const Render = useMemo(() => {
     return (

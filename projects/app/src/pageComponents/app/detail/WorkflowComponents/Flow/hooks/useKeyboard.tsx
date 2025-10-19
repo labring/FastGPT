@@ -8,15 +8,15 @@ import { useContextSelector } from 'use-context-selector';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const getNodes = useContextSelector(WorkflowDataContext, (v) => v.getNodes);
-  const setNodes = useContextSelector(WorkflowDataContext, (v) => v.setNodes);
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
 
   const { getMyModelList } = useSystemStore();

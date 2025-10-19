@@ -20,8 +20,12 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowDataContext } from '../../../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -64,14 +68,14 @@ export const useReference = ({
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
-  const { getNodeById, nodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   // 获取可选的变量列表
-  const referenceList = useMemo(() => {
+  const referenceList = useMemoEnhance(() => {
     const sourceNodes = getNodeAllSource({
       nodeId,
-      nodeList,
+      systemConfigNode,
       getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
@@ -120,7 +124,7 @@ export const useReference = ({
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
 
-  const getNodeById = useContextSelector(WorkflowDataContext, (v) => v.getNodeById);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const isArray = item.valueType?.includes('array') ?? false;

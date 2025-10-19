@@ -6,7 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getTeamPlugTemplates, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -21,8 +21,10 @@ export const useNodeTemplates = () => {
   const [parentId, setParentId] = useState<ParentIdType>('');
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const basicNodeTemplates = useContextSelector(WorkflowDataContext, (v) => v.basicNodeTemplates);
-  const { nodeList, hasToolNode } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { basicNodeTemplates, hasToolNode, getNodeList, nodeAmount } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   const { data: basicNodes } = useRequest2(
     async () => {
@@ -31,7 +33,9 @@ export const useNodeTemplates = () => {
           .filter((item) => {
             // unique node filter
             if (item.unique) {
-              const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
+              const nodeExist = getNodeList().some(
+                (node) => node.flowNodeType === item.flowNodeType
+              );
               if (nodeExist) {
                 return false;
               }
@@ -63,7 +67,7 @@ export const useNodeTemplates = () => {
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType]
+      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, templateType]
     }
   );
 

@@ -12,7 +12,7 @@ import {
 } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowDataContext } from './workflowInitContext';
+import { WorkflowBufferDataContext } from './workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type {
@@ -114,7 +114,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
-    WorkflowDataContext,
+    WorkflowBufferDataContext,
     (v) => v
   );
   const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
@@ -251,16 +251,16 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemo(() => {
+    console.log('WorkflowUtilsContextValue 更新了');
+    return {
       initData,
       flowData2StoreData,
       flowData2StoreDataAndCheck,
       splitOutput,
       splitToolInputs
-    }),
-    [initData, flowData2StoreData, flowData2StoreDataAndCheck, splitOutput, splitToolInputs]
-  );
+    };
+  }, [initData, flowData2StoreData, flowData2StoreDataAndCheck, splitOutput, splitToolInputs]);
 
   return (
     <WorkflowUtilsContext.Provider value={contextValue}>{children}</WorkflowUtilsContext.Provider>

@@ -23,7 +23,7 @@ import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import {
   nodeInputTypeToInputType,
@@ -47,9 +47,9 @@ export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowDataContext, (v) => v.setNodes);
-  const getNodes = useContextSelector(WorkflowDataContext, (v) => v.getNodes);
-  const edges = useContextSelector(WorkflowDataContext, (v) => v.edges);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 

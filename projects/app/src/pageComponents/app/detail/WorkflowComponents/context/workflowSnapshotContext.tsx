@@ -11,9 +11,10 @@ import {
 } from '@/web/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import { WorkflowDataContext } from './workflowInitContext';
+import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -96,9 +97,9 @@ const snapshotDebounceTime = 1000;
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
 
-  // 获取 WorkflowDataContext 的数据
+  // 获取 WorkflowBufferDataContext 的数据
   const { setEdges, setNodes, forbiddenSaveSnapshot } = useContextSelector(
-    WorkflowDataContext,
+    WorkflowBufferDataContext,
     (v) => v
   );
   // 获取 AppContext 的 setAppDetail
@@ -303,8 +304,9 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
     [t, resetSnapshot, pushPastSnapshot]
   );
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemoEnhance(() => {
+    console.log('WorkflowSnapshotContextValue 更新了');
+    return {
       past,
       setPast,
       future,
@@ -315,9 +317,8 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
       pushPastSnapshot,
       onSwitchTmpVersion,
       onSwitchCloudVersion
-    }),
-    [past, future, undo, redo, pushPastSnapshot, onSwitchTmpVersion, onSwitchCloudVersion]
-  );
+    };
+  }, [past, future, undo, redo, pushPastSnapshot, onSwitchTmpVersion, onSwitchCloudVersion]);
 
   return (
     <WorkflowSnapshotContext.Provider value={contextValue}>

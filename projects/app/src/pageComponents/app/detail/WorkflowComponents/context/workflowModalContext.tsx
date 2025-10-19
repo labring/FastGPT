@@ -8,6 +8,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useUpdateEffect } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 export type handleParamsType = OnConnectStartParams & {
   popoverPosition: { x: number; y: number };
@@ -75,16 +76,16 @@ export const WorkflowModalProvider = ({ children }: { children: React.ReactNode 
     onOpenTest();
   }, [workflowTestData]);
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemoEnhance(() => {
+    console.log('WorkflowModalContextValue 更新了');
+    return {
       showHistoryModal,
       setShowHistoryModal,
       handleParams,
       setHandleParams,
       setWorkflowTestData
-    }),
-    [showHistoryModal, handleParams]
-  );
+    };
+  }, [showHistoryModal, handleParams]);
 
   return (
     <WorkflowModalContext.Provider value={contextValue}>

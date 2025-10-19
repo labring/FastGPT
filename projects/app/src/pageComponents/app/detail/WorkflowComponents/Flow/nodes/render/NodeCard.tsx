@@ -26,7 +26,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
-import { WorkflowDataContext } from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
@@ -89,7 +89,7 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  const { hasToolNode, getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { hasToolNode, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -544,7 +544,10 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, setEdges, getNodeList } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { setNodes, setEdges, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   const { computedNewNodeName } = useWorkflowUtils();
 

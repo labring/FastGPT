@@ -5,7 +5,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
 import SecretInputModal, {
   type ToolParamsFormType
@@ -15,7 +15,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const getNodeById = useContextSelector(WorkflowDataContext, (v) => v.getNodeById);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const node = getNodeById(nodeId);
 
   const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);

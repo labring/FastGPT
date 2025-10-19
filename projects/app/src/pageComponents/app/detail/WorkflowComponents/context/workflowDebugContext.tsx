@@ -1,8 +1,8 @@
 // 工作流调试功能层
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from './workflowInitContext';
+import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
@@ -14,6 +14,7 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { WorkflowActionsContext } from './workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
@@ -80,7 +81,7 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
   // 获取依赖的 context
-  const { setNodes } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { setNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const appId = appDetail._id;
@@ -254,17 +255,18 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
     [onNextNodeDebug, onStopNodeDebug]
   );
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemoEnhance(() => {
+    console.log('WorkflowDebugContextValue 更新了');
+
+    return {
       workflowDebugData,
       onNextNodeDebug,
       onStartNodeDebug,
       onStopNodeDebug,
       debugMode,
       setDebugMode
-    }),
-    [workflowDebugData, onNextNodeDebug, onStartNodeDebug, onStopNodeDebug, debugMode]
-  );
+    };
+  }, [workflowDebugData, onNextNodeDebug, onStartNodeDebug, onStopNodeDebug, debugMode]);
 
   return (
     <WorkflowDebugContext.Provider value={contextValue}>{children}</WorkflowDebugContext.Provider>

@@ -9,7 +9,7 @@ import {
   useViewport
 } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
@@ -30,7 +30,7 @@ const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { getNodeById } = useContextSelector(WorkflowDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { workflowControlMode, setWorkflowControlMode, mouseInCanvas } = useContextSelector(
     WorkflowUIContext,
     (v) => v

@@ -1,4 +1,5 @@
 // 工作流 UI 交互层
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import React, { type PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
@@ -88,8 +89,9 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
   // 右键菜单
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemoEnhance(() => {
+    console.log('WorkflowUIContextValue 更新了');
+    return {
       hoverNodeId,
       setHoverNodeId,
       hoverEdgeId,
@@ -100,9 +102,8 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       setWorkflowControlMode,
       menu,
       setMenu
-    }),
-    [hoverNodeId, hoverEdgeId, mouseInCanvas, workflowControlMode, setWorkflowControlMode, menu]
-  );
+    };
+  }, [hoverNodeId, hoverEdgeId, mouseInCanvas, workflowControlMode, setWorkflowControlMode, menu]);
 
   return <WorkflowUIContext.Provider value={contextValue}>{children}</WorkflowUIContext.Provider>;
 };

@@ -3,7 +3,10 @@ import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowDataContext } from '../../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
@@ -53,12 +56,12 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 }: Props) {
   const { t } = useTranslation();
 
-  const node = useContextSelector(WorkflowDataContext, (v) => v.getNodeById(nodeId));
-  const selected = useContextSelector(WorkflowDataContext, (v) => v.selectedNodesMap[nodeId]);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
   const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
   const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
 
-  const edgesData = useContextSelector(WorkflowDataContext, (v) => {
+  const edgesData = useContextSelector(WorkflowBufferDataContext, (v) => {
     return {
       connected: v.edges.some((edge) => edge.sourceHandle === handleId),
       nodeFolded: node?.isFolded && v.edges.some((edge) => edge.source === nodeId)
@@ -158,7 +161,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
-  const connected = useContextSelector(WorkflowDataContext, (v) =>
+  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
   const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);

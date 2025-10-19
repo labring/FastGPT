@@ -229,12 +229,12 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
 export const getRefData = ({
   variable,
   getNodeById,
-  nodeList,
+  systemConfigNode,
   chatConfig
 }: {
   variable?: ReferenceItemValueType;
   getNodeById: WorkflowDataContextType['getNodeById'];
-  nodeList: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }) => {
   if (!variable)
@@ -244,7 +244,7 @@ export const getRefData = ({
     };
 
   const node = getNodeById(variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig });
+  const systemVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -337,14 +337,14 @@ export const filterWorkflowNodeOutputsByType = (
 
 export const getNodeAllSource = ({
   nodeId,
-  nodeList,
+  systemConfigNode,
   getNodeById,
   edges,
   chatConfig,
   t
 }: {
   nodeId: string;
-  nodeList: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge[];
   chatConfig: AppChatConfigType;
@@ -378,7 +378,7 @@ export const getNodeAllSource = ({
   sourceNodes.set(
     'system_global_variable',
     getGlobalVariableNode({
-      nodes: nodeList,
+      systemConfigNode,
       t,
       chatConfig
     })
@@ -648,16 +648,16 @@ export const checkWorkflowNodeAndConnection = ({
 /* ====== Variables ======= */
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
-  nodes,
+  systemConfigNode,
   chatConfig
 }: {
-  nodes: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
       chatConfig,
-      systemConfigNode: getGuideModule(nodes),
+      systemConfigNode,
       isPublicFetch: true
     })?.variables || []
   );
