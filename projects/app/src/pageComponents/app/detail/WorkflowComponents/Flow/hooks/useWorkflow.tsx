@@ -309,20 +309,13 @@ const useParentChildDragRaf = () => {
     (parentId: string, change: NodePositionChange, childNodesChange: NodePositionChange[]) => {
       setNodes((currentNodes) =>
         currentNodes.map((n) => {
-          // 更新父节点位置
-          if (n.id === parentId && change.position) {
-            return {
-              ...n,
-              position: change.position
-            };
-          }
-
           // 更新子节点位置
           const childChange = childNodesChange.find((c) => c.id === n.id);
           if (childChange && childChange.position) {
             return {
               ...n,
-              position: childChange.position
+              position: childChange.position,
+              positionAbsolute: childChange.position
             };
           }
 
