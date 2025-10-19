@@ -1,4 +1,7 @@
 const { i18n } = require('./next-i18next.config.js');
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 const path = require('path');
 const fs = require('fs');
 
@@ -11,6 +14,8 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+  productionBrowserSourceMaps: false,
+  swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
   async headers() {
     return [
       {
@@ -40,13 +45,6 @@ const nextConfig = {
       }
     ];
   },
-
-  ...(isDev && {
-    // 禁用 source map（可选，根据需要）
-    productionBrowserSourceMaps: false,
-    // 优化编译性能
-    swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
-  }),
 
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
@@ -121,14 +119,16 @@ const nextConfig = {
           '**/coverage'
         ],
       };
-      // 启用持久化缓存
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-      };
     }
+
+    config.cache = {
+      type: 'filesystem',
+      name: isServer ? 'server' : 'client',
+      buildDependencies: {
+        config: [__filename]
+      },
+      cacheDirectory: path.resolve(__dirname, '.next/cache/webpack')
+    };
 
     return config;
   },
@@ -144,11 +144,15 @@ const nextConfig = {
       'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
+    outputFileTracingIncludes: {
+      '/': ['./packages/**/*']  // 只包含必要的 workspace 包
+    },
+
     instrumentationHook: true
   }
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);
 
 function getWorkerConfig() {
   const result = fs.readdirSync(path.resolve(__dirname, '../../packages/service/worker'));
