@@ -66,7 +66,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/static /app/pr
 # copy server chunks
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks /app/projects/app/.next/server/chunks
 # copy worker
-COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/worker /app/projects/app/.next/server/worker
+COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
 
 # copy standload packages
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken

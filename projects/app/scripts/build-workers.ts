@@ -36,10 +36,6 @@ async function buildWorkers(watch: boolean = false) {
     return;
   }
 
-  console.log(`找到 ${workers.length} 个 Worker:`);
-  workers.forEach((worker) => console.log(`  - ${worker}`));
-  console.log('');
-
   // esbuild 通用配置
   const commonConfig: BuildOptions = {
     bundle: true,
@@ -55,8 +51,6 @@ async function buildWorkers(watch: boolean = false) {
 
   if (watch) {
     // Watch 模式：使用 esbuild context API
-    console.log('👀 启动 Watch 模式...\n');
-
     const contexts = await Promise.all(
       workers.map(async (worker) => {
         const entryPoint = path.join(WORKER_SOURCE_DIR, worker, 'index.ts');
@@ -147,13 +141,6 @@ console.log('');
 console.log('╔═══════════════════════════════════════╗');
 console.log('║   FastGPT Worker 预编译工具 v1.0     ║');
 console.log('╚═══════════════════════════════════════╝');
-console.log('');
-
-if (watch) {
-  console.log('📡 模式: 监听模式 (文件变化时自动重新编译)');
-} else {
-  console.log('🔧 模式: 单次编译');
-}
 console.log('');
 
 // 执行编译

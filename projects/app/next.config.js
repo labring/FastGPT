@@ -135,11 +135,6 @@ const nextConfig = {
       '@zilliz/milvus2-sdk-node',
       'tiktoken'
     ],
-    outputFileTracingRoot: path.join(__dirname, '../../'),
-    outputFileTracingIncludes: {
-      '/': ['./packages/**/*']  // 只包含必要的 workspace 包
-    },
-
     instrumentationHook: true
   }
 };
