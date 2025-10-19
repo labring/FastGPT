@@ -33,7 +33,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const loopStartNode = getNodeById(nodeId);
-  console.log(111111111111);
+
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
     const parentNode = getNodeById(loopStartNode?.parentNodeId);
