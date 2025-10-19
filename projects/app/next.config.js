@@ -79,17 +79,7 @@ const nextConfig = {
       config.externals.push('@node-rs/jieba');
 
       if (nextRuntime === 'nodejs') {
-        const oldEntry = config.entry;
-        config = {
-          ...config,
-          async entry(...args) {
-            const entries = await oldEntry(...args);
-            return {
-              ...entries,
-              ...getWorkerConfig()
-            };
-          }
-        };
+
       }
     } else {
       config.resolve = {
@@ -155,23 +145,3 @@ const nextConfig = {
 };
 
 module.exports = withBundleAnalyzer(nextConfig);
-
-function getWorkerConfig() {
-  const result = fs.readdirSync(path.resolve(__dirname, '../../packages/service/worker'));
-
-  // 获取所有的目录名
-  const folderList = result.filter((item) => {
-    return fs
-      .statSync(path.resolve(__dirname, '../../packages/service/worker', item))
-      .isDirectory();
-  });
-
-  const workerConfig = folderList.reduce((acc, item) => {
-    acc[`worker/${item}`] = path.resolve(
-      process.cwd(),
-      `../../packages/service/worker/${item}/index.ts`
-    );
-    return acc;
-  }, {});
-  return workerConfig;
-}

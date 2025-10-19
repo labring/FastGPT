@@ -3,10 +3,12 @@
   "version": "4.13.2",
   "private": false,
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run build:workers && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:workers": "npx tsx scripts/build-workers.ts",
+    "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "2.2.1",
@@ -32,6 +34,7 @@
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
+    "esbuild": "^0.25.11",
     "framer-motion": "9.1.7",
     "hyperdown": "^2.4.29",
     "i18next": "23.16.8",
@@ -85,6 +88,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.26",
+    "tsx": "^4.20.6",
     "typescript": "^5.1.3",
     "vitest": "^3.0.2"
   }
