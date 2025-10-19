@@ -157,6 +157,7 @@ const Workflow = () => {
           panOnScrollSpeed={2}
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
+          snapToGrid
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,
