@@ -1,3 +1,4 @@
+'use client';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
