@@ -1,6 +1,9 @@
 /* oceanbase vector crud */
-import { DatasetVectorTableName } from '../constants';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
+import {
+  DatasetVectorTableName,
+  DBDatasetVectorTableName,
+  DBDatasetValueVectorTableName
+} from '../constants';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import {
@@ -28,7 +31,31 @@ export class ObVectorCtrl {
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      /********************** Database Vector Store **********************/
+      await ObClient.query(`
+        CREATE TABLE IF NOT EXISTS ${DBDatasetVectorTableName} (
+              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+              vector VECTOR(1536) NOT NULL,
+              team_id VARCHAR(50) NOT NULL,
+              dataset_id VARCHAR(50) NOT NULL,
+              collection_id VARCHAR(50) NOT NULL,
+              column_des_index VARCHAR(1024) NOT NULL,
+              createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
 
+      await ObClient.query(`
+        CREATE TABLE IF NOT EXISTS ${DBDatasetValueVectorTableName} (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            vector VECTOR(1536) NOT NULL,
+            team_id VARCHAR(50) NOT NULL,
+            dataset_id VARCHAR(50) NOT NULL,
+            collection_id VARCHAR(50) NOT NULL,
+            column_val_index VARCHAR(1024) NOT NULL,
+            createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      // modeldata
       await ObClient.query(
         `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=inner_product, type=hnsw, m=32, ef_construction=128);`
       );
@@ -39,14 +66,46 @@ export class ObVectorCtrl {
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
 
+      // coulumndescriptionindex
+      await ObClient.query(
+        `CREATE VECTOR INDEX IF NOT EXISTS table_des_vector_index ON ${DBDatasetVectorTableName}(vector) WITH (distance=cosine, type=hnsw, m=32, ef_construction=128);`
+      );
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS table_des_team_dataset_collection_index ON ${DBDatasetVectorTableName}(team_id, dataset_id, collection_id);`
+      );
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS table_des_create_time_index ON ${DBDatasetVectorTableName}(createtime);`
+      );
+
+      // coulumnvalueindex
+      await ObClient.query(
+        `CREATE VECTOR INDEX IF NOT EXISTS table_val_vector_index ON ${DBDatasetValueVectorTableName}(vector) WITH (distance=cosine, type=hnsw, m=32, ef_construction=128);`
+      );
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS table_val_team_dataset_collection_index ON ${DBDatasetValueVectorTableName}(team_id, dataset_id, collection_id);`
+      );
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS table_val_create_time_index ON ${DBDatasetValueVectorTableName}(createtime);`
+      );
       addLog.info('init oceanbase successful');
     } catch (error) {
       addLog.error('init oceanbase error', error);
     }
   };
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
-    const { teamId, datasetId, collectionId, vectors } = props;
 
+  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+    const {
+      teamId,
+      datasetId,
+      collectionId,
+      vectors,
+      tableName = DatasetVectorTableName,
+      column_des_index,
+      column_val_index
+    } = props;
+    console.info(
+      `[ob insert] tableName:${tableName},value:${column_des_index || column_val_index}`
+    );
     const values = vectors.map((vector) => [
       { key: 'vector', value: `[${vector}]` },
       { key: 'team_id', value: String(teamId) },
@@ -54,7 +113,16 @@ export class ObVectorCtrl {
       { key: 'collection_id', value: String(collectionId) }
     ]);
 
-    const { rowCount, rows } = await ObClient.insert(DatasetVectorTableName, {
+    // Add db schema special fields
+    if (column_des_index) {
+      values.map((item) => item.push({ key: 'column_des_index', value: column_des_index }));
+    }
+
+    if (column_val_index) {
+      values.map((item) => item.push({ key: 'column_val_index', value: column_val_index }));
+    }
+
+    const { rowCount, insertIds } = await ObClient.insert(tableName || DatasetVectorTableName, {
       values
     });
 
@@ -63,11 +131,11 @@ export class ObVectorCtrl {
     }
 
     return {
-      insertIds: rows.map((row) => row.id)
+      insertIds
     };
   };
   delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
-    const { teamId } = props;
+    const { teamId, tableName = DatasetVectorTableName } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
@@ -97,7 +165,7 @@ export class ObVectorCtrl {
 
     if (!where) return;
 
-    await ObClient.delete(DatasetVectorTableName, {
+    await ObClient.delete(tableName, {
       where: [where]
     });
   };
@@ -161,8 +229,76 @@ export class ObVectorCtrl {
       }))
     };
   };
-  databaseEmbRecall = async (props: DatabaseEmbeddingRecallCtrlProps): Promise<DatabaseEmbeddingRecallResponse> => {return Promise.reject('TO-DO')}
-  
+
+  databaseEmbRecall = async (
+    props: DatabaseEmbeddingRecallCtrlProps
+  ): Promise<DatabaseEmbeddingRecallResponse> => {
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      tableName,
+      retry = 2,
+      forbidCollectionIdList
+    } = props;
+
+    let index: string = '';
+    if (tableName == DBDatasetVectorTableName) index = 'column_des_index';
+    if (tableName == DBDatasetValueVectorTableName) index = 'column_val_index';
+
+
+    try {
+      const forbidCollectionSql =
+        forbidCollectionIdList.length > 0
+          ? `AND collection_id NOT IN (${forbidCollectionIdList
+              .map((id) => `'${String(id)}'`)
+              .join(',')})`
+          : '';
+      // cosine_distance(a,b)= 1 − cosine_similarity(a,b) , range [0,2]
+      const rows = await ObClient.query<
+        ({
+          id: string;
+          collection_id: string;
+          index_field?: string;
+          distance: number;
+        } & RowDataPacket)[][]
+      >(
+        `BEGIN;
+            SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+            SELECT id,
+                   collection_id,
+                   ${index ? `${index} AS index_field,` : ''}
+                   cosine_distance(vector, [${vector}]) AS distance
+              FROM ${tableName}
+              WHERE team_id='${teamId}'
+                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+                ${forbidCollectionSql}
+              ORDER BY distance ASC APPROXIMATE LIMIT ${limit};
+          COMMIT;`
+      ).then(([rows]) => rows[2] || []);
+
+      return {
+        results: rows.map((item) => ({
+          id: String(item.id),
+          collectionId: item.collection_id,
+          score: 1 - item.distance,
+          ...(tableName === DBDatasetVectorTableName
+            ? { columnDesIndex: item.index_field }
+            : { columnValIndex: item.index_field })
+        }))
+      };
+    } catch (error) {
+      if (retry <= 0) {
+        return Promise.reject(error);
+      }
+      return this.databaseEmbRecall({
+        ...props,
+        retry: retry - 1
+      });
+    }
+  };
+
   getVectorDataByTime = async (start: Date, end: Date) => {
     const rows = await ObClient.query<
       ({
