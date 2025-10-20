@@ -139,7 +139,9 @@ const nextConfig = {
       'tiktoken'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    instrumentationHook: true
+    instrumentationHook: true,
+    workerThreads: true,
+    optimizeCss: true
   }
 };
 
