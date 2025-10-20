@@ -232,7 +232,7 @@ export const truncateStrRespectingJson = (str: string, start: number, end: numbe
     return str;
   }
 
-  forEachString(obj, (s) => {
+  obj = forEachString(obj, (s) => {
     if (s.length > (start + end) / tooLongStrings) {
       return sliceStrStartEnd(
         s,
