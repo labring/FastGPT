@@ -72,13 +72,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
-
-
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json 
-
 # copy config
-COPY ./projects/app/data /app/data
+COPY ./projects/app/data/config.json /app/data/config.json
+
 RUN chown -R nextjs:nodejs /app/data
 
 # Add tmp directory permission control

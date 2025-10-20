@@ -1,9 +1,10 @@
 const { i18n } = require('./next-i18next.config.js');
+const path = require('path');
+const fs = require('fs');
+
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
-const path = require('path');
-const fs = require('fs');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -14,7 +15,9 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
   compress: true,
+  // 禁用 source map（可选，根据需要）
   productionBrowserSourceMaps: false,
+  // 优化编译性能
   swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
   async headers() {
     return [
@@ -109,18 +112,18 @@ const nextConfig = {
           '**/coverage'
         ],
       };
+      // 启用持久化缓存
+      config.cache = {
+        type: 'filesystem',
+        name: isServer ? 'server' : 'client',
+        buildDependencies: {
+          config: [__filename]
+        },
+        cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
+        maxMemoryGenerations: isDev ? 5 : Infinity,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
+      };
     }
-
-    config.cache = {
-      type: 'filesystem',
-      name: isServer ? 'server' : 'client',
-      buildDependencies: {
-        config: [__filename]
-      },
-      cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
-      maxMemoryGenerations: isDev ? 5 : Infinity,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
-    };
 
     return config;
   },
@@ -133,11 +136,12 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      'tiktoken',
-      '@opentelemetry/api-logs'
+      'tiktoken'
     ],
+    outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
   }
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+module.exports = nextConfig;
+
