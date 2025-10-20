@@ -100,7 +100,7 @@ export const getNextTimeByCronStringAndTimezone = ({
 
     return new Date(date);
   } catch (error) {
-    console.log('getNextTimeByCronStringAndTimezone error', error);
+    console.log(`getNextTimeByCronStringAndTimezone error: ${cronString}`, error);
     return new Date();
   }
 };
