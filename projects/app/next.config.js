@@ -133,7 +133,8 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      'tiktoken'
+      'tiktoken',
+      '@opentelemetry/api-logs'
     ],
     instrumentationHook: true
   }
