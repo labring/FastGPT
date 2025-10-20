@@ -21,7 +21,6 @@ import {
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
-import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -32,20 +31,18 @@ import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess: (avatar) => setValue('avatar', avatar)
+    });
 
   const {
     register,
@@ -134,7 +131,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             borderRadius={'md'}
             mr={4}
             title={t('common:set_avatar')}
-            onClick={() => onOpenSelectFile()}
+            onClick={handleAvatarSelectorOpen}
           />
           <FormControl>
             <Input
@@ -220,15 +217,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </ModalFooter>
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };
