@@ -42,7 +42,7 @@ export class MilvusCtrl {
 
     return global.milvusClient;
   };
-  private acreateCollection = async (client: MilvusClient, config: MilvusCollectionConfig) => {
+  private createMilvusCollection = async (client: MilvusClient, config: MilvusCollectionConfig) => {
     const { name, description, fields, indexParams } = config;
 
     const { value: hasCollection } = await client.hasCollection({
@@ -62,7 +62,7 @@ export class MilvusCtrl {
     }
   };
 
-  private LoadCollection = async (client: MilvusClient, collectionName: string) => {
+  private loadCollection = async (client: MilvusClient, collectionName: string) => {
     const { state } = await client.getLoadState({
       collection_name: collectionName
     });
@@ -93,8 +93,8 @@ export class MilvusCtrl {
     } catch (error) {}
 
     for (const config of milvusCollectionDefinitions) {
-      await this.acreateCollection(client, config);
-      await this.LoadCollection(client, config.name);
+      await this.createMilvusCollection(client, config);
+      await this.loadCollection(client, config.name);
     }
   };
 
