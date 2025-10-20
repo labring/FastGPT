@@ -113,24 +113,16 @@ export class ObVectorCtrl {
       { key: 'collection_id', value: String(collectionId) }
     ]);
 
+    // Add db schema special fields
     if (column_des_index) {
-      values.forEach((item) =>
-        item.push({
-          key: 'column_des_index',
-          value: column_des_index
-        })
-      );
+      values.map((item) => item.push({ key: 'column_des_index', value: column_des_index }));
     }
 
     if (column_val_index) {
-      values.forEach((item) =>
-        item.push({
-          key: 'column_val_index',
-          value: column_val_index
-        })
-      );
+      values.map((item) => item.push({ key: 'column_val_index', value: column_val_index }));
     }
-    const { rowCount, insertIds } = await ObClient.insert(tableName, {
+
+    const { rowCount, insertIds } = await ObClient.insert(tableName || DatasetVectorTableName, {
       values
     });
 
@@ -251,12 +243,10 @@ export class ObVectorCtrl {
       forbidCollectionIdList
     } = props;
 
-    const indexField =
-      tableName === DBDatasetVectorTableName
-        ? 'column_des_index'
-        : tableName === DBDatasetValueVectorTableName
-          ? 'column_val_index'
-          : '';
+    let index: string = '';
+    if (tableName == DBDatasetVectorTableName) index = 'column_des_index';
+    if (tableName == DBDatasetValueVectorTableName) index = 'column_val_index';
+
 
     try {
       const forbidCollectionSql =
@@ -278,7 +268,7 @@ export class ObVectorCtrl {
             SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
             SELECT id,
                    collection_id,
-                   ${indexField ? `${indexField} AS index_field,` : ''}
+                   ${index ? `${index} AS index_field,` : ''}
                    cosine_distance(vector, [${vector}]) AS distance
               FROM ${tableName}
               WHERE team_id='${teamId}'
@@ -295,9 +285,7 @@ export class ObVectorCtrl {
           score: 1 - item.distance,
           ...(tableName === DBDatasetVectorTableName
             ? { columnDesIndex: item.index_field }
-            : tableName === DBDatasetValueVectorTableName
-              ? { columnValIndex: item.index_field }
-              : {})
+            : { columnValIndex: item.index_field })
         }))
       };
     } catch (error) {
