@@ -14,7 +14,7 @@ import React, {
   useState
 } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useDebounceEffect } from 'ahooks';
+import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -91,7 +91,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
    */
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
-  const autoSaveFn = useCallback(async () => {
+  const autoSaveFn = useMemoizedFn(async () => {
     if (isSaved || !leaveSaveSign.current) return;
     console.log('Leave auto save');
     const data = flowData2StoreData();
@@ -102,14 +102,12 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       chatConfig: appDetail.chatConfig,
       autoSave: true
     });
-  }, [appDetail.chatConfig, flowData2StoreData, isSaved, onSaveApp]);
+  });
 
   // 页面关闭前自动保存
   useEffect(() => {
     return () => {
-      if (isProduction) {
-        autoSaveFn();
-      }
+      autoSaveFn();
     };
   }, [autoSaveFn]);
   useBeforeunload({
