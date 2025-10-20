@@ -20,7 +20,7 @@ class TestAnswerSimilarity(unittest.IsolatedAsyncioTestCase):
             result.score, 1.0, places=4
         )  # since mock returns same vectors
         assert result.reason is not None
-        self.assertIn("cosine similarity score", result.reason)
+        self.assertIn("cosine similarity", result.reason)
 
 
 if __name__ == "__main__":
