@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Box, Flex, Button, ModalBody, Input, Textarea, ModalFooter } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -15,6 +14,8 @@ import { useRouter } from 'next/router';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type HttpToolsType = {
   id?: string;
@@ -68,14 +69,12 @@ const HttpPluginCreateModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess(avatar) {
+        setValue('avatar', avatar);
+      }
+    });
 
   return (
     <>
@@ -100,7 +99,7 @@ const HttpPluginCreateModal = ({ onClose }: { onClose: () => void }) => {
                 h={['28px', '32px']}
                 cursor={'pointer'}
                 borderRadius={'md'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
@@ -185,15 +184,7 @@ const HttpPluginCreateModal = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </ModalFooter>
       </MyModal>
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </>
   );
 };

@@ -10,7 +10,6 @@ import {
   Textarea,
   ModalFooter
 } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
@@ -33,6 +32,8 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { appTypeMap } from '@/pageComponents/app/constants';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 type FormType = {
   avatar: string;
@@ -69,14 +70,13 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   });
 
   const avatar = watch('avatar');
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
+
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess(avatar) {
+        setValue('avatar', avatar);
+      }
+    });
 
   const { runAsync: onclickCreate, loading: isCreating } = useRequest2(
     async ({ avatar, name, curlContent }: FormType, templateId?: string) => {
@@ -153,7 +153,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               h={['28px', '36px']}
               cursor={'pointer'}
               borderRadius={'md'}
-              onClick={onOpenSelectFile}
+              onClick={handleAvatarSelectorOpen}
             />
           </MyTooltip>
           <Input
@@ -322,15 +322,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
         )}
       </ModalFooter>
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };

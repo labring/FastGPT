@@ -1,7 +1,6 @@
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { AppContext } from './context';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { resumeInheritPer } from '@/web/core/app/api';
 import {
   deleteAppCollaborators,
