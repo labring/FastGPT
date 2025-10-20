@@ -87,7 +87,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const inputType = nodeInputTypeToInputType(item.renderTypeList);
   const value = useMemo(() => {
-    // 移除异步的handleChange调用，避免状态冲突
+    // Removed asynchronous handleChange invocation to prevent state conflicts.
     if (inputType === InputTypeEnum.selectLLMModel) {
       // 如果有默认值且当前值为undefined，使用默认值
       if (item.value === undefined && defaultModel) {
