@@ -633,14 +633,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
         }
 
-        if (toolResponses !== undefined && toolResponses !== null) {
-          if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
-          if (
-            !Array.isArray(toolResponses) &&
+        if (
+          (toolResponses !== undefined && toolResponses !== null) ||
+          (Array.isArray(toolResponses) && toolResponses.length > 0) ||
+          (!Array.isArray(toolResponses) &&
             typeof toolResponses === 'object' &&
-            Object.keys(toolResponses).length === 0
-          )
-            return;
+            Object.keys(toolResponses).length > 0)
+        ) {
           this.toolRunResponse = toolResponses;
         }
 

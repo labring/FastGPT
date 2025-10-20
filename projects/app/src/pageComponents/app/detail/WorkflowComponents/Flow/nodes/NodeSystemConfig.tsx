@@ -12,7 +12,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import {
   type AppChatConfigType,
   type AppDetailType,
@@ -27,6 +27,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -227,7 +228,7 @@ function ScheduledTrigger({
 }
 
 function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
-  const appId = useContextSelector(WorkflowContext, (v) => v.appId);
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   return appId ? (
     <InputGuideConfig
       appId={appId}
@@ -246,11 +247,13 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 }
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const workflowStartNode = nodeList.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.workflowStart
-  )!;
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const workflowStartNode = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.workflowStartNode
+  );
+
+  if (!workflowStartNode) return null;
 
   return (
     <FileSelect
@@ -266,9 +269,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
 
         // Dynamic add or delete userFilesInput
         const canUploadFiles = e.canSelectFile || e.canSelectImg;
-        const repeatKey = workflowStartNode?.outputs.find(
-          (item) => item.key === userFilesInput.key
-        );
+        const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
         if (canUploadFiles) {
           !repeatKey &&
             onChangeNode({

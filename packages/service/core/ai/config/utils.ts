@@ -80,7 +80,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
   if (!init && global.systemModelList) return;
 
-  await preloadModelProviders();
+  try {
+    await preloadModelProviders();
+  } catch (error) {
+    console.log('Load systen model error, please check fastgpt-plugin', error);
+    return Promise.reject(error);
+  }
 
   global.systemModelList = [];
   global.systemActiveModelList = [];
@@ -236,7 +241,7 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async () => {
       try {

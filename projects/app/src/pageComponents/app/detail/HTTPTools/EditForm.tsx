@@ -1,4 +1,13 @@
-import { Box, Button, Flex, ModalBody, ModalFooter, Switch, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  ModalBody,
+  ModalFooter,
+  Switch,
+  useDisclosure
+} from '@chakra-ui/react';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -13,7 +22,8 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import ConfigModal from './ConfigModal';
+import SchemaConfigModal from './SchemaConfigModal';
+import ManualToolModal from './ManualToolModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 
@@ -36,13 +46,35 @@ const EditForm = ({
 }) => {
   const { t } = useTranslation();
 
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
+
   const [toolDetail, setToolDetail] = useState<HttpToolConfigType | null>(null);
+  const [editingManualTool, setEditingManualTool] = useState<HttpToolConfigType | null>(null);
+
+  const isBatchMode = apiSchemaStr !== undefined;
 
   const {
     onOpen: onOpenConfigModal,
     isOpen: isOpenConfigModal,
     onClose: onCloseConfigModal
   } = useDisclosure();
+
+  const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest2(
+    async (updatedToolList: HttpToolConfigType[]) =>
+      await putUpdateHttpPlugin({
+        appId: appDetail._id,
+        toolList: updatedToolList
+      }),
+    {
+      manual: true,
+      onSuccess: () => {
+        reloadApp();
+      },
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
 
   return (
     <>
@@ -54,122 +86,185 @@ const EditForm = ({
               total: toolList?.length || 0
             })}
           </FormLabel>
-          <Button
-            px={'2'}
-            leftIcon={
-              <MyIcon
-                name={toolList?.length && toolList.length > 0 ? 'change' : 'common/setting'}
-                w={'18px'}
-              />
-            }
-            onClick={onOpenConfigModal}
-          >
-            {toolList?.length && toolList.length > 0 ? t('common:Config') : t('app:Start_config')}
-          </Button>
+          {isBatchMode ? (
+            <Button
+              px={'2'}
+              leftIcon={
+                <MyIcon
+                  name={toolList?.length && toolList.length > 0 ? 'change' : 'common/setting'}
+                  w={'18px'}
+                />
+              }
+              onClick={onOpenConfigModal}
+            >
+              {toolList?.length && toolList.length > 0 ? t('common:Config') : t('app:Start_config')}
+            </Button>
+          ) : (
+            <Button
+              px={'2'}
+              leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+              onClick={() =>
+                setEditingManualTool({
+                  name: '',
+                  description: '',
+                  inputSchema: { type: 'object' },
+                  outputSchema: { type: 'object' },
+                  path: '',
+                  method: 'POST'
+                })
+              }
+            >
+              {t('common:Add')}
+            </Button>
+          )}
         </Flex>
 
-        <Box mt={3}>
-          {toolList?.map((tool, index) => {
-            return (
-              <MyBox
-                key={tool.name}
-                role="group"
-                position="relative"
-                border={'1px solid'}
-                {...(currentTool?.name === tool.name
-                  ? {
-                      borderRadius: '8px',
-                      borderColor: 'primary.600',
-                      borderBottomColor: 'primary.600',
-                      boxShadow:
-                        '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                    }
-                  : {
-                      borderRadius: 'none',
-                      borderColor: 'transparent',
-                      borderBottomColor: 'myGray.150',
-                      boxShadow: 'none'
-                    })}
-                _hover={{
-                  borderRadius: '8px',
-                  boxShadow:
-                    '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                }}
-                cursor={'pointer'}
-                onClick={() => {
-                  setCurrentTool?.(tool);
-                }}
-              >
-                <Flex alignItems={'center'} py={3} px={3}>
-                  <Box maxW={'full'} pl={2} position="relative" width="calc(100% - 30px)">
-                    <Flex alignItems="center" gap={2} mb={1}>
-                      <Box>{renderHttpMethod(tool.method)}</Box>
-                      <Box
-                        color={'myGray.900'}
-                        fontSize={'14px'}
-                        lineHeight={'20px'}
-                        letterSpacing={'0.25px'}
-                      >
-                        {tool.name}
-                      </Box>
-                      <Box w={'1px'} h={'12px'} bg={'myGray.250'}></Box>
-                      <Box
-                        color={'myGray.600'}
-                        fontSize={'14px'}
-                        lineHeight={'20px'}
-                        letterSpacing={'0.25px'}
-                      >
-                        {tool.path}
-                      </Box>
-                    </Flex>
-                    <Box
-                      overflow="hidden"
-                      whiteSpace="nowrap"
-                      color={'myGray.500'}
-                      textOverflow="ellipsis"
-                      fontSize={'12px'}
-                      lineHeight={'16px'}
-                      letterSpacing={'0.048px'}
-                    >
-                      {tool.description || t('app:tools_no_description')}
-                    </Box>
-                  </Box>
-                  <Box flex={1} />
-                </Flex>
-
-                <Flex
-                  position="absolute"
-                  right={3}
-                  top="50%"
-                  transform="translateY(-50%)"
-                  gap={2}
-                  display="none"
-                  _groupHover={{ display: 'flex' }}
-                  bg="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
-                  paddingLeft="20px"
+        <MyBox mt={3} isLoading={isDeletingTool}>
+          {toolList && toolList.length > 0 ? (
+            toolList.map((tool, index) => {
+              return (
+                <MyBox
+                  key={tool.name}
+                  role="group"
+                  position="relative"
+                  border={'1px solid'}
+                  {...(currentTool?.name === tool.name
+                    ? {
+                        borderRadius: '8px',
+                        borderColor: 'primary.600',
+                        borderBottomColor: 'primary.600',
+                        boxShadow:
+                          '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+                      }
+                    : {
+                        borderRadius: 'none',
+                        borderColor: 'transparent',
+                        borderBottomColor: 'myGray.150',
+                        boxShadow: 'none'
+                      })}
+                  _hover={{
+                    borderRadius: '8px',
+                    boxShadow:
+                      '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+                  }}
+                  cursor={'pointer'}
+                  onClick={() => {
+                    setCurrentTool?.(tool);
+                  }}
                 >
-                  <MyIconButton
-                    size={'16px'}
-                    icon={'common/detail'}
-                    p={2}
-                    border={'1px solid'}
-                    borderColor={'myGray.250'}
-                    hoverBg={'rgba(51, 112, 255, 0.10)'}
-                    hoverBorderColor={'primary.300'}
-                    tip={t('app:HTTP_tools_detail')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setToolDetail(tool);
-                    }}
-                  />
-                </Flex>
-              </MyBox>
-            );
-          })}
-        </Box>
+                  <Flex alignItems={'center'} py={3} px={3}>
+                    <Box maxW={'full'} pl={2} position="relative" width="calc(100% - 30px)">
+                      <Flex alignItems="center" gap={2} mb={1}>
+                        <Box>{renderHttpMethod(tool.method)}</Box>
+                        <Box
+                          color={'myGray.900'}
+                          fontSize={'14px'}
+                          lineHeight={'20px'}
+                          letterSpacing={'0.25px'}
+                        >
+                          {tool.name}
+                        </Box>
+                        <Box w={'1px'} h={'12px'} bg={'myGray.250'}></Box>
+                        <Box
+                          color={'myGray.600'}
+                          fontSize={'14px'}
+                          lineHeight={'20px'}
+                          letterSpacing={'0.25px'}
+                        >
+                          {tool.path}
+                        </Box>
+                      </Flex>
+                      <Box
+                        overflow="hidden"
+                        whiteSpace="nowrap"
+                        color={'myGray.500'}
+                        textOverflow="ellipsis"
+                        fontSize={'12px'}
+                        lineHeight={'16px'}
+                        letterSpacing={'0.048px'}
+                      >
+                        {tool.description || t('app:tools_no_description')}
+                      </Box>
+                    </Box>
+                    <Box flex={1} />
+                  </Flex>
+
+                  <Flex
+                    position="absolute"
+                    right={3}
+                    top="50%"
+                    transform="translateY(-50%)"
+                    gap={2}
+                    display="none"
+                    _groupHover={{ display: 'flex' }}
+                    bg="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
+                    paddingLeft="20px"
+                  >
+                    {isBatchMode ? (
+                      <MyIconButton
+                        size={'16px'}
+                        icon={'common/detail'}
+                        p={2}
+                        border={'1px solid'}
+                        borderColor={'myGray.250'}
+                        hoverBg={'rgba(51, 112, 255, 0.10)'}
+                        hoverBorderColor={'primary.300'}
+                        tip={t('app:HTTP_tools_detail')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setToolDetail(tool);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <MyIconButton
+                          size={'16px'}
+                          icon={'edit'}
+                          p={2}
+                          border={'1px solid'}
+                          borderColor={'myGray.250'}
+                          hoverBg={'rgba(51, 112, 255, 0.10)'}
+                          hoverBorderColor={'primary.300'}
+                          tip={t('common:Edit')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingManualTool(tool);
+                          }}
+                        />
+                        <MyIconButton
+                          size={'16px'}
+                          icon={'delete'}
+                          p={2}
+                          border={'1px solid'}
+                          borderColor={'myGray.250'}
+                          _hover={{
+                            color: 'red.500',
+                            bg: 'rgba(255, 0, 0, 0.10)',
+                            borderColor: 'red.300'
+                          }}
+                          tip={t('common:Delete')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updatedToolList =
+                              toolList?.filter((t) => t.name !== tool.name) || [];
+                            runDeleteHttpTool(updatedToolList);
+                          }}
+                        />
+                      </>
+                    )}
+                  </Flex>
+                </MyBox>
+              );
+            })
+          ) : (
+            <Center h={24} fontSize={'14px'}>
+              {isBatchMode ? t('app:http_toolset_config_tips') : t('app:http_toolset_add_tips')}
+            </Center>
+          )}
+        </MyBox>
       </Box>
 
-      {isOpenConfigModal && <ConfigModal onClose={onCloseConfigModal} />}
+      {isOpenConfigModal && <SchemaConfigModal onClose={onCloseConfigModal} />}
       {toolDetail && (
         <ToolDetailModal
           tool={toolDetail}
@@ -179,6 +274,12 @@ const EditForm = ({
           apiSchemaStr={apiSchemaStr || ''}
           headerSecret={headerSecret || {}}
           customHeaders={customHeaders || '{}'}
+        />
+      )}
+      {editingManualTool && (
+        <ManualToolModal
+          onClose={() => setEditingManualTool(null)}
+          editingTool={editingManualTool}
         />
       )}
     </>

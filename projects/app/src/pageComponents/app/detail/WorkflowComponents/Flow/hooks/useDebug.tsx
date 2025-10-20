@@ -20,17 +20,19 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import {
   nodeInputTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -45,12 +47,11 @@ export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
-  const onRemoveError = useContextSelector(WorkflowContext, (v) => v.onRemoveError);
-  const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

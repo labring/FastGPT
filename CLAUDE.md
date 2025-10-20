@@ -1,116 +1,121 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为 Claude Code (claude.ai/code) 在本仓库中工作时提供指导说明。
 
-## Project Overview
+## 输出要求
 
-FastGPT is an AI Agent construction platform providing out-of-the-box data processing, model invocation capabilities, and visual workflow orchestration through Flow. This is a full-stack TypeScript application built on NextJS with MongoDB/PostgreSQL backends.
+1. 输出语言：中文
+2. 输出的设计文档位置：.claude/design，以 Markdown 文件为主。
+3. 输出 Plan 时，均需写入 .claude/plan 目录下，以 Markdown 文件为主。
 
-**Tech Stack**: NextJS + TypeScript + ChakraUI + MongoDB + PostgreSQL (PG Vector)/Milvus
+## 项目概述
 
-## Architecture
+FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
 
-This is a monorepo using pnpm workspaces with the following key structure:
+**技术栈**: NextJS + TypeScript + ChakraUI + MongoDB + PostgreSQL (PG Vector)/Milvus
 
-### Packages (Library Code)
-- `packages/global/` - Shared types, constants, utilities used across all projects
-- `packages/service/` - Backend services, database schemas, API controllers, workflow engine
-- `packages/web/` - Shared frontend components, hooks, styles, i18n
-- `packages/templates/` - Application templates for the template market
+## 架构
 
-### Projects (Applications)
-- `projects/app/` - Main NextJS web application (frontend + API routes)
-- `projects/sandbox/` - NestJS code execution sandbox service
-- `projects/mcp_server/` - Model Context Protocol server implementation
+这是一个使用 pnpm workspaces 的 monorepo,主要结构如下:
 
-### Key Directories
-- `document/` - Documentation site (NextJS app with content)
-- `plugins/` - External plugins (models, crawlers, etc.)
-- `deploy/` - Docker and Helm deployment configurations
-- `test/` - Centralized test files and utilities
+### Packages (库代码)
+- `packages/global/` - 所有项目共享的类型、常量、工具函数
+- `packages/service/` - 后端服务、数据库模型、API 控制器、工作流引擎
+- `packages/web/` - 共享的前端组件、hooks、样式、国际化
+- `packages/templates/` - 模板市场的应用模板
 
-## Development Commands
+### Projects (应用程序)
+- `projects/app/` - 主 NextJS Web 应用(前端 + API 路由)
+- `projects/sandbox/` - NestJS 代码执行沙箱服务
+- `projects/mcp_server/` - Model Context Protocol 服务器实现
 
-### Main Commands (run from project root)
-- `pnpm dev` - Start development for all projects (uses package.json workspace scripts)
-- `pnpm build` - Build all projects  
-- `pnpm test` - Run tests using Vitest
-- `pnpm test:workflow` - Run workflow-specific tests
-- `pnpm lint` - Run ESLint across all TypeScript files with auto-fix
-- `pnpm format-code` - Format code using Prettier
+### 关键目录
+- `document/` - 文档站点(NextJS 应用及内容)
+- `plugins/` - 外部插件(模型、爬虫等)
+- `deploy/` - Docker 和 Helm 部署配置
+- `test/` - 集中的测试文件和工具
 
-### Project-Specific Commands
-**Main App (projects/app/)**:
-- `cd projects/app && pnpm dev` - Start NextJS dev server
-- `cd projects/app && pnpm build` - Build NextJS app
-- `cd projects/app && pnpm start` - Start production server
+## 开发命令
 
-**Sandbox (projects/sandbox/)**:
-- `cd projects/sandbox && pnpm dev` - Start NestJS dev server with watch mode
-- `cd projects/sandbox && pnpm build` - Build NestJS app
-- `cd projects/sandbox && pnpm test` - Run Jest tests
+### 主要命令(从项目根目录运行)
+- `pnpm dev` - 启动所有项目的开发环境(使用 package.json 的 workspace 脚本)
+- `pnpm build` - 构建所有项目
+- `pnpm test` - 使用 Vitest 运行测试
+- `pnpm test:workflow` - 运行工作流相关测试
+- `pnpm lint` - 对所有 TypeScript 文件运行 ESLint 并自动修复
+- `pnpm format-code` - 使用 Prettier 格式化代码
 
-**MCP Server (projects/mcp_server/)**:
-- `cd projects/mcp_server && bun dev` - Start with Bun in watch mode
-- `cd projects/mcp_server && bun build` - Build MCP server
-- `cd projects/mcp_server && bun start` - Start MCP server
+### 项目专用命令
+**主应用 (projects/app/)**:
+- `cd projects/app && pnpm dev` - 启动 NextJS 开发服务器
+- `cd projects/app && pnpm build` - 构建 NextJS 应用
+- `cd projects/app && pnpm start` - 启动生产服务器
 
-### Utility Commands
-- `pnpm create:i18n` - Generate i18n translation files
-- `pnpm api:gen` - Generate OpenAPI documentation
-- `pnpm initIcon` - Initialize icon assets
-- `pnpm gen:theme-typings` - Generate Chakra UI theme typings
+**沙箱 (projects/sandbox/)**:
+- `cd projects/sandbox && pnpm dev` - 以监视模式启动 NestJS 开发服务器
+- `cd projects/sandbox && pnpm build` - 构建 NestJS 应用
+- `cd projects/sandbox && pnpm test` - 运行 Jest 测试
 
-## Testing
+**MCP 服务器 (projects/mcp_server/)**:
+- `cd projects/mcp_server && bun dev` - 使用 Bun 以监视模式启动
+- `cd projects/mcp_server && bun build` - 构建 MCP 服务器
+- `cd projects/mcp_server && bun start` - 启动 MCP 服务器
 
-The project uses Vitest for testing with coverage reporting. Key test commands:
-- `pnpm test` - Run all tests
-- `pnpm test:workflow` - Run workflow tests specifically  
-- Test files are located in `test/` directory and `projects/app/test/`
-- Coverage reports are generated in `coverage/` directory
+### 工具命令
+- `pnpm create:i18n` - 生成国际化翻译文件
+- `pnpm api:gen` - 生成 OpenAPI 文档
+- `pnpm initIcon` - 初始化图标资源
+- `pnpm gen:theme-typings` - 生成 Chakra UI 主题类型定义
 
-## Code Organization Patterns
+## 测试
 
-### Monorepo Structure
-- Shared code lives in `packages/` and is imported using workspace references
-- Each project in `projects/` is a standalone application
-- Use `@fastgpt/global`, `@fastgpt/service`, `@fastgpt/web` imports for shared packages
+项目使用 Vitest 进行测试并生成覆盖率报告。主要测试命令:
+- `pnpm test` - 运行所有测试
+- `pnpm test:workflow` - 专门运行工作流测试
+- 测试文件位于 `test/` 目录和 `projects/app/test/`
+- 覆盖率报告生成在 `coverage/` 目录
 
-### API Structure
-- NextJS API routes in `projects/app/src/pages/api/`
-- Core business logic in `packages/service/core/`
-- Database schemas in `packages/service/` with MongoDB/Mongoose
+## 代码组织模式
 
-### Frontend Architecture
-- React components in `projects/app/src/components/` and `packages/web/components/`
-- Chakra UI for styling with custom theme in `packages/web/styles/theme.ts`
-- i18n support with files in `packages/web/i18n/`
-- State management using React Context and Zustand
+### Monorepo 结构
+- 共享代码存放在 `packages/` 中,通过 workspace 引用导入
+- `projects/` 中的每个项目都是独立的应用程序
+- 使用 `@fastgpt/global`、`@fastgpt/service`、`@fastgpt/web` 导入共享包
 
-### Workflow System
-- Visual workflow editor using ReactFlow
-- Workflow engine in `packages/service/core/workflow/`
-- Node definitions in `packages/global/core/workflow/template/`
-- Dispatch system for executing workflow nodes
+### API 结构
+- NextJS API 路由在 `projects/app/src/pages/api/`
+- API 路由合约定义在`packages/global/openapi/`, 对应的
+- 通用服务端业务逻辑在 `packages/service/`和`projects/app/src/service`
+- 数据库模型在 `packages/service/` 中,使用 MongoDB/Mongoose
 
-## Development Notes
+### 前端架构
+- React 组件在 `projects/app/src/components/` 和 `packages/web/components/`
+- 使用 Chakra UI 进行样式设计,自定义主题在 `packages/web/styles/theme.ts`
+- 国际化支持文件在 `packages/web/i18n/`
+- 使用 React Context 和 Zustand 进行状态管理
 
-- **Package Manager**: Uses pnpm with workspace configuration
-- **Node Version**: Requires Node.js >=18.16.0, pnpm >=9.0.0
-- **Database**: Supports MongoDB, PostgreSQL with pgvector, or Milvus for vector storage
-- **AI Integration**: Supports multiple AI providers through unified interface
-- **Internationalization**: Full i18n support for Chinese, English, and Japanese
+## 开发注意事项
 
-## Key File Patterns
+- **包管理器**: 使用 pnpm 及 workspace 配置
+- **Node 版本**: 需要 Node.js >=18.16.0, pnpm >=9.0.0
+- **数据库**: 支持 MongoDB、带 pgvector 的 PostgreSQL 或 Milvus 向量存储
+- **AI 集成**: 通过统一接口支持多个 AI 提供商
+- **国际化**: 完整支持中文、英文和日文
 
-- `.ts` and `.tsx` files use TypeScript throughout
-- Database schemas use Mongoose with TypeScript
-- API routes follow NextJS conventions
-- Component files use React functional components with hooks
-- Shared types defined in `packages/global/` with `.d.ts` files
+## 关键文件模式
 
-## Environment Configuration
+- `.ts` 和 `.tsx` 文件全部使用 TypeScript
+- 数据库模型使用 Mongoose 配合 TypeScript
+- API 路由遵循 NextJS 约定
+- 组件文件使用 React 函数式组件和 hooks
+- 共享类型定义在 `packages/global/` 的 `.d.ts` 文件中
 
-- Configuration files in `projects/app/data/config.json` 
-- Environment-specific configs supported
-- Model configurations in `packages/service/core/ai/config/`
+## 环境配置
+
+- 配置文件在 `projects/app/data/config.json`
+- 支持特定环境配置
+- 模型配置在 `packages/service/core/ai/config/`
+
+## 代码规范
+
+- 尽可能使用 type 进行类型声明，而不是 interface。

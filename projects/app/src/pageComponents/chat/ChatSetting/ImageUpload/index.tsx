@@ -80,7 +80,7 @@ const ImageUpload = ({
 
   return (
     <Box position="relative">
-      <SelectFileComponent onSelect={onSelectFile} />
+      <SelectFileComponent />
 
       <Box
         width={width}

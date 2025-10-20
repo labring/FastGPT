@@ -38,3 +38,5 @@ files/helm/fastgpt/charts/*.tgz
 tmp/
 coverage
 document/.source
+
+projects/app/worker/

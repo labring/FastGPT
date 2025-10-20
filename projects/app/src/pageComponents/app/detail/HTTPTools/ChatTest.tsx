@@ -4,7 +4,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
+import { Box, Button, Center, Flex, HStack } from '@chakra-ui/react';
 import { cardStyles } from '../constants';
 import { useTranslation } from 'next-i18next';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
@@ -19,6 +19,7 @@ import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const ChatTest = ({
   currentTool,
@@ -52,14 +53,16 @@ const ChatTest = ({
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
-
-      return await postRunHTTPTool({
+      return postRunHTTPTool({
         baseUrl,
         params: data,
-        headerSecret,
+        headerSecret: currentTool.headerSecret || headerSecret,
         toolPath: currentTool.path,
         method: currentTool.method,
-        customHeaders: customHeaders
+        customHeaders: customHeaders,
+        staticParams: currentTool.staticParams,
+        staticHeaders: currentTool.staticHeaders,
+        staticBody: currentTool.staticBody
       });
     },
     {
@@ -74,6 +77,7 @@ const ChatTest = ({
       }
     }
   );
+  console.log(currentTool);
 
   return (
     <Flex h={'full'} gap={2}>
@@ -95,72 +99,81 @@ const ChatTest = ({
           <Box flex={1} />
         </Flex>
 
-        <Box px={[2, 5]} mb={6}>
-          <LightRowTabs
-            list={tabList}
-            value={activeTab}
-            onChange={(value) => {
-              setActiveTab(value);
-            }}
-          />
-        </Box>
-
-        {activeTab === 'input' ? (
-          <Box flex={1} px={[2, 5]} overflow={'auto'}>
-            {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 ? (
-              <>
-                <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
-                  {Object.entries(currentTool?.inputSchema.properties || {}).map(
-                    ([paramName, paramInfo]) => {
-                      const inputType = valueTypeToInputType(
-                        getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
-                      );
-                      const required = currentTool?.inputSchema.required?.includes(paramName);
-
-                      return (
-                        <LabelAndFormRender
-                          label={
-                            <HStack spacing={0} mr={2}>
-                              <FormLabel required={required}>{paramName}</FormLabel>
-                              <ValueTypeLabel
-                                valueType={getNodeInputTypeFromSchemaInputType({
-                                  type: paramInfo.type,
-                                  arrayItems: paramInfo.items
-                                })}
-                                h={'auto'}
-                              />
-                            </HStack>
-                          }
-                          required={required}
-                          key={paramName}
-                          inputType={inputType}
-                          fieldName={paramName}
-                          form={form}
-                          placeholder={paramName}
-                        />
-                      );
-                    }
-                  )}
-                </Box>
-              </>
-            ) : (
-              <Box fontWeight={'medium'} pb={4} px={2}>
-                {t('app:this_tool_requires_no_input')}
-              </Box>
-            )}
-
-            <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>
-              {t('common:Run')}
-            </Button>
-          </Box>
+        {!currentTool ? (
+          <Center>
+            <EmptyTip text={t('app:empty_tool_tips')} />
+          </Center>
         ) : (
-          <Box flex={1} px={[2, 5]} overflow={'auto'}>
-            {output && (
-              <Box>
-                <Markdown source={`~~~json\n${output}`} />
+          <>
+            <Box px={[2, 5]} mb={6}>
+              <LightRowTabs
+                gap={4}
+                list={tabList}
+                value={activeTab}
+                onChange={(value) => {
+                  setActiveTab(value);
+                }}
+              />
+            </Box>
+
+            {activeTab === 'input' ? (
+              <Box flex={1} px={[2, 5]} overflow={'auto'}>
+                {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 ? (
+                  <>
+                    <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
+                      {Object.entries(currentTool?.inputSchema.properties || {}).map(
+                        ([paramName, paramInfo]) => {
+                          const inputType = valueTypeToInputType(
+                            getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
+                          );
+                          const required = currentTool?.inputSchema.required?.includes(paramName);
+
+                          return (
+                            <LabelAndFormRender
+                              label={
+                                <HStack spacing={0} mr={2}>
+                                  <FormLabel required={required}>{paramName}</FormLabel>
+                                  <ValueTypeLabel
+                                    valueType={getNodeInputTypeFromSchemaInputType({
+                                      type: paramInfo.type,
+                                      arrayItems: paramInfo.items
+                                    })}
+                                    h={'auto'}
+                                  />
+                                </HStack>
+                              }
+                              required={required}
+                              key={paramName}
+                              inputType={inputType}
+                              fieldName={paramName}
+                              form={form}
+                              placeholder={paramName}
+                            />
+                          );
+                        }
+                      )}
+                    </Box>
+                  </>
+                ) : (
+                  <Box fontWeight={'medium'} pb={4} px={2}>
+                    {t('app:this_tool_requires_no_input')}
+                  </Box>
+                )}
+
+                <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>
+                  {t('common:Run')}
+                </Button>
+              </Box>
+            ) : (
+              <Box flex={1} px={[2, 5]} overflow={'auto'}>
+                {output && (
+                  <Box>
+                    <Markdown source={`~~~json\n${output}`} />
+                  </Box>
+                )}
               </Box>
             )}
-          </Box>
+          </>
         )}
       </Box>
     </Flex>

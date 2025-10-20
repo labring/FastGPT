@@ -13,10 +13,10 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 export type UpdateHttpPluginBody = {
   appId: string;
-  baseUrl: string;
-  apiSchemaStr: string;
   toolList: HttpToolConfigType[];
-  headerSecret: StoreSecretValueType;
+  baseUrl?: string;
+  apiSchemaStr?: string;
+  headerSecret?: StoreSecretValueType;
   customHeaders?: string;
 };
 
@@ -27,12 +27,17 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
+  const formattedToolList = toolList.map((tool) => ({
+    ...tool,
+    headerSecret: tool.headerSecret ? storeSecretValue(tool.headerSecret) : undefined
+  }));
+
   const toolSetRuntimeNode = getHTTPToolSetRuntimeNode({
     name: app.name,
     avatar: app.avatar,
     baseUrl,
     apiSchemaStr,
-    toolList,
+    toolList: formattedToolList,
     headerSecret: formatedHeaderAuth,
     customHeaders
   });
