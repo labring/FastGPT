@@ -1,0 +1,289 @@
+{
+    "name": "Knowledge base + conversation opener",
+    "intro": "Performs knowledge base search for each question and injects search results into the LLM model as reference for the response.",
+    "author": "",
+    "avatar": "core/workflow/template/datasetSearch",
+    "type": "simple",
+    "tags": ["office-services"],
+    "workflow": {
+      "nodes": [
+        {
+          "nodeId": "userGuide",
+          "name": "System",
+          "intro": "Configure system parameters for the app.",
+          "avatar": "core/workflow/template/systemConfig",
+          "flowNodeType": "userGuide",
+          "position": {
+            "x": 531.2422736065552,
+            "y": -486.7611729549753
+          },
+          "version": "481",
+          "inputs": [],
+          "outputs": []
+        },
+        {
+          "nodeId": "workflowStartNodeId",
+          "name": "Start",
+          "intro": "",
+          "avatar": "core/workflow/template/workflowStart",
+          "flowNodeType": "workflowStart",
+          "position": {
+            "x": 558.4082376415505,
+            "y": 123.72387429194112
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "key": "userChatInput",
+              "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+              "valueType": "string",
+              "label": "Question",
+              "required": true,
+              "toolDescription": "Question"
+            }
+          ],
+          "outputs": [
+            {
+              "id": "userChatInput",
+              "key": "userChatInput",
+              "label": "core.module.input.label.user question",
+              "valueType": "string",
+              "type": "FlowNodeOutputTypeEnum.static"
+            }
+          ]
+        },
+        {
+          "nodeId": "7BdojPlukIQw",
+          "name": "AI chat",
+          "intro": "Chat with an model.",
+          "avatar": "core/workflow/template/aiChat",
+          "flowNodeType": "chatNode",
+          "showStatus": true,
+          "position": {
+            "x": 1638.509551404687,
+            "y": -341.0428450861567
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "key": "model",
+              "renderTypeList": [
+                "FlowNodeInputTypeEnum.settingLLMModel",
+                "FlowNodeInputTypeEnum.reference"
+              ],
+              "label": "core.module.input.label.aiModel",
+              "valueType": "string",
+              "value": "gpt-5"
+            },
+            {
+              "key": "temperature",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "value": 3,
+              "valueType": "number",
+              "min": 0,
+              "max": 10,
+              "step": 1
+            },
+            {
+              "key": "maxToken",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "value": 1950,
+              "valueType": "number",
+              "min": 100,
+              "max": 4000,
+              "step": 50
+            },
+            {
+              "key": "isResponseAnswerText",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "value": true,
+              "valueType": "boolean"
+            },
+            {
+              "key": "quoteTemplate",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "string"
+            },
+            {
+              "key": "quotePrompt",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "string"
+            },
+            {
+              "key": "systemPrompt",
+              "renderTypeList": ["FlowNodeInputTypeEnum.textarea", "FlowNodeInputTypeEnum.reference"],
+              "max": 3000,
+              "valueType": "string",
+              "label": "core.ai.Prompt",
+              "description": "core.app.tip.systemPromptTip",
+              "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+              "value": ""
+            },
+            {
+              "key": "history",
+              "renderTypeList": [
+                "FlowNodeInputTypeEnum.numberInput",
+                "FlowNodeInputTypeEnum.reference"
+              ],
+              "valueType": "chatHistory",
+              "label": "core.module.input.label.chat history",
+              "required": true,
+              "min": 0,
+              "max": 30,
+              "value": 6
+            },
+            {
+              "key": "userChatInput",
+              "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+              "valueType": "string",
+              "label": "Question",
+              "required": true,
+              "toolDescription": "Question",
+              "value": ["workflowStartNodeId", "userChatInput"]
+            },
+            {
+              "key": "quoteQA",
+              "renderTypeList": ["FlowNodeInputTypeEnum.settingDatasetQuotePrompt"],
+              "label": "",
+              "debugLabel": "Knowledge base reference",
+              "description": "",
+              "valueType": "datasetQuote",
+              "value": ["iKBoX2vIzETU", "quoteQA"]
+            }
+          ],
+          "outputs": [
+            {
+              "id": "history",
+              "key": "history",
+              "label": "core.module.output.label.New context",
+              "description": "core.module.output.description.New context",
+              "valueType": "chatHistory",
+              "type": "FlowNodeOutputTypeEnum.static"
+            },
+            {
+              "id": "answerText",
+              "key": "answerText",
+              "label": "core.module.output.label.Ai response content",
+              "description": "core.module.output.description.Ai response content",
+              "valueType": "string",
+              "type": "FlowNodeOutputTypeEnum.static"
+            }
+          ]
+        },
+        {
+          "nodeId": "iKBoX2vIzETU",
+          "name": "Knowledge base search",
+          "intro": "Use semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
+          "avatar": "core/workflow/template/datasetSearch",
+          "flowNodeType": "datasetSearchNode",
+          "showStatus": true,
+          "position": {
+            "x": 918.5901682164496,
+            "y": -227.11542247619582
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "key": "datasets",
+              "renderTypeList": [
+                "FlowNodeInputTypeEnum.selectDataset",
+                "FlowNodeInputTypeEnum.reference"
+              ],
+              "label": "core.module.input.label.Select dataset",
+              "value": [],
+              "valueType": "selectDataset",
+              "list": [],
+              "required": true
+            },
+            {
+              "key": "similarity",
+              "renderTypeList": ["FlowNodeInputTypeEnum.selectDatasetParamsModal"],
+              "label": "",
+              "value": 0.4,
+              "valueType": "number"
+            },
+            {
+              "key": "limit",
+              "renderTypeList": ["hidden"],
+              "label": "",
+              "value": 5000,
+              "valueType": "number"
+            },
+            {
+              "key": "searchMode",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "string",
+              "value": "embedding"
+            },
+            {
+              "key": "usingReRank",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "boolean",
+              "value": false
+            },
+            {
+              "key": "datasetSearchUsingExtensionQuery",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "boolean",
+              "value": true
+            },
+            {
+              "key": "datasetSearchExtensionModel",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "string"
+            },
+            {
+              "key": "datasetSearchExtensionBg",
+              "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+              "label": "",
+              "valueType": "string",
+              "value": ""
+            },
+            {
+              "key": "userChatInput",
+              "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+              "valueType": "string",
+              "label": "Question",
+              "required": true,
+              "toolDescription": "Content to be searched",
+              "value": ["workflowStartNodeId", "userChatInput"]
+            }
+          ],
+          "outputs": [
+            {
+              "id": "quoteQA",
+              "key": "quoteQA",
+              "label": "core.module.Dataset quote.label",
+              "type": "FlowNodeOutputTypeEnum.static",
+              "valueType": "datasetQuote",
+              "description": "Special array format. An empty array is returned when no results are found."
+            }
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "source": "workflowStartNodeId",
+          "target": "iKBoX2vIzETU",
+          "sourceHandle": "workflowStartNodeId-source-right",
+          "targetHandle": "iKBoX2vIzETU-target-left"
+        },
+        {
+          "source": "iKBoX2vIzETU",
+          "target": "7BdojPlukIQw",
+          "sourceHandle": "iKBoX2vIzETU-source-right",
+          "targetHandle": "7BdojPlukIQw-target-left"
+        }
+      ]
+    }
+  }
+  
