@@ -33,12 +33,18 @@ export class S3BaseBucket {
     if (this.options.externalBaseURL) {
       const externalBaseURL = new URL(this.options.externalBaseURL);
       const endpoint = externalBaseURL.hostname;
-      const useSSL = externalBaseURL.protocol === 'https';
+      const useSSL = externalBaseURL.protocol === 'https:';
+
+      const externalPort = externalBaseURL.port
+        ? parseInt(externalBaseURL.port)
+        : useSSL
+          ? 443
+          : undefined; // https 默认 443，其他情况让 MinIO 客户端使用默认端口
 
       this._externalClient = new Client({
         useSSL: useSSL,
         endPoint: endpoint,
-        port: options.port,
+        port: externalPort,
         accessKey: options.accessKey,
         secretKey: options.secretKey,
         transportAgent: options.transportAgent

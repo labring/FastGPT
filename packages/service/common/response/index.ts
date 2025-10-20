@@ -99,19 +99,12 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-    res.status(processedError.code);
-
-    // 如果有自定义消息，直接发送
-    if (message) {
-      res.send(message);
-    } else {
-      res.json({
-        code: processedError.code,
-        statusText: processedError.statusText,
-        message: processedError.message,
-        data: processedError.data !== undefined ? processedError.data : null
-      });
-    }
+    res.status(500).json({
+      code: processedError.code,
+      statusText: processedError.statusText,
+      message: message || processedError.message,
+      data: processedError.data !== undefined ? processedError.data : null
+    });
 
     return;
   }

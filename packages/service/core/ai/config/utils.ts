@@ -80,7 +80,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
   if (!init && global.systemModelList) return;
 
-  await preloadModelProviders();
+  try {
+    await preloadModelProviders();
+  } catch (error) {
+    console.log('Load systen model error, please check fastgpt-plugin', error);
+    return Promise.reject(error);
+  }
 
   global.systemModelList = [];
   global.systemActiveModelList = [];
