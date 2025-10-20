@@ -3,8 +3,6 @@ import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
 import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { type AxiosProgressEvent } from 'axios';
 
-export const postUploadImg = (e: UploadImgProps) => POST<string>('/common/file/uploadImage', e);
-
 export const postUploadFiles = (
   data: FormData,
   onUploadProgress: (progressEvent: AxiosProgressEvent) => void
