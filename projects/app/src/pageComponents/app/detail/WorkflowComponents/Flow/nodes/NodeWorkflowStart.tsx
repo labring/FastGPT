@@ -8,7 +8,6 @@ import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { useCreation } from 'ahooks';
 import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -16,8 +15,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import {
   formatEditorVariablePickerIcon,
-  getAppChatConfig,
-  getGuideModule
+  getAppChatConfig
 } from '@fastgpt/global/core/workflow/utils';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -48,9 +46,9 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         valueDesc: item.valueDesc
       };
     });
-  }, [systemConfigNode, appDetail.chatConfig, t]);
+  }, [appDetail.chatConfig, systemConfigNode, t]);
 
-  const systemVariables = useMemo(
+  const systemVariables = useMemoEnhance(
     () =>
       workflowSystemVariables.map((item) => ({
         id: item.key,
