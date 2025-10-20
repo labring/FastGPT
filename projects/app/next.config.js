@@ -140,8 +140,7 @@ const nextConfig = {
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true,
-    workerThreads: true,
-    optimizeCss: true
+    workerThreads: true
   }
 };
 
