@@ -1,4 +1,4 @@
-import { type UploadImgProps } from '@fastgpt/global/common/file/api';
+import { type preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
 import { type ClientSession, Types } from '../../../common/mongo';
@@ -18,7 +18,8 @@ export async function uploadMongoImg({
   metadata,
   shareId,
   forever = false
-}: UploadImgProps & {
+}: preUploadImgProps & {
+  base64Img: string;
   teamId: string;
   forever?: Boolean;
 }) {

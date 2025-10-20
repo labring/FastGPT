@@ -1,5 +1,4 @@
 import { POST } from '@/web/common/api/request';
-import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
 import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { type AxiosProgressEvent } from 'axios';
 
