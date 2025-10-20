@@ -28,12 +28,3 @@ export const ChatFavouriteAppSchema = z.object({
   })
 });
 export type ChatFavouriteAppType = z.infer<typeof ChatFavouriteAppSchema>;
-
-export const ChatFavouriteAppResponseItemSchema = z.object({
-  ...ChatFavouriteAppSchema.shape,
-  name: z.string().openapi({ example: 'FastGPT' }),
-  intro: z.string().openapi({ example: 'FastGPT' }),
-  avatar: z.string().openapi({ example: 'https://fastgpt.com/avatar.png' })
-});
-
-export type ChatFavouriteAppResponseItemType = z.infer<typeof ChatFavouriteAppResponseItemSchema>;
