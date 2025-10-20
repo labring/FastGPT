@@ -17,12 +17,20 @@ const getTemplateNameList = () => {
   return fs.promises.readdir(templatesPath);
 };
 
-const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
+const getFileTemplates = async (isEn = false): Promise<AppTemplateSchemaType[]> => {
   const templateNames = await getTemplateNameList();
 
   return Promise.all(
     templateNames.map<Promise<AppTemplateSchemaType>>(async (name) => {
-      const fileContent = (await import(`./src/${name}/template.json`))?.default;
+      let fileContent;
+      try {
+        // Try to load enTemplate.json first
+        const fileName = isEn ? 'enTemplate.json' : 'template.json';
+        fileContent = (await import(`./src/${name}/${fileName}`))?.default;
+      } catch {
+        // Fallback to template.json if enTemplate.json doesn't exist
+        fileContent = (await import(`./src/${name}/template.json`))?.default;
+      }
 
       return {
         ...fileContent,
@@ -33,8 +41,8 @@ const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
   );
 };
 
-const getAppTemplates = async () => {
-  const communityTemplates = await getFileTemplates();
+const getAppTemplates = async (isEn = false) => {
+  const communityTemplates = await getFileTemplates(isEn);
 
   const dbTemplates = await MongoAppTemplate.find();
 
@@ -64,7 +72,7 @@ const getAppTemplates = async () => {
   return res;
 };
 
-export const getAppTemplatesAndLoadThem = async (refresh = false) => {
+export const getAppTemplatesAndLoadThem = async (refresh = false, isEn = false) => {
   if (isProduction && global.appTemplates && global.appTemplates.length > 0 && !refresh)
     return global.appTemplates;
 
@@ -73,7 +81,7 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
   }
 
   try {
-    const appTemplates = await getAppTemplates();
+    const appTemplates = await getAppTemplates(isEn);
     global.appTemplates = appTemplates;
     return appTemplates;
   } catch (error) {
