@@ -136,7 +136,8 @@ const nextConfig = {
       'pg',
       'bullmq',
       '@zilliz/milvus2-sdk-node',
-      'tiktoken'
+      'tiktoken',
+      '@opentelemetry/api-logs'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true,
