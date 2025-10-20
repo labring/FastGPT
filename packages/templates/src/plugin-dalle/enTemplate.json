@@ -1,0 +1,332 @@
+{
+    "name": "DALL·E 3",
+    "intro": "Generates images by calling the DALL·E 3 API.",
+    "author": "",
+    "avatar": "core/app/templates/plugin-dalle",
+    "type": "plugin",
+    "tags": ["recommendation", "image-generation"],
+    "workflow": {
+      "nodes": [
+        {
+          "nodeId": "pluginInput",
+          "name": "Plugin input",
+          "intro": "Configure inputs required for running a plugin.",
+          "avatar": "core/workflow/template/workflowStart",
+          "flowNodeType": "pluginInput",
+          "showStatus": false,
+          "position": {
+            "x": 421.97302886868476,
+            "y": -89.7785530936485
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "renderTypeList": ["reference"],
+              "selectedTypeIndex": 0,
+              "valueType": "string",
+              "canEdit": true,
+              "key": "绘图提示词",
+              "label": "绘图提示词",
+              "description": "绘图提示词",
+              "required": true,
+              "toolDescription": "绘图提示词"
+            }
+          ],
+          "outputs": [
+            {
+              "id": "绘图提示词",
+              "valueType": "string",
+              "key": "绘图提示词",
+              "label": "绘图提示词",
+              "type": "hidden"
+            }
+          ]
+        },
+        {
+          "nodeId": "pluginOutput",
+          "name": "Plugin output",
+          "intro": "Customize external output. When a plugin is used, only the custom output is exposed.",
+  "intro_http_request": "Send an HTTP request to perform a more complex action (such as online search or database query).",
+          "avatar": "core/workflow/template/pluginOutput",
+          "flowNodeType": "pluginOutput",
+          "showStatus": false,
+          "position": {
+            "x": 1785.9300180845394,
+            "y": -108.2785530936485
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "renderTypeList": ["reference"],
+              "valueType": "string",
+              "canEdit": true,
+              "key": "图片访问链接",
+              "label": "图片访问链接",
+              "description": "",
+              "value": ["tMvel910bnrJ", "pJXgWoTpPoMy"]
+            },
+            {
+              "renderTypeList": ["reference"],
+              "valueType": "object",
+              "canEdit": true,
+              "key": "error",
+              "label": "Error details",
+              "description": "",
+              "value": ["tMvel910bnrJ", "error"]
+            }
+          ],
+          "outputs": []
+        },
+        {
+          "nodeId": "tMvel910bnrJ",
+          "name": "HTTP request",
+          "intro": "Send an HTTP request to perform a more complex action (such as online search or database query).",
+          "avatar": "core/workflow/template/httpRequest",
+          "flowNodeType": "httpRequest468",
+          "showStatus": true,
+          "position": {
+            "x": 1044.8838211811253,
+            "y": -414.7785530936485
+          },
+          "version": "481",
+          "inputs": [
+            {
+              "key": "system_addInputParam",
+              "renderTypeList": ["addInputParam"],
+              "valueType": "dynamic",
+              "label": "",
+              "required": false,
+              "description": "common:core.module.input.description.HTTP Dynamic Input",
+              "customInputConfig": {
+                "selectValueTypeList": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "object",
+                  "arrayString",
+                  "arrayNumber",
+                  "arrayBoolean",
+                  "arrayObject",
+                  "arrayAny",
+                  "any",
+                  "chatHistory",
+                  "datasetQuote",
+                  "dynamic",
+                  "selectApp",
+                  "selectDataset"
+                ],
+                "showDescription": false,
+                "showDefaultValue": true
+              },
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpMethod",
+              "renderTypeList": ["custom"],
+              "valueType": "string",
+              "label": "",
+              "value": "POST",
+              "required": true,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpTimeout",
+              "renderTypeList": ["custom"],
+              "valueType": "number",
+              "label": "",
+              "value": 30,
+              "min": 5,
+              "max": 600,
+              "required": true,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpReqUrl",
+              "renderTypeList": ["hidden"],
+              "valueType": "string",
+              "label": "",
+              "description": "common:core.module.input.description.Http Request Url",
+              "placeholder": "https://api.ai.com/getInventory",
+              "required": false,
+              "value": "https://api.openai.com/v1/images/generations",
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpHeader",
+              "renderTypeList": ["custom"],
+              "valueType": "any",
+              "value": [
+                {
+                  "key": "Authorization",
+                  "type": "string",
+                  "value": "Bearer {{authorization}}"
+                }
+              ],
+              "label": "",
+              "description": "common:core.module.input.description.Http Request Header",
+              "placeholder": "common:core.module.input.description.Http Request Header",
+              "required": false,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpParams",
+              "renderTypeList": ["hidden"],
+              "valueType": "any",
+              "value": [],
+              "label": "",
+              "required": false,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpJsonBody",
+              "renderTypeList": ["hidden"],
+              "valueType": "any",
+              "value": "{\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{prompt}}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+              "label": "",
+              "required": false,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpFormBody",
+              "renderTypeList": ["hidden"],
+              "valueType": "any",
+              "value": [],
+              "label": "",
+              "required": false,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "key": "system_httpContentType",
+              "renderTypeList": ["hidden"],
+              "valueType": "string",
+              "value": "json",
+              "label": "",
+              "required": false,
+              "debugLabel": "",
+              "toolDescription": ""
+            },
+            {
+              "renderTypeList": ["reference"],
+              "valueType": "string",
+              "canEdit": true,
+              "key": "prompt",
+              "label": "prompt",
+              "customInputConfig": {
+                "selectValueTypeList": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "object",
+                  "arrayString",
+                  "arrayNumber",
+                  "arrayBoolean",
+                  "arrayObject",
+                  "arrayAny",
+                  "any",
+                  "chatHistory",
+                  "datasetQuote",
+                  "dynamic",
+                  "selectApp",
+                  "selectDataset"
+                ],
+                "showDescription": false,
+                "showDefaultValue": true
+              },
+              "required": true,
+              "value": ["pluginInput", "绘图提示词"]
+            }
+          ],
+          "outputs": [
+            {
+              "id": "error",
+              "key": "error",
+              "label": "workflow:request_error",
+              "description": "HTTP请求错误信息，成功时返回空",
+              "valueType": "object",
+              "type": "static"
+            },
+            {
+              "id": "httpRawResponse",
+              "key": "httpRawResponse",
+              "required": true,
+              "label": "workflow:raw_response",
+              "description": "Raw HTTP response. The response data must be a string or in JSON format.",
+              "valueType": "any",
+              "type": "static"
+            },
+            {
+              "id": "system_addOutputParam",
+              "key": "system_addOutputParam",
+              "type": "dynamic",
+              "valueType": "dynamic",
+              "label": "",
+              "customFieldConfig": {
+                "selectValueTypeList": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "object",
+                  "arrayString",
+                  "arrayNumber",
+                  "arrayBoolean",
+                  "arrayObject",
+                  "any",
+                  "chatHistory",
+                  "datasetQuote",
+                  "dynamic",
+                  "selectApp",
+                  "selectDataset"
+                ],
+                "showDescription": false,
+                "showDefaultValue": false
+              }
+            },
+            {
+              "id": "pJXgWoTpPoMy",
+              "valueType": "string",
+              "type": "dynamic",
+              "key": "data[0].url",
+              "label": "data[0].url"
+            }
+          ]
+        },
+        {
+          "nodeId": "c7tRU2qAQoAf",
+          "name": "System",
+          "intro": "",
+          "avatar": "core/workflow/template/systemConfig",
+          "flowNodeType": "pluginConfig",
+          "position": {
+            "x": -46.476647046261974,
+            "y": -89.7785530936485
+          },
+          "version": "4811",
+          "inputs": [],
+          "outputs": []
+        }
+      ],
+      "edges": [
+        {
+          "source": "pluginInput",
+          "target": "tMvel910bnrJ",
+          "sourceHandle": "pluginInput-source-right",
+          "targetHandle": "tMvel910bnrJ-target-left"
+        },
+        {
+          "source": "tMvel910bnrJ",
+          "target": "pluginOutput",
+          "sourceHandle": "tMvel910bnrJ-source-right",
+          "targetHandle": "pluginOutput-target-left"
+        }
+      ]
+    }
+  }
+  

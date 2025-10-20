@@ -13,3 +13,7 @@ export const getLocale = (req: ApiRequestProps): localeType => {
   }
   return 'en';
 };
+
+export const isEnLocale = (req: ApiRequestProps): boolean => {
+  return getLocale(req) === 'en';
+};
