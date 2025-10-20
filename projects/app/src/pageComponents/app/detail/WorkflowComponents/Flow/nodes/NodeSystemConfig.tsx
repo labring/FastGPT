@@ -131,7 +131,7 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
     [setAppDetail]
   );
   const { zoom } = useViewport();
-  console.log(variables);
+
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} zoom={zoom} />;
 }
 
