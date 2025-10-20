@@ -4,12 +4,13 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type GroupFormType = {
   avatar: string;
@@ -28,12 +29,13 @@ function GroupInfoModal({
   const { t } = useTranslation();
 
   const {
-    File: AvatarSelect,
-    onOpen: onOpenSelectAvatar,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg, .jpeg, .png',
-    multiple: false
+    Component: AvatarUploader,
+    handleFileSelectorOpen: handleAvatarSelectorOpen,
+    uploading: uploadingAvatar
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, {
+    onSuccess: (avatar: string) => {
+      setValue('avatar', avatar);
+    }
   });
 
   const { register, handleSubmit, getValues, setValue } = useForm<GroupFormType>({
@@ -42,20 +44,6 @@ function GroupInfoModal({
       avatar: editGroup?.avatar || DEFAULT_TEAM_AVATAR
     }
   });
-
-  const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
-    async (file: File[]) => {
-      return onSelectImage(file, {
-        maxW: 300,
-        maxH: 300
-      });
-    },
-    {
-      onSuccess: (src: string) => {
-        setValue('avatar', src);
-      }
-    }
-  );
 
   const { runAsync: onCreate, loading: isLoadingCreate } = useRequest2(
     (data: GroupFormType) => {
@@ -96,7 +84,7 @@ function GroupInfoModal({
         <HStack>
           <Avatar
             src={getValues('avatar')}
-            onClick={onOpenSelectAvatar}
+            onClick={handleAvatarSelectorOpen}
             cursor={'pointer'}
             borderRadius={'md'}
           />
@@ -121,7 +109,8 @@ function GroupInfoModal({
           {editGroup ? t('common:Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
-      <AvatarSelect onSelect={onSelectAvatar} />
+      {/* <AvatarSelect onSelect={onSelectAvatar} /> */}
+      <AvatarUploader />
     </MyModal>
   );
 }

@@ -8,7 +8,6 @@ import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/sys
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum
@@ -26,25 +25,30 @@ import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import { isArray } from 'lodash';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import {
   valueTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
-import { isValidReferenceValueFormat } from '@fastgpt/global/core/workflow/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
 
   const menuList = useRef([
     {
@@ -59,15 +63,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     }
   ]);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -130,9 +135,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         }
         // Node output: 根据数据类型决定
         else if (value[0] && value[1]) {
-          const output = nodeList
-            .find((node) => node.nodeId === value[0])
-            ?.outputs.find((output) => output.id === value[1]);
+          const output = getNodeById(value[0])?.outputs.find((output) => output.id === value[1]);
           if (output) {
             return {
               inputType: valueTypeToInputType(output.valueType)
@@ -146,7 +149,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       })();
       const { valueType } = getRefData({
         variable: updateItem.variable,
-        nodeList,
+        getNodeById,
+        systemConfigNode,
         chatConfig: appDetail.chatConfig
       });
       const renderTypeData = menuList.current.find(
@@ -183,7 +187,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         value: ['', ''],
                         valueType: getRefData({
                           variable: value as ReferenceItemValueType,
-                          nodeList,
+                          getNodeById,
+                          systemConfigNode,
                           chatConfig: appDetail.chatConfig
                         }).valueType,
                         variable: value as ReferenceItemValueType

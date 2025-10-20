@@ -7,10 +7,7 @@ import {
 } from '@/pageComponents/chat/constants';
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import type {
-  ChatSettingReturnType,
-  ChatSettingSchema
-} from '@fastgpt/global/core/chat/setting/type';
+import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,9 +22,9 @@ export type ChatSettingContextValue = {
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
-  chatSettings?: ChatSettingReturnType;
-  refreshChatSetting: () => Promise<ChatSettingReturnType>;
-  logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'>;
+  chatSettings: ChatSettingType | undefined;
+  refreshChatSetting: () => Promise<ChatSettingType | undefined>;
+  logos: { wideLogoUrl?: string; squareLogoUrl?: string };
 };
 
 export const ChatSettingContext = createContext<ChatSettingContextValue>({
@@ -36,12 +33,9 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
   collapse: defaultCollapseStatus,
   onTriggerCollapse: () => {},
   chatSettings: undefined,
-  refreshChatSetting: function (): Promise<ChatSettingReturnType> {
+  logos: { wideLogoUrl: '', squareLogoUrl: '' },
+  refreshChatSetting: function (): Promise<ChatSettingType | undefined> {
     throw new Error('Function not implemented.');
-  },
-  logos: {
-    wideLogoUrl: '',
-    squareLogoUrl: ''
   }
 });
 
@@ -119,7 +113,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     }
   }, [pane, handlePaneChange]);
 
-  const logos: Pick<ChatSettingSchema, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
+  const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({
       wideLogoUrl: chatSettings?.wideLogoUrl,
       squareLogoUrl: chatSettings?.squareLogoUrl

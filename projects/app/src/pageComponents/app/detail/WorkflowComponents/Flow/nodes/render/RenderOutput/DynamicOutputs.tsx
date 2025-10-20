@@ -8,11 +8,11 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 type DynamicOutputsProps = {
   nodeId: string;
@@ -32,7 +32,7 @@ const defaultOutput: FlowNodeOutputItemType = {
 
 const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const handleUpdateOutput = useCallback(
     (originalKey: string, updatedOutput: FlowNodeOutputItemType) => {

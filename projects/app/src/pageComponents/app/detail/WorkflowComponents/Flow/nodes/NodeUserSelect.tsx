@@ -14,7 +14,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { type UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
@@ -23,11 +22,12 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { zoom } = useViewport();
 
   const CustomComponent = useMemo(
@@ -139,7 +139,7 @@ const OptionItem = ({
   index: number;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { key: optionKey, value, ...props } = itemValue;
   const options = value as UserSelectOptionItemType[];
 

@@ -3,18 +3,47 @@ title: 'V4.13.2（进行中）'
 description: 'FastGPT V4.13.2 更新说明'
 ---
 
+# 更新指南
+
+## 增加 FastGPT/FastGPT-pro 环境变量
+
+```
+S3_PUBLIC_BUCKET=S3公开桶名称（公开读私有写）
+```
 
 ## 🚀 新增内容
 
+1. HTTP 工具集支持手动创建模式。
+2. 项目 OpenAPI 框架引入。
+3. APIKey 有效性检测接口。
+4. 导出对话日志，末尾跟随当前版本全局变量。
 
 ## ⚙️ 优化
 
 1. 非管理员无法看到团队审计日志。
+2. 引入 S3 用于存储应用头像。
+3. 工作流画布性能。
 
 ## 🐛 修复
 
 1. LLM 模型默认支持图片，导致请求错误。
+2. Mongo 多副本切换时候，watch 未重新触发。
+3. 文本分块，所有策略用完后，未处理 LastText 数据。
+4. 变量输入框，number=0 时，无法通过校验。
+5. 工作流复杂循环并行判断异常。
 
 ## 🔨 插件更新
 
-1. Perplexity search 工具。
+1. 新增：Perplexity search 工具。
+2. 新增：Base64转文件工具。
+3. 新增：MiniMax TTS 文件生成工具。
+4. 新增：Openrouter nano banana 绘图工具。
+5. 新增：Redis 缓存操作工具。
+6. 新增：Tavily search 工具。
+7. 新增：硅基流动 qwen-image 和 qwen-image-edit 工具。
+8. 新增：飞书多维表格操作套件。
+9. 新增：Youtube 字幕提取。
+10. 新增：阿里百炼 qwen image edit。
+11. 新增：Markdown 转 PPT 工具。
+12. 新增：whisper 语音转文字工具。
+13. 系统工具支持配置是否需要在 Worker 中运行。

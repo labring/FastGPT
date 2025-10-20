@@ -23,10 +23,15 @@ import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/con
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
-  return JSON.stringify(data).replace(/\n/g, '\\n');
+  if (typeof data === 'object') {
+    return sanitizeCsvField(JSON.stringify(data));
+  }
+  return data;
 };
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
@@ -58,6 +63,10 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     appId,
     per: AppReadChatLogPerVal
   });
+  const { chatConfig } = await getAppLatestVersion(appId, app);
+  const variables = (chatConfig.variables || []).filter(
+    (item) => item.type !== VariableInputEnum.password
+  );
 
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
@@ -347,7 +356,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           userBadFeedbackItems: 1,
           customFeedbackItems: 1,
           markItems: 1,
-          chatDetails: 1
+          chatDetails: 1,
+          variables: 1
         }
       }
     ],
@@ -361,7 +371,9 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     readStream: cursor
   });
 
-  write(`\uFEFF${title}`);
+  write(
+    `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`
+  );
 
   cursor.on('data', (doc) => {
     const createdTime = doc.createTime
@@ -416,15 +428,21 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 
-    const row = [...logKeys, 'chatDetails']
+    let rowStr = [...logKeys, 'chatDetails']
       .map((key) => {
         const getter = valueMap[key];
         const val = getter ? getter() : '';
         return sanitizeCsvField(val ?? '');
       })
       .join(',');
+    rowStr += `,${variables
+      .map((variable) => {
+        const value = doc.variables[variable.key] || '';
+        return formatJsonString(value);
+      })
+      .join(',')}`;
 
-    write(`\n${row}`);
+    write(`\n${rowStr}`);
   });
 
   cursor.on('end', () => {

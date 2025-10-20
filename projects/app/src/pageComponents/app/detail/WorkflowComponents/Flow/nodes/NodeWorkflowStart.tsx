@@ -7,7 +7,7 @@ import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useCreation } from 'ahooks';
 import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -20,18 +20,19 @@ import {
   getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
 
-  const customGlobalVariables = useCreation(() => {
+  const customGlobalVariables = useMemoEnhance(() => {
     const globalVariables = formatEditorVariablePickerIcon(
       getAppChatConfig({
         chatConfig: appDetail.chatConfig,
-        systemConfigNode: getGuideModule(nodeList),
+        systemConfigNode,
         isPublicFetch: true
       })?.variables || []
     );
@@ -47,7 +48,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         valueDesc: item.valueDesc
       };
     });
-  }, [nodeList, appDetail.chatConfig, t]);
+  }, [systemConfigNode, appDetail.chatConfig, t]);
 
   const systemVariables = useMemo(
     () =>
@@ -62,36 +63,33 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       })),
     [t]
   );
-  const Render = useMemo(() => {
-    return (
-      <NodeCard
-        selected={selected}
-        menuForbid={{
-          copy: true,
-          delete: true
-        }}
-        {...data}
-      >
-        <Container>
-          <IOTitle text={t('common:Output')} />
-          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-        </Container>
-        <Container>
-          <IOTitle text={t('common:core.module.Variable')} />
-          {customGlobalVariables.length > 0 && (
-            <>
-              <RenderOutput nodeId={nodeId} flowOutputList={customGlobalVariables} />
-              <MyDivider />
-            </>
-          )}
 
-          <RenderOutput nodeId={nodeId} flowOutputList={systemVariables} />
-        </Container>
-      </NodeCard>
-    );
-  }, [customGlobalVariables, data, nodeId, outputs, selected, systemVariables, t]);
+  return (
+    <NodeCard
+      selected={selected}
+      menuForbid={{
+        copy: true,
+        delete: true
+      }}
+      {...data}
+    >
+      <Container>
+        <IOTitle text={t('common:Output')} />
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
+      <Container>
+        <IOTitle text={t('common:core.module.Variable')} />
+        {customGlobalVariables.length > 0 && (
+          <>
+            <RenderOutput nodeId={nodeId} flowOutputList={customGlobalVariables} />
+            <MyDivider />
+          </>
+        )}
 
-  return Render;
+        <RenderOutput nodeId={nodeId} flowOutputList={systemVariables} />
+      </Container>
+    </NodeCard>
+  );
 };
 
 export default React.memo(NodeStart);

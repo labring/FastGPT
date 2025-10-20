@@ -12,6 +12,72 @@ export interface ResponseType<T = any> {
   data: T;
 }
 
+export interface ProcessedError {
+  code: number;
+  statusText: string;
+  message: string;
+  data?: any;
+  shouldClearCookie: boolean;
+}
+
+/**
+ * 通用错误处理函数，提取错误信息并分类记录日志
+ * @param params - 包含错误对象、URL和默认状态码的参数
+ * @returns 处理后的错误对象
+ */
+export function processError(params: {
+  error: any;
+  url?: string;
+  defaultCode?: number;
+}): ProcessedError {
+  const { error, url, defaultCode = 500 } = params;
+
+  const errResponseKey = typeof error === 'string' ? error : error?.message;
+
+  // 1. 处理特定的业务错误（ERROR_RESPONSE）
+  if (ERROR_RESPONSE[errResponseKey]) {
+    const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
+
+    // 记录业务侧错误日志
+    addLog.info(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
+
+    return {
+      code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
+      statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
+      message: ERROR_RESPONSE[errResponseKey].message,
+      data: ERROR_RESPONSE[errResponseKey].data,
+      shouldClearCookie
+    };
+  }
+
+  // 2. 提取通用错误消息
+  let msg = error?.response?.statusText || error?.message || '请求错误';
+  if (typeof error === 'string') {
+    msg = error;
+  } else if (proxyError[error?.code]) {
+    msg = '网络连接异常';
+  } else if (error?.response?.data?.error?.message) {
+    msg = error?.response?.data?.error?.message;
+  } else if (error?.error?.message) {
+    msg = error?.error?.message;
+  }
+
+  // 3. 根据错误类型记录不同级别的日志
+  if (error instanceof UserError) {
+    addLog.info(`Request error: ${url}, ${msg}`);
+  } else {
+    addLog.error(`System unexpected error: ${url}, ${msg}`, error);
+  }
+
+  // 4. 返回处理后的错误信息
+  return {
+    code: defaultCode,
+    statusText: 'error',
+    message: replaceSensitiveText(msg),
+    shouldClearCookie: false
+  };
+}
+
 export const jsonRes = <T = any>(
   res: NextApiResponse,
   props?: {
@@ -24,53 +90,30 @@ export const jsonRes = <T = any>(
 ) => {
   const { code = 200, message = '', data = null, error, url } = props || {};
 
-  const errResponseKey = typeof error === 'string' ? error : error?.message;
-  // Specified error
-  if (ERROR_RESPONSE[errResponseKey]) {
-    // login is expired
-    if (errResponseKey === ERROR_ENUM.unAuthorization) {
+  // 如果有错误，使用统一的错误处理逻辑
+  if (error) {
+    const processedError = processError({ error, url, defaultCode: code });
+
+    // 如果需要清除 cookie
+    if (processedError.shouldClearCookie) {
       clearCookie(res);
     }
 
-    // Bussiness Side Error
-    addLog.info(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
-
-    res.status(code);
-
-    if (message) {
-      res.send(message);
-    } else {
-      res.json(ERROR_RESPONSE[errResponseKey]);
-    }
+    res.status(500).json({
+      code: processedError.code,
+      statusText: processedError.statusText,
+      message: message || processedError.message,
+      data: processedError.data !== undefined ? processedError.data : null
+    });
 
     return;
   }
 
-  // another error
-  let msg = '';
-  if ((code < 200 || code >= 400) && !message) {
-    msg = error?.response?.statusText || error?.message || '请求错误';
-    if (typeof error === 'string') {
-      msg = error;
-    } else if (proxyError[error?.code]) {
-      msg = '网络连接异常';
-    } else if (error?.response?.data?.error?.message) {
-      msg = error?.response?.data?.error?.message;
-    } else if (error?.error?.message) {
-      msg = error?.error?.message;
-    }
-
-    if (error instanceof UserError) {
-      addLog.info(`Request error: ${url}, ${msg}`);
-    } else {
-      addLog.error(`System unexpected error: ${url}, ${msg}`, error);
-    }
-  }
-
+  // 成功响应
   res.status(code).json({
     code,
     statusText: '',
-    message: replaceSensitiveText(message || msg),
+    message: replaceSensitiveText(message),
     data: data !== undefined ? data : null
   });
 };

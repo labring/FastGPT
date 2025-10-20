@@ -11,14 +11,14 @@ import IOTitle from '../components/IOTitle';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import RenderOutput from './render/RenderOutput';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitOutput(outputs),
     [outputs, splitOutput]

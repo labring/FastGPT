@@ -31,11 +31,12 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { nodeLafCustomInputConfig } from '@fastgpt/global/core/workflow/template/system/laf';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getSchemaValueType, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -46,7 +47,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
   const { data, selected } = props;
   const { nodeId, inputs, outputs } = data;
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const requestUrl = useMemo(
     () => inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl) as FlowNodeInputItemType,
@@ -334,7 +335,7 @@ const ConfigLaf = () => {
 const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
   const { commonInputs, isTool } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),
     [inputs, nodeId, splitToolInputs]

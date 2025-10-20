@@ -11,13 +11,13 @@ import ValueTypeLabel from '../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../../context';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useTranslation();
   const { label = '', description, valueType, valueDesc } = output;
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   return (
     <Box position={'relative'}>

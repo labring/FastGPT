@@ -35,6 +35,7 @@ import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/sy
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
+import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 
 /* ====== node ======= */
 export const nodeTemplate2FlowNode = ({
@@ -227,11 +228,13 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
 /* ====== Reference ======= */
 export const getRefData = ({
   variable,
-  nodeList,
+  getNodeById,
+  systemConfigNode,
   chatConfig
 }: {
   variable?: ReferenceItemValueType;
-  nodeList: FlowNodeItemType[];
+  getNodeById: WorkflowDataContextType['getNodeById'];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }) => {
   if (!variable)
@@ -240,8 +243,8 @@ export const getRefData = ({
       required: false
     };
 
-  const node = nodeList.find((node) => node.nodeId === variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig });
+  const node = getNodeById(variable[0]);
+  const systemVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -334,19 +337,21 @@ export const filterWorkflowNodeOutputsByType = (
 
 export const getNodeAllSource = ({
   nodeId,
-  nodes,
+  systemConfigNode,
+  getNodeById,
   edges,
   chatConfig,
   t
 }: {
   nodeId: string;
-  nodes: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
 }): FlowNodeItemType[] => {
   // get current node
-  const node = nodes.find((item) => item.nodeId === nodeId);
+  const node = getNodeById(nodeId);
   if (!node) {
     return [];
   }
@@ -357,7 +362,7 @@ export const getNodeAllSource = ({
   const findSourceNode = (nodeId: string) => {
     const targetEdges = edges.filter((item) => item.target === nodeId || item.target === parentId);
     targetEdges.forEach((edge) => {
-      const sourceNode = nodes.find((item) => item.nodeId === edge.source);
+      const sourceNode = getNodeById(edge.source);
       if (!sourceNode) return;
 
       // 去重
@@ -373,7 +378,7 @@ export const getNodeAllSource = ({
   sourceNodes.set(
     'system_global_variable',
     getGlobalVariableNode({
-      nodes,
+      systemConfigNode,
       t,
       chatConfig
     })
@@ -643,16 +648,16 @@ export const checkWorkflowNodeAndConnection = ({
 /* ====== Variables ======= */
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
-  nodes,
+  systemConfigNode,
   chatConfig
 }: {
-  nodes: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
       chatConfig,
-      systemConfigNode: getGuideModule(nodes),
+      systemConfigNode,
       isPublicFetch: true
     })?.variables || []
   );

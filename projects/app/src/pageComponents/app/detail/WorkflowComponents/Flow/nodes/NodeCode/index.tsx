@@ -8,7 +8,6 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import RenderToolInput from '../render/RenderToolInput';
 import RenderOutput from '../render/RenderOutput';
@@ -28,11 +27,13 @@ import CatchError from '../render/RenderOutput/CatchError';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitOutput(outputs),
     [splitOutput, outputs]
@@ -42,8 +43,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     (item) => item.key === NodeInputKeyEnum.codeType
   ) as FlowNodeInputItemType;
 
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')

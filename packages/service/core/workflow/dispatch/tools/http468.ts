@@ -1,5 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  contentTypeMap,
   ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -58,15 +59,6 @@ type HttpResponse = DispatchNodeResultType<
 >;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
-
-const contentTypeMap = {
-  [ContentTypes.none]: '',
-  [ContentTypes.formData]: '',
-  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
-  [ContentTypes.json]: 'application/json',
-  [ContentTypes.xml]: 'application/xml',
-  [ContentTypes.raw]: 'text/plain'
-};
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {

@@ -148,6 +148,7 @@ describe('WorkflowComponents utils', () => {
       const result = getEditorVariables({
         nodeId,
         nodeList,
+        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
         edges,
         appDetail,
         t
@@ -168,6 +169,7 @@ describe('WorkflowComponents utils', () => {
       const result = getEditorVariables({
         nodeId: 'nonexistent',
         nodeList: [],
+        getNodeById: (nodeId: string) => undefined,
         edges: [],
         appDetail: {} as AppDetailType,
         t: (key: string) => key
