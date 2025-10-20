@@ -68,9 +68,11 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const handleChange = useCallback(
     (value: any) => {
       // 添加长度验证（针对提示词字段）
-      if (typeof value === 'string' && value.length > 100000) {
-        console.warn('Input value too long:', value.length);
-        return;
+      if (typeof value === 'string') {
+        if (value.length > 1000000) {
+          console.warn('Input value too long:', value.length);
+          value = value.slice(0, 1000000);
+        }
       }
 
       onChangeNode({
