@@ -384,7 +384,6 @@ export const runToolCall = async (
       })();
 
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
-      initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
       const toolRunResponse = await runWorkflow({
         ...workflowProps,
         usageId: undefined,
