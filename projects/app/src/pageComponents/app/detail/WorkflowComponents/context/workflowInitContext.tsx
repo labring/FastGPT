@@ -255,7 +255,7 @@ const WorkflowInitContextProvider = ({
     );
   }, [nodeList, edges]);
 
-  // 快照阻塞标志
+  // Snapshot blocking flag
   const forbiddenSaveSnapshot = useRef(false);
 
   // Elevate childNodes
