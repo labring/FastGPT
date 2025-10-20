@@ -75,7 +75,7 @@ export class PgVectorCtrl {
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_vector_index ON ${DBDatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
       );
       await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DBDatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_team_dataset_collection_index ON ${DBDatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS table_des_create_time_index ON ${DBDatasetVectorTableName} USING btree(createtime);`
