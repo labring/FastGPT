@@ -12,11 +12,14 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 30
   REDIS_URL: redis://default:mypassword@redis:6379
+  S3_EXTERNAL_BASE_URL:
   S3_ENDPOINT: fastgpt-minio
   S3_PORT: 9000
   S3_USE_SSL: false
   S3_ACCESS_KEY: minioadmin
   S3_SECRET_KEY: minioadmin
+  S3_PUBLIC_BUCKET: fastgpt-public # 公开读私有写桶
+  S3_PRIVATE_BUCKET: fastgpt-private # 私有读写桶
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -91,6 +94,23 @@ ${{vec.db}}
       start_period: 30s
     volumes:
       - ./redis/data:/data
+  fastgpt-minio:
+    image: ${{minio.image}}:${{minio.tag}}
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   fastgpt:
     container_name: fastgpt
@@ -142,24 +162,6 @@ ${{vec.db}}
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
     volumes:
       - ./config.json:/app/data/config.json
-
-  fastgpt-minio:
-    image: ${{minio.image}}:${{minio.tag}}
-    container_name: fastgpt-minio
-    restart: always
-    networks:
-      - fastgpt
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    volumes:
-      - ./fastgpt-minio:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
   sandbox:
     container_name: sandbox
     image: ${{fastgpt-sandbox.image}}:${{fastgpt-sandbox.tag}}
@@ -185,7 +187,6 @@ ${{vec.db}}
     environment:
       <<: *x-share-db-config
       AUTH_TOKEN: *x-plugin-auth-token
-      S3_BUCKET: fastgpt-plugins
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小
