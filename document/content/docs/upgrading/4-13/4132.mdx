@@ -3,14 +3,40 @@ title: 'V4.13.2（进行中）'
 description: 'FastGPT V4.13.2 更新说明'
 ---
 
-# 更新指南
+## 更新指南
 
-## 增加 FastGPT/FastGPT-pro 环境变量
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.13.2
+- 更新 FastGPT 商业版镜像tag: v4.13.2
+- 更新 fastgpt-plugin 镜像 tag: v0.2.4
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+
+### 2. 增加 FastGPT/FastGPT-pro 环境变量
 
 ```
-S3_PUBLIC_BUCKET=S3公开桶名称（公开读私有写）
+S3_PUBLIC_BUCKET=fastgpt_public #（公开读公开桶名称，对应原来 plugin 项目的S3_TOOL_BUCKET）
+S3_PRIVATE_BUCKET=fastgpt_private #（私有读私有写桶名称，对应原来 plugin 项目的S3_PLUGIN_BUCKET）
 ```
 
+### 3. 修复 fastgpt-plugin 环境变量
+
+- S3_TOOL_BUCKET 改名成 S3_PUBLIC_BUCKET
+- S3_PLUGIN_BUCKET 改名成 S3_PRIVATE_BUCKET
+
+### 4. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+会删除原先 S3 的 circleLife 策略。如果使用的是外部 S3，可能会因为不支持 circleLife 操作导 
 ## 🚀 新增内容
 
 1. HTTP 工具集支持手动创建模式。

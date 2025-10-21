@@ -1,6 +1,5 @@
-import { Client, type RemoveOptions, type CopyConditions, type LifecycleConfig } from 'minio';
+import { Client, type RemoveOptions, type CopyConditions } from 'minio';
 import {
-  type ExtensionType,
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
@@ -9,9 +8,9 @@ import {
 import { defaultS3Options, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
+import { addLog } from '../../system/log';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -56,6 +55,7 @@ export class S3BaseBucket {
         await this.client.makeBucket(this.bucketName);
       }
       await this.options.afterInit?.();
+      console.log(`S3 init success: ${this.name}`);
     };
     init();
   }
@@ -63,8 +63,10 @@ export class S3BaseBucket {
   get name(): string {
     return this.bucketName;
   }
-
-  protected get client(): Client {
+  get client(): Client {
+    return this._client;
+  }
+  get externalClient(): Client {
     return this._externalClient ?? this._client;
   }
 
@@ -93,9 +95,9 @@ export class S3BaseBucket {
     try {
       const { expiredHours } = options;
       const filename = params.filename;
-      const ext = path.extname(filename).toLowerCase() as ExtensionType;
-      const contentType = Mimes[ext] ?? 'application/octet-stream';
-      const maxFileSize = this.options.maxFileSize as number;
+      const ext = path.extname(filename).toLowerCase();
+      const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
+      const maxFileSize = this.options.maxFileSize;
 
       const key = (() => {
         if ('rawKey' in params) return params.rawKey;
@@ -103,20 +105,21 @@ export class S3BaseBucket {
         return `${params.source}/${params.teamId}/${getNanoid(6)}-${filename}`;
       })();
 
-      const policy = this.client.newPostPolicy();
+      const policy = this.externalClient.newPostPolicy();
       policy.setKey(key);
       policy.setBucket(this.name);
       policy.setContentType(contentType);
-      policy.setContentLengthRange(1, maxFileSize);
+      if (maxFileSize) {
+        policy.setContentLengthRange(1, maxFileSize);
+      }
       policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
       policy.setUserMetaData({
-        'content-type': contentType,
         'content-disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'origin-filename': encodeURIComponent(filename),
         'upload-time': new Date().toISOString()
       });
 
-      const { formData, postURL } = await this.client.presignedPostPolicy(policy);
+      const { formData, postURL } = await this.externalClient.presignedPostPolicy(policy);
 
       if (expiredHours) {
         await MongoS3TTL.create({
@@ -131,7 +134,8 @@ export class S3BaseBucket {
         fields: formData
       };
     } catch (error) {
-      return Promise.reject(error);
+      addLog.error('Failed to create post presigned url', error);
+      return Promise.reject('Failed to create post presigned url');
     }
   }
 }
