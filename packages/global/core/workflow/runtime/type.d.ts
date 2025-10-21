@@ -108,6 +108,7 @@ export type RuntimeNodeItemType = {
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
+  isStart?: boolean;
   version?: string;
 
   inputs: FlowNodeInputItemType[];
