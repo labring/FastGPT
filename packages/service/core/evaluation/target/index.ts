@@ -159,7 +159,15 @@ export class WorkflowTarget extends EvaluationTarget {
         maxRunTimes: WORKFLOW_MAX_RUN_TIMES
       });
 
-    const response = removeDatasetCiteText(assistantResponses[0]?.text?.content || '', false);
+    let response = (() => {
+      return assistantResponses
+        .map((item) => item?.text?.content)
+        .filter(Boolean)
+        .join('\n');
+    })();
+
+    // Format response content
+    response = removeDatasetCiteText(response.trim(), false);
 
     // Construct user question object
     const userQuestion: UserChatItemType = {
