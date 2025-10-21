@@ -20,6 +20,7 @@ import {
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 let isOauthLogging = false;
 
@@ -124,7 +125,7 @@ const provider = () => {
     isOauthLogging = true;
 
     (async () => {
-      await clearToken();
+      await retryFn(async () => clearToken());
       router.prefetch('/dashboard/apps');
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
