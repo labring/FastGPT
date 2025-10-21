@@ -12,11 +12,14 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 30
   REDIS_URL: redis://default:mypassword@redis:6379
+  S3_EXTERNAL_BASE_URL:
   S3_ENDPOINT: fastgpt-minio
   S3_PORT: 9000
   S3_USE_SSL: false
   S3_ACCESS_KEY: minioadmin
   S3_SECRET_KEY: minioadmin
+  S3_PUBLIC_BUCKET: fastgpt-public # 公开读私有写桶
+  S3_PRIVATE_BUCKET: fastgpt-private # 私有读写桶
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -128,10 +131,27 @@ services:
       start_period: 30s
     volumes:
       - ./redis/data:/data
+  fastgpt-minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.13.1 # git
+    image: ghcr.io/labring/fastgpt:v4.13.2 # git
     ports:
       - 3000:3000
     networks:
@@ -179,33 +199,15 @@ services:
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
     volumes:
       - ./config.json:/app/data/config.json
-
-  fastgpt-minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    container_name: fastgpt-minio
-    restart: always
-    networks:
-      - fastgpt
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    volumes:
-      - ./fastgpt-minio:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.13.1
+    image: ghcr.io/labring/fastgpt-sandbox:v4.13.2
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.13.1
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.13.2
     networks:
       - fastgpt
     ports:
@@ -214,7 +216,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.2.2
+    image: ghcr.io/labring/fastgpt-plugin:v0.2.4
     container_name: fastgpt-plugin
     restart: always
     networks:

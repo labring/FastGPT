@@ -1,5 +1,5 @@
 ---
-title: 'V4.13.2（进行中）'
+title: 'V4.13.2（包含升级脚本）'
 description: 'FastGPT V4.13.2 更新说明'
 ---
 
@@ -36,7 +36,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
 --header 'Content-Type: application/json'
 ```
 
-会删除原先 S3 的 circleLife 策略。如果使用的是外部 S3，可能会因为不支持 circleLife 操作导 
+会删除原先 S3 的 circleLife 策略。如果使用的是外部 S3，可能会因为不支持 circleLife 操作导致该脚本错误，可以忽略（因为设置策略也会失败）。
+
+
 ## 🚀 新增内容
 
 1. HTTP 工具集支持手动创建模式。
