@@ -14,7 +14,7 @@ import React, {
   useState
 } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useDebounceEffect } from 'ahooks';
+import { useDebounceEffect, useMemoizedFn, useUnmount } from 'ahooks';
 import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -105,13 +105,10 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   }, [appDetail.chatConfig, flowData2StoreData, isSaved, onSaveApp]);
 
   // 页面关闭前自动保存
-  useEffect(() => {
-    return () => {
-      if (isProduction) {
-        autoSaveFn();
-      }
-    };
-  }, [autoSaveFn]);
+  useUnmount(() => {
+    autoSaveFn();
+  });
+
   useBeforeunload({
     tip: t('common:core.tip.leave page'),
     callback: autoSaveFn

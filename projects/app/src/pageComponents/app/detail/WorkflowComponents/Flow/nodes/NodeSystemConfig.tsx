@@ -1,4 +1,4 @@
-import React, { type Dispatch, useMemo } from 'react';
+import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { type NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -18,12 +18,10 @@ import {
   type AppDetailType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
@@ -44,7 +42,7 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       systemConfigNode: data,
       isPublicFetch: true
     });
-  }, [data, appDetail]);
+  }, [data, appDetail.chatConfig]);
 
   const componentsProps = useMemo(
     () => ({
@@ -54,51 +52,47 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [chatConfig, setAppDetail]
   );
 
-  const Render = useMemo(() => {
-    return (
-      <>
-        <NodeCard
-          selected={selected}
-          menuForbid={{
-            debug: true,
-            copy: true,
-            delete: true
-          }}
-          {...data}
-        >
-          <Container>
-            <WelcomeText {...componentsProps} />
-            <Box mt={2} pt={2}>
-              <ChatStartVariable {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <FileSelectConfig {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <TTSGuide {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <WhisperGuide {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
-              <QuestionGuide {...componentsProps} />
-            </Box>
-            <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <ScheduledTrigger {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <AutoExecute {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <QuestionInputGuide {...componentsProps} />
-            </Box>
-          </Container>
-        </NodeCard>
-      </>
-    );
-  }, [componentsProps, data, selected]);
-
-  return Render;
+  return (
+    <>
+      <NodeCard
+        selected={selected}
+        menuForbid={{
+          debug: true,
+          copy: true,
+          delete: true
+        }}
+        {...data}
+      >
+        <Container>
+          <WelcomeText {...componentsProps} />
+          <Box mt={2} pt={2}>
+            <ChatStartVariable {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <FileSelectConfig {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <TTSGuide {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <WhisperGuide {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
+            <QuestionGuide {...componentsProps} />
+          </Box>
+          <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <ScheduledTrigger {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <AutoExecute {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+            <QuestionInputGuide {...componentsProps} />
+          </Box>
+        </Container>
+      </NodeCard>
+    </>
+  );
 };
 
 export default React.memo(NodeUserGuide);
@@ -124,15 +118,18 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
 }
 
 function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
-  const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
-    setAppDetail((state) => ({
-      ...state,
-      chatConfig: {
-        ...state.chatConfig,
-        variables: value
-      }
-    }));
-  });
+  const updateVariables = useCallback(
+    (value: VariableItemType[]) => {
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          variables: value
+        }
+      }));
+    },
+    [setAppDetail]
+  );
   const { zoom } = useViewport();
 
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} zoom={zoom} />;

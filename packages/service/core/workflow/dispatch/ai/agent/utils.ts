@@ -62,9 +62,12 @@ export const initToolNodes = (
   nodes.forEach((node) => {
     if (entryNodeIds.includes(node.nodeId)) {
       node.isEntry = true;
+      node.isStart = true;
       if (startParams) {
         node.inputs = updateToolInputValue({ params: startParams, inputs: node.inputs });
       }
+    } else {
+      node.isStart = false;
     }
   });
 };

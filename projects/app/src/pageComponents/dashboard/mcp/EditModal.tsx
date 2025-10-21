@@ -188,12 +188,7 @@ const SelectAppModal = ({
                     onClick={handleItemClick}
                   >
                     <Flex alignItems={'center'} w={'1.25rem'} onClick={(e) => e.stopPropagation()}>
-                      {!isFolder && (
-                        <Checkbox
-                          isChecked={selected}
-                          onChange={handleItemClick}
-                        />
-                      )}
+                      {!isFolder && <Checkbox isChecked={selected} onChange={handleItemClick} />}
                     </Flex>
                     <Avatar src={item.avatar} w="1.5rem" borderRadius={'sm'} />
                     <Box>{item.name}</Box>
