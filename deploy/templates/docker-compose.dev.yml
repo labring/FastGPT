@@ -49,7 +49,19 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -155,10 +167,8 @@ services:
       - S3_USE_SSL=false
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
-      - S3_BUCKET=fastgpt-plugins
-      - S3_TOOL_BUCKET=fastgpt-tool # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
-      - S3_PLUGIN_BUCKET=fastgpt-plugin # 系统插件热安装文件的桶，私有读写。
-      - RETENTION_DAYS=15 # 系统工具临时文件保存天数
+      - S3_PUBLIC_BUCKET=fastgpt-public # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
+      - S3_PRIVATE_BUCKET=fastgpt-private # 系统插件热安装文件的桶，私有读写。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true
       - REDIS_URL=redis://default:mypassword@redis:6379
     depends_on:
