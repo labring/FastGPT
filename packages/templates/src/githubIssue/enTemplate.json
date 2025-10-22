@@ -111,7 +111,7 @@
         },
         {
           "nodeId": "jVGuKrDfFTU6",
-          "name": "获取 24 小时前的日期",
+          "name": "Obtain the date 24 hours ago",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -263,7 +263,7 @@
         },
         {
           "nodeId": "mCaalLpFoZFk",
-          "name": "获取 Issues",
+          "name": "Get Issues",
           "intro": "Send an HTTP request to perform a more complex action (such as online search or database query).",
           "avatar": "core/workflow/template/httpRequest",
           "flowNodeType": "httpRequest468",
@@ -423,7 +423,7 @@
               "id": "error",
               "key": "error",
               "label": "workflow:request_error",
-              "description": "HTTP请求错误信息，成功时返回空",
+              "description": "HTTP request error details. Returns null if successful.",
               "valueType": "object",
               "type": "static"
             },
@@ -470,7 +470,7 @@
         },
         {
           "nodeId": "gALvyJcXPoep",
-          "name": "处理 API 响应数据",
+          "name": "API response processing",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -809,8 +809,8 @@
         },
         {
           "nodeId": "jmSiT6OXA3Fe",
-          "name": "飞书机器人 webhook",
-          "intro": "向飞书机器人发起 webhook 请求。",
+          "name": "Feishu bot webhook",
+          "intro": "Sends webhook requests to the Feishu bot.",
           "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
           "flowNodeType": "pluginModule",
           "showStatus": false,
@@ -838,9 +838,9 @@
               "canEdit": false,
               "key": "content",
               "label": "content",
-              "description": "需要发送的消息",
+              "description": "Message you want to send",
               "required": true,
-              "toolDescription": "需要发送的消息",
+              "toolDescription": "Message you want to send",
               "value": ["aLrp6IjV8zAf", "answerText"],
               "valueDesc": "",
               "debugLabel": ""
@@ -852,7 +852,7 @@
               "canEdit": false,
               "key": "hook_url",
               "label": "hook_url",
-              "description": "飞书机器人地址",
+              "description": "Feishu bot address",
               "required": true,
               "defaultValue": "",
               "value": "https://www.feishu.cn/flow/api/trigger-webhook/5a1657d6f024c639e1e9af4d9d611292",

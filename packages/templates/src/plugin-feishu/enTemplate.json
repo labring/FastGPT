@@ -10,7 +10,7 @@
         {
           "nodeId": "pluginInput",
           "name": "Plugin input",
-          "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+          "intro": "Customizes external input. When a plugin is used, only the custom input is exposed.",
           "avatar": "core/workflow/template/workflowStart",
           "flowNodeType": "pluginInput",
           "showStatus": false,
@@ -23,8 +23,8 @@
             {
               "inputType": "input",
               "valueType": "string",
-              "key": "飞书机器人地址",
-              "label": "飞书机器人地址",
+              "key": "Feishu bot address",
+              "label": "Feishu bot address",
               "description": "",
               "isToolInput": false,
               "defaultValue": "",
@@ -42,9 +42,9 @@
               "value": ""
             },
             {
-              "key": "发送的消息",
+              "key": "Sent message",
               "valueType": "string",
-              "label": "发送的消息",
+              "label": "Sent message",
               "renderTypeList": ["reference"],
               "required": true,
               "description": "",
@@ -63,16 +63,16 @@
           "outputs": [
             {
               "id": "mv52BrPVE6bm",
-              "key": "飞书机器人地址",
+              "key": "Feishu bot address",
               "valueType": "string",
-              "label": "飞书机器人地址",
+              "label": "Feishu bot address",
               "type": "static"
             },
             {
               "id": "p0m68Dv5KaIp",
-              "key": "发送的消息",
+              "key": "Sent message",
               "valueType": "string",
-              "label": "发送的消息",
+              "label": "Sent message",
               "type": "static"
             }
           ]
@@ -297,7 +297,7 @@
               "id": "error",
               "key": "error",
               "label": "workflow:request_error",
-              "description": "HTTP请求错误信息，成功时返回空",
+              "description": "HTTP request error details. Returns null if successful.",
               "valueType": "object",
               "type": "static"
             },

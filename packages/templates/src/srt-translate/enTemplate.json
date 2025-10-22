@@ -109,7 +109,7 @@
         },
         {
           "nodeId": "yjFO3YcM7KG2",
-          "name": "LLM 翻译",
+          "name": "LLM translation",
           "intro": "Chat with an model.",
           "avatar": "core/workflow/template/aiChat",
           "flowNodeType": "chatNode",
@@ -244,7 +244,7 @@
         },
         {
           "nodeId": "bxz97Vg4Omux",
-          "name": "LLM 翻译提示词",
+          "name": "LLM translation prompt",
           "intro": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
           "avatar": "core/workflow/template/textConcat",
           "flowNodeType": "textEditor",
@@ -260,7 +260,7 @@
               "valueType": "dynamic",
               "label": "",
               "required": false,
-              "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+              "description": "You can reference the output from upstream nodes as variables for text splicing using {{field name}}.",
               "customInputConfig": {
                 "selectValueTypeList": [
                   "string",
@@ -288,7 +288,7 @@
               "valueType": "string",
               "required": true,
               "label": "Text for splicing",
-              "placeholder": "可通过 {{字段名}} 来引用变量",
+              "placeholder": "Variables can be referenced using {{field name}}.",
               "value": "你的任务是将文本从{{source_lang}}翻译成{{target_lang}}\n\n源文本如下,由XML标签<SOURCE_TEXT>和</SOURCE_TEXT>分隔:\n\n<SOURCE_TEXT>\n\n{{tagged_text}}\n\n</SOURCE_TEXT>\n\n仅翻译源文本中由<TRANSLATE_THIS>和</TRANSLATE_THIS>分隔的部分,将其余的源文本作为上下文\n\n重申一下,你应该只翻译文本的这一部分,这里再次显示在<TRANSLATE_THIS>和</TRANSLATE_THIS>之间:\n\n<TRANSLATE_THIS>\n\n{{chunk_to_translate}}\n\n</TRANSLATE_THIS>"
             },
             {
@@ -362,7 +362,7 @@
         },
         {
           "nodeId": "w4heEpNflz59",
-          "name": "判断是否执行结束",
+          "name": "Check for execution completion",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -396,7 +396,7 @@
             {
               "id": "ifElseResult",
               "key": "ifElseResult",
-              "label": "判断结果",
+              "label": "Check result",
               "valueType": "string",
               "type": "static"
             }
@@ -404,7 +404,7 @@
         },
         {
           "nodeId": "a2lqxASWi1vb",
-          "name": "判断是否执行结束",
+          "name": "Check for execution completion",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -576,7 +576,7 @@
         },
         {
           "nodeId": "quYZgsW32ApA",
-          "name": "格式化源文本块",
+          "name": "Source text block formatting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -773,7 +773,7 @@
         },
         {
           "nodeId": "vlNHndpNuFXB",
-          "name": "取出 LLM 翻译第四轮文本",
+          "name": "Extracts the text from the fourth-round LLM translation",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -924,7 +924,7 @@
         },
         {
           "nodeId": "qlt9KJbbS9yJ",
-          "name": "判断源语言和目标语言是否相同",
+          "name": "Check for identical source and target languages",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -958,7 +958,7 @@
             {
               "id": "ifElseResult",
               "key": "ifElseResult",
-              "label": "判断结果",
+              "label": "Check result",
               "valueType": "string",
               "type": "static"
             }
@@ -966,7 +966,7 @@
         },
         {
           "nodeId": "frjbsrlnJJsR",
-          "name": "判断源语言和目标语言是否相同",
+          "name": "Check for identical source and target languages",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -1131,7 +1131,7 @@
         },
         {
           "nodeId": "dFxrGZS3Wmnz",
-          "name": "提示源语言与目标语言相同",
+          "name": "Prompt for same source and target languages",
           "intro": "This module supports replies with a specified message, often used as guidance or prompts. Non-string content is automatically converted to a string.",
           "avatar": "core/workflow/template/reply",
           "flowNodeType": "answerNode",
@@ -1592,7 +1592,7 @@
         },
         {
           "nodeId": "y3WEYOQ09CGC",
-          "name": "切分文本",
+          "name": "Text splitting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -1825,7 +1825,7 @@
           {
             "id": "v98n5b",
             "key": "source_lang",
-            "label": "源语言",
+            "label": "Source language",
             "type": "select",
             "required": true,
             "maxLen": 50,
@@ -1875,7 +1875,7 @@
           {
             "id": "c3tvge",
             "key": "target_lang",
-            "label": "目标语言",
+            "label": "Target language",
             "type": "select",
             "required": true,
             "maxLen": 50,

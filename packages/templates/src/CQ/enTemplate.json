@@ -226,15 +226,15 @@
               "label": "",
               "value": [
                 {
-                  "value": "关于电影《星际穿越》的问题",
+                  "value": "Questions about Interstellar",
                   "key": "wqre"
                 },
                 {
-                  "value": "打招呼、问候等问题",
+                  "value": "Greeting and casual questions",
                   "key": "sdfa"
                 },
                 {
-                  "value": "其他问题",
+                  "value": "Other questions",
                   "key": "agex"
                 }
               ]
@@ -405,7 +405,7 @@
           "timezone": "Asia/Shanghai",
           "defaultPrompt": ""
         },
-        "welcomeText": "你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]"
+        "welcomeText": "Hi, I'm your knowledge base assistant. Please select a knowledge base first.\n[Who are you]\n[How to use]"
       }
     }
   }

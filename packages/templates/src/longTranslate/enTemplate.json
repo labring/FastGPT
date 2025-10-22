@@ -119,7 +119,7 @@
         },
         {
           "nodeId": "yjFO3YcM7KG2",
-          "name": "多文本块翻译",
+          "name": "Multiple text block translation",
           "intro": "Chat with an model.",
           "avatar": "core/workflow/template/aiChat",
           "flowNodeType": "chatNode",
@@ -289,7 +289,7 @@
         },
         {
           "nodeId": "w4heEpNflz59",
-          "name": "判断是否执行结束",
+          "name": "Check for execution completion",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -334,7 +334,7 @@
         },
         {
           "nodeId": "a2lqxASWi1vb",
-          "name": "判断是否执行结束",
+          "name": "Check for execution completion",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -546,7 +546,7 @@
         },
         {
           "nodeId": "quYZgsW32ApA",
-          "name": "格式化源文本块",
+          "name": "Source text block formatting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -758,7 +758,7 @@
         },
         {
           "nodeId": "vlNHndpNuFXB",
-          "name": "取出翻译文本",
+          "name": "Translated text extraction",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -911,7 +911,7 @@
         },
         {
           "nodeId": "qlt9KJbbS9yJ",
-          "name": "判断源语言和目标语言是否相同",
+          "name": "Check for identical source and target languages",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -956,7 +956,7 @@
         },
         {
           "nodeId": "frjbsrlnJJsR",
-          "name": "判断源语言和目标语言是否相同",
+          "name": "Check for identical source and target languages",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -1132,7 +1132,7 @@
         },
         {
           "nodeId": "dFxrGZS3Wmnz",
-          "name": "提示源语言与目标语言相同",
+          "name": "Prompt for same source and target languages",
           "intro": "This module supports replies with a specified message, often used as guidance or prompts. Non-string content is automatically converted to a string.",
           "avatar": "core/workflow/template/reply",
           "flowNodeType": "answerNode",
@@ -1160,7 +1160,7 @@
         },
         {
           "nodeId": "rDzA1VxdpPIz",
-          "name": "切分文本",
+          "name": "Text splitting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -1313,7 +1313,7 @@
         },
         {
           "nodeId": "qwKPaLWbYTLa",
-          "name": "输出翻译结果",
+          "name": "Translation result output",
           "intro": "This module supports replies with a specified message, often used as guidance or prompts. Non-string content is automatically converted to a string.",
           "avatar": "core/workflow/template/reply",
           "flowNodeType": "answerNode",
@@ -1435,7 +1435,7 @@
               "renderTypeList": ["hidden"],
               "label": "",
               "valueType": "string",
-              "value": "需要翻译一段特定的文本，其中会使用到大量专有词汇，需要从词库中进行查询",
+              "value": "Translate a specific text containing many terms. Look up the terms in the term base as needed.",
               "valueDesc": "",
               "description": "",
               "debugLabel": "",
@@ -1508,7 +1508,7 @@
         },
         {
           "nodeId": "mt7GlCIwbO9I",
-          "name": "判断是否上传了文件",
+          "name": "Check for file upload",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -1554,7 +1554,7 @@
         },
         {
           "nodeId": "rhyUytTUBm19",
-          "name": "切分文档文本",
+          "name": "Document text splitting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -1708,7 +1708,7 @@
         {
           "nodeId": "dtUmoUtTKfpM",
           "name": "Document parsing",
-          "intro": "解析对话中所有上传的文档，并返回对应文档内容",
+          "intro": "Parses all files uploaded in the conversation and returns the results.",
           "avatar": "core/workflow/template/readFiles",
           "flowNodeType": "readFiles",
           "showStatus": true,
@@ -1744,7 +1744,7 @@
         },
         {
           "nodeId": "uow83rLCI2pI",
-          "name": "格式化中文翻译",
+          "name": "Chinese translation formatting",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
@@ -2042,12 +2042,12 @@
         }
       ],
       "chatConfig": {
-        "welcomeText": "## 你好，欢迎使用文档翻译机器人\n1. 选择源语言和目标语言\n2. 发送你需要翻译的文档\n3. 等待翻译结果输出",
+        "welcomeText": "Hi, welcome to use the document translation bot.\n1. Select the source and target languages.\n2. Send the document you want to translate.\n3. Wait for the translation result.",
         "variables": [
           {
             "id": "v98n5b",
             "key": "source_lang",
-            "label": "源语言",
+            "label": "Source language",
             "type": "select",
             "required": true,
             "maxLen": 50,
@@ -2097,7 +2097,7 @@
           {
             "id": "c3tvge",
             "key": "target_lang",
-            "label": "目标语言",
+            "label": "Target language",
             "type": "select",
             "required": true,
             "maxLen": 50,

@@ -56,7 +56,7 @@
         {
           "nodeId": "jrWPV9",
           "name": "Tool call",
-          "intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+          "intro": "Automatically calls one or more function modules, or calls a plugin directly.",
           "avatar": "/imgs/workflow/tool.svg",
           "flowNodeType": "tools",
           "showStatus": true,
@@ -137,8 +137,8 @@
         },
         {
           "nodeId": "zBxjo5",
-          "name": "获取当前时间",
-          "intro": "获取用户当前时区的时间。",
+          "name": "CurrentTime",
+          "intro": "Obtains the current time in user's time zone.",
           "avatar": "/imgs/workflow/getCurrentTime.svg",
           "flowNodeType": "pluginModule",
           "showStatus": false,

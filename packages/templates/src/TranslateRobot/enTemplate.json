@@ -105,7 +105,7 @@
       },
       {
         "nodeId": "loOvhld2ZTKa",
-        "name": "第一轮翻译",
+        "name": "First round of translation",
         "intro": "Chat with an model.",
         "avatar": "/imgs/workflow/AI.png",
         "flowNodeType": "chatNode",
@@ -377,7 +377,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "description": "You can reference the output from upstream nodes as variables for text splicing using {{field name}}.",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -405,7 +405,7 @@
             "valueType": "string",
             "required": true,
             "label": "Text for splicing",
-            "placeholder": "可通过 {{字段名}} 来引用变量",
+            "placeholder": "Variables can be referenced using {{field name}}.",
             "value": "原文:\n\"\"\"\n{{q}}\n\"\"\""
           },
           {
@@ -450,7 +450,7 @@
       },
       {
         "nodeId": "bcqtxqxE2R6o",
-        "name": "合并输出结果",
+        "name": "Output result merging",
         "intro": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
         "avatar": "/imgs/workflow/textEditor.svg",
         "flowNodeType": "textEditor",
@@ -466,7 +466,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "description": "You can reference the output from upstream nodes as variables for text splicing using {{field name}}.",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -494,7 +494,7 @@
             "valueType": "string",
             "required": true,
             "label": "Text for splicing",
-            "placeholder": "可通过 {{字段名}} 来引用变量",
+            "placeholder": "Variables can be referenced using {{field name}}.",
             "value": "****** \n\n最终翻译结果如下: \n\n```\n{{result}}\n```"
           },
           {
