@@ -60,8 +60,8 @@
               "renderTypeList": ["reference"],
               "valueType": "string",
               "canEdit": true,
-              "key": "图片访问链接",
-              "label": "图片访问链接",
+              "key": "Image link",
+              "label": "Image link",
               "description": "",
               "value": ["tMvel910bnrJ", "pJXgWoTpPoMy"]
             },
@@ -249,7 +249,7 @@
               "id": "error",
               "key": "error",
               "label": "workflow:request_error",
-              "description": "HTTP请求错误信息，成功时返回空",
+              "description": "HTTP request error details. Returns null if successful.",
               "valueType": "object",
               "type": "static"
             },

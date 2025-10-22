@@ -106,7 +106,7 @@
         {
           "nodeId": "NOgbnBzUwDgT",
           "name": "Tool call",
-          "intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+          "intro": "Automatically calls one or more function modules, or calls a plugin directly.",
           "avatar": "/imgs/workflow/tool.svg",
           "flowNodeType": "tools",
           "showStatus": true,
@@ -188,7 +188,7 @@
         {
           "nodeId": "GMELVPxHfpg5",
           "name": "HTTP request",
-          "intro": "调用谷歌搜索，查询相关内容",
+          "intro": "Calls Google to find related content.",
           "avatar": "/imgs/workflow/http.png",
           "flowNodeType": "httpRequest468",
           "showStatus": true,
@@ -211,7 +211,7 @@
               "renderTypeList": ["reference"],
               "key": "query",
               "label": "query",
-              "toolDescription": "谷歌搜索检索词",
+              "toolDescription": "Google search keyword",
               "required": true,
               "canEdit": true,
               "editField": {
