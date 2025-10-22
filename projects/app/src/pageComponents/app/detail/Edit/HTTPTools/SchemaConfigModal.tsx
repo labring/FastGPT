@@ -23,7 +23,7 @@ import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/tool'
 import { useForm } from 'react-hook-form';
 import type { HttpToolsType } from '@/pageComponents/dashboard/apps/HttpToolsCreateModal';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { pathData2ToolList } from '@fastgpt/global/core/app/tool/httpTool/utils';

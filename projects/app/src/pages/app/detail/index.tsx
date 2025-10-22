@@ -31,7 +31,7 @@ const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/HTTPTools'), {
+const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/HTTPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });

@@ -1,11 +1,11 @@
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { Box, Button, Center, Flex, HStack } from '@chakra-ui/react';
-import { cardStyles } from '../constants';
+import { cardStyles } from '../../constants';
 import { useTranslation } from 'next-i18next';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { useForm } from 'react-hook-form';
@@ -17,7 +17,7 @@ import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import ValueTypeLabel from '../WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
+import ValueTypeLabel from '../../WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
