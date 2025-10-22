@@ -1,15 +1,15 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import React, { useEffect, useMemo, useState } from 'react';
-import styles from '../SimpleApp/styles.module.scss';
-import { cardStyles } from '../constants';
+import styles from '../FormComponent/styles.module.scss';
+import { cardStyles } from '../../constants';
 import AppCard from './AppCard';
 import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const Edit = () => {

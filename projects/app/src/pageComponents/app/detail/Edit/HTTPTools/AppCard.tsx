@@ -1,13 +1,13 @@
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
 import React, { useState } from 'react';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import { useContextSelector } from 'use-context-selector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
-import TagsEditModal from '../TagsEditModal';
+import TagsEditModal from '../../TagsEditModal';
 
 const AppCard = () => {
   const { t } = useTranslation();
