@@ -25,7 +25,7 @@ async function handler(
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const plugins = await getSystemTools();
+  const plugins = await getSystemTools(lang);
 
   return plugins // Just show the active plugins
     .filter((item) => item.isActive)
@@ -36,10 +36,7 @@ async function handler(
       flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       name: parseI18nString(plugin.name, lang),
       intro: parseI18nString(plugin.intro ?? '', lang),
-      instructions: parseI18nString(plugin.userGuide ?? '', lang),
-      toolDescription: parseI18nString(plugin.toolDescription, lang),
-      versionList: parseI18nArray(plugin.versionList, lang),
-      inputList: parseI18nArray(plugin.inputList, lang)
+      instructions: parseI18nString(plugin.userGuide ?? '', lang)
     }))
     .filter((item) => {
       if (searchKey) {

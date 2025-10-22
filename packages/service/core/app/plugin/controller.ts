@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, parseI18nArray } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
 import {
@@ -37,7 +37,8 @@ import { Types } from '../../../common/mongo';
 import type { SystemPluginConfigSchemaType } from './type';
 import type {
   FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  FlowNodeOutputItemType,
+  InputConfigType
 } from '@fastgpt/global/core/workflow/type/io';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
@@ -58,9 +59,10 @@ type ChildAppType = SystemPluginTemplateItemType & {
 
 export const getSystemPluginByIdAndVersionId = async (
   pluginId: string,
-  versionId?: string
+  versionId?: string,
+  lang: localeType = 'en'
 ): Promise<ChildAppType> => {
-  const plugin = await getSystemToolById(pluginId);
+  const plugin = await getSystemToolById(pluginId, lang);
 
   // Admin selected system tool
   if (plugin.associatedPluginId) {
@@ -129,7 +131,7 @@ export const getSystemPluginByIdAndVersionId = async (
   const lastVersion = versionList[0];
 
   // concat parent (if exists) input config
-  const parent = plugin.parentId ? await getSystemToolById(plugin.parentId) : undefined;
+  const parent = plugin.parentId ? await getSystemToolById(plugin.parentId, lang) : undefined;
   if (parent?.inputList) {
     version?.inputs?.unshift({
       key: NodeInputKeyEnum.systemInputConfig,
@@ -263,7 +265,7 @@ export async function getChildAppPreviewNode({
     // 1. System Tools
     // 2. System Plugins configured in Pro (has associatedPluginId)
     else {
-      return getSystemPluginByIdAndVersionId(pluginId, versionId);
+      return getSystemPluginByIdAndVersionId(pluginId, versionId, lang);
     }
   })();
 
@@ -280,7 +282,7 @@ export async function getChildAppPreviewNode({
     if (source === PluginSourceEnum.systemTool) {
       // system Tool or Toolsets
       const children = app.isFolder
-        ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
+        ? (await getSystemTools(lang)).filter((item) => item.parentId === pluginId)
         : [];
 
       return {
@@ -443,7 +445,7 @@ export async function getChildAppRuntimeById({
         pluginOrder: 0
       };
     } else {
-      return getSystemPluginByIdAndVersionId(pluginId, versionId);
+      return getSystemPluginByIdAndVersionId(pluginId, versionId, lang);
     }
   })();
 
@@ -527,7 +529,9 @@ export const refetchSystemPlugins = () => {
   });
 };
 
-export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> => {
+export const getSystemTools = async (
+  lang: localeType = 'en'
+): Promise<SystemPluginTemplateItemType[]> => {
   if (getCachedSystemPlugins().expires > Date.now() && isProduction) {
     return getCachedSystemPlugins().data;
   } else {
@@ -541,16 +545,24 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
       const dbPluginConfig = systemTools.get(item.id);
       const isFolder = tools.some((tool) => tool.parentId === item.id);
 
-      const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
+      // 解析并确保 versionList 中的 outputs 有有效的 id
+      const versionList = parseI18nArray(item.versionList, lang).map((version) => ({
+        ...version,
+        outputs: version.outputs.map((output) => ({
+          ...output,
+          type: output.type ?? FlowNodeOutputTypeEnum.static,
+          id: output.id ?? output.key
+        }))
+      }));
 
       return {
         id: item.id,
         parentId: item.parentId,
         isFolder,
-        name: item.name,
+        name: parseI18nString(item.name, lang),
         avatar: item.avatar,
-        intro: item.description,
-        toolDescription: item.toolDescription,
+        intro: parseI18nString(item.description, lang),
+        toolDescription: parseI18nString(item.toolDescription, lang),
         author: item.author,
         courseUrl: item.courseUrl,
         instructions: dbPluginConfig?.customConfig?.userGuide,
@@ -563,7 +575,7 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
         templateType: item.templateType,
         showStatus: true,
         isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
-        inputList: item?.secretInputConfig,
+        inputList: parseI18nArray(item?.secretInputConfig, lang),
         hasSystemSecret: !!dbPluginConfig?.inputListVal,
 
         originCost: dbPluginConfig?.originCost ?? 0,
@@ -591,10 +603,13 @@ export const getSystemTools = async (): Promise<SystemPluginTemplateItemType[]> 
   }
 };
 
-export const getSystemToolById = async (id: string): Promise<SystemPluginTemplateItemType> => {
+export const getSystemToolById = async (
+  id: string,
+  lang: localeType = 'en'
+): Promise<SystemPluginTemplateItemType> => {
   const { source, pluginId } = splitCombinePluginId(id);
   if (source === PluginSourceEnum.systemTool) {
-    const tools = await getSystemTools();
+    const tools = await getSystemTools(lang);
     const tool = tools.find((item) => item.id === pluginId);
     if (tool) {
       return cloneDeep(tool);
