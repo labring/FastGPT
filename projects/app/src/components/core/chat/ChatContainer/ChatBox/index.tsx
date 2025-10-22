@@ -179,7 +179,7 @@ const ChatBox = ({
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
 
-  /* 
+  /*
     对话已经开始的标记：
     1. 保证 appId 一致。
     2. 有对话记录/手动点了开始/默认没有需要填写的变量。
@@ -493,7 +493,8 @@ const ChatBox = ({
                     type: file.type,
                     name: file.name,
                     url: file.url || '',
-                    icon: file.icon || ''
+                    icon: file.icon || '',
+                    key: file.key || ''
                   }
                 })),
                 ...(text

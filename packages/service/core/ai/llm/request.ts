@@ -57,7 +57,7 @@ type LLMResponse = {
   completeMessages: ChatCompletionMessageParam[];
 };
 
-/* 
+/*
   底层封装 LLM 调用 帮助上层屏蔽 stream 和非 stream，以及 toolChoice 和 promptTool 模式。
   工具调用无论哪种模式，都存 toolChoice 的格式，promptTool 通过修改 toolChoice 的结构，形成特定的 messages 进行调用。
 */

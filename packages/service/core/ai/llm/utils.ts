@@ -80,7 +80,7 @@ export const filterGPTMessageByMaxContext = async ({
   return [...systemPrompts, ...chats];
 };
 
-/* 
+/*
   Format requested messages
   1. If not useVision, only retain text.
   2. Remove file_url

@@ -3,7 +3,9 @@ import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
-  type S3OptionsType
+  type S3OptionsType,
+  type CreateGetPresignedUrlParams,
+  CreateGetPresignedUrlParamsSchema
 } from '../type';
 import { defaultS3Options, Mimes } from '../constants';
 import path from 'node:path';
@@ -88,6 +90,12 @@ export class S3BaseBucket {
     return this.client.removeObject(this.name, objectKey, options);
   }
 
+  listObjectsV2(
+    ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
+  ) {
+    return this.client.listObjectsV2(this.name, ...params);
+  }
+
   async createPostPresignedUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
@@ -137,5 +145,14 @@ export class S3BaseBucket {
       addLog.error('Failed to create post presigned url', error);
       return Promise.reject('Failed to create post presigned url');
     }
+  }
+
+  async createGetPresignedUrl(params: CreateGetPresignedUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 5 * 60; // expires 的单位是秒 默认 5 分钟
+
+    return await this.client.presignedGetObject(this.name, key, expires);
   }
 }

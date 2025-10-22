@@ -8,6 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 /* clear chat history */
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
@@ -40,6 +41,9 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
       },
       { session }
     );
+    const s3ChatSource = getS3ChatSource();
+    const prefix = `${appId}/${chatId}`;
+    await s3ChatSource.deleteChatFilesByPrefix(prefix);
   });
 
   return;

@@ -24,6 +24,7 @@ import { removeImageByPath } from '../../common/file/image/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
+import { getS3ChatSource } from '../../common/s3/sources/chat';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -224,6 +225,7 @@ export const onDelOneApp = async ({
       );
 
       await removeImageByPath(app.avatar, session);
+      await getS3ChatSource().deleteChatFilesByPrefix(appId);
     }
   };
 

@@ -17,6 +17,7 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 export type getPaginationRecordsQuery = {};
 
@@ -70,6 +71,20 @@ async function handler(
     offset,
     limit: pageSize
   });
+
+  const s3ChatSource = getS3ChatSource();
+  for (let i = 0; i < histories.length; i++) {
+    const item = histories[i];
+
+    for (let j = 0; j < item.value.length; j++) {
+      const v = item.value[j];
+
+      if (v.type === ChatItemValueTypeEnum.file && v.file && v.file.key) {
+        v.file.url = await s3ChatSource.createGetChatFileURL({ key: v.file.key });
+      }
+    }
+    histories[i] = item;
+  }
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.plugin) {
