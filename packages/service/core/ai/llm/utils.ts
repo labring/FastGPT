@@ -12,6 +12,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { i18nT } from '../../../../web/i18n/utils';
 import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -165,7 +166,18 @@ export const loadRequestMessages = async ({
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
               if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
-                const { completeBase64: base64 } = await getImageBase64(imgUrl);
+                const url = await (async () => {
+                  if (item.key) {
+                    try {
+                      return await getS3ChatSource().createGetChatFileURL({
+                        key: item.key,
+                        external: false
+                      });
+                    } catch (error) {}
+                  }
+                  return imgUrl;
+                })();
+                const { completeBase64: base64 } = await getImageBase64(url);
 
                 return {
                   ...item,

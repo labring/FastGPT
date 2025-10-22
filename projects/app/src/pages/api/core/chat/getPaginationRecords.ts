@@ -80,7 +80,7 @@ async function handler(
       const v = item.value[j];
 
       if (v.type === ChatItemValueTypeEnum.file && v.file && v.file.key) {
-        v.file.url = await s3ChatSource.createGetChatFileURL({ key: v.file.key });
+        v.file.url = await s3ChatSource.createGetChatFileURL({ key: v.file.key, external: true });
       }
     }
     histories[i] = item;

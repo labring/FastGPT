@@ -15,7 +15,7 @@ async function handler(req: ApiRequestProps<PresignChatFileGetUrlParams>): Promi
     ...outLinkAuthData
   });
 
-  return await getS3ChatSource().createGetChatFileURL({ key });
+  return await getS3ChatSource().createGetChatFileURL({ key, external: true });
 }
 
 export default NextAPI(handler);

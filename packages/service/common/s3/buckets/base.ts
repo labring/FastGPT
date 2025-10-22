@@ -4,7 +4,7 @@ import {
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
   type S3OptionsType,
-  type CreateGetPresignedUrlParams,
+  type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema
 } from '../type';
 import { defaultS3Options, Mimes } from '../constants';
@@ -152,7 +152,15 @@ export class S3BaseBucket {
     }
   }
 
-  async createGetPresignedUrl(params: CreateGetPresignedUrlParams) {
+  async createExtenalUrl(params: createPreviewUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    return await this.externalClient.presignedGetObject(this.name, key, expires);
+  }
+  async createPreviewlUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;

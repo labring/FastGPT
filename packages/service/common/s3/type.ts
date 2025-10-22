@@ -51,7 +51,7 @@ export const CreateGetPresignedUrlParamsSchema = z.object({
   key: z.string().min(1),
   expiredHours: z.number().int().positive().optional()
 });
-export type CreateGetPresignedUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
+export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 
 declare global {
   var s3BucketMap: {

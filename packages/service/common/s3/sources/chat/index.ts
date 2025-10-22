@@ -18,9 +18,13 @@ class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
-  async createGetChatFileURL(params: { key: string; expiredHours?: number }) {
-    const { key, expiredHours = 1 } = params; // 默认一个小时
-    return await this.bucket.createGetPresignedUrl({ key, expiredHours });
+  async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
+    const { key, expiredHours = 1, external = false } = params; // 默认一个小时
+
+    if (external) {
+      return await this.bucket.createExtenalUrl({ key, expiredHours });
+    }
+    return await this.bucket.createPreviewlUrl({ key, expiredHours });
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
