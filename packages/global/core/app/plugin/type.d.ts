@@ -23,6 +23,14 @@ export type PluginRuntimeType = {
   hasTokenFee?: boolean;
 };
 
+// system plugin version list item type (support i18n)
+export type SystemPluginVersionListItemType = {
+  value: string;
+  description?: string;
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+};
+
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   templateType: string;

@@ -53,7 +53,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
         (item) => item.toolId === child.id
       );
 
-      const tool = await getSystemPluginByIdAndVersionId(child.id);
+      const tool = await getSystemPluginByIdAndVersionId(child.id, undefined, lang);
 
       const inputs = tool.inputs ?? [];
       if (toolsetInputConfig?.value) {
