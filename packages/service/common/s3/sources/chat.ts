@@ -1,6 +1,7 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../buckets/private';
-import { S3Sources } from '../type';
+import { type CheckChatFileKeys, CheckChatFileKeysSchema, S3Sources } from '../type';
+import { z } from 'zod';
 
 class S3ChatSource {
   private bucket: S3PrivateBucket;
@@ -19,44 +20,21 @@ class S3ChatSource {
     return await this.bucket.createGetPresignedUrl({ key, expiredHours });
   }
 
-  async createUploadChatFileURL({
-    filename,
-    chatId,
-    appId
-  }: {
-    filename: string;
-    chatId: string;
-    appId: string;
-  }) {
-    const rawKey = `${S3Sources.chat}/${appId}/${chatId}/${getNanoid(6)}-${filename}`;
+  async createUploadChatFileURL(params: CheckChatFileKeys) {
+    const { appId, chatId, uId, filename } = CheckChatFileKeysSchema.parse(params);
+    const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
     return await this.bucket.createPostPresignedUrl({ rawKey, filename });
   }
 
-  private trimSlashes(str: string): string {
-    let trimmed = str;
-    if (trimmed.startsWith('/')) trimmed = trimmed.slice(1);
-    if (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
-    return trimmed;
-  }
+  deleteChatFilesByPrefix(
+    params: Omit<CheckChatFileKeys, 'filename' | 'chatId'> & { chatId?: string }
+  ) {
+    const { appId, chatId, uId } = CheckChatFileKeysSchema.omit({ filename: true })
+      .extend({ chatId: z.string().optional() })
+      .parse(params);
 
-  deleteChatFilesByPrefix(prefix: string) {
-    const objectPrefix = `${S3Sources.chat}/${this.trimSlashes(prefix)}`;
-
-    return new Promise<boolean>((resolve, reject) => {
-      const stream = this.bucket.listObjectsV2(objectPrefix, true);
-      stream.on('data', (file) => {
-        if (file.name) {
-          this.bucket.delete(file.name);
-        }
-      });
-      stream.on('error', (error) => {
-        console.error(error);
-        reject(error);
-      });
-      stream.on('end', () => {
-        resolve(true);
-      });
-    });
+    const objectPrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
+    return this.bucket.addDeleteJob(objectPrefix);
   }
 
   deleteChatFileByKey(key: string) {

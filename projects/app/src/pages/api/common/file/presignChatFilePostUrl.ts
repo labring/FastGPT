@@ -43,7 +43,7 @@ async function handler(
   });
   await authUploadLimit(uid);
 
-  return await getS3ChatSource().createUploadChatFileURL({ appId, chatId, filename });
+  return await getS3ChatSource().createUploadChatFileURL({ appId, chatId, filename, uId: uid });
 }
 
 export default NextAPI(handler);

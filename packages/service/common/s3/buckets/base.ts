@@ -13,6 +13,7 @@ import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
 import { addLog } from '../../system/log';
+import { s3MQ } from '../mq';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -88,6 +89,10 @@ export class S3BaseBucket {
 
   delete(objectKey: string, options?: RemoveOptions): Promise<void> {
     return this.client.removeObject(this.name, objectKey, options);
+  }
+
+  addDeleteJob(prefix: string, options?: RemoveOptions): Promise<void> {
+    return s3MQ.addJob({ prefix, bucketName: this.name, deleteOptions: options });
   }
 
   listObjectsV2(

@@ -134,10 +134,12 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
 export const onDelOneApp = async ({
   teamId,
   appId,
+  userId,
   session
 }: {
   teamId: string;
   appId: string;
+  userId: string;
   session?: ClientSession;
 }) => {
   const apps = await findAppAndAllChildren({
@@ -225,7 +227,7 @@ export const onDelOneApp = async ({
       );
 
       await removeImageByPath(app.avatar, session);
-      await getS3ChatSource().deleteChatFilesByPrefix(appId);
+      await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: userId });
     }
   };
 
