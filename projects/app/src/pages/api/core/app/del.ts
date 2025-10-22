@@ -23,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
     per: OwnerPermissionVal
   });
 
-  const deletedAppIds = await onDelOneApp({ teamId, appId, userId });
+  const deletedAppIds = await onDelOneApp({ teamId, appId });
 
   (async () => {
     addAuditLog({

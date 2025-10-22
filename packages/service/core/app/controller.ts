@@ -134,12 +134,10 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
 export const onDelOneApp = async ({
   teamId,
   appId,
-  userId,
   session
 }: {
   teamId: string;
   appId: string;
-  userId: string;
   session?: ClientSession;
 }) => {
   const apps = await findAppAndAllChildren({
@@ -172,7 +170,7 @@ export const onDelOneApp = async ({
   await MongoChat.deleteMany({
     appId
   });
-  await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: userId });
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId });
 
   const del = async (session: ClientSession) => {
     for await (const app of apps) {

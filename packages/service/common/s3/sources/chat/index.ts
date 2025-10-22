@@ -3,6 +3,8 @@ import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
 import { type CheckChatFileKeys, CheckChatFileKeysSchema } from './type';
 import { z } from 'zod';
+import { MongoS3TTL } from '../../schema';
+import { addHours } from 'date-fns';
 
 class S3ChatSource {
   private bucket: S3PrivateBucket;
@@ -24,14 +26,19 @@ class S3ChatSource {
   async createUploadChatFileURL(params: CheckChatFileKeys) {
     const { appId, chatId, uId, filename } = CheckChatFileKeysSchema.parse(params);
     const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
+    await MongoS3TTL.create({
+      minioKey: rawKey,
+      bucketName: this.bucket.name,
+      expiredTime: addHours(new Date(), 24)
+    });
     return await this.bucket.createPostPresignedUrl({ rawKey, filename });
   }
 
   deleteChatFilesByPrefix(
-    params: Omit<CheckChatFileKeys, 'filename' | 'chatId'> & { chatId?: string }
+    params: Pick<CheckChatFileKeys, 'appId'> & { chatId?: string; uId?: string }
   ) {
-    const { appId, chatId, uId } = CheckChatFileKeysSchema.omit({ filename: true })
-      .extend({ chatId: z.string().optional() })
+    const { appId, chatId, uId } = CheckChatFileKeysSchema.pick({ appId: true })
+      .extend({ chatId: z.string().optional(), uId: z.string().optional() })
       .parse(params);
 
     const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
