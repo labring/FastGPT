@@ -27,7 +27,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useToast } from '@fastgpt/web/hooks/useToast';

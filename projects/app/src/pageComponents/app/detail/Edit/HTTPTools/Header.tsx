@@ -3,7 +3,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
+import { AppContext } from '../../context';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
