@@ -204,16 +204,17 @@ export abstract class AsyncDB {
 
       const primaryKeys = table.primaryColumns.map((col) => col.name);
       const foreignKeys: TableForeignKey[] = table.foreignKeys.flatMap((fk) => {
-        return fk.columnNames.map(
-          (col, idx) =>
-            new TableForeignKey(
+        return fk.columnNames.map((col, idx) =>{
+            if (fk.referencedColumnNames[idx] && fk.referencedTableName)
+            return new TableForeignKey(
               fk.name || '',
               col,
               fk.referencedSchema || fk.referencedDatabase || this.config.database,
               fk.referencedTableName,
               fk.referencedColumnNames[idx]
             )
-        );
+          }  
+        ).filter(Boolean) as TableForeignKey[];
       });
 
       return new DBTable(tableName, tableComment, false, columns, foreignKeys, primaryKeys);
