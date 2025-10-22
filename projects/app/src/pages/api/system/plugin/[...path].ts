@@ -17,6 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const parsedUrl = new URL(FastGPTPluginUrl);
     delete req.headers?.rootkey;
+    delete req.headers?.cookie;
+    delete req.headers?.host;
+    delete req.headers?.origin;
 
     const requestResult = request({
       protocol: parsedUrl.protocol,
