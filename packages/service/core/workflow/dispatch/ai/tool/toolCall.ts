@@ -9,11 +9,11 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { runWorkflow } from '../../index';
 import type { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type';
-import json5 from 'json5';
 import type { DispatchFlowResponse } from '../../type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes, parseToolArgs } from '../utils';
+import { formatToolResponse, parseToolArgs } from '../utils';
+import { initToolNodes, initToolCallEdges } from './utils';
 import { computedMaxToken } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
