@@ -14,7 +14,7 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
   const { appId, chatId } = req.query;
 
-  const { uid } = await authChatCrud({
+  const { uid: uId } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
@@ -41,8 +41,7 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
       },
       { session }
     );
-    const s3ChatSource = getS3ChatSource();
-    await s3ChatSource.deleteChatFilesByPrefix({ appId, chatId, uId: uid });
+    await getS3ChatSource().deleteChatFilesByPrefix({ appId, chatId, uId });
   });
 
   return;

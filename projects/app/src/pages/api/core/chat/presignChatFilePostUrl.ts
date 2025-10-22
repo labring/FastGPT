@@ -1,23 +1,11 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
-
-export type getChatFilePresignQuery = {};
-
-export type getChatFilePresignBody = {
-  filename: string;
-  appId: string;
-  chatId: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-};
-
-export type getChatFilePresignResponse = CreatePostPresignedUrlResult;
+import type { PresignChatFilePostUrlParams } from '@fastgpt/global/core/chat/api';
 
 const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -29,9 +17,8 @@ const authUploadLimit = (tmbId: string) => {
 };
 
 async function handler(
-  req: ApiRequestProps<getChatFilePresignBody, getChatFilePresignQuery>,
-  _: ApiResponseType<getChatFilePresignResponse>
-): Promise<getChatFilePresignResponse> {
+  req: ApiRequestProps<PresignChatFilePostUrlParams>
+): Promise<CreatePostPresignedUrlResult> {
   const { filename, appId, chatId, outLinkAuthData } = req.body;
 
   const { uid } = await authChatCrud({

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { defaultS3Options, Mimes } from './constants';
 import type { S3BaseBucket } from './buckets/base';
-import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -53,14 +52,6 @@ export const CreateGetPresignedUrlParamsSchema = z.object({
   expiredHours: z.number().int().positive().optional()
 });
 export type CreateGetPresignedUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
-
-export const CheckChatFileKeysSchema = z.object({
-  appId: ObjectIdSchema,
-  chatId: z.string().length(24),
-  uId: z.string().min(1).max(24),
-  filename: z.string().min(1)
-});
-export type CheckChatFileKeys = z.infer<typeof CheckChatFileKeysSchema>;
 
 declare global {
   var s3BucketMap: {

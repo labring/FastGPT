@@ -71,7 +71,7 @@ export const chats2GPTMessages = ({
             if (item.file?.type === ChatFileTypeEnum.image) {
               return {
                 type: 'image_url',
-                key: item.file.key || '',
+                key: item.file.key,
                 image_url: {
                   url: item.file.url
                 }
@@ -81,7 +81,7 @@ export const chats2GPTMessages = ({
                 type: 'file_url',
                 name: item.file?.name || '',
                 url: item.file.url,
-                key: item.file.key || ''
+                key: item.file.key
               };
             }
           }
@@ -242,7 +242,7 @@ export const GPTMessages2Chats = ({
                     type: ChatFileTypeEnum.image,
                     name: '',
                     url: item.image_url.url,
-                    key: (item as any).key || ''
+                    key: (item as any).key
                   }
                 });
               } else if (item.type === 'file_url') {
@@ -253,7 +253,7 @@ export const GPTMessages2Chats = ({
                     type: ChatFileTypeEnum.file,
                     name: item.name,
                     url: item.url,
-                    key: item.key || ''
+                    key: item.key
                   }
                 });
               }

@@ -1,63 +1,51 @@
-import type { RemoveOptions } from 'minio';
 import { getQueue, getWorker, QueueNames } from '../bullmq';
 import pLimit from 'p-limit';
-import retry from 'async-retry';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export type S3MQJobData = {
-  prefix: string;
+  key?: string;
+  prefix?: string;
   bucketName: string;
-  deleteOptions?: RemoveOptions;
 };
 
-export class S3MQ {
-  private static instance: S3MQ;
+export async function addS3Job(data: S3MQJobData): Promise<void> {
+  const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
 
-  static getInstance(): S3MQ {
-    return (this.instance ??= new S3MQ());
-  }
-
-  async addJob(data: S3MQJobData): Promise<void> {
-    const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
-
-    await queue.add(
-      'delete-s3-files',
-      { ...data },
-      {
-        attempts: 3,
-        removeOnFail: true,
-        removeOnComplete: true,
-        backoff: {
-          delay: 2000,
-          type: 'exponential'
-        }
+  await queue.add(
+    'delete-s3-files',
+    { ...data },
+    {
+      attempts: 3,
+      removeOnFail: false,
+      removeOnComplete: true,
+      backoff: {
+        delay: 2000,
+        type: 'exponential'
       }
-    );
-  }
+    }
+  );
+}
 
-  startWorker() {
-    return getWorker<S3MQJobData>(
-      QueueNames.s3FileDelete,
-      async (job) => {
-        const { prefix, bucketName, deleteOptions } = job.data;
-        const limit = pLimit(10);
-        const tasks: Promise<void>[] = [];
+export async function startS3Worker() {
+  return getWorker<S3MQJobData>(
+    QueueNames.s3FileDelete,
+    async (job) => {
+      const { prefix, bucketName, key } = job.data;
+      const limit = pLimit(10);
+      const tasks: Promise<void>[] = [];
 
-        return new Promise<void>((resolve, reject) => {
-          const bucket = s3BucketMap[bucketName];
-          if (!bucket) {
-            reject(new Error(`Bucket not found: ${bucketName}`));
-          }
+      return new Promise<void>((resolve, reject) => {
+        const bucket = s3BucketMap[bucketName];
+        if (!bucket) {
+          reject(`Bucket not found: ${bucketName}`);
+        }
 
+        if (prefix) {
           const stream = bucket.listObjectsV2(prefix, true);
           stream.on('data', async (file) => {
             if (!file.name) return;
 
-            const p = limit(() =>
-              retry(() => bucket.delete(file.name, deleteOptions), {
-                retries: 3,
-                minTimeout: 200
-              })
-            );
+            const p = limit(() => retryFn(() => bucket.delete(file.name)));
             tasks.push(p);
           });
 
@@ -66,7 +54,7 @@ export class S3MQ {
               const results = await Promise.allSettled(tasks);
               const failed = results.filter((r) => r.status === 'rejected');
               if (failed.length > 0) {
-                reject(new Error('Some deletes failed'));
+                reject('Some deletes failed');
               }
               resolve();
             } catch (err) {
@@ -78,13 +66,16 @@ export class S3MQ {
             console.error('listObjects stream error', err);
             reject(err);
           });
-        });
-      },
-      {
-        concurrency: 1
-      }
-    );
-  }
-}
+        }
 
-export const s3MQ = S3MQ.getInstance();
+        if (key) {
+          const p = limit(() => retryFn(() => bucket.delete(key)));
+          tasks.push(p);
+        }
+      });
+    },
+    {
+      concurrency: 1
+    }
+  );
+}

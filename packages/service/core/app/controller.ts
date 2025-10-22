@@ -172,6 +172,7 @@ export const onDelOneApp = async ({
   await MongoChat.deleteMany({
     appId
   });
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: userId });
 
   const del = async (session: ClientSession) => {
     for await (const app of apps) {
@@ -227,7 +228,6 @@ export const onDelOneApp = async ({
       );
 
       await removeImageByPath(app.avatar, session);
-      await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: userId });
     }
   };
 

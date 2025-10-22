@@ -13,7 +13,7 @@ import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
 import { addLog } from '../../system/log';
-import { s3MQ } from '../mq';
+import { addS3Job } from '../mq';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -91,8 +91,8 @@ export class S3BaseBucket {
     return this.client.removeObject(this.name, objectKey, options);
   }
 
-  addDeleteJob(prefix: string, options?: RemoveOptions): Promise<void> {
-    return s3MQ.addJob({ prefix, bucketName: this.name, deleteOptions: options });
+  addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
+    return addS3Job({ prefix, key, bucketName: this.name });
   }
 
   listObjectsV2(
@@ -156,7 +156,7 @@ export class S3BaseBucket {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;
-    const expires = expiredHours ? expiredHours * 60 * 60 : 5 * 60; // expires 的单位是秒 默认 5 分钟
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return await this.client.presignedGetObject(this.name, key, expires);
   }

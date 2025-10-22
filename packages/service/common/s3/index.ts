@@ -1,7 +1,7 @@
 import { S3PublicBucket } from './buckets/public';
 import { S3PrivateBucket } from './buckets/private';
 import { addLog } from '../system/log';
-import { s3MQ } from './mq';
+import { startS3Worker } from './mq';
 
 export function initS3Buckets() {
   const publicBucket = new S3PublicBucket();
@@ -15,5 +15,5 @@ export function initS3Buckets() {
 
 export const initS3MQWorker = () => {
   addLog.info('Init S3 MQ Worker...');
-  return s3MQ.startWorker();
+  return startS3Worker();
 };

@@ -1,6 +1,7 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { S3PrivateBucket } from '../buckets/private';
-import { type CheckChatFileKeys, CheckChatFileKeysSchema, S3Sources } from '../type';
+import { S3PrivateBucket } from '../../buckets/private';
+import { S3Sources } from '../../type';
+import { type CheckChatFileKeys, CheckChatFileKeysSchema } from './type';
 import { z } from 'zod';
 
 class S3ChatSource {
@@ -33,12 +34,12 @@ class S3ChatSource {
       .extend({ chatId: z.string().optional() })
       .parse(params);
 
-    const objectPrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
-    return this.bucket.addDeleteJob(objectPrefix);
+    const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
+    return this.bucket.addDeleteJob({ prefix });
   }
 
   deleteChatFileByKey(key: string) {
-    return this.bucket.delete(key);
+    return this.bucket.addDeleteJob({ key });
   }
 }
 
