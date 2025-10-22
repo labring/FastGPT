@@ -33,14 +33,16 @@ export async function startS3Worker() {
       const { prefix, bucketName, key } = job.data;
       const limit = pLimit(10);
       const tasks: Promise<void>[] = [];
+      const bucket = s3BucketMap[bucketName];
+      if (!bucket) {
+        return Promise.reject(`Bucket not found: ${bucketName}`);
+      }
 
-      return new Promise<void>((resolve, reject) => {
-        const bucket = s3BucketMap[bucketName];
-        if (!bucket) {
-          reject(`Bucket not found: ${bucketName}`);
-        }
-
-        if (prefix) {
+      if (key) {
+        await bucket.delete(key);
+      }
+      if (prefix) {
+        return new Promise<void>(async (resolve, reject) => {
           const stream = bucket.listObjectsV2(prefix, true);
           stream.on('data', async (file) => {
             if (!file.name) return;
@@ -66,13 +68,8 @@ export async function startS3Worker() {
             console.error('listObjects stream error', err);
             reject(err);
           });
-        }
-
-        if (key) {
-          const p = limit(() => retryFn(() => bucket.delete(key)));
-          tasks.push(p);
-        }
-      });
+        });
+      }
     },
     {
       concurrency: 1

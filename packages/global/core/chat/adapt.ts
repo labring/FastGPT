@@ -242,7 +242,7 @@ export const GPTMessages2Chats = ({
                     type: ChatFileTypeEnum.image,
                     name: '',
                     url: item.image_url.url,
-                    key: (item as any).key
+                    key: item.key
                   }
                 });
               } else if (item.type === 'file_url') {

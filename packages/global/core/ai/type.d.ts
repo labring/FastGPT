@@ -23,7 +23,7 @@ export type ChatCompletionContentPartFile = {
 };
 // Rewrite ChatCompletionContentPart, Add file type
 export type ChatCompletionContentPart =
-  | SdkChatCompletionContentPart
+  | (SdkChatCompletionContentPart & { key?: string })
   | ChatCompletionContentPartFile;
 type CustomChatCompletionUserMessageParam = Omit<ChatCompletionUserMessageParam, 'content'> & {
   role: 'user';
