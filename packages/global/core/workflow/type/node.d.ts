@@ -143,7 +143,8 @@ export type NodeTemplateListItemType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: ParentIdType;
   isFolder?: boolean;
-  templateType: string;
+  templateType?: string;
+  pluginTags?: string[];
   avatar?: string;
   name: string;
   intro?: string; // template list intro

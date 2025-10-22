@@ -75,6 +75,13 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
+        label: t('common:navbar.toolkit'),
+        icon: 'core/app/type/pluginLight',
+        activeIcon: 'core/app/pluginFill',
+        link: '/toolkit/tools',
+        activeLink: ['/toolkit/tools']
+      },
+      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
@@ -91,6 +98,13 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/promotion',
           '/account/model'
         ]
+      },
+      {
+        label: t('common:navbar.Config'),
+        icon: 'support/config/configLight',
+        activeIcon: 'support/config/configFill',
+        link: '/config/tools',
+        activeLink: ['/config/tools']
       }
     ],
     [lastChatAppId, lastPane, t]

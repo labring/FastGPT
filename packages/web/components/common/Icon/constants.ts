@@ -140,6 +140,7 @@ export const iconPaths = {
   'core/app/inputGuides': () => import('./icons/core/app/inputGuides.svg'),
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
+  'core/app/pluginFill': () => import('./icons/core/app/pluginFill.svg'),
   'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
   'core/app/publish/offiaccount': () => import('./icons/core/app/publish/offiaccount.svg'),
   'core/app/publish/wechat': () => import('./icons/core/app/publish/wechat.svg'),
@@ -273,10 +274,6 @@ export const iconPaths = {
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dataset': () => import('./icons/core/workflow/inputType/dataset.svg'),
-  'core/workflow/inputType/timePointSelect': () =>
-    import('./icons/core/workflow/inputType/timePointSelect.svg'),
-  'core/workflow/inputType/timeRangeSelect': () =>
-    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
   'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
@@ -302,6 +299,10 @@ export const iconPaths = {
     import('./icons/core/workflow/inputType/selectLLM.svg'),
   'core/workflow/inputType/switch': () => import('./icons/core/workflow/inputType/switch.svg'),
   'core/workflow/inputType/textarea': () => import('./icons/core/workflow/inputType/textarea.svg'),
+  'core/workflow/inputType/timePointSelect': () =>
+    import('./icons/core/workflow/inputType/timePointSelect.svg'),
+  'core/workflow/inputType/timeRangeSelect': () =>
+    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
@@ -465,6 +466,8 @@ export const iconPaths = {
   'support/bill/priceLight': () => import('./icons/support/bill/priceLight.svg'),
   'support/bill/shoppingCart': () => import('./icons/support/bill/shoppingCart.svg'),
   'support/bill/wallet': () => import('./icons/support/bill/wallet.svg'),
+  'support/config/configFill': () => import('./icons/support/config/configFill.svg'),
+  'support/config/configLight': () => import('./icons/support/config/configLight.svg'),
   'support/outlink/apikeyFill': () => import('./icons/support/outlink/apikeyFill.svg'),
   'support/outlink/iframeLight': () => import('./icons/support/outlink/iframeLight.svg'),
   'support/outlink/share': () => import('./icons/support/outlink/share.svg'),

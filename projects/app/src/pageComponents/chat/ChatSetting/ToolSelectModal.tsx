@@ -15,8 +15,6 @@ import {
   Grid
 } from '@chakra-ui/react';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
-import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
@@ -26,7 +24,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getPluginGroups,
+  getPluginTags,
   getPreviewPluginNode,
   getSystemPlugTemplates,
   getSystemPluginPaths
@@ -259,49 +257,61 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
+  const { data: pluginTags = [] } = useRequest2(getPluginTags, {
     manual: false
   });
 
   const formatTemplatesArray = useMemo(() => {
-    return pluginGroups.map((group) => {
-      const map = group.groupTypes.reduce<
-        Record<
-          string,
-          {
-            list: NodeTemplateListItemType[];
-            label: string;
-          }
-        >
-      >((acc, item) => {
-        acc[item.typeId] = {
-          list: [],
-          label: t(parseI18nString(item.typeName, i18n.language))
-        };
-        return acc;
-      }, {});
+    // Create a map of tagId -> { list: templates[], label: tagName }
+    const tagMap = pluginTags.reduce<
+      Record<
+        string,
+        {
+          list: NodeTemplateListItemType[];
+          label: string;
+          order: number;
+        }
+      >
+    >((acc, tag) => {
+      acc[tag.tagId] = {
+        list: [],
+        label: t(parseI18nString(tag.tagName, i18n.language)),
+        order: tag.tagOrder
+      };
+      return acc;
+    }, {});
 
-      templates.forEach((item) => {
-        if (map[item.templateType]) {
-          map[item.templateType].list.push({
+    // Assign templates to their tags (支持多标签)
+    templates.forEach((item) => {
+      // 优先使用 pluginTags，向后兼容 templateType
+      const tagIds = item.pluginTags || (item.templateType ? [item.templateType] : []);
+
+      tagIds.forEach((tagId) => {
+        if (tagMap[tagId]) {
+          tagMap[tagId].list.push({
             ...item,
             name: t(parseI18nString(item.name, i18n.language)),
             intro: t(parseI18nString(item.intro, i18n.language))
           });
         }
       });
-      return {
-        label: group.groupName,
-        list: Object.entries(map)
-          .map(([type, { list, label }]) => ({
-            type,
-            label,
-            list
-          }))
-          .filter((item) => item.list.length > 0)
-      };
     });
-  }, [i18n.language, pluginGroups, t, templates]);
+
+    // Convert to array format, filter empty tags, and sort by order
+    return Object.entries(tagMap)
+      .map(([tagId, { list, label, order }]) => ({
+        type: tagId,
+        label,
+        list,
+        order
+      }))
+      .filter((item) => item.list.length > 0)
+      .sort((a, b) => a.order - b.order)
+      .map(({ type, label, list }) => ({
+        label: label,
+        list: [{ type, label, list }]
+      }));
+  }, [i18n.language, pluginTags, t, templates]);
 
   const gridStyle = {
     gridTemplateColumns: ['1fr', '1fr 1fr'],

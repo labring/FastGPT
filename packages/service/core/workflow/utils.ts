@@ -44,7 +44,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   );
   const tools = await getSystemTools();
   const children = tools.filter(
-    (item) => item.parentId === systemToolId && item.isActive !== false
+    (item) => item.parentId === systemToolId && (item.status === 1 || item.status === undefined)
   );
   const nodes = await Promise.all(
     children.map(async (child, index) => {

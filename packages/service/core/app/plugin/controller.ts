@@ -350,7 +350,7 @@ export async function getChildAppPreviewNode({
                   systemToolSet: {
                     toolId: app.id,
                     toolList: children
-                      .filter((item) => item.isActive !== false)
+                      .filter((item) => item.status === 1 || item.status === undefined)
                       .map((item) => ({
                         toolId: item.id,
                         name: parseI18nString(item.name, lang),
@@ -521,7 +521,8 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 
   return {
     id: item.pluginId,
-    isActive: item.isActive,
+    status: item.status ?? 1,
+    defaultInstalled: item.defaultInstalled ?? true,
     isFolder: false,
     parentId: null,
     author: item.customConfig?.author || '',
@@ -573,6 +574,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       instructions: dbPluginConfig?.customConfig?.userGuide,
       weight: item.weight,
       toolSource: item.toolSource || 'built-in',
+      pluginTags: item.pluginTags,
       workflow: {
         nodes: [],
         edges: []
@@ -580,7 +582,8 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       versionList,
       templateType: item.templateType,
       showStatus: true,
-      isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
+      status: dbPluginConfig?.status ?? 1,
+      defaultInstalled: dbPluginConfig?.defaultInstalled ?? true,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
 

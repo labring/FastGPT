@@ -11,7 +11,7 @@ export async function register() {
         { connectMongo },
         { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
         { systemStartCb },
-        { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
+        { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
@@ -68,7 +68,7 @@ export async function register() {
       await Promise.all([
         preLoadWorker().catch(),
         getSystemTools(),
-        initSystemPluginGroups(),
+        initSystemPluginTags(),
         initAppTemplateTypes()
       ]);
 

@@ -10,7 +10,8 @@ export type SystemPluginConfigSchemaType = {
   originCost: number; // n points/one time
   currentCost: number;
   hasTokenFee: boolean;
-  isActive: boolean;
+  status?: number;
+  defaultInstalled?: boolean;
   pluginOrder?: number;
   systemKeyCost?: number;
 
@@ -21,14 +22,18 @@ export type SystemPluginConfigSchemaType = {
     toolDescription?: string;
     version: string;
     weight?: number;
-    templateType: string;
+    pluginTags?: string[];
     associatedPluginId: string;
     userGuide: string;
     author?: string;
+
+    // @deprecated
+    templateType: string;
   };
   inputListVal?: Record<string, any>;
 
   // @deprecated
+  isActive?: boolean;
   inputConfig?: {
     // Render config input form. Find the corresponding node and replace the variable directly
     key: string;
@@ -49,4 +54,20 @@ export type SystemToolGroupSchemaType = {
   groupName: string;
   groupTypes: TGroupType[];
   groupOrder: number;
+};
+
+export type PluginTagSchemaType = {
+  tagId: string;
+  tagName: I18nStringStrictType | string;
+  tagOrder: number;
+  isSystem: boolean;
+};
+
+export type TeamInstalledPluginSchemaType = {
+  _id: string;
+  teamId: string;
+  pluginId: string;
+  installed: boolean;
+  createTime: Date;
+  updateTime: Date;
 };

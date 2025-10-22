@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getPluginTags, getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type {
   FlowNodeItemType,
@@ -224,9 +224,31 @@ const NodeTemplateList = ({
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
+  const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([]);
+
+  const { data: pluginTags = [] } = useRequest2(getPluginTags, {
     manual: false
   });
+
+  const toggleTag = useCallback((tagId: string) => {
+    setSelectedTagIds((prev) => {
+      if (prev.includes(tagId)) {
+        return prev.filter((id) => id !== tagId);
+      } else {
+        return [...prev, tagId];
+      }
+    });
+  }, []);
+  const filteredTemplates = useMemo(() => {
+    if (templateType !== TemplateTypeEnum.systemPlugin || selectedTagIds.length === 0) {
+      return templates;
+    }
+
+    return templates.filter((tool) => {
+      const tagIds = tool.pluginTags || (tool.templateType ? [tool.templateType] : []);
+      return tagIds.some((tagId) => selectedTagIds.includes(tagId));
+    });
+  }, [templates, selectedTagIds, templateType]);
 
   const handleAddNode = useCallback(
     async ({
@@ -370,7 +392,7 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (map[item.templateType]) {
+          if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
               name: t(item.name as any),
@@ -393,48 +415,6 @@ const NodeTemplateList = ({
         ];
       }
 
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        console.log(pluginGroups, 222);
-        return pluginGroups.map((group) => {
-          const map = group.groupTypes.reduce<
-            Record<
-              string,
-              {
-                list: NodeTemplateListItemType[];
-                label: string;
-              }
-            >
-          >((acc, item) => {
-            acc[item.typeId] = {
-              list: [],
-              label: t(parseI18nString(item.typeName, i18n.language))
-            };
-            return acc;
-          }, {});
-
-          templates.forEach((item) => {
-            if (map[item.templateType]) {
-              map[item.templateType].list.push({
-                ...item,
-                name: t(parseI18nString(item.name, i18n.language)),
-                intro: t(parseI18nString(item.intro, i18n.language))
-              });
-            }
-          });
-          return {
-            label: group.groupName,
-            list: Object.entries(map)
-              .map(([type, { list, label }]) => ({
-                type,
-                label,
-                list
-              }))
-              .filter((item) => item.list.length > 0)
-          };
-        });
-      }
-
-      // Team apps
       return [
         {
           label: '',
@@ -442,18 +422,91 @@ const NodeTemplateList = ({
             {
               type: '',
               label: '',
-              list: templates
+              list: filteredTemplates.map((item) => ({
+                ...item,
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro || '', i18n.language))
+              }))
             }
           ]
         }
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, t, pluginGroups, i18n.language]);
+  }, [templateType, templates, filteredTemplates, t, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+    const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
+
     return (
       <>
+        {isSystemTool && pluginTags.length > 0 && (
+          <Flex mb={4} alignItems={'center'} px={3}>
+            <Box
+              px={!!isPopover ? 2 : 3}
+              py={!!isPopover ? 1 : 1.5}
+              fontSize={'12px'}
+              fontWeight={'medium'}
+              color={'myGray.700'}
+              rounded={'sm'}
+              border={'1px solid'}
+              borderColor={'myGray.200'}
+              whiteSpace={'nowrap'}
+              flexShrink={0}
+              cursor={'pointer'}
+              bg={selectedTagIds.length === 0 ? 'myGray.100' : 'transparent'}
+              onClick={() => {
+                setSelectedTagIds([]);
+              }}
+              _hover={{
+                bg: 'myGray.50'
+              }}
+            >
+              {t('common:All')}
+            </Box>
+            <Box mx={2} h={isPopover ? '20px' : '16px'} w={'1px'} bg={'myGray.200'} />
+            <Flex
+              gap={2}
+              flex={1}
+              overflowX="auto"
+              overflowY="hidden"
+              flexWrap="nowrap"
+              css={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                '&::-webkit-scrollbar': { display: 'none' }
+              }}
+            >
+              {pluginTags.map((tag) => {
+                const isSelected = selectedTagIds.includes(tag.tagId);
+                return (
+                  <Box
+                    key={tag.tagId}
+                    px={!!isPopover ? 2 : 3}
+                    py={!!isPopover ? 1 : 1.5}
+                    fontSize={'12px'}
+                    fontWeight={'medium'}
+                    color={'myGray.700'}
+                    rounded={'full'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    whiteSpace={'nowrap'}
+                    flexShrink={0}
+                    cursor={'pointer'}
+                    bg={isSelected ? 'myGray.100' : 'transparent'}
+                    onClick={() => toggleTag(tag.tagId)}
+                    _hover={{
+                      bg: 'myGray.50'
+                    }}
+                  >
+                    {t(parseI18nString(tag.tagName, i18n.language))}
+                  </Box>
+                );
+              })}
+            </Flex>
+          </Flex>
+        )}
+
         {list.map((item) => {
           return (
             <Box
@@ -500,9 +553,7 @@ const NodeTemplateList = ({
     );
   });
 
-  return templates.length === 0 ? (
-    <EmptyTip text={t('app:module.No Modules')} />
-  ) : (
+  return (
     <Box flex={'1 0 0'} overflow={'overlay'} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
       <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
         {formatTemplatesArrayData.length > 1 ? (

@@ -10,6 +10,7 @@ import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -20,15 +21,36 @@ async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
-  await authCert({ req, authToken: true });
+  const { teamId } = await authCert({ req, authToken: true });
   const { searchKey, parentId } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
   const plugins = await getSystemTools();
 
-  return plugins // Just show the active plugins
-    .filter((item) => item.isActive)
+  const records = await MongoTeamInstalledPlugin.find({ teamId }).lean();
+  const installedSet = new Set<string>();
+  const uninstalledSet = new Set<string>();
+
+  records.forEach((record) => {
+    if (record.installed) {
+      installedSet.add(record.pluginId);
+    } else {
+      uninstalledSet.add(record.pluginId);
+    }
+  });
+
+  return plugins
+    .filter((item) => item.status === 1 || item.status === 2 || item.status === undefined)
+    .filter((plugin) => {
+      if (uninstalledSet.has(plugin.id)) {
+        return false;
+      }
+      if (installedSet.has(plugin.id)) {
+        return true;
+      }
+      return plugin.defaultInstalled === true;
+    })
     .map<NodeTemplateListItemType>((plugin) => ({
       ...plugin,
       parentId: plugin.parentId === undefined ? null : plugin.parentId,
@@ -38,7 +60,8 @@ async function handler(
       intro: parseI18nString(plugin.intro ?? '', lang),
       instructions: parseI18nString(plugin.userGuide ?? '', lang),
       toolDescription: plugin.toolDescription,
-      toolSource: plugin.toolSource
+      toolSource: plugin.toolSource,
+      pluginTags: plugin.pluginTags
     }))
     .filter((item) => {
       if (searchKey) {

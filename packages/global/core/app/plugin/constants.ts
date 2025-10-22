@@ -7,3 +7,9 @@ export enum PluginSourceEnum {
   // @deprecated
   community = 'community' // this is deprecated, will be replaced by systemTool
 }
+
+export enum PluginStatusEnum {
+  Offline = 0, // 下线
+  Normal = 1, // 正常
+  SoonOffline = 2 // 即将下线
+}

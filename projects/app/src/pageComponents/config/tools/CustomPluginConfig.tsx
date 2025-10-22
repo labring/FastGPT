@@ -1,0 +1,457 @@
+import React, { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  IconButton,
+  Input,
+  ModalBody,
+  ModalFooter,
+  Switch,
+  Textarea,
+  useDisclosure,
+  Checkbox
+} from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import {
+  delPlugin,
+  getAllUserPlugins,
+  getPluginTags,
+  postCreatePlugin,
+  putUpdatePlugin
+} from '@/web/core/app/api/plugin';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useTranslation } from 'next-i18next';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+type EditCustomPluginType = {
+  id?: string;
+  pluginTags?: string[];
+  name: string;
+  avatar: string;
+  intro?: string;
+  originCost?: number;
+  currentCost?: number;
+  hasTokenFee?: boolean;
+  status?: number;
+  defaultInstalled?: boolean;
+  associatedPluginId?: string;
+  userGuide?: string;
+  author?: string;
+
+  inputList?: FlowNodeInputItemType['inputList'];
+  inputListVal?: Record<string, any>;
+
+  // @deprecated
+  templateType?: string;
+};
+
+export const defaultCustomPluginForm: EditCustomPluginType = {
+  id: '',
+  pluginTags: [],
+  name: '',
+  avatar: 'core/app/type/pluginFill',
+  intro: '',
+  status: PluginStatusEnum.Normal,
+  defaultInstalled: true,
+  hasTokenFee: false,
+  originCost: 0,
+  currentCost: 0,
+  userGuide: '',
+
+  inputList: [],
+  inputListVal: {}
+};
+
+const CustomPluginConfig = ({
+  defaultForm = defaultCustomPluginForm,
+  onSuccess,
+  onClose
+}: {
+  defaultForm: EditCustomPluginType;
+  onSuccess: () => void;
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+  const isEdit = !!defaultForm.id;
+  const { toast } = useToast();
+
+  const [searchKey, setSearchKey] = useState('');
+  const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
+
+  const { data: plugins = [] } = useRequest2(() => getAllUserPlugins({ searchKey }), {
+    manual: false,
+    refreshDeps: [searchKey]
+  });
+
+  const { register, setValue, watch, handleSubmit } = useForm({
+    defaultValues: defaultForm
+  });
+  const name = watch('name');
+  const avatar = watch('avatar');
+  const pluginTags = watch('pluginTags');
+  const associatedPluginId = watch('associatedPluginId');
+  const currentCost = watch('currentCost');
+
+  const currentPlugin = useMemo(() => {
+    return plugins.find((item) => item._id === associatedPluginId);
+  }, [plugins, associatedPluginId]);
+
+  const { data: tags = [] } = useRequest2(getPluginTags, {
+    manual: false
+  });
+  const pluginTypeSelectList = useMemo(
+    () =>
+      tags?.map((tag) => ({
+        label:
+          typeof tag.tagName === 'string' ? tag.tagName : tag.tagName['zh-CN'] || tag.tagName['en'],
+        value: tag.tagId
+      })) || [],
+    [tags]
+  );
+
+  const {
+    isOpen: isOpenPluginListMenu,
+    onClose: onClosePluginListMenu,
+    onOpen: onOpenPluginListMenu
+  } = useDisclosure();
+
+  const {
+    Component: AvatarUploader,
+    handleFileSelectorOpen: handleAvatarSelectorOpen,
+    uploading: isUploadingAvatar
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, {
+    onSuccess(avatarUrl) {
+      setValue('avatar', avatarUrl);
+    }
+  });
+
+  const { runAsync: onSubmit, loading } = useRequest2(
+    (data: EditCustomPluginType) => {
+      if (!data.associatedPluginId) {
+        return Promise.reject(t('app:custom_plugin_associated_plugin_required'));
+      }
+
+      const formatData = {
+        pluginId: defaultForm.id ? defaultForm.id : '',
+        name: data.name,
+        avatar: data.avatar,
+        intro: data.intro,
+        inputListVal: data.inputListVal,
+        pluginTags: data.pluginTags && data.pluginTags.length > 0 ? data.pluginTags : undefined,
+        status: data.status,
+        defaultInstalled: data.defaultInstalled,
+        hasTokenFee: data.hasTokenFee,
+        originCost: data.originCost,
+        currentCost: data.currentCost,
+        associatedPluginId: data.associatedPluginId,
+        userGuide: data.userGuide,
+        author: data.author
+      };
+
+      if (formatData.pluginId) {
+        return putUpdatePlugin(formatData);
+      }
+
+      return postCreatePlugin(formatData);
+    },
+    {
+      onSuccess: () => {
+        toast({
+          title: t('app:custom_plugin_config_success'),
+          status: 'success'
+        });
+        onSuccess();
+        onClose();
+      },
+      onError() {},
+      refreshDeps: [defaultForm.id]
+    }
+  );
+
+  const { ConfirmModal: DeleteConfirmModal, openConfirm: openDeleteConfirm } = useConfirm({
+    type: 'delete',
+    content: t('app:custom_plugin_delete_confirm')
+  });
+  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delPlugin, {
+    onSuccess() {
+      toast({
+        title: t('app:custom_plugin_delete_success'),
+        status: 'success'
+      });
+      onSuccess();
+      onClose();
+    }
+  });
+
+  return (
+    <MyModal
+      isCentered
+      isOpen
+      title={t('app:custom_plugin_config_title', { name: name || t('app:custom_plugin') })}
+      maxW={['90vw', '900px']}
+      w={'100%'}
+      iconSrc={avatar}
+      position={'relative'}
+      onClose={onClose}
+    >
+      <ModalBody flex={1} overflow={'auto'} w={'full'}>
+        <Flex w={'full'} gap={5}>
+          <Box w={'full'}>
+            {/* 头像 */}
+            <Box color={'myGray.800'} fontWeight={'bold'}>
+              {t('app:custom_plugin_name_label')}
+            </Box>
+            <Flex mt={2} alignItems={'center'}>
+              <MyTooltip
+                label={
+                  isUploadingAvatar
+                    ? t('app:custom_plugin_uploading')
+                    : t('app:custom_plugin_click_upload_avatar')
+                }
+              >
+                <Avatar
+                  flexShrink={0}
+                  src={avatar}
+                  w={['28px', '36px']}
+                  h={['28px', '36px']}
+                  cursor={isUploadingAvatar ? 'not-allowed' : 'pointer'}
+                  borderRadius={'md'}
+                  onClick={isUploadingAvatar ? undefined : handleAvatarSelectorOpen}
+                  opacity={isUploadingAvatar ? 0.6 : 1}
+                />
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                autoFocus
+                bg={'myWhite.600'}
+                {...register('name', {
+                  required: t('app:custom_plugin_name_required')
+                })}
+              />
+            </Flex>
+            {/* 介绍 */}
+            <Box mt={3}>
+              <Box fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_intro_label')}
+              </Box>
+              <Textarea
+                {...register('intro')}
+                bg={'myGray.50'}
+                placeholder={t('app:custom_plugin_intro_placeholder')}
+              />
+            </Box>
+            <HStack mt={3}>
+              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_associated_plugin_label')}
+              </Box>
+              <Flex flex={'1 0 0'} flexDirection={'column'}>
+                {associatedPluginId && (
+                  <Avatar
+                    src={currentPlugin?.avatar}
+                    mt={2}
+                    ml={2}
+                    w={'20px'}
+                    borderRadius={'2px'}
+                    position="absolute"
+                  />
+                )}
+                <Input
+                  pl={associatedPluginId ? 8 : 4}
+                  fontSize={'14px'}
+                  placeholder={t('app:custom_plugin_associated_plugin_placeholder')}
+                  value={currentPlugin?.name}
+                  onChange={(e) => {
+                    setSearchKey(e.target.value);
+                  }}
+                  onFocus={() => {
+                    onOpenPluginListMenu();
+                    setLastPluginId(associatedPluginId);
+                    setValue('associatedPluginId', undefined);
+                  }}
+                  onBlur={() => {
+                    onClosePluginListMenu();
+                    if (associatedPluginId) return;
+                    setValue('associatedPluginId', lastPluginId);
+                  }}
+                />
+                {isOpenPluginListMenu && plugins.length > 0 && (
+                  <Flex
+                    position={'absolute'}
+                    mt={9}
+                    w={'100%'}
+                    flexDirection={'column'}
+                    gap={2}
+                    p={1}
+                    boxShadow="lg"
+                    bg="white"
+                    borderRadius="md"
+                    zIndex={10}
+                    maxH={'200px'}
+                    maxW={'260px'}
+                    overflow={'auto'}
+                  >
+                    {plugins.map((item) => (
+                      <Flex
+                        key={item._id}
+                        p="2"
+                        alignItems={'center'}
+                        _hover={{ bg: 'myGray.100' }}
+                        mx="1"
+                        borderRadius="sm"
+                        cursor={'pointer'}
+                        onMouseDown={() => {
+                          setSearchKey(item.name);
+                          setValue('associatedPluginId', item._id);
+                          onClosePluginListMenu();
+                        }}
+                      >
+                        <Avatar src={item.avatar} w="1.25rem" rounded={'2px'} />
+                        <Box ml="2" fontSize={'14px'}>
+                          {item.name}
+                        </Box>
+                      </Flex>
+                    ))}
+                  </Flex>
+                )}
+              </Flex>
+            </HStack>
+            {/* 标签类型 - 多选 */}
+            <Box mt={3}>
+              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                {t('app:custom_plugin_tags_label')}
+              </Box>
+              <Flex flexWrap={'wrap'} gap={2}>
+                {pluginTypeSelectList.map((item) => {
+                  const isSelected = pluginTags?.includes(item.value);
+                  return (
+                    <Checkbox
+                      key={item.value}
+                      isChecked={isSelected}
+                      onChange={(e) => {
+                        const currentTags = pluginTags || [];
+                        if (e.target.checked) {
+                          setValue('pluginTags', [...currentTags, item.value]);
+                        } else {
+                          setValue(
+                            'pluginTags',
+                            currentTags.filter((tag) => tag !== item.value)
+                          );
+                        }
+                      }}
+                    >
+                      {item.label}
+                    </Checkbox>
+                  );
+                })}
+              </Flex>
+            </Box>
+            <HStack mt={3}>
+              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_author_label')}
+              </Box>
+              <Box flex={1}>
+                <Input
+                  placeholder={t('app:custom_plugin_author_placeholder')}
+                  {...register('author')}
+                />
+              </Box>
+            </HStack>
+            <HStack mt={3}>
+              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_plugin_status_label')}
+              </Box>
+              <MySelect
+                width={'120px'}
+                value={watch('status')}
+                list={[
+                  { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
+                  {
+                    label: t('app:toolkit_status_soon_offline'),
+                    value: PluginStatusEnum.SoonOffline
+                  },
+                  { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
+                ]}
+                onChange={(e) => {
+                  setValue('status', Number(e));
+                }}
+              />
+            </HStack>
+            <HStack mt={3}>
+              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_default_installed_label')}
+              </Box>
+              <Switch {...register('defaultInstalled')} />
+            </HStack>
+            <HStack mt={5}>
+              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_has_token_fee_label')}
+              </Box>
+              <Switch {...register('hasTokenFee')} />
+            </HStack>
+            <HStack mt={5}>
+              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+                {t('app:custom_plugin_call_price_label')}
+              </Box>
+              <MyNumberInput
+                value={currentCost ?? 0}
+                onChange={(e) => setValue('currentCost', e ?? 0)}
+                max={1000}
+                min={0}
+                step={0.1}
+              />
+            </HStack>
+          </Box>
+          <Box w={'full'}>
+            <Box mb={'9px'} fontSize={'sm'} fontWeight={'medium'}>
+              {t('app:custom_plugin_user_guide_label')}
+            </Box>
+            <Textarea
+              {...register('userGuide')}
+              placeholder={t('app:custom_plugin_user_guide_placeholder')}
+              bg={'myGray.50'}
+              minH={'432px'}
+            />
+          </Box>
+        </Flex>
+      </ModalBody>
+      <ModalFooter>
+        {defaultForm.id && (
+          <IconButton
+            isLoading={isDeleting}
+            icon={<MyIcon name="delete" w={'1rem'} />}
+            variant={'whiteDanger'}
+            aria-label={''}
+            mr={3}
+            onClick={() => {
+              return openDeleteConfirm(() => onDelete({ id: defaultForm.id! }))();
+            }}
+          />
+        )}
+        <Button onClick={onClose} variant={'whiteBase'} mr={3}>
+          {t('common:Cancel')}
+        </Button>
+        <Button isLoading={loading || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
+          {isEdit ? t('app:custom_plugin_update') : t('app:custom_plugin_create')}
+        </Button>
+      </ModalFooter>
+      <AvatarUploader />
+      <DeleteConfirmModal />
+    </MyModal>
+  );
+};
+
+export default CustomPluginConfig;

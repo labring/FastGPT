@@ -1,4 +1,4 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
+import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {
@@ -33,6 +33,30 @@ import type {
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
+import type { getSystemPluginsResponse } from '@/pages/api/core/app/plugin/list';
+import type { GetPluginTagListResponse } from '@/pages/api/core/app/plugin/tag/list';
+import type {
+  CreatePluginTagBody,
+  CreatePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/create';
+import type {
+  UpdatePluginTagBody,
+  UpdatePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/update';
+import type {
+  UpdatePluginTagOrderBody,
+  UpdatePluginTagOrderResponse
+} from '@/pages/api/core/app/plugin/tag/updateOrder';
+import type {
+  DeletePluginTagQuery,
+  DeletePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/delete';
+import type { updatePluginOrderBody } from '@/pages/api/core/app/plugin/updateOrder';
+import type {
+  ToggleInstallPluginBody,
+  ToggleInstallPluginResponse
+} from '@/pages/api/core/app/plugin/team/toggleInstall';
+import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -93,8 +117,8 @@ export const getTeamPlugTemplates = async (data?: {
 };
 
 /* ============ system plugin ============== */
-export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
-  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
+export const getSystemPlugTemplates = (data?: GetSystemPluginTemplatesBody) =>
+  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data || {});
 
 export const getPluginGroups = () =>
   GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
@@ -149,3 +173,43 @@ export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
 
 export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
+
+/* ============ plugin management ============== */
+export const getSystemPlugins = (parentId?: string) =>
+  GET<getSystemPluginsResponse>(
+    `/core/app/plugin/list${parentId && typeof parentId === 'string' ? `?parentId=${parentId}` : ''}`
+  );
+
+export const putUpdatePlugin = (data: any) => PUT('/core/app/plugin/update', data);
+
+export const postCreatePlugin = (data: any) => POST('/core/app/plugin/create', data);
+
+export const delPlugin = (data: { id: string }) => DELETE('/core/app/plugin/delete', data);
+
+export const getAllUserPlugins = (data: { searchKey?: string }) =>
+  POST<any[]>('/core/app/plugin/allPlugin', data);
+
+export const putUpdatePluginOrder = (data: updatePluginOrderBody) =>
+  PUT('/core/app/plugin/updateOrder', data);
+
+/* ============ plugin tags ============== */
+export const getPluginTags = () => GET<GetPluginTagListResponse>(`/core/app/plugin/tag/list`);
+
+export const createPluginTag = (data: CreatePluginTagBody) =>
+  POST<CreatePluginTagResponse>(`/core/app/plugin/tag/create`, data);
+
+export const updatePluginTag = (data: UpdatePluginTagBody) =>
+  PUT<UpdatePluginTagResponse>(`/core/app/plugin/tag/update`, data);
+
+export const deletePluginTag = (data: DeletePluginTagQuery) =>
+  DELETE<DeletePluginTagResponse>(`/core/app/plugin/tag/delete`, data);
+
+export const updatePluginTagOrder = (data: UpdatePluginTagOrderBody) =>
+  PUT<UpdatePluginTagOrderResponse>(`/core/app/plugin/tag/updateOrder`, data);
+
+/* ============ team plugin installation ============== */
+export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
+  POST<ToggleInstallPluginResponse>(`/core/app/plugin/team/toggleInstall`, data);
+
+export const getTeamInstalledPluginIds = () =>
+  GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);
