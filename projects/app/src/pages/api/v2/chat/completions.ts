@@ -3,7 +3,11 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
@@ -61,6 +65,7 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -131,10 +136,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const chatMessages = GPTMessages2Chats({ messages });
 
     // Computed start hook params
-    const startHookText = (() => {
+    const startHookText = await (async () => {
       // Chat
       const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
-      if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
+      if (userQuestion) {
+        // presign a new url for AI
+        for (const value of userQuestion.value) {
+          if (value.type === ChatItemValueTypeEnum.file && value.file?.key) {
+            value.file.url = await getS3ChatSource().createGetChatFileURL({
+              key: value.file.key,
+              external: true
+            });
+          }
+        }
+
+        return chatValue2RuntimePrompt(userQuestion.value).text;
+      }
 
       // plugin
       return JSON.stringify(variables);
@@ -227,6 +244,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
+
+    if (histories.length > 0) {
+      for (const history of histories) {
+        if (history.obj !== ChatRoleEnum.Human) continue;
+
+        for (const value of history.value) {
+          if (value.type !== ChatItemValueTypeEnum.file || !value.file?.key) continue;
+
+          // presign a new url for AI
+          value.file.url = await getS3ChatSource().createGetChatFileURL({
+            key: value.file.key,
+            external: true
+          });
+        }
+      }
+    }
 
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
@@ -356,6 +389,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       durationSeconds
     };
+    params.userContent.value.forEach((item) => {
+      if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
+        item.file.url = '';
+      }
+    });
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {

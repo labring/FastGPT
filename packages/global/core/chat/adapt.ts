@@ -17,6 +17,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../../core/ai/type.d';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+
 const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
