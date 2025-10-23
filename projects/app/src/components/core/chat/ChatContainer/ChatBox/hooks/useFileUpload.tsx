@@ -11,11 +11,11 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { POST } from '@/web/common/api/request';
+import { defaultFileExtensionTypes } from '@fastgpt/global/core/app/constants';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -43,32 +43,58 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
   const showSelectFile = fileSelectConfig?.canSelectFile;
   const showSelectImg = fileSelectConfig?.canSelectImg;
+  const showSelectVideo = fileSelectConfig?.canSelectVideo;
+  const showSelectAudio = fileSelectConfig?.canSelectAudio;
+  const showSelectCustomFileExtension = fileSelectConfig?.canSelectCustomFileExtension;
+  const canUploadFile =
+    showSelectFile ||
+    showSelectImg ||
+    showSelectVideo ||
+    showSelectAudio ||
+    showSelectCustomFileExtension;
   const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
   const canSelectFileAmount = maxSelectFiles - fileList.length;
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
-    if (showSelectFile && showSelectImg) {
-      return {
-        icon: 'core/chat/fileSelect',
-        label: t('chat:select_file_img')
-      };
-    } else if (showSelectFile) {
+    if (canUploadFile) {
       return {
         icon: 'core/chat/fileSelect',
         label: t('chat:select_file')
       };
-    } else if (showSelectImg) {
-      return {
-        icon: 'core/chat/imgSelect',
-        label: t('chat:select_img')
-      };
     }
     return {};
-  }, [showSelectFile, showSelectImg, t]);
+  }, [canUploadFile, t]);
+
+  const fileType = useMemo(() => {
+    const types: string[] = [];
+    if (showSelectFile) {
+      types.push(...defaultFileExtensionTypes.canSelectFile);
+    }
+    if (showSelectImg) {
+      types.push(...defaultFileExtensionTypes.canSelectImg);
+    }
+    if (showSelectVideo) {
+      types.push(...defaultFileExtensionTypes.canSelectVideo);
+    }
+    if (showSelectAudio) {
+      types.push(...defaultFileExtensionTypes.canSelectAudio);
+    }
+    if (showSelectCustomFileExtension) {
+      types.push(...(fileSelectConfig.customFileExtensionList || []));
+    }
+    return types.join(', ');
+  }, [
+    showSelectFile,
+    showSelectImg,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension,
+    fileSelectConfig?.customFileExtensionList
+  ]);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: `${showSelectImg ? 'image/*,' : ''} ${showSelectFile ? documentFileType : ''}`,
+    fileType,
     multiple: true,
     maxCount: canSelectFileAmount
   });
@@ -228,6 +254,9 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     selectFileLabel,
     showSelectFile,
     showSelectImg,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension,
     removeFiles,
     replaceFiles,
     hasFileUploading

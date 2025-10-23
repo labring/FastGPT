@@ -50,7 +50,11 @@ export const defaultChatInputGuideConfig = {
 export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
   canSelectFile: false,
   canSelectImg: false,
-  maxFiles: 10
+  maxFiles: 10,
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: []
 };
 
 export enum AppTemplateTypeEnum {
@@ -64,3 +68,12 @@ export enum AppTemplateTypeEnum {
   // special type
   contribute = 'contribute'
 }
+
+export const defaultFileExtensionTypes = {
+  canSelectFile: ['.pdf', '.docx', '.pptx', '.xlsx', '.txt', '.md', '.html', '.csv'],
+  canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
+  canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
+  canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga'],
+  canSelectCustomFileExtension: []
+};
+export type FileExtensionKeyType = keyof typeof defaultFileExtensionTypes;
