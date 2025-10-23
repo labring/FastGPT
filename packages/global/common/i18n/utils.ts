@@ -14,7 +14,7 @@ export const parseI18nString = (str: I18nStringType | string = '', lang: localeT
 export const parseI18nArray = <T = any>(
   data: T[] | Record<string, T[]> | undefined,
   lang: localeType = 'en'
-): T[] => {
+): T[] | undefined => {
   if (!data) return [];
 
   // If it's an array, it's the old format
@@ -27,5 +27,5 @@ export const parseI18nArray = <T = any>(
     return data[lang] ?? data['en'] ?? [];
   }
 
-  return [];
+  return undefined;
 };

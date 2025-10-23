@@ -132,13 +132,20 @@ export const getSystemPluginByIdAndVersionId = async (
 
   // concat parent (if exists) input config
   const parent = plugin.parentId ? await getSystemToolById(plugin.parentId, lang) : undefined;
-  if (parent?.inputList) {
-    version?.inputs?.unshift({
-      key: NodeInputKeyEnum.systemInputConfig,
-      label: '',
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      inputList: parent.inputList
-    });
+  if (parent?.inputList && parent.inputList.length > 0) {
+    // Check if system_input_config already exists in version.inputs
+    const hasSystemInputConfig = version?.inputs?.some(
+      (input) => input.key === NodeInputKeyEnum.systemInputConfig
+    );
+
+    if (!hasSystemInputConfig) {
+      version?.inputs?.unshift({
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        inputList: parent.inputList
+      });
+    }
   }
 
   return {
@@ -285,11 +292,17 @@ export async function getChildAppPreviewNode({
         ? (await getSystemTools(lang)).filter((item) => item.parentId === pluginId)
         : [];
 
+      // Check if system_input_config already exists in app.inputs
+      const hasSystemInputConfig = app.inputs?.some(
+        (input) => input.key === NodeInputKeyEnum.systemInputConfig
+      );
+
       return {
         flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
         nodeIOConfig: {
           inputs: [
-            ...(app.inputList
+            // Only add system_input_config if it doesn't exist and app.inputList is available
+            ...(!hasSystemInputConfig && app.inputList
               ? [
                   {
                     key: NodeInputKeyEnum.systemInputConfig,
@@ -546,7 +559,7 @@ export const getSystemTools = async (
       const isFolder = tools.some((tool) => tool.parentId === item.id);
 
       // 解析并确保 versionList 中的 outputs 有有效的 id
-      const versionList = parseI18nArray(item.versionList, lang).map((version) => ({
+      const versionList = (parseI18nArray(item.versionList, lang) || []).map((version) => ({
         ...version,
         outputs: version.outputs.map((output) => ({
           ...output,
