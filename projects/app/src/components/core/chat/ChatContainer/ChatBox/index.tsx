@@ -551,7 +551,24 @@ const ChatBox = ({
             });
 
             const { responseText } = await onStartChat({
-              messages, // 保证最后一条是 Human 的消息
+              messages: messages.map((message) => {
+                if (message.content) {
+                  for (const content of message.content) {
+                    if (
+                      typeof content === 'string' ||
+                      (content.type !== 'image_url' && content.type !== 'file_url')
+                    )
+                      continue;
+
+                    if (content.type === 'image_url') {
+                      content.image_url.url = '';
+                    } else if (content.type === 'file_url') {
+                      content.url = '';
+                    }
+                  }
+                }
+                return message;
+              }), // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),

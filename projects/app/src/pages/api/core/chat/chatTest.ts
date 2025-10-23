@@ -263,11 +263,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       aiContent: aiResponse,
       durationSeconds
     };
-    params.userContent.value.forEach((item) => {
-      if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
-        item.file.url = '';
-      }
-    });
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {

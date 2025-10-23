@@ -165,7 +165,13 @@ export const loadRequestMessages = async ({
 
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
-              if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
+              if (
+                imgUrl.startsWith('/') ||
+                process.env.MULTIPLE_DATA_TO_BASE64 === 'true' ||
+                /^(http|https):\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?([\/][^\s]*)?$/i.test(
+                  imgUrl
+                )
+              ) {
                 const url = await (async () => {
                   if (item.key) {
                     try {
@@ -197,7 +203,7 @@ export const loadRequestMessages = async ({
                 return;
               }
             } catch (error: any) {
-              if (error?.response?.status === 405) {
+              if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
               addLog.warn(`Filter invalid image: ${imgUrl}`, { error });

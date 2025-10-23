@@ -24,7 +24,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -52,6 +52,7 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -77,7 +78,7 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
@@ -128,11 +129,33 @@ export async function dispatchWorkFlow({
     }
   }
 
+  for (const history of histories) {
+    if (history.obj !== ChatRoleEnum.Human) continue;
+    for (const value of history.value) {
+      if (value.type === ChatItemValueTypeEnum.file && value.file && value.file.key) {
+        value.file.url = await getS3ChatSource().createGetChatFileURL({
+          key: value.file.key,
+          external: true
+        });
+      }
+    }
+  }
+
+  for (const item of query) {
+    if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
+    item.file.url = await getS3ChatSource().createGetChatFileURL({
+      key: item.file.key,
+      external: true
+    });
+  }
+
   // Get default variables
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...getSystemVariables({
       ...data,
+      query,
+      histories,
       timezone
     })
   };
@@ -140,6 +163,8 @@ export async function dispatchWorkFlow({
   // Init some props
   return runWorkflow({
     ...data,
+    query,
+    histories,
     timezone,
     externalProvider,
     defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue,
@@ -210,7 +235,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
   const isDebugMode = data.mode === 'debug';
 
-  /* 
+  /*
     工作流队列控制
     特点：
       1. 可以控制一个 team 下，并发 run 的节点数量。
