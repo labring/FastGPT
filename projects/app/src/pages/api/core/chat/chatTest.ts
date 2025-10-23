@@ -49,7 +49,6 @@ import {
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -120,14 +119,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (!latestHumanChat) {
         return Promise.reject('User question is empty');
       }
-      latestHumanChat.value.forEach(async (item) => {
-        if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
-          item.file.url = await getS3ChatSource().createGetChatFileURL({
-            key: item.file.key,
-            external: true
-          });
-        }
-      });
       return latestHumanChat;
     })();
 
@@ -143,22 +134,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
       // auth balance
     ]);
-
-    if (histories.length > 0) {
-      for (const history of histories) {
-        if (history.obj !== ChatRoleEnum.Human) continue;
-
-        for (const value of history.value) {
-          if (value.type !== ChatItemValueTypeEnum.file || !value.file?.key) continue;
-
-          // presign a new url for AI
-          value.file.url = await getS3ChatSource().createGetChatFileURL({
-            key: value.file.key,
-            external: true
-          });
-        }
-      }
-    }
 
     if (chatDetail?.variables) {
       variables = {
@@ -263,6 +238,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       aiContent: aiResponse,
       durationSeconds
     };
+
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {

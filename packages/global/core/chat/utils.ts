@@ -10,7 +10,6 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
-import { cloneDeep } from 'lodash';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -168,7 +167,7 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
-    cloneDeep(input)?.filter((item) => {
+    input?.filter((item) => {
       if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
         return false;
       }

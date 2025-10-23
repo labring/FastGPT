@@ -18,6 +18,7 @@ import { writePrimary } from '../../common/mongo/utils';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { MongoS3TTL } from '../../common/s3/schema';
+import type { ClientSession } from '../../common/mongo';
 
 type Props = {
   chatId: string;
@@ -38,6 +39,40 @@ type Props = {
   metadata?: Record<string, any>;
   durationSeconds: number; //s
   errorMsg?: string;
+};
+
+const beforProcess = (props: Props) => {
+  // Remove url
+  props.userContent.value.forEach((item) => {
+    if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
+      item.file.url = '';
+    }
+  });
+};
+const afterProcess = async ({
+  contents,
+  session
+}: {
+  contents: (UserChatItemType | AIChatItemType)[];
+  session: ClientSession;
+}) => {
+  // Remove ttl
+  const fileKeys = contents
+    .map((item) => {
+      if (item.value && Array.isArray(item.value)) {
+        return item.value.map((valueItem) => {
+          if (valueItem.type === ChatItemValueTypeEnum.file && valueItem.file?.key) {
+            return valueItem.file.key;
+          }
+        });
+      }
+      return [];
+    })
+    .flat()
+    .filter(Boolean) as string[];
+  if (fileKeys.length > 0) {
+    await MongoS3TTL.deleteMany({ minioKey: { $in: fileKeys } }, { session });
+  }
 };
 
 const formatAiContent = ({
@@ -106,23 +141,9 @@ const getChatDataLog = async ({
   };
 };
 
-const extractFileKeysFromChatItems = (items: (UserChatItemType | AIChatItemType)[]): string[] => {
-  const fileKeys: string[] = [];
-
-  items.forEach((item) => {
-    if (item.value && Array.isArray(item.value)) {
-      item.value.forEach((valueItem) => {
-        if (valueItem.type === ChatItemValueTypeEnum.file && valueItem.file?.key) {
-          fileKeys.push(valueItem.file.key);
-        }
-      });
-    }
-  });
-
-  return fileKeys;
-};
-
 export async function saveChat(props: Props) {
+  beforProcess(props);
+
   const {
     chatId,
     appId,
@@ -233,10 +254,7 @@ export async function saveChat(props: Props) {
         }
       );
 
-      const fileKeys = extractFileKeysFromChatItems(processedContent);
-      if (fileKeys.length > 0) {
-        await MongoS3TTL.deleteMany({ minioKey: { $in: fileKeys } }, { session });
-      }
+      await afterProcess({ contents: processedContent, session });
 
       pushChatLog({
         chatId,
@@ -315,16 +333,11 @@ export async function saveChat(props: Props) {
   }
 }
 
-export const updateInteractiveChat = async ({
-  teamId,
-  chatId,
-  appId,
-  userContent,
-  aiContent,
-  variables,
-  durationSeconds,
-  errorMsg
-}: Props) => {
+export const updateInteractiveChat = async (props: Props) => {
+  beforProcess(props);
+
+  const { teamId, chatId, appId, userContent, aiContent, variables, durationSeconds, errorMsg } =
+    props;
   if (!chatId) return;
 
   const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
@@ -445,10 +458,7 @@ export const updateInteractiveChat = async ({
       );
     }
 
-    const fileKeys = extractFileKeysFromChatItems([userContent]);
-    if (fileKeys.length > 0) {
-      await MongoS3TTL.deleteMany({ minioKey: { $in: fileKeys } }, { session });
-    }
+    await afterProcess({ contents: [userContent, aiContent], session });
   });
 
   // Push chat data logs

@@ -24,7 +24,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -53,6 +53,7 @@ import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/const
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { addPreviewUrlToChatItems } from '../../chat/utils';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -129,18 +130,8 @@ export async function dispatchWorkFlow({
     }
   }
 
-  for (const history of histories) {
-    if (history.obj !== ChatRoleEnum.Human) continue;
-    for (const value of history.value) {
-      if (value.type === ChatItemValueTypeEnum.file && value.file && value.file.key) {
-        value.file.url = await getS3ChatSource().createGetChatFileURL({
-          key: value.file.key,
-          external: true
-        });
-      }
-    }
-  }
-
+  // Add preview url to chat items
+  await addPreviewUrlToChatItems(histories);
   for (const item of query) {
     if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
     item.file.url = await getS3ChatSource().createGetChatFileURL({

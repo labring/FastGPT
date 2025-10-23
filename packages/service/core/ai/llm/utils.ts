@@ -13,6 +13,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { isInternalAddress } from '../../../common/system/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -151,12 +152,7 @@ export const loadRequestMessages = async ({
         content.map(async (item) => {
           if (item.type === 'image_url') {
             // Remove url origin
-            const imgUrl = (() => {
-              if (origin && item.image_url.url.startsWith(origin)) {
-                return item.image_url.url.replace(origin, '');
-              }
-              return item.image_url.url;
-            })();
+            const imgUrl = item.image_url.url;
 
             // base64 image
             if (imgUrl.startsWith('data:image/')) {
@@ -168,9 +164,7 @@ export const loadRequestMessages = async ({
               if (
                 imgUrl.startsWith('/') ||
                 process.env.MULTIPLE_DATA_TO_BASE64 === 'true' ||
-                /^(http|https):\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?([\/][^\s]*)?$/i.test(
-                  imgUrl
-                )
+                isInternalAddress(imgUrl)
               ) {
                 const url = await (async () => {
                   if (item.key) {
