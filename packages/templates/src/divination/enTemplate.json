@@ -505,7 +505,7 @@
         }
       ],
       "chatConfig": {
-        "welcomeText": "请输入您的问题，老朽将为您算上一卦~",
+        "welcomeText": "Enter your question, and I will perform divination to predict your fortune.",
         "variables": [],
         "scheduledTriggerConfig": {
           "cronString": "",

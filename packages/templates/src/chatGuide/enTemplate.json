@@ -185,7 +185,7 @@
         }
       ],
       "chatConfig": {
-        "welcomeText": "你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？",
+        "welcomeText": "Hi, I can translate into different languages. Which language do you need?",
         "scheduledTriggerConfig": {
           "cronString": "",
           "timezone": "Asia/Shanghai",
