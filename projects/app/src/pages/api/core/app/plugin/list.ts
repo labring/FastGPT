@@ -11,7 +11,7 @@ import type {
   SystemPluginConfigSchemaType,
   PluginTagSchemaType
 } from '@fastgpt/service/core/app/plugin/type';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export type getSystemPluginsQuery = {
   parentId?: string;
@@ -25,7 +25,7 @@ async function handler(
   req: ApiRequestProps<getSystemPluginsBody, getSystemPluginsQuery>,
   res: ApiResponseType<any>
 ): Promise<getSystemPluginsResponse> {
-  await authSystemAdmin({ req });
+  await authCert({ req, authToken: true });
 
   const lang = getLocale(req);
   const { parentId } = req.query;

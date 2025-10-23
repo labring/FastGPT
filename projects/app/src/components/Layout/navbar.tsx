@@ -3,7 +3,6 @@ import { Box, type BoxProps, Flex, Link, type LinkProps } from '@chakra-ui/react
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -99,15 +98,19 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/model'
         ]
       },
-      {
-        label: t('common:navbar.Config'),
-        icon: 'support/config/configLight',
-        activeIcon: 'support/config/configFill',
-        link: '/config/tools',
-        activeLink: ['/config/tools']
-      }
+      ...(userInfo?.username === 'root'
+        ? [
+            {
+              label: t('common:navbar.Config'),
+              icon: 'support/config/configLight',
+              activeIcon: 'support/config/configFill',
+              link: '/config/tools',
+              activeLink: ['/config/tools']
+            }
+          ]
+        : [])
     ],
-    [lastChatAppId, lastPane, t]
+    [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
   const isSecondNavbarPage = useMemo(() => {
