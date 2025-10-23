@@ -94,11 +94,10 @@ const InputTypeConfig = ({
   const timeGranularity = watch('timeGranularity');
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
-  const timePointDefault = watch('timePointDefault');
-  const timeRangeStartDefault = watch('timeRangeStartDefault');
-  const timeRangeEndDefault = watch('timeRangeEndDefault');
-
-  const dataset = watch('dataset');
+  const timeRangeStartDefault =
+    inputType === VariableInputEnum.timeRangeSelect ? defaultValue?.[0] : undefined;
+  const timeRangeEndDefault =
+    inputType === VariableInputEnum.timeRangeSelect ? defaultValue?.[1] : undefined;
 
   const maxFiles = watch('maxFiles');
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
@@ -166,20 +165,20 @@ const InputTypeConfig = ({
   }, [inputType]);
 
   const showDefaultValue = useMemo(() => {
-    const list = [
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.JSONEditor,
-      FlowNodeInputTypeEnum.numberInput,
-      FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.multipleSelect,
-      VariableInputEnum.custom,
-      VariableInputEnum.internal,
-      VariableInputEnum.timePointSelect,
-      VariableInputEnum.timeRangeSelect
-    ];
+    const map = {
+      [FlowNodeInputTypeEnum.input]: true,
+      [FlowNodeInputTypeEnum.JSONEditor]: true,
+      [FlowNodeInputTypeEnum.numberInput]: true,
+      [FlowNodeInputTypeEnum.switch]: true,
+      [FlowNodeInputTypeEnum.select]: true,
+      [FlowNodeInputTypeEnum.multipleSelect]: true,
+      [VariableInputEnum.custom]: true,
+      [VariableInputEnum.internal]: true,
+      [VariableInputEnum.timePointSelect]: true,
+      [VariableInputEnum.timeRangeSelect]: true
+    };
 
-    return list.includes(inputType as FlowNodeInputTypeEnum);
+    return map[inputType as keyof typeof map];
   }, [inputType]);
 
   const showIsToolInput = useMemo(() => {
@@ -197,7 +196,7 @@ const InputTypeConfig = ({
 
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
-      <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
+      <Flex flexDirection={'column'} p={8} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
             {typeLabels.name[type] || typeLabels.name.formInput}
@@ -321,63 +320,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === VariableInputEnum.timePointSelect && (
-          <>
-            <Flex>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:time_granularity')}
-              </FormLabel>
-              <RadioGroup
-                list={[
-                  { title: t('common:day'), value: 'day' },
-                  { title: t('common:hour'), value: 'hour' },
-                  { title: t('common:minute'), value: 'minute' },
-                  { title: t('common:second'), value: 'second' }
-                ]}
-                value={timeGranularity || 'day'}
-                onChange={(value) => setValue('timeGranularity', value)}
-              />
-            </Flex>
-            <Flex alignItems={'flex-top'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:time_range_limit')}
-              </FormLabel>
-              <Flex flexDirection={'column'} gap={3}>
-                <Box>
-                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
-                    {t('app:time_range_start')}
-                  </Box>
-                  <TimeInput
-                    value={timeRangeStart ? new Date(timeRangeStart) : undefined}
-                    onDateTimeChange={(date) => {
-                      setValue('timeRangeStart', date);
-                      1;
-                    }}
-                    popPosition="top"
-                    timeGranularity={timeGranularity}
-                    maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
-                  />
-                </Box>
-                <Box>
-                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
-                    {t('app:time_range_end')}
-                  </Box>
-                  <TimeInput
-                    value={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
-                    onDateTimeChange={(date) => {
-                      setValue('timeRangeEnd', date);
-                    }}
-                    popPosition="top"
-                    timeGranularity={timeGranularity}
-                    minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
-                  />
-                </Box>
-              </Flex>
-            </Flex>
-          </>
-        )}
-
-        {inputType === VariableInputEnum.timeRangeSelect && (
+        {(inputType === VariableInputEnum.timePointSelect ||
+          inputType === VariableInputEnum.timeRangeSelect) && (
           <>
             <Flex>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
@@ -532,9 +476,9 @@ const InputTypeConfig = ({
               )}
               {inputType === VariableInputEnum.timePointSelect && (
                 <TimeInput
-                  value={timePointDefault ? new Date(timePointDefault) : undefined}
+                  value={defaultValue ? new Date(defaultValue) : undefined}
                   onDateTimeChange={(date) => {
-                    setValue('timePointDefault', date);
+                    setValue('defaultValue', date);
                   }}
                   popPosition="top"
                   timeGranularity={timeGranularity}
@@ -551,7 +495,7 @@ const InputTypeConfig = ({
                     <TimeInput
                       value={timeRangeStartDefault ? new Date(timeRangeStartDefault) : undefined}
                       onDateTimeChange={(date) => {
-                        setValue('timeRangeStartDefault', date);
+                        setValue('defaultValue', [date, timeRangeEndDefault]);
                       }}
                       popPosition="top"
                       timeGranularity={timeGranularity}
@@ -566,7 +510,7 @@ const InputTypeConfig = ({
                     <TimeInput
                       value={timeRangeEndDefault ? new Date(timeRangeEndDefault) : undefined}
                       onDateTimeChange={(date) => {
-                        setValue('timeRangeEndDefault', date);
+                        setValue('defaultValue', [timeRangeStartDefault, date]);
                       }}
                       popPosition="top"
                       timeGranularity={timeGranularity}
@@ -728,6 +672,7 @@ const InputTypeConfig = ({
             </Button>
           </>
         )}
+        {/* TODO: 适配新的文件上传 */}
         {inputType === VariableInputEnum.file && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
@@ -900,7 +845,7 @@ const InputTypeConfig = ({
         )}
       </Flex>
 
-      <Flex justify={'flex-end'} gap={3} pb={8} pr={8}>
+      <Flex justify={'flex-end'} mt={4} gap={3} pb={6} pr={8}>
         <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
           {t('common:Close')}
         </Button>

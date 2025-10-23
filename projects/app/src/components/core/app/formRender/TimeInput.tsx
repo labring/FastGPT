@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 
 type TimeInputProps = {
   value?: Date;
-  onDateTimeChange: (date: Date) => void;
+  onDateTimeChange: (date: Date | undefined) => void;
   popPosition?: 'top' | 'bottom';
   timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
   minDate?: Date;
@@ -38,7 +38,12 @@ const TimeInput: React.FC<TimeInputProps> = ({
     onDateTimeChange(newDate);
   };
 
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = (date: Date | undefined) => {
+    if (!date) {
+      onDateTimeChange(undefined);
+      return;
+    }
+
     const newDate = new Date(date);
     newDate.setHours(hour, minute, second);
     validateAndSetDateTime(newDate);
