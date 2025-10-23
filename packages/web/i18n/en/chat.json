@@ -111,7 +111,7 @@
   "setting.home.slogan": "Slogan",
   "setting.home.slogan.default": "Hi 👋, I'm FastGPT. How can I help you today?",
   "setting.home.slogan_placeholder": "",
-  "setting.home.title": "Homepage configuration",
+  "setting.home.title": "Homepage settings",
   "setting.incorrect_plan": "The current plan does not support this feature. Please upgrade your subscription plan.",
   "setting.incorrect_version": "The current version does not support this feature.",
   "setting.log_details.title": "Logs",

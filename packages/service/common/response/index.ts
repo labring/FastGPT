@@ -49,11 +49,11 @@ export const jsonRes = <T = any>(
   // another error
   let msg = '';
   if ((code < 200 || code >= 400) && !message) {
-    msg = error?.response?.statusText || error?.message || '请求错误';
+    msg = error?.response?.statusText || error?.message || 'Request error';
     if (typeof error === 'string') {
       msg = error;
     } else if (proxyError[error?.code]) {
-      msg = '网络连接异常';
+      msg = 'Network error';
     } else if (error?.response?.data?.error?.message) {
       msg = error?.response?.data?.error?.message;
     } else if (error?.error?.message) {
@@ -92,11 +92,11 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     });
   }
 
-  let msg = error?.response?.statusText || error?.message || '请求错误';
+  let msg = error?.response?.statusText || error?.message || 'Request error';
   if (typeof error === 'string') {
     msg = error;
   } else if (proxyError[error?.code]) {
-    msg = '网络连接异常';
+    msg = 'Network error';
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (error?.error?.message) {

@@ -209,11 +209,11 @@ const ApiDatasetForm = ({
               fontWeight={500}
               fontSize={'sm'}
             >
-              App Secret
+              App secret
             </Flex>
             <Input
               bg={'myWhite.600'}
-              placeholder={'App Secret'}
+              placeholder={'App secret'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.appSecret', { required: true })}
             />
@@ -226,11 +226,11 @@ const ApiDatasetForm = ({
               fontWeight={500}
               fontSize={'sm'}
             >
-              Folder Token
+              Folder token
             </Flex>
             <Input
               bg={'myWhite.600'}
-              placeholder={'Folder Token'}
+              placeholder={'Folder token'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.folderToken', { required: true })}
             />
