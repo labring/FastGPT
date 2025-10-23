@@ -20,6 +20,7 @@ export const variableInputTypeToInputType = (
   if (inputType === VariableInputEnum.file) return InputTypeEnum.fileSelect;
   if (inputType === VariableInputEnum.timePointSelect) return InputTypeEnum.timePointSelect;
   if (inputType === VariableInputEnum.timeRangeSelect) return InputTypeEnum.timeRangeSelect;
+  if (inputType === VariableInputEnum.datasetSelect) return InputTypeEnum.selectDataset;
   if (inputType === VariableInputEnum.custom || inputType === VariableInputEnum.internal)
     return valueTypeToInputType(valueType);
   return InputTypeEnum.JSONEditor;

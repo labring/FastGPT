@@ -37,6 +37,7 @@ import DndDrag, {
 } from '@fastgpt/web/components/common/DndDrag';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -212,15 +213,26 @@ const VariableEdit = ({
         delete data.timeGranularity;
         delete data.timeRangeStart;
         delete data.timeRangeEnd;
+        delete data.timePoint;
+        delete data.timeRangeStartDefault;
+        delete data.timeRangeEndDefault;
       } else if (data.type === VariableInputEnum.timePointSelect) {
-        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+        data.defaultValue = formatTime2YMDHMS(new Date(data.timePoint || ''));
       } else if (data.type === VariableInputEnum.timeRangeSelect) {
         data.defaultValue = [
-          data.timeRangeStart ||
+          formatTime2YMDHMS(
             new Date(
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-            ).toISOString(),
-          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+              data.timeRangeStartDefault ||
+                new Date(
+                  new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
+                ).toISOString()
+            )
+          ),
+          formatTime2YMDHMS(
+            new Date(
+              data.timeRangeEndDefault || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+            )
+          )
         ];
       }
 

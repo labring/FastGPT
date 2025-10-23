@@ -2,14 +2,14 @@ import { useTranslation } from 'next-i18next';
 import type { UseFormReturn } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { useFileUpload } from '../core/chat/ChatContainer/ChatBox/hooks/useFileUpload';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { isEqual } from 'lodash';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { Button, Flex } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import FilePreview from '../core/chat/ChatContainer/components/FilePreview';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import FileSelect from '../../pageComponents/dataset/detail/Import/components/FileSelector';
+import { getUploadFileType } from '@fastgpt/global/core/app/constants';
+import type { AppFileSelectConfigType } from '../../../../../packages/global/core/app/type';
 
 const FileSelector = ({
   onChange,
@@ -20,20 +20,21 @@ const FileSelector = ({
 
   canSelectFile = true,
   canSelectImg = false,
+  canSelectVideo = false,
+  canSelectAudio = false,
+  canSelectCustomFileExtension = false,
+  customFileExtensionList = [],
   maxFiles = 5,
   setUploading,
 
   isDisabled = false
-}: {
+}: AppFileSelectConfigType & {
   onChange: (...event: any[]) => void;
   value: any;
 
   form?: UseFormReturn<any>;
   fieldName?: string;
 
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
-  maxFiles?: number;
   setUploading?: (uploading: boolean) => void;
 
   isDisabled?: boolean;
@@ -70,6 +71,24 @@ const FileSelector = ({
     fileCtrl: fileCtrl as any
   });
 
+  const fileType = useMemo(() => {
+    return getUploadFileType({
+      canSelectFile,
+      canSelectImg,
+      canSelectVideo,
+      canSelectAudio,
+      canSelectCustomFileExtension,
+      customFileExtensionList
+    });
+  }, [
+    canSelectAudio,
+    canSelectCustomFileExtension,
+    canSelectFile,
+    canSelectImg,
+    canSelectVideo,
+    customFileExtensionList
+  ]);
+
   useEffect(() => {
     if (!Array.isArray(value)) {
       replaceFiles([]);
@@ -105,21 +124,29 @@ const FileSelector = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
-        <Button
-          isDisabled={isDisabled}
-          leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
-          variant={'whiteBase'}
-          onClick={() => {
-            onOpenSelectFile();
-          }}
-        >
-          {t('chat:select')}
-        </Button>
-      </Flex>
-      <FilePreview fileList={fileList} removeFiles={isDisabled ? undefined : removeFiles} />
-      {fileList.length === 0 && <EmptyTip py={0} mt={3} text={t('chat:not_select_file')} />}
-
+      <FileSelect
+        fileType={fileType}
+        selectFiles={fileList.map((file) => ({
+          id: file.id,
+          createStatus: 'finish' as const,
+          sourceName: file.name,
+          icon: file.icon,
+          file: file.rawFile
+        }))}
+        onSelectFiles={(files) => {
+          if (!files || files.length === 0) {
+            return;
+          }
+          const fileObjects = files
+            .map((file) => file.file)
+            .filter((file): file is File => file !== undefined);
+          onSelectFile({ files: fileObjects });
+        }}
+      />
+      <FilePreview
+        fileList={fileList.filter((file) => file && (file.name || file.url))}
+        removeFiles={isDisabled ? undefined : removeFiles}
+      />
       <File onSelect={(files) => onSelectFile({ files })} />
     </>
   );

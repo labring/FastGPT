@@ -1,8 +1,10 @@
 import {
   Box,
   Button,
+  Checkbox,
   Flex,
   FormControl,
+  Grid,
   HStack,
   Input,
   Stack,
@@ -23,20 +25,22 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
 
-import ChatFunctionTip from '@/components/core/app/Tip';
 import MySlider from '@/components/Slider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
+import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const InputTypeConfig = ({
   form,
@@ -91,9 +95,19 @@ const InputTypeConfig = ({
   const timeType = watch('timeType');
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
+  const timePoint = watch('timePoint');
+  const timeRangeStartDefault = watch('timeRangeStartDefault');
+  const timeRangeEndDefault = watch('timeRangeEndDefault');
+
+  const dataset = watch('dataset');
 
   const maxFiles = watch('maxFiles');
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+
+  const [isDatasetSelectOpen, setIsDatasetSelectOpen] = useState(false);
+  const [datasetList, setDatasetList] = useState<
+    { name: string; datasetId: string; avatar: string }[]
+  >([]);
 
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
@@ -161,7 +175,9 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.select,
       FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom,
-      VariableInputEnum.internal
+      VariableInputEnum.internal,
+      VariableInputEnum.timePointSelect,
+      VariableInputEnum.timeRangeSelect
     ];
 
     return list.includes(inputType as FlowNodeInputTypeEnum);
@@ -306,8 +322,63 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {(inputType === VariableInputEnum.timePointSelect ||
-          inputType === VariableInputEnum.timeRangeSelect) && (
+        {inputType === VariableInputEnum.timePointSelect && (
+          <>
+            <Flex>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:time_granularity')}
+              </FormLabel>
+              <RadioGroup
+                list={[
+                  { title: t('common:day'), value: 'day' },
+                  { title: t('common:hour'), value: 'hour' },
+                  { title: t('common:minute'), value: 'minute' },
+                  { title: t('common:second'), value: 'second' }
+                ]}
+                value={timeGranularity || 'day'}
+                onChange={(value) => setValue('timeGranularity', value)}
+              />
+            </Flex>
+            <Flex alignItems={'flex-top'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:time_range_limit')}
+              </FormLabel>
+              <Flex flexDirection={'column'} gap={3}>
+                <Box>
+                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                    {t('app:time_range_start')}
+                  </Box>
+                  <TimeInput
+                    value={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                    onDateTimeChange={(date) => {
+                      setValue('timeRangeStart', date);
+                      1;
+                    }}
+                    popPosition="top"
+                    timeGranularity={timeGranularity}
+                    maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                  />
+                </Box>
+                <Box>
+                  <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                    {t('app:time_range_end')}
+                  </Box>
+                  <TimeInput
+                    value={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                    onDateTimeChange={(date) => {
+                      setValue('timeRangeEnd', date);
+                    }}
+                    popPosition="top"
+                    timeGranularity={timeGranularity}
+                    minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                  />
+                </Box>
+              </Flex>
+            </Flex>
+          </>
+        )}
+
+        {inputType === VariableInputEnum.timeRangeSelect && (
           <>
             <Flex>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
@@ -459,6 +530,52 @@ const InputTypeConfig = ({
                       listValue.filter((item: any) => item.label !== '').length
                   }
                 />
+              )}
+              {inputType === VariableInputEnum.timePointSelect && (
+                <TimeInput
+                  value={timePoint ? new Date(timePoint) : undefined}
+                  onDateTimeChange={(date) => {
+                    setValue('timePoint', date);
+                  }}
+                  popPosition="top"
+                  timeGranularity={timeGranularity}
+                  minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                  maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                />
+              )}
+              {inputType === VariableInputEnum.timeRangeSelect && (
+                <Flex flexDirection={'column'} gap={3}>
+                  <Box>
+                    <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                      {t('app:time_range_start')}
+                    </Box>
+                    <TimeInput
+                      value={timeRangeStartDefault ? new Date(timeRangeStartDefault) : undefined}
+                      onDateTimeChange={(date) => {
+                        setValue('timeRangeStartDefault', date);
+                      }}
+                      popPosition="top"
+                      timeGranularity={timeGranularity}
+                      minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                      maxDate={timeRangeEndDefault ? new Date(timeRangeEndDefault) : undefined}
+                    />
+                  </Box>
+                  <Box>
+                    <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                      {t('app:time_range_end')}
+                    </Box>
+                    <TimeInput
+                      value={timeRangeEndDefault ? new Date(timeRangeEndDefault) : undefined}
+                      onDateTimeChange={(date) => {
+                        setValue('timeRangeEndDefault', date);
+                      }}
+                      popPosition="top"
+                      timeGranularity={timeGranularity}
+                      minDate={timeRangeStartDefault ? new Date(timeRangeStartDefault) : undefined}
+                      maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                    />
+                  </Box>
+                </Flex>
               )}
             </Flex>
           </Flex>
@@ -612,26 +729,70 @@ const InputTypeConfig = ({
             </Button>
           </>
         )}
-
-        {(inputType === FlowNodeInputTypeEnum.fileSelect ||
-          inputType === VariableInputEnum.file) && (
+        {inputType === VariableInputEnum.file && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:document_upload')}
+                {t('app:file_types')}
               </FormLabel>
-              <Switch {...register('canSelectFile')} />
+              <Flex gap={'8px'}>
+                <Checkbox
+                  isChecked={watch('canSelectFile') || false}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canSelectFile', true);
+                    } else {
+                      setValue('canSelectFile', false);
+                    }
+                  }}
+                >
+                  {t('app:document')}
+                </Checkbox>
+                <Checkbox
+                  isChecked={watch('canSelectImg') || false}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canSelectImg', true);
+                    } else {
+                      setValue('canSelectImg', false);
+                    }
+                  }}
+                >
+                  {t('app:image')}
+                </Checkbox>
+              </Flex>
             </Flex>
             <Box w={'full'} minH={'40px'}>
               <Flex alignItems={'center'}>
                 <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                  {t('app:image_upload')}
+                  {t('app:upload_method')}
                 </FormLabel>
-                <Switch {...register('canSelectImg')} />
-              </Flex>
-              <Flex color={'myGray.500'}>
-                <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>
-                <ChatFunctionTip type="visionModel" />
+                <Flex gap={'8px'}>
+                  <Checkbox
+                    isChecked={watch('canLocalUpload') || false}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('canLocalUpload', true);
+                      } else {
+                        setValue('canLocalUpload', false);
+                      }
+                    }}
+                  >
+                    {t('app:local_upload')}
+                  </Checkbox>
+                  <Checkbox
+                    isChecked={watch('canUrlUpload') || false}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('canUrlUpload', true);
+                      } else {
+                        setValue('canUrlUpload', false);
+                      }
+                    }}
+                  >
+                    {t('app:url_upload')}
+                  </Checkbox>
+                </Flex>
               </Flex>
             </Box>
             <Box>
@@ -659,6 +820,69 @@ const InputTypeConfig = ({
             </Box>
           </>
         )}
+
+        {inputType === VariableInputEnum.datasetSelect && (
+          <>
+            <Flex minH={'40px'} alignItems={'flex-start'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:dataset_select')}
+              </FormLabel>
+              <Flex flex={1} gap={2} flexDirection={'column'} alignItems={'stretch'}>
+                <Button
+                  variant={'outline'}
+                  size={'md'}
+                  onClick={() => setIsDatasetSelectOpen(true)}
+                  leftIcon={<MyIcon name={'core/workflow/inputType/dataset'} w={'14px'} />}
+                >
+                  {t('chat:select')}
+                </Button>
+                {datasetList.length > 0 && datasetList?.[0].datasetId !== '' && (
+                  <Grid mt={'9px'} gridTemplateColumns={'1fr 1fr'} gap={'12px'}>
+                    {datasetList.map((item) => (
+                      <Flex
+                        key={item.datasetId}
+                        alignItems={'center'}
+                        gap={2}
+                        p={2}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                        borderRadius={'md'}
+                      >
+                        <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" />
+                        <Box fontSize={'sm'}>{item.name}</Box>
+                      </Flex>
+                    ))}
+                  </Grid>
+                )}
+              </Flex>
+            </Flex>
+          </>
+        )}
+        <DatasetSelectModal
+          isOpen={isDatasetSelectOpen}
+          defaultSelectedDatasets={
+            defaultValue && datasetList.length > 0
+              ? datasetList
+                  .filter((item) => item.datasetId === defaultValue)
+                  .map((item) => ({
+                    datasetId: item.datasetId,
+                    name: item.name,
+                    avatar: item.avatar,
+                    vectorModel: {} as EmbeddingModelItemType
+                  }))
+              : []
+          }
+          onChange={(selectedDatasets) => {
+            const newDatasetList = selectedDatasets.map((item: any) => ({
+              name: item.name,
+              datasetId: item.datasetId,
+              avatar: item.avatar
+            }));
+            setDatasetList(newDatasetList);
+            setValue('dataset', newDatasetList);
+          }}
+          onClose={() => setIsDatasetSelectOpen(false)}
+        />
 
         {inputType === VariableInputEnum.password && (
           <Flex alignItems={'center'}>

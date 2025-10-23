@@ -198,6 +198,9 @@ export type VariableItemType = {
   timeType?: 'point' | 'range';
   timeRangeStart?: string;
   timeRangeEnd?: string;
+  timePoint?: string;
+  timeRangeStartDefault?: string;
+  timeRangeEndDefault?: string;
 
   // @deprecated
   enums?: { value: string; label: string }[];

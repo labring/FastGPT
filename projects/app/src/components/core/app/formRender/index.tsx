@@ -1,5 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Input, Switch, Flex, IconButton } from '@chakra-ui/react';
+import {
+  Box,
+  Input,
+  Switch,
+  Flex,
+  IconButton,
+  InputGroup,
+  InputLeftElement
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
@@ -13,6 +21,8 @@ import FileSelector from '../../../Select/FileSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
+import FilePreview from '@/components/core/chat/ChatContainer/components/FilePreview';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -27,6 +37,8 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [urlFileList, setUrlFileList] = useState<string[]>([]);
 
   if (customRender) {
     return <>{customRender(props)}</>;
@@ -200,15 +212,111 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.fileSelect) {
+      const handleAddUrl = () => {
+        const trimmedUrl = urlInput.trim();
+        if (trimmedUrl) {
+          setUrlFileList((prev) => [...prev, trimmedUrl]);
+          onChange([...urlFileList, trimmedUrl]);
+          setUrlInput('');
+        }
+      };
+
+      const handleDeleteUrl = (index: number) => {
+        const newFileList = urlFileList.filter((_, i) => i !== index);
+        setUrlFileList(newFileList);
+        onChange([...newFileList]);
+      };
+
       return (
-        <FileSelector
+        <>
+          {props.canLocalUpload && (
+            <FileSelector
+              {...commonProps}
+              canSelectFile={props.canSelectFile}
+              canSelectImg={props.canSelectImg}
+              maxFiles={props.maxFiles}
+              setUploading={props.setUploading}
+              form={props.form}
+              fieldName={props.fieldName}
+            />
+          )}
+          {props.canUrlUpload && (
+            <Box mt={'8px'}>
+              <InputGroup>
+                <InputLeftElement>
+                  <MyIcon name="common/addLight" w={'22px'} h={'22px'} color={'blue.600'} />
+                </InputLeftElement>
+                <Input
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onBlur={handleAddUrl}
+                  border={'1.5px dashed'}
+                  borderColor={'myGray.250'}
+                  borderRadius={'8px'}
+                  p={'8px'}
+                  pl={'40px'}
+                  placeholder={t('app:click_to_add_url')}
+                  h="auto"
+                />
+              </InputGroup>
+              {urlFileList.length > 0 && (
+                <FilePreview
+                  fileList={urlFileList.map((url) => ({
+                    id: url,
+                    status: 0,
+                    name: url,
+                    url: url,
+                    icon: url,
+                    type: 'file'
+                  }))}
+                  removeFiles={(index) => {
+                    handleDeleteUrl(index as number);
+                  }}
+                />
+              )}
+            </Box>
+          )}
+        </>
+      );
+    }
+
+    if (inputType === InputTypeEnum.selectDataset) {
+      const list = props.dataset?.map((item: any) => ({
+        label: item.name,
+        value: item.datasetId,
+        icon: item.avatar,
+        iconSize: '1.5rem'
+      }));
+
+      console.log('list', list);
+
+      const selectedValues = Array.isArray(value)
+        ? value.map((item: any) => (typeof item === 'string' ? item : item.datasetId))
+        : typeof value === 'string'
+          ? [value]
+          : [];
+
+      return (
+        <MultipleSelect<string>
           {...commonProps}
-          canSelectFile={props.canSelectFile}
-          canSelectImg={props.canSelectImg}
-          maxFiles={props.maxFiles}
-          setUploading={props.setUploading}
-          form={props.form}
-          fieldName={props.fieldName}
+          h={10}
+          list={list ?? []}
+          value={selectedValues}
+          onSelect={(selectedVals) => {
+            const selectedItems = selectedVals.map((val) => {
+              const item = list?.find((l: any) => l.value === val);
+              return item
+                ? {
+                    name: item.label,
+                    datasetId: item.value,
+                    icon: item.icon
+                  }
+                : { name: val, datasetId: val, icon: '' };
+            });
+            onChange(selectedItems);
+          }}
+          isSelectAll={selectedValues.length === list?.length && list?.length > 0}
+          itemWrap
         />
       );
     }
@@ -217,7 +325,7 @@ const InputRender = (props: InputRenderProps) => {
       const { timeRangeStart, timeRangeEnd } = props;
       return (
         <TimeInput
-          value={value ? new Date(value) : new Date()}
+          value={new Date(formatTime2YMDHMS(value)) || undefined}
           onDateTimeChange={(date) => onChange(date.toISOString())}
           timeGranularity={props.timeGranularity}
           minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
@@ -237,7 +345,7 @@ const InputRender = (props: InputRenderProps) => {
               {t('app:time_range_start')}
             </Box>
             <TimeInput
-              value={startDate ? new Date(startDate) : new Date()}
+              value={startDate ? new Date(formatTime2YMDHMS(startDate)) : new Date()}
               onDateTimeChange={(date) => {
                 const newArray = [...rangeArray];
                 newArray[0] = date.toISOString();
@@ -255,7 +363,7 @@ const InputRender = (props: InputRenderProps) => {
               {t('app:time_range_end')}
             </Box>
             <TimeInput
-              value={endDate ? new Date(endDate) : new Date()}
+              value={endDate ? new Date(formatTime2YMDHMS(endDate)) : new Date()}
               onDateTimeChange={(date) => {
                 const newArray = [...rangeArray];
                 newArray[1] = date.toISOString();
