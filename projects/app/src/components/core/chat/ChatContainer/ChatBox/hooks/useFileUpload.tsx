@@ -46,32 +46,25 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const showSelectVideo = fileSelectConfig?.canSelectVideo;
   const showSelectAudio = fileSelectConfig?.canSelectAudio;
   const showSelectCustomFileExtension = fileSelectConfig?.canSelectCustomFileExtension;
+  const canUploadFile =
+    showSelectFile ||
+    showSelectImg ||
+    showSelectVideo ||
+    showSelectAudio ||
+    showSelectCustomFileExtension;
   const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
   const canSelectFileAmount = maxSelectFiles - fileList.length;
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
-    if (
-      showSelectFile ||
-      showSelectImg ||
-      showSelectVideo ||
-      showSelectAudio ||
-      showSelectCustomFileExtension
-    ) {
+    if (canUploadFile) {
       return {
         icon: 'core/chat/fileSelect',
         label: t('chat:select_file')
       };
     }
     return {};
-  }, [
-    showSelectFile,
-    showSelectImg,
-    showSelectVideo,
-    showSelectAudio,
-    showSelectCustomFileExtension,
-    t
-  ]);
+  }, [canUploadFile, t]);
 
   const fileType = useMemo(() => {
     const types: string[] = [];

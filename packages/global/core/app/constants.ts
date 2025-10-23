@@ -70,24 +70,10 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultFileExtensionTypes = {
-  canSelectFile: [
-    '.pdf',
-    '.docx',
-    '.doc',
-    '.pptx',
-    '.ppt',
-    '.xlsx',
-    '.xls',
-    '.txt',
-    '.md',
-    '.mdx',
-    '.markdown',
-    '.html',
-    '.csv',
-    '.eml',
-    '.xml'
-  ],
+  canSelectFile: ['.pdf', '.docx', '.pptx', '.xlsx', '.txt', '.md', '.html', '.csv'],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
   canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
-  canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga']
+  canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga'],
+  canSelectCustomFileExtension: []
 };
+export type FileExtensionKeyType = keyof typeof defaultFileExtensionTypes;
