@@ -4,6 +4,7 @@ export type AgentPlanStepType = {
   description: string;
   depends_on?: string[];
   response?: string;
+  summary?: string;
 };
 export type AgentPlanType = {
   task: string;
