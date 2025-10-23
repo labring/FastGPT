@@ -64,3 +64,26 @@ export enum AppTemplateTypeEnum {
   // special type
   contribute = 'contribute'
 }
+
+export const defaultFileExtensionTypes = {
+  docs: [
+    '.pdf',
+    '.docx',
+    '.doc',
+    '.pptx',
+    '.ppt',
+    '.xlsx',
+    '.xls',
+    '.txt',
+    '.md',
+    '.mdx',
+    '.markdown',
+    '.html',
+    '.csv',
+    '.eml',
+    '.xml'
+  ],
+  image: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
+  video: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
+  audio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga']
+};
