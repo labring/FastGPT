@@ -55,8 +55,11 @@ type Props = {
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
+  canSelectFile: true,
   canSelectImg: false,
-  canSelectFile: true
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false
 };
 
 const defaultWhisperConfig: AppWhisperConfigType = {

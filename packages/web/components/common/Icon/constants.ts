@@ -273,10 +273,6 @@ export const iconPaths = {
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dataset': () => import('./icons/core/workflow/inputType/dataset.svg'),
-  'core/workflow/inputType/timePointSelect': () =>
-    import('./icons/core/workflow/inputType/timePointSelect.svg'),
-  'core/workflow/inputType/timeRangeSelect': () =>
-    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
   'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
@@ -302,6 +298,10 @@ export const iconPaths = {
     import('./icons/core/workflow/inputType/selectLLM.svg'),
   'core/workflow/inputType/switch': () => import('./icons/core/workflow/inputType/switch.svg'),
   'core/workflow/inputType/textarea': () => import('./icons/core/workflow/inputType/textarea.svg'),
+  'core/workflow/inputType/timePointSelect': () =>
+    import('./icons/core/workflow/inputType/timePointSelect.svg'),
+  'core/workflow/inputType/timeRangeSelect': () =>
+    import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
@@ -386,6 +386,7 @@ export const iconPaths = {
   export: () => import('./icons/export.svg'),
   feedback: () => import('./icons/feedback.svg'),
   'file/csv': () => import('./icons/file/csv.svg'),
+  'file/fill/audio': () => import('./icons/file/fill/audio.svg'),
   'file/fill/csv': () => import('./icons/file/fill/csv.svg'),
   'file/fill/doc': () => import('./icons/file/fill/doc.svg'),
   'file/fill/file': () => import('./icons/file/fill/file.svg'),
@@ -396,6 +397,7 @@ export const iconPaths = {
   'file/fill/pdf': () => import('./icons/file/fill/pdf.svg'),
   'file/fill/ppt': () => import('./icons/file/fill/ppt.svg'),
   'file/fill/txt': () => import('./icons/file/fill/txt.svg'),
+  'file/fill/video': () => import('./icons/file/fill/video.svg'),
   'file/fill/xlsx': () => import('./icons/file/fill/xlsx.svg'),
   'file/html': () => import('./icons/file/html.svg'),
   'file/indexImport': () => import('./icons/file/indexImport.svg'),
