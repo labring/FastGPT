@@ -255,7 +255,7 @@ const InputRender = (props: InputRenderProps) => {
                   borderRadius={'8px'}
                   p={'8px'}
                   pl={'40px'}
-                  placeholder={t('app:click_to_add_url')}
+                  placeholder={t('chat:click_to_add_url')}
                   h="auto"
                 />
               </InputGroup>
@@ -322,10 +322,10 @@ const InputRender = (props: InputRenderProps) => {
     }
 
     if (inputType === InputTypeEnum.timePointSelect) {
-      const { timeRangeStart, timeRangeEnd } = props;
+      const { timeRangeStart, timeRangeEnd, timePointDefault } = props;
       return (
         <TimeInput
-          value={new Date(formatTime2YMDHMS(value)) || undefined}
+          value={timePointDefault ? new Date(timePointDefault) : new Date()}
           onDateTimeChange={(date) => onChange(date.toISOString())}
           timeGranularity={props.timeGranularity}
           minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}

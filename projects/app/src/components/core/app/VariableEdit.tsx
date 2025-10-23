@@ -50,7 +50,6 @@ export const defaultVariable: VariableItemType = {
   canSelectImg: true,
   maxFiles: 5,
   timeGranularity: 'day',
-  timeType: 'point',
   timeRangeStart: new Date(
     new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
   ).toISOString(),
@@ -213,11 +212,11 @@ const VariableEdit = ({
         delete data.timeGranularity;
         delete data.timeRangeStart;
         delete data.timeRangeEnd;
-        delete data.timePoint;
+        delete data.timePointDefault;
         delete data.timeRangeStartDefault;
         delete data.timeRangeEndDefault;
       } else if (data.type === VariableInputEnum.timePointSelect) {
-        data.defaultValue = formatTime2YMDHMS(new Date(data.timePoint || ''));
+        data.defaultValue = formatTime2YMDHMS(new Date(data.timePointDefault || ''));
       } else if (data.type === VariableInputEnum.timeRangeSelect) {
         data.defaultValue = [
           formatTime2YMDHMS(

@@ -60,7 +60,6 @@
   "chat_debug": "Chat Preview",
   "chat_logs": "Logs",
   "chat_logs_tips": "Logs will record the online, shared, and API (requires chatId) conversation records of this app.",
-  "click_to_add_url": "Click to add link",
   "code_applied_successfully": "Code applied successfully",
   "code_function_describe": "Describe your code function, enter \"/\" to select the variable",
   "config_ai_model_params": "Click to configure AI model related properties",

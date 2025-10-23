@@ -92,10 +92,9 @@ const InputTypeConfig = ({
   const valueType = watch('valueType');
 
   const timeGranularity = watch('timeGranularity');
-  const timeType = watch('timeType');
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
-  const timePoint = watch('timePoint');
+  const timePointDefault = watch('timePointDefault');
   const timeRangeStartDefault = watch('timeRangeStartDefault');
   const timeRangeEndDefault = watch('timeRangeEndDefault');
 
@@ -533,9 +532,9 @@ const InputTypeConfig = ({
               )}
               {inputType === VariableInputEnum.timePointSelect && (
                 <TimeInput
-                  value={timePoint ? new Date(timePoint) : undefined}
+                  value={timePointDefault ? new Date(timePointDefault) : undefined}
                   onDateTimeChange={(date) => {
-                    setValue('timePoint', date);
+                    setValue('timePointDefault', date);
                   }}
                   popPosition="top"
                   timeGranularity={timeGranularity}

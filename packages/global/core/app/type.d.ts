@@ -195,10 +195,9 @@ export type VariableItemType = {
   maxFiles?: number;
   // timeSelect
   timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
-  timeType?: 'point' | 'range';
   timeRangeStart?: string;
   timeRangeEnd?: string;
-  timePoint?: string;
+  timePointDefault?: string;
   timeRangeStartDefault?: string;
   timeRangeEndDefault?: string;
 

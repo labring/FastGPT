@@ -83,7 +83,7 @@ type SpecificProps =
       timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
       timeRangeStart?: string;
       timeRangeEnd?: string;
-      timePoint?: string;
+      timePointDefault?: string;
     }
   | {
       // timeRangeSelect
