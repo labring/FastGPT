@@ -9,7 +9,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, InputGroup } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo, useState, useCallback } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -27,6 +27,8 @@ const ToolKitProvider = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
   const [selectedTool, setSelectedTool] = useState<SystemPluginTemplateListItemType | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const { data: tools = [], loading: loadingTools } = useRequest2(getSystemPlugins, {
     manual: false
@@ -66,17 +68,23 @@ const ToolKitProvider = () => {
   );
 
   const filteredTools = useMemo(() => {
-    const tagFiltered =
-      selectedTagIds.length > 0
-        ? tools.filter((tool) => {
-            return tool.tags?.some((tag) => selectedTagIds.includes(tag.tagId));
-          })
-        : tools;
-
-    return installedFilter
-      ? tagFiltered.filter((tool) => !!getPluginInstallStatus(tool.id))
-      : tagFiltered;
-  }, [tools, selectedTagIds, installedFilter, getPluginInstallStatus]);
+    return tools
+      .filter((tool) => {
+        if (!searchText) return true;
+        const name = tool.name.toLowerCase();
+        const intro = tool.intro?.toLowerCase() || '';
+        const search = searchText.toLowerCase();
+        return name.includes(search) || intro.includes(search);
+      })
+      .filter((tool) => {
+        if (selectedTagIds.length === 0) return true;
+        return tool.tags?.some((tag) => selectedTagIds.includes(tag.tagId));
+      })
+      .filter((tool) => {
+        if (!installedFilter) return true;
+        return !!getPluginInstallStatus(tool.id);
+      });
+  }, [tools, searchText, selectedTagIds, installedFilter, getPluginInstallStatus]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -93,10 +101,77 @@ const ToolKitProvider = () => {
           <Button position={'absolute'} right={4} top={4} onClick={() => {}}>
             {t('app:toolkit_contribute_resource')}
           </Button>
-          <Flex pt={8}>
-            <Box p={1}>{t('common:navbar.Toolkit')}</Box>
+          <Flex pt={8} alignItems={'center'}>
+            <Flex
+              alignItems={'center'}
+              transition={'all 0.3s'}
+              w={isSearchExpanded ? '320px' : 'auto'}
+            >
+              {isSearchExpanded ? (
+                <InputGroup>
+                  <MyIcon
+                    position={'absolute'}
+                    zIndex={10}
+                    left={2.5}
+                    name={'common/searchLight'}
+                    w={5}
+                    color={'primary.600'}
+                    top={'50%'}
+                    transform={'translateY(-50%)'}
+                  />
+                  <Input
+                    px={8}
+                    h={10}
+                    borderRadius={'md'}
+                    placeholder={t('common:search_tool')}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    autoFocus
+                    onBlur={() => {
+                      if (!searchText) {
+                        setIsSearchExpanded(false);
+                      }
+                    }}
+                  />
+                  {searchText && (
+                    <MyIcon
+                      position={'absolute'}
+                      zIndex={10}
+                      right={2.5}
+                      name={'common/closeLight'}
+                      w={4}
+                      top={'50%'}
+                      transform={'translateY(-50%)'}
+                      color={'myGray.500'}
+                      cursor={'pointer'}
+                      onClick={() => {
+                        setSearchText('');
+                        setIsSearchExpanded(false);
+                      }}
+                    />
+                  )}
+                </InputGroup>
+              ) : (
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  _hover={{ bg: 'myGray.100' }}
+                  onClick={() => setIsSearchExpanded(true)}
+                  p={2}
+                >
+                  <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                  <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                    {t('common:Search')}
+                  </Box>
+                </Flex>
+              )}
+            </Flex>
+            <Box mx={2} h={5} w={'1px'} bg={'myGray.200'} />
+            <Box fontSize={'14px'}>{t('common:navbar.Tools')}</Box>
           </Flex>
-          <Flex my={4} alignItems={'center'}>
+          <Flex mt={2} mb={4} alignItems={'center'}>
             <PluginTagFilter
               tags={tags}
               selectedTagIds={selectedTagIds}
