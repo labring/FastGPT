@@ -80,6 +80,9 @@ const ChatInput = ({
     selectFileLabel,
     showSelectFile,
     showSelectImg,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension,
     removeFiles,
     replaceFiles,
     hasFileUploading
@@ -201,7 +204,14 @@ const ChatInput = ({
             }}
             onPaste={(e) => {
               const clipboardData = e.clipboardData;
-              if (clipboardData && (showSelectFile || showSelectImg)) {
+              if (
+                clipboardData &&
+                (showSelectFile ||
+                  showSelectImg ||
+                  showSelectVideo ||
+                  showSelectAudio ||
+                  showSelectCustomFileExtension)
+              ) {
                 const items = clipboardData.items;
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
@@ -235,6 +245,9 @@ const ChatInput = ({
       handleSend,
       showSelectFile,
       showSelectImg,
+      showSelectVideo,
+      showSelectAudio,
+      showSelectCustomFileExtension,
       onSelectFile
     ]
   );
@@ -266,7 +279,11 @@ const ChatInput = ({
           {/* Attachment and Voice Group */}
           <Flex alignItems={'center'} h={[8, 9]}>
             {/* file selector button */}
-            {(showSelectFile || showSelectImg) && (
+            {(showSelectFile ||
+              showSelectImg ||
+              showSelectVideo ||
+              showSelectAudio ||
+              showSelectCustomFileExtension) && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
@@ -312,7 +329,12 @@ const ChatInput = ({
           </Flex>
 
           {/* Divider Container */}
-          {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
+          {((whisperConfig?.open && !inputValue) ||
+            showSelectFile ||
+            showSelectImg ||
+            showSelectVideo ||
+            showSelectAudio ||
+            showSelectCustomFileExtension) && (
             <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
               <Box w={'2px'} h={5} bg={'myGray.200'} />
             </Flex>
@@ -367,7 +389,10 @@ const ChatInput = ({
     onSelectFile,
     handleSend,
     onStop,
-    InputLeftComponent
+    InputLeftComponent,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension
   ]);
 
   const activeStyles: FlexProps = {
@@ -381,7 +406,16 @@ const ChatInput = ({
       onDrop={(e) => {
         e.preventDefault();
 
-        if (!(showSelectFile || showSelectImg)) return;
+        if (
+          !(
+            showSelectFile ||
+            showSelectImg ||
+            showSelectVideo ||
+            showSelectAudio ||
+            showSelectCustomFileExtension
+          )
+        )
+          return;
         const files = Array.from(e.dataTransfer.files);
 
         const droppedFiles = files.filter((file) => fileTypeFilter(file));

@@ -50,7 +50,11 @@ export const defaultChatInputGuideConfig = {
 export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
   canSelectFile: false,
   canSelectImg: false,
-  maxFiles: 10
+  maxFiles: 10,
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: []
 };
 
 export enum AppTemplateTypeEnum {
@@ -66,7 +70,7 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultFileExtensionTypes = {
-  docs: [
+  canSelectFile: [
     '.pdf',
     '.docx',
     '.doc',
@@ -83,7 +87,7 @@ export const defaultFileExtensionTypes = {
     '.eml',
     '.xml'
   ],
-  image: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
-  video: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
-  audio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga']
+  canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
+  canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
+  canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga']
 };

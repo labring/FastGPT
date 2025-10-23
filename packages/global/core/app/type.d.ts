@@ -245,6 +245,10 @@ export type AppFileSelectConfigType = {
   customPdfParse?: boolean;
   canSelectImg: boolean;
   maxFiles: number;
+  canSelectVideo: boolean;
+  canSelectAudio: boolean;
+  canSelectCustomFileExtension: boolean;
+  customFileExtensionList?: string[];
 };
 
 export type SystemPluginListItemType = {
