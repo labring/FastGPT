@@ -3,7 +3,9 @@ import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
-  type S3OptionsType
+  type S3OptionsType,
+  type createPreviewUrlParams,
+  CreateGetPresignedUrlParamsSchema
 } from '../type';
 import { defaultS3Options, Mimes } from '../constants';
 import path from 'node:path';
@@ -11,6 +13,7 @@ import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
 import { addLog } from '../../system/log';
+import { addS3Job } from '../mq';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -88,6 +91,16 @@ export class S3BaseBucket {
     return this.client.removeObject(this.name, objectKey, options);
   }
 
+  addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
+    return addS3Job({ prefix, key, bucketName: this.name });
+  }
+
+  listObjectsV2(
+    ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
+  ) {
+    return this.client.listObjectsV2(this.name, ...params);
+  }
+
   async createPostPresignedUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
@@ -137,5 +150,22 @@ export class S3BaseBucket {
       addLog.error('Failed to create post presigned url', error);
       return Promise.reject('Failed to create post presigned url');
     }
+  }
+
+  async createExtenalUrl(params: createPreviewUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    return await this.externalClient.presignedGetObject(this.name, key, expires);
+  }
+  async createPreviewlUrl(params: createPreviewUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    return await this.client.presignedGetObject(this.name, key, expires);
   }
 }

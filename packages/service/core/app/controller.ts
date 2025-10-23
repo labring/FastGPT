@@ -24,6 +24,7 @@ import { removeImageByPath } from '../../common/file/image/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
+import { getS3ChatSource } from '../../common/s3/sources/chat';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -169,6 +170,7 @@ export const onDelOneApp = async ({
   await MongoChat.deleteMany({
     appId
   });
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId });
 
   const del = async (session: ClientSession) => {
     for await (const app of apps) {

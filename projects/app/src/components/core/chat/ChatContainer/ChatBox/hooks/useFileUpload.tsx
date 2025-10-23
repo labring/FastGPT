@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { uploadFile2DB } from '@/web/common/file/controller';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -15,6 +14,8 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import { POST } from '@/web/common/api/request';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -156,27 +157,38 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         try {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
-          // Start upload and update process
-          const { previewUrl } = await uploadFile2DB({
-            file: copyFile.rawFile,
-            bucketName: 'chat',
-            data: {
-              appId,
-              ...outLinkAuthData
-            },
-            metadata: {
-              chatId
-            },
-            percentListen(e) {
-              copyFile.process = e;
-              if (!copyFile.url) {
-                updateFiles(fileIndex, copyFile);
-              }
-            }
+          // Get Upload Post Presigned URL
+          const { url, fields } = await getUploadChatFilePresignedUrl({
+            filename: copyFile.rawFile.name,
+            appId,
+            chatId,
+            outLinkAuthData
           });
 
-          // Update file url
+          // Upload File to S3
+          const formData = new FormData();
+          Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
+          formData.set('file', copyFile.rawFile);
+          await POST(url, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data; charset=utf-8'
+            },
+            onUploadProgress: (e) => {
+              if (!e.total) return;
+              const percent = Math.round((e.loaded / e.total) * 100);
+              copyFile.process = percent;
+              updateFiles(fileIndex, copyFile);
+            }
+          });
+          const previewUrl = await getPresignedChatFileGetUrl({
+            key: fields.key,
+            appId,
+            outLinkAuthData
+          });
+
+          // Update file url and key
           copyFile.url = previewUrl;
+          copyFile.key = fields.key;
           updateFiles(fileIndex, copyFile);
         } catch (error) {
           errorFileIndex.push(fileList.findIndex((item) => item.id === file.id)!);

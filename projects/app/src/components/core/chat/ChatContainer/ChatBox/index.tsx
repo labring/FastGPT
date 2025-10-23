@@ -179,7 +179,7 @@ const ChatBox = ({
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
 
-  /* 
+  /*
     对话已经开始的标记：
     1. 保证 appId 一致。
     2. 有对话记录/手动点了开始/默认没有需要填写的变量。
@@ -493,7 +493,8 @@ const ChatBox = ({
                     type: file.type,
                     name: file.name,
                     url: file.url || '',
-                    icon: file.icon || ''
+                    icon: file.icon || '',
+                    key: file.key || ''
                   }
                 })),
                 ...(text
@@ -544,7 +545,14 @@ const ChatBox = ({
 
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({
-              messages: newChatList.slice(0, -1),
+              messages: newChatList.slice(0, -1).map((item) => {
+                if (item.obj === ChatRoleEnum.Human) {
+                  item.files?.forEach((file) => {
+                    file.url = '';
+                  });
+                }
+                return item;
+              }),
               reserveId: true,
               reserveTool: true
             });
