@@ -7,7 +7,7 @@ import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants'
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
-import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 
 type CommonRenderProps = {
   placeholder?: string;
@@ -83,7 +83,6 @@ type SpecificProps =
       timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
       timeRangeStart?: string;
       timeRangeEnd?: string;
-      timePointDefault?: string;
     }
   | {
       // timeRangeSelect

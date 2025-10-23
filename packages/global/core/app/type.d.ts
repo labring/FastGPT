@@ -170,7 +170,7 @@ export type SettingAIDataType = {
 };
 
 // variable
-export type VariableItemType = {
+export type VariableItemType = AppFileSelectConfigType & {
   // id: string;
   key: string;
   label: string;
@@ -189,17 +189,10 @@ export type VariableItemType = {
   min?: number;
   // select
   list?: { label: string; value: string }[];
-  // file
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
-  maxFiles?: number;
   // timeSelect
   timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
   timeRangeStart?: string;
   timeRangeEnd?: string;
-  timePointDefault?: string;
-  timeRangeStartDefault?: string;
-  timeRangeEndDefault?: string;
 
   // @deprecated
   enums?: { value: string; label: string }[];
@@ -243,7 +236,7 @@ export type AppAutoExecuteConfigType = {
 };
 // File
 export type AppFileSelectConfigType = {
-  maxFiles: number;
+  maxFiles?: number;
   canSelectFile?: boolean;
   customPdfParse?: boolean;
   canSelectImg?: boolean;
