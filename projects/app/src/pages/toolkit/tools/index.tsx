@@ -18,12 +18,15 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
+import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 
 const ToolKitProvider = () => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
+  const [selectedTool, setSelectedTool] = useState<SystemPluginTemplateListItemType | null>(null);
 
   const { data: tools = [], loading: loadingTools } = useRequest2(getSystemPlugins, {
     manual: false
@@ -133,7 +136,7 @@ const ToolKitProvider = () => {
           </Flex>
         </Box>
 
-        <Box flex={1} overflowY={'auto'} px={8}>
+        <Box flex={1} overflowY={'auto'} px={8} pb={6}>
           {filteredTools.length > 0 ? (
             <Grid
               gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
@@ -148,6 +151,7 @@ const ToolKitProvider = () => {
                     isInstalled={getPluginInstallStatus(tool.id)}
                     onToggleInstall={(installed) => toggleInstall({ pluginId: tool.id, installed })}
                     systemTitle={feConfigs.systemTitle}
+                    onClick={() => setSelectedTool(tool)}
                   />
                 );
               })}
@@ -157,6 +161,20 @@ const ToolKitProvider = () => {
           )}
         </Box>
       </MyBox>
+
+      {!!selectedTool && (
+        <ToolDetailDrawer
+          onClose={() => setSelectedTool(null)}
+          tool={selectedTool}
+          isInstalled={selectedTool ? getPluginInstallStatus(selectedTool.id) : null}
+          onToggleInstall={(installed) => {
+            if (selectedTool) {
+              toggleInstall({ pluginId: selectedTool.id, installed });
+            }
+          }}
+          systemTitle={feConfigs.systemTitle}
+        />
+      )}
     </Box>
   );
 };

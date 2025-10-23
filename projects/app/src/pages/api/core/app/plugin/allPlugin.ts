@@ -6,6 +6,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isValidObjectId } from 'mongoose';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type ListAppBody = {
   searchKey?: string;
@@ -16,9 +17,7 @@ export type ListAppBody = {
  */
 async function handler(req: ApiRequestProps<ListAppBody>): Promise<SystemPluginListItemType[]> {
   const { searchKey } = req.body;
-
-  const res = await authCert({ req, authToken: true });
-  if (!res.isRoot) return Promise.reject('error: not root');
+  await authSystemAdmin({ req });
 
   const findAppsQuery = (() => {
     const searchMatch = searchKey

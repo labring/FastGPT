@@ -12,9 +12,10 @@ type ToolCardProps = {
   isInstalled: boolean | null;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
+  onClick?: () => void;
 };
 
-const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle }: ToolCardProps) => {
+const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle, onClick }: ToolCardProps) => {
   const { t, i18n } = useTranslation();
 
   const currentStatus = useMemo(() => {
@@ -57,6 +58,8 @@ const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle }: ToolCardP
       position={'relative'}
       display={'flex'}
       flexDirection={'column'}
+      cursor={onClick ? 'pointer' : 'default'}
+      onClick={onClick}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {

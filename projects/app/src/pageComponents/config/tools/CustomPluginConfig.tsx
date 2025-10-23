@@ -11,8 +11,7 @@ import {
   ModalFooter,
   Switch,
   Textarea,
-  useDisclosure,
-  Checkbox
+  useDisclosure
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -33,6 +32,9 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
@@ -104,6 +106,17 @@ const CustomPluginConfig = ({
   const pluginTags = watch('pluginTags');
   const associatedPluginId = watch('associatedPluginId');
   const currentCost = watch('currentCost');
+
+  const {
+    value: selectedTags,
+    setValue: setSelectedTags,
+    isSelectAll: isSelectAllTags,
+    setIsSelectAll: setIsSelectAllTags
+  } = useMultipleSelect<string>(pluginTags || [], false);
+
+  React.useEffect(() => {
+    setValue('pluginTags', selectedTags);
+  }, [selectedTags, setValue]);
 
   const currentPlugin = useMemo(() => {
     return plugins.find((item) => item._id === associatedPluginId);
@@ -329,35 +342,18 @@ const CustomPluginConfig = ({
                 )}
               </Flex>
             </HStack>
-            {/* 标签类型 - 多选 */}
             <Box mt={3}>
               <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
                 {t('app:custom_plugin_tags_label')}
               </Box>
-              <Flex flexWrap={'wrap'} gap={2}>
-                {pluginTypeSelectList.map((item) => {
-                  const isSelected = pluginTags?.includes(item.value);
-                  return (
-                    <Checkbox
-                      key={item.value}
-                      isChecked={isSelected}
-                      onChange={(e) => {
-                        const currentTags = pluginTags || [];
-                        if (e.target.checked) {
-                          setValue('pluginTags', [...currentTags, item.value]);
-                        } else {
-                          setValue(
-                            'pluginTags',
-                            currentTags.filter((tag) => tag !== item.value)
-                          );
-                        }
-                      }}
-                    >
-                      {item.label}
-                    </Checkbox>
-                  );
-                })}
-              </Flex>
+              <MultipleSelect
+                list={pluginTypeSelectList}
+                value={selectedTags}
+                onSelect={setSelectedTags}
+                isSelectAll={isSelectAllTags}
+                setIsSelectAll={setIsSelectAllTags}
+                placeholder={t('app:custom_plugin_tags_label')}
+              />
             </Box>
             <HStack mt={3}>
               <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
