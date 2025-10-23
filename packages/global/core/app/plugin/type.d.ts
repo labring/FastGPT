@@ -101,20 +101,20 @@ export type SecretInputConfigType = {
 };
 
 export type ToolListItem = {
-  description: I18nStringType;
-  id: string; // toolId
+  id: string;
   name: I18nStringType;
-  avatar: string; // 头像 url，是某个直接可以访问的地址
+  description: I18nStringType;
+  avatar: string;
   author?: string;
-  tags: string[]; // emptyable
-  downloadCount: number; // 一期不搞，都返回 0
+  tags: string[];
+  downloadCount: number;
 };
 
 export type ToolDetail = ToolListItem & {
   downloadUrl: string;
   versionList: ToolVersionListItemType[];
   secretInputConfig: SecretInputConfigType[];
-  children?: ToolDetail[]; // tool when children is undefined
+  children?: ToolDetail[];
   courseUrl?: string;
-  readme?: string; // markdown source code, need to be rendered
+  readme?: string;
 };

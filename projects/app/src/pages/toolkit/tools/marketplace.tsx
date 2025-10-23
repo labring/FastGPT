@@ -46,8 +46,56 @@ const ToolkitMarketplace = () => {
         tagName: tagId,
         tagOrder: index,
         isSystem: true
-      }))
-    } as SystemPluginTemplateListItemType;
+      })),
+      // 添加 mock 的 versionList 和 userGuide
+      versionList: [
+        {
+          value: 'v1.0.0',
+          description: '初始版本',
+          inputs: [
+            {
+              key: 'query',
+              label: { 'zh-CN': '搜索内容', 'zh-Hant': '搜索內容', en: 'Query' },
+              description: {
+                'zh-CN': '需要搜索的关键词或问题',
+                'zh-Hant': '需要搜索的關鍵詞或問題',
+                en: 'Keywords or questions to search'
+              },
+              valueType: 'string',
+              required: true
+            },
+            {
+              key: 'limit',
+              label: { 'zh-CN': '结果数量', 'zh-Hant': '結果數量', en: 'Result Limit' },
+              description: {
+                'zh-CN': '返回搜索结果的数量（默认 10）',
+                'zh-Hant': '返回搜索結果的數量（默認 10）',
+                en: 'Number of search results to return (default 10)'
+              },
+              valueType: 'number',
+              required: false
+            }
+          ],
+          outputs: [
+            {
+              key: 'result',
+              label: { 'zh-CN': '搜索结果', 'zh-Hant': '搜索結果', en: 'Result' },
+              description: {
+                'zh-CN': '搜索返回的结果列表',
+                'zh-Hant': '搜索返回的結果列表',
+                en: 'List of search results'
+              },
+              valueType: 'string'
+            }
+          ]
+        }
+      ],
+      userGuide: {
+        'zh-CN': `## 核心功能\n\n本工具专为${name}设计，在准确转换语言的基础上，能智能优化译文的流畅性和可读性。\n\n## 使用方法\n\n1. 输入需要处理的文本\n2. 配置相关参数\n3. 点击执行获取结果\n\n## 注意事项\n\n- 请确保输入内容格式正确\n- 建议先测试小批量数据\n- 注意配额使用情况`,
+        'zh-Hant': `## 核心功能\n\n本工具專為${name}設計，在準確轉換語言的基礎上，能智能優化譯文的流暢性和可讀性。\n\n## 使用方法\n\n1. 輸入需要處理的文本\n2. 配置相關參數\n3. 點擊執行獲取結果\n\n## 注意事項\n\n- 請確保輸入內容格式正確\n- 建議先測試小批量數據\n- 注意配額使用情況`,
+        en: `## Core Features\n\nThis tool is designed for ${name}, which can intelligently optimize the fluency and readability of translations on the basis of accurate language conversion.\n\n## Usage\n\n1. Enter the text to be processed\n2. Configure relevant parameters\n3. Click Execute to get results\n\n## Notes\n\n- Please ensure the input content format is correct\n- It is recommended to test small batches of data first\n- Pay attention to quota usage`
+      }
+    } as unknown as SystemPluginTemplateListItemType;
   };
 
   // TODO: Replace with actual API call

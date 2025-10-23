@@ -80,7 +80,8 @@ async function handler(
       inputList: formattedInputList,
       inputListVal: dbPlugin?.inputListVal,
       pluginTags,
-      tags
+      tags,
+      versionList: item.versionList
     };
   });
 }
