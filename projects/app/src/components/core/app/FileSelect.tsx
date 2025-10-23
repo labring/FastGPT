@@ -29,7 +29,6 @@ import {
   defaultAppSelectFileConfig,
   defaultFileExtensionTypes
 } from '@fastgpt/global/core/app/constants';
-import NumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { shadowLight } from '@fastgpt/web/styles/theme';
 
@@ -64,44 +63,40 @@ const FileSelect = ({
 
   const handleCheckboxChange = (type: FileExtensionKeyType, checked: boolean) => {
     if (type === 'canSelectFile') {
-      setLocalValue({
-        ...localValue,
+      setLocalValue((state) => ({
+        ...state,
         canSelectFile: checked
-      });
+      }));
     } else if (type === 'canSelectImg') {
-      setLocalValue({
-        ...localValue,
+      setLocalValue((state) => ({
+        ...state,
         canSelectImg: checked
-      });
+      }));
     } else if (type === 'canSelectVideo') {
-      setLocalValue({
-        ...localValue,
+      setLocalValue((state) => ({
+        ...state,
         canSelectVideo: checked
-      });
+      }));
     } else if (type === 'canSelectAudio') {
-      setLocalValue({
-        ...localValue,
+      setLocalValue((state) => ({
+        ...state,
         canSelectAudio: checked
-      });
+      }));
     } else if (type === 'canSelectCustomFileExtension') {
-      setLocalValue({
-        ...localValue,
+      setLocalValue((state) => ({
+        ...state,
         canSelectCustomFileExtension: checked
-      });
+      }));
     }
   };
 
   const handleConfirmCustomFileExtension = () => {
     const exists = localValue?.customFileExtensionList?.includes(customFileExtension);
-
     if (customFileExtension !== '.' && !exists) {
-      setLocalValue({
-        ...localValue,
-        customFileExtensionList: [
-          ...(localValue.customFileExtensionList || []),
-          customFileExtension
-        ]
-      });
+      setLocalValue((state) => ({
+        ...state,
+        customFileExtensionList: [...(state.customFileExtensionList || []), customFileExtension]
+      }));
       handleCheckboxChange('canSelectCustomFileExtension', true);
     }
     setCustomFileExtension('.');
@@ -162,10 +157,10 @@ const FileSelect = ({
                 step={1}
                 value={localValue.maxFiles ?? 5}
                 onChange={(e) => {
-                  setLocalValue({
-                    ...localValue,
+                  setLocalValue((state) => ({
+                    ...state,
                     maxFiles: e
-                  });
+                  }));
                 }}
               />
             </Box>
@@ -191,9 +186,9 @@ const FileSelect = ({
                       alignItems={'flex-start'}
                       cursor="pointer"
                       isChecked={localValue.canSelectCustomFileExtension}
-                      onChange={(e) =>
-                        handleCheckboxChange('canSelectCustomFileExtension', e.target.checked)
-                      }
+                      onChange={(e) => {
+                        handleCheckboxChange('canSelectCustomFileExtension', e.target.checked);
+                      }}
                     >
                       <Box color={'myGray.900'} lineHeight={1} mb={2}>
                         {t('app:upload_file_extension_type_canSelectCustomFileExtension')}
@@ -242,12 +237,12 @@ const FileSelect = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                setLocalValue({
-                                  ...localValue,
+                                setLocalValue((state) => ({
+                                  ...state,
                                   customFileExtensionList: (
-                                    localValue.customFileExtensionList || []
+                                    state.customFileExtensionList || []
                                   ).filter((prev) => prev !== ext)
-                                });
+                                }));
                               }}
                             >
                               <MyIcon
@@ -295,6 +290,7 @@ const FileSelect = ({
                               autoFocus
                               fontSize={'xs'}
                               w={'50px'}
+                              maxLength={7}
                               onChange={(e) =>
                                 setCustomFileExtension(
                                   `.${e.target.value.replace(/^\./, '').trim()}`
@@ -358,10 +354,10 @@ const FileSelect = ({
               <Checkbox
                 isChecked={localValue.customPdfParse}
                 onChange={(e) => {
-                  setLocalValue({
-                    ...localValue,
+                  setLocalValue((state) => ({
+                    ...state,
                     customPdfParse: e.target.checked
-                  });
+                  }));
                 }}
               >
                 <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
