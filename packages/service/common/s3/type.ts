@@ -17,7 +17,7 @@ export type ExtensionType = keyof typeof Mimes;
 
 export type S3OptionsType = typeof defaultS3Options;
 
-export const S3SourcesSchema = z.enum(['avatar']);
+export const S3SourcesSchema = z.enum(['avatar', 'chat']);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
@@ -46,6 +46,12 @@ export const CreatePostPresignedUrlResultSchema = z.object({
   fields: z.record(z.string(), z.string())
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
+
+export const CreateGetPresignedUrlParamsSchema = z.object({
+  key: z.string().min(1),
+  expiredHours: z.number().int().positive().optional()
+});
+export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 
 declare global {
   var s3BucketMap: {

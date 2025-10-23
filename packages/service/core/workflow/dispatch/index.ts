@@ -52,6 +52,8 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { addPreviewUrlToChatItems } from '../../chat/utils';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -77,7 +79,7 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
@@ -128,11 +130,23 @@ export async function dispatchWorkFlow({
     }
   }
 
+  // Add preview url to chat items
+  await addPreviewUrlToChatItems(histories);
+  for (const item of query) {
+    if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
+    item.file.url = await getS3ChatSource().createGetChatFileURL({
+      key: item.file.key,
+      external: true
+    });
+  }
+
   // Get default variables
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...getSystemVariables({
       ...data,
+      query,
+      histories,
       timezone
     })
   };
@@ -140,6 +154,8 @@ export async function dispatchWorkFlow({
   // Init some props
   return runWorkflow({
     ...data,
+    query,
+    histories,
     timezone,
     externalProvider,
     defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue,
@@ -210,7 +226,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
   const isDebugMode = data.mode === 'debug';
 
-  /* 
+  /*
     工作流队列控制
     特点：
       1. 可以控制一个 team 下，并发 run 的节点数量。

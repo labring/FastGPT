@@ -17,6 +17,7 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 
 export type getPaginationRecordsQuery = {};
 
@@ -70,6 +71,9 @@ async function handler(
     offset,
     limit: pageSize
   });
+
+  // Presign file urls
+  await addPreviewUrlToChatItems(histories);
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.plugin) {
