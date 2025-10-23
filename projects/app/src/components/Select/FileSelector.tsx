@@ -59,7 +59,10 @@ const FileSelector = ({
     fileSelectConfig: {
       canSelectFile,
       canSelectImg,
-      maxFiles
+      maxFiles,
+      canSelectVideo: false,
+      canSelectAudio: false,
+      canSelectCustomFileExtension: false
     },
     outLinkAuthData,
     appId,
