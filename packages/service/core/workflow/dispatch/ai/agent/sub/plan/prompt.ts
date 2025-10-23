@@ -433,21 +433,21 @@ export const getReplanAgentUserPrompt = ({
   task,
   background,
   referencePlans,
-  steps
+  dependsSteps
 }: {
   task: string;
   background?: string;
   referencePlans?: string;
-  steps: AgentPlanStepType[];
+  dependsSteps: AgentPlanStepType[];
 }) => {
-  const stepsResponsePrompt = steps
+  const stepsResponsePrompt = dependsSteps
     .map(
       (step) => `步骤 ${step.id}:
 - 标题: ${step.title}
 - 执行结果: ${step.response}`
     )
     .join('\n');
-  const stepsIdPrompt = steps.map((step) => step.id).join(', ');
+  const stepsIdPrompt = dependsSteps.map((step) => step.id).join(', ');
 
   return `任务目标：${task}
 
