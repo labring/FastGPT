@@ -3,7 +3,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
-import { isEnLocale } from '@fastgpt/service/common/middle/i18n';
+import { isEnLocale, isRefreshTemplateData } from '@fastgpt/service/common/middle/i18n';
 
 type Props = {
   templateId: string;
@@ -17,7 +17,7 @@ async function handler(
   const { templateId } = req.query as Props;
 
   const templateMarketItems: AppTemplateSchemaType[] = await getAppTemplatesAndLoadThem(
-    false,
+    isRefreshTemplateData(req),
     isEnLocale(req)
   );
 

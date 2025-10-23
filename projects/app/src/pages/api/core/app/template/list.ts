@@ -5,7 +5,7 @@ import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { isEnLocale } from '@fastgpt/service/common/middle/i18n';
+import { isEnLocale, isRefreshTemplateData } from '@fastgpt/service/common/middle/i18n';
 
 export type ListParams = {
   isQuickTemplate?: boolean;
@@ -20,7 +20,10 @@ async function handler(
 
   const { isQuickTemplate = false, type = 'all' } = req.query;
 
-  const templateMarketItems = await getAppTemplatesAndLoadThem(false, isEnLocale(req));
+  const templateMarketItems = await getAppTemplatesAndLoadThem(
+    isRefreshTemplateData(req),
+    isEnLocale(req)
+  );
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
