@@ -191,6 +191,8 @@ const FileSelect = ({
               <Box w="68px">
                 <NumberInput
                   size="sm"
+                  min={1}
+                  max={15}
                   value={localValue.maxFiles ?? 5}
                   onChange={(e) => {
                     setLocalValue({
