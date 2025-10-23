@@ -125,6 +125,7 @@ const WebsiteConfigModal = ({
               {t('common:core.dataset.website.Config Description')}
               {feConfigs?.docUrl && (
                 <Link
+                  ml={1}
                   href={getDocPath('/docs/introduction/guide/knowledge_base/websync/')}
                   target="_blank"
                   textDecoration={'underline'}
@@ -145,7 +146,7 @@ const WebsiteConfigModal = ({
             </Box>
             <Box mt={3}>
               <Box>
-                {t('common:core.dataset.website.Selector')}({t('common:choosable')})
+                {t('common:core.dataset.website.Selector')} ({t('common:choosable')})
               </Box>
               <Input {...websiteInfoForm('selector')} placeholder="body .content #document" />
             </Box>

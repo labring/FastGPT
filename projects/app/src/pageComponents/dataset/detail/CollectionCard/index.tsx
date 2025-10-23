@@ -471,7 +471,7 @@ const CollectionCard = () => {
                                   label: (
                                     <Flex alignItems={'center'}>
                                       <MyIcon
-                                        mr={1}
+                                        mr={2}
                                         name={'delete'}
                                         w={'0.9rem'}
                                         _hover={{ color: 'red.600' }}
