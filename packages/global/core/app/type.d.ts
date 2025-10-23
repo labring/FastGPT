@@ -241,10 +241,14 @@ export type AppAutoExecuteConfigType = {
 };
 // File
 export type AppFileSelectConfigType = {
-  canSelectFile: boolean;
-  customPdfParse?: boolean;
-  canSelectImg: boolean;
   maxFiles: number;
+  canSelectFile?: boolean;
+  customPdfParse?: boolean;
+  canSelectImg?: boolean;
+  canSelectVideo?: boolean;
+  canSelectAudio?: boolean;
+  canSelectCustomFileExtension?: boolean;
+  customFileExtensionList?: string[];
 };
 
 export type SystemPluginListItemType = {
