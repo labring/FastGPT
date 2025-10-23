@@ -37,36 +37,6 @@ const ToolDetailDrawer = ({
   systemTitle
 }: ToolDetailDrawerProps) => {
   const { t, i18n } = useTranslation();
-  console.log('tool', tool);
-
-  const currentStatus = React.useMemo(() => {
-    if (!tool) return null;
-
-    const statusMap: Record<
-      number | string,
-      { label: string; color: string; icon?: string } | null
-    > = {
-      0: {
-        label: t('app:toolkit_status_offline'),
-        color: 'red.600'
-      },
-      2: {
-        label: t('app:toolkit_status_soon_offline'),
-        color: 'yellow.600'
-      },
-      installed: {
-        label: t('app:toolkit_installed'),
-        color: 'myGray.900',
-        icon: 'common/check'
-      }
-    };
-
-    if (tool.status === 0) return statusMap[0];
-    if (tool.status === 2) return statusMap[2];
-    if (isInstalled) return statusMap.installed;
-    return null;
-  }, [tool, isInstalled, t]);
-
   if (!tool) return null;
 
   return (

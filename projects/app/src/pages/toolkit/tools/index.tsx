@@ -22,7 +22,7 @@ import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDra
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 
 const ToolKitProvider = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
