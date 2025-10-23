@@ -295,6 +295,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     <Link
                       className="textEllipsis"
                       maxW={'300px'}
+                      ml={1}
                       href={datasetDetail.websiteConfig.url}
                       target="_blank"
                       color={'blue.700'}

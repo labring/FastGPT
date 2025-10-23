@@ -1,3 +1,5 @@
+import { i18nT } from '../../../../web/i18n/utils';
+
 export enum InformLevelEnum {
   'common' = 'common',
   'important' = 'important',
@@ -6,13 +8,13 @@ export enum InformLevelEnum {
 
 export const InformLevelMap = {
   [InformLevelEnum.common]: {
-    label: '普通'
+    label: i18nT('admin:level_normal_text')
   },
   [InformLevelEnum.important]: {
-    label: '重要'
+    label: i18nT('admin:level_important_text')
   },
   [InformLevelEnum.emergency]: {
-    label: '紧急'
+    label: i18nT('admin:level_urgent_text')
   }
 };
 

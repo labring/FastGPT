@@ -119,10 +119,10 @@ const FeiShuEditModal = ({
           </Flex>
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 6.25rem'} required>
-              App Secret
+              App secret
             </FormLabel>
             <Input
-              placeholder={'App Secret'}
+              placeholder={'App secret'}
               {...register('app.appSecret', {
                 required: true
               })}

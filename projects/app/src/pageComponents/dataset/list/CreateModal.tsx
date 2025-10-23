@@ -106,7 +106,7 @@ const CreateModal = ({
             pr={'10px'}
           />
           {t('common:core.dataset.Create dataset', {
-            name: t(DatasetTypeMap[type].label).toLowerCase()
+            name: t(DatasetTypeMap[type].label)
           })}
         </Flex>
       }

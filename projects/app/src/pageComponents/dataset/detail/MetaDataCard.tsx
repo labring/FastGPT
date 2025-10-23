@@ -78,7 +78,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         ? [
             {
               label: t('dataset:collection_metadata_custom_pdf_parse'),
-              value: collection.customPdfParse ? 'Yes' : 'No'
+              value: collection.customPdfParse ? 'Enabled' : 'Disabled'
             }
           ]
         : []),
@@ -102,7 +102,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         ? [
             {
               label: t('dataset:index_prefix_title'),
-              value: collection.indexPrefixTitle ? 'Yes' : 'No'
+              value: collection.indexPrefixTitle ? 'Enabled' : 'Disabled'
             }
           ]
         : []),
@@ -110,7 +110,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         ? [
             {
               label: t('dataset:data_index_image'),
-              value: collection.imageIndex ? 'Yes' : 'No'
+              value: collection.imageIndex ? 'Enabled' : 'Disabled'
             }
           ]
         : []),
@@ -118,7 +118,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         ? [
             {
               label: t('dataset:auto_indexes'),
-              value: collection.autoIndexes ? 'Yes' : 'No'
+              value: collection.autoIndexes ? 'Enabled' : 'Disabled'
             }
           ]
         : []),

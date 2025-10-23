@@ -190,7 +190,7 @@
   "to_add_node": "add node",
   "to_connect_node": "connect to node",
   "tool.tool_result": "Tool running result",
-  "tool_active_config": "Tool activation",
+  "tool_active_config": "Activate tool",
   "tool_active_config_type": "Tool activated: {{type}}",
   "tool_call_termination": "Tool call termination",
   "tool_custom_field": "Custom tool variable",
