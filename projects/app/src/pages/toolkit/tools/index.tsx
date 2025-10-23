@@ -74,10 +74,7 @@ const ToolKitProvider = () => {
         : tools;
 
     return installedFilter
-      ? tagFiltered.filter((tool) => {
-          const isInstalled = getPluginInstallStatus(tool.id);
-          return isInstalled === true;
-        })
+      ? tagFiltered.filter((tool) => !!getPluginInstallStatus(tool.id))
       : tagFiltered;
   }, [tools, selectedTagIds, installedFilter, getPluginInstallStatus]);
 

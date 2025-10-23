@@ -23,7 +23,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { getSystemPlugins, putUpdatePlugin } from '@/web/core/app/api/plugin';
-import type { SystemPluginTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
+import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import type { UpdateToolFormType } from '@/pages/api/core/app/plugin/update';
@@ -34,12 +34,12 @@ import { useTranslation } from 'next-i18next';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
-const defaultPlugin: SystemPluginTemplateItemType = {
+const defaultPlugin: SystemPluginTemplateListItemType = {
   id: '',
   name: '',
   avatar: '',
+  intro: '',
   version: '',
-  workflow: { nodes: [], edges: [] },
   originCost: 0,
   currentCost: 0,
   hasTokenFee: false,
@@ -52,7 +52,7 @@ const SystemToolConfigModal = ({
   onSuccess,
   onClose
 }: {
-  plugin: SystemPluginTemplateItemType;
+  plugin: SystemPluginTemplateListItemType;
   onSuccess: () => void;
   onClose: () => void;
 }) => {

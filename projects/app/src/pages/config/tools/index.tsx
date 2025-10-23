@@ -205,7 +205,7 @@ const ToolProvider = () => {
       {!!editingPlugin &&
         splitCombinePluginId(editingPlugin.id).source === PluginSourceEnum.systemTool && (
           <SystemToolConfigModal
-            plugin={editingPlugin as SystemPluginTemplateItemType}
+            plugin={editingPlugin}
             onSuccess={refreshTools}
             onClose={() => setEditingPlugin(undefined)}
           />

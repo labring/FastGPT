@@ -57,6 +57,8 @@ import type {
   ToggleInstallPluginResponse
 } from '@/pages/api/core/app/plugin/team/toggleInstall';
 import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
+import type { updatePluginBody } from '@/pages/api/core/app/plugin/update';
+import type { createPluginBody } from '@/pages/api/core/app/plugin/create';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -177,9 +179,9 @@ export const getSystemPlugins = (parentId?: string) =>
     `/core/app/plugin/list${parentId && typeof parentId === 'string' ? `?parentId=${parentId}` : ''}`
   );
 
-export const putUpdatePlugin = (data: any) => PUT('/core/app/plugin/update', data);
+export const putUpdatePlugin = (data: updatePluginBody) => PUT('/core/app/plugin/update', data);
 
-export const postCreatePlugin = (data: any) => POST('/core/app/plugin/create', data);
+export const postCreatePlugin = (data: createPluginBody) => POST('/core/app/plugin/create', data);
 
 export const delPlugin = (data: { id: string }) => DELETE('/core/app/plugin/delete', data);
 
