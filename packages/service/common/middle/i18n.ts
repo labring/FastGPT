@@ -14,6 +14,14 @@ export const getLocale = (req: ApiRequestProps): localeType => {
   return 'en';
 };
 
+export let templateLocale = 'zh-CN';
+
+export const isRefreshTemplateData = (req: ApiRequestProps): boolean => {
+  const isUpdate = getLocale(req) !== templateLocale;
+  templateLocale = getLocale(req);
+  return isUpdate;
+};
+
 export const isEnLocale = (req: ApiRequestProps): boolean => {
   return getLocale(req) === 'en';
 };
