@@ -27,7 +27,7 @@ import { getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type { AgentPlanStepType, AgentPlanType } from './sub/plan/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { stepCall } from './call';
+import { stepCall } from './master/call';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../../../common/system/log';
 

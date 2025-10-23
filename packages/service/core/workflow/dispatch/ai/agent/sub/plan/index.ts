@@ -20,6 +20,7 @@ import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
 import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
 import type { GetSubAppInfoFnType } from '../../type';
+import { getStepDependon } from '../../common/dependon';
 
 type PlanAgentConfig = {
   model: string;
@@ -92,6 +93,8 @@ export const dispatchPlanAgent = async ({
     });
   }
 
+  console.log('Plan request messages');
+  console.dir(requestMessages, { depth: null });
   const {
     answerText,
     toolCalls = [],
@@ -205,11 +208,18 @@ export const dispatchReplanAgent = async ({
   plan: AgentPlanType;
 }): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
-  const replanSteps = plan.steps.filter((step) => (plan.replan || []).includes(step.id));
-  if (replanSteps.length === 0) {
-    console.log(plan);
-    return Promise.reject('No replan steps');
-  }
+
+  // 获取依赖的步骤
+  const { depends, usage: dependsUsage } = await getStepDependon({
+    model,
+    steps: plan.steps,
+    step: {
+      id: '',
+      title: '重新规划决策依据：需要依赖哪些步骤的判断',
+      description: '本步骤分析先前的执行结果，以确定重新规划时需要依赖哪些特定步骤。'
+    }
+  });
+  const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
 
   const requestMessages: ChatCompletionMessageParam[] = [
     {
@@ -238,15 +248,17 @@ export const dispatchReplanAgent = async ({
   } else {
     requestMessages.push({
       role: 'user',
+      // 根据需要 replanSteps 生成用户输入
       content: getReplanAgentUserPrompt({
-        task: plan.task,
-        steps: replanSteps,
+        task: userInput,
+        dependsSteps: replanSteps,
         background,
         referencePlans
       })
     });
   }
 
+  console.log('Replan call messages', JSON.stringify(requestMessages, null, 2));
   const {
     answerText,
     toolCalls = [],
