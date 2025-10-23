@@ -10,14 +10,14 @@ import {
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
-import ToolCard from '@fastgpt/web/components/common/ToolCard';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo, useState, useCallback } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
+import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 
 const ToolKitProvider = () => {
   const { t, i18n } = useTranslation();
@@ -78,16 +78,6 @@ const ToolKitProvider = () => {
       : tagFiltered;
   }, [tools, selectedTagIds, installedFilter, getPluginInstallStatus]);
 
-  const toggleTag = (tagId: string) => {
-    setSelectedTagIds((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((id) => id !== tagId);
-      } else {
-        return [...prev, tagId];
-      }
-    });
-  };
-
   return (
     <Box h={'full'} py={6} pr={6}>
       <MyBox
@@ -107,66 +97,12 @@ const ToolKitProvider = () => {
             <Box p={1}>{t('common:navbar.Toolkit')}</Box>
           </Flex>
           <Flex my={4} alignItems={'center'}>
-            <Box
-              px={3}
-              py={1.5}
-              fontSize={'12px'}
-              fontWeight={'medium'}
-              color={'myGray.700'}
-              rounded={'sm'}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              whiteSpace={'nowrap'}
-              flexShrink={0}
-              cursor={'pointer'}
-              bg={selectedTagIds.length === 0 ? 'myGray.100' : 'transparent'}
-              onClick={() => setSelectedTagIds([])}
-              _hover={{
-                bg: 'myGray.50'
-              }}
-            >
-              {t('common:All')}
-            </Box>
-            <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} />
-            <Flex
-              gap={2}
-              flex={1}
-              overflowX="auto"
-              overflowY="hidden"
-              flexWrap="nowrap"
-              css={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                '&::-webkit-scrollbar': { display: 'none' }
-              }}
-            >
-              {tags.map((tag) => {
-                const isSelected = selectedTagIds.includes(tag.tagId);
-                return (
-                  <Box
-                    key={tag.tagId}
-                    px={3}
-                    py={1.5}
-                    fontSize={'12px'}
-                    fontWeight={'medium'}
-                    color={'myGray.700'}
-                    rounded={'full'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    whiteSpace={'nowrap'}
-                    flexShrink={0}
-                    cursor={'pointer'}
-                    bg={isSelected ? 'myGray.100' : 'transparent'}
-                    onClick={() => toggleTag(tag.tagId)}
-                    _hover={{
-                      bg: 'myGray.50'
-                    }}
-                  >
-                    {parseI18nString(tag.tagName, i18n.language)}
-                  </Box>
-                );
-              })}
-            </Flex>
+            <PluginTagFilter
+              tags={tags}
+              selectedTagIds={selectedTagIds}
+              onTagSelect={setSelectedTagIds}
+              showWrapper={false}
+            />
             <MyMenu
               trigger="hover"
               Button={
@@ -193,14 +129,13 @@ const ToolKitProvider = () => {
                   ]
                 }
               ]}
-            ></MyMenu>
+            />
           </Flex>
         </Box>
 
         <Box flex={1} overflowY={'auto'} px={8}>
           {filteredTools.length > 0 ? (
             <Grid
-              py={[0, 4]}
               gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
               gridGap={5}
               alignItems={'stretch'}

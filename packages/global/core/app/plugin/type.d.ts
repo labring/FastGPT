@@ -57,8 +57,8 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  status?: number; // 0=下线, 1=正常, 2=即将下线
-  defaultInstalled?: boolean; // 默认为 true，表示系统推荐
+  status?: number;
+  defaultInstalled?: boolean;
   isOfficial?: boolean;
 
   // Admin config

@@ -9,7 +9,7 @@ export enum PluginSourceEnum {
 }
 
 export enum PluginStatusEnum {
-  Offline = 0, // 下线
-  Normal = 1, // 正常
-  SoonOffline = 2 // 即将下线
+  Offline = 0,
+  Normal = 1,
+  SoonOffline = 2
 }

@@ -117,11 +117,8 @@ export const getTeamPlugTemplates = async (data?: {
 };
 
 /* ============ system plugin ============== */
-export const getSystemPlugTemplates = (data?: GetSystemPluginTemplatesBody) =>
-  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data || {});
-
-export const getPluginGroups = () =>
-  GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
+export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
+  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);

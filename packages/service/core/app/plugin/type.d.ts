@@ -26,9 +26,6 @@ export type SystemPluginConfigSchemaType = {
     associatedPluginId: string;
     userGuide: string;
     author?: string;
-
-    // @deprecated
-    templateType: string;
   };
   inputListVal?: Record<string, any>;
 

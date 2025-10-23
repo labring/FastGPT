@@ -25,6 +25,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -312,16 +313,6 @@ const RenderList = React.memo(function RenderList({
   const { data: pluginTags = [] } = useRequest2(getPluginTags, {
     manual: false
   });
-
-  const toggleTag = useCallback((tagId: string) => {
-    setSelectedTagIds((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((id) => id !== tagId);
-      } else {
-        return [...prev, tagId];
-      }
-    });
-  }, []);
   const filteredTemplates = useMemo(() => {
     if (type !== TemplateTypeEnum.systemPlugin || selectedTagIds.length === 0) {
       return templates;
@@ -337,70 +328,11 @@ const RenderList = React.memo(function RenderList({
     return (
       <>
         {isSystemTool && pluginTags.length > 0 && (
-          <Flex mb={4} alignItems={'center'}>
-            <Box
-              px={3}
-              py={1.5}
-              fontSize={'12px'}
-              fontWeight={'medium'}
-              color={'myGray.700'}
-              rounded={'sm'}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              whiteSpace={'nowrap'}
-              flexShrink={0}
-              cursor={'pointer'}
-              bg={selectedTagIds.length === 0 ? 'myGray.100' : 'transparent'}
-              onClick={() => {
-                setSelectedTagIds([]);
-              }}
-              _hover={{
-                bg: 'myGray.50'
-              }}
-            >
-              {t('common:All')}
-            </Box>
-            <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} />
-            <Flex
-              gap={2}
-              flex={1}
-              overflowX="auto"
-              overflowY="hidden"
-              flexWrap="nowrap"
-              css={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                '&::-webkit-scrollbar': { display: 'none' }
-              }}
-            >
-              {pluginTags.map((tag) => {
-                const isSelected = selectedTagIds.includes(tag.tagId);
-                return (
-                  <Box
-                    key={tag.tagId}
-                    px={3}
-                    py={1.5}
-                    fontSize={'12px'}
-                    fontWeight={'medium'}
-                    color={'myGray.700'}
-                    rounded={'full'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    whiteSpace={'nowrap'}
-                    flexShrink={0}
-                    cursor={'pointer'}
-                    bg={isSelected ? 'myGray.100' : 'transparent'}
-                    onClick={() => toggleTag(tag.tagId)}
-                    _hover={{
-                      bg: 'myGray.50'
-                    }}
-                  >
-                    {t(parseI18nString(tag.tagName, i18n.language))}
-                  </Box>
-                );
-              })}
-            </Flex>
-          </Flex>
+          <PluginTagFilter
+            tags={pluginTags}
+            selectedTagIds={selectedTagIds}
+            onTagSelect={setSelectedTagIds}
+          />
         )}
 
         {filteredTemplates.length > 0 ? (

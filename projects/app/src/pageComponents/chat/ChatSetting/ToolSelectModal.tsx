@@ -281,10 +281,8 @@ const RenderList = React.memo(function RenderList({
       return acc;
     }, {});
 
-    // Assign templates to their tags (支持多标签)
     templates.forEach((item) => {
-      // 优先使用 pluginTags，向后兼容 templateType
-      const tagIds = item.pluginTags || (item.templateType ? [item.templateType] : []);
+      const tagIds = item.pluginTags || [];
 
       tagIds.forEach((tagId) => {
         if (tagMap[tagId]) {
