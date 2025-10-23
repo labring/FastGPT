@@ -11,7 +11,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
