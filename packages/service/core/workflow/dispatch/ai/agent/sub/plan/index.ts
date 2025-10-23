@@ -129,7 +129,7 @@ export const dispatchPlanAgent = async ({
   // 获取生成的 plan
   const plan = (() => {
     if (!answerText) {
-      throw new Error('Plan response is not valid');
+      return;
     }
 
     const params = parseToolArgs<AgentPlanType>(answerText);
@@ -293,7 +293,7 @@ export const dispatchReplanAgent = async ({
   // 获取生成的 plan
   const rePlan = (() => {
     if (!answerText) {
-      throw new Error('Replan response is not valid');
+      return;
     }
 
     const params = parseToolArgs<AgentPlanType>(answerText);
