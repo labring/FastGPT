@@ -1,10 +1,16 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type.d';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
-import { getPlanAgentPrompt } from './prompt';
+import {
+  getPlanAgentSystemPrompt,
+  getReplanAgentSystemPrompt,
+  getReplanAgentUserPrompt
+} from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { SubAppIds } from '../constants';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -13,11 +19,10 @@ import { parseToolArgs } from '../../../utils';
 import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
 import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { GetSubAppInfoFnType } from '../../type';
 
 type PlanAgentConfig = {
   model: string;
-  systemPrompt?: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
@@ -25,17 +30,18 @@ type PlanAgentConfig = {
 
 type DispatchPlanAgentProps = PlanAgentConfig & {
   historyMessages: ChatCompletionMessageParam[];
-  userInput: string;
   interactive?: WorkflowInteractiveResponseType;
+  userInput: string;
+  background?: string;
+  referencePlans?: string;
 
-  subAppPrompt: string;
   isTopPlanAgent: boolean;
+  subAppList: ChatCompletionTool[];
+  getSubAppInfo: GetSubAppInfoFnType;
 };
 
 type DispatchPlanAgentResponse = {
-  answerText: string;
-  planList?: AgentPlanType;
-  planToolCallMessages: ChatCompletionMessageParam[];
+  plan?: AgentPlanType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
   interactiveResponse?: InteractiveNodeResponseType;
@@ -45,9 +51,9 @@ export const dispatchPlanAgent = async ({
   historyMessages,
   userInput,
   interactive,
-  subAppPrompt,
+  subAppList,
+  getSubAppInfo,
   model,
-  systemPrompt,
   temperature,
   top_p,
   stream,
@@ -58,16 +64,19 @@ export const dispatchPlanAgent = async ({
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: getPlanAgentPrompt(subAppPrompt, systemPrompt)
+      content: getPlanAgentSystemPrompt({
+        getSubAppInfo,
+        subAppList
+      })
     },
-    ...historyMessages.filter((item) => item.role !== 'system')
+    ...historyMessages
   ];
 
   // 分类：query/user select/user form
   const lastMessages = requestMessages[requestMessages.length - 1];
+
   if (
-    (interactive?.type === 'agentPlanAskUserSelect' ||
-      interactive?.type === 'agentPlanAskUserForm') &&
+    (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
     lastMessages.role === 'assistant' &&
     lastMessages.tool_calls
   ) {
@@ -82,7 +91,6 @@ export const dispatchPlanAgent = async ({
       content: userInput
     });
   }
-  // console.log(JSON.stringify({ requestMessages }, null, 2));
 
   const {
     answerText,
@@ -97,7 +105,6 @@ export const dispatchPlanAgent = async ({
       messages: requestMessages,
       top_p,
       stream,
-
       tools: isTopPlanAgent ? [PlanAgentAskTool] : [],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
@@ -108,7 +115,7 @@ export const dispatchPlanAgent = async ({
   if (!answerText && !toolCalls.length) {
     return Promise.reject(getEmptyResponseTip());
   }
-
+  console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Plan response');
   /* 
     正常输出情况：
     1. text: 正常生成plan
@@ -116,46 +123,18 @@ export const dispatchPlanAgent = async ({
     3. text + toolCall: 可能生成 plan + 调用ask工具
   */
 
-  // Text: 回答的文本；planList: 结构化的plan，只能有其中一个有值
-  const { text, planList } = (() => {
-    if (!answerText)
-      return {
-        text: '',
-        planList: undefined
-      };
+  // 获取生成的 plan
+  const plan = (() => {
+    if (!answerText) {
+      throw new Error('Plan response is not valid');
+    }
+
     const params = parseToolArgs<AgentPlanType>(answerText);
     if (!params || !params.task || !params.steps) {
-      return {
-        text: answerText,
-        planList: undefined
-      };
+      throw new Error('Plan response is not valid');
     }
-    return {
-      text: '',
-      planList: params
-    };
+    return params;
   })();
-  const callPlanId = getNanoid(6);
-  const planToolCallMessages: ChatCompletionMessageParam[] = [
-    {
-      role: 'assistant',
-      tool_calls: [
-        {
-          id: callPlanId,
-          type: 'function',
-          function: {
-            name: SubAppIds.plan,
-            arguments: ''
-          }
-        }
-      ]
-    },
-    {
-      role: 'tool',
-      tool_call_id: callPlanId,
-      content: planList ? JSON.stringify(planList) : text || 'Create plan error'
-    }
-  ];
 
   // 只有顶层有交互模式
   const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
@@ -164,22 +143,18 @@ export const dispatchPlanAgent = async ({
     const tooCall = toolCalls[0];
     if (tooCall) {
       const params = parseToolArgs<AskAgentToolParamsType>(tooCall.function.arguments);
-      if (params?.mode === 'select') {
-        return {
-          type: 'agentPlanAskUserSelect',
-          params: {
-            description: params.prompt ?? '',
-            userSelectOptions: params.options.filter(Boolean).map((v, i) => {
-              return { key: `option${i}`, value: v };
-            })
-          }
-        };
-      }
-      if (params?.mode === 'input' && params.prompt) {
+      if (params) {
         return {
           type: 'agentPlanAskQuery',
           params: {
-            content: params.prompt ?? ''
+            content: params.questions.join('\n')
+          }
+        };
+      } else {
+        return {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: '生成的 ask 结构异常'
           }
         };
       }
@@ -196,9 +171,8 @@ export const dispatchPlanAgent = async ({
   });
 
   return {
-    answerText: text,
-    planList,
-    planToolCallMessages,
+    plan,
+    completeMessages,
     usages: [
       {
         moduleName: modelName,
@@ -208,7 +182,158 @@ export const dispatchPlanAgent = async ({
         outputTokens: usage.outputTokens
       }
     ],
+    interactiveResponse
+  };
+};
+
+export const dispatchReplanAgent = async ({
+  historyMessages,
+  interactive,
+  subAppList,
+  getSubAppInfo,
+  userInput,
+  plan,
+  background,
+  referencePlans,
+
+  model,
+  temperature,
+  top_p,
+  stream,
+  isTopPlanAgent
+}: DispatchPlanAgentProps & {
+  plan: AgentPlanType;
+}): Promise<DispatchPlanAgentResponse> => {
+  const modelData = getLLMModel(model);
+  const replanSteps = plan.steps.filter((step) => (plan.replan || []).includes(step.id));
+  if (replanSteps.length === 0) {
+    console.log(plan);
+    return Promise.reject('No replan steps');
+  }
+
+  const requestMessages: ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: getReplanAgentSystemPrompt({
+        getSubAppInfo,
+        subAppList
+      })
+    },
+    ...historyMessages
+  ];
+
+  // 分类：query/user select/user form
+  const lastMessages = requestMessages[requestMessages.length - 1];
+
+  if (
+    (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
+    lastMessages.role === 'assistant' &&
+    lastMessages.tool_calls
+  ) {
+    requestMessages.push({
+      role: 'tool',
+      tool_call_id: lastMessages.tool_calls[0].id,
+      content: userInput
+    });
+  } else {
+    requestMessages.push({
+      role: 'user',
+      content: getReplanAgentUserPrompt({
+        task: plan.task,
+        steps: replanSteps,
+        background,
+        referencePlans
+      })
+    });
+  }
+
+  const {
+    answerText,
+    toolCalls = [],
+    usage,
+    getEmptyResponseTip,
+    completeMessages
+  } = await createLLMResponse({
+    body: {
+      model: modelData.model,
+      temperature,
+      messages: requestMessages,
+      top_p,
+      stream,
+      tools: isTopPlanAgent ? [PlanAgentAskTool] : [],
+      tool_choice: 'auto',
+      toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
+      parallel_tool_calls: false
+    }
+  });
+
+  if (!answerText && !toolCalls.length) {
+    return Promise.reject(getEmptyResponseTip());
+  }
+  console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Replan response');
+  /* 
+    正常输出情况：
+    1. text: 正常生成plan
+    2. toolCall: 调用ask工具
+    3. text + toolCall: 可能生成 plan + 调用ask工具
+  */
+
+  // 获取生成的 plan
+  const rePlan = (() => {
+    if (!answerText) {
+      throw new Error('Replan response is not valid');
+    }
+
+    const params = parseToolArgs<AgentPlanType>(answerText);
+    if (!params || !params.steps) {
+      throw new Error('Replan response is not valid');
+    }
+    return params;
+  })();
+
+  // 只有顶层有交互模式
+  const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
+    if (!isTopPlanAgent) return;
+
+    const tooCall = toolCalls[0];
+    if (tooCall) {
+      const params = parseToolArgs<AskAgentToolParamsType>(tooCall.function.arguments);
+      if (params) {
+        return {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: params.questions.join('\n')
+          }
+        };
+      } else {
+        return {
+          type: 'agentPlanAskQuery',
+          params: {
+            content: '生成的 ask 结构异常'
+          }
+        };
+      }
+    }
+  })();
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelData.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
+
+  return {
+    plan: rePlan,
     completeMessages,
+    usages: [
+      {
+        moduleName: modelName,
+        model: modelData.model,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ],
     interactiveResponse
   };
 };

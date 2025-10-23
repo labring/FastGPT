@@ -381,7 +381,7 @@ export const checkNodeRunStatus = ({
 
   // Classify edges
   const { commonEdges, recursiveEdgeGroups } = splitNodeEdges(node);
-  console.log(JSON.stringify({ commonEdges, recursiveEdgeGroups }, null, 2));
+  // console.log(JSON.stringify({ commonEdges, recursiveEdgeGroups }, null, 2));
   // Entry
   if (commonEdges.length === 0 && recursiveEdgeGroups.length === 0) {
     return 'run';

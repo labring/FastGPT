@@ -41,7 +41,6 @@ type RunAgentCallProps = {
   }) => Promise<{
     response: string;
     usages: ChatNodeUsageType[];
-    isEnd: boolean;
     interactive?: InteractiveNodeResponseType;
   }>;
 } & ResponseEvents;
@@ -89,9 +88,6 @@ export const runAgentCall = async ({
     // TODO: 费用检测
     runTimes++;
 
-    // TODO: Context agent compression
-
-    // console.log(JSON.stringify({ messages: requestMessages, tools: subApps }, null, 2));
     // Request LLM
     let {
       reasoningText: reasoningContent,
@@ -128,17 +124,12 @@ export const runAgentCall = async ({
     requestMessages = completeMessages.slice();
 
     // Tool run and concat messages
-    let isEndSign = false;
     for await (const tool of toolCalls) {
       // TODO: 加入交互节点处理
-      const { response, usages, isEnd, interactive } = await handleToolResponse({
+      const { response, usages, interactive } = await handleToolResponse({
         call: tool,
         messages: requestMessages.slice(0, requestMessagesLength) // 取原来 request 的上下文
       });
-
-      if (isEnd) {
-        isEndSign = true;
-      }
 
       requestMessages.push({
         tool_call_id: tool.id,
@@ -149,7 +140,6 @@ export const runAgentCall = async ({
 
       if (interactive) {
         interactiveResponse = interactive;
-        isEndSign = true;
       }
     }
     // TODO: 移动到工作流里 assistantResponses concat
@@ -166,7 +156,7 @@ export const runAgentCall = async ({
     inputTokens += usage.inputTokens;
     outputTokens += usage.outputTokens;
 
-    if (isEndSign || toolCalls.length === 0) {
+    if (toolCalls.length === 0) {
       break;
     }
   }
