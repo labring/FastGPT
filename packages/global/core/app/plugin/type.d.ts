@@ -7,6 +7,7 @@ import type { WorkflowTemplateType } from '../../workflow/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
 import type { ParentIdType } from 'common/parentFolder/type';
 import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { I18nStringType } from '../../../common/i18n/type';
 
 export type PluginTagType = {
   tagId: string;
@@ -81,4 +82,39 @@ export type SystemPluginTemplateListItemType = Omit<
   name: string;
   intro: string;
   tags?: PluginTagType[];
+};
+
+// Marketplace Tool Types
+export type ToolVersionListItemType = {
+  value: string;
+  description?: string;
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+};
+
+export type SecretInputConfigType = {
+  key: string;
+  label: I18nStringType;
+  description?: I18nStringType;
+  required?: boolean;
+  type?: 'input' | 'textarea';
+};
+
+export type ToolListItem = {
+  description: I18nStringType;
+  id: string; // toolId
+  name: I18nStringType;
+  avatar: string; // 头像 url，是某个直接可以访问的地址
+  author?: string;
+  tags: string[]; // emptyable
+  downloadCount: number; // 一期不搞，都返回 0
+};
+
+export type ToolDetail = ToolListItem & {
+  downloadUrl: string;
+  versionList: ToolVersionListItemType[];
+  secretInputConfig: SecretInputConfigType[];
+  children?: ToolDetail[]; // tool when children is undefined
+  courseUrl?: string;
+  readme?: string; // markdown source code, need to be rendered
 };

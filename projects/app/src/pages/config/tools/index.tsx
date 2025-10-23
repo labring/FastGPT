@@ -22,6 +22,7 @@ import TagManageModal from '@/pageComponents/config/tools/TagManageModal';
 import { defaultCustomPluginForm } from '@/pageComponents/config/tools/CustomPluginConfig';
 import dynamic from 'next/dynamic';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useRouter } from 'next/router';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tools/SystemToolConfigModal'),
@@ -41,6 +42,7 @@ const ImportPluginModal = dynamic(() => import('@/pageComponents/config/tools/Im
 
 const ToolProvider = () => {
   const { t } = useSafeTranslation();
+  const router = useRouter();
 
   const [localPlugins, setLocalPlugins] = useState<Array<SystemPluginTemplateListItemType>>([]);
   const [editingPlugin, setEditingPlugin] = useState<SystemPluginTemplateListItemType>();
@@ -69,7 +71,7 @@ const ToolProvider = () => {
   }, [tools]);
 
   return (
-    <MyBox pt={6} pl={3} pr={8} isLoading={loadingTools}>
+    <MyBox pt={4} pl={3} pr={8} isLoading={loadingTools}>
       <Flex alignItems={'center'}>
         <Flex flex={'1'} overflow={'auto'}>
           <Box px={4} py={2} fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
@@ -92,7 +94,7 @@ const ToolProvider = () => {
                 {
                   label: t('app:toolkit_open_marketplace'),
                   onClick: () => {
-                    // TODO: 跳转到资源市场
+                    router.push('/toolkit/tools/marketplace');
                   }
                 },
                 {
