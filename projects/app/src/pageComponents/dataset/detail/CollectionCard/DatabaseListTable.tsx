@@ -143,8 +143,8 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                             {
                               children: [
                                 {
-                                  label: t('dataset:data_config'),
                                   icon: 'common/setting',
+                                  label: t('dataset:data_config'),
                                   onClick: () => {
                                     onDataConfigClick(collection.name, 1);
                                   }
@@ -156,17 +156,8 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                       {
                         children: [
                           {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon
-                                  mr={1}
-                                  name={'delete'}
-                                  w={'0.9rem'}
-                                  _hover={{ color: 'red.600' }}
-                                />
-                                {t('dataset:remove')}
-                              </Flex>
-                            ),
+                            icon: 'delete',
+                            label: t('dataset:remove'),
                             type: 'danger',
                             onClick: () => {
                               onRemoveClick(collection._id);
