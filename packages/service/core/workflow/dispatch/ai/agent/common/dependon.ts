@@ -17,8 +17,18 @@ export const getStepDependon = async ({
   addLog.debug('GetStepResponse start', { model, step });
   const historySummary = steps
     .filter((item) => item.summary)
-    .filter((item) => `- ${item.id}: ${item.summary}`)
+    .map((item) => `- ${item.id}: ${item.summary}`)
     .join('\n');
+
+  if (!historySummary) {
+    return {
+      depends: [],
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0
+      }
+    };
+  }
 
   const prompt = `
   你是一个智能检索助手。现在需要执行一个新的步骤，请根据步骤描述和历史步骤的概括信息，判断哪些历史步骤的结果对当前步骤有帮助，并提取出来。

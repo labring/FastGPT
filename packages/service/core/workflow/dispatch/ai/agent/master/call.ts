@@ -1,11 +1,11 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { runAgentCall } from '../../../../ai/llm/agentCall';
+import { runAgentCall } from '../../../../../ai/llm/agentCall';
 import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { addFilePrompt2Input } from './sub/file/utils';
-import type { AgentPlanStepType } from './sub/plan/type';
-import type { GetSubAppInfoFnType } from './type';
-import { getMasterAgentSystemPrompt } from './constants';
+import { addFilePrompt2Input } from '../sub/file/utils';
+import type { AgentPlanStepType } from '../sub/plan/type';
+import type { GetSubAppInfoFnType } from '../type';
+import { getMasterAgentSystemPrompt } from '../constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -14,20 +14,20 @@ import {
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getWorkflowChildResponseWrite } from '../../utils';
-import { SubAppIds } from './sub/constants';
-import { parseToolArgs } from '../utils';
-import { dispatchModelAgent } from './sub/model';
-import { dispatchFileRead } from './sub/file';
+import { getWorkflowChildResponseWrite } from '../../../utils';
+import { SubAppIds } from '../sub/constants';
+import { parseToolArgs } from '../../utils';
+import { dispatchFileRead } from '../sub/file';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { dispatchTool } from './sub/tool';
-import { dispatchApp, dispatchPlugin } from './sub/app';
+import { dispatchTool } from '../sub/tool';
+import { dispatchApp, dispatchPlugin } from '../sub/app';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { DispatchAgentModuleProps } from '.';
-import { getLLMModel } from '../../../../ai/model';
-import { createLLMResponse } from '../../../../ai/llm/request';
-import { addLog } from '../../../../../common/system/log';
+import type { DispatchAgentModuleProps } from '..';
+import { getLLMModel } from '../../../../../ai/model';
+import { createLLMResponse } from '../../../../../ai/llm/request';
+import { addLog } from '../../../../../../common/system/log';
+import { getStepDependon } from '../common/dependon';
 
 const getResponseSummary = async ({ response, model }: { response: string; model: string }) => {
   addLog.debug('GetResponseSummary start');
@@ -57,80 +57,6 @@ ${response}
 
   return {
     answerText,
-    usage
-  };
-};
-const getStepDependon = async ({
-  model,
-  steps,
-  step
-}: {
-  model: string;
-  steps: AgentPlanStepType[];
-  step: AgentPlanStepType;
-}) => {
-  const modelData = getLLMModel(model);
-  addLog.debug('GetStepResponse start', { model, step });
-  const historySummary = steps
-    .filter((item) => item.summary)
-    .map((item) => `- ${item.id}: ${item.summary}`)
-    .join('\n');
-
-  if (!historySummary) {
-    return {
-      depends: [],
-      usage: {
-        inputTokens: 0,
-        outputTokens: 0
-      }
-    };
-  }
-
-  const prompt = `
-你是一个智能检索助手。现在需要执行一个新的步骤，请根据步骤描述和历史步骤的概括信息，判断哪些历史步骤的结果对当前步骤有帮助，并提取出来。
-
-【当前需要执行的步骤】
-步骤ID: ${step.id}
-步骤标题: ${step.title}
-步骤描述: ${step.description}
-
-【已完成的历史步骤概括】
-${historySummary}
-
-【任务】
-请分析当前步骤的需求，判断需要引用哪些历史步骤的详细结果。
-如果不需要任何历史步骤，返回空列表。
-如果需要，请返回相关步骤的ID列表。
-
-【返回格式】（严格的JSON格式，不要包含其他文字）
-\`\`\`json
-{
-  "needed_step_ids": ["step1", "step2"],
-  "reason": "当前步骤需要整合美食和天气信息，因此需要 step1 和 step2 的结果"
-}
-\`\`\``;
-  console.log('Get dependon prompt', prompt);
-  const { answerText, usage } = await createLLMResponse({
-    body: {
-      model: modelData.model,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false
-    }
-  });
-
-  const params = parseToolArgs<{
-    needed_step_ids: string[];
-    reason: string;
-  }>(answerText);
-  if (!params) {
-    return {
-      depends: [],
-      usage
-    };
-  }
-
-  return {
-    depends: params.needed_step_ids,
     usage
   };
 };
@@ -172,7 +98,6 @@ export const stepCall = async ({
     step
   });
   step.depends_on = depends;
-  console.log(step.title, depends);
 
   const requestMessages = chats2GPTMessages({
     messages: [
@@ -201,7 +126,7 @@ export const stepCall = async ({
     ],
     reserveId: false
   });
-  console.log('Step call requestMessages', JSON.stringify(requestMessages, null, 2));
+  // console.log('Step call requestMessages', JSON.stringify(requestMessages, null, 2));
   const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,
