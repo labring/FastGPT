@@ -12,6 +12,7 @@
   "chat_test_app": "除錯-{{name}}",
   "citations": "{{num}} 筆引用",
   "click_contextual_preview": "點選檢視上下文預覽",
+  "click_to_add_url": "點擊添加鏈接",
   "completion_finish_close": "連接斷開",
   "completion_finish_content_filter": "觸發安全風控",
   "completion_finish_function_call": "函式呼叫",
