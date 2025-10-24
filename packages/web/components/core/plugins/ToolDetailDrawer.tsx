@@ -190,48 +190,57 @@ const ToolDetailDrawer = ({
               {/* Parameters Tab */}
               <TabPanel px={0} py={4}>
                 {tool.versionList && tool.versionList.length > 0 ? (
-                  <VStack align="stretch" spacing={6}>
+                  <VStack align="stretch" spacing={4}>
                     {tool.versionList[0]?.inputs && tool.versionList[0].inputs.length > 0 && (
                       <Box>
-                        <Flex alignItems="center" gap={2} mb={3}>
-                          <Box
-                            w="4px"
-                            h="16px"
-                            bg="primary.600"
-                            borderRadius="2px"
-                            flexShrink={0}
-                          />
-                          <Box fontSize="sm" fontWeight={600} color="myGray.900">
-                            {t('app:toolkit_inputs')}
-                          </Box>
-                        </Flex>
-                        <VStack align="stretch" spacing={2}>
-                          {tool.versionList[0].inputs.map((input, index) => (
+                        <VStack
+                          align="stretch"
+                          spacing={2}
+                          p={4}
+                          border="1px solid"
+                          borderColor="myGray.200"
+                          borderRadius="md"
+                          bg="myGray.50"
+                        >
+                          <Flex alignItems="center" gap={2}>
                             <Box
-                              key={index}
-                              p={3}
-                              border="1px solid"
-                              borderColor="myGray.200"
-                              borderRadius="md"
-                              bg="myGray.50"
-                            >
+                              w="4px"
+                              h="16px"
+                              bg="primary.600"
+                              borderRadius="2px"
+                              flexShrink={0}
+                            />
+                            <Box fontSize="sm" fontWeight={600} color="myGray.900">
+                              {t('app:toolkit_inputs')}
+                            </Box>
+                          </Flex>
+                          {tool.versionList[0].inputs.map((input, index) => (
+                            <Box key={index}>
                               <Flex alignItems="center" gap={2} mb={1}>
-                                <Box fontSize="sm" fontWeight={500} color="myGray.900">
-                                  {parseI18nString(input.label || input.key, i18n.language)}
-                                </Box>
                                 {input.required && (
-                                  <Box as="span" color="red.500" fontSize="xs" fontWeight="medium">
+                                  <Box
+                                    as="span"
+                                    color="red.500"
+                                    fontSize="xs"
+                                    fontWeight="medium"
+                                    ml={-2}
+                                    mr={-1}
+                                  >
                                     *
                                   </Box>
                                 )}
+                                <Box fontSize="sm" fontWeight={500} color="myGray.600">
+                                  {parseI18nString(input.label || input.key, i18n.language)}
+                                </Box>
                                 <Box
-                                  ml="auto"
                                   px={2}
                                   py={0.5}
-                                  bg="white"
                                   borderRadius="4px"
                                   fontSize="xs"
                                   color="myGray.600"
+                                  bg={'myGray.100'}
+                                  border={'1px solid'}
+                                  borderColor={'myGray.200'}
                                 >
                                   {input.valueType || 'String'}
                                 </Box>
@@ -249,34 +258,42 @@ const ToolDetailDrawer = ({
 
                     {tool.versionList[0]?.outputs && tool.versionList[0].outputs.length > 0 && (
                       <Box>
-                        <Flex alignItems="center" gap={2} mb={3}>
-                          <Box w="4px" h="16px" bg="green.600" borderRadius="2px" flexShrink={0} />
-                          <Box fontSize="sm" fontWeight={600} color="myGray.900">
-                            {t('app:toolkit_outputs')}
-                          </Box>
-                        </Flex>
-                        <VStack align="stretch" spacing={2}>
-                          {tool.versionList[0].outputs.map((output, index) => (
+                        <VStack
+                          align="stretch"
+                          spacing={2}
+                          p={4}
+                          border="1px solid"
+                          borderColor="myGray.200"
+                          borderRadius="md"
+                          bg="myGray.50"
+                        >
+                          <Flex alignItems="center" gap={2}>
                             <Box
-                              key={index}
-                              p={3}
-                              border="1px solid"
-                              borderColor="myGray.200"
-                              borderRadius="md"
-                              bg="myGray.50"
-                            >
+                              w="4px"
+                              h="16px"
+                              bg="primary.600"
+                              borderRadius="2px"
+                              flexShrink={0}
+                            />
+                            <Box fontSize="sm" fontWeight={600} color="myGray.900">
+                              {t('app:toolkit_outputs')}
+                            </Box>
+                          </Flex>
+                          {tool.versionList[0].outputs.map((output, index) => (
+                            <Box key={index}>
                               <Flex alignItems="center" gap={2} mb={1}>
-                                <Box fontSize="sm" fontWeight={500} color="myGray.900">
+                                <Box fontSize="sm" fontWeight={500} color="myGray.600">
                                   {parseI18nString(output.label || output.key, i18n.language)}
                                 </Box>
                                 <Box
-                                  ml="auto"
                                   px={2}
                                   py={0.5}
-                                  bg="white"
                                   borderRadius="4px"
                                   fontSize="xs"
                                   color="myGray.600"
+                                  bg={'myGray.100'}
+                                  border={'1px solid'}
+                                  borderColor={'myGray.200'}
                                 >
                                   {output.valueType || 'String'}
                                 </Box>
