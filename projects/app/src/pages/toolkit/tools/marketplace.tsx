@@ -46,171 +46,15 @@ const ToolkitMarketplace = () => {
         tagName: tagId,
         tagOrder: index,
         isSystem: true
-      })),
-      // 添加 mock 的 versionList 和 userGuide
-      versionList: [
-        {
-          value: 'v1.0.0',
-          description: '初始版本',
-          inputs: [
-            {
-              key: 'query',
-              label: { 'zh-CN': '搜索内容', 'zh-Hant': '搜索內容', en: 'Query' },
-              description: {
-                'zh-CN': '需要搜索的关键词或问题',
-                'zh-Hant': '需要搜索的關鍵詞或問題',
-                en: 'Keywords or questions to search'
-              },
-              valueType: 'string',
-              required: true
-            },
-            {
-              key: 'limit',
-              label: { 'zh-CN': '结果数量', 'zh-Hant': '結果數量', en: 'Result Limit' },
-              description: {
-                'zh-CN': '返回搜索结果的数量（默认 10）',
-                'zh-Hant': '返回搜索結果的數量（默認 10）',
-                en: 'Number of search results to return (default 10)'
-              },
-              valueType: 'number',
-              required: false
-            }
-          ],
-          outputs: [
-            {
-              key: 'result',
-              label: { 'zh-CN': '搜索结果', 'zh-Hant': '搜索結果', en: 'Result' },
-              description: {
-                'zh-CN': '搜索返回的结果列表',
-                'zh-Hant': '搜索返回的結果列表',
-                en: 'List of search results'
-              },
-              valueType: 'string'
-            }
-          ]
-        }
-      ],
-      userGuide: {
-        'zh-CN': `## 核心功能\n\n本工具专为${name}设计，在准确转换语言的基础上，能智能优化译文的流畅性和可读性。\n\n## 使用方法\n\n1. 输入需要处理的文本\n2. 配置相关参数\n3. 点击执行获取结果\n\n## 注意事项\n\n- 请确保输入内容格式正确\n- 建议先测试小批量数据\n- 注意配额使用情况`,
-        'zh-Hant': `## 核心功能\n\n本工具專為${name}設計，在準確轉換語言的基礎上，能智能優化譯文的流暢性和可讀性。\n\n## 使用方法\n\n1. 輸入需要處理的文本\n2. 配置相關參數\n3. 點擊執行獲取結果\n\n## 注意事項\n\n- 請確保輸入內容格式正確\n- 建議先測試小批量數據\n- 注意配額使用情況`,
-        en: `## Core Features\n\nThis tool is designed for ${name}, which can intelligently optimize the fluency and readability of translations on the basis of accurate language conversion.\n\n## Usage\n\n1. Enter the text to be processed\n2. Configure relevant parameters\n3. Click Execute to get results\n\n## Notes\n\n- Please ensure the input content format is correct\n- It is recommended to test small batches of data first\n- Pay attention to quota usage`
-      }
+      }))
     } as unknown as SystemPluginTemplateListItemType;
   };
 
   // TODO: Replace with actual API call
   const { data: tools = [], loading: loadingTools } = useRequest2(
     async () => {
-      const mockTools: ToolListItem[] = [
-        {
-          id: 'google-search-1',
-          name: { 'zh-CN': '谷歌搜索', 'zh-Hant': '谷歌搜索', en: 'Google Search' },
-          description: {
-            'zh-CN': '通过请求谷歌搜索，查询相关内容为模型提供参考',
-            'zh-Hant': '通過請求谷歌搜索，查詢相關內容為模型提供參考',
-            en: 'Query Google Search for relevant content to provide reference for the model'
-          },
-          avatar: '/imgs/plugin/google.svg',
-          author: 'FastGPT',
-          tags: ['search'],
-          downloadCount: 0
-        },
-        {
-          id: 'web-scraper-1',
-          name: { 'zh-CN': '网页爬虫', 'zh-Hant': '網頁爬蟲', en: 'Web Scraper' },
-          description: {
-            'zh-CN': '爬取指定网页内容，提取有用信息',
-            'zh-Hant': '爬取指定網頁內容，提取有用信息',
-            en: 'Crawl specified web page content and extract useful information'
-          },
-          avatar: '/imgs/plugin/web.svg',
-          author: 'FastGPT',
-          tags: ['scraping'],
-          downloadCount: 0
-        },
-        {
-          id: 'email-sender-1',
-          name: { 'zh-CN': '邮件发送', 'zh-Hant': '郵件發送', en: 'Email Sender' },
-          description: {
-            'zh-CN': '通过 SMTP 协议发送电子邮件',
-            'zh-Hant': '通過 SMTP 協議發送電子郵件',
-            en: 'Send emails via SMTP protocol'
-          },
-          avatar: '/imgs/plugin/email.svg',
-          author: 'Community',
-          tags: ['communication'],
-          downloadCount: 0
-        },
-        {
-          id: 'database-query-1',
-          name: { 'zh-CN': '数据库查询', 'zh-Hant': '數據庫查詢', en: 'Database Query' },
-          description: {
-            'zh-CN': '连接数据库并执行 SQL 查询',
-            'zh-Hant': '連接數據庫並執行 SQL 查詢',
-            en: 'Connect to database and execute SQL queries'
-          },
-          avatar: '/imgs/plugin/db.svg',
-          author: 'FastGPT',
-          tags: ['database'],
-          downloadCount: 0
-        },
-        {
-          id: 'image-gen-1',
-          name: { 'zh-CN': '图像生成', 'zh-Hant': '圖像生成', en: 'Image Generation' },
-          description: {
-            'zh-CN': '使用 AI 模型生成图像',
-            'zh-Hant': '使用 AI 模型生成圖像',
-            en: 'Generate images using AI models'
-          },
-          avatar: '/imgs/plugin/image.svg',
-          author: 'FastGPT',
-          tags: ['ai'],
-          downloadCount: 0
-        },
-        {
-          id: 'weather-1',
-          name: { 'zh-CN': '天气查询', 'zh-Hant': '天氣查詢', en: 'Weather Query' },
-          description: {
-            'zh-CN': '查询全球城市天气信息',
-            'zh-Hant': '查詢全球城市天氣信息',
-            en: 'Query weather information for cities worldwide'
-          },
-          avatar: '/imgs/plugin/weather.svg',
-          author: 'Community',
-          tags: ['search'],
-          downloadCount: 0
-        },
-        {
-          id: 'translate-1',
-          name: { 'zh-CN': '文本翻译', 'zh-Hant': '文本翻譯', en: 'Text Translation' },
-          description: {
-            'zh-CN': '支持多语言文本翻译服务',
-            'zh-Hant': '支持多語言文本翻譯服務',
-            en: 'Multi-language text translation service'
-          },
-          avatar: '/imgs/plugin/translate.svg',
-          author: 'FastGPT',
-          tags: ['ai', 'communication'],
-          downloadCount: 0
-        },
-        {
-          id: 'pdf-parser-1',
-          name: { 'zh-CN': 'PDF 解析', 'zh-Hant': 'PDF 解析', en: 'PDF Parser' },
-          description: {
-            'zh-CN': '解析 PDF 文档，提取文本和图片',
-            'zh-Hant': '解析 PDF 文檔，提取文本和圖片',
-            en: 'Parse PDF documents and extract text and images'
-          },
-          avatar: '/imgs/plugin/pdf.svg',
-          author: 'Community',
-          tags: ['scraping'],
-          downloadCount: 0
-        }
-      ];
-
-      // 模拟网络延迟
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return mockTools;
+      // TODO: 调用实际的 API 获取工具列表
+      return [] as ToolListItem[];
     },
     {
       manual: false
@@ -220,40 +64,8 @@ const ToolkitMarketplace = () => {
   // TODO: Replace with actual API call
   const { data: tags = [] } = useRequest2(
     async () => {
-      // Mock 标签数据
-      const mockTags = [
-        {
-          tagId: 'search',
-          tagName: { 'zh-CN': '搜索', 'zh-Hant': '搜索', en: 'Search' },
-          tagOrder: 1,
-          isSystem: true
-        },
-        {
-          tagId: 'scraping',
-          tagName: { 'zh-CN': '爬虫', 'zh-Hant': '爬蟲', en: 'Scraping' },
-          tagOrder: 2,
-          isSystem: true
-        },
-        {
-          tagId: 'communication',
-          tagName: { 'zh-CN': '通信', 'zh-Hant': '通信', en: 'Communication' },
-          tagOrder: 3,
-          isSystem: true
-        },
-        {
-          tagId: 'database',
-          tagName: { 'zh-CN': '数据库', 'zh-Hant': '數據庫', en: 'Database' },
-          tagOrder: 4,
-          isSystem: true
-        },
-        {
-          tagId: 'ai',
-          tagName: { 'zh-CN': 'AI', 'zh-Hant': 'AI', en: 'AI' },
-          tagOrder: 5,
-          isSystem: true
-        }
-      ];
-      return mockTags;
+      // TODO: 调用实际的 API 获取标签列表
+      return [];
     },
     {
       manual: false
@@ -386,7 +198,6 @@ const ToolkitMarketplace = () => {
               tags={tags}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
-              showWrapper={false}
             />
           </Flex>
         </Box>
@@ -416,7 +227,7 @@ const ToolkitMarketplace = () => {
               })}
             </Grid>
           ) : (
-            <EmptyTip text={t('common:common.empty.no_data')} />
+            <EmptyTip />
           )}
         </Box>
       </MyBox>

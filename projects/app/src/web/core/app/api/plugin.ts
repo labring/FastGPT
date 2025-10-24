@@ -16,8 +16,8 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
+import type { SystemPluginListItemType} from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
@@ -188,7 +188,7 @@ export const postCreatePlugin = (data: createPluginBody) => POST('/core/app/plug
 export const delPlugin = (data: { id: string }) => DELETE('/core/app/plugin/delete', data);
 
 export const getAllUserPlugins = (data: { searchKey?: string }) =>
-  POST<any[]>('/core/app/plugin/allPlugin', data);
+  POST<SystemPluginListItemType[]>('/core/app/plugin/allPlugin', data);
 
 export const putUpdatePluginOrder = (data: updatePluginOrderBody) =>
   PUT('/core/app/plugin/updateOrder', data);

@@ -432,12 +432,14 @@ const NodeTemplateList = ({
     return (
       <>
         {isSystemTool && pluginTags.length > 0 && (
-          <PluginTagFilter
-            tags={pluginTags}
-            selectedTagIds={selectedTagIds}
-            onTagSelect={setSelectedTagIds}
-            isPopover={isPopover}
-          />
+          <Flex mb={2} alignItems={'center'} px={3}>
+            <PluginTagFilter
+              tags={pluginTags}
+              selectedTagIds={selectedTagIds}
+              onTagSelect={setSelectedTagIds}
+              isPopover={isPopover}
+            />
+          </Flex>
         )}
 
         {list.map((item) => {

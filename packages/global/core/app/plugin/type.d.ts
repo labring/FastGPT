@@ -34,8 +34,6 @@ export type PluginRuntimeType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  pluginTags?: string[];
-
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
@@ -58,6 +56,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
+  pluginTags?: string[];
   status?: number;
   defaultInstalled?: boolean;
   isOfficial?: boolean;
@@ -85,21 +84,6 @@ export type SystemPluginTemplateListItemType = Omit<
 };
 
 // Marketplace Tool Types
-export type ToolVersionListItemType = {
-  value: string;
-  description?: string;
-  inputs: FlowNodeInputItemType[];
-  outputs: FlowNodeOutputItemType[];
-};
-
-export type SecretInputConfigType = {
-  key: string;
-  label: I18nStringType;
-  description?: I18nStringType;
-  required?: boolean;
-  type?: 'input' | 'textarea';
-};
-
 export type ToolListItem = {
   id: string;
   name: I18nStringType;
@@ -108,13 +92,4 @@ export type ToolListItem = {
   author?: string;
   tags: string[];
   downloadCount: number;
-};
-
-export type ToolDetail = ToolListItem & {
-  downloadUrl: string;
-  versionList: ToolVersionListItemType[];
-  secretInputConfig: SecretInputConfigType[];
-  children?: ToolDetail[];
-  courseUrl?: string;
-  readme?: string;
 };

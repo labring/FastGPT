@@ -226,7 +226,6 @@ const CustomPluginConfig = ({
       <ModalBody flex={1} overflow={'auto'} w={'full'}>
         <Flex w={'full'} gap={5}>
           <Box w={'full'}>
-            {/* 头像 */}
             <Box color={'myGray.800'} fontWeight={'bold'}>
               {t('app:custom_plugin_name_label')}
             </Box>
@@ -259,7 +258,6 @@ const CustomPluginConfig = ({
                 })}
               />
             </Flex>
-            {/* 介绍 */}
             <Box mt={3}>
               <Box fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:custom_plugin_intro_label')}

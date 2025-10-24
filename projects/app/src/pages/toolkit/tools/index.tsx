@@ -178,7 +178,6 @@ const ToolKitProvider = () => {
               tags={tags}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
-              showWrapper={false}
             />
             <MyMenu
               trigger="hover"

@@ -328,15 +328,17 @@ const RenderList = React.memo(function RenderList({
     return (
       <>
         {isSystemTool && pluginTags.length > 0 && (
-          <PluginTagFilter
-            tags={pluginTags}
-            selectedTagIds={selectedTagIds}
-            onTagSelect={setSelectedTagIds}
-          />
+          <Flex mb={4} alignItems={'center'} px={3}>
+            <PluginTagFilter
+              tags={pluginTags}
+              selectedTagIds={selectedTagIds}
+              onTagSelect={setSelectedTagIds}
+            />
+          </Flex>
         )}
 
         {filteredTemplates.length > 0 ? (
-          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} rowGap={3} columnGap={3}>
+          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3}>
             {filteredTemplates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
               return (

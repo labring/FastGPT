@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
@@ -8,11 +8,6 @@ import {
   DrawerHeader,
   DrawerOverlay,
   Flex,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   VStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -20,13 +15,73 @@ import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/
 import Avatar from '../../common/Avatar';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../common/Icon/button';
+import LightRowTabs from '../../common/Tabs/LightRowTabs';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 
-type ToolDetailDrawerProps = {
-  onClose: () => void;
-  tool: SystemPluginTemplateListItemType | null;
-  isInstalled: boolean | null;
-  onToggleInstall: (installed: boolean) => void;
-  systemTitle?: string;
+const ParamSection = ({
+  title,
+  params
+}: {
+  title: string;
+  params: (FlowNodeInputItemType | FlowNodeOutputItemType)[];
+}) => {
+  const { i18n } = useTranslation();
+
+  return (
+    <VStack
+      align="stretch"
+      spacing={2}
+      p={4}
+      border="1px solid"
+      borderColor="myGray.200"
+      borderRadius="md"
+      bg="myGray.50"
+    >
+      <Flex alignItems="center" gap={2}>
+        <Box w="4px" h="16px" bg="primary.600" borderRadius="2px" flexShrink={0} />
+        <Box fontSize="sm" fontWeight={600} color="myGray.900">
+          {title}
+        </Box>
+      </Flex>
+      {params.map((param, index) => {
+        const isInput = 'required' in param;
+        return (
+          <Box key={index}>
+            <Flex alignItems="center" gap={2} mb={1}>
+              {isInput && param.required && (
+                <Box as="span" color="red.500" fontSize="xs" fontWeight="medium" ml={-2} mr={-1}>
+                  *
+                </Box>
+              )}
+              <Box fontSize="sm" fontWeight={500} color="myGray.600">
+                {parseI18nString(param.label || param.key, i18n.language)}
+              </Box>
+              <Box
+                px={2}
+                py={0.5}
+                borderRadius="4px"
+                fontSize="xs"
+                color="myGray.600"
+                bg={'myGray.100'}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+              >
+                {param.valueType || 'String'}
+              </Box>
+            </Flex>
+            {param.description && (
+              <Box fontSize="xs" color="myGray.500" mt={1}>
+                {parseI18nString(param.description, i18n.language)}
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+    </VStack>
+  );
 };
 
 const ToolDetailDrawer = ({
@@ -35,8 +90,16 @@ const ToolDetailDrawer = ({
   isInstalled,
   onToggleInstall,
   systemTitle
-}: ToolDetailDrawerProps) => {
+}: {
+  onClose: () => void;
+  tool: SystemPluginTemplateListItemType | null;
+  isInstalled: boolean | null;
+  onToggleInstall: (installed: boolean) => void;
+  systemTitle?: string;
+}) => {
   const { t, i18n } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'guide' | 'params'>('guide');
+
   if (!tool) return null;
 
   return (
@@ -56,22 +119,21 @@ const ToolDetailDrawer = ({
 
         <DrawerBody>
           <Flex gap={2} flexWrap="wrap">
-            {tool.tags &&
-              tool.tags.map((tag) => (
-                <Box
-                  key={tag.tagId}
-                  px={2}
-                  py={1}
-                  border={'1px solid'}
-                  borderRadius={'6px'}
-                  borderColor={'myGray.200'}
-                  fontSize={'10px'}
-                  fontWeight={'medium'}
-                  color={'myGray.700'}
-                >
-                  {parseI18nString(tag.tagName, i18n.language)}
-                </Box>
-              ))}
+            {tool.tags?.map((tag) => (
+              <Box
+                key={tag.tagId}
+                px={2}
+                py={1}
+                border={'1px solid'}
+                borderRadius={'6px'}
+                borderColor={'myGray.200'}
+                fontSize={'10px'}
+                fontWeight={'medium'}
+                color={'myGray.700'}
+              >
+                {parseI18nString(tag.tagName, i18n.language)}
+              </Box>
+            ))}
           </Flex>
           <Box fontSize={'12px'} color="myGray.500" mt={3}>
             {parseI18nString(tool.intro || '', i18n.language) || t('app:templateMarket.no_intro')}
@@ -81,26 +143,15 @@ const ToolDetailDrawer = ({
           </Box>
 
           <Flex mt={3}>
-            {isInstalled ? (
-              <Button
-                w="full"
-                variant={'primaryOutline'}
-                onClick={() => {
-                  onToggleInstall(false);
-                }}
-              >
-                {t('app:toolkit_uninstall')}
-              </Button>
-            ) : (
-              <Button
-                w="full"
-                onClick={() => {
-                  onToggleInstall(true);
-                }}
-              >
-                {t('app:toolkit_install')}
-              </Button>
-            )}
+            <Button
+              w="full"
+              variant={isInstalled ? 'primaryOutline' : 'primary'}
+              onClick={() => {
+                onToggleInstall(!isInstalled);
+              }}
+            >
+              {isInstalled ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
+            </Button>
           </Flex>
 
           <Flex mt={4} gap={1.5} alignItems={'center'}>
@@ -122,37 +173,20 @@ const ToolDetailDrawer = ({
             </Box>
           </Flex>
 
-          <Tabs mt={4} variant="line" colorScheme="primary">
-            <TabList borderBottom="1px solid" borderColor="myGray.200">
-              <Tab
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{
-                  color: 'primary.600',
-                  borderBottomColor: 'primary.600',
-                  borderBottomWidth: '2px'
-                }}
-              >
-                <Flex alignItems="center" gap={1.5}>
-                  {t('app:toolkit_user_guide')}
-                </Flex>
-              </Tab>
-              <Tab
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{
-                  color: 'primary.600',
-                  borderBottomColor: 'primary.600',
-                  borderBottomWidth: '2px'
-                }}
-              >
-                {t('app:toolkit_params_description')}
-              </Tab>
-            </TabList>
+          <Box mt={4}>
+            <LightRowTabs
+              list={[
+                { label: t('app:toolkit_user_guide'), value: 'guide' as const },
+                { label: t('app:toolkit_params_description'), value: 'params' as const }
+              ]}
+              value={activeTab}
+              onChange={setActiveTab}
+              size="md"
+            />
 
-            <TabPanels>
-              <TabPanel px={0} py={4}>
-                {tool.userGuide || tool.courseUrl ? (
+            <Box px={0} py={4}>
+              {activeTab === 'guide' ? (
+                tool.userGuide || tool.courseUrl ? (
                   <Box
                     fontSize="sm"
                     color="myGray.600"
@@ -184,139 +218,30 @@ const ToolDetailDrawer = ({
                   <Box fontSize="sm" color="myGray.400" textAlign="center" py={8}>
                     {t('app:toolkit_no_user_guide')}
                   </Box>
-                )}
-              </TabPanel>
+                )
+              ) : tool.versionList && tool.versionList.length > 0 ? (
+                <VStack align="stretch" spacing={4}>
+                  {tool.versionList[0]?.inputs && tool.versionList[0].inputs.length > 0 && (
+                    <ParamSection
+                      title={t('app:toolkit_inputs')}
+                      params={tool.versionList[0].inputs}
+                    />
+                  )}
 
-              {/* Parameters Tab */}
-              <TabPanel px={0} py={4}>
-                {tool.versionList && tool.versionList.length > 0 ? (
-                  <VStack align="stretch" spacing={4}>
-                    {tool.versionList[0]?.inputs && tool.versionList[0].inputs.length > 0 && (
-                      <Box>
-                        <VStack
-                          align="stretch"
-                          spacing={2}
-                          p={4}
-                          border="1px solid"
-                          borderColor="myGray.200"
-                          borderRadius="md"
-                          bg="myGray.50"
-                        >
-                          <Flex alignItems="center" gap={2}>
-                            <Box
-                              w="4px"
-                              h="16px"
-                              bg="primary.600"
-                              borderRadius="2px"
-                              flexShrink={0}
-                            />
-                            <Box fontSize="sm" fontWeight={600} color="myGray.900">
-                              {t('app:toolkit_inputs')}
-                            </Box>
-                          </Flex>
-                          {tool.versionList[0].inputs.map((input, index) => (
-                            <Box key={index}>
-                              <Flex alignItems="center" gap={2} mb={1}>
-                                {input.required && (
-                                  <Box
-                                    as="span"
-                                    color="red.500"
-                                    fontSize="xs"
-                                    fontWeight="medium"
-                                    ml={-2}
-                                    mr={-1}
-                                  >
-                                    *
-                                  </Box>
-                                )}
-                                <Box fontSize="sm" fontWeight={500} color="myGray.600">
-                                  {parseI18nString(input.label || input.key, i18n.language)}
-                                </Box>
-                                <Box
-                                  px={2}
-                                  py={0.5}
-                                  borderRadius="4px"
-                                  fontSize="xs"
-                                  color="myGray.600"
-                                  bg={'myGray.100'}
-                                  border={'1px solid'}
-                                  borderColor={'myGray.200'}
-                                >
-                                  {input.valueType || 'String'}
-                                </Box>
-                              </Flex>
-                              {input.description && (
-                                <Box fontSize="xs" color="myGray.500" mt={1}>
-                                  {parseI18nString(input.description, i18n.language)}
-                                </Box>
-                              )}
-                            </Box>
-                          ))}
-                        </VStack>
-                      </Box>
-                    )}
-
-                    {tool.versionList[0]?.outputs && tool.versionList[0].outputs.length > 0 && (
-                      <Box>
-                        <VStack
-                          align="stretch"
-                          spacing={2}
-                          p={4}
-                          border="1px solid"
-                          borderColor="myGray.200"
-                          borderRadius="md"
-                          bg="myGray.50"
-                        >
-                          <Flex alignItems="center" gap={2}>
-                            <Box
-                              w="4px"
-                              h="16px"
-                              bg="primary.600"
-                              borderRadius="2px"
-                              flexShrink={0}
-                            />
-                            <Box fontSize="sm" fontWeight={600} color="myGray.900">
-                              {t('app:toolkit_outputs')}
-                            </Box>
-                          </Flex>
-                          {tool.versionList[0].outputs.map((output, index) => (
-                            <Box key={index}>
-                              <Flex alignItems="center" gap={2} mb={1}>
-                                <Box fontSize="sm" fontWeight={500} color="myGray.600">
-                                  {parseI18nString(output.label || output.key, i18n.language)}
-                                </Box>
-                                <Box
-                                  px={2}
-                                  py={0.5}
-                                  borderRadius="4px"
-                                  fontSize="xs"
-                                  color="myGray.600"
-                                  bg={'myGray.100'}
-                                  border={'1px solid'}
-                                  borderColor={'myGray.200'}
-                                >
-                                  {output.valueType || 'String'}
-                                </Box>
-                              </Flex>
-                              {output.description && (
-                                <Box fontSize="xs" color="myGray.500" mt={1}>
-                                  {parseI18nString(output.description, i18n.language)}
-                                </Box>
-                              )}
-                            </Box>
-                          ))}
-                        </VStack>
-                      </Box>
-                    )}
-                  </VStack>
-                ) : (
-                  <Box fontSize="sm" color="myGray.400" textAlign="center" py={8}>
-                    {t('app:toolkit_no_params_info')}
-                  </Box>
-                )}
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+                  {tool.versionList[0]?.outputs && tool.versionList[0].outputs.length > 0 && (
+                    <ParamSection
+                      title={t('app:toolkit_outputs')}
+                      params={tool.versionList[0].outputs}
+                    />
+                  )}
+                </VStack>
+              ) : (
+                <Box fontSize="sm" color="myGray.400" textAlign="center" py={8}>
+                  {t('app:toolkit_no_params_info')}
+                </Box>
+              )}
+            </Box>
+          </Box>
         </DrawerBody>
       </DrawerContent>
     </Drawer>

@@ -133,8 +133,8 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
-  status?: number; // plugin status
-  pluginTags?: string[]; // plugin tags
+  status?: number;
+  pluginTags?: string[];
 
   // @deprecated
   // show handle

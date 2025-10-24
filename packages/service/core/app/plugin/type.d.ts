@@ -65,6 +65,4 @@ export type TeamInstalledPluginSchemaType = {
   teamId: string;
   pluginId: string;
   installed: boolean;
-  createTime: Date;
-  updateTime: Date;
 };

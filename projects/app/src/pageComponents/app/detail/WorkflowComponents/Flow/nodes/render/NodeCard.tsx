@@ -110,7 +110,6 @@ const NodeCard = (props: Props) => {
 
     return { node, hidden };
   }, [foldedNodesMap, getNodeById, nodeId]);
-  console.log(node?.name, node?.flowNodeType);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
@@ -157,9 +156,6 @@ const NodeCard = (props: Props) => {
       manual: false
     }
   );
-  if (node?.flowNodeType === 'tool') {
-    console.log(node);
-  }
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
   const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);

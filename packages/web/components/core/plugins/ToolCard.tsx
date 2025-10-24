@@ -7,15 +7,19 @@ import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/
 import MyIcon from '../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
-type ToolCardProps = {
+const ToolCard = ({
+  item,
+  isInstalled,
+  onToggleInstall,
+  systemTitle,
+  onClick
+}: {
   item: SystemPluginTemplateListItemType;
   isInstalled: boolean | null;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
   onClick?: () => void;
-};
-
-const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle, onClick }: ToolCardProps) => {
+}) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
@@ -81,15 +85,11 @@ const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle, onClick }: 
   return (
     <MyBox
       key={item.id}
-      lineHeight={1.5}
-      h="100%"
-      pt={4}
+      p={4}
       pb={3}
-      px={4}
       border={'base'}
       bg={'white'}
       borderRadius={'10px'}
-      position={'relative'}
       display={'flex'}
       flexDirection={'column'}
       cursor={onClick ? 'pointer' : 'default'}
@@ -102,21 +102,16 @@ const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle, onClick }: 
       }}
     >
       <HStack>
-        <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
-        <Box color={'myGray.900'} fontWeight={500}>
+        <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} />
+        <Box color={'myGray.900'} fontWeight={'medium'}>
           {parseI18nString(item.name, i18n.language)}
         </Box>
-        {currentStatus &&
-          (currentStatus.icon ? (
-            <Flex fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color} mr={1}>
-              <MyIcon name={currentStatus.icon as any} w={4} />
-              {currentStatus.label}
-            </Flex>
-          ) : (
-            <Box fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color}>
-              {currentStatus.label}
-            </Box>
-          ))}
+        {currentStatus && (
+          <Flex fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color}>
+            {currentStatus.icon && <MyIcon name={currentStatus.icon as any} w={4} />}
+            {currentStatus.label}
+          </Flex>
+        )}
       </HStack>
       <Box
         flex={['1 0 48px', '1 0 56px']}
@@ -170,32 +165,18 @@ const ToolCard = ({ item, isInstalled, onToggleInstall, systemTitle, onClick }: 
 
       <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
         <Box color={'myGray.500'} mt={3}>{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
-        {isInstalled ? (
-          <Button
-            className="install-button"
-            display={'none'}
-            size={'sm'}
-            variant={'primaryOutline'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleInstall(false);
-            }}
-          >
-            {t('app:toolkit_uninstall')}
-          </Button>
-        ) : (
-          <Button
-            className="install-button"
-            display={'none'}
-            size={'sm'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleInstall(true);
-            }}
-          >
-            {t('app:toolkit_install')}
-          </Button>
-        )}
+        <Button
+          className="install-button"
+          display={'none'}
+          size={'sm'}
+          variant={isInstalled ? 'primaryOutline' : 'primary'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleInstall(!isInstalled);
+          }}
+        >
+          {isInstalled ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
+        </Button>
       </Flex>
     </MyBox>
   );

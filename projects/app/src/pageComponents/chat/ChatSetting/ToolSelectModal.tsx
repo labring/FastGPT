@@ -272,11 +272,13 @@ const RenderList = React.memo(function RenderList({
     return (
       <>
         {pluginTags.length > 0 && (
-          <PluginTagFilter
-            tags={pluginTags}
-            selectedTagIds={selectedTagIds}
-            onTagSelect={setSelectedTagIds}
-          />
+          <Flex mb={4} alignItems={'center'} px={3}>
+            <PluginTagFilter
+              tags={pluginTags}
+              selectedTagIds={selectedTagIds}
+              onTagSelect={setSelectedTagIds}
+            />
+          </Flex>
         )}
 
         {filteredTemplates.length > 0 ? (

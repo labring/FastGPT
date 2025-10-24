@@ -18,14 +18,6 @@ const TeamInstalledPluginSchema = new Schema({
     type: Boolean,
     required: true,
     default: true
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  updateTime: {
-    type: Date,
-    default: () => new Date()
   }
 });
 

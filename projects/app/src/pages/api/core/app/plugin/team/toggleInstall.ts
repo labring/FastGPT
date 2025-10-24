@@ -30,8 +30,7 @@ async function handler(
     {
       teamId,
       pluginId,
-      installed,
-      updateTime: new Date()
+      installed
     },
     {
       upsert: true,
