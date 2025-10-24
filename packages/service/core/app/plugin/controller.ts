@@ -565,7 +565,8 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       instructions: dbPluginConfig?.customConfig?.userGuide,
       weight: item.weight,
       toolSource: item.toolSource || 'built-in',
-      pluginTags: item.pluginTags,
+      // temporarily fixed
+      pluginTags: (item as any).pluginTags,
       workflow: {
         nodes: [],
         edges: []

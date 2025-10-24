@@ -12,9 +12,12 @@ import type {
   PluginTagSchemaType
 } from '@fastgpt/service/core/app/plugin/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type getSystemPluginsQuery = {
   parentId?: string;
+  source?: 'admin' | 'team';
 };
 
 export type getSystemPluginsBody = {};
@@ -25,15 +28,39 @@ async function handler(
   req: ApiRequestProps<getSystemPluginsBody, getSystemPluginsQuery>,
   res: ApiResponseType<any>
 ): Promise<getSystemPluginsResponse> {
-  await authCert({ req, authToken: true });
-
   const lang = getLocale(req);
-  const { parentId } = req.query;
+  const { parentId, source } = req.query;
+
+  const { teamId } = await (source === 'team'
+    ? authCert({ req, authToken: true })
+    : authSystemAdmin({ req }));
 
   const allSystemTools = await getSystemTools();
-  const systemTools = parentId
+  let systemTools = parentId
     ? allSystemTools.filter((item) => item.parentId === parentId)
     : allSystemTools.filter((item) => !item.parentId);
+
+  if (source === 'team' && teamId) {
+    const records = await MongoTeamInstalledPlugin.find({ teamId }).lean();
+    const installedSet = new Set<string>();
+    const uninstalledSet = new Set<string>();
+
+    records.forEach((record) => {
+      if (record.installed) {
+        installedSet.add(record.pluginId);
+      } else {
+        uninstalledSet.add(record.pluginId);
+      }
+    });
+
+    systemTools = systemTools.filter((plugin) => {
+      if (installedSet.has(plugin.id)) {
+        return true;
+      }
+
+      return plugin.status === 1 || plugin.status === undefined;
+    });
+  }
 
   const dbPlugins = await MongoSystemPlugin.find()
     .lean()

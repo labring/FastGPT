@@ -37,6 +37,7 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
 
 type EditCustomPluginType = {
   id?: string;
@@ -83,7 +84,7 @@ const CustomPluginConfig = ({
   onClose
 }: {
   defaultForm: EditCustomPluginType;
-  onSuccess: () => void;
+  onSuccess: (data: getSystemPluginsQuery) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -106,6 +107,8 @@ const CustomPluginConfig = ({
   const pluginTags = watch('pluginTags');
   const associatedPluginId = watch('associatedPluginId');
   const currentCost = watch('currentCost');
+  const status = watch('status');
+  const defaultInstalled = watch('defaultInstalled');
 
   const {
     value: selectedTags,
@@ -186,7 +189,7 @@ const CustomPluginConfig = ({
           title: t('app:custom_plugin_config_success'),
           status: 'success'
         });
-        onSuccess();
+        onSuccess({});
         onClose();
       },
       onError() {},
@@ -204,7 +207,7 @@ const CustomPluginConfig = ({
         title: t('app:custom_plugin_delete_success'),
         status: 'success'
       });
-      onSuccess();
+      onSuccess({});
       onClose();
     }
   });
@@ -372,7 +375,7 @@ const CustomPluginConfig = ({
                 {t('app:custom_plugin_plugin_status_label')}
               </Box>
               <MySelect
-                value={watch('status')}
+                value={status}
                 w={'full'}
                 list={[
                   { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
@@ -383,7 +386,11 @@ const CustomPluginConfig = ({
                   { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                 ]}
                 onChange={(e) => {
-                  setValue('status', Number(e));
+                  const newStatus = Number(e);
+                  setValue('status', newStatus);
+                  if (newStatus !== PluginStatusEnum.Normal) {
+                    setValue('defaultInstalled', false);
+                  }
                 }}
               />
             </HStack>
@@ -391,7 +398,16 @@ const CustomPluginConfig = ({
               <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:custom_plugin_default_installed_label')}
               </Box>
-              <Switch {...register('defaultInstalled')} />
+              <Switch
+                isChecked={defaultInstalled}
+                onChange={(e) => {
+                  const newDefaultInstalled = e.target.checked;
+                  setValue('defaultInstalled', newDefaultInstalled);
+                  if (newDefaultInstalled && status !== PluginStatusEnum.Normal) {
+                    setValue('status', PluginStatusEnum.Normal);
+                  }
+                }}
+              />
             </HStack>
             <HStack mt={5}>
               <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>

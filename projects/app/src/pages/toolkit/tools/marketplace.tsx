@@ -307,7 +307,7 @@ const ToolkitMarketplace = () => {
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push('/toolkit/tools')}
+          onClick={() => router.push('/config/tools')}
           position={'absolute'}
           left={4}
           top={4}

@@ -30,9 +30,12 @@ const ToolKitProvider = () => {
   const [searchText, setSearchText] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
-  const { data: tools = [], loading: loadingTools } = useRequest2(getSystemPlugins, {
-    manual: false
-  });
+  const { data: tools = [], loading: loadingTools } = useRequest2(
+    () => getSystemPlugins({ source: 'team' }),
+    {
+      manual: false
+    }
+  );
   const { data: tags = [], loading: loadingTags } = useRequest2(getPluginTags, {
     manual: false
   });
@@ -51,7 +54,6 @@ const ToolKitProvider = () => {
       onSuccess: () => refreshInstallStatus()
     }
   );
-
   const getPluginInstallStatus = useCallback(
     (pluginId: string) => {
       if (!installStatus) return null;

@@ -41,15 +41,17 @@ async function handler(
   });
 
   return plugins
-    .filter((item) => item.status === 1 || item.status === 2 || item.status === undefined)
     .filter((plugin) => {
+      if (plugin.status !== 1) {
+        return false;
+      }
       if (uninstalledSet.has(plugin.id)) {
         return false;
       }
       if (installedSet.has(plugin.id)) {
         return true;
       }
-      return plugin.defaultInstalled === true;
+      return !!plugin.defaultInstalled;
     })
     .map<NodeTemplateListItemType>((plugin) => ({
       ...plugin,

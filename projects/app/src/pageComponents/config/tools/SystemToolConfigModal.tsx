@@ -31,6 +31,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
+import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
@@ -53,7 +54,7 @@ const SystemToolConfigModal = ({
   onClose
 }: {
   plugin: SystemPluginTemplateListItemType;
-  onSuccess: () => void;
+  onSuccess: (data: getSystemPluginsQuery) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -96,7 +97,7 @@ const SystemToolConfigModal = ({
   });
 
   const { data: childTools = [], loading: loadingChild } = useRequest2(
-    () => getSystemPlugins(plugin.id),
+    () => getSystemPlugins({ parentId: plugin.id }),
     {
       onSuccess(res) {
         replaceChildConfigs(
@@ -128,7 +129,7 @@ const SystemToolConfigModal = ({
     {
       successToast: t('common:Config') + t('common:Success'),
       onSuccess() {
-        onSuccess();
+        onSuccess({});
         onClose();
       }
     }
@@ -232,7 +233,11 @@ const SystemToolConfigModal = ({
                     { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                   ]}
                   onChange={(e) => {
-                    setValue('status', Number(e));
+                    const newStatus = Number(e);
+                    setValue('status', newStatus);
+                    if (newStatus !== PluginStatusEnum.Normal) {
+                      setValue('defaultInstalled', false);
+                    }
                   }}
                 />
               </HStack>
@@ -244,7 +249,11 @@ const SystemToolConfigModal = ({
                 <Switch
                   isChecked={defaultInstalled}
                   onChange={(e) => {
-                    setValue('defaultInstalled', e.target.checked);
+                    const newDefaultInstalled = e.target.checked;
+                    setValue('defaultInstalled', newDefaultInstalled);
+                    if (newDefaultInstalled && status !== PluginStatusEnum.Normal) {
+                      setValue('status', PluginStatusEnum.Normal);
+                    }
                   }}
                 />
               </HStack>
@@ -358,8 +367,12 @@ const SystemToolConfigModal = ({
                   { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                 ]}
                 onChange={(e) => {
+                  const newStatus = Number(e);
                   // @ts-ignore
-                  setValue('status', Number(e));
+                  setValue('status', newStatus);
+                  if (newStatus !== PluginStatusEnum.Normal) {
+                    setValue('defaultInstalled', false);
+                  }
                 }}
               />
             </HStack>
@@ -368,7 +381,16 @@ const SystemToolConfigModal = ({
               <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:toolkit_default_install')}
               </Box>
-              <Switch {...register('defaultInstalled')} />
+              <Switch
+                isChecked={defaultInstalled}
+                onChange={(e) => {
+                  const newDefaultInstalled = e.target.checked;
+                  setValue('defaultInstalled', newDefaultInstalled);
+                  if (newDefaultInstalled && status !== PluginStatusEnum.Normal) {
+                    setValue('status', PluginStatusEnum.Normal);
+                  }
+                }}
+              />
             </HStack>
 
             {showSystemSecretInput && (

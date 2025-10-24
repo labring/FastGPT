@@ -110,6 +110,7 @@ const NodeCard = (props: Props) => {
 
     return { node, hidden };
   }, [foldedNodesMap, getNodeById, nodeId]);
+  console.log(node?.name, node?.flowNodeType);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
@@ -156,6 +157,9 @@ const NodeCard = (props: Props) => {
       manual: false
     }
   );
+  if (node?.flowNodeType === 'tool') {
+    console.log(node);
+  }
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
   const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
@@ -227,6 +231,25 @@ const NodeCard = (props: Props) => {
               />
 
               <Box flex={1} mr={1} />
+              {nodeTemplate?.status !== undefined && nodeTemplate.status !== 1 && (
+                <MyTooltip
+                  label={
+                    nodeTemplate.status === 0
+                      ? t('app:tool_offset_tips')
+                      : t('app:tool_soon_offset_tips')
+                  }
+                >
+                  <MyTag
+                    mr={2}
+                    colorSchema={nodeTemplate.status === 0 ? 'red' : 'yellow'}
+                    type="borderFill"
+                  >
+                    {nodeTemplate.status === 0
+                      ? t('app:toolkit_status_offline')
+                      : t('app:toolkit_status_soon_offline')}
+                  </MyTag>
+                </MyTooltip>
+              )}
 
               {showVersion && <NodeVersion node={node!} />}
 

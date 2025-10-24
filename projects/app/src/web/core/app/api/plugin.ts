@@ -33,7 +33,10 @@ import type {
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
-import type { getSystemPluginsResponse } from '@/pages/api/core/app/plugin/list';
+import type {
+  getSystemPluginsQuery,
+  getSystemPluginsResponse
+} from '@/pages/api/core/app/plugin/list';
 import type { GetPluginTagListResponse } from '@/pages/api/core/app/plugin/tag/list';
 import type {
   CreatePluginTagBody,
@@ -174,10 +177,9 @@ export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
 
 /* ============ plugin management ============== */
-export const getSystemPlugins = (parentId?: string) =>
-  GET<getSystemPluginsResponse>(
-    `/core/app/plugin/list${parentId && typeof parentId === 'string' ? `?parentId=${parentId}` : ''}`
-  );
+export const getSystemPlugins = (data: getSystemPluginsQuery) => {
+  return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
+};
 
 export const putUpdatePlugin = (data: updatePluginBody) => PUT('/core/app/plugin/update', data);
 

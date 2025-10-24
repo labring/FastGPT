@@ -12,6 +12,7 @@ import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { putUpdatePlugin } from '@/web/core/app/api/plugin';
 import { useRef, useState, useEffect } from 'react';
+import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 
 const PluginCard = ({
   plugin,
@@ -63,12 +64,17 @@ const PluginCard = ({
   }, [plugin.tags]);
 
   const { runAsync: updateSystemPlugin, loading } = useRequest2(
-    async (updateFields: { defaultInstalled?: boolean; hasTokenFee?: boolean }) => {
+    async (updateFields: {
+      defaultInstalled?: boolean;
+      hasTokenFee?: boolean;
+      status?: number;
+    }) => {
       const payload = {
         ...plugin,
         pluginId: plugin.id,
         defaultInstalled: updateFields.defaultInstalled,
-        hasTokenFee: updateFields.hasTokenFee
+        hasTokenFee: updateFields.hasTokenFee,
+        status: updateFields.status
       };
 
       return putUpdatePlugin(payload);
@@ -202,9 +208,17 @@ const PluginCard = ({
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            updateSystemPlugin({
-              defaultInstalled: !plugin?.defaultInstalled
-            });
+            const newDefaultInstalled = !plugin?.defaultInstalled;
+            const updateFields: {
+              defaultInstalled: boolean;
+              status?: number;
+            } = {
+              defaultInstalled: newDefaultInstalled
+            };
+            if (newDefaultInstalled && plugin.status !== PluginStatusEnum.Normal) {
+              updateFields.status = PluginStatusEnum.Normal;
+            }
+            updateSystemPlugin(updateFields);
           }}
         >
           <Checkbox isChecked={plugin.defaultInstalled} colorScheme="primary" />
