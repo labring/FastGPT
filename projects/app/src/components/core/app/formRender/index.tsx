@@ -21,9 +21,10 @@ import FileSelector from '../../../Select/FileSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
-import FilePreview from '@/components/core/chat/ChatContainer/components/FilePreview';
+import GlobalVarFilePreview from '@/components/core/chat/ChatContainer/components/GlobalVarFilePreview';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -38,6 +39,7 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const { t } = useSafeTranslation();
+  // const { llmModelList } = useSystemStore();
 
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
@@ -199,11 +201,12 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.selectLLMModel) {
+    const { llmModelList } = useSystemStore();
     return (
       <AIModelSelector
         {...commonProps}
         list={
-          props.modelList?.map((item) => ({
+          llmModelList?.map((item) => ({
             value: item.model,
             label: item.name
           })) || []
@@ -217,7 +220,6 @@ const InputRender = (props: InputRenderProps) => {
       const trimmedUrl = urlInput.trim();
       if (trimmedUrl) {
         setUrlFileList((prev) => [...prev, trimmedUrl]);
-        onChange([...urlFileList, trimmedUrl]);
         setUrlInput('');
       }
     };
@@ -225,7 +227,33 @@ const InputRender = (props: InputRenderProps) => {
     const handleDeleteUrl = (index: number) => {
       const newFileList = urlFileList.filter((_, i) => i !== index);
       setUrlFileList(newFileList);
-      onChange([...newFileList]);
+    };
+
+    const allFiles = [
+      ...(Array.isArray(value) ? value : []),
+      ...urlFileList.map((url) => ({
+        id: url,
+        status: 0,
+        name: url,
+        url: url,
+        icon: url,
+        type: 'file'
+      }))
+    ];
+
+    const handleRemoveFile = (index?: number | number[]) => {
+      if (index === undefined) return;
+
+      const indices = Array.isArray(index) ? index : [index];
+      indices.forEach((idx) => {
+        if (idx < (Array.isArray(value) ? value.length : 0)) {
+          const newValue = Array.isArray(value) ? value.filter((_, i) => i !== idx) : [];
+          onChange(newValue);
+        } else {
+          const urlIndex = idx - (Array.isArray(value) ? value.length : 0);
+          handleDeleteUrl(urlIndex);
+        }
+      });
     };
 
     return (
@@ -264,23 +292,10 @@ const InputRender = (props: InputRenderProps) => {
                 h="auto"
               />
             </InputGroup>
-            {/* TODO: 新 UI */}
-            {urlFileList.length > 0 && (
-              <FilePreview
-                fileList={urlFileList.map((url) => ({
-                  id: url,
-                  status: 0,
-                  name: url,
-                  url: url,
-                  icon: url,
-                  type: 'file'
-                }))}
-                removeFiles={(index) => {
-                  handleDeleteUrl(index as number);
-                }}
-              />
-            )}
           </Box>
+        )}
+        {allFiles.length > 0 && (
+          <GlobalVarFilePreview fileList={allFiles} removeFiles={handleRemoveFile} />
         )}
       </>
     );

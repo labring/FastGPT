@@ -41,6 +41,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const InputTypeConfig = ({
   form,
@@ -68,7 +69,17 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, llmModelList } = useSystemStore();
+
+  const availableModels = useMemo(() => {
+    if (inputType !== VariableInputEnum.modelSelect) {
+      return [];
+    }
+    return llmModelList.map((model) => ({
+      value: model.model,
+      label: model.name
+    }));
+  }, [llmModelList, inputType]);
 
   const typeLabels = {
     name: {
@@ -680,30 +691,52 @@ const InputTypeConfig = ({
                 {t('app:file_types')}
               </FormLabel>
               <Flex gap={'8px'}>
-                <Checkbox
-                  isChecked={watch('canSelectFile') || false}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canSelectFile', true);
-                    } else {
-                      setValue('canSelectFile', false);
-                    }
-                  }}
+                <Box
+                  display={'flex'}
+                  p={'8px 16px 8px 12px'}
+                  h={'32px'}
+                  w={'160px'}
+                  gap={'8px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'6px'}
                 >
-                  {t('app:document')}
-                </Checkbox>
-                <Checkbox
-                  isChecked={watch('canSelectImg') || false}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canSelectImg', true);
-                    } else {
-                      setValue('canSelectImg', false);
-                    }
-                  }}
+                  <Checkbox
+                    isChecked={watch('canSelectFile') || false}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('canSelectFile', true);
+                      } else {
+                        setValue('canSelectFile', false);
+                      }
+                    }}
+                  ></Checkbox>
+                  <Box fontSize={'14px'}>{t('app:document')}</Box>
+                </Box>
+                <Box
+                  display={'flex'}
+                  p={'8px 16px 8px 12px'}
+                  h={'32px'}
+                  w={'160px'}
+                  gap={'8px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'6px'}
                 >
-                  {t('app:image')}
-                </Checkbox>
+                  <Checkbox
+                    isChecked={watch('canSelectImg') || false}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('canSelectImg', true);
+                      } else {
+                        setValue('canSelectImg', false);
+                      }
+                    }}
+                  ></Checkbox>
+                  <Box fontSize={'14px'}>{t('app:image')}</Box>
+                </Box>
               </Flex>
             </Flex>
             <Box w={'full'} minH={'40px'}>
@@ -712,30 +745,52 @@ const InputTypeConfig = ({
                   {t('app:upload_method')}
                 </FormLabel>
                 <Flex gap={'8px'}>
-                  <Checkbox
-                    isChecked={watch('canLocalUpload') || false}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('canLocalUpload', true);
-                      } else {
-                        setValue('canLocalUpload', false);
-                      }
-                    }}
+                  <Box
+                    display={'flex'}
+                    p={'8px 16px 8px 12px'}
+                    h={'32px'}
+                    w={'160px'}
+                    gap={'8px'}
+                    alignItems={'center'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    borderRadius={'6px'}
                   >
-                    {t('app:local_upload')}
-                  </Checkbox>
-                  <Checkbox
-                    isChecked={watch('canUrlUpload') || false}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('canUrlUpload', true);
-                      } else {
-                        setValue('canUrlUpload', false);
-                      }
-                    }}
+                    <Checkbox
+                      isChecked={watch('canLocalUpload') || false}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setValue('canLocalUpload', true);
+                        } else {
+                          setValue('canLocalUpload', false);
+                        }
+                      }}
+                    ></Checkbox>
+                    <Box fontSize={'14px'}>{t('app:local_upload')}</Box>
+                  </Box>
+                  <Box
+                    display={'flex'}
+                    p={'8px 16px 8px 12px'}
+                    h={'32px'}
+                    w={'160px'}
+                    gap={'8px'}
+                    alignItems={'center'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    borderRadius={'6px'}
                   >
-                    {t('app:url_upload')}
-                  </Checkbox>
+                    <Checkbox
+                      isChecked={watch('canUrlUpload') || false}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setValue('canUrlUpload', true);
+                        } else {
+                          setValue('canUrlUpload', false);
+                        }
+                      }}
+                    ></Checkbox>
+                    <Box fontSize={'14px'}>{t('app:url_upload')}</Box>
+                  </Box>
                 </Flex>
               </Flex>
             </Box>
@@ -841,6 +896,23 @@ const InputTypeConfig = ({
                 setValue('minLength', e);
               }}
             />
+          </Flex>
+        )}
+
+        {inputType === VariableInputEnum.modelSelect && (
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+              {t('common:core.workflow.inputType.selectLLMModel')}
+            </FormLabel>
+            <Box flex={'1 0 0'}>
+              <AIModelSelector
+                value={watch('defaultValue') || ''}
+                list={availableModels}
+                onChange={(model) => {
+                  setValue('defaultValue', model);
+                }}
+              />
+            </Box>
           </Flex>
         )}
       </Flex>

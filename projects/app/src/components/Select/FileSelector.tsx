@@ -143,10 +143,6 @@ const FileSelector = ({
           onSelectFile({ files: fileObjects });
         }}
       />
-      <FilePreview
-        fileList={fileList.filter((file) => file && (file.name || file.url))}
-        removeFiles={isDisabled ? undefined : removeFiles}
-      />
       <File onSelect={(files) => onSelectFile({ files })} />
     </>
   );
