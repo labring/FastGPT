@@ -94,7 +94,10 @@ export const dispatchPlanAgent = async ({
   }
 
   console.log('Plan request messages');
-  console.dir(requestMessages, { depth: null });
+  console.dir(
+    { requestMessages, tools: isTopPlanAgent ? [PlanAgentAskTool] : [] },
+    { depth: null }
+  );
   const {
     answerText,
     toolCalls = [],
