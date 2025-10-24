@@ -6,8 +6,8 @@ import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/co
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
-import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoToolGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
+import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -169,33 +169,30 @@ export async function initSystemConfig() {
   });
 }
 
-export async function initSystemPluginGroups() {
+export async function initSystemPluginTags() {
   try {
-    const { groupOrder, ...restDefaultGroup } = defaultGroup;
-
     const toolTypes = await getSystemToolTypes();
 
     if (toolTypes.length > 0) {
-      await MongoToolGroups.updateOne(
-        {
-          groupId: defaultGroup.groupId
-        },
-        {
-          $set: {
-            ...restDefaultGroup,
-            groupTypes: toolTypes.map((toolType) => ({
-              typeId: toolType.type,
-              typeName: toolType.name
-            }))
-          }
-        },
-        {
+      const bulkOps = toolTypes.map((toolType, index) => ({
+        updateOne: {
+          filter: { tagId: toolType.type },
+          update: {
+            $set: {
+              tagId: toolType.type,
+              tagName: toolType.name,
+              tagOrder: index,
+              isSystem: true
+            }
+          },
           upsert: true
         }
-      );
+      }));
+
+      await MongoPluginTag.bulkWrite(bulkOps);
     }
   } catch (error) {
-    console.error('Error initializing system plugins:', error);
+    console.error('Error initializing system plugin tags:', error);
   }
 }
 

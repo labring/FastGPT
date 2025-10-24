@@ -1,6 +1,5 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../i18n/utils';
-import type { SystemToolGroupSchemaType } from '../../../service/core/app/plugin/type';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 
@@ -30,14 +29,6 @@ export const workflowSystemNodeTemplateList: {
     label: i18nT('common:Other')
   }
 ];
-
-export const defaultGroup: SystemToolGroupSchemaType = {
-  groupId: 'systemPlugin',
-  groupAvatar: 'core/app/type/pluginLight',
-  groupName: i18nT('app:core.module.template.System Tools'),
-  groupOrder: 0,
-  groupTypes: [] // from getPluginGroups
-};
 
 export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
   {

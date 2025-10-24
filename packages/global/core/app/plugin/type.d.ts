@@ -6,6 +6,15 @@ import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { WorkflowTemplateType } from '../../workflow/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
 import type { ParentIdType } from 'common/parentFolder/type';
+import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { I18nStringType } from '../../../common/i18n/type';
+
+export type PluginTagType = {
+  tagId: string;
+  tagName: I18nStringStrictType | string;
+  tagOrder: number;
+  isSystem: boolean;
+};
 
 export type PluginRuntimeType = {
   id: string;
@@ -25,8 +34,6 @@ export type PluginRuntimeType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  templateType: string;
-
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
@@ -49,7 +56,9 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  isActive?: boolean;
+  pluginTags?: string[];
+  status?: number;
+  defaultInstalled?: boolean;
   isOfficial?: boolean;
 
   // Admin config
@@ -59,12 +68,28 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
 
   // Plugin source type
   toolSource?: 'uploaded' | 'built-in';
+
+  // @deprecated use pluginTags instead
+  isActive?: boolean;
+  templateType?: string;
 };
 
 export type SystemPluginTemplateListItemType = Omit<
   SystemPluginTemplateItemType,
-  'name' | 'intro'
+  'name' | 'intro' | 'workflow'
 > & {
   name: string;
   intro: string;
+  tags?: PluginTagType[];
+};
+
+// Marketplace Tool Types
+export type ToolListItem = {
+  id: string;
+  name: I18nStringType;
+  description: I18nStringType;
+  avatar: string;
+  author?: string;
+  tags: string[];
+  downloadCount: number;
 };

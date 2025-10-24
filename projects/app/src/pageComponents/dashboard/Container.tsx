@@ -12,9 +12,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
-import { getPluginGroups } from '@/web/core/app/api/plugin';
-import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 export enum TabEnum {
   apps = 'apps',
@@ -30,7 +27,6 @@ const DashboardContainer = ({
   children: (e: {
     templateTags: TemplateTypeSchemaType[];
     templateList: AppTemplateSchemaType[];
-    pluginGroups: SystemToolGroupSchemaType[];
     MenuIcon: JSX.Element;
   }) => React.ReactNode;
 }) => {
@@ -83,26 +79,6 @@ const DashboardContainer = ({
     }
   );
 
-  // System tools
-  const { data: pluginGroups = [], loading: isLoadingToolGroups } = useRequest2(
-    () =>
-      getPluginGroups().then((res) =>
-        res.map((item) => ({
-          ...item,
-          groupTypes: [
-            {
-              typeId: 'all',
-              typeName: t('app:type.All')
-            },
-            ...item.groupTypes
-          ]
-        }))
-      ),
-    {
-      manual: false
-    }
-  );
-
   const groupList = useMemo<
     {
       groupId: string;
@@ -141,16 +117,6 @@ const DashboardContainer = ({
           }
         ]
       },
-      ...pluginGroups.map((group) => ({
-        groupId: group.groupId,
-        groupAvatar: group.groupAvatar,
-        groupName: t(group.groupName as any),
-        children: group.groupTypes.map((type, index) => ({
-          typeId: type.typeId,
-          typeName: parseI18nString(type.typeName, i18n.language),
-          isActive: index === 0 && !currentType
-        }))
-      })),
       {
         groupId: TabEnum.app_templates,
         groupAvatar: 'common/templateMarket',
@@ -207,7 +173,6 @@ const DashboardContainer = ({
     feConfigs.appTemplateCourse,
     feConfigs?.isPlus,
     i18n.language,
-    pluginGroups,
     t,
     templateList,
     templateTags
@@ -234,7 +199,7 @@ const DashboardContainer = ({
     [isOpenSidebar, onCloseSidebar, onOpenSidebar]
   );
 
-  const isLoading = isLoadingTemplatesTags || isLoadingTemplates || isLoadingToolGroups;
+  const isLoading = isLoadingTemplatesTags || isLoadingTemplates;
 
   return (
     <Box h={'100%'}>
@@ -344,7 +309,6 @@ const DashboardContainer = ({
         {children({
           templateTags,
           templateList,
-          pluginGroups,
           MenuIcon
         })}
       </Box>

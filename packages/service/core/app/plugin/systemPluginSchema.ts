@@ -9,8 +9,13 @@ const SystemPluginSchema = new Schema({
     type: String,
     required: true
   },
-  isActive: {
-    type: Boolean
+  status: {
+    type: Number,
+    default: 1
+  },
+  defaultInstalled: {
+    type: Boolean,
+    default: true
   },
   originCost: {
     type: Number,

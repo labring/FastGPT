@@ -105,6 +105,8 @@ export type PluginDataType = {
   name?: string;
   avatar?: string;
   error?: string;
+  status?: number;
+  pluginTags?: string[];
 };
 
 type HandleType = {
@@ -131,6 +133,8 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
+  status?: number;
+  pluginTags?: string[];
 
   // @deprecated
   // show handle
@@ -143,7 +147,8 @@ export type NodeTemplateListItemType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: ParentIdType;
   isFolder?: boolean;
-  templateType: string;
+  templateType?: string;
+  pluginTags?: string[];
   avatar?: string;
   name: string;
   intro?: string; // template list intro
