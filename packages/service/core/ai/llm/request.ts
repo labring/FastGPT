@@ -243,7 +243,7 @@ export const createStreamResponse = async ({
                   type: 'function',
                   function: callingTool!
                 };
-                toolCalls.push(call);
+                toolCalls[index] = call;
                 onToolCall?.({ call });
                 callingTool = null;
               }
@@ -268,7 +268,7 @@ export const createStreamResponse = async ({
         reasoningText: reasoningContent,
         finish_reason,
         usage,
-        toolCalls
+        toolCalls: toolCalls.filter((call) => !!call)
       };
     } else {
       let startResponseWrite = false;
