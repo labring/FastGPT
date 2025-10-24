@@ -1367,6 +1367,8 @@
   "core.dataset.training.databaseSchema mode": "資料庫結構",
   "core.dataset.import.databaseSchema Tip": "對資料庫中的表資訊進行自動處理，使其更利於檢索，以提高SQL產生的準確率",
   "semicolon": "；",
+  "database_sql_query": "資料庫檢索的 SQL 語句",
+  "search_result": "檢索結果",
   "database_search_results": "數據庫搜索結果",
   "other_knowledge_base_search_results": "其他知識庫搜索結果",
   "comma": "、",

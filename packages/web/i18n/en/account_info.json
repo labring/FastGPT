@@ -79,6 +79,6 @@
   "verification_code": "Code",
   "you_can_convert": "You can redeem",
   "yuan": "CNY.",
-  "password_min_length": "密码至少 8 位",
-  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
+  "password_min_length": "Must contain at least 8 characters.",
+  "password_requirement": "Must contain at least 2 of the following: digits, letters, and special characters."
 }
