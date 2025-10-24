@@ -75,7 +75,7 @@ const OutLink = () => {
       ? [
           {
             icon: 'core/app/publish/offiaccount',
-            title: t('publish:official_account.name'),
+            title: t('publish:official_account.wechat'),
             desc: t('publish:official_account.desc'),
             value: PublishChannelEnum.officialAccount,
             isProFn: true

@@ -642,7 +642,7 @@
             {
               "key": "model",
               "renderTypeList": ["settingLLMModel", "reference"],
-              "label": "model",
+              "label": "Model",
               "valueType": "string",
               "valueDesc": "",
               "description": "",

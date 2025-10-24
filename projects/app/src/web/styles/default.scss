@@ -13,6 +13,8 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .textEllipsis3 {
   display: -webkit-box;
@@ -20,6 +22,8 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .grecaptcha-badge {
   display: none !important;

@@ -119,10 +119,10 @@ const DingTalkEditModal = ({
           </Flex>
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 6.25rem'} required>
-              Client Secret
+              Client secret
             </FormLabel>
             <Input
-              placeholder={'Client Secret'}
+              placeholder={'Client secret'}
               {...register('app.clientSecret', {
                 required: true
               })}

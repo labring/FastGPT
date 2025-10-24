@@ -911,7 +911,7 @@
         },
         {
           "nodeId": "qlt9KJbbS9yJ",
-          "name": "Check for identical source and target languages",
+          "name": "Check for same source and target languages",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -956,7 +956,7 @@
         },
         {
           "nodeId": "frjbsrlnJJsR",
-          "name": "Check for identical source and target languages",
+          "name": "Check for same source and target languages",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",

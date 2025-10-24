@@ -245,7 +245,7 @@
         {
           "nodeId": "bxz97Vg4Omux",
           "name": "LLM translation prompt",
-          "intro": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
+          "intro": "Processes fixed or input text to provide an output. Non-string data will be automatically converted into strings.",
           "avatar": "core/workflow/template/textConcat",
           "flowNodeType": "textEditor",
           "position": {
@@ -924,7 +924,7 @@
         },
         {
           "nodeId": "qlt9KJbbS9yJ",
-          "name": "Check for identical source and target languages",
+          "name": "Check for same source and target languages",
           "intro": "Execute a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
@@ -966,7 +966,7 @@
         },
         {
           "nodeId": "frjbsrlnJJsR",
-          "name": "Check for identical source and target languages",
+          "name": "Check for same source and target languages",
           "intro": "Run a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",

@@ -626,6 +626,6 @@
   "extra_knowledge_base_storage": "Additional knowledge base storage",
   "image_compression_error": "Image compression error occurred.",
   "image_too_large": "The image size is too large.",
-  "password_min_length": "密码至少 8 位",
-  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
+  "password_min_length": "Must contain at least 8 characters.",
+  "password_requirement": "Must contain at least 2 of the following: digits, letters, and special characters."
 }

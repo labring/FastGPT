@@ -97,7 +97,7 @@
   "intro_plugin_input": "Configure inputs required for running a plugin.",
   "intro_question_classification": "Identify the question type based on the current question and the user's chat history. You can add multiple question types. Example:\nType 1: Greeting\nType 2: Product usage\nType 3: Product purchase\nType 4: Other",
   "intro_question_optimization": "Use the question optimization feature to increase the accuracy of knowledge base searches during continuous chats. The model will generate one or multiple new keywords based on the context to optimize the search results. This feature is built into the knowledge base search module and can also be used for a single search.",
-  "intro_text_concatenation": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
+  "intro_text_concatenation": "Processes fixed or input text to provide an output. Non-string data will be automatically converted into strings.",
   "intro_text_content_extraction": "Extract specific data from text, such as SQL statements, search keywords, or code.",
   "intro_tool_call_termination": "This module works with tool calling. When this module is executed, the tool call is terminated, and no replies are provided based on the tool call result.",
   "intro_tool_params_config": "This module works with tool calling. Customize tool call parameters and pass them to downstream nodes.",

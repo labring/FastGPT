@@ -362,7 +362,7 @@
       {
         "nodeId": "gBDvemE4FBhp",
         "name": "Text splicing",
-        "intro": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
+        "intro": "Processes fixed or input text to provide an output. Non-string data will be automatically converted into strings.",
         "avatar": "/imgs/workflow/textEditor.svg",
         "flowNodeType": "textEditor",
         "position": {
@@ -451,7 +451,7 @@
       {
         "nodeId": "bcqtxqxE2R6o",
         "name": "Output result merging",
-        "intro": "Process fixed or input text and then provide an output. Non-string data will be automatically converted into strings.",
+        "intro": "Processes fixed or input text to provide an output. Non-string data will be automatically converted into strings.",
         "avatar": "/imgs/workflow/textEditor.svg",
         "flowNodeType": "textEditor",
         "position": {

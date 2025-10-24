@@ -19,6 +19,7 @@
   "official_account.desc": "Connect to WeChat official account via API",
   "official_account.edit_modal_title": "Edit WeChat official account connection",
   "official_account.name": "WeChat official account connection",
+  "official_account.wechat": "WeChat official account",
   "official_account.params": "WeChat official account parameters",
   "private_config": "Visibility Settings",
   "publish_name": "Name",

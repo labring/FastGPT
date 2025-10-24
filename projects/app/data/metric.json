@@ -2,7 +2,7 @@
   "builtinMetrics": [  
     {  
       "name": "answer_correctness",  
-      "description": "Evaluates the factual consistency between the generated answer and the reference answer, evaluating whether it is accurate and error-free.",  
+      "description": "Evaluates the factual consistency between the generated answer and the expected answer, evaluating whether it is accurate and error-free.",  
       "userInputRequired": true,  
       "actualOutputRequired": true,  
       "expectedOutputRequired": true,  
@@ -11,7 +11,7 @@
     },  
     {  
       "name": "answer_similarity",  
-      "description": "Evaluates the semantic alignment between the generated answer and the reference answer, determining whether they convey the same core information.",   
+      "description": "Evaluates the semantic alignment between the generated answer and the expected answer, determining whether they convey the same core information.",   
       "actualOutputRequired": true,  
       "expectedOutputRequired": true,  
       "embeddingRequired": true
