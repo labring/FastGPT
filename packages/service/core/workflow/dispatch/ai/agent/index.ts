@@ -111,9 +111,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   })();
 
-  // Plan step: 需要生成 plan，且还没有完整的 plan
   const isPlanStep = isPlanAgent && (planHistoryMessages || !agentPlan);
-  // Replan step: 已有 plan，且有 replan 历史消息
   const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
   try {
