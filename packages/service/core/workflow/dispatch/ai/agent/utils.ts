@@ -1,11 +1,11 @@
 /* 
   匹配 {{@toolId@}}，转化成: @name 的格式。
 */
-export const parseAgentSystemPrompt = ({
+export const parseSystemPrompt = ({
   systemPrompt,
   getSubAppInfo
 }: {
-  systemPrompt: string;
+  systemPrompt?: string;
   getSubAppInfo: (id: string) => {
     name: string;
     avatar: string;
