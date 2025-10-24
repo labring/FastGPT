@@ -40,15 +40,15 @@ const getResponseSummary = async ({ response, model }: { response: string; model
         {
           role: 'user',
           content: `请对以下步骤执行结果进行概括，要求：
-1. 提取核心信息和关键结论
-2. 保留重要的数据、链接、引用
-3. 长度控制在 200-300 字
-4. 结构清晰，便于其他步骤引用
-
-执行结果：
-${response}
-
-请生成概括：`
+              1. 提取核心信息和关键结论
+              2. 保留重要的数据、链接、引用
+              3. 长度控制在 200-300 字
+              4. 结构清晰，便于其他步骤引用
+              
+              执行结果：
+              ${response}
+              
+              请生成概括：`
         }
       ],
       stream: false
