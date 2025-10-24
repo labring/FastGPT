@@ -11,6 +11,7 @@ import { useTranslation } from 'next-i18next';
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { putUpdatePlugin } from '@/web/core/app/api/plugin';
+import { useRef, useState, useEffect } from 'react';
 
 const PluginCard = ({
   plugin,
@@ -26,6 +27,41 @@ const PluginCard = ({
   snapshot: DraggableStateSnapshot;
 }) => {
   const { t, i18n } = useTranslation();
+  const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const [visibleTagsCount, setVisibleTagsCount] = useState(plugin.tags?.length || 0);
+
+  useEffect(() => {
+    const calculate = () => {
+      const container = tagsContainerRef.current;
+      if (!container || !plugin.tags?.length) return;
+
+      const containerWidth = container.offsetWidth;
+      const tagElements = container.querySelectorAll('[data-tag-item]');
+      if (!containerWidth || !tagElements.length) return;
+
+      let totalWidth = 0;
+      let count = 0;
+
+      for (let i = 0; i < tagElements.length; i++) {
+        const width = totalWidth + (tagElements[i] as HTMLElement).offsetWidth + (i > 0 ? 4 : 0);
+        if (width + (i < tagElements.length - 1 ? 64 : 0) > containerWidth) break;
+        totalWidth = width;
+        count++;
+      }
+
+      setVisibleTagsCount(Math.max(1, count));
+    };
+
+    const timer = setTimeout(calculate, 0);
+    const observer = new ResizeObserver(calculate);
+    if (tagsContainerRef.current) observer.observe(tagsContainerRef.current);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [plugin.tags]);
+
   const { runAsync: updateSystemPlugin, loading } = useRequest2(
     async (updateFields: { defaultInstalled?: boolean; hasTokenFee?: boolean }) => {
       const payload = {
@@ -103,10 +139,10 @@ const PluginCard = ({
           </Box>
         )}
       </Box>
-      <Box w={1.5 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      <Box w={1.5 / 10}>
         {plugin.tags && plugin.tags.length > 0 ? (
-          <Flex gap={1} flexWrap={'wrap'}>
-            {plugin.tags.map((tag) => (
+          <Flex gap={1} overflow={'hidden'} whiteSpace={'nowrap'} ref={tagsContainerRef}>
+            {plugin.tags.slice(0, visibleTagsCount).map((tag) => (
               <Box
                 key={tag.tagId}
                 as={'span'}
@@ -116,10 +152,26 @@ const PluginCard = ({
                 color={'myGray.700'}
                 borderRadius={'8px'}
                 fontSize={'xs'}
+                flexShrink={0}
+                data-tag-item
               >
                 {parseI18nString(tag.tagName, i18n.language)}
               </Box>
             ))}
+            {plugin.tags.length > visibleTagsCount && (
+              <Box
+                as={'span'}
+                bg={'myGray.100'}
+                px={2}
+                py={1}
+                color={'myGray.700'}
+                borderRadius={'8px'}
+                fontSize={'xs'}
+                flexShrink={0}
+              >
+                +{plugin.tags.length - visibleTagsCount}
+              </Box>
+            )}
           </Flex>
         ) : (
           <Box as={'span'} color={'myGray.500'} fontSize={'xs'}>

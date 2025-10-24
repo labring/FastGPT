@@ -342,7 +342,7 @@ const CustomPluginConfig = ({
                 )}
               </Flex>
             </HStack>
-            <Box mt={3}>
+            <HStack mt={3}>
               <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
                 {t('app:custom_plugin_tags_label')}
               </Box>
@@ -353,8 +353,9 @@ const CustomPluginConfig = ({
                 isSelectAll={isSelectAllTags}
                 setIsSelectAll={setIsSelectAllTags}
                 placeholder={t('app:custom_plugin_tags_label')}
+                maxW={270}
               />
-            </Box>
+            </HStack>
             <HStack mt={3}>
               <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:custom_plugin_author_label')}
@@ -371,8 +372,8 @@ const CustomPluginConfig = ({
                 {t('app:custom_plugin_plugin_status_label')}
               </Box>
               <MySelect
-                width={'120px'}
                 value={watch('status')}
+                w={'full'}
                 list={[
                   { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
                   {
