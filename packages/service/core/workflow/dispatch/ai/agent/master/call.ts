@@ -126,7 +126,10 @@ export const stepCall = async ({
     ],
     reserveId: false
   });
-  // console.log('Step call requestMessages', JSON.stringify(requestMessages, null, 2));
+  console.log(
+    'Step call requestMessages',
+    JSON.stringify({ requestMessages, subAppList }, null, 2)
+  );
   const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,

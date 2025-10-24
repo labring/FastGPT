@@ -2,6 +2,7 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../constants';
 import type { GetSubAppInfoFnType } from '../../type';
 import type { AgentPlanStepType } from './type';
+import { parseSystemPrompt } from '../../utils';
 
 const getSubAppPrompt = ({
   getSubAppInfo,
@@ -22,13 +23,16 @@ const getSubAppPrompt = ({
 
 export const getPlanAgentSystemPrompt = ({
   getSubAppInfo,
-  subAppList
+  subAppList,
+  systemPrompt
 }: {
   getSubAppInfo: GetSubAppInfoFnType;
   subAppList: ChatCompletionTool[];
+  systemPrompt?: string;
 }) => {
+  const userSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
   const subAppPrompt = getSubAppPrompt({ getSubAppInfo, subAppList });
-
+  console.log(userSystemPrompt);
   return `
 <role>
   你是一个专业的主题计划构建专家，擅长将复杂的主题学习和探索过程转化为结构清晰、可执行的渐进式学习路径。你的规划方法强调：

@@ -23,6 +23,7 @@ import type { GetSubAppInfoFnType } from '../../type';
 import { getStepDependon } from '../../common/dependon';
 
 type PlanAgentConfig = {
+  systemPrompt?: string;
   model: string;
   temperature?: number;
   top_p?: number;
@@ -55,6 +56,7 @@ export const dispatchPlanAgent = async ({
   interactive,
   subAppList,
   getSubAppInfo,
+  systemPrompt,
   model,
   temperature,
   top_p,
@@ -68,7 +70,8 @@ export const dispatchPlanAgent = async ({
       role: 'system',
       content: getPlanAgentSystemPrompt({
         getSubAppInfo,
-        subAppList
+        subAppList,
+        systemPrompt
       })
     },
     ...historyMessages
@@ -99,7 +102,7 @@ export const dispatchPlanAgent = async ({
     { requestMessages, tools: isTopPlanAgent ? [PlanAgentAskTool] : [] },
     { depth: null }
   );
-  const {
+  let {
     answerText,
     toolCalls = [],
     usage,
@@ -142,6 +145,9 @@ export const dispatchPlanAgent = async ({
     }
     return params;
   })();
+  if (plan) {
+    answerText = '';
+  }
 
   // 只有顶层有交互模式
   const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
@@ -264,7 +270,7 @@ export const dispatchReplanAgent = async ({
   }
 
   console.log('Replan call messages', JSON.stringify(requestMessages, null, 2));
-  const {
+  let {
     answerText,
     toolCalls = [],
     usage,
@@ -307,6 +313,9 @@ export const dispatchReplanAgent = async ({
     }
     return params;
   })();
+  if (rePlan) {
+    answerText = '';
+  }
 
   // 只有顶层有交互模式
   const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {

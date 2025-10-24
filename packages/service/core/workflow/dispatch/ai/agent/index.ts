@@ -25,7 +25,7 @@ import { getSubApps, rewriteSubAppsToolset } from './sub';
 
 import { getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import type { AgentPlanStepType, AgentPlanType } from './sub/plan/type';
+import type { AgentPlanType } from './sub/plan/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { stepCall } from './master/call';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -156,6 +156,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             interactive: lastInteractive,
             subAppList,
             getSubAppInfo,
+            systemPrompt,
             model,
             temperature,
             top_p: aiChatTopP,
@@ -215,6 +216,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         interactive: lastInteractive,
         subAppList,
         getSubAppInfo,
+        systemPrompt,
         model,
         temperature,
         top_p: aiChatTopP,
@@ -279,6 +281,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         const steps = agentPlan?.steps!.filter((item) => !item.response)!;
         for await (const step of steps) {
           addLog.debug(`Step call: ${step.id}`, step);
+
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: `# 步骤: ${step.title}\n`
+            })
+          });
+
           const result = await stepCall({
             ...props,
             getSubAppInfo,
