@@ -57,7 +57,7 @@ type LLMResponse = {
   completeMessages: ChatCompletionMessageParam[];
 };
 
-/* 
+/*
   底层封装 LLM 调用 帮助上层屏蔽 stream 和非 stream，以及 toolChoice 和 promptTool 模式。
   工具调用无论哪种模式，都存 toolChoice 的格式，promptTool 通过修改 toolChoice 的结构，形成特定的 messages 进行调用。
 */
@@ -243,7 +243,7 @@ export const createStreamResponse = async ({
                   type: 'function',
                   function: callingTool!
                 };
-                toolCalls.push(call);
+                toolCalls[index] = call;
                 onToolCall?.({ call });
                 callingTool = null;
               }
@@ -268,7 +268,7 @@ export const createStreamResponse = async ({
         reasoningText: reasoningContent,
         finish_reason,
         usage,
-        toolCalls
+        toolCalls: toolCalls.filter((call) => !!call)
       };
     } else {
       let startResponseWrite = false;
