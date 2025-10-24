@@ -38,12 +38,12 @@ export const getBuiltinDimensionEnglishInfo = (dimensionName: string) => {
     answer_correctness: {
       name: 'answer_correctness',
       description:
-        'Evaluates the factual consistency between the generated answer and the reference answer, evaluating whether it is accurate and error-free.'
+        'Evaluates the factual consistency between the generated answer and the expected answer, evaluating whether it is accurate and error-free.'
     },
     answer_similarity: {
       name: 'answer_similarity',
       description:
-        'Evaluates the semantic alignment between the generated answer and the reference answer, determining whether they convey the same core information.'
+        'Evaluates the semantic alignment between the generated answer and the expected answer, determining whether they convey the same core information.'
     },
     answer_relevancy: {
       name: 'answer_relevancy',

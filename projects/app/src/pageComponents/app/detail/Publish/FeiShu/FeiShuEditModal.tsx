@@ -129,8 +129,8 @@ const FeiShuEditModal = ({
             />
           </Flex>
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 6.25rem'}>Encrypt Key</FormLabel>
-            <Input placeholder="Encrypt Key" {...register('app.encryptKey')} />
+            <FormLabel flex={'0 0 6.25rem'}>Encrypt key</FormLabel>
+            <Input placeholder="Encrypt key" {...register('app.encryptKey')} />
           </Flex>
 
           <Box flex={1}></Box>

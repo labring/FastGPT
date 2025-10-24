@@ -521,6 +521,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 function getCachedSystemPlugins() {
   if (!global.systemPlugins_cache) {
     global.systemPlugins_cache = {
+      lang: 'en',
       expires: 0,
       data: [] as SystemPluginTemplateItemType[]
     };
@@ -545,75 +546,87 @@ export const refetchSystemPlugins = () => {
 export const getSystemTools = async (
   lang: localeType = 'en'
 ): Promise<SystemPluginTemplateItemType[]> => {
-  if (getCachedSystemPlugins().expires > Date.now() && isProduction) {
-    return getCachedSystemPlugins().data;
-  } else {
-    const tools = await APIGetSystemToolList();
+  const cache = getCachedSystemPlugins();
+  const isCacheValid = cache.expires > Date.now() && isProduction;
+  const isLangMatched = cache.lang === lang;
 
-    // 从数据库里加载插件配置进行替换
-    const systemToolsArray = await MongoSystemPlugin.find({}).lean();
-    const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
-
-    const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
-      const dbPluginConfig = systemTools.get(item.id);
-      const isFolder = tools.some((tool) => tool.parentId === item.id);
-
-      // 解析并确保 versionList 中的 outputs 有有效的 id
-      const versionList = (parseI18nArray(item.versionList, lang) || []).map((version) => ({
-        ...version,
-        outputs: version.outputs.map((output) => ({
-          ...output,
-          type: output.type ?? FlowNodeOutputTypeEnum.static,
-          id: output.id ?? output.key
-        }))
-      }));
-
-      return {
-        id: item.id,
-        parentId: item.parentId,
-        isFolder,
-        name: parseI18nString(item.name, lang),
-        avatar: item.avatar,
-        intro: parseI18nString(item.description, lang),
-        toolDescription: parseI18nString(item.toolDescription, lang),
-        author: item.author,
-        courseUrl: item.courseUrl,
-        instructions: dbPluginConfig?.customConfig?.userGuide,
-        weight: item.weight,
-        workflow: {
-          nodes: [],
-          edges: []
-        },
-        versionList,
-        templateType: item.templateType,
-        showStatus: true,
-        isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
-        inputList: parseI18nArray(item?.secretInputConfig, lang),
-        hasSystemSecret: !!dbPluginConfig?.inputListVal,
-
-        originCost: dbPluginConfig?.originCost ?? 0,
-        currentCost: dbPluginConfig?.currentCost ?? 0,
-        systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
-        hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
-        pluginOrder: dbPluginConfig?.pluginOrder
-      };
-    });
-
-    // TODO: Check the app exists
-    const dbPlugins = systemToolsArray
-      .filter((item) => item.customConfig?.associatedPluginId)
-      .map((item) => dbPluginFormat(item));
-
-    const plugins = [...formatTools, ...dbPlugins];
-    plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
-
-    global.systemPlugins_cache = {
-      expires: Date.now() + 30 * 60 * 1000, // 30 minutes
-      data: plugins
-    };
-
-    return plugins;
+  // 检查缓存是否有效且语言匹配
+  if (isCacheValid && isLangMatched) {
+    return cache.data;
   }
+
+  // 语言不匹配时清空缓存
+  if (!isLangMatched) {
+    cleanSystemPluginCache();
+  }
+
+  const tools = await APIGetSystemToolList();
+
+  // 从数据库里加载插件配置进行替换
+  const systemToolsArray = await MongoSystemPlugin.find({}).lean();
+  const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
+
+  const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
+    const dbPluginConfig = systemTools.get(item.id);
+    const isFolder = tools.some((tool) => tool.parentId === item.id);
+
+    // 解析并确保 versionList 中的 outputs 有有效的 id
+    const versionList = (parseI18nArray(item.versionList, lang) || []).map((version) => ({
+      ...version,
+      outputs: version.outputs.map((output) => ({
+        ...output,
+        type: output.type ?? FlowNodeOutputTypeEnum.static,
+        id: output.id ?? output.key
+      }))
+    }));
+
+    return {
+      id: item.id,
+      parentId: item.parentId,
+      isFolder,
+      name: parseI18nString(item.name, lang),
+      avatar: item.avatar,
+      intro: parseI18nString(item.description, lang),
+      toolDescription: parseI18nString(item.toolDescription, lang),
+      author: item.author,
+      courseUrl: item.courseUrl,
+      instructions: dbPluginConfig?.customConfig?.userGuide,
+      weight: item.weight,
+      workflow: {
+        nodes: [],
+        edges: []
+      },
+      versionList,
+      templateType: item.templateType,
+      showStatus: true,
+      isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
+      inputList: parseI18nArray(item?.secretInputConfig, lang),
+      hasSystemSecret: !!dbPluginConfig?.inputListVal,
+
+      originCost: dbPluginConfig?.originCost ?? 0,
+      currentCost: dbPluginConfig?.currentCost ?? 0,
+      systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
+      hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
+      pluginOrder: dbPluginConfig?.pluginOrder
+    };
+  });
+
+  // TODO: Check the app exists
+  const dbPlugins = systemToolsArray
+    .filter((item) => item.customConfig?.associatedPluginId)
+    .map((item) => dbPluginFormat(item));
+
+  const plugins = [...formatTools, ...dbPlugins];
+  plugins.sort((a, b) => (a.pluginOrder ?? 0) - (b.pluginOrder ?? 0));
+
+  // 更新缓存，保存当前语言
+  global.systemPlugins_cache = {
+    lang,
+    expires: Date.now() + 30 * 60 * 1000, // 30 minutes
+    data: plugins
+  };
+
+  return plugins;
 };
 
 export const getSystemToolById = async (
@@ -638,6 +651,7 @@ export const getSystemToolById = async (
 declare global {
   var systemPlugins_cache:
     | {
+        lang: localeType;
         expires: number;
         data: SystemPluginTemplateItemType[];
       }

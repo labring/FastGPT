@@ -134,10 +134,10 @@ const WecomEditModal = ({
           </Flex>
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 6.25rem'} required>
-              AES Key
+              AES key
             </FormLabel>
             <Input
-              placeholder="AES Key"
+              placeholder="AES key"
               {...(register('app.CallbackEncodingAesKey'), { required: true })}
             />
           </Flex>
