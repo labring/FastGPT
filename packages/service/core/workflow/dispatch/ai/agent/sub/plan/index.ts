@@ -42,6 +42,7 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
 };
 
 type DispatchPlanAgentResponse = {
+  answerText?: string;
   plan?: AgentPlanType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
@@ -136,7 +137,7 @@ export const dispatchPlanAgent = async ({
     }
 
     const params = parseToolArgs<AgentPlanType>(answerText);
-    if (!params || !params.task || !params.steps) {
+    if (toolCalls.length === 0 && (!params || !params.task || !params.steps)) {
       throw new Error('Plan response is not valid');
     }
     return params;
@@ -177,6 +178,7 @@ export const dispatchPlanAgent = async ({
   });
 
   return {
+    answerText: answerText || '',
     plan,
     completeMessages,
     usages: [
@@ -300,7 +302,7 @@ export const dispatchReplanAgent = async ({
     }
 
     const params = parseToolArgs<AgentPlanType>(answerText);
-    if (!params || !params.steps) {
+    if (toolCalls.length === 0 && (!params || !params.steps)) {
       throw new Error('Replan response is not valid');
     }
     return params;
@@ -338,6 +340,7 @@ export const dispatchReplanAgent = async ({
   });
 
   return {
+    answerText,
     plan: rePlan,
     completeMessages,
     usages: [
