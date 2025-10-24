@@ -18,7 +18,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -357,7 +357,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
