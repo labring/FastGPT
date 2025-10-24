@@ -26,6 +26,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
 
   const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const enableHome = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.enableHome);
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
@@ -61,33 +62,35 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
       <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
 
       <Grid templateRows="repeat(1, 1fr)" rowGap={2} py={2}>
-        <GridItem
-          onClick={() => {
-            handlePaneChange(ChatSidebarPaneEnum.HOME);
-            onCloseSlider();
-            setChatId();
-          }}
-        >
-          <Flex
-            p={2}
-            mx={2}
-            gap={2}
-            cursor={'pointer'}
-            borderRadius={'8px'}
-            alignItems={'center'}
-            bg={isHomePane ? 'primary.100' : 'transparent'}
-            color={isHomePane ? 'primary.600' : 'myGray.500'}
-            _hover={{
-              bg: 'primary.100',
-              color: 'primary.600'
+        {enableHome && (
+          <GridItem
+            onClick={() => {
+              handlePaneChange(ChatSidebarPaneEnum.HOME);
+              onCloseSlider();
+              setChatId();
             }}
           >
-            <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
-            <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-              {t('chat:sidebar.home')}
-            </Box>
-          </Flex>
-        </GridItem>
+            <Flex
+              p={2}
+              mx={2}
+              gap={2}
+              cursor={'pointer'}
+              borderRadius={'8px'}
+              alignItems={'center'}
+              bg={isHomePane ? 'primary.100' : 'transparent'}
+              color={isHomePane ? 'primary.600' : 'myGray.500'}
+              _hover={{
+                bg: 'primary.100',
+                color: 'primary.600'
+              }}
+            >
+              <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
+              <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
+                {t('chat:sidebar.home')}
+              </Box>
+            </Flex>
+          </GridItem>
+        )}
 
         <GridItem
           onClick={() => {

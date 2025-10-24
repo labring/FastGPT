@@ -1,4 +1,4 @@
-import { Client, type RemoveOptions, type CopyConditions } from 'minio';
+import { Client, type RemoveOptions, type CopyConditions, InvalidObjectNameError } from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -87,8 +87,17 @@ export class S3BaseBucket {
     return this.client.bucketExists(this.name);
   }
 
-  delete(objectKey: string, options?: RemoveOptions): Promise<void> {
-    return this.client.removeObject(this.name, objectKey, options);
+  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
+    try {
+      if (!objectKey) return Promise.resolve();
+      return await this.client.removeObject(this.name, objectKey, options);
+    } catch (error) {
+      if (error instanceof InvalidObjectNameError) {
+        addLog.warn(`${this.name} delete object not found: ${objectKey}`, error);
+        return Promise.resolve();
+      }
+      return Promise.reject(error);
+    }
   }
 
   addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
