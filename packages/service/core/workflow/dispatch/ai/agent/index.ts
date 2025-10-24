@@ -149,20 +149,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })
         });
 
-        const { plan, completeMessages, usages, interactiveResponse } = await dispatchPlanAgent({
-          historyMessages: planHistoryMessages || [],
-          userInput: lastInteractive ? interactiveInput : userChatInput,
-          interactive: lastInteractive,
-          subAppList,
-          getSubAppInfo,
-          model,
-          temperature,
-          top_p: aiChatTopP,
-          stream,
-          isTopPlanAgent: workflowDispatchDeep === 1
-        });
+        const { answerText, plan, completeMessages, usages, interactiveResponse } =
+          await dispatchPlanAgent({
+            historyMessages: planHistoryMessages || [],
+            userInput: lastInteractive ? interactiveInput : userChatInput,
+            interactive: lastInteractive,
+            subAppList,
+            getSubAppInfo,
+            model,
+            temperature,
+            top_p: aiChatTopP,
+            stream,
+            isTopPlanAgent: workflowDispatchDeep === 1
+          });
 
-        const text = `${plan ? `\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\`` : ''}`;
+        const text = `${answerText}${plan ? `\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\`` : ''}`;
         workflowStreamResponse?.({
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
@@ -202,6 +203,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
 
       const {
+        answerText,
         plan: rePlan,
         completeMessages,
         usages,
@@ -225,7 +227,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         agentPlan.replan = rePlan.replan;
       }
 
-      const text = `${agentPlan ? `\n\`\`\`json\n${JSON.stringify(agentPlan, null, 2)}\n\`\`\`\n` : ''}`;
+      const text = `${answerText}${agentPlan ? `\n\`\`\`json\n${JSON.stringify(agentPlan, null, 2)}\n\`\`\`\n` : ''}`;
       workflowStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
