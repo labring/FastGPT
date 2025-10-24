@@ -68,7 +68,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     name,
     avatar,
     intro,
-    type,
+    type: 'agent',
     modules: await (async () => {
       if (modules) {
         const myModels = new Set(
