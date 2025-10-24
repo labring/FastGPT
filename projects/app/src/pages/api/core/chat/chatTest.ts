@@ -43,7 +43,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
@@ -237,7 +237,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
   } catch (err: any) {
     res.status(500);

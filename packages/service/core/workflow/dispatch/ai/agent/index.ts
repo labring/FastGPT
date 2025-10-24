@@ -260,7 +260,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       if (result) return result;
     }
 
-    addLog.debug(`Start agentPlan`, {
+    addLog.debug(`Start master agent`, {
       agentPlan: JSON.stringify(agentPlan, null, 2)
     });
 

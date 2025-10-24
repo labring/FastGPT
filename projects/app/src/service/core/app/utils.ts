@@ -14,7 +14,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getUserChatInfo } from '@fastgpt/service/support/user/team/utils';
@@ -89,7 +89,7 @@ export const getScheduleTriggerApp = async () => {
         const error = flowResponses[flowResponses.length - 1]?.error;
 
         // Save chat
-        await saveChat({
+        await pushChatRecords({
           chatId,
           appId: app._id,
           teamId: String(app.teamId),
@@ -116,7 +116,7 @@ export const getScheduleTriggerApp = async () => {
       } catch (error) {
         addLog.error('Schedule trigger error', error);
 
-        await saveChat({
+        await pushChatRecords({
           chatId,
           appId: app._id,
           teamId: String(app.teamId),

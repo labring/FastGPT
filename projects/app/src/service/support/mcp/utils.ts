@@ -29,7 +29,7 @@ import {
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
@@ -243,7 +243,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       memories: system_memories
     };
     const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
-    await saveChat({
+    await pushChatRecords({
       chatId,
       appId: app._id,
       teamId: app.teamId,
