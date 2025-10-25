@@ -63,6 +63,7 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -462,12 +463,19 @@ const ChatBox = ({
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           variableList?.forEach((item) => {
-            const val =
+            let val =
               variables[item.key] === '' ||
               variables[item.key] === undefined ||
               variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
+
+            if (item.type === VariableInputEnum.timePointSelect && val) {
+              val = formatTime2YMDHMS(new Date(val));
+            } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
+              val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
+            }
+
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
