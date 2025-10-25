@@ -1,15 +1,20 @@
 import TurndownService from 'turndown';
 import { type ImageType } from '../readFile/type';
-import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
+const MAX_HTML_SIZE = 100 * 1000; // 100k characters limit
+
 const processBase64Images = (htmlContent: string) => {
-  const base64Regex = /src="data:([^;]+);base64,([^"]+)"/g;
+  // 优化后的正则:
+  // 1. 使用精确的 base64 字符集 [A-Za-z0-9+/=]+ 避免回溯
+  // 2. 明确捕获 mime 类型和 base64 数据
+  // 3. 减少不必要的捕获组
+  const base64Regex = /src="data:([^;]+);base64,([A-Za-z0-9+/=]+)"/g;
   const images: ImageType[] = [];
 
-  const processedHtml = htmlContent.replace(base64Regex, (match, mime, base64Data) => {
+  const processedHtml = htmlContent.replace(base64Regex, (_match, mime, base64Data) => {
     const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
     images.push({
       uuid,
@@ -63,12 +68,18 @@ export const html2md = (
 
     // Base64 img to id, otherwise it will occupy memory when going to md
     const { processedHtml, images } = processBase64Images(html);
+
+    // if html is too large, return the original html
+    if (processedHtml.length > MAX_HTML_SIZE) {
+      return { rawText: processedHtml, imageList: [] };
+    }
+
     const md = turndownService.turndown(processedHtml);
-    const { text, imageList } = matchMdImg(md);
+    // const { text, imageList } = matchMdImg(md);
 
     return {
-      rawText: text,
-      imageList: [...images, ...imageList]
+      rawText: md,
+      imageList: images
     };
   } catch (error) {
     console.log('html 2 markdown error', error);
