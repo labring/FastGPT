@@ -297,44 +297,48 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     }
   );
 
-  return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Box px={4} pb={4}>
-        <Flex flexDirection={'column'} gap={4}>
-          {updateList.map((updateItem, index) => (
-            <ValueRender key={index} updateItem={updateItem} index={index} />
-          ))}
-        </Flex>
-        <Flex
-          className="nodrag"
-          cursor={'default'}
-          alignItems={'center'}
-          position={'relative'}
-          mt={4}
-        >
-          <Button
-            variant={'whiteBase'}
-            leftIcon={<SmallAddIcon />}
-            iconSpacing={1}
-            w={'full'}
-            size={'sm'}
-            onClick={() => {
-              onUpdateList([
-                ...updateList,
-                {
-                  variable: ['', ''],
-                  value: ['', ''],
-                  renderType: FlowNodeInputTypeEnum.input
-                }
-              ]);
-            }}
+  const Render = useMemo(() => {
+    return (
+      <NodeCard selected={selected} maxW={'1000px'} {...data}>
+        <Box px={4} pb={4}>
+          <Flex flexDirection={'column'} gap={4}>
+            {updateList.map((updateItem, index) => (
+              <ValueRender key={index} updateItem={updateItem} index={index} />
+            ))}
+          </Flex>
+          <Flex
+            className="nodrag"
+            cursor={'default'}
+            alignItems={'center'}
+            position={'relative'}
+            mt={4}
           >
-            {t('common:add_new')}
-          </Button>
-        </Flex>
-      </Box>
-    </NodeCard>
-  );
+            <Button
+              variant={'whiteBase'}
+              leftIcon={<SmallAddIcon />}
+              iconSpacing={1}
+              w={'full'}
+              size={'sm'}
+              onClick={() => {
+                onUpdateList([
+                  ...updateList,
+                  {
+                    variable: ['', ''],
+                    value: ['', ''],
+                    renderType: FlowNodeInputTypeEnum.input
+                  }
+                ]);
+              }}
+            >
+              {t('common:add_new')}
+            </Button>
+          </Flex>
+        </Box>
+      </NodeCard>
+    );
+  }, [ValueRender, data, onUpdateList, selected, t, updateList]);
+
+  return Render;
 };
 export default React.memo(NodeVariableUpdate);
 
