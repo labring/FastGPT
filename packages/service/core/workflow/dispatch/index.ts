@@ -43,7 +43,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
+import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
@@ -79,7 +79,16 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
+  const {
+    res,
+    stream,
+    runningUserInfo,
+    runningAppInfo,
+    lastInteractive,
+    histories,
+    query,
+    chatConfig
+  } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
@@ -141,14 +150,15 @@ export async function dispatchWorkFlow({
   }
 
   // Get default variables
+
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
-    ...getSystemVariables({
+    ...(await getSystemVariables({
       ...data,
       query,
       histories,
       timezone
-    })
+    }))
   };
 
   // Init some props
@@ -211,11 +221,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(
+      [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
         variables,
-        externalProvider.externalWorkflowVariables,
-        data.chatConfig?.variables
-      ),
+        removeObj: externalProvider.externalWorkflowVariables,
+        userVariablesConfigs: data.chatConfig?.variables
+      }),
       durationSeconds: 0
     };
   }
@@ -983,12 +993,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
-  const encryptedNewVariables = removeSystemVariable(
-    variables,
-    externalProvider.externalWorkflowVariables,
-    data.chatConfig?.variables
-  );
-
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -999,7 +1003,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       workflowQueue.chatAssistantResponse
     ),
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-    [DispatchNodeResponseKeyEnum.newVariables]: encryptedNewVariables,
+    [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
+      variables,
+      removeObj: externalProvider.externalWorkflowVariables,
+      userVariablesConfigs: data.chatConfig?.variables
+    }),
     [DispatchNodeResponseKeyEnum.memories]:
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
@@ -1009,7 +1017,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 };
 
 /* get system variable */
-const getSystemVariables = ({
+const getSystemVariables = async ({
   timezone,
   runningAppInfo,
   chatId,
@@ -1020,30 +1028,29 @@ const getSystemVariables = ({
   variables
 }: Props & {
   timezone: string;
-}): SystemVariablesType => {
+}): Promise<SystemVariablesType> => {
   // Get global variables(Label -> key; Key -> key)
   const variablesConfig = chatConfig?.variables || [];
 
-  const variablesMap = variablesConfig.reduce<Record<string, any>>((acc, item) => {
+  const variablesMap: Record<string, any> = {};
+  for await (const item of variablesConfig) {
     // For internal variables, ignore external input and use default value
     if (item.type === VariableInputEnum.password) {
       const val = variables[item.label] || variables[item.key] || item.defaultValue;
       const actualValue = anyValueDecrypt(val);
-      acc[item.key] = valueTypeFormat(actualValue, item.valueType);
+      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
     }
-
     // API
     else if (variables[item.label] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
     }
     // Web
     else if (variables[item.key] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
     } else {
-      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
-    return acc;
-  }, {});
+  }
 
   return {
     ...variablesMap,

@@ -870,6 +870,7 @@
   "input.Repeat Value": "Duplicate Value",
   "input_name": "Enter a Name",
   "invalid_time": "Validity period",
+  "invalid_url": "Invalid URL format",
   "invalid_variable": "Invalid Variable",
   "is_open": "Is Open",
   "is_requesting": "Requesting...",

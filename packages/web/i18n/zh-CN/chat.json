@@ -12,6 +12,7 @@
   "chat_test_app": "调试-{{name}}",
   "citations": "{{num}}条引用",
   "click_contextual_preview": "点击查看上下文预览",
+  "click_to_add_url": "点击添加链接",
   "completion_finish_close": "连接断开",
   "completion_finish_content_filter": "触发安全风控",
   "completion_finish_function_call": "函数调用",
