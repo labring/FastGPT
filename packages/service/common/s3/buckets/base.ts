@@ -7,7 +7,7 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema
 } from '../type';
-import { defaultS3Options, Mimes } from '../constants';
+import { defaultS3Options, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -115,11 +115,11 @@ export class S3BaseBucket {
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
     try {
-      const { expiredHours } = options;
+      const { expiredHours, maxFileSize = getSystemMaxFileSize() } = options;
+      const formatMaxFileSize = maxFileSize * 1024 * 1024;
       const filename = params.filename;
       const ext = path.extname(filename).toLowerCase();
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
-      const maxFileSize = this.options.maxFileSize;
 
       const key = (() => {
         if ('rawKey' in params) return params.rawKey;
@@ -131,8 +131,8 @@ export class S3BaseBucket {
       policy.setKey(key);
       policy.setBucket(this.name);
       policy.setContentType(contentType);
-      if (maxFileSize) {
-        policy.setContentLengthRange(1, maxFileSize);
+      if (formatMaxFileSize) {
+        policy.setContentLengthRange(1, formatMaxFileSize);
       }
       policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
       policy.setUserMetaData({
@@ -153,7 +153,8 @@ export class S3BaseBucket {
 
       return {
         url: postURL,
-        fields: formData
+        fields: formData,
+        maxSize: formatMaxFileSize
       };
     } catch (error) {
       addLog.error('Failed to create post presigned url', error);
