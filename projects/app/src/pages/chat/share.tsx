@@ -221,7 +221,7 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySidebar menuConfirmButtonText={t('common:core.chat.Confirm to clear history')} />
+      <ChatHistorySidebar menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')} />
     );
 
     if (showHistory !== '1') return null;

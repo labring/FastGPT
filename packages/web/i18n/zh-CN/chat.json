@@ -24,6 +24,7 @@
   "config_input_guide": "配置输入引导",
   "config_input_guide_lexicon": "配置词库",
   "config_input_guide_lexicon_title": "配置词库",
+  "confirm_to_clear_share_chat_history": "确认清空所有聊天记录？",
   "content_empty": "内容为空",
   "contextual": "{{num}}条上下文",
   "contextual_preview": "上下文预览 {{num}} 条",
