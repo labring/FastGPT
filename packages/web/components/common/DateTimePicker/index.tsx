@@ -58,7 +58,7 @@ const DateTimePicker = ({
         cursor={'pointer'}
         bg={'myGray.50'}
         fontSize={'sm'}
-        onClick={() => setShowSelected(true)}
+        onClick={() => setShowSelected((state) => !state)}
         alignItems={'center'}
         {...props}
       >
