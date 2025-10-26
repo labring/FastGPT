@@ -15,7 +15,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { POST } from '@/web/common/api/request';
-import { defaultFileExtensionTypes } from '@fastgpt/global/core/app/constants';
+import { defaultFileExtensionTypes, getUploadFileType } from '@fastgpt/global/core/app/constants';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -67,30 +67,21 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   }, [canUploadFile, t]);
 
   const fileType = useMemo(() => {
-    const types: string[] = [];
-    if (showSelectFile) {
-      types.push(...defaultFileExtensionTypes.canSelectFile);
-    }
-    if (showSelectImg) {
-      types.push(...defaultFileExtensionTypes.canSelectImg);
-    }
-    if (showSelectVideo) {
-      types.push(...defaultFileExtensionTypes.canSelectVideo);
-    }
-    if (showSelectAudio) {
-      types.push(...defaultFileExtensionTypes.canSelectAudio);
-    }
-    if (showSelectCustomFileExtension) {
-      types.push(...(fileSelectConfig.customFileExtensionList || []));
-    }
-    return types.join(', ');
+    return getUploadFileType({
+      canSelectFile: showSelectFile,
+      canSelectImg: showSelectImg,
+      canSelectVideo: showSelectVideo,
+      canSelectAudio: showSelectAudio,
+      canSelectCustomFileExtension: showSelectCustomFileExtension,
+      customFileExtensionList: fileSelectConfig?.customFileExtensionList
+    });
   }, [
-    showSelectFile,
-    showSelectImg,
-    showSelectVideo,
+    fileSelectConfig?.customFileExtensionList,
     showSelectAudio,
     showSelectCustomFileExtension,
-    fileSelectConfig?.customFileExtensionList
+    showSelectFile,
+    showSelectImg,
+    showSelectVideo
   ]);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({

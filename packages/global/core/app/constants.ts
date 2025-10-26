@@ -77,3 +77,36 @@ export const defaultFileExtensionTypes = {
   canSelectCustomFileExtension: []
 };
 export type FileExtensionKeyType = keyof typeof defaultFileExtensionTypes;
+export const getUploadFileType = ({
+  canSelectFile,
+  canSelectImg,
+  canSelectVideo,
+  canSelectAudio,
+  canSelectCustomFileExtension,
+  customFileExtensionList
+}: {
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  canSelectVideo?: boolean;
+  canSelectAudio?: boolean;
+  canSelectCustomFileExtension?: boolean;
+  customFileExtensionList?: string[];
+}) => {
+  const types: string[] = [];
+  if (canSelectFile) {
+    types.push(...defaultFileExtensionTypes.canSelectFile);
+  }
+  if (canSelectImg) {
+    types.push(...defaultFileExtensionTypes.canSelectImg);
+  }
+  if (canSelectVideo) {
+    types.push(...defaultFileExtensionTypes.canSelectVideo);
+  }
+  if (canSelectAudio) {
+    types.push(...defaultFileExtensionTypes.canSelectAudio);
+  }
+  if (canSelectCustomFileExtension && customFileExtensionList) {
+    types.push(...customFileExtensionList);
+  }
+  return types.join(', ');
+};
