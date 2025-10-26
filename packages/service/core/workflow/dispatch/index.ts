@@ -304,6 +304,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       });
     }
 
+    get connectionIsActive(): boolean {
+      return !res?.closed && !res?.errored;
+    }
+
     // Add active node to queue (if already in the queue, it will not be added again)
     addActiveNode(nodeId: string) {
       if (this.activeRunQueue.has(nodeId)) {
@@ -761,8 +765,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         });
         return;
       }
-      if (res?.closed) {
-        addLog.warn('Request is closed', {
+      if (!this.connectionIsActive) {
+        addLog.warn('Request is closed/errored', {
           appId: data.runningAppInfo.id,
           nodeId: node.nodeId,
           nodeName: node.name
