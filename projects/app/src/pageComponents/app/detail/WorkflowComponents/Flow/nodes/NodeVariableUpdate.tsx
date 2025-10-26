@@ -23,12 +23,8 @@ import {
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import {
@@ -109,7 +105,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     [inputs, nodeId, onChangeNode]
   );
 
-  const ValueRender = useMemoizedFn(
+  const ValueRender = useCallback(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
@@ -126,9 +122,22 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             return {
               inputType: variableInputTypeToInputType(variable.type),
               formParams: {
+                // 获取变量中一些表单配置
+                maxLength: variable.maxLength,
+                minLength: variable.minLength,
                 min: variable.min,
                 max: variable.max,
-                list: variable.list
+                list: variable.list,
+                timeGranularity: variable.timeGranularity,
+                timeRangeStart: variable.timeRangeStart,
+                timeRangeEnd: variable.timeRangeEnd,
+                maxFiles: variable.maxFiles,
+                canSelectFile: variable.canSelectFile,
+                canSelectImg: variable.canSelectImg,
+                canSelectVideo: variable.canSelectVideo,
+                canSelectAudio: variable.canSelectAudio,
+                canSelectCustomFileExtension: variable.canSelectCustomFileExtension,
+                customFileExtensionList: variable.customFileExtensionList
               }
             };
           }
@@ -268,7 +277,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               }
 
               return (
-                <Box w={'300px'} borderRadius={'sm'}>
+                <Box minW={'250px'} maxW={'400px'} borderRadius={'sm'}>
                   <InputRender
                     // @ts-ignore
                     inputType={inputType}
@@ -284,51 +293,58 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           </Flex>
         </Container>
       );
-    }
+    },
+    [
+      appDetail.chatConfig,
+      externalProviderWorkflowVariables,
+      getNodeById,
+      nodeId,
+      onUpdateList,
+      systemConfigNode,
+      t,
+      updateList,
+      variables
+    ]
   );
 
-  const Render = useMemo(() => {
-    return (
-      <NodeCard selected={selected} maxW={'1000px'} {...data}>
-        <Box px={4} pb={4}>
-          <Flex flexDirection={'column'} gap={4}>
-            {updateList.map((updateItem, index) => (
-              <ValueRender key={index} updateItem={updateItem} index={index} />
-            ))}
-          </Flex>
-          <Flex
-            className="nodrag"
-            cursor={'default'}
-            alignItems={'center'}
-            position={'relative'}
-            mt={4}
+  return (
+    <NodeCard selected={selected} maxW={'1000px'} {...data}>
+      <Box px={4} pb={4}>
+        <Flex flexDirection={'column'} gap={4}>
+          {updateList.map((updateItem, index) => (
+            <ValueRender key={index} updateItem={updateItem} index={index} />
+          ))}
+        </Flex>
+        <Flex
+          className="nodrag"
+          cursor={'default'}
+          alignItems={'center'}
+          position={'relative'}
+          mt={4}
+        >
+          <Button
+            variant={'whiteBase'}
+            leftIcon={<SmallAddIcon />}
+            iconSpacing={1}
+            w={'full'}
+            size={'sm'}
+            onClick={() => {
+              onUpdateList([
+                ...updateList,
+                {
+                  variable: ['', ''],
+                  value: ['', ''],
+                  renderType: FlowNodeInputTypeEnum.input
+                }
+              ]);
+            }}
           >
-            <Button
-              variant={'whiteBase'}
-              leftIcon={<SmallAddIcon />}
-              iconSpacing={1}
-              w={'full'}
-              size={'sm'}
-              onClick={() => {
-                onUpdateList([
-                  ...updateList,
-                  {
-                    variable: ['', ''],
-                    value: ['', ''],
-                    renderType: FlowNodeInputTypeEnum.input
-                  }
-                ]);
-              }}
-            >
-              {t('common:add_new')}
-            </Button>
-          </Flex>
-        </Box>
-      </NodeCard>
-    );
-  }, [ValueRender, data, onUpdateList, selected, t, updateList]);
-
-  return Render;
+            {t('common:add_new')}
+          </Button>
+        </Flex>
+      </Box>
+    </NodeCard>
+  );
 };
 export default React.memo(NodeVariableUpdate);
 

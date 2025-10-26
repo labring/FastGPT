@@ -30,7 +30,7 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const { t } = useSafeTranslation();
-  // const { llmModelList } = useSystemStore();
+  const { llmModelList } = useSystemStore();
 
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
@@ -191,7 +191,6 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.selectLLMModel) {
-    const { llmModelList } = useSystemStore();
     return (
       <AIModelSelector
         {...commonProps}
