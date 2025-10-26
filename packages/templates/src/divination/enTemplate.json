@@ -1,6 +1,6 @@
 {
     "name": "I Ching divination",
-    "intro": "Positive for A-share market",
+    "intro": "Positive for A-share market.",
     "author": "",
     "avatar": "core/app/templates/divination",
     "tags": ["roleplay"],
@@ -121,7 +121,7 @@
             {
               "key": "model",
               "renderTypeList": ["settingLLMModel", "reference"],
-              "label": "model",
+              "label": "Model",
               "valueType": "string",
               "valueDesc": "",
               "description": "",
