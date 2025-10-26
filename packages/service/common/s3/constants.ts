@@ -1,5 +1,3 @@
-import type { S3PrivateBucket } from './buckets/private';
-import type { S3PublicBucket } from './buckets/public';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import type { ClientOptions } from 'minio';
@@ -29,11 +27,8 @@ export const Mimes = {
 
 export const defaultS3Options: {
   externalBaseURL?: string;
-  maxFileSize?: number;
   afterInit?: () => Promise<void> | void;
 } & ClientOptions = {
-  maxFileSize: 1024 ** 3, // 1GB
-
   useSSL: process.env.S3_USE_SSL === 'true',
   endPoint: process.env.S3_ENDPOINT || 'localhost',
   externalBaseURL: process.env.S3_EXTERNAL_BASE_URL,
@@ -51,3 +46,8 @@ export const S3Buckets = {
   public: process.env.S3_PUBLIC_BUCKET || 'fastgpt-public',
   private: process.env.S3_PRIVATE_BUCKET || 'fastgpt-private'
 } as const;
+
+export const getSystemMaxFileSize = () => {
+  const config = global.feConfigs?.uploadFileMaxSize || 1024; // MB, default 1024MB
+  return config; // bytes
+};

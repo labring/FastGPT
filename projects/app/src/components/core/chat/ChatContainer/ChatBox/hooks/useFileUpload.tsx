@@ -15,7 +15,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { POST } from '@/web/common/api/request';
-import { defaultFileExtensionTypes, getUploadFileType } from '@fastgpt/global/core/app/constants';
+import { getUploadFileType } from '@fastgpt/global/core/app/constants';
+import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -175,7 +176,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
           // Get Upload Post Presigned URL
-          const { url, fields } = await getUploadChatFilePresignedUrl({
+          const { url, fields, maxSize } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
             appId,
             chatId,
@@ -196,7 +197,8 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
               copyFile.process = percent;
               updateFiles(fileIndex, copyFile);
             }
-          });
+          }).catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
+
           const previewUrl = await getPresignedChatFileGetUrl({
             key: fields.key,
             appId,
