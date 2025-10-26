@@ -1,8 +1,12 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
-import { type CheckChatFileKeys, CheckChatFileKeysSchema } from './type';
-import { z } from 'zod';
+import {
+  type CheckChatFileKeys,
+  type DelChatFileByPrefixParams,
+  ChatFileUploadSchema,
+  DelChatFileByPrefixSchema
+} from './type';
 import { MongoS3TTL } from '../../schema';
 import { addHours } from 'date-fns';
 
@@ -28,7 +32,7 @@ class S3ChatSource {
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename } = CheckChatFileKeysSchema.parse(params);
+    const { appId, chatId, uId, filename } = ChatFileUploadSchema.parse(params);
     const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
     await MongoS3TTL.create({
       minioKey: rawKey,
@@ -38,12 +42,8 @@ class S3ChatSource {
     return await this.bucket.createPostPresignedUrl({ rawKey, filename });
   }
 
-  deleteChatFilesByPrefix(
-    params: Pick<CheckChatFileKeys, 'appId'> & { chatId?: string; uId?: string }
-  ) {
-    const { appId, chatId, uId } = CheckChatFileKeysSchema.pick({ appId: true })
-      .extend({ chatId: z.string().optional(), uId: z.string().optional() })
-      .parse(params);
+  deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {
+    const { appId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
 
     const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
     return this.bucket.addDeleteJob({ prefix });
