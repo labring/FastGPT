@@ -14,6 +14,7 @@ export type UserInputFileItemType = {
   url?: string;
   key?: string; // S3 key for the file
   process?: number;
+  error?: string;
 };
 
 export type ChatBoxInputFormType = {

@@ -1,13 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Input,
-  Switch,
-  Flex,
-  IconButton,
-  InputGroup,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Box, Input, Switch, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { InputRenderProps } from './type';
 import { InputTypeEnum } from './constant';
@@ -17,11 +9,10 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import AIModelSelector from '../../../Select/AIModelSelector';
-import FileSelector from '../../../Select/FileSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
-import GlobalVarFilePreview from '@/components/core/chat/ChatContainer/components/GlobalVarFilePreview';
+import FileSelector from '@/components/core/app/formRender/FileSelector';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -45,7 +36,6 @@ const InputRender = (props: InputRenderProps) => {
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
   // File
   const [urlInput, setUrlInput] = useState('');
-  const [urlFileList, setUrlFileList] = useState<string[]>([]);
 
   const isSelectAll = useMemo(() => {
     return (
@@ -216,88 +206,20 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.fileSelect) {
-    const handleAddUrl = () => {
-      const trimmedUrl = urlInput.trim();
-      if (trimmedUrl) {
-        setUrlFileList((prev) => [...prev, trimmedUrl]);
-        setUrlInput('');
-      }
-    };
-
-    const handleDeleteUrl = (index: number) => {
-      const newFileList = urlFileList.filter((_, i) => i !== index);
-      setUrlFileList(newFileList);
-    };
-
-    const allFiles = [
-      ...(Array.isArray(value) ? value : []),
-      ...urlFileList.map((url) => ({
-        id: url,
-        status: 0,
-        name: url,
-        url: url,
-        icon: url,
-        type: 'file'
-      }))
-    ];
-
-    const handleRemoveFile = (index?: number | number[]) => {
-      if (index === undefined) return;
-
-      const indices = Array.isArray(index) ? index : [index];
-      indices.forEach((idx) => {
-        if (idx < (Array.isArray(value) ? value.length : 0)) {
-          const newValue = Array.isArray(value) ? value.filter((_, i) => i !== idx) : [];
-          onChange(newValue);
-        } else {
-          const urlIndex = idx - (Array.isArray(value) ? value.length : 0);
-          handleDeleteUrl(urlIndex);
-        }
-      });
-    };
-
     return (
-      <>
-        {props.canLocalUpload && (
-          <FileSelector
-            {...commonProps}
-            maxFiles={props.maxFiles}
-            canSelectFile={props.canSelectFile}
-            canSelectImg={props.canSelectImg}
-            canSelectAudio={props.canSelectAudio}
-            canSelectVideo={props.canSelectVideo}
-            canSelectCustomFileExtension={props.canSelectCustomFileExtension}
-            customFileExtensionList={props.customFileExtensionList}
-            setUploading={props.setUploading}
-            form={props.form}
-            fieldName={props.fieldName}
-          />
-        )}
-        {props.canUrlUpload && (
-          <Box mt={'8px'}>
-            <InputGroup>
-              <InputLeftElement>
-                <MyIcon name="common/addLight" w={'22px'} h={'22px'} color={'blue.600'} />
-              </InputLeftElement>
-              <Input
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onBlur={handleAddUrl}
-                border={'1.5px dashed'}
-                borderColor={'myGray.250'}
-                borderRadius={'8px'}
-                p={'8px'}
-                pl={'40px'}
-                placeholder={t('chat:click_to_add_url')}
-                h="auto"
-              />
-            </InputGroup>
-          </Box>
-        )}
-        {allFiles.length > 0 && (
-          <GlobalVarFilePreview fileList={allFiles} removeFiles={handleRemoveFile} />
-        )}
-      </>
+      <FileSelector
+        fileUrls={Array.isArray(value) ? value : []}
+        onChange={onChange}
+        maxFiles={props.maxFiles}
+        canSelectFile={props.canSelectFile}
+        canSelectImg={props.canSelectImg}
+        canSelectVideo={props.canSelectVideo}
+        canSelectAudio={props.canSelectAudio}
+        canSelectCustomFileExtension={props.canSelectCustomFileExtension}
+        customFileExtensionList={props.customFileExtensionList}
+        canLocalUpload={props.canLocalUpload}
+        canUrlUpload={props.canUrlUpload}
+      />
     );
   }
 

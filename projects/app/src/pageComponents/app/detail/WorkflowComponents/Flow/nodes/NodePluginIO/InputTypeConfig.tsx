@@ -112,6 +112,10 @@ const InputTypeConfig = ({
 
   const maxFiles = watch('maxFiles');
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+  const canSelectFile = watch('canSelectFile');
+  const canSelectImg = watch('canSelectImg');
+  const canLocalUpload = watch('canLocalUpload');
+  const canUrlUpload = watch('canUrlUpload');
 
   const [isDatasetSelectOpen, setIsDatasetSelectOpen] = useState(false);
   const [datasetList, setDatasetList] = useState<
@@ -690,110 +694,93 @@ const InputTypeConfig = ({
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('app:file_types')}
               </FormLabel>
-              <Flex gap={'8px'}>
-                <Box
-                  display={'flex'}
-                  p={'8px 16px 8px 12px'}
+              <Flex gap={'8px'} flex={'1'}>
+                <Checkbox
+                  p={'3'}
                   h={'32px'}
-                  w={'160px'}
-                  gap={'8px'}
+                  flex={1}
                   alignItems={'center'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
-                  borderRadius={'6px'}
+                  borderRadius={'md'}
+                  isChecked={canSelectFile ?? true}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canSelectFile', true);
+                    } else {
+                      setValue('canSelectFile', false);
+                    }
+                  }}
                 >
-                  <Checkbox
-                    isChecked={watch('canSelectFile') || false}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('canSelectFile', true);
-                      } else {
-                        setValue('canSelectFile', false);
-                      }
-                    }}
-                  ></Checkbox>
-                  <Box fontSize={'14px'}>{t('app:document')}</Box>
-                </Box>
-                <Box
-                  display={'flex'}
-                  p={'8px 16px 8px 12px'}
+                  <Box fontSize={'sm'}>{t('app:document')}</Box>
+                </Checkbox>
+
+                <Checkbox
+                  p={'3'}
                   h={'32px'}
-                  w={'160px'}
-                  gap={'8px'}
+                  flex={1}
                   alignItems={'center'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
-                  borderRadius={'6px'}
+                  borderRadius={'md'}
+                  isChecked={canSelectImg ?? true}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canSelectImg', true);
+                    } else {
+                      setValue('canSelectImg', false);
+                    }
+                  }}
                 >
-                  <Checkbox
-                    isChecked={watch('canSelectImg') || false}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('canSelectImg', true);
-                      } else {
-                        setValue('canSelectImg', false);
-                      }
-                    }}
-                  ></Checkbox>
-                  <Box fontSize={'14px'}>{t('app:image')}</Box>
-                </Box>
+                  <Box fontSize={'sm'}>{t('app:image')}</Box>
+                </Checkbox>
               </Flex>
             </Flex>
-            <Box w={'full'} minH={'40px'}>
-              <Flex alignItems={'center'}>
-                <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                  {t('app:upload_method')}
-                </FormLabel>
-                <Flex gap={'8px'}>
-                  <Box
-                    display={'flex'}
-                    p={'8px 16px 8px 12px'}
-                    h={'32px'}
-                    w={'160px'}
-                    gap={'8px'}
-                    alignItems={'center'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    borderRadius={'6px'}
-                  >
-                    <Checkbox
-                      isChecked={watch('canLocalUpload') || false}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setValue('canLocalUpload', true);
-                        } else {
-                          setValue('canLocalUpload', false);
-                        }
-                      }}
-                    ></Checkbox>
-                    <Box fontSize={'14px'}>{t('app:local_upload')}</Box>
-                  </Box>
-                  <Box
-                    display={'flex'}
-                    p={'8px 16px 8px 12px'}
-                    h={'32px'}
-                    w={'160px'}
-                    gap={'8px'}
-                    alignItems={'center'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    borderRadius={'6px'}
-                  >
-                    <Checkbox
-                      isChecked={watch('canUrlUpload') || false}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setValue('canUrlUpload', true);
-                        } else {
-                          setValue('canUrlUpload', false);
-                        }
-                      }}
-                    ></Checkbox>
-                    <Box fontSize={'14px'}>{t('app:url_upload')}</Box>
-                  </Box>
-                </Flex>
+            <Flex alignItems={'center'} minH={'40px'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:upload_method')}
+              </FormLabel>
+              <Flex gap={'8px'} flex={'1'}>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  flex={1}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canLocalUpload ?? true}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canLocalUpload', true);
+                    } else {
+                      setValue('canLocalUpload', false);
+                    }
+                  }}
+                >
+                  <Box fontSize={'sm'}>{t('app:local_upload')}</Box>
+                </Checkbox>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  flex={1}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canUrlUpload ?? false}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('canUrlUpload', true);
+                    } else {
+                      setValue('canUrlUpload', false);
+                    }
+                  }}
+                >
+                  <Box fontSize={'sm'}>{t('app:url_upload')}</Box>
+                </Checkbox>
               </Flex>
-            </Box>
+            </Flex>
             <Box>
               <HStack>
                 <FormLabel fontWeight={'medium'}>{t('app:upload_file_max_amount')}</FormLabel>

@@ -871,6 +871,7 @@
   "input.Repeat Value": "有重复的值",
   "input_name": "取个名字",
   "invalid_time": "有效期",
+  "invalid_url": "无效的 URL 格式",
   "invalid_variable": "无效变量",
   "is_open": "是否开启",
   "is_requesting": "请求中……",

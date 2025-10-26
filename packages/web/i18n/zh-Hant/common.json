@@ -869,6 +869,7 @@
   "input.Repeat Value": "重複的值",
   "input_name": "輸入名稱",
   "invalid_time": "有效期",
+  "invalid_url": "無效的 URL 格式",
   "invalid_variable": "無效變數",
   "is_open": "是否開啟",
   "is_requesting": "請求中...",
