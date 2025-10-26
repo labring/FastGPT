@@ -350,7 +350,7 @@ export async function getChildAppPreviewNode({
                   systemToolSet: {
                     toolId: app.id,
                     toolList: children
-                      .filter((item) => item.isActive !== false)
+                      .filter((item) => item.status === 1 || item.status === undefined)
                       .map((item) => ({
                         toolId: item.id,
                         name: parseI18nString(item.name, lang),
@@ -407,7 +407,7 @@ export async function getChildAppPreviewNode({
   return {
     id: getNanoid(),
     pluginId: app.id,
-    templateType: app.templateType,
+    templateType: app.templateType ?? FlowNodeTemplateTypeEnum.tools,
     flowNodeType,
     avatar: app.avatar,
     name: parseI18nString(app.name, lang),
@@ -507,21 +507,13 @@ export async function getChildAppRuntimeById({
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
-  const {
-    name,
-    avatar,
-    intro,
-    toolDescription,
-    version,
-    weight,
-    templateType,
-    associatedPluginId,
-    userGuide
-  } = item.customConfig!;
+  const { name, avatar, intro, toolDescription, version, weight, associatedPluginId, userGuide } =
+    item.customConfig!;
 
   return {
     id: item.pluginId,
-    isActive: item.isActive,
+    status: item.status ?? 1,
+    defaultInstalled: item.defaultInstalled ?? true,
     isFolder: false,
     parentId: null,
     author: item.customConfig?.author || '',
@@ -531,7 +523,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     intro,
     toolDescription,
     weight,
-    templateType,
+    templateType: FlowNodeTemplateTypeEnum.tools,
     originCost: item.originCost,
     currentCost: item.currentCost,
     hasTokenFee: item.hasTokenFee,
@@ -573,14 +565,17 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       instructions: dbPluginConfig?.customConfig?.userGuide,
       weight: item.weight,
       toolSource: item.toolSource || 'built-in',
+      // temporarily fixed
+      pluginTags: (item as any).pluginTags,
       workflow: {
         nodes: [],
         edges: []
       },
       versionList,
-      templateType: item.templateType,
+      templateType: item.templateType ?? FlowNodeTemplateTypeEnum.tools,
       showStatus: true,
-      isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
+      status: dbPluginConfig?.status ?? 1,
+      defaultInstalled: dbPluginConfig?.defaultInstalled ?? true,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
 
@@ -598,11 +593,6 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
 
   const concatTools = [...formatTools, ...dbPlugins];
   concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
-
-  global.systemToolsTypeCache = {};
-  concatTools.forEach((item) => {
-    global.systemToolsTypeCache[item.templateType] = 1;
-  });
 
   return concatTools;
 };
@@ -622,7 +612,3 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
   if (!dbPlugin) return Promise.reject(PluginErrEnum.unExist);
   return dbPluginFormat(dbPlugin);
 };
-
-declare global {
-  var systemToolsTypeCache: Record<string, 1>;
-}

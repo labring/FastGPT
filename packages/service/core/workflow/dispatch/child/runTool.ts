@@ -22,6 +22,7 @@ import { getNodeErrResponse } from '../utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 type SystemInputConfigType = {
   type: SystemToolInputTypeEnum;
@@ -58,6 +59,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
       const tool = await getSystemToolById(toolConfig.systemTool!.toolId);
+
+      if (tool.status === 0) {
+        return getNodeErrResponse({
+          error: i18nT('app:Plugin_offline_tips')
+        });
+      }
 
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {

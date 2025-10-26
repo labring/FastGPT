@@ -227,6 +227,25 @@ const NodeCard = (props: Props) => {
               />
 
               <Box flex={1} mr={1} />
+              {nodeTemplate?.status !== undefined && nodeTemplate.status !== 1 && (
+                <MyTooltip
+                  label={
+                    nodeTemplate.status === 0
+                      ? t('app:tool_offset_tips')
+                      : t('app:tool_soon_offset_tips')
+                  }
+                >
+                  <MyTag
+                    mr={2}
+                    colorSchema={nodeTemplate.status === 0 ? 'red' : 'yellow'}
+                    type="borderFill"
+                  >
+                    {nodeTemplate.status === 0
+                      ? t('app:toolkit_status_offline')
+                      : t('app:toolkit_status_soon_offline')}
+                  </MyTag>
+                </MyTooltip>
+              )}
 
               {showVersion && <NodeVersion node={node!} />}
 

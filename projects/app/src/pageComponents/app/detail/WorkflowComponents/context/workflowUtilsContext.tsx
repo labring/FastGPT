@@ -8,7 +8,8 @@ import {
   checkWorkflowNodeAndConnection,
   adaptCatchError,
   storeNode2FlowNode,
-  storeEdge2RenderEdge
+  storeEdge2RenderEdge,
+  batchFillPluginData
 } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -22,7 +23,6 @@ import type {
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowActionsContext } from './workflowActionsContext';
 
 // 创建 Context
@@ -216,6 +216,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       isInit?: boolean
     ) => {
       adaptCatchError(e.nodes, e.edges);
+
+      await batchFillPluginData(e.nodes);
 
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
