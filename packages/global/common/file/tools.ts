@@ -79,7 +79,7 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     };
   } catch (error) {
     return {
-      type: ChatFileTypeEnum.url,
+      type: ChatFileTypeEnum.file,
       name: url,
       url
     };
