@@ -42,6 +42,7 @@ import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const InputTypeConfig = ({
   form,
@@ -71,28 +72,27 @@ const InputTypeConfig = ({
   const defaultListValue = { label: t('common:None'), value: '' };
   const { feConfigs, llmModelList } = useSystemStore();
 
-  const availableModels = useMemo(() => {
-    if (inputType !== VariableInputEnum.modelSelect) {
-      return [];
-    }
+  const availableModels = useMemoEnhance(() => {
     return llmModelList.map((model) => ({
       value: model.model,
       label: model.name
     }));
-  }, [llmModelList, inputType]);
+  }, [llmModelList]);
 
-  const typeLabels = {
-    name: {
-      formInput: t('common:core.module.input_name'),
-      plugin: t('common:core.module.Field Name'),
-      variable: t('workflow:Variable_name')
-    },
-    description: {
-      formInput: t('common:core.module.input_description'),
-      plugin: t('workflow:field_description'),
-      variable: t('workflow:variable_description')
-    }
-  };
+  const typeLabels = useMemo(() => {
+    return {
+      name: {
+        formInput: t('common:core.module.input_name'),
+        plugin: t('common:core.module.Field Name'),
+        variable: t('workflow:Variable_name')
+      },
+      description: {
+        formInput: t('common:core.module.input_description'),
+        plugin: t('workflow:field_description'),
+        variable: t('workflow:variable_description')
+      }
+    };
+  }, [t]);
 
   const { register, setValue, handleSubmit, control, watch } = form;
   const maxLength = watch('maxLength');
@@ -190,7 +190,8 @@ const InputTypeConfig = ({
       [VariableInputEnum.custom]: true,
       [VariableInputEnum.internal]: true,
       [VariableInputEnum.timePointSelect]: true,
-      [VariableInputEnum.timeRangeSelect]: true
+      [VariableInputEnum.timeRangeSelect]: true,
+      [VariableInputEnum.llmSelect]: true
     };
 
     return map[inputType as keyof typeof map];
@@ -535,6 +536,17 @@ const InputTypeConfig = ({
                   </Box>
                 </Flex>
               )}
+              {inputType === VariableInputEnum.llmSelect && (
+                <Box flex={'1'}>
+                  <AIModelSelector
+                    value={defaultValue}
+                    list={availableModels}
+                    onChange={(model) => {
+                      setValue('defaultValue', model);
+                    }}
+                  />
+                </Box>
+              )}
             </Flex>
           </Flex>
         )}
@@ -815,7 +827,7 @@ const InputTypeConfig = ({
               </FormLabel>
               <Flex flex={1} gap={2} flexDirection={'column'} alignItems={'stretch'}>
                 <Button
-                  variant={'outline'}
+                  variant={'whiteBase'}
                   size={'md'}
                   onClick={() => setIsDatasetSelectOpen(true)}
                   leftIcon={<MyIcon name={'core/workflow/inputType/dataset'} w={'14px'} />}
@@ -842,33 +854,33 @@ const InputTypeConfig = ({
                 )}
               </Flex>
             </Flex>
+            <DatasetSelectModal
+              isOpen={isDatasetSelectOpen}
+              defaultSelectedDatasets={
+                defaultValue && datasetList.length > 0
+                  ? datasetList
+                      .filter((item) => item.datasetId === defaultValue)
+                      .map((item) => ({
+                        datasetId: item.datasetId,
+                        name: item.name,
+                        avatar: item.avatar,
+                        vectorModel: {} as EmbeddingModelItemType
+                      }))
+                  : []
+              }
+              onChange={(selectedDatasets) => {
+                const newDatasetList = selectedDatasets.map((item: any) => ({
+                  name: item.name,
+                  datasetId: item.datasetId,
+                  avatar: item.avatar
+                }));
+                setDatasetList(newDatasetList);
+                setValue('dataset', newDatasetList);
+              }}
+              onClose={() => setIsDatasetSelectOpen(false)}
+            />
           </>
         )}
-        <DatasetSelectModal
-          isOpen={isDatasetSelectOpen}
-          defaultSelectedDatasets={
-            defaultValue && datasetList.length > 0
-              ? datasetList
-                  .filter((item) => item.datasetId === defaultValue)
-                  .map((item) => ({
-                    datasetId: item.datasetId,
-                    name: item.name,
-                    avatar: item.avatar,
-                    vectorModel: {} as EmbeddingModelItemType
-                  }))
-              : []
-          }
-          onChange={(selectedDatasets) => {
-            const newDatasetList = selectedDatasets.map((item: any) => ({
-              name: item.name,
-              datasetId: item.datasetId,
-              avatar: item.avatar
-            }));
-            setDatasetList(newDatasetList);
-            setValue('dataset', newDatasetList);
-          }}
-          onClose={() => setIsDatasetSelectOpen(false)}
-        />
 
         {inputType === VariableInputEnum.password && (
           <Flex alignItems={'center'}>
@@ -883,23 +895,6 @@ const InputTypeConfig = ({
                 setValue('minLength', e);
               }}
             />
-          </Flex>
-        )}
-
-        {inputType === VariableInputEnum.modelSelect && (
-          <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-              {t('common:core.workflow.inputType.selectLLMModel')}
-            </FormLabel>
-            <Box flex={'1 0 0'}>
-              <AIModelSelector
-                value={watch('defaultValue') || ''}
-                list={availableModels}
-                onChange={(model) => {
-                  setValue('defaultValue', model);
-                }}
-              />
-            </Box>
           </Flex>
         )}
       </Flex>

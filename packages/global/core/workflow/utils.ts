@@ -262,7 +262,7 @@ export const appData2FlowNodeIO = ({
           [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
           [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
           [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect],
-          [VariableInputEnum.modelSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+          [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
           [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
           [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
           [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]

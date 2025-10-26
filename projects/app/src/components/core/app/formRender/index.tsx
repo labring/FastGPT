@@ -233,9 +233,7 @@ const InputRender = (props: InputRenderProps) => {
 
     const selectedValues = Array.isArray(value)
       ? value.map((item: any) => (typeof item === 'string' ? item : item.datasetId))
-      : typeof value === 'string'
-        ? [value]
-        : [];
+      : [];
 
     return (
       <MultipleSelect<string>
