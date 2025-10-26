@@ -117,11 +117,15 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (
-  variables: Record<string, any>,
-  removeObj: Record<string, string> = {},
-  userVariablesConfigs: VariableItemType[] = []
-) => {
+export const runtimeSystemVar2StoreType = ({
+  variables,
+  removeObj = {},
+  userVariablesConfigs = []
+}: {
+  variables: Record<string, any>;
+  removeObj?: Record<string, string>;
+  userVariablesConfigs?: VariableItemType[];
+}) => {
   const copyVariables = { ...variables };
 
   // Delete system variables
@@ -140,11 +144,13 @@ export const removeSystemVariable = (
   // Encrypt password variables
   userVariablesConfigs.forEach((item) => {
     const val = copyVariables[item.key];
-    if (item.type === VariableInputEnum.password && typeof val === 'string') {
-      copyVariables[item.key] = {
-        value: '',
-        secret: encryptSecret(val)
-      };
+    if (item.type === VariableInputEnum.password) {
+      if (typeof val === 'string') {
+        copyVariables[item.key] = {
+          value: '',
+          secret: encryptSecret(val)
+        };
+      }
     }
   });
 

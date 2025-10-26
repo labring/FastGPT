@@ -37,6 +37,7 @@ import DndDrag, {
 } from '@fastgpt/web/components/common/DndDrag';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -49,11 +50,8 @@ export const defaultVariable: VariableItemType = {
   canSelectImg: true,
   maxFiles: 5,
   timeGranularity: 'day',
-  timeType: 'point',
-  timeRangeStart: new Date(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-  ).toISOString(),
-  timeRangeEnd: new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+  timeRangeStart: undefined,
+  timeRangeEnd: undefined
 };
 
 export const addVariable = () => {
@@ -104,36 +102,11 @@ const VariableEdit = ({
       const defaultValIsNumber = !isNaN(Number(value.defaultValue));
       const currentType = value.type;
 
-      const isCurrentTimeType =
-        currentType === VariableInputEnum.timePointSelect ||
-        currentType === VariableInputEnum.timeRangeSelect;
-      const isNewTimeType =
-        newType === VariableInputEnum.timePointSelect ||
-        newType === VariableInputEnum.timeRangeSelect;
-
       if (
         newType === VariableInputEnum.select ||
         newType === VariableInputEnum.multipleSelect ||
         (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
       ) {
-        setValue('defaultValue', '');
-      }
-
-      // Set time-related default values when switching from non-time type to time type
-      if (!isCurrentTimeType && isNewTimeType) {
-        setValue('defaultValue', '');
-        setValue('timeGranularity', 'day');
-        setValue(
-          'timeRangeStart',
-          new Date(
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-          ).toISOString()
-        );
-        setValue('timeRangeEnd', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
-      }
-
-      // Clear default value when switching from time type to other types
-      if (isCurrentTimeType && !isNewTimeType) {
         setValue('defaultValue', '');
       }
 
@@ -203,6 +176,10 @@ const VariableEdit = ({
         delete data.canSelectFile;
         delete data.canSelectImg;
         delete data.maxFiles;
+        delete data.canSelectAudio;
+        delete data.canSelectVideo;
+        delete data.canSelectCustomFileExtension;
+        delete data.customFileExtensionList;
       }
 
       if (
@@ -212,16 +189,15 @@ const VariableEdit = ({
         delete data.timeGranularity;
         delete data.timeRangeStart;
         delete data.timeRangeEnd;
-      } else if (data.type === VariableInputEnum.timePointSelect) {
-        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      } else if (data.type === VariableInputEnum.timeRangeSelect) {
-        data.defaultValue = [
-          data.timeRangeStart ||
-            new Date(
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-            ).toISOString(),
-          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
-        ];
+      } else if (data.type === VariableInputEnum.timePointSelect && data.defaultValue) {
+        data.defaultValue = formatTime2YMDHMS(new Date(data.defaultValue));
+      } else if (
+        data.type === VariableInputEnum.timeRangeSelect &&
+        Array.isArray(data.defaultValue)
+      ) {
+        data.defaultValue = data.defaultValue.map((item) =>
+          item ? formatTime2YMDHMS(new Date(item)) : ''
+        );
       }
 
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
