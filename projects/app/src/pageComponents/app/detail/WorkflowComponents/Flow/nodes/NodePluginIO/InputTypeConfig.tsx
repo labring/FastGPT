@@ -25,7 +25,7 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -43,6 +43,8 @@ import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const InputTypeConfig = ({
   form,
@@ -106,9 +108,13 @@ const InputTypeConfig = ({
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
   const timeRangeStartDefault =
-    inputType === VariableInputEnum.timeRangeSelect ? defaultValue?.[0] : undefined;
+    inputType === VariableInputEnum.timeRangeSelect && Array.isArray(defaultValue)
+      ? defaultValue?.[0]
+      : undefined;
   const timeRangeEndDefault =
-    inputType === VariableInputEnum.timeRangeSelect ? defaultValue?.[1] : undefined;
+    inputType === VariableInputEnum.timeRangeSelect && Array.isArray(defaultValue)
+      ? defaultValue?.[1]
+      : undefined;
 
   const maxFiles = watch('maxFiles');
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
@@ -209,6 +215,81 @@ const InputTypeConfig = ({
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
+
+  const filterValidField = useCallback(
+    (data: Record<string, any>) => {
+      const commonData: Record<string, any> = {
+        renderTypeList: data.renderTypeList,
+        type: data.type,
+
+        key: data.key,
+        label: data.label,
+        valueType: data.valueType,
+        valueDesc: data.valueDesc,
+        description: data.description,
+        toolDescription: data.toolDescription,
+        required: data.required,
+        defaultValue: data.defaultValue
+      };
+
+      switch (inputType) {
+        case FlowNodeInputTypeEnum.input:
+        case FlowNodeInputTypeEnum.textarea:
+          commonData.maxLength = data.maxLength;
+          break;
+        case FlowNodeInputTypeEnum.numberInput:
+          commonData.max = data.max;
+          commonData.min = data.min;
+          break;
+        case FlowNodeInputTypeEnum.select:
+        case FlowNodeInputTypeEnum.multipleSelect:
+          commonData.list = data.list;
+          break;
+        case FlowNodeInputTypeEnum.addInputParam:
+          commonData.customInputConfig = data.customInputConfig;
+          break;
+        case FlowNodeInputTypeEnum.fileSelect:
+          commonData.canSelectFile = data.canSelectFile;
+          commonData.canSelectImg = data.canSelectImg;
+          commonData.canSelectVideo = data.canSelectVideo;
+          commonData.canSelectAudio = data.canSelectAudio;
+          commonData.canSelectCustomFileExtension = data.canSelectCustomFileExtension;
+          commonData.customFileExtensionList = data.customFileExtensionList;
+          commonData.canLocalUpload = data.canLocalUpload;
+          commonData.canUrlUpload = data.canUrlUpload;
+          commonData.maxFiles = data.maxFiles;
+          break;
+        case FlowNodeInputTypeEnum.timePointSelect:
+        case FlowNodeInputTypeEnum.timeRangeSelect:
+          commonData.timeGranularity = data.timeGranularity;
+          commonData.timeRangeStart = data.timeRangeStart;
+          commonData.timeRangeEnd = data.timeRangeEnd;
+        case FlowNodeInputTypeEnum.password:
+          commonData.minLength = data.minLength;
+          break;
+      }
+
+      if (commonData.timeRangeStart) {
+        commonData.timeRangeStart = formatTime2YMDHMS(new Date(commonData.timeRangeStart));
+      }
+      if (commonData.timeRangeEnd) {
+        commonData.timeRangeEnd = formatTime2YMDHMS(new Date(commonData.timeRangeEnd));
+      }
+      if (inputType === FlowNodeInputTypeEnum.timePointSelect && commonData.defaultValue) {
+        commonData.defaultValue = formatTime2YMDHMS(new Date(commonData.defaultValue));
+      } else if (
+        inputType === FlowNodeInputTypeEnum.timeRangeSelect &&
+        Array.isArray(commonData.defaultValue)
+      ) {
+        commonData.defaultValue = commonData.defaultValue.map((item) =>
+          item ? formatTime2YMDHMS(new Date(item)) : ''
+        );
+      }
+
+      return commonData;
+    },
+    [inputType]
+  );
 
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
@@ -439,7 +520,7 @@ const InputTypeConfig = ({
                   onChange={(e) => {
                     setValue('defaultValue', e);
                   }}
-                  defaultValue={defaultValue}
+                  value={defaultValue}
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
@@ -509,7 +590,7 @@ const InputTypeConfig = ({
                       {t('app:time_range_start')}
                     </Box>
                     <TimeInput
-                      value={timeRangeStartDefault ? new Date(timeRangeStartDefault) : undefined}
+                      value={timeRangeStartDefault}
                       onDateTimeChange={(date) => {
                         setValue('defaultValue', [date, timeRangeEndDefault]);
                       }}
@@ -524,7 +605,7 @@ const InputTypeConfig = ({
                       {t('app:time_range_end')}
                     </Box>
                     <TimeInput
-                      value={timeRangeEndDefault ? new Date(timeRangeEndDefault) : undefined}
+                      value={timeRangeEndDefault}
                       onDateTimeChange={(date) => {
                         setValue('defaultValue', [timeRangeStartDefault, date]);
                       }}
@@ -906,7 +987,10 @@ const InputTypeConfig = ({
         <Button
           variant={'primaryOutline'}
           fontWeight={'medium'}
-          onClick={handleSubmit((data) => onSubmitSuccess(data, 'confirm'), onSubmitError)}
+          onClick={handleSubmit(
+            (data) => onSubmitSuccess(filterValidField(data), 'confirm'),
+            onSubmitError
+          )}
           w={20}
         >
           {t('common:Confirm')}
@@ -914,7 +998,10 @@ const InputTypeConfig = ({
         {!isEdit && (
           <Button
             fontWeight={'medium'}
-            onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
+            onClick={handleSubmit(
+              (data) => onSubmitSuccess(filterValidField(data), 'continue'),
+              onSubmitError
+            )}
             w={20}
           >
             {t('common:Continue_Adding')}
