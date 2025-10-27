@@ -553,7 +553,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
     const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
 
     return {
-      id: item.id,
+      id: item.toolId,
       parentId: item.parentId,
       isFolder,
       name: item.name,
@@ -563,16 +563,12 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      weight: item.weight,
-      toolSource: item.toolSource || 'built-in',
-      // temporarily fixed
-      pluginTags: (item as any).pluginTags,
+      pluginTags: item.tags,
       workflow: {
         nodes: [],
         edges: []
       },
       versionList,
-      templateType: item.templateType ?? FlowNodeTemplateTypeEnum.tools,
       showStatus: true,
       status: dbPluginConfig?.status ?? 1,
       defaultInstalled: dbPluginConfig?.defaultInstalled ?? true,
