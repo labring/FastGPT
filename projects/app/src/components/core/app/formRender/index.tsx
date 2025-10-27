@@ -94,15 +94,25 @@ const InputRender = (props: InputRenderProps) => {
 
   if (inputType === InputTypeEnum.password) {
     const isPasswordConfigured = isSecretValue(value);
+    const val = typeof value === 'object' && value !== null ? value.value : '';
+
     return !isPasswordConfigured || isPasswordEditing ? (
       <Input
         {...commonProps}
+        onChange={(e) => {
+          const val = e.target.value;
+          onChange({
+            value: val,
+            secret: ''
+          });
+        }}
+        value={val}
         type="password"
-        value={typeof value === 'string' ? value : ''}
         autoFocus={isPasswordEditing}
         onBlur={() => setIsPasswordEditing(false)}
         autoComplete="new-password"
         data-form-type="other"
+        data-lpignore="true"
       />
     ) : (
       <Flex alignItems="center" gap={2}>

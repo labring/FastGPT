@@ -14,7 +14,7 @@ import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 
-const VariableInput = ({
+const VariableInputForm = ({
   chatForm,
   chatStarted,
   chatType
@@ -212,4 +212,4 @@ const VariableInput = ({
   ) : null;
 };
 
-export default VariableInput;
+export default VariableInputForm;

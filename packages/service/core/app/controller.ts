@@ -1,6 +1,9 @@
 import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -34,6 +37,9 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
     node.inputs.forEach((input) => {
       if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
         input.value = storeSecretValue(input.value);
+      }
+      if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+        input.value = encryptSecretValue(input.value);
       }
       if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
         input.inputList?.forEach((inputItem) => {
