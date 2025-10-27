@@ -225,7 +225,7 @@ const ToolProvider = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'file']))
     }
   };
 }

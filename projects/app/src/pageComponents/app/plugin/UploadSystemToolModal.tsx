@@ -8,7 +8,11 @@ import { useState } from 'react';
 import { postS3UploadFile } from '@/web/common/file/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { pluginClient } from '@/web/core/app/api/plugin';
+import {
+  getPluginUploadURL,
+  parseUploadedPlugin,
+  confirmPluginUpload
+} from '@/web/core/app/api/plugin';
 
 function UploadSystemToolModal({
   onClose,
@@ -24,28 +28,24 @@ function UploadSystemToolModal({
     async () => {
       const file = selectFiles[0];
 
-      const presignedData = await pluginClient.tool.upload.getUploadURL({
-        query: {
-          filename: file.name
-        }
-      });
-      if (presignedData.status !== 200) {
-        return Promise.reject(presignedData.body);
-      }
+      const presignedData = await getPluginUploadURL({ filename: file.name });
 
       const formData = new FormData();
-      Object.entries(presignedData.body.formData).forEach(([key, value]) => {
+      Object.entries(presignedData.formData).forEach(([key, value]) => {
         formData.append(key, value);
       });
       formData.append('file', file.file);
 
-      await postS3UploadFile(presignedData.body.postURL, formData);
+      await postS3UploadFile(presignedData.postURL, formData);
 
-      await pluginClient.tool.upload.confirmUpload({
-        body: {
-          objectName: presignedData.body.objectName
-        }
-      });
+      const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
+
+      const parentId = parseResult.find((item) => !!item.parentId)?.toolId;
+      if (!parentId) {
+        return Promise.reject(new Error('Parent ID not found'));
+      }
+
+      await confirmPluginUpload({ toolIds: [parentId] });
     },
     {
       manual: true,
