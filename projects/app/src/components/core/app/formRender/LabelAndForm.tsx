@@ -44,6 +44,7 @@ const LabelAndFormRender = ({
   form: UseFormReturn<any>;
   fieldName: string;
 
+  isDisabled?: boolean;
   minLength?: number;
 } & SpecificProps &
   BoxProps) => {
