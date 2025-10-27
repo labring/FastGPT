@@ -102,22 +102,14 @@ export const getPlanAgentSystemPrompt = ({
           "description": {
               "type": "string",
               "description": "步骤的具体描述, 可以使用@符号声明需要用到的工具。"
-          },
-          "depends_on": {
-              "type": "object",
-              "description": "该步骤依赖的前置步骤的id，比如["step1","step2"]"
           }
           },
           "required": ["id", "title", "description"]
       }
       },
       "replan": {
-          "type": "array",
-          "description": "需要二次规划时，列出依赖的步骤。如果为空数组则表示不需要二次规划",
-          "items": {
-              "type": "string"
-          },
-          "default": []
+        "type": "boolean",
+        "description": "是否需要继续规划依赖的前面步骤,true表示需要继续规划,false表示不需要"
       }
     },
     "required": ["task", "steps"]
@@ -158,23 +150,20 @@ export const getPlanAgentSystemPrompt = ({
         {
           "id": "step1",
           "title": "了解基础概念",
-          "description": "使用 @[搜索工具] 搜索 [主题] 的基本概念、核心原理、关键术语",
-          "depends on": []
+          "description": "使用 @[搜索工具] 搜索 [主题] 的基本概念、核心原理、关键术语"
         },
         {
           "id": "step2",
           "title": "学习具体方法",
-          "description": "使用 @[搜索工具] 查询 [主题] 的具体操作方法、实施步骤、常用技巧",
-          "depends on": ["step1"]
+          "description": "使用 @[搜索工具] 查询 [主题] 的具体操作方法、实施步骤、常用技巧"
         },
         {
           "id": "step3",
           "title": "了解实践应用",
-          "description": "使用 @[搜索工具] 搜索 [主题] 的实际应用案例、最佳实践、经验教训",
-          "depends on": ["step1", "step2"]
+          "description": "使用 @[搜索工具] 搜索 [主题] 的实际应用案例、最佳实践、经验教训"
         }
     ],
-    "replan": []
+    "replan": true
   }
   \`\`\`
   </example>
@@ -186,17 +175,15 @@ export const getPlanAgentSystemPrompt = ({
       {
         "id": "step1",
         "title": "对比关键差异",
-        "description": "使用 @[分析工具] 搜索 [方案A] vs [方案B] 的对比分析，重点关注：核心差异、优劣势、转换成本",
-        "depends_on": []
+        "description": "使用 @[分析工具] 搜索 [方案A] vs [方案B] 的对比分析，重点关注：核心差异、优劣势、转换成本"
       },
       {
         "id": "step2",
         "title": "评估变更影响",
-        "description": "使用 @[分析工具] 搜索相关的迁移案例、所需资源、潜在风险",
-        "depends_on": ["step1"]
+        "description": "使用 @[分析工具] 搜索相关的迁移案例、所需资源、潜在风险"
       }
     ],
-    "replan": ["step1","step2"]
+    "replan": true
   }
   \`\`\`
   </example>
@@ -208,17 +195,15 @@ export const getPlanAgentSystemPrompt = ({
       {
         "id": "step1",
         "title": "调研主流选项",
-        "description": "使用 @[调研工具] 搜索当前主流的 [工具/方案]，了解各自特点、适用场景、关键指标",
-        "depends_on": []
+        "description": "使用 @[调研工具] 搜索当前主流的 [工具/方案]，了解各自特点、适用场景、关键指标"
       },
       {
         "id": "step2",
         "title": "分析特定维度",
-        "description": "使用 @[分析工具] 深入了解 [特定关注点]，如成本、性能、易用性等关键决策因素",
-        "depends_on": ["step1"]
+        "description": "使用 @[分析工具] 深入了解 [特定关注点]，如成本、性能、易用性等关键决策因素"
       }
     ],
-    "replan": ["step1","step2"]
+    "replan": true
   }
   \`\`\`
   </example>
@@ -230,11 +215,10 @@ export const getPlanAgentSystemPrompt = ({
       {
         "id": "step1",
         "title": "初步搜索",
-        "description": "使用 @[搜索工具] 搜索 [目标对象]，获取初步结果列表",
-        "depends_on": []
+        "description": "使用 @[搜索工具] 搜索 [目标对象]，获取初步结果列表"
       }
     ],
-    "replan": ["step1","step2"]
+    "replan": true
   }
   \`\`\`
   </example>
@@ -246,17 +230,15 @@ export const getPlanAgentSystemPrompt = ({
       {
         "id": "step1",
         "title": "问题分析",
-        "description": "使用 @[诊断工具] 搜索 [问题] 的常见原因、诊断方法",
-        "depends_on": []
+        "description": "使用 @[诊断工具] 搜索 [问题] 的常见原因、诊断方法"
       },
       {
         "id": "step2",
         "title": "寻找解决方案",
-        "description": "使用 @[搜索工具] 查找类似问题的解决方案、修复步骤",
-        "depends_on": ["step1"]
+        "description": "使用 @[搜索工具] 查找类似问题的解决方案、修复步骤"
       }
     ],
-    "replan": ["step1","step2"]
+    "replan": true
   }
   \`\`\`
   </example>
@@ -343,30 +325,18 @@ ${subAppPrompt}
             "description": {
               "type": "string",
               "description": "步骤的具体描述，可以使用@符号声明需要用到的工具, 当任务可以总结的时候 description 必须为 基于现有步骤的结果，生成一个总结报告"
-            },
-            "depends_on": {
-              "type": "array",
-              "description": "该步骤依赖的前置步骤ID",
-              "items": {
-                "type": "string"
-              }
             }
           },
           "required": [
             "id",
             "title",
-            "description",
-            "depends_on"
+            "description"
           ]
         }
       },
       "replan": {
-        "type": "array",
-        "description": "继续规划依赖的前面步骤",
-        "items": {
-          "type": "string"
-        },
-        "default": []
+        "type": "boolean",
+        "description": "是否需要继续规划依赖的前面步骤，true表示需要继续规划，false表示不需要"
       }
     },
     "required": [
@@ -413,22 +383,15 @@ ${subAppPrompt}
       {
         "id": "optimize1-1",
         "title": "生成详细的每日时间表",
-        "description": "基于已收集的景点和餐厅信息，使用 @tavily_search 查询具体的开放时间和预约要求，制定精确到小时的每日行程安排",
-        "depends_on": [
-          "step5",
-          "step7"
-        ]
+        "description": "基于已收集的景点和餐厅信息，使用 @tavily_search 查询具体的开放时间和预约要求，制定精确到小时的每日行程安排"
       },
       {
         "id": "optimize1-2",
         "title": "制作便携式旅游指南",
-        "description": "整合所有收集的信息，生成包含地图标注、联系方式、应急信息的便携式旅游指南文档",
-        "depends_on": [
-          "optimize1-1"
-        ]
+        "description": "整合所有收集的信息，生成包含地图标注、联系方式、应急信息的便携式旅游指南文档"
       }
     ],
-    "replan": []
+    "replan": false
   }
   \`\`\`    
   </example>
@@ -441,11 +404,10 @@ ${subAppPrompt}
         {
           "id": "optimize1-1",
           "title": "生成总结报告",
-          "description": "基于现有步骤的结果，生成一个总结报告",
-          "depends_on": []
+          "description": "基于现有步骤的结果，生成一个总结报告"
         }
       ],
-      "replan": []
+      "replan": false
     }
     \`\`\`
   </example>    
@@ -466,29 +428,29 @@ export const getReplanAgentUserPrompt = ({
   const stepsResponsePrompt = dependsSteps
     .map(
       (step) => `步骤 ${step.id}:
-- 标题: ${step.title}
-- 执行结果: ${step.response}`
+      - 标题: ${step.title}
+      - 执行结果: ${step.response}`
     )
     .join('\n');
   const stepsIdPrompt = dependsSteps.map((step) => step.id).join(', ');
 
   return `「任务目标」：${task}
-
-${background ? `「背景信息」：${background}` : ''}
-
-${
-  referencePlans
-    ? `「用户前置规划」：
-${referencePlans}
-请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。`
-    : ''
-}
-
-基于以下关键步骤的执行结果进行优化：${stepsIdPrompt}
-
-「关键步骤执行结果」：
-
-${stepsResponsePrompt}
-
-请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤。`;
+      ${background ? `「背景信息」：${background}` : ''}
+      
+      ${
+        referencePlans
+          ? `「用户前置规划」：
+      ${referencePlans}
+      请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。`
+          : ''
+      }
+      
+      基于以下关键步骤的执行结果进行优化：${stepsIdPrompt}
+      
+      「关键步骤执行结果」：
+      
+      ${stepsResponsePrompt}
+      
+      请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤。
+      如果「关键步骤执行结果」已经满足了当前的「任务目标」，请直接返回一个总结的步骤来提取最终的答案，而不需要进行其他的讨论`;
 };

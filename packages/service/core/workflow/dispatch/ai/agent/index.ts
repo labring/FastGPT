@@ -197,7 +197,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       addLog.debug(`Replan step`);
       // 临时代码
-      const tmpText = '\n正在重新进行规划生成...\n';
+      const tmpText = '\n # 正在重新进行规划生成...\n';
       workflowStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
@@ -280,8 +280,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       ] = [0, 0, [], []];
 
       while (agentPlan?.steps!.filter((item) => !item.response)!.length) {
-        const steps = agentPlan?.steps!.filter((item) => !item.response)!;
-        for await (const step of steps) {
+        const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
+        for await (const step of pendingSteps) {
           addLog.debug(`Step call: ${step.id}`, step);
 
           workflowStreamResponse?.({
@@ -294,7 +294,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           const result = await stepCall({
             ...props,
             getSubAppInfo,
-            steps,
+            steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
             subAppList,
             step,
             filesMap,
@@ -309,7 +309,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           assistantResponses.push(...result.assistantResponses);
         }
 
-        if (agentPlan?.replan && agentPlan?.replan.length > 0) {
+        if (agentPlan?.replan === true) {
           const replanResult = await replanCallFn({
             plan: agentPlan
           });

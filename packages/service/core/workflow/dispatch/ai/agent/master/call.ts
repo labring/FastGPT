@@ -98,7 +98,8 @@ export const stepCall = async ({
     step
   });
   step.depends_on = depends;
-
+  addLog.debug(`Step call depends_on (LLM): ${step.id}`, depends);
+  addLog.debug(`Step information`, steps);
   const requestMessages = chats2GPTMessages({
     messages: [
       {
