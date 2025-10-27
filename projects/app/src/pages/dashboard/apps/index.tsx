@@ -110,9 +110,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const appTypeName = useMemo(() => {
     const map: Record<AppTypeEnum | 'all', string> = {
       all: t('common:core.module.template.Team app'),
-      [AppTypeEnum.simple]: t('app:type.Simple bot'),
-      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
-      [AppTypeEnum.plugin]: t('app:type.Plugin'),
+      [AppTypeEnum.simple]: t('app:team.menu.app'),
+      [AppTypeEnum.workflow]: t('app:team.menu.workflow'),
+      [AppTypeEnum.plugin]: t('app:team.menu.plugin'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
