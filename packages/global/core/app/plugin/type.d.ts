@@ -66,9 +66,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 
-  // Plugin source type
-  toolSource?: 'uploaded' | 'built-in';
-
   // @deprecated use pluginTags instead
   isActive?: boolean;
   templateType?: string;
