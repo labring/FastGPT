@@ -71,6 +71,8 @@ const VariableInputForm = ({
     internalVariableList.length > 0 ||
     externalVariableList.length > 0;
 
+  const isDisabled = chatType === ChatTypeEnum.log;
+
   return hasVariables ? (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
@@ -101,6 +103,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isDisabled={isDisabled}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -143,6 +146,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isDisabled={isDisabled}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -183,6 +187,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isDisabled={isDisabled}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}

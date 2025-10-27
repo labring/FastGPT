@@ -120,33 +120,30 @@ const InputRender = (props: InputRenderProps) => {
           flex={1}
           borderRadius={'6px'}
           border={'0.5px solid'}
-          borderColor={isDisabled ? 'myGray.200' : 'primary.200'}
-          bg={isDisabled ? 'myGray.50' : 'primary.50'}
+          borderColor={'primary.200'}
+          bg={'primary.50'}
           h={9}
           px={3}
           alignItems={'center'}
           gap={1}
           opacity={isDisabled ? 0.6 : 1}
         >
-          <MyIcon name="checkCircle" w={'16px'} color={isDisabled ? 'myGray.500' : 'primary.600'} />
-          <Box
-            fontSize={'sm'}
-            fontWeight={'medium'}
-            color={isDisabled ? 'myGray.500' : 'primary.600'}
-          >
+          <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
+          <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
             {t('common:had_auth_value')}
           </Box>
         </Flex>
-        <IconButton
-          aria-label="Edit password"
-          icon={<MyIcon name="edit" w={'16px'} />}
-          size="sm"
-          variant="ghost"
-          color={'myGray.500'}
-          _hover={{ color: 'primary.600' }}
-          isDisabled={isDisabled}
-          onClick={() => setIsPasswordEditing(true)}
-        />
+        {!isDisabled && (
+          <IconButton
+            aria-label="Edit password"
+            icon={<MyIcon name="edit" w={'16px'} />}
+            size="sm"
+            variant="ghost"
+            color={'myGray.500'}
+            _hover={{ color: 'primary.600' }}
+            onClick={() => setIsPasswordEditing(true)}
+          />
+        )}
       </Flex>
     );
   }

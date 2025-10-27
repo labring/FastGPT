@@ -29,8 +29,8 @@ export type InputComponentPropsType = {
 
   list?: { label: string; value: string }[]; // select
 
-  // markList?: { label: string; value: number }[]; // slider
-  // step?: number; // slider
+  markList?: { label: string; value: number }[]; // slider
+  step?: number; // slider
   max?: number; // slider, number input
   min?: number; // slider, number input
   precision?: number; // number input
