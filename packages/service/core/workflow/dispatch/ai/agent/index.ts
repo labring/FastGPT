@@ -287,7 +287,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
             data: textAdaptGptResponse({
-              text: `\n # 步骤: ${step.title}\n`
+              text: `\n # ${step.id}: ${step.title}\n`
             })
           });
 
