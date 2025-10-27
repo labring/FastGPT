@@ -24,8 +24,7 @@ export const systemSubInfo: Record<
   [SubAppIds.ask]: {
     name: 'Ask Agent',
     avatar: 'core/workflow/template/agent',
-    toolDescription:
-      '在涉及用户个人偏好、具体场景细节或需要用户确认的重要决策点、流程实在进行不下去的情况下时，使用该工具来向用户搜集信息'
+    toolDescription: '询问用户问题，并返回用户回答。'
   },
   [SubAppIds.model]: {
     name: 'Model Agent',
