@@ -85,8 +85,8 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     ...body,
     messages: rewriteMessages
   });
-  console.log('ai request body:');
-  console.log(JSON.stringify(requestBody, null, 2));
+
+  // console.log(JSON.stringify(requestBody, null, 2));
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
     body: requestBody,
     userKey,
