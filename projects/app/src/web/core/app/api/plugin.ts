@@ -17,7 +17,7 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
-import type { SystemPluginListItemType} from '@fastgpt/global/core/app/type';
+import type { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
@@ -31,7 +31,6 @@ import type {
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 import type {
   getSystemPluginsQuery,
@@ -136,10 +135,18 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
 
-export const pluginClient = createClient({
-  baseUrl: '/api/plugin',
-  token: ''
-});
+/* ============ plugin upload ============== */
+export const getPluginUploadURL = (params: { filename: string }) =>
+  GET<{ postURL: string; formData: Record<string, string>; objectName: string }>(
+    `/plugin/tool/upload/url`,
+    params
+  );
+
+export const parseUploadedPlugin = (params: { objectName: string }) =>
+  GET<Array<{ toolId: string; parentId?: string }>>(`/plugin/tool/upload/parse`, params);
+
+export const confirmPluginUpload = (data: { toolIds: string[] }) =>
+  POST(`/plugin/tool/upload/confirm`, data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
