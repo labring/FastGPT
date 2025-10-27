@@ -39,9 +39,7 @@ export const PlanAgentAskTool: ChatCompletionTool = {
             type: 'string',
             description: '一个具体的、有针对性的问题'
           },
-          type: 'array',
-          minItems: 1,
-          maxItems: 10
+          type: 'array'
         }
       },
       required: ['questions']

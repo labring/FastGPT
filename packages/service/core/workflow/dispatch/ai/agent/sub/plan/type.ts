@@ -9,5 +9,5 @@ export type AgentPlanStepType = {
 export type AgentPlanType = {
   task: string;
   steps: AgentPlanStepType[];
-  replan?: string[];
+  replan?: boolean;
 };

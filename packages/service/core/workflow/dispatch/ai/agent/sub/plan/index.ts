@@ -235,7 +235,6 @@ export const dispatchReplanAgent = async ({
     }
   });
   const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
-
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
@@ -259,6 +258,10 @@ export const dispatchReplanAgent = async ({
       role: 'tool',
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
+    });
+    requestMessages.push({
+      role: 'assistant',
+      content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
     });
   } else {
     requestMessages.push({
