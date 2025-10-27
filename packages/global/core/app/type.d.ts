@@ -7,7 +7,7 @@ import type {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '../workflow/constants';
-import type { SelectedDatasetType } from '../workflow/type/io';
+import type { InputComponentPropsType, SelectedDatasetType } from '../workflow/type/io';
 import type { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import type { StoreEdgeItemType } from '../workflow/type/edge';
@@ -170,33 +170,11 @@ export type SettingAIDataType = {
 };
 
 // variable
-export type VariableItemType = AppFileSelectConfigType & {
-  // id: string;
-  key: string;
-  label: string;
-  type: VariableInputEnum;
-  required: boolean;
-  description: string;
-  valueType?: WorkflowIOValueTypeEnum;
-  defaultValue?: any;
-
-  // input
-  maxLength?: number;
-  // password
-  minLength?: number;
-  // numberInput
-  max?: number;
-  min?: number;
-  // select
-  list?: { label: string; value: string }[];
-  // timeSelect
-  timeGranularity?: 'second' | 'minute' | 'hour' | 'day';
-  timeRangeStart?: string;
-  timeRangeEnd?: string;
-
-  // @deprecated
-  enums?: { value: string; label: string }[];
-};
+export type VariableItemType = AppFileSelectConfigType &
+  InputComponentPropsType & {
+    type: VariableInputEnum;
+    description: string;
+  };
 // tts
 export type AppTTSConfigType = {
   type: 'none' | 'web' | 'model';

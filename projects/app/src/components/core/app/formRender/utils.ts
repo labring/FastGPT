@@ -33,6 +33,7 @@ export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = [
 
   if (inputType === FlowNodeInputTypeEnum.input) return InputTypeEnum.input;
   if (inputType === FlowNodeInputTypeEnum.textarea) return InputTypeEnum.textarea;
+  if (inputType === FlowNodeInputTypeEnum.password) return InputTypeEnum.password;
   if (inputType === FlowNodeInputTypeEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === FlowNodeInputTypeEnum.switch) return InputTypeEnum.switch;
   if (inputType === FlowNodeInputTypeEnum.select) return InputTypeEnum.select;

@@ -37,7 +37,6 @@ import DndDrag, {
 } from '@fastgpt/web/components/common/DndDrag';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -100,7 +99,6 @@ const VariableEdit = ({
   const handleTypeChange = useCallback(
     (newType: VariableInputEnum) => {
       const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-      const currentType = value.type;
 
       if (
         newType === VariableInputEnum.select ||
@@ -112,7 +110,7 @@ const VariableEdit = ({
 
       setValue('type', newType);
     },
-    [setValue, value.defaultValue, value.type]
+    [setValue, value.defaultValue]
   );
 
   const formatVariables = useMemo(() => {
@@ -164,42 +162,6 @@ const VariableEdit = ({
         return;
       }
 
-      if (
-        data.type !== VariableInputEnum.select &&
-        data.type !== VariableInputEnum.multipleSelect &&
-        data.list
-      ) {
-        delete data.list;
-      }
-
-      if (data.type !== VariableInputEnum.file) {
-        delete data.canSelectFile;
-        delete data.canSelectImg;
-        delete data.maxFiles;
-        delete data.canSelectAudio;
-        delete data.canSelectVideo;
-        delete data.canSelectCustomFileExtension;
-        delete data.customFileExtensionList;
-      }
-
-      if (
-        data.type !== VariableInputEnum.timePointSelect &&
-        data.type !== VariableInputEnum.timeRangeSelect
-      ) {
-        delete data.timeGranularity;
-        delete data.timeRangeStart;
-        delete data.timeRangeEnd;
-      } else if (data.type === VariableInputEnum.timePointSelect && data.defaultValue) {
-        data.defaultValue = formatTime2YMDHMS(new Date(data.defaultValue));
-      } else if (
-        data.type === VariableInputEnum.timeRangeSelect &&
-        Array.isArray(data.defaultValue)
-      ) {
-        data.defaultValue = data.defaultValue.map((item) =>
-          item ? formatTime2YMDHMS(new Date(item)) : ''
-        );
-      }
-
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
@@ -208,6 +170,14 @@ const VariableEdit = ({
           .find((item) => item.value === data.type)?.defaultValueType;
       }
 
+      // Remove undefined keys
+      Object.keys(data).forEach((key) => {
+        if (data[key as keyof VariableItemType] === undefined) {
+          delete data[key as keyof VariableItemType];
+        }
+      });
+
+      console.log(data);
       const onChangeVariable = (() => {
         if (data.key) {
           return variables.map((item) => {

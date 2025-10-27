@@ -142,26 +142,28 @@ export const useChatTest = ({
     }
   }, [variableList, variablesForm]);
 
-  const CustomChatContainer = useMemoizedFn(() =>
-    appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5} pb={16}>
-        <PluginRunBox
+  const CustomChatContainer = useCallback(
+    () =>
+      appDetail.type === AppTypeEnum.plugin ? (
+        <Box p={5} pb={16}>
+          <PluginRunBox
+            appId={appId}
+            chatId={chatId}
+            onNewChat={restartChat}
+            onStartChat={startChat}
+          />
+        </Box>
+      ) : (
+        <ChatBox
+          isReady={isReady}
           appId={appId}
           chatId={chatId}
-          onNewChat={restartChat}
+          showMarkIcon
+          chatType={ChatTypeEnum.test}
           onStartChat={startChat}
         />
-      </Box>
-    ) : (
-      <ChatBox
-        isReady={isReady}
-        appId={appId}
-        chatId={chatId}
-        showMarkIcon
-        chatType={ChatTypeEnum.test}
-        onStartChat={startChat}
-      />
-    )
+      ),
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
   );
 
   return {

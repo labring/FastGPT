@@ -77,6 +77,7 @@
   "response.child total points": "子工作流积分消耗",
   "response.dataset_concat_length": "合并后总数",
   "response.node_inputs": "节点输入",
+  "response.node_name": "节点名",
   "response_embedding_model": "向量模型",
   "response_embedding_model_tokens": "向量模型 Tokens",
   "response_hybrid_weight": "语义检索 : 全文检索 = {{emb}} : {{text}}",

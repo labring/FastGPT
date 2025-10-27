@@ -77,6 +77,7 @@
   "response.child total points": "Sub-workflow point consumption",
   "response.dataset_concat_length": "Combined total",
   "response.node_inputs": "Node Inputs",
+  "response.node_name": "Node name",
   "response_embedding_model": "Vector model",
   "response_embedding_model_tokens": "Vector Model Tokens",
   "response_hybrid_weight": "Embedding : Full text = {{emb}} : {{text}}",
