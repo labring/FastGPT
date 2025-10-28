@@ -470,9 +470,7 @@ const FileSelector = ({
                     {/* Status icon */}
                     {!!file.url || !!file.error ? (
                       <IconButton
-                        size={'baseSquare'}
-                        w={'24px'}
-                        h={'24px'}
+                        size={'xsSquare'}
                         borderRadius={'xs'}
                         variant={'transparentDanger'}
                         aria-label={'Delete file'}
