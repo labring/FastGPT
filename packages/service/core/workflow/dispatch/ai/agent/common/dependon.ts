@@ -29,9 +29,9 @@ export const getStepDependon = async ({
       }
     };
   }
-
+  // console.log("GetStepDependon historySummary:", step.id, historySummary);
   const prompt = `
-  你是一个智能检索助手。现在需要执行一个新的步骤，请根据步骤描述和历史步骤的概括信息，判断哪些历史步骤的结果对当前步骤有帮助，并提取出来。
+  你是一个智能检索助手。现在需要执行一个新的步骤，请根据步骤描述和历史步骤的概括信息，判断哪些历史步骤的结果对当前步骤有帮助，并将 step_id 提取出来。
   
   【当前需要执行的步骤】
   步骤ID: ${step.id}
@@ -42,15 +42,21 @@ export const getStepDependon = async ({
   ${historySummary}
   
   【任务】
-  请分析当前步骤的需求，判断需要引用哪些历史步骤的详细结果。
-  如果不需要任何历史步骤，返回空列表。
-  如果需要，请返回相关步骤的ID列表。
+  1. 请分析当前步骤的需求，判断需要引用哪些历史步骤的详细结果。
+  2. 如果不需要任何历史步骤，返回空列表；如果需要，请返回相关步骤的ID列表。
+  3. 如果是一个总结性质的步骤，比如标题为“生成总结报告”，那么请返回所有已完成的历史步骤id，而不应该是一个空列表。
   
   【返回格式】（严格的JSON格式，不要包含其他文字）
   \`\`\`json
   {
     "needed_step_ids": ["step1", "step2"],
     "reason": "当前步骤需要整合美食和天气信息，因此需要 step1 和 step2 的结果"
+  }
+  \`\`\`
+  \`\`\`json
+  {
+    "needed_step_ids": ["step1", "step2", "step3"],
+    "reason": "当前步骤为总结性质的步骤，需要依赖所有之前步骤的信息"
   }
   \`\`\``;
 
@@ -61,7 +67,6 @@ export const getStepDependon = async ({
       stream: false
     }
   });
-
   const params = parseToolArgs<{
     needed_step_ids: string[];
     reason: string;
