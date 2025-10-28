@@ -112,7 +112,7 @@
         {
           "nodeId": "jVGuKrDfFTU6",
           "name": "Obtain the date 24 hours ago",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -471,7 +471,7 @@
         {
           "nodeId": "gALvyJcXPoep",
           "name": "API response processing",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
