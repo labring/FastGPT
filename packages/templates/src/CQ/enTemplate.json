@@ -278,7 +278,7 @@
         {
           "nodeId": "MNMMMIjjWyMU",
           "name": "Knowledge base search",
-          "intro": "Use semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
+          "intro": "Uses semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
           "avatar": "core/workflow/template/datasetSearch",
           "flowNodeType": "datasetSearchNode",
           "showStatus": true,

@@ -363,7 +363,7 @@
         {
           "nodeId": "w4heEpNflz59",
           "name": "Check for execution completion",
-          "intro": "Execute a branch based on the specified conditions.",
+          "intro": "Executes a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
           "showStatus": true,
@@ -405,7 +405,7 @@
         {
           "nodeId": "a2lqxASWi1vb",
           "name": "Check for execution completion",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -577,7 +577,7 @@
         {
           "nodeId": "quYZgsW32ApA",
           "name": "Source text block formatting",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -774,7 +774,7 @@
         {
           "nodeId": "vlNHndpNuFXB",
           "name": "Extracts the text from the fourth-round LLM translation",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -925,7 +925,7 @@
         {
           "nodeId": "qlt9KJbbS9yJ",
           "name": "Check for same source and target languages",
-          "intro": "Execute a branch based on the specified conditions.",
+          "intro": "Executes a branch based on the specified conditions.",
           "avatar": "core/workflow/template/ifelse",
           "flowNodeType": "ifElseNode",
           "showStatus": true,
@@ -967,7 +967,7 @@
         {
           "nodeId": "frjbsrlnJJsR",
           "name": "Check for same source and target languages",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -1184,7 +1184,7 @@
         {
           "nodeId": "kbr342XlxSZR",
           "name": "提取字幕信息",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -1334,7 +1334,7 @@
         {
           "nodeId": "ppPP6o7YYSTJ",
           "name": "格式化字幕文件",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
@@ -1593,7 +1593,7 @@
         {
           "nodeId": "y3WEYOQ09CGC",
           "name": "Text splitting",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,

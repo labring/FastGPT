@@ -291,7 +291,7 @@
         {
           "nodeId": "sbVUb0efY6Fm",
           "name": "Code running",
-          "intro": "Run a short script, typically for complex data processing.",
+          "intro": "Runs a short script, typically for complex data processing.",
           "avatar": "core/workflow/template/codeRun",
           "flowNodeType": "code",
           "showStatus": true,
