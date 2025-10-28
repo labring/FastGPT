@@ -8,10 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import type {
-  SystemPluginTemplateListItemType,
-  SystemPluginTemplateItemType
-} from '@fastgpt/global/core/app/plugin/type';
+import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -46,6 +43,7 @@ const ToolProvider = () => {
 
   const [localPlugins, setLocalPlugins] = useState<Array<SystemPluginTemplateListItemType>>([]);
   const [editingPlugin, setEditingPlugin] = useState<SystemPluginTemplateListItemType>();
+  console.log('localPlugins');
 
   const {
     isOpen: isOpenTagModal,

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
@@ -56,7 +55,7 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
       const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
 
       // 获取 parentId (toolId)
-      const parentId = parseResult.find((item) => !!item.parentId)?.toolId;
+      const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {
         return Promise.reject(new Error(`未找到插件 ID`));
       }
@@ -131,20 +130,26 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
   }, [selectFiles]);
 
   return (
-    <MyRightDrawer onClose={onClose} title="导入/更新资源" maxW={['90vw', '1054px']}>
-      <Flex flex={1} flexDirection={'column'} px={4}>
-        <Flex justify={'flex-end'} mb={3}>
-          <Button
-            variant={'link'}
-            size={'sm'}
-            leftIcon={<MyIcon name={'book'} w={'14px'} />}
-            color={'primary.600'}
-          >
-            使用说明
-          </Button>
-        </Flex>
+    <MyRightDrawer
+      onClose={onClose}
+      title="导入/更新资源"
+      maxW={['90vw', '1054px']}
+      h={'98%'}
+      mt={'1%'}
+      px={0}
+    >
+      <Flex justify={'flex-end'} px={4} pt={4} pb={3}>
+        <Button
+          variant={'link'}
+          size={'sm'}
+          leftIcon={<MyIcon name={'book'} w={'14px'} />}
+          color={'primary.600'}
+        >
+          {t('common:Instructions')}
+        </Button>
+      </Flex>
 
-        {/* 文件选择器 - 只在没有上传文件时显示 */}
+      <Box flex={1} px={4} overflow={'auto'}>
         <FileSelectorBox
           maxCount={100}
           maxSize="100MB"
@@ -153,7 +158,6 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
           setSelectFiles={setSelectFiles}
         />
 
-        {/* 已上传文件列表 (显示状态) */}
         {uploadedFiles.length > 0 && (
           <VStack mt={4} gap={2}>
             {uploadedFiles.map((item, index) => (
@@ -185,8 +189,9 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
             ))}
           </VStack>
         )}
-      </Flex>
-      <Flex mt={4} p={4} justify={'flex-end'} gap={2}>
+      </Box>
+
+      <Flex justify={'flex-end'} gap={2} p={4}>
         <Button variant="whiteBase" onClick={onClose}>
           取消
         </Button>

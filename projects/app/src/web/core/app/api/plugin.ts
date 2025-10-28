@@ -148,6 +148,9 @@ export const parseUploadedPlugin = (params: { objectName: string }) =>
 export const confirmPluginUpload = (data: { toolIds: string[] }) =>
   POST(`/plugin/tool/upload/confirm`, data);
 
+export const deletePlugin = (data: { toolId: string }) =>
+  DELETE('/plugin/tool/upload/delete', data);
+
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
   POST('/core/app/mcpTools/create', data);

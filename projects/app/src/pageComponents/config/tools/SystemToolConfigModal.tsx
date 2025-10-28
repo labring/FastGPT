@@ -22,7 +22,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useFieldArray, useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getSystemPlugins, putUpdatePlugin } from '@/web/core/app/api/plugin';
+import { getSystemPlugins, putUpdatePlugin, deletePlugin } from '@/web/core/app/api/plugin';
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -128,6 +128,18 @@ const SystemToolConfigModal = ({
       }),
     {
       successToast: t('common:Config') + t('common:Success'),
+      onSuccess() {
+        onSuccess({});
+        onClose();
+      }
+    }
+  );
+
+  const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
+    () => deletePlugin({ toolId: plugin.id }),
+    {
+      successToast: '删除成功',
+      errorToast: '删除失败',
       onSuccess() {
         onSuccess({});
         onClose();
@@ -418,7 +430,15 @@ const SystemToolConfigModal = ({
           </Flex>
         )}
       </ModalBody>
-      <ModalFooter>
+      <ModalFooter gap={4}>
+        <Button
+          variant={'whiteBase'}
+          colorScheme="red"
+          isLoading={deleteLoading}
+          onClick={onDelete}
+        >
+          删除
+        </Button>
         <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
           {t('common:Confirm')}
         </Button>
