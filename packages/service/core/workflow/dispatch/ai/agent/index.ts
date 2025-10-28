@@ -111,7 +111,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   })();
 
+  // Plan step: 需要生成 plan，且还没有完整的 plan
   const isPlanStep = isPlanAgent && (planHistoryMessages || !agentPlan);
+  // Replan step: 已有 plan，且有 replan 历史消息
   const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
   try {
@@ -136,7 +138,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const planCallFn = async () => {
       // Confirm 操作
-      console.log(lastInteractive, interactiveInput, 'Plan step');
+      console.log(lastInteractive, interactiveInput, '\n Plan step');
       if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
         planHistoryMessages = undefined;
       } else {
@@ -195,7 +197,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       addLog.debug(`Replan step`);
       // 临时代码
-      const tmpText = '\n正在重新进行规划生成...\n';
+      const tmpText = '\n # 正在重新进行规划生成...\n';
       workflowStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
@@ -278,21 +280,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       ] = [0, 0, [], []];
 
       while (agentPlan?.steps!.filter((item) => !item.response)!.length) {
-        const steps = agentPlan?.steps!.filter((item) => !item.response)!;
-        for await (const step of steps) {
+        const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
+        for await (const step of pendingSteps) {
           addLog.debug(`Step call: ${step.id}`, step);
 
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
             data: textAdaptGptResponse({
-              text: `# 步骤: ${step.title}\n`
+              text: `\n # ${step.id}: ${step.title}\n`
             })
           });
 
           const result = await stepCall({
             ...props,
             getSubAppInfo,
-            steps,
+            steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
             subAppList,
             step,
             filesMap,
@@ -307,7 +309,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           assistantResponses.push(...result.assistantResponses);
         }
 
-        if (agentPlan?.replan && agentPlan?.replan.length > 0) {
+        if (agentPlan?.replan === true) {
           const replanResult = await replanCallFn({
             plan: agentPlan
           });
