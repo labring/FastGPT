@@ -93,8 +93,8 @@ const Button = defineStyleConfig({
       fontSize: 'sm',
       px: '0',
       py: 0,
-      h: '24px',
-      w: '24px',
+      h: '34px',
+      w: '34px',
       fontWeight: 'medium',
       borderRadius: 'sm'
     },

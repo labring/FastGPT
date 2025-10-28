@@ -197,8 +197,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               {oAuthList.map((item) => (
                 <MyTooltip key={item.provider}>
                   <IconButton
-                    h={'40px'}
-                    isRound={true}
+                    size={'lgSquare'}
+                    borderRadius={'50%'}
                     aria-label={item.label}
                     variant={'whitePrimary'}
                     icon={<Avatar src={item.icon as any} w={'20px'} />}
