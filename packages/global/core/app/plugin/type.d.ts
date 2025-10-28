@@ -8,6 +8,7 @@ import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workfl
 import type { ParentIdType } from 'common/parentFolder/type';
 import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { I18nStringType } from '../../../common/i18n/type';
+import type { ToolSimpleType, ToolDetailType } from '@fastgpt-sdk/plugin';
 
 export type PluginTagType = {
   tagId: string;
@@ -66,9 +67,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 
-  // Plugin source type
-  toolSource?: 'uploaded' | 'built-in';
-
   // @deprecated use pluginTags instead
   isActive?: boolean;
   templateType?: string;
@@ -83,13 +81,13 @@ export type SystemPluginTemplateListItemType = Omit<
   tags?: PluginTagType[];
 };
 
-// Marketplace Tool Types
-export type ToolListItem = {
-  id: string;
-  name: I18nStringType;
-  description: I18nStringType;
-  avatar: string;
-  author?: string;
-  tags: string[];
-  downloadCount: number;
+export type ToolListItem = ToolSimpleType & {
+  downloadUrl: string;
+  // not implemented
+  // downloadCount: number;
+};
+
+export type ToolDetailResponse = {
+  tool: ToolDetailType;
+  downloadUrl: string;
 };
