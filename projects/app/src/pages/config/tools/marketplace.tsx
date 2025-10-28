@@ -8,16 +8,25 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useState, useMemo } from 'react';
+import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type {
-  SystemPluginTemplateListItemType,
-  ToolListItem
-} from '@fastgpt/global/core/app/plugin/type';
+import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  getMarketplaceTools,
+  getToolTags,
+  getMarketplaceToolDetail,
+  installMarketplaceTool,
+  getSystemPlugins,
+  deletePlugin
+} from '@/web/core/app/api/plugin';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -25,85 +34,94 @@ const ToolkitMarketplace = () => {
   const { feConfigs } = useSystemStore();
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedTool, setSelectedTool] = useState<ToolListItem | null>(null);
+  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
 
-  const convertToSystemPluginFormat = (tool: ToolListItem): SystemPluginTemplateListItemType => {
-    const name =
-      // @ts-ignore
-      typeof tool.name === 'string' ? tool.name : tool.name[i18n.language] || tool.name.en;
-    const intro =
-      typeof tool.description === 'string'
-        ? tool.description
-        : // @ts-ignore
-          tool.description[i18n.language] || tool.description.en;
-
-    return {
-      ...tool,
-      name,
-      intro,
-      tags: tool.tags.map((tagId, index) => ({
-        tagId,
-        tagName: tagId,
-        tagOrder: index,
-        isSystem: true
-      }))
-    } as unknown as SystemPluginTemplateListItemType;
-  };
-
-  // TODO: Replace with actual API call
-  const { data: tools = [], loading: loadingTools } = useRequest2(
-    async () => {
-      // TODO: 调用实际的 API 获取工具列表
-      return [] as ToolListItem[];
+  const {
+    data: tools,
+    isLoading: loadingTools,
+    ScrollData,
+    getData: refetchTools
+  } = usePagination(
+    ({ pageNum, pageSize }) =>
+      getMarketplaceTools({
+        pageNum,
+        pageSize,
+        searchKey: searchText || undefined,
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined
+      }),
+    {
+      type: 'scroll',
+      defaultPageSize: 20,
+      refreshDeps: [searchText, selectedTagIds]
+    }
+  );
+  const { data: currentTools = [], runAsync: refreshCurrentTools } = useRequest2(getSystemPlugins, {
+    manual: false
+  });
+  const { data: allTags = [] } = useRequest2(() => getToolTags(), {
+    manual: false
+  });
+  const { runAsync: handleInstallTool } = useRequest2(
+    async (tool: ToolCardItemType) => {
+      if (!tool.downloadUrl) return;
+      setOperatingToolId(tool.id);
+      try {
+        await installMarketplaceTool({
+          downloadUrls: [tool.downloadUrl]
+        });
+      } finally {
+        setOperatingToolId(null);
+      }
     },
     {
-      manual: false
+      manual: true,
+      onSuccess: async () => {
+        await refetchTools();
+        await refreshCurrentTools({});
+      }
+    }
+  );
+  const { runAsync: handleDeleteTool } = useRequest2(
+    async (tool: ToolCardItemType) => {
+      setOperatingToolId(tool.id);
+      try {
+        await deletePlugin({ toolId: tool.id });
+      } finally {
+        setOperatingToolId(null);
+      }
+    },
+    {
+      manual: true,
+      onSuccess: async () => {
+        await refetchTools();
+        await refreshCurrentTools({});
+      }
     }
   );
 
-  // TODO: Replace with actual API call
-  const { data: tags = [] } = useRequest2(
-    async () => {
-      // TODO: 调用实际的 API 获取标签列表
-      return [];
-    },
-    {
-      manual: false
-    }
-  );
-
-  const filteredTools = useMemo(() => {
-    let result = tools;
-
-    // 搜索过滤
-    if (searchText) {
-      result = result.filter((tool) => {
-        const name =
-          typeof tool.name === 'string'
-            ? tool.name
-            : // @ts-ignore
-              tool.name[i18n.language] || tool.name.en || '';
-        const description =
-          typeof tool.description === 'string'
-            ? tool.description
-            : // @ts-ignore
-              tool.description?.[i18n.language] || tool.description?.en || '';
-        return (
-          name.toLowerCase().includes(searchText.toLowerCase()) ||
-          description.toLowerCase().includes(searchText.toLowerCase())
+  const displayTools: ToolCardItemType[] = useMemo(() => {
+    return (
+      tools?.map((tool: ToolListItem) => {
+        const isInstalled = currentTools.some(
+          (item) => item.id === `${PluginSourceEnum.systemTool}-${tool.toolId}`
         );
-      });
-    }
-
-    // 标签过滤
-    if (selectedTagIds.length > 0) {
-      result = result.filter((tool) => {
-        return tool.tags?.some((tagId) => selectedTagIds.includes(tagId));
-      });
-    }
-
-    return result;
-  }, [tools, searchText, selectedTagIds, i18n.language]);
+        return {
+          id: tool.toolId,
+          name: parseI18nString(tool.name || '', i18n.language),
+          description: parseI18nString(tool.description || '', i18n.language),
+          icon: tool.icon,
+          author: tool.author || '',
+          tags: tool.tags?.map((tag) => {
+            const currentTag = allTags.find((t) => t.type === tag);
+            return parseI18nString(currentTag?.name || '', i18n.language) || '';
+          }),
+          downloadUrl: tool.downloadUrl,
+          status: isInstalled ? 3 : 1 // 1: normal, 3: installed
+        };
+      }) || []
+    );
+  }, [tools, allTags, currentTools, i18n.language]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -195,32 +213,38 @@ const ToolkitMarketplace = () => {
         <Box px={8} my={4} flexShrink={0}>
           <Flex alignItems={'center'} gap={2}>
             <PluginTagFilter
-              tags={tags}
+              tags={allTags.map((tag) => ({
+                tagId: tag.type,
+                tagName: tag.name,
+                tagOrder: 0,
+                isSystem: true
+              }))}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
             />
           </Flex>
         </Box>
 
-        <Box flex={1} overflowY={'auto'} px={8} pb={6}>
-          {filteredTools.length > 0 ? (
+        <ScrollData flex={1} px={8} pb={6}>
+          {displayTools.length > 0 ? (
             <Grid
               gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
               gridGap={5}
               alignItems={'stretch'}
             >
-              {filteredTools.map((tool) => {
-                const convertedTool = convertToSystemPluginFormat(tool);
+              {displayTools.map((tool) => {
                 return (
                   <ToolCard
                     key={tool.id}
-                    item={convertedTool}
-                    isInstalled={null}
+                    item={tool}
+                    isLoading={operatingToolId === tool.id}
                     onToggleInstall={() => {
-                      // TODO: Implement download logic
-                      console.log('Download tool:', tool.id);
+                      if (tool.status === 3) {
+                        handleDeleteTool(tool);
+                      } else {
+                        handleInstallTool(tool);
+                      }
                     }}
-                    systemTitle={feConfigs.systemTitle}
                     onClick={() => setSelectedTool(tool)}
                   />
                 );
@@ -229,19 +253,21 @@ const ToolkitMarketplace = () => {
           ) : (
             <EmptyTip />
           )}
-        </Box>
+        </ScrollData>
       </MyBox>
 
       {!!selectedTool && (
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
-          tool={convertToSystemPluginFormat(selectedTool)}
-          isInstalled={null}
+          selectedTool={selectedTool}
+          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => {
-            // TODO: Implement download logic
-            console.log('Download tool:', selectedTool.id);
+            if (selectedTool.status === 3) {
+              handleDeleteTool(selectedTool);
+            } else {
+              handleInstallTool(selectedTool);
+            }
           }}
-          systemTitle={feConfigs.systemTitle}
         />
       )}
     </Box>

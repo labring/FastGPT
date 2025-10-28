@@ -18,7 +18,13 @@ type UploadedPluginFile = SelectFileItemType & {
   toolId?: string; // 解析后的 toolId
 };
 
-const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
+const ImportPluginModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess?: () => void;
+}) => {
   const { t } = useTranslation();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
@@ -117,6 +123,7 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
       errorToast: '插件导入失败',
       onSuccess: () => {
         setUploadedFiles([]);
+        onSuccess?.(); // 调用父组件的 onSuccess 回调刷新列表
         onClose();
       }
     }

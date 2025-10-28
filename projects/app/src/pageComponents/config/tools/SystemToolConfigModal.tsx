@@ -136,10 +136,8 @@ const SystemToolConfigModal = ({
   );
 
   const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
-    () => deletePlugin({ toolId: plugin.id }),
+    () => deletePlugin({ toolId: plugin.id.split('-')[1] }),
     {
-      successToast: '删除成功',
-      errorToast: '删除失败',
       onSuccess() {
         onSuccess({});
         onClose();
@@ -437,7 +435,7 @@ const SystemToolConfigModal = ({
           isLoading={deleteLoading}
           onClick={onDelete}
         >
-          删除
+          {t('common:Delete')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
           {t('common:Confirm')}

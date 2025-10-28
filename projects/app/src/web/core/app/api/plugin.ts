@@ -61,6 +61,16 @@ import type {
 import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
 import type { updatePluginBody } from '@/pages/api/core/app/plugin/update';
 import type { createPluginBody } from '@/pages/api/core/app/plugin/create';
+import { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
+import type { InstallToolBody, InstallToolResponse } from '@/pages/api/plugin/tool/install';
+import type {
+  GetMarketplaceToolsQuery,
+  GetMarketplaceToolsResponse
+} from '@/pages/api/core/app/plugin/marketplace/list';
+import type {
+  GetMarketplaceToolDetailQuery,
+  GetMarketplaceToolDetailResponse
+} from '@/pages/api/core/app/plugin/marketplace/detail';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -224,3 +234,16 @@ export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
 
 export const getTeamInstalledPluginIds = () =>
   GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);
+
+/* ============ marketplace ============== */
+export const getMarketplaceTools = (data: GetMarketplaceToolsQuery) =>
+  POST<GetMarketplaceToolsResponse>('/core/app/plugin/marketplace/list', data);
+
+export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQuery) =>
+  GET<GetMarketplaceToolDetailResponse>('/core/app/plugin/marketplace/detail', data);
+
+export const installMarketplaceTool = (data: InstallToolBody) =>
+  POST<InstallToolResponse>('/plugin/tool/install', data);
+
+export const getToolTags = () =>
+  GET<Array<{ type: string; name: { 'zh-CN': string; en: string } }>>('/plugin/tool/tags');

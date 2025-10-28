@@ -43,7 +43,6 @@ const ToolProvider = () => {
 
   const [localPlugins, setLocalPlugins] = useState<Array<SystemPluginTemplateListItemType>>([]);
   const [editingPlugin, setEditingPlugin] = useState<SystemPluginTemplateListItemType>();
-  console.log('localPlugins');
 
   const {
     isOpen: isOpenTagModal,
@@ -63,10 +62,13 @@ const ToolProvider = () => {
   } = useRequest2(getSystemPlugins, {
     manual: false
   });
+  console.log('tools', tools);
 
   useEffect(() => {
-    setLocalPlugins(tools);
-  }, [tools]);
+    if (tools.length > 0) {
+      setLocalPlugins(tools);
+    }
+  }, [tools.length]);
 
   return (
     <MyBox pt={4} pl={3} pr={8} isLoading={loadingTools}>
@@ -92,7 +94,7 @@ const ToolProvider = () => {
                 {
                   label: t('app:toolkit_open_marketplace'),
                   onClick: () => {
-                    router.push('/toolkit/tools/marketplace');
+                    router.push('/config/tools/marketplace');
                   }
                 },
                 {
@@ -199,7 +201,9 @@ const ToolProvider = () => {
       </Box>
 
       {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
-      {isOpenImportModal && <ImportPluginModal onClose={onCloseImportModal} />}
+      {isOpenImportModal && (
+        <ImportPluginModal onClose={onCloseImportModal} onSuccess={() => refreshTools({})} />
+      )}
       {!!editingPlugin &&
         splitCombinePluginId(editingPlugin.id).source === PluginSourceEnum.systemTool && (
           <SystemToolConfigModal

@@ -439,22 +439,20 @@ const CustomPluginConfig = ({
           </Box>
         </Flex>
       </ModalBody>
-      <ModalFooter>
+      <ModalFooter gap={4}>
         {defaultForm.id && (
-          <IconButton
+          <Button
+            variant={'whiteBase'}
+            colorScheme="red"
             isLoading={isDeleting}
-            icon={<MyIcon name="delete" w={'1rem'} />}
-            variant={'whiteDanger'}
-            aria-label={''}
-            mr={3}
             onClick={() => {
               return openDeleteConfirm(() => onDelete({ id: defaultForm.id! }))();
             }}
-          />
+          >
+            {t('common:Delete')}
+          </Button>
         )}
-        <Button onClick={onClose} variant={'whiteBase'} mr={3}>
-          {t('common:Cancel')}
-        </Button>
+
         <Button isLoading={loading || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
           {isEdit ? t('app:custom_plugin_update') : t('app:custom_plugin_create')}
         </Button>

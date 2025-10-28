@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -20,6 +20,8 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { ToolCardItemType } from './ToolCard';
+import MyBox from '../../common/MyBox';
 
 const ParamSection = ({
   title,
@@ -86,21 +88,53 @@ const ParamSection = ({
 
 const ToolDetailDrawer = ({
   onClose,
-  tool,
-  isInstalled,
+  selectedTool,
   onToggleInstall,
-  systemTitle
+  systemTitle,
+  onFetchDetail
 }: {
   onClose: () => void;
-  tool: SystemPluginTemplateListItemType | null;
-  isInstalled: boolean | null;
+  selectedTool: ToolCardItemType;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
+  onFetchDetail?: (toolId: string) => Promise<any>;
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('guide');
+  const [toolDetail, setToolDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  if (!tool) return null;
+  const isInstalled = useMemo(() => {
+    return selectedTool.status === 3;
+  }, [selectedTool.status]);
+
+  useEffect(() => {
+    const fetchToolDetail = async () => {
+      if (onFetchDetail && selectedTool?.id) {
+        setLoading(true);
+        try {
+          const detail = await onFetchDetail(selectedTool.id);
+          setToolDetail(detail);
+        } catch (error) {
+          console.error('Failed to fetch tool detail:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchToolDetail();
+  }, [selectedTool?.id, onFetchDetail]);
+
+  const tool = useMemo(() => {
+    if (toolDetail) {
+      return {
+        ...toolDetail,
+        ...selectedTool
+      };
+    }
+    return selectedTool;
+  }, [selectedTool, toolDetail]);
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
@@ -108,20 +142,32 @@ const ToolDetailDrawer = ({
       <DrawerContent maxW="480px">
         <DrawerHeader pt={6} pb={1}>
           <Flex gap={1.5}>
-            <Avatar src={tool.avatar} borderRadius={'md'} w={6} />
+            <Avatar src={tool.icon} borderRadius={'md'} w={6} />
             <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
               {parseI18nString(tool.name, i18n.language)}
             </Box>
             <Box flex={1} />
-            <MyIconButton icon={'common/closeLight'} />
+            <MyIconButton icon={'common/closeLight'} onClick={onClose} />
           </Flex>
         </DrawerHeader>
 
-        <DrawerBody>
+        <DrawerBody position="relative">
+          {loading && (
+            <MyBox
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              zIndex={10}
+              bg="rgba(255, 255, 255, 0.8)"
+              isLoading={loading}
+            />
+          )}
           <Flex gap={2} flexWrap="wrap">
-            {tool.tags?.map((tag) => (
+            {tool.tags?.map((tag: string) => (
               <Box
-                key={tag.tagId}
+                key={tag}
                 px={2}
                 py={1}
                 border={'1px solid'}
@@ -131,15 +177,15 @@ const ToolDetailDrawer = ({
                 fontWeight={'medium'}
                 color={'myGray.700'}
               >
-                {parseI18nString(tag.tagName, i18n.language)}
+                {tag}
               </Box>
             ))}
           </Flex>
           <Box fontSize={'12px'} color="myGray.500" mt={3}>
-            {parseI18nString(tool.intro || '', i18n.language) || t('app:templateMarket.no_intro')}
+            {tool.description}
           </Box>
           <Box fontSize={'12px'} color="myGray.500" mt={3}>
-            {`by ${tool.author || systemTitle || ''}`}
+            {`by ${tool.author || systemTitle || 'FastGPT'}`}
           </Box>
 
           <Flex mt={3}>
@@ -154,7 +200,7 @@ const ToolDetailDrawer = ({
             </Button>
           </Flex>
 
-          <Flex mt={4} gap={1.5} alignItems={'center'}>
+          {/* <Flex mt={4} gap={1.5} alignItems={'center'}>
             <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
               {t('app:toolkit_call_points_label')}
             </Box>
@@ -171,9 +217,9 @@ const ToolDetailDrawer = ({
                 ? t('app:toolkit_activation_required')
                 : t('app:toolkit_activation_not_required')}
             </Box>
-          </Flex>
+          </Flex> */}
 
-          <Box mt={4}>
+          {/* <Box mt={4}>
             <LightRowTabs
               list={[
                 { label: t('app:toolkit_user_guide'), value: 'guide' as const },
@@ -241,7 +287,7 @@ const ToolDetailDrawer = ({
                 </Box>
               )}
             </Box>
-          </Box>
+          </Box> */}
         </DrawerBody>
       </DrawerContent>
     </Drawer>
