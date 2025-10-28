@@ -102,7 +102,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
   );
-  const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
+  const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
 
@@ -291,6 +291,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           {availableModels.length > 0 && (
             <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
               <AIModelSelector
+                cacheModel={false}
                 h={['30px', '36px']}
                 boxShadow={'none'}
                 size="sm"
