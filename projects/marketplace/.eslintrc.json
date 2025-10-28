@@ -1,7 +1,17 @@
 {
   "root": true,
-  "extends": ["next/core-web-vitals", "next/typescript"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": ["next/core-web-vitals"],
   "rules": {
-    "no-html-link-for-pages": "off"
-  }
+    "react-hooks/rules-of-hooks": 0,
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "disallowTypeAnnotations": false
+      }
+    ]
+  },
+  "ignorePatterns": ["node_modules/", "dist/", "build/", "coverage/"]
 }

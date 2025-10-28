@@ -1,16 +1,18 @@
 import { getToolList } from '@/service/tool/data';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { ToolSimpleSchema, type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ToolSimpleSchema } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
+import { getPkgdownloadURL } from '@/service/s3';
 
 export type ToolListQuery = {};
 export type ToolListBody = PaginationProps<{
   searchKey?: string;
   tags?: string[];
 }>;
-export type ToolListResponse = PaginationResponse<ToolDetailType>;
+export type ToolListResponse = PaginationResponse<ToolListItem>;
 
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
@@ -31,9 +33,11 @@ async function handler(
     return true;
   });
 
-  // TODO: download URL
   return {
-    list: filteredData.slice(offset, offset + pageSize).map((item) => ToolSimpleSchema.parse(item)),
+    list: filteredData.slice(offset, offset + pageSize).map((item) => ({
+      ...ToolSimpleSchema.parse(item),
+      downloadUrl: getPkgdownloadURL(item.toolId)
+    })),
     total: filteredData.length
   };
 }

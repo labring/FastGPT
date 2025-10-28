@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 declare global {
+  // eslint-disable-next-line no-var
   var toolListData: Array<ToolDetailType>;
 }
 
