@@ -5,5 +5,5 @@ export const getPkgdownloadURL = (toolId: string) => {
 };
 
 export const getReadmeURL = (toolId: string) => {
-  return `${S3Prefix}/${toolId}/README.md`;
+  return `${S3Prefix}/system/plugin/tools/${toolId}/README.md`;
 };

@@ -23,13 +23,16 @@ async function handler(
   const toolList = await getToolList();
   const tools = toolList.filter((item) => item.toolId.startsWith(toolId));
 
-  if (!tools) {
-    throw new Error('tool not found');
+  if (tools.length < 1) {
+    res.status(404);
+    Promise.reject('tool not found');
   }
 
   return {
-    tools: tools.map((tool) => ToolDetailSchema.parse(tool)),
-    readme: getReadmeURL(toolId),
+    tools: tools.map((tool) => ({
+      ...ToolDetailSchema.parse(tool),
+      readme: getReadmeURL(toolId)
+    })),
     downloadUrl: getPkgdownloadURL(toolId)
   };
 }
