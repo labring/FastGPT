@@ -4,7 +4,7 @@ pydantic==1.10.7
 scikit_learn==1.2.2
 sentence_transformers==2.2.2
 sse_starlette==1.6.5
-starlette==0.47.2
+starlette==0.49.1
 tiktoken==0.4.0
 torch==2.7.1
 transformers==4.53.0
