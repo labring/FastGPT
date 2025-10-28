@@ -22,7 +22,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useFieldArray, useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getSystemPlugins, putUpdatePlugin } from '@/web/core/app/api/plugin';
+import { getSystemPlugins, putUpdatePlugin, deletePlugin } from '@/web/core/app/api/plugin';
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -128,6 +128,16 @@ const SystemToolConfigModal = ({
       }),
     {
       successToast: t('common:Config') + t('common:Success'),
+      onSuccess() {
+        onSuccess({});
+        onClose();
+      }
+    }
+  );
+
+  const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
+    () => deletePlugin({ toolId: plugin.id.split('-')[1] }),
+    {
       onSuccess() {
         onSuccess({});
         onClose();
@@ -293,9 +303,9 @@ const SystemToolConfigModal = ({
                       <Th fontSize="xs" py={2} px={2} width="50px">
                         {t('app:toolkit_tool_name')}
                       </Th>
-                      <Th fontSize="xs" py={2} px={2} width="50px">
+                      {/* <Th fontSize="xs" py={2} px={2} width="50px">
                         {t('common:Status')}
-                      </Th>
+                      </Th> */}
                       <Th fontSize="xs" py={2} px={2} width="50px">
                         {t('app:toolkit_key_price')}
                       </Th>
@@ -310,7 +320,7 @@ const SystemToolConfigModal = ({
                               {parseI18nString(tool.name)}
                             </Text>
                           </Td>
-                          <Td fontSize="xs">
+                          {/* <Td fontSize="xs">
                             <MySelect
                               size={'sm'}
                               value={watch(`childConfigs.${index}.status`)}
@@ -332,7 +342,7 @@ const SystemToolConfigModal = ({
                                 setValue(`childConfigs.${index}.status`, Number(e));
                               }}
                             />
-                          </Td>
+                          </Td> */}
                           <Td fontSize="xs">
                             <MyNumberInput
                               width={'100px'}
@@ -418,7 +428,15 @@ const SystemToolConfigModal = ({
           </Flex>
         )}
       </ModalBody>
-      <ModalFooter>
+      <ModalFooter gap={4}>
+        <Button
+          variant={'whiteBase'}
+          colorScheme="red"
+          isLoading={deleteLoading}
+          onClick={onDelete}
+        >
+          {t('common:Delete')}
+        </Button>
         <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
           {t('common:Confirm')}
         </Button>
