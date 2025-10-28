@@ -157,8 +157,7 @@ const Header = () => {
             <IconButton
               icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
               aria-label={''}
-              size={'xs'}
-              w={'1rem'}
+              size={'xsSquare'}
               variant={'ghost'}
               onClick={isSaved ? onBack : onOpenBackConfirm}
             />
