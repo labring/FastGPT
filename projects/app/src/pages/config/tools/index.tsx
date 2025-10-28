@@ -43,7 +43,6 @@ const ToolProvider = () => {
 
   const [localPlugins, setLocalPlugins] = useState<Array<SystemPluginTemplateListItemType>>([]);
   const [editingPlugin, setEditingPlugin] = useState<SystemPluginTemplateListItemType>();
-  console.log('localPlugins');
 
   const {
     isOpen: isOpenTagModal,
