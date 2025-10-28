@@ -90,9 +90,7 @@ async function handler(
       };
     });
 
-    // temp：后续去掉 templateType
-    const pluginTags =
-      dbPlugin?.customConfig?.pluginTags || (item.templateType ? [item.templateType] : undefined);
+    const pluginTags = dbPlugin?.customConfig?.pluginTags || item.pluginTags;
     const tags = pluginTags
       ? pluginTags
           .map((tagId) => tagMap.get(tagId))

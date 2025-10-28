@@ -81,7 +81,6 @@ const PluginCard = ({
     },
     {
       onSuccess: (_, updateFields) => {
-        console.log(updateFields);
         setLocalPlugins((prev) =>
           prev.map((item) => (item.id === plugin.id ? { ...item, ...updateFields[0] } : item))
         );
@@ -154,10 +153,10 @@ const PluginCard = ({
                 as={'span'}
                 bg={'myGray.100'}
                 px={2}
-                py={1}
+                py={'3px'}
                 color={'myGray.700'}
                 borderRadius={'8px'}
-                fontSize={'xs'}
+                fontSize={'12px'}
                 flexShrink={0}
                 data-tag-item
               >

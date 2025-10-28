@@ -3,26 +3,40 @@ import Avatar from '../../common/Avatar';
 import MyBox from '../../common/MyBox';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import MyIcon from '../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
+export type ToolCardItemType = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  status?: number;
+  author?: string;
+  tags?: string[];
+  downloadUrl?: string;
+};
+
 const ToolCard = ({
   item,
-  isInstalled,
   onToggleInstall,
   systemTitle,
-  onClick
+  onClick,
+  isLoading
 }: {
-  item: SystemPluginTemplateListItemType;
-  isInstalled: boolean | null;
+  item: ToolCardItemType;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
   onClick?: () => void;
+  isLoading?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
+
+  const isInstalled = useMemo(() => {
+    return item.status === 3;
+  }, [item.status]);
 
   useEffect(() => {
     const calculate = () => {
@@ -71,7 +85,7 @@ const ToolCard = ({
       },
       installed: {
         label: t('app:toolkit_installed'),
-        color: 'myGray.900',
+        color: 'myGray.500',
         icon: 'common/check'
       }
     };
@@ -94,6 +108,7 @@ const ToolCard = ({
       flexDirection={'column'}
       cursor={onClick ? 'pointer' : 'default'}
       onClick={onClick}
+      isLoading={isLoading}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {
@@ -102,12 +117,12 @@ const ToolCard = ({
       }}
     >
       <HStack>
-        <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} />
+        <Avatar src={item.icon} borderRadius={'sm'} w={'1.5rem'} />
         <Box color={'myGray.900'} fontWeight={'medium'}>
           {parseI18nString(item.name, i18n.language)}
         </Box>
         {currentStatus && (
-          <Flex fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color}>
+          <Flex fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color} gap={1}>
             {currentStatus.icon && <MyIcon name={currentStatus.icon as any} w={4} />}
             {currentStatus.label}
           </Flex>
@@ -123,14 +138,15 @@ const ToolCard = ({
         color={'myGray.500'}
       >
         <Box className={'textEllipsis2'}>
-          {parseI18nString(item.intro || '', i18n.language) || t('app:templateMarket.no_intro')}
+          {parseI18nString(item.description || '', i18n.language) ||
+            t('app:templateMarket.no_intro')}
         </Box>
       </Box>
       <Flex gap={1} overflow={'hidden'} ref={tagsContainerRef}>
         {item.tags?.slice(0, visibleTagsCount).map((tag) => {
           return (
             <Box
-              key={tag.tagId}
+              key={tag}
               px={2}
               py={1}
               border={'1px solid'}
@@ -142,7 +158,7 @@ const ToolCard = ({
               flexShrink={0}
               data-tag-item
             >
-              {parseI18nString(tag.tagName, i18n.language)}
+              {tag}
             </Box>
           );
         })}
@@ -163,7 +179,7 @@ const ToolCard = ({
         )}
       </Flex>
 
-      <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
+      <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'} mt={1}>
         <Box color={'myGray.500'} mt={3}>{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
         <Button
           className="install-button"

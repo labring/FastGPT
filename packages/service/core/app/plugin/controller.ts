@@ -553,7 +553,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
     const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
 
     return {
-      id: item.toolId,
+      id: item.id,
       parentId: item.parentId,
       isFolder,
       name: item.name,

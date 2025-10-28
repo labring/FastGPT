@@ -8,10 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import type {
-  SystemPluginTemplateListItemType,
-  SystemPluginTemplateItemType
-} from '@fastgpt/global/core/app/plugin/type';
+import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -65,9 +62,12 @@ const ToolProvider = () => {
   } = useRequest2(getSystemPlugins, {
     manual: false
   });
+  console.log(tools);
 
   useEffect(() => {
-    setLocalPlugins(tools);
+    if (tools.length > 0) {
+      setLocalPlugins(tools);
+    }
   }, [tools]);
 
   return (
@@ -94,7 +94,7 @@ const ToolProvider = () => {
                 {
                   label: t('app:toolkit_open_marketplace'),
                   onClick: () => {
-                    router.push('/toolkit/tools/marketplace');
+                    router.push('/config/tools/marketplace');
                   }
                 },
                 {
@@ -180,7 +180,7 @@ const ToolProvider = () => {
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided, snapshot) => (
                       <PluginCard
-                        key={`${item.id}-${item.defaultInstalled}-${item.hasTokenFee}`}
+                        key={item.id}
                         plugin={item}
                         setEditingPlugin={setEditingPlugin}
                         setLocalPlugins={setLocalPlugins}
@@ -201,7 +201,9 @@ const ToolProvider = () => {
       </Box>
 
       {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
-      {isOpenImportModal && <ImportPluginModal onClose={onCloseImportModal} />}
+      {isOpenImportModal && (
+        <ImportPluginModal onClose={onCloseImportModal} onSuccess={() => refreshTools({})} />
+      )}
       {!!editingPlugin &&
         splitCombinePluginId(editingPlugin.id).source === PluginSourceEnum.systemTool && (
           <SystemToolConfigModal
