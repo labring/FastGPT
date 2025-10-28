@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
@@ -12,29 +11,43 @@ import {
   parseUploadedPlugin,
   confirmPluginUpload
 } from '@/web/core/app/api/plugin';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
   errorMsg?: string;
   toolId?: string; // 解析后的 toolId
+  toolName?: string; // 工具名称
+  toolIntro?: string; // 工具简介
+  toolTags?: string[]; // 工具标签
 };
 
-const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useTranslation();
+const ImportPluginModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess?: () => void;
+}) => {
+  const { t, i18n } = useTranslation();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
+  console.log('uploadedFiles', uploadedFiles);
 
   // 步骤1: 上传并解析单个文件
-  const uploadAndParseFile = async (file: SelectFileItemType, fileIndex: number) => {
-    const uploadedFile: UploadedPluginFile = {
-      ...file,
-      status: 'uploading'
-    };
-
-    // 添加到上传列表
-    setUploadedFiles((prev) => [...prev, uploadedFile]);
+  const uploadAndParseFile = async (file: SelectFileItemType | UploadedPluginFile) => {
+    // 找到该文件在 uploadedFiles 中的索引
+    const fileIndex = uploadedFiles.findIndex((f) => f.name === file.name);
 
     try {
+      // 更新状态为上传中
+      setUploadedFiles((prev) =>
+        prev.map((f) =>
+          f.name === file.name ? { ...f, status: 'uploading', errorMsg: undefined } : f
+        )
+      );
+
       // 获取预签名上传 URL
       const presignedData = await getPluginUploadURL({ filename: file.name });
 
@@ -49,53 +62,91 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
 
       // 更新状态为解析中
       setUploadedFiles((prev) =>
-        prev.map((f, i) => (i === fileIndex ? { ...f, status: 'parsing' } : f))
+        prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
       );
 
       // 解析上传的插件
       const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
+      console.log('parseResult', parseResult);
 
       // 获取 parentId (toolId)
-      const parentId = parseResult.find((item) => !!item.parentId)?.toolId;
+      const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {
         return Promise.reject(new Error(`未找到插件 ID`));
       }
+      const toolDetail = parseResult.find((item) => item.toolId === parentId);
 
-      // 更新为成功状态
       setUploadedFiles((prev) =>
-        prev.map((f, i) => (i === fileIndex ? { ...f, status: 'success', toolId: parentId } : f))
+        prev.map((f) =>
+          f.name === file.name
+            ? {
+                ...f,
+                status: 'success',
+                toolId: parentId,
+                toolName: parseI18nString(toolDetail?.name || '', i18n.language),
+                icon: toolDetail?.icon || '',
+                toolIntro: parseI18nString(toolDetail?.description || '', i18n.language) || '',
+                toolTags: toolDetail?.tags || []
+              }
+            : f
+        )
       );
     } catch (error: any) {
       // 更新为错误状态
       setUploadedFiles((prev) =>
-        prev.map((f, i) =>
-          i === fileIndex ? { ...f, status: 'error', errorMsg: error.message } : f
+        prev.map((f) =>
+          f.name === file.name ? { ...f, status: 'error', errorMsg: error.message } : f
         )
       );
       throw error;
     }
   };
 
-  // 步骤2: 批量上传所有文件
+  // 步骤2: 批量上传新增的文件
   const { runAsync: handleBatchUpload, loading: uploadLoading } = useRequest2(
     async () => {
-      // 清空之前的上传记录
-      setUploadedFiles([]);
+      // 找出未上传的新文件(不在 uploadedFiles 中的文件)
+      const uploadedFileNames = new Set(uploadedFiles.map((f) => f.name));
+      const newFiles = selectFiles.filter((f) => !uploadedFileNames.has(f.name));
 
-      // 依次上传所有文件
-      for (let i = 0; i < selectFiles.length; i++) {
-        await uploadAndParseFile(selectFiles[i], i);
+      if (newFiles.length === 0) return;
+
+      // 将新文件添加到 uploadedFiles,初始状态为 uploading
+      const newUploadedFiles: UploadedPluginFile[] = newFiles.map((f) => ({
+        ...f,
+        status: 'uploading' as const
+      }));
+      setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+
+      // 依次上传所有新文件
+      for (const file of newFiles) {
+        try {
+          await uploadAndParseFile(file);
+        } catch (error) {
+          // 单个文件失败不影响其他文件继续上传
+          console.error(`上传文件 ${file.name} 失败:`, error);
+        }
       }
     },
     {
-      manual: true,
-      successToast: '所有文件上传解析完成',
-      errorToast: '部分文件上传失败',
-      onSuccess: () => {
-        setSelectFiles([]);
-      }
+      manual: true
     }
   );
+
+  // 重试单个文件
+  const handleRetry = async (file: UploadedPluginFile) => {
+    try {
+      await uploadAndParseFile(file);
+    } catch (error) {
+      console.error(`重试上传文件 ${file.name} 失败:`, error);
+    }
+  };
+
+  // 删除文件
+  const handleDelete = (file: UploadedPluginFile) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.name !== file.name));
+    setSelectFiles((prev) => prev.filter((f) => f.name !== file.name));
+  };
 
   // 步骤3: 确认导入所有成功的插件
   const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest2(
@@ -118,33 +169,39 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
       errorToast: '插件导入失败',
       onSuccess: () => {
         setUploadedFiles([]);
+        onSuccess?.(); // 调用父组件的 onSuccess 回调刷新列表
         onClose();
       }
     }
   );
 
-  // 监听文件选择,自动开始上传
   useEffect(() => {
-    if (selectFiles.length > 0 && uploadedFiles.length === 0 && !uploadLoading) {
+    if (selectFiles.length > 0) {
       handleBatchUpload();
     }
-  }, [selectFiles]);
+  }, [selectFiles.length]);
 
   return (
-    <MyRightDrawer onClose={onClose} title="导入/更新资源" maxW={['90vw', '1054px']}>
-      <Flex flex={1} flexDirection={'column'} px={4}>
-        <Flex justify={'flex-end'} mb={3}>
-          <Button
-            variant={'link'}
-            size={'sm'}
-            leftIcon={<MyIcon name={'book'} w={'14px'} />}
-            color={'primary.600'}
-          >
-            使用说明
-          </Button>
-        </Flex>
+    <MyRightDrawer
+      onClose={onClose}
+      title="导入/更新资源"
+      maxW={['90vw', '1054px']}
+      h={'98%'}
+      mt={'1%'}
+      px={0}
+    >
+      <Flex justify={'flex-end'} px={8} pt={4} pb={3}>
+        <Button
+          variant={'link'}
+          size={'sm'}
+          leftIcon={<MyIcon name={'book'} w={'14px'} />}
+          color={'primary.600'}
+        >
+          {t('common:Instructions')}
+        </Button>
+      </Flex>
 
-        {/* 文件选择器 - 只在没有上传文件时显示 */}
+      <Box flex={1} px={8} overflow={'auto'}>
         <FileSelectorBox
           maxCount={100}
           maxSize="100MB"
@@ -153,42 +210,136 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
           setSelectFiles={setSelectFiles}
         />
 
-        {/* 已上传文件列表 (显示状态) */}
+        <Flex
+          w={'full'}
+          fontSize={'12px'}
+          fontWeight={'medium'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+          mt={4}
+        >
+          <Box w={'20%'} px={1} py={'15px'}>
+            {t('common:name')}
+          </Box>
+          <Box w={'20%'} px={1} py={'15px'}>
+            {t('app:toolkit_tags')}
+          </Box>
+          <Box w={'40%'} px={1} py={'15px'}>
+            {t('common:Intro')}
+          </Box>
+          <Box w={'10%'} px={1} py={'15px'}>
+            {t('common:Status')}
+          </Box>
+          <Box w={'10%'} px={1} py={'15px'}>
+            {t('common:Action')}
+          </Box>
+        </Flex>
+
         {uploadedFiles.length > 0 && (
-          <VStack mt={4} gap={2}>
+          <VStack mt={1} gap={1}>
             {uploadedFiles.map((item, index) => (
-              <HStack key={index} w={'100%'} p={2} bg={'myGray.50'} borderRadius={'md'}>
-                <MyIcon name={item.icon as any} w={'1rem'} />
-                <Box color={'myGray.900'} flex={1}>
-                  {item.name}
-                </Box>
-                <Box fontSize={'xs'} color={'myGray.500'}>
-                  {item.size}
-                </Box>
-                {item.status === 'uploading' && (
-                  <Box fontSize={'xs'} color={'blue.500'}>
-                    上传中...
+              <Flex
+                key={index}
+                w={'full'}
+                fontSize={'12px'}
+                borderBottom={'1px solid'}
+                borderColor={'myGray.100'}
+              >
+                <Flex w={'20%'} px={1} py={'15px'} align={'center'} gap={2}>
+                  <Avatar src={item.icon} borderRadius={'xs'} w={'20px'} />
+                  <Box
+                    color={'myGray.900'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {item.status === 'success' && item.toolName ? item.toolName : item.name}
                   </Box>
-                )}
-                {item.status === 'parsing' && (
-                  <Box fontSize={'xs'} color={'blue.500'}>
-                    解析中...
+                </Flex>
+                <Flex w={'20%'} px={1} py={'15px'} align={'center'} gap={1} flexWrap={'wrap'}>
+                  {item.status === 'success' && item.toolTags && item.toolTags.length > 0 ? (
+                    item.toolTags.map((tag, tagIndex) => (
+                      <Box
+                        key={tagIndex}
+                        px={2}
+                        py={0.5}
+                        bg={'primary.50'}
+                        color={'primary.600'}
+                        borderRadius={'sm'}
+                        fontSize={'11px'}
+                      >
+                        {tag}
+                      </Box>
+                    ))
+                  ) : (
+                    <Box color={'myGray.400'}>-</Box>
+                  )}
+                </Flex>
+                <Flex
+                  w={'40%'}
+                  px={1}
+                  py={'15px'}
+                  color={'myGray.600'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  alignItems={'center'}
+                >
+                  {item.status === 'success' && item.toolIntro ? item.toolIntro : '-'}
+                </Flex>
+                <Flex w={'10%'} px={1} py={'15px'}>
+                  {item.status === 'uploading' && (
+                    <Flex alignItems={'center'} fontSize={'xs'} color={'blue.500'}>
+                      {t('app:custom_plugin_uploading')}
+                    </Flex>
+                  )}
+                  {item.status === 'parsing' && (
+                    <Flex alignItems={'center'} fontSize={'xs'} color={'blue.500'}>
+                      {t('app:custom_plugin_parsing')}
+                    </Flex>
+                  )}
+                  {item.status === 'success' && (
+                    <MyIcon name={'common/check'} w={'1rem'} color={'green.500'} />
+                  )}
+                  {item.status === 'error' && (
+                    <MyIcon name={'common/error'} w={'1rem'} color={'red.500'} />
+                  )}
+                </Flex>
+                <Flex w={'10%'} px={1} py={'15px'} align={'center'} gap={2}>
+                  <Box
+                    p={2}
+                    onClick={() => handleRetry(item)}
+                    cursor={'pointer'}
+                    _hover={{
+                      bg: 'myGray.100',
+                      rounded: 'md',
+                      color: 'primary.600'
+                    }}
+                  >
+                    <MyIcon name={'common/confirm/restoreTip'} w={4} />
                   </Box>
-                )}
-                {item.status === 'success' && (
-                  <MyIcon name={'common/check'} w={'1rem'} color={'green.500'} />
-                )}
-                {item.status === 'error' && (
-                  <MyIcon name={'common/error'} w={'1rem'} color={'red.500'} />
-                )}
-              </HStack>
+                  <Box
+                    p={2}
+                    onClick={() => handleDelete(item)}
+                    cursor={'pointer'}
+                    _hover={{
+                      bg: 'myGray.100',
+                      rounded: 'md',
+                      color: 'red.600'
+                    }}
+                  >
+                    <MyIcon name={'delete'} w={4} />
+                  </Box>
+                </Flex>
+              </Flex>
             ))}
           </VStack>
         )}
-      </Flex>
-      <Flex mt={4} p={4} justify={'flex-end'} gap={2}>
+      </Box>
+
+      <Flex justify={'flex-end'} gap={2} p={4}>
         <Button variant="whiteBase" onClick={onClose}>
-          取消
+          {t('common:Cancel')}
         </Button>
         <Button
           onClick={handleConfirmImport}
@@ -197,7 +348,7 @@ const ImportPluginModal = ({ onClose }: { onClose: () => void }) => {
           }
           isLoading={confirmLoading || uploadLoading}
         >
-          确认导入
+          {t('common:comfirm_import')}
         </Button>
       </Flex>
     </MyRightDrawer>

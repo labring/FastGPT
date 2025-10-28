@@ -88,6 +88,6 @@ export type ToolListItem = ToolSimpleType & {
 };
 
 export type ToolDetailResponse = {
-  tool: ToolDetailType;
+  tools: ToolDetailType[];
   downloadUrl: string;
 };

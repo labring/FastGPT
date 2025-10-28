@@ -9,7 +9,17 @@ export type ParseUploadedToolQuery = {
 
 export type ParseUploadedToolResponse = Array<{
   toolId: string;
+  name: {
+    'zh-CN'?: string;
+    en: string;
+  };
+  description: {
+    'zh-CN'?: string;
+    en: string;
+  };
+  icon: string;
   parentId?: string;
+  tags?: string[];
 }>;
 
 async function handler(

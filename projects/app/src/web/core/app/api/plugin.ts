@@ -61,6 +61,17 @@ import type {
 import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
 import type { updatePluginBody } from '@/pages/api/core/app/plugin/update';
 import type { createPluginBody } from '@/pages/api/core/app/plugin/create';
+import { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
+import type { InstallToolBody, InstallToolResponse } from '@/pages/api/plugin/tool/install';
+import type {
+  GetMarketplaceToolsQuery,
+  GetMarketplaceToolsResponse
+} from '@/pages/api/core/app/plugin/marketplace/list';
+import type {
+  GetMarketplaceToolDetailQuery,
+  GetMarketplaceToolDetailResponse
+} from '@/pages/api/core/app/plugin/marketplace/detail';
+import type { ParseUploadedToolResponse } from '@/pages/api/plugin/tool/upload/parse';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -143,10 +154,13 @@ export const getPluginUploadURL = (params: { filename: string }) =>
   );
 
 export const parseUploadedPlugin = (params: { objectName: string }) =>
-  GET<Array<{ toolId: string; parentId?: string }>>(`/plugin/tool/upload/parse`, params);
+  GET<ParseUploadedToolResponse>(`/plugin/tool/upload/parse`, params);
 
 export const confirmPluginUpload = (data: { toolIds: string[] }) =>
   POST(`/plugin/tool/upload/confirm`, data);
+
+export const deletePlugin = (data: { toolId: string }) =>
+  DELETE('/plugin/tool/upload/delete', data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
@@ -221,3 +235,16 @@ export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
 
 export const getTeamInstalledPluginIds = () =>
   GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);
+
+/* ============ marketplace ============== */
+export const getMarketplaceTools = (data: GetMarketplaceToolsQuery) =>
+  POST<GetMarketplaceToolsResponse>('/core/app/plugin/marketplace/list', data);
+
+export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQuery) =>
+  GET<GetMarketplaceToolDetailResponse>('/core/app/plugin/marketplace/detail', data);
+
+export const installMarketplaceTool = (data: InstallToolBody) =>
+  POST<InstallToolResponse>('/plugin/tool/install', data);
+
+export const getToolTags = () =>
+  GET<Array<{ type: string; name: { 'zh-CN': string; en: string } }>>('/plugin/tool/tags');
