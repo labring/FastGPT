@@ -53,8 +53,23 @@ async function handler(
       encoding: file.encoding,
       getFormatText: false
     });
-    if (!rawText.trim().startsWith('q,a,indexes')) {
+    const headerLine = rawText.trim().split('\n')[0];
+    const headers = headerLine.split(',').map((h) => h.trim());
+
+    // 1.1 检查是否以 q,a 开头
+    if (headers.length < 3 || headers[0] !== 'q' || headers[1] !== 'a') {
       return Promise.reject(i18nT('dataset:template_file_invalid'));
+    }
+    // 1.2 检查是否包含 indexes
+    if (!headers.includes('indexes')) {
+      return Promise.reject(i18nT('dataset:template_file_invalid'));
+    }
+    // 1.3 检查其他表头不能以 .$ 开头
+    const customHeaders = headers.slice(2); // 跳过 q 和 a
+    for (const header of customHeaders) {
+      if (header.startsWith('.') || header.startsWith('&')) {
+        return Promise.reject(i18nT('dataset:template_file_invalid'));
+      }
     }
 
     // 2. Upload file

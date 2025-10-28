@@ -226,7 +226,7 @@ export async function searchDatasetData(
 
   // Constants data
   const datasetDataSelectField =
-    '_id datasetId collectionId updateTime q a imageId imageDescMap chunkIndex indexes';
+    '_id datasetId collectionId updateTime q a imageId imageDescMap chunkIndex indexes metadata';
   const datsaetCollectionSelectField =
     '_id name fileId rawLink apiFileId externalFileId externalFileUrl';
 
@@ -604,7 +604,8 @@ export async function searchDatasetData(
               datasetId: String(data.datasetId),
               collectionId: String(data.collectionId),
               ...getCollectionSourceData(collection),
-              score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
+              score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }],
+              metadata: data.metadata
             };
 
             return result;
@@ -774,6 +775,7 @@ export async function searchDatasetData(
             }),
             chunkIndex: data.chunkIndex,
             indexes: data.indexes,
+            metadata: data.metadata,
             ...getCollectionSourceData(collection),
             score: [
               {

@@ -21,7 +21,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
+  const { collectionId, q, a, indexes, metadata } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -82,7 +82,8 @@ async function handler(req: NextApiRequest) {
     chunkIndex: 0,
     indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
     embeddingModel: vectorModelData.model,
-    indexes: formatIndexes
+    indexes: formatIndexes,
+    metadata
   });
 
   pushGenerateVectorUsage({

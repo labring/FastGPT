@@ -10,7 +10,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
-  const { dataId, q, a, indexes = [] } = req.body;
+  const { dataId, q, a, indexes = [], metadata } = req.body;
 
   // auth data permission
   const {
@@ -37,7 +37,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       a,
       indexes,
       model: vectorModel,
-      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
+      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
+      metadata
     });
 
     pushGenerateVectorUsage({

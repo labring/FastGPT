@@ -145,6 +145,7 @@ export type PushDatasetDataChunkProps = {
   imageId?: string;
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
+  metadata?: Record<string, string>;
 };
 
 export type PostDatasetSyncParams = {

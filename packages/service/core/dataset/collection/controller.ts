@@ -125,6 +125,7 @@ export const createCollectionAndInsertData = async ({
       a?: string; // answer or custom content
       imageId?: string;
       indexes?: string[];
+      metadata?: Record<string, any>;
     }>;
     chunkSize?: number;
     indexSize?: number;

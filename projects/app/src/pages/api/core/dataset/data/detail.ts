@@ -9,6 +9,7 @@ export type Response = {
   a: string;
   imageId?: string;
   source: string;
+  metadata?: Record<string, any>;
 };
 
 async function handler(
