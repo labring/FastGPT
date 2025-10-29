@@ -62,7 +62,6 @@ const ToolProvider = () => {
   } = useRequest2(getSystemPlugins, {
     manual: false
   });
-  console.log(tools);
 
   useEffect(() => {
     if (tools.length > 0) {

@@ -5,7 +5,13 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-
+export enum ToolStatusEnum {
+  Offline = 0,
+  Installing = 1,
+  SoonOffline = 2,
+  Installed = 3,
+  Download = 4
+}
 export type ToolCardItemType = {
   id: string;
   name: string;
@@ -35,7 +41,7 @@ const ToolCard = ({
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
 
   const isInstalled = useMemo(() => {
-    return item.status === 3;
+    return item.status === ToolStatusEnum.Installed;
   }, [item.status]);
 
   useEffect(() => {
@@ -75,11 +81,11 @@ const ToolCard = ({
       number | string,
       { label: string; color: string; icon?: string } | null
     > = {
-      0: {
+      [ToolStatusEnum.Offline]: {
         label: t('app:toolkit_status_offline'),
         color: 'red.600'
       },
-      2: {
+      [ToolStatusEnum.SoonOffline]: {
         label: t('app:toolkit_status_soon_offline'),
         color: 'yellow.600'
       },
@@ -90,8 +96,8 @@ const ToolCard = ({
       }
     };
 
-    if (item.status === 0) return statusMap[0];
-    if (item.status === 2) return statusMap[2];
+    if (item.status === ToolStatusEnum.Offline) return statusMap[ToolStatusEnum.Offline];
+    if (item.status === ToolStatusEnum.SoonOffline) return statusMap[ToolStatusEnum.SoonOffline];
     if (isInstalled) return statusMap.installed;
     return null;
   }, [item.status, isInstalled, t]);
