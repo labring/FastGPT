@@ -9,7 +9,8 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type {
   DatasetSearchModeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  RerankMethodEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetSourceReadTypeEnum,
@@ -63,6 +64,7 @@ export type SearchTestProps = {
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankMethod]: `${RerankMethodEnum}`;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;

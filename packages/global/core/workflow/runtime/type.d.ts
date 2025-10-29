@@ -31,6 +31,7 @@ import type {
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import type { SqlResultWithDatasetId } from '../../../core/dataset/database/api.d';
+import type { RerankMethodEnum } from '../../../core/dataset/constants';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -170,6 +171,7 @@ export type DispatchNodeResponseType = {
   searchMode?: `${DatasetSearchModeEnum}`;
   embeddingWeight?: number;
   rerankModel?: string;
+  rerankMethod?: `${RerankMethodEnum}`;
   rerankWeight?: number;
   reRankInputTokens?: number;
   searchUsingReRank?: boolean;

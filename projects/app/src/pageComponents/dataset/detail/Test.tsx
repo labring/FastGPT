@@ -25,7 +25,8 @@ import { useTranslation } from 'next-i18next';
 import { type SearchTestResponse } from '@/global/core/dataset/api';
 import {
   DatasetSearchModeEnum,
-  DatasetSearchModeMap
+  DatasetSearchModeMap,
+  RerankMethodEnum
 } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
@@ -54,6 +55,7 @@ type FormType = {
 
     usingReRank?: boolean;
     rerankModel?: string;
+    rerankMethod: `${RerankMethodEnum}`;
     rerankWeight?: number;
 
     similarity?: number;
@@ -87,6 +89,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         embeddingWeight: 0.5,
         usingReRank: true,
         rerankModel: defaultModels?.rerank?.model,
+        rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         limit: 5000,
         similarity: 0,

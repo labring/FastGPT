@@ -11,11 +11,7 @@ import type {
   SqlResultWithDatasetId
 } from '@fastgpt/global/core/dataset/database/api';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getEmbeddingModel,
-  getLLMModel,
-  getRerankModel
-} from '../../../ai/model';
+import { getEmbeddingModel, getLLMModel, getRerankModel } from '../../../ai/model';
 import {
   deepRagSearch,
   defaultSearchDatasetData,
@@ -25,7 +21,11 @@ import {
 import { calculateDynamicLimit } from '../../../dataset/search/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetTypeEnum,
+  RerankMethodEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -45,6 +45,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankMethod]: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.collectionFilterMatch]: string;
@@ -84,6 +85,7 @@ export async function dispatchDatasetSearch(
       embeddingWeight,
       usingReRank,
       rerankModel,
+      rerankMethod = RerankMethodEnum.content,
       rerankWeight,
 
       datasetSearchUsingExtensionQuery,
@@ -219,7 +221,7 @@ export async function dispatchDatasetSearch(
             totalEmbeddingTokens += singleResult.tokens;
             if (Object.keys(singleResult.schema).length > 0) {
               const key = sqlLLM.requestAuth || undefined;
-              const url =  sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
+              const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
               const singleSqlResult = await generateAndExecuteSQL({
                 datasetId,
                 query: userChatInput,
@@ -229,7 +231,7 @@ export async function dispatchDatasetSearch(
                 generate_sql_llm: {
                   model: sqlLLM.model,
                   api_key: key,
-                  base_url:url
+                  base_url: url
                 },
                 evaluate_sql_llm: {
                   model: sqlLLM.model,
@@ -272,6 +274,7 @@ export async function dispatchDatasetSearch(
         embeddingWeight,
         usingReRank,
         rerankModel: rerankModelData,
+        rerankMethod,
         rerankWeight,
         collectionFilterMatch
       };
@@ -441,6 +444,7 @@ export async function dispatchDatasetSearch(
       // Rerank
       ...(searchUsingReRank && {
         rerankModel: rerankModelData?.name,
+        rerankMethod: rerankMethod,
         rerankWeight: rerankWeight,
         reRankInputTokens
       }),

@@ -1,7 +1,8 @@
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
-  SearchScoreTypeEnum
+  SearchScoreTypeEnum,
+  RerankMethodEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   recallFromVectorStore,
@@ -70,6 +71,7 @@ export type SearchDatasetDataProps = {
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankMethod]?: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /* 
@@ -132,11 +134,13 @@ export type SearchDatabaseDataResponse = {
 export const datasetDataReRank = async ({
   rerankModel,
   data,
-  query
+  query,
+  rerankMethod = RerankMethodEnum.content // Default
 }: {
   rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
+  rerankMethod: RerankMethodEnum;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
@@ -144,10 +148,19 @@ export const datasetDataReRank = async ({
   const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
-    documents: data.map((item) => ({
-      id: item.id,
-      text: `${item.q}\n${item.a}`
-    }))
+    documents: data.map((item) => {
+      let text = '';
+      switch (rerankMethod) {
+        case RerankMethodEnum.question:
+          text = item.q;
+          break;
+        case RerankMethodEnum.content:
+        default:
+          text = `${item.q}\n${item.a}`;
+      }
+      addLog.debug(`RerankMethod ${rerankMethod} Item ${item.id} text: ${text}`);
+      return { id: item.id, text };
+    })
   });
 
   if (results.length === 0) {
@@ -173,6 +186,7 @@ export const datasetDataReRank = async ({
     inputTokens
   };
 };
+
 export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
   maxTokens: number
@@ -219,11 +233,11 @@ export async function searchDatasetData(
     embeddingWeight = 0.5,
     usingReRank = false,
     rerankModel,
+    rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
   } = props;
-
   // Constants data
   const datasetDataSelectField =
     '_id datasetId collectionId updateTime q a imageId imageDescMap chunkIndex indexes';
@@ -883,7 +897,8 @@ export async function searchDatasetData(
       return await datasetDataReRank({
         rerankModel,
         query: reRankQuery,
-        data: filterSameDataResults
+        data: filterSameDataResults,
+        rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
       usingReRank = false;
