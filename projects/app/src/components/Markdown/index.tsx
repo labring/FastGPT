@@ -6,6 +6,7 @@ import RemarkBreaks from 'remark-breaks'; // Line break
 import RehypeKatex from 'rehype-katex'; // Math render
 import RemarkGfm from 'remark-gfm'; // Special markdown syntax
 import RehypeExternalLinks from 'rehype-external-links';
+import RehypeRaw from 'rehype-raw'; // Support raw HTML
 
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
@@ -84,7 +85,7 @@ const MarkdownRender = ({
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }], RehypeRaw]}
         components={components}
         urlTransform={urlTransform}
       >
