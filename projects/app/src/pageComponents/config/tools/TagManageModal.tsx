@@ -106,16 +106,17 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       w={'580px'}
       h={'600px'}
     >
-      <ModalBody>
+      <ModalBody display={'flex'} flexDirection={'column'} px={0}>
         <Flex
           alignItems={'center'}
           color={'myGray.900'}
           pb={2}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
-          mx={4}
+          mx={12}
           pt={6}
           px={2}
+          flexShrink={0}
         >
           <MyIcon name="menu" w={5} />
           <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
@@ -135,7 +136,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </Flex>
 
-        <Box px={4} mt={2} flex={'1 0 0'} fontSize={'sm'}>
+        <Box px={12} mt={2} flex={'1 0 0'} fontSize={'sm'} overflowY={'auto'}>
           {editingTagId && !localTags.find((tag) => tag.tagId === editingTagId) && (
             <Flex h={10} alignItems={'center'} mb={2} px={2} bg={'myGray.50'} borderRadius={'md'}>
               <Input

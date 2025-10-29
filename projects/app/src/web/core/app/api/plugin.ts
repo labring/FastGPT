@@ -72,6 +72,7 @@ import type {
   GetMarketplaceToolDetailResponse
 } from '@/pages/api/core/app/plugin/marketplace/detail';
 import type { ParseUploadedToolResponse } from '@/pages/api/plugin/tool/upload/parse';
+import type { GetToolTagsResponse } from '@/pages/api/plugin/tool/tags';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -246,5 +247,4 @@ export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQuery) =>
 export const installMarketplaceTool = (data: InstallToolBody) =>
   POST<InstallToolResponse>('/plugin/tool/install', data);
 
-export const getToolTags = () =>
-  GET<Array<{ type: string; name: { 'zh-CN': string; en: string } }>>('/plugin/tool/tags');
+export const getToolTags = () => GET<GetToolTagsResponse>('/plugin/tool/tags');
