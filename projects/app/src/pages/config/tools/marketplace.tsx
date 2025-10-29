@@ -38,6 +38,7 @@ const ToolkitMarketplace = () => {
   const {
     data: tools,
     isLoading: loadingTools,
+    error: toolsError,
     ScrollData,
     getData: refetchTools
   } = usePagination(
@@ -120,6 +121,39 @@ const ToolkitMarketplace = () => {
       }) || []
     );
   }, [tools, allTags, currentTools, i18n.language]);
+
+  if (toolsError && !loadingTools) {
+    return (
+      <Box h={'full'} py={6} pr={6}>
+        <MyBox
+          bg={'white'}
+          h={'full'}
+          rounded={'8px'}
+          position={'relative'}
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'center'}
+          justifyContent={'center'}
+        >
+          <MyIconButton
+            icon={'common/closeLight'}
+            size={'6'}
+            onClick={() => router.push('/config/tools')}
+            position={'absolute'}
+            left={4}
+            top={4}
+          />
+          <VStack spacing={4}>
+            <MyIcon name={'common/error'} w={16} h={16} color={'red.500'} />
+
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {t('common:core.chat.error.data_error')}
+            </Box>
+          </VStack>
+        </MyBox>
+      </Box>
+    );
+  }
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -206,7 +240,7 @@ const ToolkitMarketplace = () => {
         </VStack>
 
         <Box px={8} mt={8} fontSize={'14px'} fontWeight={'medium'} color={'myGray.500'}>
-          工具
+          {t('common:navbar.Tools')}
         </Box>
         <Box px={8} my={4} flexShrink={0}>
           <Flex alignItems={'center'} gap={2}>
@@ -258,7 +292,6 @@ const ToolkitMarketplace = () => {
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => {
             if (selectedTool.status === 3) {
               handleDeleteTool(selectedTool);
@@ -266,6 +299,8 @@ const ToolkitMarketplace = () => {
               handleInstallTool(selectedTool);
             }
           }}
+          //@ts-ignore
+          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />
       )}
     </Box>

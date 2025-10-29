@@ -28,6 +28,7 @@ import type { ToolCardItemType } from './ToolCard';
 import MyBox from '../../common/MyBox';
 import Markdown from '../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import MyIcon from '../../common/Icon';
 
 type toolDetailType = ToolDetailType & {
   versionList?: Array<{
@@ -39,6 +40,9 @@ type toolDetailType = ToolDetailType & {
   courseUrl?: string;
   readme?: string;
   userGuide?: string;
+  currentCost?: number;
+  hasSystemSecret?: boolean;
+  inputList?: Array<FlowNodeInputItemType>;
 };
 
 const ParamSection = ({
@@ -53,14 +57,14 @@ const ParamSection = ({
   return (
     <VStack
       align="stretch"
-      spacing={2}
       p={4}
+      gap={0}
       border="1px solid"
       borderColor="myGray.200"
       borderRadius="md"
       bg="myGray.50"
     >
-      <Flex alignItems="center" gap={2}>
+      <Flex alignItems="center" gap={2} mb={4}>
         <Box w="4px" h="16px" bg="primary.600" borderRadius="2px" flexShrink={0} />
         <Box fontSize="sm" fontWeight={600} color="myGray.900">
           {title}
@@ -76,15 +80,15 @@ const ParamSection = ({
                   *
                 </Box>
               )}
-              <Box fontSize="sm" fontWeight={500} color="myGray.600">
+              <Box fontSize="14px" fontWeight={500} color="myGray.500">
                 {parseI18nString(param.label || param.key, i18n.language)}
               </Box>
               <Box
                 px={2}
                 py={0.5}
                 borderRadius="4px"
-                fontSize="xs"
-                color="myGray.600"
+                fontSize="14px"
+                color="myGray.500"
                 bg={'myGray.100'}
                 border={'1px solid'}
                 borderColor={'myGray.200'}
@@ -93,10 +97,11 @@ const ParamSection = ({
               </Box>
             </Flex>
             {param.description && (
-              <Box fontSize="xs" color="myGray.500" mt={1}>
+              <Box fontSize="12px" color="myGray.500" mt={1}>
                 {parseI18nString(param.description, i18n.language)}
               </Box>
             )}
+            {index !== params.length - 1 && <Box h={'1px'} w={'full'} bg={'myGray.200'} my={4} />}
           </Box>
         );
       })}
@@ -109,12 +114,7 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
 
   return (
     <AccordionItem borderRadius="md" mb={2} border={'none'}>
-      <AccordionButton
-        py={2}
-        _hover={{ bg: 'myGray.50' }}
-        _expanded={{ bg: 'myGray.50' }}
-        borderRadius="md"
-      >
+      <AccordionButton px={2} py={2} _hover={{ bg: 'myGray.50' }} borderRadius="md">
         <Flex align="center" gap={3} flex={1} textAlign="left">
           <Box flex={1}>
             <Box fontSize="12px" fontWeight={500} color="myGray.900">
@@ -125,7 +125,21 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
         <AccordionIcon />
       </AccordionButton>
 
-      <AccordionPanel px={4} pb={4} pt={0}>
+      <AccordionPanel px={2} pb={4} pt={0}>
+        <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
+          {tool.intro}
+        </Box>
+        <Flex gap={1} fontSize={'12px'}>
+          <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+          {!!tool?.currentCost ? (
+            <Flex gap={1}>
+              <Box>{t('app:toolkit_call_points_label')}</Box>
+              {tool?.currentCost}
+            </Flex>
+          ) : (
+            t('app:toolkit_no_call_points')
+          )}
+        </Flex>
         {tool.versionList && tool.versionList.length > 0 && (
           <VStack align="stretch" spacing={3} mt={3}>
             {tool.versionList[0]?.inputs && tool.versionList[0].inputs.length > 0 && (
@@ -198,10 +212,13 @@ const ToolDetailDrawer = ({
     if (!onFetchDetail)
       return {
         versionList: [],
-        ...selectedTool,
         readme: '',
         courseUrl: '',
-        userGuide: ''
+        userGuide: '',
+        currentCost: 0,
+        hasSystemSecret: false,
+        inputList: [],
+        ...selectedTool
       };
     return toolDetail?.tools.find((tool: toolDetailType) => !tool.parentId);
   }, [isToolSet, toolDetail?.tools]);
@@ -209,6 +226,7 @@ const ToolDetailDrawer = ({
     if (!isToolSet || !toolDetail?.tools) return [];
     return toolDetail?.tools.filter((subTool: toolDetailType) => !!subTool.parentId);
   }, [isToolSet, toolDetail?.tools]);
+  console.log(subTools);
 
   useEffect(() => {
     const fetchReadme = async () => {
@@ -296,7 +314,6 @@ const ToolDetailDrawer = ({
           <Box fontSize={'12px'} color="myGray.500" mt={3}>
             {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
           </Box>
-
           <Flex mt={3}>
             <Button
               w="full"
@@ -308,6 +325,29 @@ const ToolDetailDrawer = ({
               {isInstalled ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
             </Button>
           </Flex>
+
+          <Flex mt={4} gap={1.5} alignItems={'center'}>
+            <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
+              {t('app:toolkit_call_points_label')}
+            </Box>
+            <Box fontSize={'12px'} color={'myGray.600'}>
+              {!!parentTool?.currentCost
+                ? parentTool?.currentCost
+                : t('app:toolkit_no_call_points')}
+            </Box>
+          </Flex>
+          <Flex mt={4} gap={1.5} alignItems={'center'}>
+            <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
+              {t('app:toolkit_activation_label')}
+            </Box>
+            <Box fontSize={'12px'} color={'myGray.600'}>
+              {parentTool?.hasSystemSecret ||
+              (parentTool?.inputList && parentTool?.inputList.length > 0)
+                ? t('app:toolkit_activation_required')
+                : t('app:toolkit_activation_not_required')}
+            </Box>
+          </Flex>
+
           <Box mt={4}>
             <LightRowTabs
               list={[
@@ -325,36 +365,12 @@ const ToolDetailDrawer = ({
                 }
               }}
             />
+            <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
           </Box>
 
           <Box mt={4}>
             {activeTab === 'guide' && (
               <VStack align="stretch" spacing={4}>
-                {/* {parentTool?.courseUrl && (
-                  <Link
-                    href={parentTool?.courseUrl}
-                    isExternal
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    px={4}
-                    py={3}
-                    border="1px solid"
-                    borderColor="myGray.200"
-                    borderRadius="md"
-                    bg="myGray.50"
-                    _hover={{ bg: 'myGray.100', borderColor: 'primary.300' }}
-                    transition="all 0.2s"
-                    fontSize="sm"
-                    color="primary.600"
-                  >
-                    <MyIcon name="book" w="16px" />
-                    <Box flex={1} noOfLines={1}>
-                      {parentTool?.courseUrl}
-                    </Box>
-                  </Link>
-                )} */}
-
                 {readmeContent ||
                   (parentTool?.userGuide && (
                     <Box
