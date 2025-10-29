@@ -1,7 +1,7 @@
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 declare global {
   // eslint-disable-next-line no-var

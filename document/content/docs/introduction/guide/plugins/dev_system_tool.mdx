@@ -20,9 +20,24 @@ FastGPT 系统工具项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`
 
 ### 1.1 准备开发环境
 
-- Fork [fastgpt-plugin 项目](https://github.com/labring/fastgpt-plugin)
 - 安装 [Bun](https://bun.sh/)
 - 部署一套 S3 兼容的对象存储服务，可以使用 Minio，也可以直接使用 FastGPT [开发环境的 docker-compose.yml](https://raw.githubusercontent.com/labring/FastGPT/refs/heads/main/deploy/dev/docker-compose.yml) 进行部署。参考 [FastGPT 进行本地开发](/docs/introduction/development/intro)
+
+### 1.2 获取 FastGPT-plugin 脚手架
+- Fork [fastgpt-plugin 项目](https://github.com/labring/fastgpt-plugin)
+- 本地在一个新建目录下初始化一个 `git`:
+
+```bash
+git init
+git remote add origin git@github.com:[your-name]/fastgpt-plugin.git
+```
+
+- (可选）使用稀疏检出 (Sparse-checkout) 以避免拉取所有插件代码，如果不进行稀疏检出
+```bash
+git sparse-checkout init --no-cone
+git sparse-checkout set "/*" "!/modules/tool/packages/*"
+```
+
 - 本地 clone 项目 `git clone git@github.com:[your-github-username]/fastgpt-plugin.git`
 - 拷贝示例环境变量文件，并修改连接到开发环境的 Minio `cp .env.example .env.local`
 - 安装依赖 `bun install`
