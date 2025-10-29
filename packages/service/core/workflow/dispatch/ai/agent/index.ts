@@ -117,18 +117,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const isPlanStep = isPlanAgent && (planHistoryMessages || !agentPlan);
   // Replan step: 已有 plan，且有 replan 历史消息
   const isReplanStep = isPlanAgent && agentPlan && replanMessages;
-  console.log(
-    `isPlanAgent:`,
-    isPlanAgent,
-    `\nplanHistoryMessages:`,
-    planHistoryMessages,
-    `\nagentPlan:`,
-    agentPlan,
-    `\nreplanMessages:`,
-    replanMessages
-  );
 
-  console.log(`\nisPlanStep:`, isPlanStep, `\nisReplanStep:`, isReplanStep);
   try {
     // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
