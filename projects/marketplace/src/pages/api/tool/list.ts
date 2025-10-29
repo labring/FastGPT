@@ -22,6 +22,9 @@ async function handler(
   const { searchKey, tags } = req.body;
   const data = await getToolList();
   const filteredData = data.filter((item) => {
+    if (item.parentId) {
+      return false;
+    }
     if (
       searchKey &&
       !(item.name.en + (item.name['zh-CN'] ?? '') + (item.name['zh-Hant'] ?? '')).includes(
