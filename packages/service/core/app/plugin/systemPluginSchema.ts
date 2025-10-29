@@ -15,7 +15,7 @@ const SystemPluginSchema = new Schema({
   },
   defaultInstalled: {
     type: Boolean,
-    default: true
+    default: false
   },
   originCost: {
     type: Number,

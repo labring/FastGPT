@@ -34,6 +34,7 @@ const ToolKitProvider = () => {
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [searchText, setSearchText] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null);
 
   const { data: tools = [], loading: loadingTools } = useRequest2(
     () => getSystemPlugins({ source: 'team' }),
@@ -51,9 +52,14 @@ const ToolKitProvider = () => {
   } = useRequest2(getTeamInstalledPluginIds, {
     manual: false
   });
-  const { runAsync: toggleInstall, loading: toggleInstallLoading } = useRequest2(
-    async (data) => {
-      return await postToggleInstallPlugin(data);
+  const { runAsync: toggleInstall } = useRequest2(
+    async (data: { pluginId: string; installed: boolean }) => {
+      setLoadingPluginId(data.pluginId);
+      try {
+        return await postToggleInstallPlugin(data);
+      } finally {
+        setLoadingPluginId(null);
+      }
     },
     {
       onSuccess: () => refreshInstallStatus()
@@ -111,88 +117,103 @@ const ToolKitProvider = () => {
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        isLoading={loadingTools || loadingTags || loadingInstallStatus || toggleInstallLoading}
+        isLoading={loadingTools || loadingTags || loadingInstallStatus}
       >
         <Box px={8} flexShrink={0}>
-          <Button position={'absolute'} right={4} top={4} onClick={() => {}}>
+          <Button
+            position={'absolute'}
+            right={8}
+            top={8}
+            onClick={() => {
+              console.log('feConfigs?.systemPluginCourseUrl', feConfigs?.systemPluginCourseUrl);
+              if (feConfigs?.systemPluginCourseUrl) {
+                window.open(feConfigs.systemPluginCourseUrl);
+              }
+            }}
+          >
             {t('app:toolkit_contribute_resource')}
           </Button>
-          <Flex pt={8} alignItems={'center'}>
-            <Flex
-              alignItems={'center'}
-              transition={'all 0.3s'}
-              w={isSearchExpanded ? '320px' : 'auto'}
-            >
-              {isSearchExpanded ? (
-                <InputGroup>
-                  <MyIcon
-                    position={'absolute'}
-                    zIndex={10}
-                    left={2.5}
-                    name={'common/searchLight'}
-                    w={5}
-                    color={'primary.600'}
-                    top={'50%'}
-                    transform={'translateY(-50%)'}
-                  />
-                  <Input
-                    px={8}
-                    h={10}
-                    borderRadius={'md'}
-                    placeholder={t('common:search_tool')}
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    autoFocus
-                    onBlur={() => {
-                      if (!searchText) {
-                        setIsSearchExpanded(false);
-                      }
-                    }}
-                  />
-                  {searchText && (
+          <Box mt={8} mb={4} fontSize={'20px'} fontWeight={'medium'} color={'black'}>
+            {t('common:navbar.Tools')}
+          </Box>
+          <Flex my={2} alignItems={'center'}>
+            <Flex alignItems={'center'}>
+              <Flex
+                alignItems={'center'}
+                transition={'all 0.3s'}
+                w={isSearchExpanded ? '320px' : 'auto'}
+                mr={4}
+              >
+                {isSearchExpanded ? (
+                  <InputGroup>
                     <MyIcon
                       position={'absolute'}
                       zIndex={10}
-                      right={2.5}
-                      name={'common/closeLight'}
-                      w={4}
+                      left={2.5}
+                      name={'common/searchLight'}
+                      w={5}
+                      color={'primary.600'}
                       top={'50%'}
                       transform={'translateY(-50%)'}
-                      color={'myGray.500'}
-                      cursor={'pointer'}
-                      onClick={() => {
-                        setSearchText('');
-                        setIsSearchExpanded(false);
+                    />
+                    <Input
+                      px={8}
+                      h={10}
+                      borderRadius={'md'}
+                      placeholder={t('common:search_tool')}
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      autoFocus
+                      onBlur={() => {
+                        if (!searchText) {
+                          setIsSearchExpanded(false);
+                        }
                       }}
                     />
-                  )}
-                </InputGroup>
-              ) : (
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  _hover={{ bg: 'myGray.100' }}
-                  onClick={() => setIsSearchExpanded(true)}
-                  p={2}
-                >
-                  <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                  <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
-                    {t('common:Search')}
-                  </Box>
-                </Flex>
-              )}
+                    {searchText && (
+                      <MyIcon
+                        position={'absolute'}
+                        zIndex={10}
+                        right={2.5}
+                        name={'common/closeLight'}
+                        w={4}
+                        top={'50%'}
+                        transform={'translateY(-50%)'}
+                        color={'myGray.500'}
+                        cursor={'pointer'}
+                        onClick={() => {
+                          setSearchText('');
+                          setIsSearchExpanded(false);
+                        }}
+                      />
+                    )}
+                  </InputGroup>
+                ) : (
+                  <Flex
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    cursor={'pointer'}
+                    borderRadius={'md'}
+                    _hover={{ bg: 'myGray.100' }}
+                    onClick={() => setIsSearchExpanded(true)}
+                    p={2}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                  >
+                    <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                    <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                      {t('common:Search')}
+                    </Box>
+                  </Flex>
+                )}
+              </Flex>
             </Flex>
-            <Box mx={2} h={5} w={'1px'} bg={'myGray.200'} />
-            <Box fontSize={'14px'}>{t('common:navbar.Tools')}</Box>
-          </Flex>
-          <Flex mt={2} mb={4} alignItems={'center'}>
             <PluginTagFilter
               tags={tags}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
             />
+            <Box w={40} />
             <MyMenu
               trigger="hover"
               Button={
@@ -238,6 +259,7 @@ const ToolKitProvider = () => {
                     onToggleInstall={(installed) => toggleInstall({ pluginId: tool.id, installed })}
                     systemTitle={feConfigs.systemTitle}
                     onClick={() => setSelectedTool(tool)}
+                    isLoading={loadingPluginId === tool.id}
                   />
                 );
               })}
@@ -258,6 +280,7 @@ const ToolKitProvider = () => {
             }
           }}
           systemTitle={feConfigs.systemTitle}
+          isLoading={loadingPluginId === selectedTool.id}
           // @ts-ignore
           onFetchDetail={async (toolId: string) => {
             if (splitCombinePluginId(toolId).source === PluginSourceEnum.systemTool) {

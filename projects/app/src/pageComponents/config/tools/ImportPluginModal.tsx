@@ -13,6 +13,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { getDocPath } from '@/web/common/system/doc';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
@@ -172,10 +173,10 @@ const ImportPluginModal = ({
   return (
     <MyRightDrawer
       onClose={onClose}
-      title="导入/更新资源"
-      maxW={['90vw', '1054px']}
+      title={t('app:toolkit_import_resource')}
+      maxW={['90vw', '900px']}
       h={'98%'}
-      mt={'1%'}
+      mt={'0.5%'}
       px={0}
     >
       <Flex justify={'flex-end'} px={8} pt={4} pb={3}>
@@ -184,6 +185,12 @@ const ImportPluginModal = ({
           size={'sm'}
           leftIcon={<MyIcon name={'book'} w={'14px'} />}
           color={'primary.600'}
+          onClick={() => {
+            window.open(
+              getDocPath('/docs/introduction/guide/plugins/upload_system_tool'),
+              '_blank'
+            );
+          }}
         >
           {t('common:Instructions')}
         </Button>
@@ -196,6 +203,7 @@ const ImportPluginModal = ({
           fileType=".pkg"
           selectFiles={selectFiles}
           setSelectFiles={setSelectFiles}
+          h={120}
         />
 
         <Flex

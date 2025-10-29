@@ -84,8 +84,7 @@ const ToolkitMarketplace = () => {
         }
       },
       {
-        threshold: 0,
-        rootMargin: '-120px 0px 0px 0px'
+        threshold: 0
       }
     );
 
@@ -107,15 +106,14 @@ const ToolkitMarketplace = () => {
         flexDirection={'column'}
         isLoading={loadingTools}
       >
-        {/* 固定在顶部的工具栏区域 */}
         <Box px={8} flexShrink={0} position={'relative'}>
           <Flex gap={3} position={'absolute'} right={4} top={4}>
-            <Button>{t('app:toolkit_contribute_resource')}</Button>
-            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_faq')}</Button>
-            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_submit_request')}</Button>
+            <Button onClick={() => {}}>{t('app:toolkit_contribute_resource')}</Button>
+            <Button variant={'whiteBase'} onClick={() => {}}>
+              {t('app:toolkit_marketplace_submit_request')}
+            </Button>
           </Flex>
 
-          {/* 使用固定高度容器避免布局抖动 */}
           <Box
             h={showCompactSearch ? '120px' : '0'}
             transition={'height 0.15s ease-out'}

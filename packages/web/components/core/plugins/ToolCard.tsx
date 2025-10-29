@@ -41,7 +41,11 @@ const ToolCard = ({
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
 
   const isInstalled = useMemo(() => {
-    return item.status === ToolStatusEnum.Installed;
+    return (
+      item.status === ToolStatusEnum.Installed ||
+      item.status === ToolStatusEnum.SoonOffline ||
+      item.status === ToolStatusEnum.Offline
+    );
   }, [item.status]);
   const isDownload = useMemo(() => {
     return item.status === ToolStatusEnum.Download;
@@ -92,18 +96,16 @@ const ToolCard = ({
         label: t('app:toolkit_status_soon_offline'),
         color: 'yellow.600'
       },
-      installed: {
+      [ToolStatusEnum.Installed]: {
         label: t('app:toolkit_installed'),
         color: 'myGray.500',
         icon: 'common/check'
       }
     };
 
-    if (item.status === ToolStatusEnum.Offline) return statusMap[ToolStatusEnum.Offline];
-    if (item.status === ToolStatusEnum.SoonOffline) return statusMap[ToolStatusEnum.SoonOffline];
-    if (isInstalled) return statusMap.installed;
-    return null;
-  }, [item.status, isInstalled, t]);
+    if (!item.status) return null;
+    return statusMap[item.status];
+  }, [item.status, t]);
 
   return (
     <MyBox
@@ -117,7 +119,6 @@ const ToolCard = ({
       flexDirection={'column'}
       cursor={onClick ? 'pointer' : 'default'}
       onClick={onClick}
-      isLoading={isLoading}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {
@@ -188,17 +189,19 @@ const ToolCard = ({
         )}
       </Flex>
 
-      <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'} mt={1}>
+      <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
         <Box color={'myGray.500'} mt={3}>{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
         <Button
           className="install-button"
-          display={'none'}
           size={'sm'}
           variant={isInstalled ? 'primaryOutline' : 'primary'}
           onClick={(e) => {
             e.stopPropagation();
             onToggleInstall(!isInstalled);
           }}
+          isLoading={isLoading}
+          // display={'none'}
+          {...(!isLoading ? { display: 'none' } : {})}
         >
           {isDownload
             ? t('common:Download')

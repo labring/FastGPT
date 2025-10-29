@@ -113,8 +113,10 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi',
   systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
+  submitPluginRequestUrl: '',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
+  marketPlaceUrl: 'marketplace.fastgpt.cn',
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)',

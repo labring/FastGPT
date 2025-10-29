@@ -28,6 +28,7 @@ async function handler(
   const lang = getLocale(req);
 
   const plugins = await getSystemTools();
+  console.log('plugins', JSON.stringify(plugins[0], null, 2));
 
   const records = await MongoTeamInstalledPlugin.find({ teamId }).lean();
   const installedSet = new Set<string>();
@@ -43,6 +44,7 @@ async function handler(
 
   return plugins
     .filter((plugin) => {
+      if (plugin.parentId) return true;
       if (plugin.status !== PluginStatusEnum.Normal) {
         return false;
       }

@@ -7,6 +7,7 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
@@ -26,17 +27,75 @@ import {
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { search, tags } = router.query;
+  const { copyData } = useCopyData();
+  const { feConfigs } = useSystemStore();
+  const marketplaceUrl =
+    feConfigs?.marketPlaceUrl ||
+    process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
+    'https://marketplace.fastgpt.cn';
+
+  const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
+  const [installedFilter, setInstalledFilter] = useState<boolean>(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
+
+  // 从 URL 初始化状态
+  useEffect(() => {
+    if (search && typeof search === 'string') {
+      setInputValue(search);
+      setSearchText(search);
+      setIsSearchExpanded(true);
+    }
+    if (tags) {
+      const tagArray = typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
+      setSelectedTagIds(tagArray);
+    }
+  }, [search, tags]);
+
+  // 处理搜索提交
+  const handleSearch = () => {
+    setSearchText(inputValue);
+  };
+
+  // 更新 URL 的函数
+  const updateUrlParams = (newSearch: string, newTags: string[]) => {
+    const params = new URLSearchParams();
+    if (newSearch) {
+      params.set('search', newSearch);
+    }
+    if (newTags.length > 0) {
+      params.set('tags', newTags.join(','));
+    }
+    const queryString = params.toString();
+    const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
+    router.replace(newUrl, undefined, { shallow: true });
+  };
+
+  // 监听 searchText 变化,更新 URL
+  useEffect(() => {
+    if (router.isReady) {
+      updateUrlParams(searchText, selectedTagIds);
+    }
+  }, [searchText]);
+
+  // 监听 selectedTagIds 变化,更新 URL
+  useEffect(() => {
+    if (router.isReady) {
+      updateUrlParams(searchText, selectedTagIds);
+    }
+  }, [selectedTagIds]);
 
   const {
     data: tools,
@@ -114,26 +173,31 @@ const ToolkitMarketplace = () => {
 
   const displayTools: ToolCardItemType[] = useMemo(() => {
     return (
-      tools?.map((tool: ToolListItem) => {
-        const isInstalled = currentTools.some(
-          (item) => item.id === `${PluginSourceEnum.systemTool}-${tool.toolId}`
-        );
-        return {
-          id: tool.toolId,
-          name: parseI18nString(tool.name || '', i18n.language),
-          description: parseI18nString(tool.description || '', i18n.language),
-          icon: tool.icon,
-          author: tool.author || '',
-          tags: tool.tags?.map((tag) => {
-            const currentTag = allTags.find((t) => t.type === tag);
-            return parseI18nString(currentTag?.name || '', i18n.language) || '';
-          }),
-          downloadUrl: tool.downloadUrl,
-          status: isInstalled ? 3 : 1 // 1: normal, 3: installed
-        };
-      }) || []
+      tools
+        ?.map((tool: ToolListItem) => {
+          const isInstalled = currentTools.some(
+            (item) => item.id === `${PluginSourceEnum.systemTool}-${tool.toolId}`
+          );
+          return {
+            id: tool.toolId,
+            name: parseI18nString(tool.name || '', i18n.language),
+            description: parseI18nString(tool.description || '', i18n.language),
+            icon: tool.icon,
+            author: tool.author || '',
+            tags: tool.tags?.map((tag) => {
+              const currentTag = allTags.find((t) => t.type === tag);
+              return parseI18nString(currentTag?.name || '', i18n.language) || '';
+            }),
+            downloadUrl: tool.downloadUrl,
+            status: isInstalled ? 3 : 1 // 1: normal, 3: installed
+          };
+        })
+        .filter((tool) => {
+          if (!installedFilter) return true; // 未开启过滤,显示所有
+          return tool.status !== 3; // 仅显示未安装的
+        }) || []
     );
-  }, [tools, allTags, currentTools, i18n.language]);
+  }, [tools, allTags, currentTools, i18n.language, installedFilter]);
 
   useEffect(() => {
     const heroSection = heroSectionRef.current;
@@ -143,14 +207,9 @@ const ToolkitMarketplace = () => {
       ([entry]) => {
         const shouldShowCompact = !entry.isIntersecting;
         setShowCompactSearch(shouldShowCompact);
-
-        if (entry.isIntersecting && isSearchExpanded && !searchText) {
-          setIsSearchExpanded(false);
-        }
       },
       {
-        threshold: 0,
-        rootMargin: '-120px 0px 0px 0px'
+        threshold: 0
       }
     );
 
@@ -159,11 +218,20 @@ const ToolkitMarketplace = () => {
     return () => {
       observer.disconnect();
     };
-  }, [isSearchExpanded, searchText]);
+  }, []);
 
   if (toolsError && !loadingTools) {
     return (
-      <Box h={'full'} py={6} pr={6}>
+      <Box h={'full'} py={6} pr={6} position={'relative'}>
+        <MyIconButton
+          icon={'common/closeLight'}
+          size={'6'}
+          onClick={() => router.push('/config/tools')}
+          position={'absolute'}
+          zIndex={'999'}
+          top={8}
+          left={4}
+        />
         <MyBox
           bg={'white'}
           h={'full'}
@@ -174,20 +242,22 @@ const ToolkitMarketplace = () => {
           alignItems={'center'}
           justifyContent={'center'}
         >
-          <MyIconButton
-            icon={'common/closeLight'}
-            size={'6'}
-            onClick={() => router.push('/config/tools')}
-            position={'absolute'}
-            left={4}
-            top={4}
-          />
-          <VStack spacing={4}>
-            <MyIcon name={'common/error'} w={16} h={16} color={'red.500'} />
-
-            <Box fontSize={'sm'} color={'myGray.600'}>
-              {t('common:core.chat.error.data_error')}
+          <VStack whiteSpace={'pre-wrap'} justifyContent={'center'} pb={16}>
+            <MyIcon name="empty" w={16} color={'transparent'} />
+            <Box mt={4} fontSize={'sm'} textAlign={'center'}>
+              {t('app:plugin_offline_tips')}
             </Box>
+            <Flex fontSize={'sm'} alignItems={'center'} mt={4}>
+              {t('app:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
+              <Button
+                variant={'whiteBase'}
+                size={'xs'}
+                ml={6}
+                onClick={() => copyData(marketplaceUrl)}
+              >
+                {t('common:Copy')}
+              </Button>
+            </Flex>
           </VStack>
         </MyBox>
       </Box>
@@ -211,30 +281,55 @@ const ToolkitMarketplace = () => {
             size={'6'}
             onClick={() => router.push('/config/tools')}
             position={'absolute'}
-            left={4}
             top={4}
+            zIndex={'999'}
+            {...(showCompactSearch ? { right: 4 } : { left: 4 })}
           />
-          <Flex gap={3} position={'absolute'} right={4} top={4}>
-            <Button>{t('app:toolkit_contribute_resource')}</Button>
-            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_faq')}</Button>
-            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_submit_request')}</Button>
-          </Flex>
+          {!showCompactSearch && (
+            <Flex gap={3} position={'absolute'} right={4} top={4}>
+              <Button
+                onClick={() => {
+                  if (feConfigs?.systemPluginCourseUrl) {
+                    window.open(feConfigs.systemPluginCourseUrl);
+                  }
+                }}
+              >
+                {t('app:toolkit_contribute_resource')}
+              </Button>
+              <Button
+                variant={'whiteBase'}
+                onClick={() => {
+                  if (feConfigs?.submitPluginRequestUrl) {
+                    window.open(feConfigs.submitPluginRequestUrl);
+                  }
+                }}
+              >
+                {t('app:toolkit_marketplace_submit_request')}
+              </Button>
+            </Flex>
+          )}
 
           <Box
-            h={showCompactSearch ? '120px' : '0'}
-            transition={'height 0.15s ease-out'}
+            h={showCompactSearch ? '90px' : '0'}
             overflow={'hidden'}
+            position={'absolute'}
+            bg={'white'}
+            right={0}
+            left={0}
+            roundedTop={'md'}
+            px={8}
           >
             <Box
               opacity={showCompactSearch ? 1 : 0}
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex pl={4} pt={8} alignItems={'center'}>
+              <Flex mt={2} pt={6} alignItems={'center'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
                   w={isSearchExpanded ? '320px' : 'auto'}
+                  mr={4}
                 >
                   {isSearchExpanded ? (
                     <InputGroup>
@@ -253,16 +348,21 @@ const ToolkitMarketplace = () => {
                         h={10}
                         borderRadius={'md'}
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSearch();
+                          }
+                        }}
                         autoFocus
                         onBlur={() => {
-                          if (!searchText) {
+                          if (!inputValue) {
                             setIsSearchExpanded(false);
                           }
                         }}
                       />
-                      {searchText && (
+                      {inputValue && (
                         <MyIcon
                           position={'absolute'}
                           zIndex={10}
@@ -274,6 +374,7 @@ const ToolkitMarketplace = () => {
                           color={'myGray.500'}
                           cursor={'pointer'}
                           onClick={() => {
+                            setInputValue('');
                             setSearchText('');
                             setIsSearchExpanded(false);
                           }}
@@ -285,10 +386,12 @@ const ToolkitMarketplace = () => {
                       alignItems={'center'}
                       justifyContent={'center'}
                       cursor={'pointer'}
-                      borderRadius={'md'}
-                      _hover={{ bg: 'myGray.100' }}
+                      borderRadius={'10px'}
+                      _hover={{ borderColor: 'primary.600' }}
                       onClick={() => setIsSearchExpanded(true)}
                       p={2}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
                     >
                       <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
                       <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
@@ -297,9 +400,6 @@ const ToolkitMarketplace = () => {
                     </Flex>
                   )}
                 </Flex>
-              </Flex>
-
-              <Flex mt={2} mb={4} alignItems={'center'}>
                 <PluginTagFilter
                   tags={allTags.map((tag) => ({
                     tagId: tag.type,
@@ -369,40 +469,65 @@ const ToolkitMarketplace = () => {
                   h={12}
                   borderRadius={'10px'}
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
                 />
               </InputGroup>
             </Box>
           </VStack>
 
           <Box px={8} pb={6}>
-            {/* 底部tag区域 - 使用固定高度容器 */}
-            <Box
-              h={showCompactSearch ? '0' : '56px'}
-              transition={'height 0.15s ease-out'}
-              overflow={'hidden'}
+            <Flex
+              mt={2}
+              mb={4}
+              alignItems={'center'}
+              opacity={showCompactSearch ? 0 : 1}
+              transition={'opacity 0.15s ease-out'}
+              pointerEvents={showCompactSearch ? 'none' : 'auto'}
             >
-              <Flex
-                mt={2}
-                mb={4}
-                alignItems={'center'}
-                opacity={showCompactSearch ? 0 : 1}
-                transition={'opacity 0.15s ease-out'}
-                pointerEvents={showCompactSearch ? 'none' : 'auto'}
-              >
-                <PluginTagFilter
-                  tags={allTags.map((tag) => ({
-                    tagId: tag.type,
-                    tagName: tag.name,
-                    tagOrder: 0,
-                    isSystem: true
-                  }))}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
-                />
-              </Flex>
-            </Box>
+              <PluginTagFilter
+                tags={allTags.map((tag) => ({
+                  tagId: tag.type,
+                  tagName: tag.name,
+                  tagOrder: 0,
+                  isSystem: true
+                }))}
+                selectedTagIds={selectedTagIds}
+                onTagSelect={setSelectedTagIds}
+              />
+              <MyMenu
+                trigger="hover"
+                Button={
+                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
+                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
+                    <Box fontSize={'12px'}>
+                      {installedFilter ? t('app:toolkit_uninstalled') : t('common:All')}
+                    </Box>
+                  </Flex>
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        label: t('common:All'),
+                        onClick: () => setInstalledFilter(false),
+                        isActive: !installedFilter
+                      },
+                      {
+                        label: t('app:toolkit_uninstalled'),
+                        onClick: () => setInstalledFilter(true),
+                        isActive: installedFilter
+                      }
+                    ]
+                  }
+                ]}
+              />
+            </Flex>
             {displayTools.length > 0 ? (
               <Grid
                 gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}

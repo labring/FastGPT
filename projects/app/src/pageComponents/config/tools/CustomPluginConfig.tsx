@@ -26,7 +26,7 @@ import {
   putUpdatePlugin
 } from '@/web/core/app/api/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -66,7 +66,7 @@ export const defaultCustomPluginForm: EditCustomPluginType = {
   avatar: 'core/app/type/pluginFill',
   intro: '',
   status: PluginStatusEnum.Normal,
-  defaultInstalled: true,
+  defaultInstalled: false,
   hasTokenFee: false,
   originCost: 0,
   currentCost: 0,
@@ -92,10 +92,13 @@ const CustomPluginConfig = ({
   const [searchKey, setSearchKey] = useState('');
   const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
 
-  const { data: plugins = [] } = useRequest2(() => getAllUserPlugins({ searchKey }), {
-    manual: false,
-    refreshDeps: [searchKey]
-  });
+  const { data: plugins = [], loading: loadingPlugins } = useRequest2(
+    () => getAllUserPlugins({ searchKey }),
+    {
+      manual: false,
+      refreshDeps: [searchKey]
+    }
+  );
 
   const { register, setValue, watch, handleSubmit } = useForm({
     defaultValues: defaultForm
@@ -123,7 +126,7 @@ const CustomPluginConfig = ({
     return plugins.find((item) => item._id === associatedPluginId);
   }, [plugins, associatedPluginId]);
 
-  const { data: tags = [] } = useRequest2(getPluginTags, {
+  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginTags, {
     manual: false
   });
   const pluginTypeSelectList = useMemo(
@@ -195,10 +198,6 @@ const CustomPluginConfig = ({
     }
   );
 
-  const { ConfirmModal: DeleteConfirmModal, openConfirm: openDeleteConfirm } = useConfirm({
-    type: 'delete',
-    content: t('app:custom_plugin_delete_confirm')
-  });
   const { runAsync: onDelete, loading: isDeleting } = useRequest2(delPlugin, {
     onSuccess() {
       toast({
@@ -220,6 +219,7 @@ const CustomPluginConfig = ({
       iconSrc={avatar}
       position={'relative'}
       onClose={onClose}
+      isLoading={loadingPlugins || loadingTags}
     >
       <ModalBody flex={1} overflow={'auto'} w={'full'}>
         <Flex w={'full'} gap={5}>
@@ -257,7 +257,7 @@ const CustomPluginConfig = ({
               />
             </Flex>
             <Box mt={3}>
-              <Box fontSize={'sm'} fontWeight={'medium'}>
+              <Box fontSize={'sm'} fontWeight={'medium'} mb={2}>
                 {t('app:custom_plugin_intro_label')}
               </Box>
               <Textarea
@@ -348,9 +348,27 @@ const CustomPluginConfig = ({
               <MultipleSelect
                 list={pluginTypeSelectList}
                 value={selectedTags}
-                onSelect={setSelectedTags}
+                onSelect={(newTags) => {
+                  if (newTags.length > 3) {
+                    toast({
+                      title: t('app:custom_plugin_tags_max_limit'),
+                      status: 'warning'
+                    });
+                    return;
+                  }
+                  setSelectedTags(newTags);
+                }}
                 isSelectAll={isSelectAllTags}
-                setIsSelectAll={setIsSelectAllTags}
+                setIsSelectAll={(val) => {
+                  if (val && pluginTypeSelectList.length > 3) {
+                    toast({
+                      title: t('app:custom_plugin_tags_max_limit'),
+                      status: 'warning'
+                    });
+                    return;
+                  }
+                  setIsSelectAllTags(val);
+                }}
                 placeholder={t('app:custom_plugin_tags_label')}
                 maxW={270}
               />
@@ -432,31 +450,37 @@ const CustomPluginConfig = ({
               {...register('userGuide')}
               placeholder={t('app:custom_plugin_user_guide_placeholder')}
               bg={'myGray.50'}
-              minH={'432px'}
+              minH={'472px'}
             />
           </Box>
         </Flex>
       </ModalBody>
-      <ModalFooter gap={4}>
-        {defaultForm.id && (
-          <Button
-            variant={'whiteBase'}
-            colorScheme="red"
-            isLoading={isDeleting}
-            onClick={() => {
-              return openDeleteConfirm(() => onDelete({ id: defaultForm.id! }))();
-            }}
-          >
-            {t('common:Delete')}
-          </Button>
+      <ModalFooter justifyContent={'space-between'}>
+        {defaultForm.id ? (
+          <PopoverConfirm
+            type="delete"
+            content={t('app:custom_plugin_delete_confirm')}
+            onConfirm={() => onDelete({ id: defaultForm.id! })}
+            Trigger={
+              <Button variant={'whiteDanger'} isLoading={isDeleting}>
+                {t('common:Delete')}
+              </Button>
+            }
+          />
+        ) : (
+          <Box />
         )}
 
-        <Button isLoading={loading || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
-          {isEdit ? t('app:custom_plugin_update') : t('app:custom_plugin_create')}
-        </Button>
+        <Flex gap={4}>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button isLoading={loading || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
+            {isEdit ? t('app:custom_plugin_update') : t('app:custom_plugin_create')}
+          </Button>
+        </Flex>
       </ModalFooter>
       <AvatarUploader />
-      <DeleteConfirmModal />
     </MyModal>
   );
 };

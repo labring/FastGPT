@@ -29,6 +29,7 @@ import MyBox from '../../common/MyBox';
 import Markdown from '../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import MyIcon from '../../common/Icon';
+import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 
 type toolDetailType = ToolDetailType & {
   versionList?: Array<{
@@ -42,6 +43,7 @@ type toolDetailType = ToolDetailType & {
   userGuide?: string;
   currentCost?: number;
   hasSystemSecret?: boolean;
+  secretInputConfig?: Array<{}>;
   inputList?: Array<FlowNodeInputItemType>;
 };
 
@@ -66,7 +68,7 @@ const ParamSection = ({
     >
       <Flex alignItems="center" gap={2} mb={4}>
         <Box w="4px" h="16px" bg="primary.600" borderRadius="2px" flexShrink={0} />
-        <Box fontSize="sm" fontWeight={600} color="myGray.900">
+        <Box fontSize="sm" color="myGray.900">
           {title}
         </Box>
       </Flex>
@@ -93,7 +95,8 @@ const ParamSection = ({
                 border={'1px solid'}
                 borderColor={'myGray.200'}
               >
-                {param.valueType || 'String'}
+                {/* @ts-ignore */}
+                {FlowValueTypeMap[param.valueType]?.label || 'String'}
               </Box>
             </Flex>
             {param.description && (
@@ -117,7 +120,7 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
       <AccordionButton px={2} py={2} _hover={{ bg: 'myGray.50' }} borderRadius="md">
         <Flex align="center" gap={3} flex={1} textAlign="left">
           <Box flex={1}>
-            <Box fontSize="12px" fontWeight={500} color="myGray.900">
+            <Box fontSize="14px" fontWeight={500} color="myGray.900">
               {parseI18nString(tool.name, i18n.language)}
             </Box>
           </Box>
@@ -214,21 +217,10 @@ const ToolDetailDrawer = ({
   }, [toolDetail?.tools]);
 
   const parentTool = useMemo(() => {
-    if (!onFetchDetail)
-      return {
-        versionList: [],
-        readme: '',
-        courseUrl: '',
-        userGuide: '',
-        currentCost: 0,
-        hasSystemSecret: false,
-        inputList: [],
-        ...selectedTool
-      };
     const parentTool = toolDetail?.tools.find((tool: toolDetailType) => !tool.parentId);
     return {
       ...parentTool,
-      ...selectedTool
+      tags: selectedTool.tags
     };
   }, [isToolSet, toolDetail?.tools]);
   const subTools = useMemo(() => {
@@ -315,6 +307,7 @@ const ToolDetailDrawer = ({
               <Button
                 w="full"
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
+                isLoading={isLoading}
                 onClick={() => {
                   onToggleInstall(!isInstalled);
                 }}
@@ -343,6 +336,7 @@ const ToolDetailDrawer = ({
               </Box>
               <Box fontSize={'12px'} color={'myGray.600'}>
                 {parentTool?.hasSystemSecret ||
+                (parentTool?.secretInputConfig && parentTool?.secretInputConfig.length > 0) ||
                 (parentTool?.inputList && parentTool?.inputList.length > 0)
                   ? t('app:toolkit_activation_required')
                   : t('app:toolkit_activation_not_required')}
@@ -352,7 +346,12 @@ const ToolDetailDrawer = ({
             <Box mt={4}>
               <LightRowTabs
                 list={[
-                  { label: t('app:toolkit_params_description'), value: 'params' },
+                  {
+                    label: isToolSet
+                      ? t('app:toolkit_tool_list')
+                      : t('app:toolkit_params_description'),
+                    value: 'params'
+                  },
                   ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
                     ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
                     : [])

@@ -79,7 +79,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
               link: '/config/tools',
-              activeLink: ['/config/tools']
+              activeLink: ['/config/tools', '/config/tools/marketplace']
             }
           ]
         : [])

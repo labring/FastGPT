@@ -105,7 +105,7 @@ const Navbar = ({ unread }: { unread: number }) => {
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
               link: '/config/tools',
-              activeLink: ['/config/tools']
+              activeLink: ['/config/tools', '/config/tools/marketplace']
             }
           ]
         : [])
@@ -183,8 +183,8 @@ const Navbar = ({ unread }: { unread: number }) => {
                       name: item.icon as any,
                       color: 'myGray.400'
                     })}
-                width={'20px'}
-                height={'20px'}
+                width={'24px'}
+                height={'24px'}
               />
               <Box
                 fontSize={'12px'}

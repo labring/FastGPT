@@ -4,7 +4,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -16,19 +16,26 @@ import {
   updatePluginTag,
   updatePluginTagOrder
 } from '@/web/core/app/api/plugin';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t, i18n } = useTranslation();
+  const { toast } = useToast();
   const newTagInputRef = useRef<HTMLInputElement>(null);
 
   const [localTags, setLocalTags] = useState<PluginTagSchemaType[]>([]);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
 
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: t('app:toolkit_tags_delete_confirm')
-  });
+  const checkTagNameDuplicate = (tagName: string, excludeTagId?: string): boolean => {
+    return localTags.some((tag) => {
+      if (excludeTagId && tag.tagId === excludeTagId) {
+        return false;
+      }
+      const existingName = parseI18nString(tag.tagName, i18n.language);
+      return existingName === tagName;
+    });
+  };
 
   const {
     data: tags = [],
@@ -144,10 +151,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                 value={inputValue}
                 size={'sm'}
                 ref={newTagInputRef}
+                maxLength={5}
                 onChange={(e) => setInputValue(e.target.value)}
                 onBlur={() => {
-                  if (inputValue.trim()) {
-                    handleAddTag(inputValue.trim());
+                  const trimmedValue = inputValue.trim();
+                  if (trimmedValue) {
+                    if (checkTagNameDuplicate(trimmedValue)) {
+                      toast({
+                        title: t('app:toolkit_tags_duplicate_name'),
+                        status: 'warning'
+                      });
+                      setEditingTagId(null);
+                      setInputValue('');
+                    } else {
+                      handleAddTag(trimmedValue);
+                    }
                   } else {
                     setEditingTagId(null);
                     setInputValue('');
@@ -198,10 +216,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                               value={inputValue}
                               size={'sm'}
                               ref={newTagInputRef}
+                              maxLength={5}
                               onChange={(e) => setInputValue(e.target.value)}
                               onBlur={() => {
-                                if (editingTagId && inputValue.trim()) {
-                                  handleUpdateTag(editingTagId, inputValue.trim());
+                                const trimmedValue = inputValue.trim();
+                                if (editingTagId && trimmedValue) {
+                                  if (checkTagNameDuplicate(trimmedValue, editingTagId)) {
+                                    toast({
+                                      title: t('app:toolkit_tags_duplicate_name'),
+                                      status: 'warning'
+                                    });
+                                    setEditingTagId(null);
+                                    setInputValue('');
+                                  } else {
+                                    handleUpdateTag(editingTagId, trimmedValue);
+                                  }
                                 } else {
                                   setEditingTagId(null);
                                   setInputValue('');
@@ -247,19 +276,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                                   >
                                     <MyIcon name="edit" w={4} color={'myGray.600'} />
                                   </Flex>
-                                  <Flex
-                                    _hover={{ bg: 'myGray.100' }}
-                                    p={1}
-                                    borderRadius={'sm'}
-                                    cursor={'pointer'}
-                                    onClick={() => {
-                                      openConfirm(async () => {
-                                        await handleDeleteTag(tag);
-                                      })();
-                                    }}
-                                  >
-                                    <MyIcon name="delete" w={4} color={'myGray.600'} />
-                                  </Flex>
+                                  <PopoverConfirm
+                                    type="delete"
+                                    content={t('app:toolkit_tags_delete_confirm')}
+                                    Trigger={
+                                      <Flex
+                                        _hover={{ bg: 'myGray.100' }}
+                                        p={1}
+                                        borderRadius={'sm'}
+                                        cursor={'pointer'}
+                                      >
+                                        <MyIcon name="delete" w={4} color={'myGray.600'} />
+                                      </Flex>
+                                    }
+                                    onConfirm={() => handleDeleteTag(tag)}
+                                  />
                                 </>
                               )}
                             </Flex>
@@ -277,7 +308,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       <ModalFooter>
         <Button onClick={onClose}>{t('common:Close')}</Button>
       </ModalFooter>
-      <ConfirmModal />
     </MyModal>
   );
 };
