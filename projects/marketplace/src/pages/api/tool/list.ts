@@ -27,12 +27,18 @@ async function handler(
     }
     if (
       searchKey &&
-      !(item.name.en + (item.name['zh-CN'] ?? '') + (item.name['zh-Hant'] ?? '')).includes(
-        searchKey
-      )
+      !(
+        item.name.en +
+        (item.name['zh-CN'] ?? '') +
+        (item.name['zh-Hant'] ?? '') +
+        item.toolId +
+        item.description.en +
+        item.description['zh-CN'] +
+        item.description['zh-Hant']
+      ).includes(searchKey)
     )
       return false;
-    if (tags && !tags.every((tag) => (item.tags as string[]).includes(tag))) return false;
+    if (tags && !tags.some((tag) => (item.tags as string[]).includes(tag))) return false;
     return true;
   });
 
