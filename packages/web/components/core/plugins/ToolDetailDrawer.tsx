@@ -152,12 +152,14 @@ const ToolDetailDrawer = ({
   selectedTool: ToolCardItemType;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
-  onFetchDetail?: (toolId: string) => Promise<{ tools: toolDetailType[]; downloadUrl: string }>;
+  onFetchDetail?: (
+    toolId: string
+  ) => Promise<{ tools: Array<ToolDetailType & { readme: string }>; downloadUrl: string }>;
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
   const [toolDetail, setToolDetail] = useState<
-    { tools: toolDetailType[]; downloadUrl: string } | undefined
+    { tools: Array<toolDetailType & { readme: string }>; downloadUrl: string } | undefined
   >(undefined);
   const [loading, setLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string>('');

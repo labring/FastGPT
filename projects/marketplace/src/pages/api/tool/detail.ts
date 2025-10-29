@@ -1,17 +1,14 @@
 import { getToolList } from '@/service/tool/data';
 import { ToolDetailSchema, type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { getPkgdownloadURL } from '@/service/s3';
+import { getPkgdownloadURL, getReadmeURL } from '@/service/s3';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import type { ToolDetailResponse } from '@fastgpt/global/core/app/plugin/type';
 
 export type ToolDetailQuery = {
   toolId: string;
 };
 export type ToolDetailBody = {};
-export type ToolDetailResponse = {
-  tool: ToolDetailType;
-  downloadUrl: string;
-};
 
 async function handler(
   req: ApiRequestProps<ToolDetailBody, ToolDetailQuery>,
@@ -24,14 +21,18 @@ async function handler(
   }
 
   const toolList = await getToolList();
-  const tool = toolList.find((item) => item.toolId === toolId);
+  const tools = toolList.filter((item) => item.toolId.startsWith(toolId));
 
-  if (!tool) {
-    throw new Error('tool not found');
+  if (tools.length < 1) {
+    res.status(404);
+    Promise.reject('tool not found');
   }
 
   return {
-    tool: ToolDetailSchema.parse(tool),
+    tools: tools.map((tool) => ({
+      ...ToolDetailSchema.parse(tool),
+      readme: getReadmeURL(toolId)
+    })),
     downloadUrl: getPkgdownloadURL(toolId)
   };
 }
