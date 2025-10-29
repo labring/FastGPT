@@ -32,16 +32,15 @@ git init
 git remote add origin git@github.com:[your-name]/fastgpt-plugin.git
 ```
 
-- (可选）使用稀疏检出 (Sparse-checkout) 以避免拉取所有插件代码，如果不进行稀疏检出
+- (可选）使用稀疏检出 (Sparse-checkout) 以避免拉取所有插件代码，如果不进行稀疏检出，则会拉取所有官方插件
 ```bash
 git sparse-checkout init --no-cone
 git sparse-checkout set "/*" "!/modules/tool/packages/*"
+git pull
 ```
-
-- 本地 clone 项目 `git clone git@github.com:[your-github-username]/fastgpt-plugin.git`
 - 拷贝示例环境变量文件，并修改连接到开发环境的 Minio `cp .env.example .env.local`
 - 安装依赖 `bun install`
-- 运行开发环境 `bun run dev`
+- 运行开发环境 `bun run dev:runtime`
 
 在 dev 环境下，Bun 将监听修改并热更新。
 
@@ -67,6 +66,8 @@ test // 测试样例
 config.ts // 配置，配置工具的名称、描述、类型、图标等
 index.ts // 入口，不要改这个文件
 logo.svg // Logo，替换成你的工具的 Logo
+README.md // （可选）README 文件，用于展示工具的使用说明和示例
+assets/ // （可选）assets 目录，用于存放工具的资源文件，如图片、音频等
 package.json // npm 包
 ```
 
@@ -74,19 +75,21 @@ package.json // npm 包
 
 ```plaintext
 children
-└── tool // 这个里面的结构就和上面的 tool 基本一致
+└── tool // 这个里面的结构就和上面的 tool 一致，但是没有 README 和 assets 目录
 config.ts
 index.ts
 logo.svg
+README.md
+assets/
 package.json
 ```
 
 ### 2.2 修改 config.ts
 
 - **name** 和 **description** 字段为中文和英文两种语言
-- **courseUrl** 密钥获取链接，或官网链接，教程链接等。
+- **courseUrl**（可选） 密钥获取链接，或官网链接，教程链接等，如果提供 README.md，则可以写到 README 里面
 - **author** 开发者名
-- **type** 为枚举类型，目前有:
+- **tags** 工具默认的标签，有如下可选标签(枚举类型)
 	- tools: 工具
 	- search: 搜索
 	- multimodal: 多模态
