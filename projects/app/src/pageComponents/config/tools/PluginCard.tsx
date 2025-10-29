@@ -81,6 +81,7 @@ const PluginCard = ({
     },
     {
       onSuccess: (_, updateFields) => {
+        console.log(updateFields);
         setLocalPlugins((prev) =>
           prev.map((item) => (item.id === plugin.id ? { ...item, ...updateFields[0] } : item))
         );
@@ -153,10 +154,10 @@ const PluginCard = ({
                 as={'span'}
                 bg={'myGray.100'}
                 px={2}
-                py={'3px'}
+                py={1}
                 color={'myGray.700'}
                 borderRadius={'8px'}
-                fontSize={'12px'}
+                fontSize={'xs'}
                 flexShrink={0}
                 data-tag-item
               >
@@ -234,14 +235,17 @@ const PluginCard = ({
                 hasTokenFee: !plugin?.hasTokenFee
               });
             }}
+            pl={2}
           >
             <Switch isChecked={plugin?.hasTokenFee} size={'sm'} />
           </Box>
         ) : (
-          '-'
+          <Box pl={4}>-</Box>
         )}
       </Box>
-      <Box w={1 / 10}>{plugin?.associatedPluginId ? plugin?.currentCost ?? 0 : '-'}</Box>
+      <Box w={1 / 10} pl={4}>
+        {plugin?.associatedPluginId ? plugin?.currentCost ?? 0 : '-'}
+      </Box>
       <Box w={1 / 10}>
         {!!plugin?.inputList ? (
           <Box color={plugin?.hasSystemSecret ? 'green.600' : 'myGray.500'}>
@@ -250,7 +254,7 @@ const PluginCard = ({
               : t('app:toolkit_system_key_not_configured')}
           </Box>
         ) : (
-          '-'
+          <Box pl={4}>-</Box>
         )}
       </Box>
     </MyBox>

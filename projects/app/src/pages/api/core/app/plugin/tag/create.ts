@@ -24,18 +24,13 @@ async function handler(
     return Promise.reject('Tag name is required');
   }
 
-  const lastTag = await MongoPluginTag.findOne().sort({ tagOrder: -1 }).lean();
-  const nextOrder = lastTag ? lastTag.tagOrder + 1 : 0;
+  const firstTag = await MongoPluginTag.findOne().sort({ tagOrder: 1 }).lean();
 
-  const tagId = getNanoid(6);
-
-  await MongoPluginTag.create({
-    tagId,
+  return await MongoPluginTag.create({
+    tagId: getNanoid(6),
     tagName: tagName.trim(),
-    tagOrder: nextOrder
+    tagOrder: firstTag ? firstTag.tagOrder - 1 : 0
   });
-
-  return {};
 }
 
 export default NextAPI(handler);

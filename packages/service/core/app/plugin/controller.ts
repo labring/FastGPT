@@ -513,7 +513,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
   return {
     id: item.pluginId,
     status: item.status ?? 1,
-    defaultInstalled: item.defaultInstalled ?? true,
+    defaultInstalled: item.defaultInstalled ?? false,
     isFolder: false,
     parentId: null,
     author: item.customConfig?.author || '',
@@ -571,7 +571,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       versionList,
       showStatus: true,
       status: dbPluginConfig?.status ?? 1,
-      defaultInstalled: dbPluginConfig?.defaultInstalled ?? true,
+      defaultInstalled: dbPluginConfig?.defaultInstalled ?? false,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
 

@@ -7,6 +7,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export async function APIGetSystemToolList() {
   const res = await pluginClient.tool.list();
+  console.log('res', JSON.stringify(res, null, 2));
 
   if (res.status === 200) {
     return res.body.map((item) => {

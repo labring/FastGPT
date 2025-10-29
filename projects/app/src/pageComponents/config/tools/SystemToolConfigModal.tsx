@@ -61,7 +61,7 @@ const SystemToolConfigModal = ({
   const { register, handleSubmit, setValue, watch, control } = useForm<UpdateToolFormType>({
     defaultValues: {
       status: plugin.status ?? PluginStatusEnum.Normal,
-      defaultInstalled: plugin.defaultInstalled ?? true,
+      defaultInstalled: plugin.defaultInstalled ?? false,
       originCost: plugin.originCost || 0,
       currentCost: plugin.currentCost || 0,
       hasTokenFee: plugin.hasTokenFee || false,
@@ -105,7 +105,7 @@ const SystemToolConfigModal = ({
             return {
               pluginId: tool.id,
               status: tool.status ?? PluginStatusEnum.Normal,
-              defaultInstalled: tool.defaultInstalled ?? true,
+              defaultInstalled: tool.defaultInstalled ?? false,
               originCost: tool.originCost || 0,
               currentCost: tool.currentCost || 0,
               hasTokenFee: tool.hasTokenFee || false,
