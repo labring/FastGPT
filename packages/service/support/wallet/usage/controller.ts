@@ -69,11 +69,18 @@ export const createChatUsage = ({
   return { totalPoints };
 };
 
-export type DatasetTrainingMode = 'paragraph' | 'qa' | 'autoIndex' | 'imageIndex' | 'imageParse';
+export type DatasetTrainingMode =
+  | 'paragraph'
+  | 'qa'
+  | 'autoIndex'
+  | 'imageIndex'
+  | 'imageParse'
+  | 'hype';
 export const datasetTrainingUsageIndexMap: Record<DatasetTrainingMode, number> = {
   paragraph: 1,
   qa: 2,
   autoIndex: 3,
+  hype: 3,
   imageIndex: 4,
   imageParse: 5
 };

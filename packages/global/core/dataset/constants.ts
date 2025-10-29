@@ -273,7 +273,8 @@ export enum TrainingModeEnum {
   auto = 'auto',
   image = 'image',
   imageParse = 'imageParse',
-  databaseSchema = 'databaseSchema'
+  databaseSchema = 'databaseSchema',
+  hype = 'hype'
 }
 
 /* ------------ search -------------- */

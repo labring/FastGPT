@@ -38,6 +38,9 @@ export type ChunkSettingsType = {
   imageIndex?: boolean;
   autoIndexes?: boolean;
   indexPrefixTitle?: boolean;
+  hypeIndexes?: boolean;
+
+  hypePrompt?: String;
 
   // Chunk setting
   chunkSettingMode?: ChunkSettingModeEnum; // 系统参数/自定义参数
