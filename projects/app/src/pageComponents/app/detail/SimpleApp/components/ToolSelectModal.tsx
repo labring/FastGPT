@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -13,7 +13,6 @@ import {
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getPluginTags,
   getPreviewPluginNode,
   getSystemPlugTemplates,
   getSystemPluginPaths
@@ -25,7 +24,6 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -310,36 +308,13 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const { data: pluginTags = [] } = useRequest2(getPluginTags, {
-    manual: false
-  });
-  const filteredTemplates = useMemo(() => {
-    if (type !== TemplateTypeEnum.systemPlugin || selectedTagIds.length === 0) {
-      return templates;
-    }
-    return templates.filter((tool) => {
-      const tagIds = tool.pluginTags || (tool.templateType ? [tool.templateType] : []);
-      return tagIds.some((tagId) => selectedTagIds.includes(tagId));
-    });
-  }, [templates, selectedTagIds, type]);
-
   const PluginListRender = useMemoizedFn(() => {
     const isSystemTool = type === TemplateTypeEnum.systemPlugin;
     return (
       <>
-        {isSystemTool && pluginTags.length > 0 && (
-          <Flex mb={4} alignItems={'center'} px={3}>
-            <PluginTagFilter
-              tags={pluginTags}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={setSelectedTagIds}
-            />
-          </Flex>
-        )}
-
-        {filteredTemplates.length > 0 ? (
+        {templates.length > 0 ? (
           <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3}>
-            {filteredTemplates.map((template) => {
+            {templates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
               return (
                 <MyTooltip

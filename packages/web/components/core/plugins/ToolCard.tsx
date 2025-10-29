@@ -43,6 +43,9 @@ const ToolCard = ({
   const isInstalled = useMemo(() => {
     return item.status === ToolStatusEnum.Installed;
   }, [item.status]);
+  const isDownload = useMemo(() => {
+    return item.status === ToolStatusEnum.Download;
+  }, [item.status]);
 
   useEffect(() => {
     const calculate = () => {
@@ -197,7 +200,11 @@ const ToolCard = ({
             onToggleInstall(!isInstalled);
           }}
         >
-          {isInstalled ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
+          {isDownload
+            ? t('common:Download')
+            : isInstalled
+              ? t('app:toolkit_uninstall')
+              : t('app:toolkit_install')}
         </Button>
       </Flex>
     </MyBox>

@@ -24,7 +24,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { ToolCardItemType } from './ToolCard';
+import { ToolStatusEnum, type ToolCardItemType } from './ToolCard';
 import MyBox from '../../common/MyBox';
 import Markdown from '../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -127,7 +127,7 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
 
       <AccordionPanel px={2} pb={4} pt={0}>
         <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
-          {tool.intro}
+          {tool.intro || parseI18nString(tool.description, i18n.language)}
         </Box>
         <Flex gap={1} fontSize={'12px'}>
           <MyIcon name={'common/info'} color={'primary.600'} w={4} />
@@ -160,7 +160,8 @@ const ToolDetailDrawer = ({
   selectedTool,
   onToggleInstall,
   systemTitle,
-  onFetchDetail
+  onFetchDetail,
+  isLoading
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
@@ -169,6 +170,7 @@ const ToolDetailDrawer = ({
   onFetchDetail?: (
     toolId: string
   ) => Promise<{ tools: Array<ToolDetailType & { readme: string }>; downloadUrl: string }>;
+  isLoading?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
@@ -181,6 +183,9 @@ const ToolDetailDrawer = ({
   const isInstalled = useMemo(() => {
     return selectedTool.status === 3;
   }, [selectedTool.status]);
+  const isDownload = useMemo(() => {
+    return selectedTool.status === ToolStatusEnum.Download;
+  }, [selectedTool.status]);
 
   useEffect(() => {
     const fetchToolDetail = async () => {
@@ -188,7 +193,7 @@ const ToolDetailDrawer = ({
         setLoading(true);
         try {
           const detail = await onFetchDetail(selectedTool.id);
-          setToolDetail(detail);
+          setToolDetail(detail as any);
         } catch (error) {
           console.error('Failed to fetch tool detail:', error);
         } finally {
@@ -220,13 +225,16 @@ const ToolDetailDrawer = ({
         inputList: [],
         ...selectedTool
       };
-    return toolDetail?.tools.find((tool: toolDetailType) => !tool.parentId);
+    const parentTool = toolDetail?.tools.find((tool: toolDetailType) => !tool.parentId);
+    return {
+      ...parentTool,
+      ...selectedTool
+    };
   }, [isToolSet, toolDetail?.tools]);
   const subTools = useMemo(() => {
     if (!isToolSet || !toolDetail?.tools) return [];
     return toolDetail?.tools.filter((subTool: toolDetailType) => !!subTool.parentId);
   }, [isToolSet, toolDetail?.tools]);
-  console.log(subTools);
 
   useEffect(() => {
     const fetchReadme = async () => {
@@ -279,149 +287,143 @@ const ToolDetailDrawer = ({
         </DrawerHeader>
 
         <DrawerBody position="relative">
-          {loading && (
-            <MyBox
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              bottom={0}
-              zIndex={10}
-              bg="rgba(255, 255, 255, 0.8)"
-              isLoading={loading}
-            />
-          )}
-          <Flex gap={2} flexWrap="wrap">
-            {parentTool?.tags?.map((tag: string) => (
-              <Box
-                key={tag}
-                px={2}
-                py={1}
-                border={'1px solid'}
-                borderRadius={'6px'}
-                borderColor={'myGray.200'}
-                fontSize={'10px'}
-                fontWeight={'medium'}
-                color={'myGray.700'}
+          <MyBox isLoading={loading}>
+            <Flex gap={2} flexWrap="wrap">
+              {parentTool?.tags?.map((tag: string) => (
+                <Box
+                  key={tag}
+                  px={2}
+                  py={1}
+                  border={'1px solid'}
+                  borderRadius={'6px'}
+                  borderColor={'myGray.200'}
+                  fontSize={'10px'}
+                  fontWeight={'medium'}
+                  color={'myGray.700'}
+                >
+                  {tag}
+                </Box>
+              ))}
+            </Flex>
+            <Box fontSize={'12px'} color="myGray.500" mt={3}>
+              {parseI18nString(parentTool?.description || '', i18n.language)}
+            </Box>
+            <Box fontSize={'12px'} color="myGray.500" mt={3}>
+              {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
+            </Box>
+            <Flex mt={3}>
+              <Button
+                w="full"
+                variant={isInstalled ? 'primaryOutline' : 'primary'}
+                onClick={() => {
+                  onToggleInstall(!isInstalled);
+                }}
               >
-                {tag}
+                {isDownload
+                  ? t('common:Download')
+                  : isInstalled
+                    ? t('app:toolkit_uninstall')
+                    : t('app:toolkit_install')}
+              </Button>
+            </Flex>
+
+            <Flex mt={4} gap={1.5} alignItems={'center'}>
+              <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
+                {t('app:toolkit_call_points_label')}
               </Box>
-            ))}
-          </Flex>
-          <Box fontSize={'12px'} color="myGray.500" mt={3}>
-            {parseI18nString(parentTool?.description || '', i18n.language)}
-          </Box>
-          <Box fontSize={'12px'} color="myGray.500" mt={3}>
-            {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
-          </Box>
-          <Flex mt={3}>
-            <Button
-              w="full"
-              variant={isInstalled ? 'primaryOutline' : 'primary'}
-              onClick={() => {
-                onToggleInstall(!isInstalled);
-              }}
-            >
-              {isInstalled ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
-            </Button>
-          </Flex>
+              <Box fontSize={'12px'} color={'myGray.600'}>
+                {!!parentTool?.currentCost
+                  ? parentTool?.currentCost
+                  : t('app:toolkit_no_call_points')}
+              </Box>
+            </Flex>
+            <Flex mt={4} gap={1.5} alignItems={'center'}>
+              <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
+                {t('app:toolkit_activation_label')}
+              </Box>
+              <Box fontSize={'12px'} color={'myGray.600'}>
+                {parentTool?.hasSystemSecret ||
+                (parentTool?.inputList && parentTool?.inputList.length > 0)
+                  ? t('app:toolkit_activation_required')
+                  : t('app:toolkit_activation_not_required')}
+              </Box>
+            </Flex>
 
-          <Flex mt={4} gap={1.5} alignItems={'center'}>
-            <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-              {t('app:toolkit_call_points_label')}
+            <Box mt={4}>
+              <LightRowTabs
+                list={[
+                  { label: t('app:toolkit_params_description'), value: 'params' },
+                  ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
+                    ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
+                    : [])
+                ]}
+                value={activeTab}
+                onChange={(value) => {
+                  if (value === 'guide' && parentTool?.courseUrl) {
+                    window.open(parentTool?.courseUrl, '_blank');
+                  } else {
+                    setActiveTab(value as 'guide' | 'params');
+                  }
+                }}
+              />
+              <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
             </Box>
-            <Box fontSize={'12px'} color={'myGray.600'}>
-              {!!parentTool?.currentCost
-                ? parentTool?.currentCost
-                : t('app:toolkit_no_call_points')}
-            </Box>
-          </Flex>
-          <Flex mt={4} gap={1.5} alignItems={'center'}>
-            <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-              {t('app:toolkit_activation_label')}
-            </Box>
-            <Box fontSize={'12px'} color={'myGray.600'}>
-              {parentTool?.hasSystemSecret ||
-              (parentTool?.inputList && parentTool?.inputList.length > 0)
-                ? t('app:toolkit_activation_required')
-                : t('app:toolkit_activation_not_required')}
-            </Box>
-          </Flex>
 
-          <Box mt={4}>
-            <LightRowTabs
-              list={[
-                { label: t('app:toolkit_params_description'), value: 'params' },
-                ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
-                  ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
-                  : [])
-              ]}
-              value={activeTab}
-              onChange={(value) => {
-                if (value === 'guide' && parentTool?.courseUrl) {
-                  window.open(parentTool?.courseUrl, '_blank');
-                } else {
-                  setActiveTab(value as 'guide' | 'params');
-                }
-              }}
-            />
-            <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
-          </Box>
-
-          <Box mt={4}>
-            {activeTab === 'guide' && (
-              <VStack align="stretch" spacing={4}>
-                {readmeContent ||
-                  (parentTool?.userGuide && (
-                    <Box
-                      px={4}
-                      py={3}
-                      border="1px solid"
-                      borderColor="myGray.200"
-                      borderRadius="md"
-                      bg="myGray.50"
-                      fontSize="sm"
-                      color="myGray.900"
-                      maxH="400px"
-                      overflowY="auto"
-                    >
-                      <Markdown source={readmeContent || parentTool?.userGuide} />
-                    </Box>
-                  ))}
-              </VStack>
-            )}
-
-            {activeTab === 'params' && (
-              <VStack align="stretch" spacing={4}>
-                {isToolSet && subTools.length > 0 && (
-                  <Accordion allowMultiple>
-                    {subTools.map((subTool: ToolDetailType) => (
-                      <SubToolAccordionItem key={subTool.toolId} tool={subTool} />
+            <Box mt={4}>
+              {activeTab === 'guide' && (
+                <VStack align="stretch" spacing={4}>
+                  {readmeContent ||
+                    (parentTool?.userGuide && (
+                      <Box
+                        px={4}
+                        py={3}
+                        border="1px solid"
+                        borderColor="myGray.200"
+                        borderRadius="md"
+                        bg="myGray.50"
+                        fontSize="sm"
+                        color="myGray.900"
+                        maxH="400px"
+                        overflowY="auto"
+                      >
+                        <Markdown source={readmeContent || parentTool?.userGuide} />
+                      </Box>
                     ))}
-                  </Accordion>
-                )}
+                </VStack>
+              )}
 
-                {!isToolSet && (
-                  <>
-                    {parentTool?.versionList?.[0]?.inputs &&
-                      parentTool?.versionList?.[0]?.inputs.length > 0 && (
-                        <ParamSection
-                          title={t('app:toolkit_inputs')}
-                          params={parentTool?.versionList?.[0]?.inputs}
-                        />
-                      )}
-                    {parentTool?.versionList?.[0]?.outputs &&
-                      parentTool?.versionList?.[0]?.outputs.length > 0 && (
-                        <ParamSection
-                          title={t('app:toolkit_outputs')}
-                          params={parentTool?.versionList?.[0]?.outputs}
-                        />
-                      )}
-                  </>
-                )}
-              </VStack>
-            )}
-          </Box>
+              {activeTab === 'params' && (
+                <VStack align="stretch" spacing={4}>
+                  {isToolSet && subTools.length > 0 && (
+                    <Accordion allowMultiple>
+                      {subTools.map((subTool: ToolDetailType) => (
+                        <SubToolAccordionItem key={subTool.toolId} tool={subTool} />
+                      ))}
+                    </Accordion>
+                  )}
+
+                  {!isToolSet && (
+                    <>
+                      {parentTool?.versionList?.[0]?.inputs &&
+                        parentTool?.versionList?.[0]?.inputs.length > 0 && (
+                          <ParamSection
+                            title={t('app:toolkit_inputs')}
+                            params={parentTool?.versionList?.[0]?.inputs}
+                          />
+                        )}
+                      {parentTool?.versionList?.[0]?.outputs &&
+                        parentTool?.versionList?.[0]?.outputs.length > 0 && (
+                          <ParamSection
+                            title={t('app:toolkit_outputs')}
+                            params={parentTool?.versionList?.[0]?.outputs}
+                          />
+                        )}
+                    </>
+                  )}
+                </VStack>
+              )}
+            </Box>
+          </MyBox>
         </DrawerBody>
       </DrawerContent>
     </Drawer>

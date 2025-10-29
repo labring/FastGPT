@@ -74,7 +74,7 @@ const ToolProvider = () => {
       <Flex alignItems={'center'}>
         <Flex flex={'1'} overflow={'auto'}>
           <Box px={4} py={2} fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
-            {t('app:toolkit')}
+            {t('common:navbar.toolkit')}
           </Box>
         </Flex>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>

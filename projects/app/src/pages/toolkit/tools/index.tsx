@@ -24,7 +24,6 @@ import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDra
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import getPreviewNode from '@/pages/api/core/app/plugin/getPreviewNode';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ToolKitProvider = () => {

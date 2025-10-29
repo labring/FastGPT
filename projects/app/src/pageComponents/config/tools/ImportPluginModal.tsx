@@ -123,7 +123,6 @@ const ImportPluginModal = ({
         try {
           await uploadAndParseFile(file);
         } catch (error) {
-          // 单个文件失败不影响其他文件继续上传
           console.error(`上传文件 ${file.name} 失败:`, error);
         }
       }
@@ -133,7 +132,6 @@ const ImportPluginModal = ({
     }
   );
 
-  // 重试单个文件
   const handleRetry = async (file: UploadedPluginFile) => {
     try {
       await uploadAndParseFile(file);
@@ -142,31 +140,21 @@ const ImportPluginModal = ({
     }
   };
 
-  // 删除文件
   const handleDelete = (file: UploadedPluginFile) => {
     setUploadedFiles((prev) => prev.filter((f) => f.name !== file.name));
     setSelectFiles((prev) => prev.filter((f) => f.name !== file.name));
   };
 
-  // 步骤3: 确认导入所有成功的插件
   const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest2(
     async () => {
-      // 获取所有成功解析的 toolId
       const successToolIds = uploadedFiles
         .filter((file) => file.status === 'success' && file.toolId)
         .map((file) => file.toolId!);
 
-      if (successToolIds.length === 0) {
-        throw new Error('没有可导入的插件');
-      }
-
-      // 批量确认导入
       await confirmPluginUpload({ toolIds: successToolIds });
     },
     {
       manual: true,
-      successToast: '插件导入成功',
-      errorToast: '插件导入失败',
       onSuccess: () => {
         setUploadedFiles([]);
         onSuccess?.(); // 调用父组件的 onSuccess 回调刷新列表
