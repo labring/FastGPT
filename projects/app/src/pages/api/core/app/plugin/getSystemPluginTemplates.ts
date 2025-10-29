@@ -11,6 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -42,7 +43,7 @@ async function handler(
 
   return plugins
     .filter((plugin) => {
-      if (plugin.status !== 1) {
+      if (plugin.status !== PluginStatusEnum.Normal) {
         return false;
       }
       if (uninstalledSet.has(plugin.id)) {
@@ -62,7 +63,6 @@ async function handler(
       intro: parseI18nString(plugin.intro ?? '', lang),
       instructions: parseI18nString(plugin.userGuide ?? '', lang),
       toolDescription: plugin.toolDescription,
-      toolSource: plugin.toolSource,
       pluginTags: plugin.pluginTags
     }))
     .filter((item) => {

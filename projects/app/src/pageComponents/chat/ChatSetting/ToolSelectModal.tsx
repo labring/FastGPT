@@ -12,12 +12,10 @@ import {
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getPluginTags,
   getPreviewPluginNode,
   getSystemPlugTemplates,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
@@ -246,22 +244,6 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const { data: pluginTags = [] } = useRequest2(getPluginTags, {
-    manual: false
-  });
-
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-
-  const filteredTemplates = useMemo(() => {
-    if (selectedTagIds.length === 0) {
-      return templates;
-    }
-    return templates.filter((tool) => {
-      const tagIds = tool.pluginTags || (tool.templateType ? [tool.templateType] : []);
-      return tagIds.some((tagId) => selectedTagIds.includes(tagId));
-    });
-  }, [templates, selectedTagIds]);
-
   const gridStyle = {
     gridTemplateColumns: ['1fr', '1fr 1fr'],
     py: 3,
@@ -271,19 +253,9 @@ const RenderList = React.memo(function RenderList({
   const PluginListRender = useMemoizedFn(() => {
     return (
       <>
-        {pluginTags.length > 0 && (
-          <Flex mb={4} alignItems={'center'} px={3}>
-            <PluginTagFilter
-              tags={pluginTags}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={setSelectedTagIds}
-            />
-          </Flex>
-        )}
-
-        {filteredTemplates.length > 0 ? (
+        {templates.length > 0 ? (
           <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={3} columnGap={3} mt={3}>
-            {filteredTemplates.map((template) => {
+            {templates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
 
               return (

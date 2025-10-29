@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
@@ -34,6 +34,9 @@ const ToolkitMarketplace = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [showCompactSearch, setShowCompactSearch] = useState(false);
+  const heroSectionRef = useRef<HTMLDivElement>(null);
 
   const {
     data: tools,
@@ -55,13 +58,17 @@ const ToolkitMarketplace = () => {
       refreshDeps: [searchText, selectedTagIds]
     }
   );
-  const { data: currentTools = [], runAsync: refreshCurrentTools } = useRequest2(getSystemPlugins, {
+  const {
+    data: currentTools = [],
+    runAsync: refreshCurrentTools,
+    loading: loadingCurrentTools
+  } = useRequest2(getSystemPlugins, {
     manual: false
   });
   const { data: allTags = [] } = useRequest2(() => getToolTags(), {
     manual: false
   });
-  const { runAsync: handleInstallTool } = useRequest2(
+  const { runAsync: handleInstallTool, loading: installToolLoading } = useRequest2(
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
       setOperatingToolId(tool.id);
@@ -78,10 +85,13 @@ const ToolkitMarketplace = () => {
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
+        if (selectedTool) {
+          setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
+        }
       }
     }
   );
-  const { runAsync: handleDeleteTool } = useRequest2(
+  const { runAsync: handleDeleteTool, loading: deleteToolLoading } = useRequest2(
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
       try {
@@ -95,6 +105,9 @@ const ToolkitMarketplace = () => {
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
+        if (selectedTool) {
+          setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
+        }
       }
     }
   );
@@ -121,6 +134,32 @@ const ToolkitMarketplace = () => {
       }) || []
     );
   }, [tools, allTags, currentTools, i18n.language]);
+
+  useEffect(() => {
+    const heroSection = heroSectionRef.current;
+    if (!heroSection) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const shouldShowCompact = !entry.isIntersecting;
+        setShowCompactSearch(shouldShowCompact);
+
+        if (entry.isIntersecting && isSearchExpanded && !searchText) {
+          setIsSearchExpanded(false);
+        }
+      },
+      {
+        threshold: 0,
+        rootMargin: '-120px 0px 0px 0px'
+      }
+    );
+
+    observer.observe(heroSection);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isSearchExpanded, searchText]);
 
   if (toolsError && !loadingTools) {
     return (
@@ -166,125 +205,232 @@ const ToolkitMarketplace = () => {
         flexDirection={'column'}
         isLoading={loadingTools}
       >
-        <MyIconButton
-          icon={'common/closeLight'}
-          size={'6'}
-          onClick={() => router.push('/config/tools')}
-          position={'absolute'}
-          left={4}
-          top={4}
-        />
-        <Flex gap={3} position={'absolute'} right={4} top={4}>
-          <Button>{t('app:toolkit_contribute_resource')}</Button>
-          <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_faq')}</Button>
-          <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_submit_request')}</Button>
-        </Flex>
-        <VStack w={'full'} mt={8} gap={6} flexShrink={0}>
-          <Box
-            position={'relative'}
-            display={'inline-flex'}
-            px={4}
-            py={1}
-            borderRadius={'4px'}
-            fontSize={'11px'}
-            fontWeight={'medium'}
-            lineHeight={'16px'}
-            letterSpacing={'0.5px'}
-            bgGradient={'linear(180deg, #F9BDFD 0%, #80B8FF 100%)'}
-            _before={{
-              content: '""',
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '4px',
-              padding: '1px',
-              background: 'linear-gradient(180deg, #F9BDFD 0%, #80B8FF 100%)',
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude'
-            }}
-            sx={{
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}
-          >
-            Assets for FastGPT
-          </Box>
-          <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
-            {t('app:toolkit_marketplace_title')}
-          </Box>
-          <Box>
-            <InputGroup position={'relative'}>
-              <MyIcon
-                position={'absolute'}
-                zIndex={10}
-                left={2.5}
-                name={'common/searchLight'}
-                w={5}
-                top={'50%'}
-                transform={'translateY(-50%)'}
-                color={'myGray.600'}
-              />
-              <Input
-                fontSize="sm"
-                bg={'white'}
-                pl={8}
-                w={'560px'}
-                h={12}
-                borderRadius={'10px'}
-                placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </InputGroup>
-          </Box>
-        </VStack>
-
-        <Box px={8} mt={8} fontSize={'14px'} fontWeight={'medium'} color={'myGray.500'}>
-          {t('common:navbar.Tools')}
-        </Box>
-        <Box px={8} my={4} flexShrink={0}>
-          <Flex alignItems={'center'} gap={2}>
-            <PluginTagFilter
-              tags={allTags.map((tag) => ({
-                tagId: tag.type,
-                tagName: tag.name,
-                tagOrder: 0,
-                isSystem: true
-              }))}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={setSelectedTagIds}
-            />
+        <Box px={8} flexShrink={0} position={'relative'}>
+          <MyIconButton
+            icon={'common/closeLight'}
+            size={'6'}
+            onClick={() => router.push('/config/tools')}
+            position={'absolute'}
+            left={4}
+            top={4}
+          />
+          <Flex gap={3} position={'absolute'} right={4} top={4}>
+            <Button>{t('app:toolkit_contribute_resource')}</Button>
+            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_faq')}</Button>
+            <Button variant={'whiteBase'}>{t('app:toolkit_marketplace_submit_request')}</Button>
           </Flex>
+
+          <Box
+            h={showCompactSearch ? '120px' : '0'}
+            transition={'height 0.15s ease-out'}
+            overflow={'hidden'}
+          >
+            <Box
+              opacity={showCompactSearch ? 1 : 0}
+              transition={'opacity 0.15s ease-out'}
+              pointerEvents={showCompactSearch ? 'auto' : 'none'}
+            >
+              <Flex pl={4} pt={8} alignItems={'center'}>
+                <Flex
+                  alignItems={'center'}
+                  transition={'all 0.3s'}
+                  w={isSearchExpanded ? '320px' : 'auto'}
+                >
+                  {isSearchExpanded ? (
+                    <InputGroup>
+                      <MyIcon
+                        position={'absolute'}
+                        zIndex={10}
+                        left={2.5}
+                        name={'common/searchLight'}
+                        w={5}
+                        color={'primary.600'}
+                        top={'50%'}
+                        transform={'translateY(-50%)'}
+                      />
+                      <Input
+                        px={8}
+                        h={10}
+                        borderRadius={'md'}
+                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        autoFocus
+                        onBlur={() => {
+                          if (!searchText) {
+                            setIsSearchExpanded(false);
+                          }
+                        }}
+                      />
+                      {searchText && (
+                        <MyIcon
+                          position={'absolute'}
+                          zIndex={10}
+                          right={2.5}
+                          name={'common/closeLight'}
+                          w={4}
+                          top={'50%'}
+                          transform={'translateY(-50%)'}
+                          color={'myGray.500'}
+                          cursor={'pointer'}
+                          onClick={() => {
+                            setSearchText('');
+                            setIsSearchExpanded(false);
+                          }}
+                        />
+                      )}
+                    </InputGroup>
+                  ) : (
+                    <Flex
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      cursor={'pointer'}
+                      borderRadius={'md'}
+                      _hover={{ bg: 'myGray.100' }}
+                      onClick={() => setIsSearchExpanded(true)}
+                      p={2}
+                    >
+                      <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                      <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                        {t('common:Search')}
+                      </Box>
+                    </Flex>
+                  )}
+                </Flex>
+              </Flex>
+
+              <Flex mt={2} mb={4} alignItems={'center'}>
+                <PluginTagFilter
+                  tags={allTags.map((tag) => ({
+                    tagId: tag.type,
+                    tagName: tag.name,
+                    tagOrder: 0,
+                    isSystem: true
+                  }))}
+                  selectedTagIds={selectedTagIds}
+                  onTagSelect={setSelectedTagIds}
+                />
+              </Flex>
+            </Box>
+          </Box>
         </Box>
 
-        <ScrollData flex={1} px={8} pb={6}>
-          {displayTools.length > 0 ? (
-            <Grid
-              gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
-              gridGap={5}
-              alignItems={'stretch'}
+        <ScrollData flex={1}>
+          <VStack ref={heroSectionRef} w={'full'} gap={6} px={8} pt={4} pb={8} mt={8}>
+            <Box
+              position={'relative'}
+              display={'inline-flex'}
+              px={4}
+              py={1}
+              borderRadius={'4px'}
+              fontSize={'11px'}
+              fontWeight={'medium'}
+              lineHeight={'16px'}
+              letterSpacing={'0.5px'}
+              bgGradient={'linear(180deg, #F9BDFD 0%, #80B8FF 100%)'}
+              _before={{
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '4px',
+                padding: '1px',
+                background: 'linear-gradient(180deg, #F9BDFD 0%, #80B8FF 100%)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude'
+              }}
+              sx={{
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
             >
-              {displayTools.map((tool) => {
-                return (
-                  <ToolCard
-                    key={tool.id}
-                    item={tool}
-                    isLoading={operatingToolId === tool.id}
-                    onToggleInstall={() => {
-                      if (tool.status === 3) {
-                        handleDeleteTool(tool);
-                      } else {
-                        handleInstallTool(tool);
-                      }
-                    }}
-                    onClick={() => setSelectedTool(tool)}
-                  />
-                );
-              })}
-            </Grid>
-          ) : (
-            <EmptyTip />
-          )}
+              Assets for FastGPT
+            </Box>
+            <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
+              {t('app:toolkit_marketplace_title')}
+            </Box>
+            <Box>
+              <InputGroup position={'relative'}>
+                <MyIcon
+                  position={'absolute'}
+                  zIndex={10}
+                  left={2.5}
+                  name={'common/searchLight'}
+                  w={5}
+                  top={'50%'}
+                  transform={'translateY(-50%)'}
+                  color={'myGray.600'}
+                />
+                <Input
+                  fontSize="sm"
+                  bg={'white'}
+                  pl={8}
+                  w={'560px'}
+                  h={12}
+                  borderRadius={'10px'}
+                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </InputGroup>
+            </Box>
+          </VStack>
+
+          <Box px={8} pb={6}>
+            {/* 底部tag区域 - 使用固定高度容器 */}
+            <Box
+              h={showCompactSearch ? '0' : '56px'}
+              transition={'height 0.15s ease-out'}
+              overflow={'hidden'}
+            >
+              <Flex
+                mt={2}
+                mb={4}
+                alignItems={'center'}
+                opacity={showCompactSearch ? 0 : 1}
+                transition={'opacity 0.15s ease-out'}
+                pointerEvents={showCompactSearch ? 'none' : 'auto'}
+              >
+                <PluginTagFilter
+                  tags={allTags.map((tag) => ({
+                    tagId: tag.type,
+                    tagName: tag.name,
+                    tagOrder: 0,
+                    isSystem: true
+                  }))}
+                  selectedTagIds={selectedTagIds}
+                  onTagSelect={setSelectedTagIds}
+                />
+              </Flex>
+            </Box>
+            {displayTools.length > 0 ? (
+              <Grid
+                gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+                gridGap={5}
+                alignItems={'stretch'}
+              >
+                {displayTools.map((tool) => {
+                  return (
+                    <ToolCard
+                      key={tool.id}
+                      item={tool}
+                      isLoading={operatingToolId === tool.id}
+                      onToggleInstall={() => {
+                        if (tool.status === 3) {
+                          handleDeleteTool(tool);
+                        } else {
+                          handleInstallTool(tool);
+                        }
+                      }}
+                      onClick={() => setSelectedTool(tool)}
+                    />
+                  );
+                })}
+              </Grid>
+            ) : (
+              <EmptyTip />
+            )}
+          </Box>
         </ScrollData>
       </MyBox>
 
@@ -299,6 +445,7 @@ const ToolkitMarketplace = () => {
               handleInstallTool(selectedTool);
             }
           }}
+          isLoading={installToolLoading || deleteToolLoading || loadingTools || loadingCurrentTools}
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />

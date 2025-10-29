@@ -12,8 +12,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPluginTags, getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -25,7 +24,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import {
   FlowNodeTypeEnum,
   AppNodeFlowNodeTypeMap
@@ -224,23 +222,6 @@ const NodeTemplateList = ({
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
-  const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([]);
-
-  const { data: pluginTags = [] } = useRequest2(getPluginTags, {
-    manual: false
-  });
-
-  const filteredTemplates = useMemo(() => {
-    if (templateType !== TemplateTypeEnum.systemPlugin || selectedTagIds.length === 0) {
-      return templates;
-    }
-
-    return templates.filter((tool) => {
-      const tagIds = tool.pluginTags || (tool.templateType ? [tool.templateType] : []);
-      return tagIds.some((tagId) => selectedTagIds.includes(tagId));
-    });
-  }, [templates, selectedTagIds, templateType]);
-
   const handleAddNode = useCallback(
     async ({
       template,
@@ -413,7 +394,7 @@ const NodeTemplateList = ({
             {
               type: '',
               label: '',
-              list: filteredTemplates.map((item) => ({
+              list: templates.map((item) => ({
                 ...item,
                 name: t(parseI18nString(item.name, i18n.language)),
                 intro: t(parseI18nString(item.intro || '', i18n.language))
@@ -424,24 +405,11 @@ const NodeTemplateList = ({
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, filteredTemplates, t, i18n.language]);
+  }, [templateType, templates, templates, t, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
-    const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
-
     return (
       <>
-        {isSystemTool && pluginTags.length > 0 && (
-          <Flex mb={2} alignItems={'center'} px={3}>
-            <PluginTagFilter
-              tags={pluginTags}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={setSelectedTagIds}
-              isPopover={isPopover}
-            />
-          </Flex>
-        )}
-
         {list.map((item) => {
           return (
             <Box
