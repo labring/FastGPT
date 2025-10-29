@@ -21,7 +21,9 @@ async function handler(
   }
 
   const toolList = await getToolList();
-  const tools = toolList.filter((item) => item.toolId.startsWith(toolId));
+  const tools = toolList.filter(
+    (item) => item.toolId.startsWith(toolId + '/') || item.toolId === toolId
+  );
 
   if (tools.length < 1) {
     res.status(404);

@@ -6,6 +6,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
 import { getPkgdownloadURL } from '@/service/s3';
+import { object } from 'zod';
 
 export type ToolListQuery = {};
 export type ToolListBody = PaginationProps<{
@@ -28,13 +29,9 @@ async function handler(
     if (
       searchKey &&
       !(
-        item.name.en +
-        (item.name['zh-CN'] ?? '') +
-        (item.name['zh-Hant'] ?? '') +
-        item.toolId +
-        item.description.en +
-        item.description['zh-CN'] +
-        item.description['zh-Hant']
+        Object.values(item.name).join('') +
+        Object.values(item.description).join('') +
+        item.toolId
       ).includes(searchKey)
     )
       return false;
