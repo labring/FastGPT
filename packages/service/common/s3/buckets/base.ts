@@ -13,7 +13,7 @@ import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
 import { addLog } from '../../system/log';
-import { addS3Job } from '../mq';
+import { addS3DelJob } from '../mq';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -101,7 +101,7 @@ export class S3BaseBucket {
   }
 
   addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
-    return addS3Job({ prefix, key, bucketName: this.name });
+    return addS3DelJob({ prefix, key, bucketName: this.name });
   }
 
   listObjectsV2(
