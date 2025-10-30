@@ -341,7 +341,7 @@
   "database_host_port_tip": "Range: {{min}}~{{max}}",
   "connection_pool_size_tooltip": "The app must be connected to the database for query. To ensure normal database operations, a connection pool will be established to ensure that the number of connections does not exceed the pool size. Please configure the pool size properly based on the database performance and concurrent access.",
   "database_table_desc_tip": "To increase the accuracy of answers, please accurately describe the meaning and purpose of the table. The model will call the table based on the description.",
-  "database_tables": "Tables",
+  "database_tables": "Database tables",
   "remove_warning": "Confirm"
 }
 
