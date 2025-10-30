@@ -27,6 +27,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
+import { getDocPath } from '@/web/common/system/doc';
 
 const ToolKitProvider = () => {
   const { t, i18n } = useTranslation();
@@ -94,7 +95,7 @@ const ToolKitProvider = () => {
       tags: tool.tags?.map((tag) => parseI18nString(tag.tagName || '', i18n.language)),
       status: tool.status === 1 ? (tool.isInstalled ? 3 : 1) : tool.status
     }));
-  }, [tools, searchText, selectedTagIds, installedFilter]);
+  }, [tools, searchText, selectedTagIds, installedFilter, i18n.language]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -113,9 +114,10 @@ const ToolKitProvider = () => {
             right={8}
             top={8}
             onClick={() => {
-              console.log('feConfigs?.systemPluginCourseUrl', feConfigs?.systemPluginCourseUrl);
-              if (feConfigs?.systemPluginCourseUrl) {
-                window.open(feConfigs.systemPluginCourseUrl);
+              const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
+
+              if (url) {
+                window.open(url, '_blank');
               }
             }}
           >

@@ -45,7 +45,7 @@ const PluginTagFilter = ({
       <Box
         {...tagBaseStyles}
         rounded={'sm'}
-        bg={selectedTagIds.length === 0 ? 'myGray.100' : 'transparent'}
+        bg={selectedTagIds.length === 0 ? 'myGray.150' : 'transparent'}
         onClick={() => onTagSelect([])}
       >
         {t('common:All')}
@@ -69,7 +69,7 @@ const PluginTagFilter = ({
               key={tag.tagId}
               {...tagBaseStyles}
               rounded={'full'}
-              bg={isSelected ? 'myGray.100' : 'transparent'}
+              bg={isSelected ? 'myGray.150' : 'transparent'}
               onClick={() => toggleTag(tag.tagId)}
             >
               {t(parseI18nString(tag.tagName, i18n.language))}

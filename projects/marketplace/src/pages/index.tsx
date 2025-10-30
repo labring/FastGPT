@@ -215,10 +215,24 @@ const ToolkitMarketplace = () => {
         isLoading={loadingTools}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
-          <Flex gap={3} position={'absolute'} right={4} top={4} alignItems={'center'}>
+          <Flex gap={3} position={'absolute'} right={8} top={6} alignItems={'center'}>
             <I18nLngSelector />
-            <Button onClick={() => {}}>{t('app:toolkit_contribute_resource')}</Button>
-            <Button variant={'whiteBase'} onClick={() => {}}>
+            <Button
+              onClick={() => {
+                window.open(
+                  'https://doc.fastgpt.io/docs/introduction/guide/plugins/dev_system_tool',
+                  '_blank'
+                );
+              }}
+            >
+              {t('app:toolkit_contribute_resource')}
+            </Button>
+            <Button
+              variant={'whiteBase'}
+              onClick={() => {
+                window.open('https://github.com/labring/fastgpt-plugin/issues', '_blank');
+              }}
+            >
               {t('app:toolkit_marketplace_submit_request')}
             </Button>
           </Flex>
@@ -429,7 +443,16 @@ const ToolkitMarketplace = () => {
                       key={tool.id}
                       item={tool}
                       isLoading={operatingToolId === tool.id}
-                      onToggleInstall={() => window.open(tool.downloadUrl, '_blank')}
+                      onToggleInstall={() => {
+                        if (tool.downloadUrl) {
+                          const link = document.createElement('a');
+                          link.href = tool.downloadUrl;
+                          link.download = '';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }
+                      }}
                       onClick={() => setSelectedTool(tool)}
                     />
                   );

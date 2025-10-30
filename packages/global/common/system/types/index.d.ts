@@ -79,7 +79,6 @@ export type FastGPTFeConfigsType = {
   concatMd?: string;
   docUrl?: string;
   openAPIDocUrl?: string;
-  systemPluginCourseUrl?: string;
   submitPluginRequestUrl?: string;
   appTemplateCourse?: string;
   customApiDomain?: string;
