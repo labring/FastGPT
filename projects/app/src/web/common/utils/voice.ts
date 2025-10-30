@@ -113,7 +113,9 @@ export const useAudioPlay = (
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
       const playAudioBuffer = (audioBuffer: Uint8Array) => {
         if (!audioRef.current) return;
-        const audioUrl = URL.createObjectURL(new Blob([audioBuffer], { type: contentType }));
+        const audioUrl = URL.createObjectURL(
+          new Blob([audioBuffer as Uint8Array<ArrayBuffer>], { type: contentType })
+        );
         audioRef.current.src = audioUrl;
         audioRef.current.play();
       };
@@ -178,7 +180,7 @@ export const useAudioPlay = (
 
               await new Promise((resolve) => {
                 sourceBuffer.onupdateend = resolve;
-                sourceBuffer.appendBuffer(value.buffer as any);
+                sourceBuffer.appendBuffer(value.buffer as ArrayBuffer);
               });
             }
           } catch (error) {
@@ -311,7 +313,7 @@ export const useAudioPlay = (
 
             await new Promise((resolve) => {
               buffer.onupdateend = resolve;
-              buffer.appendBuffer(value.buffer as any);
+              buffer.appendBuffer(value.buffer as ArrayBuffer);
             });
           }
         } catch (error) {
@@ -349,7 +351,9 @@ export const useAudioPlay = (
               }
 
               if (audioRef.current) {
-                const audioUrl = URL.createObjectURL(new Blob([fullBuffer], { type: contentType }));
+                const audioUrl = URL.createObjectURL(
+                  new Blob([fullBuffer as Uint8Array<ArrayBuffer>], { type: contentType })
+                );
                 audioRef.current.src = audioUrl;
                 audioRef.current.play();
               }
