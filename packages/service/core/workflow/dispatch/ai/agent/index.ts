@@ -307,11 +307,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             messages: [
               {
                 role: 'system',
-                content: '你是一个任务复杂度判断专家，只需要输出 JSON 格式的判断结果。'
+                content: simpleCheckPrompt
               },
               {
                 role: 'user',
-                content: simpleCheckPrompt
+                content: userChatInput
               }
             ]
           }
@@ -351,12 +351,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     };
 
+    console.log('需不需要规划：', isPlanStep);
     /* ===== Plan Agent ===== */
     if (isPlanStep) {
-      const isComplex = await checkQuestionComplexity();
-      if (isComplex) {
+      // 如果是用户确认 plan 的交互，直接调用 planCallFn，不需要再检测复杂度
+      if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
         const result = await planCallFn();
         if (result) return result;
+      } else {
+        // 非交互确认的情况下，先检测问题复杂度
+        const isComplex = await checkQuestionComplexity();
+        console.log('问题是否复杂：', isComplex);
+
+        if (isComplex) {
+          const result = await planCallFn();
+          if (result) return result;
+        }
       }
     } else if (isReplanStep) {
       const result = await replanCallFn({
@@ -380,6 +390,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       while (agentPlan?.steps!.filter((item) => !item.response)!.length) {
         const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
+        console.log('需要处理的 plan step：', pendingSteps);
         for await (const step of pendingSteps) {
           addLog.debug(`Step call: ${step.id}`, step);
 
