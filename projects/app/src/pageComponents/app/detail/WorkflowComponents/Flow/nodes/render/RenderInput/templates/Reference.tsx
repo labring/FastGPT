@@ -114,7 +114,7 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, nodeId, getNodeById, t, valueType]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail.chatConfig, t, valueType]);
 
   return {
     referenceList

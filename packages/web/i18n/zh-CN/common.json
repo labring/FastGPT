@@ -342,7 +342,7 @@
   "core.chat.Feedback Submit": "提交反馈",
   "core.chat.Feedback Success": "反馈成功！",
   "core.chat.Finish Speak": "语音输入完成",
-  "core.chat.History": "记录",
+  "core.chat.History": "历史记录",
   "core.chat.History Amount": "{{amount}} 条记录",
   "core.chat.Mark": "标注预期回答",
   "core.chat.Mark Description": "当前标注功能为测试版。\n\n点击添加标注后，需要选择一个知识库，以便存储标注数据。你可以通过该功能快速的标注问题和预期回答，以便引导模型下次的回答。\n\n目前，标注功能同知识库其他数据一样，受模型的影响，不代表标注后 100% 符合预期。\n\n标注数据仅单向与知识库同步，如果知识库修改了该标注数据，日志展示的标注数据无法同步。",

@@ -9,7 +9,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { type GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
   ChatItemCollectionName,
@@ -201,6 +201,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                 // Detailed chat items collection
                 chatitems: {
                   $push: {
+                    _id: '$_id',
                     value: '$value',
                     userGoodFeedback: '$userGoodFeedback',
                     userBadFeedback: '$userBadFeedback',
@@ -295,35 +296,37 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           },
           userGoodFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userGoodFeedback', false] }
             }
           },
           userBadFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userBadFeedback', false] }
             }
           },
           customFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
             }
           },
           markItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.adminFeedback', false] }
             }
           },
           chatDetails: {
             $map: {
-              input: { $slice: ['$chatData.chatitems', -1000] },
+              input: {
+                $slice: [{ $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] }, -100]
+              },
               as: 'item',
               in: {
                 id: '$$item._id',

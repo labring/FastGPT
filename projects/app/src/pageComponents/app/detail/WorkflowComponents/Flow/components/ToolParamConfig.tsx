@@ -15,8 +15,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const node = getNodeById(nodeId);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
 
   const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
   const inputList = inputConfig?.inputList;
