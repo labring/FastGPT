@@ -50,7 +50,7 @@ const PluginTagFilter = ({
       >
         {t('common:All')}
       </Box>
-      <Box mx={2} h={isPopover ? '20px' : '16px'} w={'1px'} bg={'myGray.200'} />
+      <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} />
       <Flex
         gap={2}
         flex={1}

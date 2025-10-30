@@ -141,7 +141,7 @@ const ToolKitProvider = () => {
           <Box mt={8} mb={4} fontSize={'20px'} fontWeight={'medium'} color={'black'}>
             {t('common:navbar.Tools')}
           </Box>
-          <Flex my={2} alignItems={'center'}>
+          <Flex mt={2} mb={4} alignItems={'center'}>
             <Flex alignItems={'center'}>
               <Flex
                 alignItems={'center'}
@@ -202,6 +202,7 @@ const ToolKitProvider = () => {
                     _hover={{ bg: 'myGray.100' }}
                     onClick={() => setIsSearchExpanded(true)}
                     p={2}
+                    py={1.5}
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                   >
