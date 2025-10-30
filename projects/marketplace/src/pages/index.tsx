@@ -15,6 +15,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -162,8 +163,8 @@ const ToolkitMarketplace = () => {
     return tools.map((tool: ToolListItem) => {
       return {
         id: tool.toolId,
-        name: parseI18nString(tool.name || '', i18n.language),
-        description: parseI18nString(tool.description || '', i18n.language),
+        name: parseI18nString(tool.name || '', i18n.language) || '',
+        description: parseI18nString(tool.description || '', i18n.language) || '',
         icon: tool.icon,
         author: tool.author || '',
         tags: tool.tags?.map((tag) => {
@@ -214,7 +215,8 @@ const ToolkitMarketplace = () => {
         isLoading={loadingTools}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
-          <Flex gap={3} position={'absolute'} right={4} top={4}>
+          <Flex gap={3} position={'absolute'} right={4} top={4} alignItems={'center'}>
+            <I18nLngSelector />
             <Button onClick={() => {}}>{t('app:toolkit_contribute_resource')}</Button>
             <Button variant={'whiteBase'} onClick={() => {}}>
               {t('app:toolkit_marketplace_submit_request')}
