@@ -15,6 +15,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -31,14 +32,29 @@ const ToolkitMarketplace = () => {
 
   // 从 URL 初始化状态
   useEffect(() => {
-    if (search && typeof search === 'string') {
-      setInputValue(search);
-      setSearchText(search);
-      setIsSearchExpanded(true);
-    }
-    if (tags) {
-      const tagArray = typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
-      setSelectedTagIds(tagArray);
+    try {
+      if (search && typeof search === 'string') {
+        // 清理搜索输入，防止 XSS
+        const sanitizedSearch = search.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ''
+        );
+        setInputValue(sanitizedSearch);
+        setSearchText(sanitizedSearch);
+        setIsSearchExpanded(true);
+      }
+      if (tags) {
+        const tagArray =
+          typeof tags === 'string'
+            ? tags
+                .split(',')
+                .filter(Boolean)
+                .map((tag) => tag.trim())
+            : [];
+        setSelectedTagIds(tagArray);
+      }
+    } catch (error) {
+      console.warn('Failed to initialize URL params:', error);
     }
   }, [search, tags]);
 
@@ -63,18 +79,45 @@ const ToolkitMarketplace = () => {
   // 更新 URL 的函数
   const updateUrlParams = useCallback(
     (newSearch: string, newTags: string[]) => {
-      const params = new URLSearchParams();
-      if (newSearch) {
-        params.set('search', newSearch);
+      try {
+        // 使用更安全的 URL 参数构建方式
+        const params: Record<string, string> = {};
+        if (newSearch) {
+          params.search = newSearch;
+        }
+        if (newTags.length > 0) {
+          params.tags = newTags.join(',');
+        }
+
+        // 手动构建查询字符串，避免 URLSearchParams 的安全问题
+        const queryString = Object.entries(params)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+          .join('&');
+
+        const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
+
+        // 使用原生 History API 替代 Next.js router（更安全）
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          // 检查安全上下文
+          if (
+            window.isSecureContext ||
+            (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
+          ) {
+            try {
+              window.history.replaceState({}, '', newUrl);
+            } catch (historyError) {
+              console.warn('History replaceState failed:', historyError);
+            }
+          } else {
+            console.warn('Skipping URL update in insecure context');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to update URL params:', error);
+        // 如果 URL 操作失败，跳过更新
       }
-      if (newTags.length > 0) {
-        params.set('tags', newTags.join(','));
-      }
-      const queryString = params.toString();
-      const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
-      router.replace(newUrl, undefined, { shallow: true });
     },
-    [router]
+    [router.pathname]
   );
 
   // 处理搜索框失焦,更新 URL
@@ -89,7 +132,7 @@ const ToolkitMarketplace = () => {
     if (router.isReady) {
       updateUrlParams(searchText, selectedTagIds);
     }
-  }, [selectedTagIds]);
+  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
 
   const {
     data: tools,
@@ -120,8 +163,8 @@ const ToolkitMarketplace = () => {
     return tools.map((tool: ToolListItem) => {
       return {
         id: tool.toolId,
-        name: parseI18nString(tool.name || '', i18n.language),
-        description: parseI18nString(tool.description || '', i18n.language),
+        name: parseI18nString(tool.name || '', i18n.language) || '',
+        description: parseI18nString(tool.description || '', i18n.language) || '',
         icon: tool.icon,
         author: tool.author || '',
         tags: tool.tags?.map((tag) => {
@@ -172,7 +215,8 @@ const ToolkitMarketplace = () => {
         isLoading={loadingTools}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
-          <Flex gap={3} position={'absolute'} right={4} top={4}>
+          <Flex gap={3} position={'absolute'} right={4} top={4} alignItems={'center'}>
+            <I18nLngSelector />
             <Button onClick={() => {}}>{t('app:toolkit_contribute_resource')}</Button>
             <Button variant={'whiteBase'} onClick={() => {}}>
               {t('app:toolkit_marketplace_submit_request')}
@@ -219,7 +263,13 @@ const ToolkitMarketplace = () => {
                         borderRadius={'md'}
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        onChange={(e) => {
+                          // 清理输入，防止恶意字符
+                          const cleanValue = e.target.value
+                            .replace(/[\x00-\x1F\x7F]/g, '') // 移除控制字符
+                            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''); // 移除脚本标签
+                          setInputValue(cleanValue);
+                        }}
                         autoFocus
                         onBlur={() => {
                           handleSearchBlur();
@@ -332,7 +382,13 @@ const ToolkitMarketplace = () => {
                   borderRadius={'10px'}
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={(e) => {
+                    // 清理输入，防止恶意字符
+                    const cleanValue = e.target.value
+                      .replace(/[\x00-\x1F\x7F]/g, '') // 移除控制字符
+                      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''); // 移除脚本标签
+                    setInputValue(cleanValue);
+                  }}
                   onBlur={handleSearchBlur}
                 />
               </InputGroup>
