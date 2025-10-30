@@ -204,7 +204,7 @@ const ToolkitMarketplace = () => {
   }, [isSearchExpanded, inputValue]);
 
   return (
-    <Box h="100vh" py={6} pr={6}>
+    <Box h="100vh">
       <MyBox
         bg={'white'}
         h="calc(100vh - 48px)"
@@ -327,7 +327,6 @@ const ToolkitMarketplace = () => {
         </Box>
 
         <ScrollData flex={1} minHeight={0} height="auto">
-          {/* 英雄区域 - 只在初始状态显示 */}
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}

@@ -144,10 +144,12 @@ const ToolkitMarketplace = () => {
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
-        setOperatingToolId(null);
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
         }
+      },
+      onFinally: () => {
+        setOperatingToolId(null);
       }
     }
   );
@@ -161,10 +163,12 @@ const ToolkitMarketplace = () => {
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
-        setOperatingToolId(null);
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
         }
+      },
+      onFinally: () => {
+        setOperatingToolId(null);
       }
     }
   );

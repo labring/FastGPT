@@ -22,7 +22,7 @@ async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
-  const { teamId } = await authCert({ req, authToken: true });
+  const { teamId, isRoot } = await authCert({ req, authToken: true });
   const { searchKey, parentId } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
@@ -53,6 +53,11 @@ async function handler(
       if (installedSet.has(plugin.id)) {
         return true;
       }
+      // 管理员用户从插件市场安装后，资源库默认安装，减少重复安装
+      if (isRoot) {
+        return true;
+      }
+
       return !!plugin.defaultInstalled;
     })
     .map<NodeTemplateListItemType>((plugin) => ({

@@ -10,7 +10,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, Input, InputGroup } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo, useState, useCallback } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -25,10 +25,14 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useUserStore } from '../../../web/support/user/useUserStore';
+import { useRouter } from 'next/router';
 
 const ToolKitProvider = () => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
+  const router = useRouter();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [installedFilter, setInstalledFilter] = useState<'all' | 'installed' | 'uninstalled'>(
     'all'
@@ -280,7 +284,19 @@ const ToolKitProvider = () => {
               })}
             </Grid>
           ) : (
-            <EmptyTip />
+            <VStack>
+              <EmptyTip pb={4} />
+              {userInfo?.username === 'root' && (
+                <Button
+                  onClick={() => {
+                    router.push('/config/tools');
+                  }}
+                  w={'160px'}
+                >
+                  {t('app:click_to_config')}
+                </Button>
+              )}
+            </VStack>
           )}
         </Box>
       </MyBox>

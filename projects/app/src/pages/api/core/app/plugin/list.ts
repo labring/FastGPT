@@ -31,7 +31,7 @@ async function handler(
   const lang = getLocale(req);
   const { parentId, source } = req.query;
 
-  const { teamId } = await (source === 'team'
+  const { teamId, isRoot } = await (source === 'team'
     ? authCert({ req, authToken: true })
     : authSystemAdmin({ req }));
 
@@ -55,6 +55,10 @@ async function handler(
 
     systemTools = systemTools.filter((plugin) => {
       if (installedSet.has(plugin.id)) {
+        return true;
+      }
+      // 管理员用户从插件市场安装后，资源库默认安装，减少重复安装
+      if (isRoot && !uninstalledSet.has(plugin.id)) {
         return true;
       }
 
