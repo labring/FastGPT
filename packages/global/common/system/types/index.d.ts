@@ -82,7 +82,6 @@ export type FastGPTFeConfigsType = {
   systemPluginCourseUrl?: string;
   submitPluginRequestUrl?: string;
   appTemplateCourse?: string;
-  marketPlaceUrl?: string;
   customApiDomain?: string;
   customSharePageDomain?: string;
 
