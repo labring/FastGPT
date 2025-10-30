@@ -113,7 +113,9 @@ export const useAudioPlay = (
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
       const playAudioBuffer = (audioBuffer: Uint8Array) => {
         if (!audioRef.current) return;
-        const audioUrl = URL.createObjectURL(new Blob([audioBuffer], { type: contentType }));
+        const audioUrl = URL.createObjectURL(
+          new Blob([audioBuffer as Uint8Array<ArrayBuffer>], { type: contentType })
+        );
         audioRef.current.src = audioUrl;
         audioRef.current.play();
       };

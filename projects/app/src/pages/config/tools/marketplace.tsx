@@ -15,7 +15,6 @@ import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   getMarketplaceTools,
@@ -173,7 +172,7 @@ const ToolkitMarketplace = () => {
   const displayTools: ToolCardItemType[] = useMemo(() => {
     return (
       tools
-        ?.map((tool: ToolListItem) => {
+        ?.map((tool) => {
           const isInstalled = currentTools.some(
             (item) => item.id === `${PluginSourceEnum.systemTool}-${tool.toolId}`
           );

@@ -98,7 +98,10 @@ export type GetMarketplaceToolsBody = PaginationProps<{
   tags?: string[];
 }>;
 
-export type GetMarketplaceToolsResponse = PaginationResponse<ToolListItem>;
+export type GetMarketplaceToolsResponse = {
+  total: number;
+  list: ToolListItem[];
+};
 
 export type GetMarketplaceToolDetailQuery = {
   toolId: string;
