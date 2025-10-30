@@ -29,6 +29,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getDocPath } from '@/web/common/system/doc';
 
 const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { t, i18n } = useTranslation();
@@ -290,8 +291,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             <Flex gap={3} position={'absolute'} right={4} top={4}>
               <Button
                 onClick={() => {
-                  if (feConfigs?.systemPluginCourseUrl) {
-                    window.open(feConfigs.systemPluginCourseUrl);
+                  const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
+                  if (url) {
+                    window.open(url, '_blank');
                   }
                 }}
               >
