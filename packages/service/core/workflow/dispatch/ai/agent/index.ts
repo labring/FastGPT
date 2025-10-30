@@ -351,7 +351,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     };
 
-    console.log('需不需要规划：', isPlanStep);
     /* ===== Plan Agent ===== */
     if (isPlanStep) {
       // 如果是用户确认 plan 的交互，直接调用 planCallFn，不需要再检测复杂度
@@ -361,7 +360,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       } else {
         // 非交互确认的情况下，先检测问题复杂度
         const isComplex = await checkQuestionComplexity();
-        console.log('问题是否复杂：', isComplex);
 
         if (isComplex) {
           const result = await planCallFn();
@@ -390,7 +388,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       while (agentPlan?.steps!.filter((item) => !item.response)!.length) {
         const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
-        console.log('需要处理的 plan step：', pendingSteps);
+
         for await (const step of pendingSteps) {
           addLog.debug(`Step call: ${step.id}`, step);
 
