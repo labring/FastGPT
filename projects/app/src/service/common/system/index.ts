@@ -116,7 +116,6 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
-  marketPlaceUrl: 'marketplace.fastgpt.cn',
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)',

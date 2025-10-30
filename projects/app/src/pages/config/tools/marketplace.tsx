@@ -30,13 +30,12 @@ import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const ToolkitMarketplace = () => {
+const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { search, tags } = router.query;
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const marketplaceUrl = feConfigs?.marketPlaceUrl || 'https://marketplace.fastgpt.cn';
 
   const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -566,7 +565,8 @@ const ToolkitMarketplace = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app'])),
+      marketplaceUrl: process.env.MARKETPLACE_URL || 'https://marketplace.fastgpt.cn'
     }
   };
 }
