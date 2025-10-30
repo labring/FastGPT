@@ -59,5 +59,6 @@
   "user_type": "Type",
   "wecom": "WeCom",
   "evaluation_summary_generation": "Generate summary",
-  "generate_answer": "Generate app response"
+  "generate_answer": "Generate app response",
+  "hype_index":"build High-quality Hypothetical Prompt Index"
 }

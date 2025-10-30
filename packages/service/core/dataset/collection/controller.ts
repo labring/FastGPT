@@ -23,7 +23,7 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel, getRerankModel } from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -199,6 +199,7 @@ export const createCollectionAndInsertData = async ({
         vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name,
         vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        rerankModel: getRerankModel()?.name,
         session
       });
       return newBillId;

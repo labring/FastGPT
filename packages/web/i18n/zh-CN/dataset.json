@@ -345,6 +345,7 @@
   "data_index_hype": "假设提示索引",
   "config_prompt": "配置提示词",
   "hype_enhanced_index": "HyPE增强索引",
+  "process.Hype_Index": "假设问题索引生成中",
   "hype_enhanced_index_tips": "使用Hypothetical Prompt Embeddings技术生成假设问,并模拟检索召回筛选真正高质量的问题作为索引,提高检索的精度。(数据量大时需要较长时间)",
   "template_csv_format_tip": "模板采用 CSV 格式,包含以下列:\nq: 问题列,存放用户可能提出的问题\na: 答案列,存放对应问题的标准答案\nmetadata:元数据列,列名自定义,非必须,用于存放数据相关属性,可在检索后返回,根据需要调用属性参数\nindexes: 索引列,用于存放与该问题相关的索引"
 }

@@ -37,6 +37,7 @@ export const ChunkSettings = {
   hypeIndexes: Boolean,
 
   hypePrompt: String,
+  autoIndexesPrompt: String,
 
   chunkSettingMode: {
     type: String,

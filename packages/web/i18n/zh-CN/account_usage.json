@@ -59,5 +59,6 @@
   "usage_detail": "使用详情",
   "user_type": "类型",
   "wecom": "企业微信",
-  "evaluation_summary_generation": "评估-总结生成"
+  "evaluation_summary_generation": "评估-总结生成",
+  "hype_index":"构建高质量假设问题索引"
 }

@@ -307,6 +307,7 @@ const ErrorView = ({
     [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index'),
+    [TrainingModeEnum.hype]: t('dataset:process.Hype_Index'),
     [TrainingModeEnum.databaseSchema]: t('dataset:process.databaseSchema')
   };
 

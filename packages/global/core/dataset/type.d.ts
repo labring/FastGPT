@@ -41,7 +41,7 @@ export type ChunkSettingsType = {
   hypeIndexes?: boolean;
 
   hypePrompt?: String;
-
+  autoIndexesPrompt?: String;
   // Chunk setting
   chunkSettingMode?: ChunkSettingModeEnum; // 系统参数/自定义参数
   chunkSplitMode?: DataChunkSplitModeEnum;
