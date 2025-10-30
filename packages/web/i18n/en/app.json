@@ -132,6 +132,7 @@
   "execute_time": "Execution Time",
   "export_config_successful": "Configuration copied, some sensitive information automatically filtered. Please check for any remaining sensitive data.",
   "export_configs": "Export",
+  "fastgpt_marketplace": "FastGPT plug-in market",
   "feedback_count": "User Feedback",
   "file_quote_link": "Files",
   "file_recover": "File will overwrite current content",

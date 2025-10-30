@@ -16,6 +16,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
+import Head from 'next/head';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -205,6 +206,9 @@ const ToolkitMarketplace = () => {
 
   return (
     <>
+      <Head>
+        <title>{t('app:fastgpt_marketplace')}</title>
+      </Head>
       <MyBox
         bg={'white'}
         h="100vh"

@@ -131,6 +131,7 @@
   "execute_time": "執行時間",
   "export_config_successful": "已複製設定，自動過濾部分敏感資訊，請注意檢查是否仍有敏感資料",
   "export_configs": "匯出設定",
+  "fastgpt_marketplace": "FastGPT 插件市場",
   "feedback_count": "使用者回饋",
   "file_quote_link": "檔案連結",
   "file_recover": "檔案將會覆蓋目前內容",
