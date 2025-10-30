@@ -114,14 +114,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                   {item.inputPrice || 0}
                 </Box>
-                {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+                {`${t('common:support.wallet.subscription.point')}/1K tokens`}
               </Flex>
               <Flex>
                 {`${t('common:Output')}: `}
                 <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                   {item.outputPrice || 0}
                 </Box>
-                {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+                {`${t('common:support.wallet.subscription.point')}/1K tokens`}
               </Flex>
             </Box>
           ) : (
@@ -129,7 +129,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
                 {item.charsPointsPrice || 0}
               </Box>
-              {`${t('common:support.wallet.subscription.point')}/1K Tokens`}
+              {`${t('common:support.wallet.subscription.point')}/1K tokens`}
             </Flex>
           ),
         tagColor: 'blue'
@@ -142,10 +142,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
               {item.charsPointsPrice || 0}
             </Box>
-            {` ${t('common:support.wallet.subscription.point')}/1K Tokens`}
+            {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
           </Flex>
         ),
         tagColor: 'yellow'
@@ -188,10 +188,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: item.charsPointsPrice ? (
           <Flex color={'myGray.700'}>
             {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
               {item.charsPointsPrice}
             </Box>
-            {` ${t('common:support.wallet.subscription.point')}/1K Tokens`}
+            {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
           </Flex>
         ) : (
           '-'

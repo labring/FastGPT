@@ -26,7 +26,7 @@
   "login.error": "Login error occurred.",
   "login.password_condition": "Password cannot exceed 60 characters.",
   "login.success": "Login successful.",
-  "manage_team": "Team",
+  "manage_team": "Teams",
   "name": "Name",
   "new_password": "New password",
   "notification.remind_owner_bind": "Please remind the creator to specify an account to receive notifications.",

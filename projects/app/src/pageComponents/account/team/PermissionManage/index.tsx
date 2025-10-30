@@ -215,7 +215,7 @@ function PermissionManage({
             <Thead>
               <Tr bg={'white !important'}>
                 <Th bg="myGray.100" borderLeftRadius="md" maxW={'150px'}>
-                  {`${t('user:team.group.members')} / ${t('user:team.org.org')} / ${t('user:team.group.group')}`}
+                  {`${t('user:team.group.members')}/${t('user:team.org.org')}/${t('user:team.group.group')}`}
                   <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
                 </Th>
                 <Th bg="myGray.100">

@@ -7,6 +7,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import InputRender from '.';
 import type { SpecificProps } from './type';
+import { useTranslation } from 'next-i18next';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -45,13 +46,14 @@ const LabelAndFormRender = ({
   showValueType?: boolean;
 } & SpecificProps &
   BoxProps) => {
+  const { t } = useTranslation();
   const { control } = variablesForm;
 
   return (
     <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
-        {typeof label === 'string' ? <FormLabel required={required}>{label}</FormLabel> : label}
-        {placeholder && <QuestionTip ml={1} label={placeholder} />}
+        {typeof label === 'string' ? <FormLabel required={required}>{t(label)}</FormLabel> : label}
+        {placeholder && <QuestionTip ml={1} label={t(placeholder)} />}
       </Flex>
 
       <Controller

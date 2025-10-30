@@ -618,7 +618,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                         label: t('account_model:avg_ttfb'),
                         dataKey: 'avgTtfb',
                         color: '#FF5630',
-                        formatter: (value: number) => `${value.toFixed(2)}s`
+                        formatter: (value: number) => `${value.toFixed(2)}`
                       }
                     ]}
                   />
