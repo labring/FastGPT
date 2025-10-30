@@ -45,9 +45,6 @@ export const useI18nLng = () => {
       // 中文相关语言优先回退到简体中文
       if (langPrefix === 'zh') {
         lang = LangEnum.zh_CN;
-      } else {
-        // 其他语言默认回退到简体中文
-        lang = LangEnum.zh_CN;
       }
     }
 
@@ -77,11 +74,6 @@ export const useI18nLng = () => {
       if (browserLangPrefix === 'zh') {
         lang = LangEnum.zh_CN;
       }
-    }
-
-    // 如果还是没有匹配，默认使用简体中文（而不是英文）
-    if (!lang) {
-      lang = LangEnum.zh_CN;
     }
 
     // currentLng not in userLang
