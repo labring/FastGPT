@@ -85,6 +85,7 @@ const LabelAndFormRender = ({
           return (
             <InputRender
               inputType={inputType}
+              isRichText={false}
               value={value}
               onChange={onChange}
               placeholder={placeholder}

@@ -23,6 +23,7 @@ export type InputComponentPropsType = {
   defaultValue?: any;
 
   referencePlaceholder?: string;
+  isRichText?: boolean;
   placeholder?: string; // input,textarea
   maxLength?: number; // input,textarea
   minLength?: number; // password

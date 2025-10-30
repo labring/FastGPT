@@ -281,6 +281,7 @@ const RenderInput = () => {
                       form={variablesForm}
                       fieldName={inputKey}
                       modelList={llmModelList}
+                      isRichText={false}
                     />
                   );
                 }}

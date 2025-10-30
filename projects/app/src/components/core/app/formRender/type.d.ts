@@ -28,12 +28,14 @@ type SpecificProps =
       variableLabels?: EditorVariableLabelPickerType[];
       title?: string;
       maxLength?: number;
+      isRichText?: boolean;
     } & {
       ExtensionPopover?: EditorProps['ExtensionPopover'];
     })
   | {
       // password
       inputType: InputTypeEnum.password;
+      minLength?: number;
     }
   | {
       // numberInput
