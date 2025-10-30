@@ -17,6 +17,7 @@ import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import type { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
 async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
   const {
     datasetId,
@@ -28,6 +29,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
 
     usingReRank,
     rerankModel,
+    rerankMethod,
     rerankWeight,
 
     datasetSearchUsingExtensionQuery = false,
@@ -59,6 +61,9 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
 
   const rerankModelData = getRerankModel(rerankModel);
 
+  // Convert rerankMethod string to RerankMethodEnum
+  const rerankMethodEnum = rerankMethod as RerankMethodEnum;
+
   const searchData = {
     histories: [],
     teamId,
@@ -72,6 +77,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     embeddingWeight,
     usingReRank,
     rerankModel: rerankModelData,
+    rerankMethod: rerankMethodEnum,
     rerankWeight
   };
   const {

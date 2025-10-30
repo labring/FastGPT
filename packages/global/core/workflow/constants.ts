@@ -191,6 +191,7 @@ export enum NodeInputKeyEnum {
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
   datasetSearchRerankModel = 'rerankModel',
+  datasetSearchRerankMethod = 'rerankMethod',
 
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',

@@ -289,6 +289,13 @@ export function form2AppWorkflow(
           value: formData.dataset.rerankModel
         },
         {
+          key: NodeInputKeyEnum.datasetSearchRerankMethod,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.rerankMethod
+        },
+        {
           key: NodeInputKeyEnum.datasetSearchRerankWeight,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',

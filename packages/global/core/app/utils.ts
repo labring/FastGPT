@@ -4,7 +4,7 @@ import { NodeInputKeyEnum, FlowNodeTemplateTypeEnum } from '../workflow/constant
 import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
-import { DatasetSearchModeEnum } from '../dataset/constants';
+import { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
 import appErrList from '../../common/error/code/app';
@@ -28,6 +28,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: true,
       rerankModel: '',
+      rerankMethod: RerankMethodEnum.content,
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: ''
@@ -121,6 +122,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankModel
       );
+      defaultAppForm.dataset.rerankMethod =
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankMethod) ||
+        RerankMethodEnum.content;
       defaultAppForm.dataset.rerankWeight = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankWeight

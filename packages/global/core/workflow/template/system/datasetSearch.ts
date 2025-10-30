@@ -13,7 +13,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_UserChatInput } from '../input';
-import { DatasetSearchModeEnum } from '../../../dataset/constants';
+import { DatasetSearchModeEnum, RerankMethodEnum } from '../../../dataset/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
 
@@ -85,6 +85,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankMethod,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: RerankMethodEnum.content // 默认值为 RerankMethodEnum.content
     },
     {
       key: NodeInputKeyEnum.datasetSearchRerankWeight,

@@ -340,6 +340,11 @@ export const SearchScoreTypeMap = {
   }
 };
 
+export enum RerankMethodEnum {
+  question = 'question',
+  content = 'content' // Default
+}
+
 export const CustomCollectionIcon = 'common/linkBlue';
 export const LinkCollectionIcon = 'common/linkBlue';
 

@@ -7,7 +7,7 @@ import type {
   WorkflowIOValueTypeEnum
 } from '../workflow/constants';
 import type { SelectedDatasetType } from '../workflow/type/io';
-import type { DatasetSearchModeEnum } from '../dataset/constants';
+import type { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import type { StoreEdgeItemType } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
@@ -81,6 +81,7 @@ export type AppDatasetSearchParamsType = {
 
   usingReRank?: boolean;
   rerankModel?: string;
+  rerankMethod?: `${RerankMethodEnum}`;
   rerankWeight?: number;
 
   datasetSearchUsingExtensionQuery?: boolean;

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchModeEnum, RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -29,6 +29,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     similarity: 0.5,
     usingReRank: true,
     rerankModel: defaultModels.llm?.model,
+    rerankMethod: RerankMethodEnum.content,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
