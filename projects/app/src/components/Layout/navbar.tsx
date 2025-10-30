@@ -46,15 +46,15 @@ const Navbar = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('common:navbar.Chat'),
-        icon: 'core/chat/chatLight',
-        activeIcon: 'core/chat/chatFill',
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
         link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
         activeLink: ['/chat']
       },
       {
         label: t('common:navbar.Studio'),
-        icon: 'core/app/aiLight',
-        activeIcon: 'core/app/aiFill',
+        icon: 'navbar/dashboardLight',
+        activeIcon: 'navbar/dashboardFill',
         link: `/dashboard/apps`,
         activeLink: [
           '/dashboard/apps',
@@ -68,22 +68,22 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: t('common:navbar.Datasets'),
-        icon: 'core/dataset/datasetLight',
-        activeIcon: 'core/dataset/datasetFill',
+        icon: 'navbar/datasetLight',
+        activeIcon: 'navbar/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
         label: t('common:navbar.toolkit'),
-        icon: 'core/app/type/pluginLight',
+        icon: 'core/app/pluginLight',
         activeIcon: 'core/app/pluginFill',
         link: '/toolkit/tools',
         activeLink: ['/toolkit/tools']
       },
       {
         label: t('common:navbar.Account'),
-        icon: 'support/user/userLight',
-        activeIcon: 'support/user/userFill',
+        icon: 'navbar/userLight',
+        activeIcon: 'navbar/userFill',
         link: '/account/info',
         activeLink: [
           '/account/bill',
