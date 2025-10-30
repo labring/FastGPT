@@ -112,8 +112,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi',
-  systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
-  submitPluginRequestUrl: '',
+  systemPluginCourseUrl: 'https://doc.fastgpt.cn/docs/introduction/guide/plugins/dev_system_tool',
+  submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   marketPlaceUrl: 'marketplace.fastgpt.cn',
