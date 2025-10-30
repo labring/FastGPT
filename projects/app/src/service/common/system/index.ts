@@ -20,7 +20,7 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
+import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 
 export const readConfigData = async (name: string) => {
@@ -173,16 +173,16 @@ export async function initSystemConfig() {
 
 export async function initSystemPluginTags() {
   try {
-    const toolTypes = await getSystemToolTypes();
+    const tags = await getSystemToolTags();
 
-    if (toolTypes.length > 0) {
-      const bulkOps = toolTypes.map((toolType, index) => ({
+    if (tags.length > 0) {
+      const bulkOps = tags.map((tag, index) => ({
         updateOne: {
-          filter: { tagId: toolType.type },
+          filter: { tagId: tag.id },
           update: {
             $set: {
-              tagId: toolType.type,
-              tagName: toolType.name,
+              tagId: tag.id,
+              tagName: tag.name,
               tagOrder: index,
               isSystem: true
             }

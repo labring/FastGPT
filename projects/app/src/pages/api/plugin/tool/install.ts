@@ -18,7 +18,7 @@ async function handler(
   const { downloadUrls } = req.body;
 
   if (!downloadUrls) {
-    throw new Error('Download URL is required');
+    return Promise.reject('Download URL is required');
   }
 
   const result = await pluginClient.tool.upload.install({

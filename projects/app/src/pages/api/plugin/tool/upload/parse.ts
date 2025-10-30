@@ -34,13 +34,11 @@ async function handler(
     return Promise.reject(new Error('Object name is required'));
   }
 
-  console.log('objectName', objectName);
   const result = await pluginClient.tool.upload.parseUploadedTool({
     query: {
       objectName
     }
   });
-  console.log('result', result);
 
   if (result.status !== 200) {
     return Promise.reject(result.body);

@@ -28,13 +28,7 @@ const runToolInstance = new RunToolWithStream({
 });
 export const APIRunSystemTool = runToolInstance.run.bind(runToolInstance);
 
-// Tool Types Cache
-type SystemToolTypeItem = {
-  type: string;
-  name: I18nStringStrictType;
-};
-
-export const getSystemToolTypes = (): Promise<SystemToolTypeItem[]> => {
+export const getSystemToolTags = () => {
   return retryFn(async () => {
     const res = await pluginClient.tool.getTags();
 

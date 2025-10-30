@@ -106,7 +106,6 @@ export const useNodeTemplates = () => {
       }
     }
   );
-  console.log('teamAndSystemApps', teamAndSystemApps);
 
   useDebounceEffect(
     () => {

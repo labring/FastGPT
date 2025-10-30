@@ -86,17 +86,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       per: ReadPermissionVal
     });
 
-    const { source: pluginSource } = splitCombinePluginId(pluginId);
-    if (pluginSource === PluginSourceEnum.systemTool) {
-      const systemPlugin = await getSystemToolById(pluginId);
-
-      if (systemPlugin.status === 0) {
-        return getNodeErrResponse({
-          error: i18nT('app:Plugin_offline_tips')
-        });
-      }
-    }
-
     plugin = await getChildAppRuntimeById({ id: pluginId, versionId: version });
 
     const outputFilterMap =
