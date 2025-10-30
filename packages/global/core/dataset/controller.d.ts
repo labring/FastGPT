@@ -10,6 +10,7 @@ export type CreateDatasetDataProps = {
   a?: string;
   imageId?: string;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
+  metadata?: Record<string, any>;
   indexPrefix?: string;
 };
 
@@ -21,6 +22,7 @@ export type UpdateDatasetDataProps = {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
   })[];
+  metadata?: Record<string, any>;
   imageId?: string;
   indexPrefix?: string;
 };

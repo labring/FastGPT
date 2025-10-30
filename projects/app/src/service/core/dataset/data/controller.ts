@@ -174,7 +174,8 @@ export async function insertData2Dataset({
   indexPrefix,
   embeddingModel,
   imageDescMap,
-  session
+  session,
+  metadata
 }: CreateDatasetDataProps & {
   embeddingModel: string;
   indexSize?: number;
@@ -228,7 +229,8 @@ export async function insertData2Dataset({
         imageId,
         imageDescMap,
         chunkIndex,
-        indexes: results
+        indexes: results,
+        metadata
       }
     ],
     { session, ordered: true }
@@ -269,7 +271,8 @@ export async function updateData2Dataset({
   indexes,
   model,
   indexSize = 512,
-  indexPrefix
+  indexPrefix,
+  metadata
 }: UpdateDatasetDataProps & { model: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -390,6 +393,7 @@ export async function updateData2Dataset({
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
     mongoData.indexes = newIndexes;
+    mongoData.metadata = metadata ?? mongoData.metadata;
     await mongoData.save({ session });
 
     // update mongo data text

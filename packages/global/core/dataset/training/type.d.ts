@@ -7,7 +7,6 @@ export type PushDataToTrainingQueueProps = {
   datasetId: string;
   collectionId: string;
 
-  data: PushDatasetDataChunkProps[];
   mode?: TrainingModeEnum;
   data: PushDatasetDataChunkProps[];
 

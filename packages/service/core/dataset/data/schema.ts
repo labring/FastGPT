@@ -50,6 +50,7 @@ const DatasetDataSchema = new Schema({
       }
     ]
   },
+  metadata: Object,
   indexes: {
     type: [
       {

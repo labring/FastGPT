@@ -78,6 +78,7 @@ const TrainingDataSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: DatasetDataCollectionName
   },
+  dataMetadata: Object,
   indexes: {
     type: [
       {

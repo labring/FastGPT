@@ -272,6 +272,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
         trainingData.indexSize ||
         getMaxIndexSize(getEmbeddingModel(trainingData.dataset.vectorModel)),
       indexes: trainingData.indexes,
+      metadata: trainingData.dataMetadata,
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,

@@ -126,6 +126,7 @@ export async function pushDataListToTrainingQueue({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
+          ...(item.metadata && { dataMetadata: item.metadata }),
           retryCount: 5
         })),
         {

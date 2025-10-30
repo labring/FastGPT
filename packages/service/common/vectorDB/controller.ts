@@ -72,18 +72,40 @@ export const insertDatasetDataVector = async ({
     input: inputs,
     type: 'db'
   });
-  const { insertIds } = await retryFn(() =>
-    Vector.insert({
-      ...props,
-      vectors
-    })
-  );
+  // 使用分批插入
+  const batchSize = 10;
+  const allInsertIds: string[] = [];
+
+  const insertData = async (startIndex: number) => {
+    const batchVectors = vectors.slice(startIndex, startIndex + batchSize);
+
+    if (batchVectors.length === 0) return;
+
+    try {
+      const { insertIds } = await retryFn(() =>
+        Vector.insert({
+          ...props,
+          vectors: batchVectors
+        })
+      );
+
+      if (insertIds) {
+        allInsertIds.push(...insertIds);
+      }
+    } catch (error) {
+      throw error;
+    }
+
+    return insertData(startIndex + batchSize);
+  };
+
+  await insertData(0);
 
   onIncrCache(props.teamId);
 
   return {
     tokens,
-    insertIds
+    insertIds: allInsertIds
   };
 };
 
