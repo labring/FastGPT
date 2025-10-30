@@ -282,6 +282,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     // @ts-ignore
                     inputType={inputType}
                     {...formParams}
+                    isRichText={false}
                     variables={[...variables, ...externalProviderWorkflowVariables]}
                     variableLabels={variables}
                     value={updateItem.value?.[1]}

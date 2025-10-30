@@ -125,12 +125,10 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
-      HeadingNode,
-      ListNode,
-      ListItemNode,
-      QuoteNode,
-      CodeNode,
-      CodeHighlightNode
+      // Only register rich text nodes when in rich text mode
+      ...(isRichText
+        ? [HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode]
+        : [])
     ],
     editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
