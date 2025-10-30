@@ -183,9 +183,9 @@ const ToolkitMarketplace = () => {
             description: parseI18nString(tool.description || '', i18n.language),
             icon: tool.icon,
             author: tool.author || '',
-            tags: tool.tags?.map((tag) => {
-              const currentTag = allTags.find((t) => t.type === tag);
-              return parseI18nString(currentTag?.name || '', i18n.language) || '';
+            tags: tool.tags?.map((tag: string) => {
+              const currentTag = allTags.find((t) => t.tagId === tag);
+              return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
             }),
             downloadUrl: tool.downloadUrl,
             status: isInstalled ? 3 : 1 // 1: normal, 3: installed
@@ -396,12 +396,7 @@ const ToolkitMarketplace = () => {
                   )}
                 </Flex>
                 <PluginTagFilter
-                  tags={allTags.map((tag) => ({
-                    tagId: tag.type,
-                    tagName: tag.name,
-                    tagOrder: 0,
-                    isSystem: true
-                  }))}
+                  tags={allTags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />
@@ -482,12 +477,7 @@ const ToolkitMarketplace = () => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
             >
               <PluginTagFilter
-                tags={allTags.map((tag) => ({
-                  tagId: tag.type,
-                  tagName: tag.name,
-                  tagOrder: 0,
-                  isSystem: true
-                }))}
+                tags={allTags}
                 selectedTagIds={selectedTagIds}
                 onTagSelect={setSelectedTagIds}
               />

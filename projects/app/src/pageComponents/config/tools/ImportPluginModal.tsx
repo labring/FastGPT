@@ -84,8 +84,8 @@ const ImportPluginModal = ({
                 toolIntro: parseI18nString(toolDetail?.description || '', i18n.language) || '',
                 toolTags:
                   toolDetail?.tags?.map((tag) => {
-                    const currentTag = allTags.find((item) => item.type === tag);
-                    return parseI18nString(currentTag?.name || '', i18n.language) || '';
+                    const currentTag = allTags.find((item) => item.tagId === tag);
+                    return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
                   }) || []
               }
             : f
