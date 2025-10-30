@@ -138,12 +138,12 @@ const ToolkitMarketplace = () => {
       await installMarketplaceTool({
         downloadUrls: [tool.downloadUrl]
       });
+      await refetchTools();
+      await refreshCurrentTools({});
     },
     {
       manual: true,
       onSuccess: async () => {
-        await refetchTools();
-        await refreshCurrentTools({});
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
         }
@@ -157,12 +157,12 @@ const ToolkitMarketplace = () => {
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
       await deletePlugin({ toolId: tool.id });
+      await refetchTools();
+      await refreshCurrentTools({});
     },
     {
       manual: true,
       onSuccess: async () => {
-        await refetchTools();
-        await refreshCurrentTools({});
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
         }
@@ -182,8 +182,8 @@ const ToolkitMarketplace = () => {
           );
           return {
             id: tool.toolId,
-            name: parseI18nString(tool.name || '', i18n.language),
-            description: parseI18nString(tool.description || '', i18n.language),
+            name: parseI18nString(tool.name || '', i18n.language) || '',
+            description: parseI18nString(tool.description || '', i18n.language) || '',
             icon: tool.icon,
             author: tool.author || '',
             tags: tool.tags?.map((tag: string) => {
@@ -275,7 +275,7 @@ const ToolkitMarketplace = () => {
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        isLoading={loadingTools && !operatingToolId}
+        isLoading={loadingTools && displayTools.length === 0}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
           <MyIconButton

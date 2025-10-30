@@ -42,48 +42,27 @@ const ToolKitProvider = () => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null);
 
-  const { data: tools = [], loading: loadingTools } = useRequest2(
-    () => getSystemPlugins({ source: 'team' }),
-    {
-      manual: false
-    }
-  );
+  const {
+    data: tools = [],
+    runAsync: refetchTools,
+    loading: loadingTools
+  } = useRequest2(() => getSystemPlugins({ source: 'team' }), {
+    manual: false
+  });
   const { data: tags = [], loading: loadingTags } = useRequest2(getPluginTags, {
     manual: false
   });
-  const {
-    data: installStatus,
-    run: refreshInstallStatus,
-    loading: loadingInstallStatus
-  } = useRequest2(getTeamInstalledPluginIds, {
-    manual: false
-  });
+
   const { runAsync: toggleInstall } = useRequest2(
     async (data: { pluginId: string; installed: boolean }) => {
       setLoadingPluginId(data.pluginId);
       try {
-        return await postToggleInstallPlugin(data);
+        await postToggleInstallPlugin(data);
+        await refetchTools();
       } finally {
         setLoadingPluginId(null);
       }
-    },
-    {
-      onSuccess: () => refreshInstallStatus()
     }
-  );
-  const getPluginInstallStatus = useCallback(
-    (pluginId: string) => {
-      if (!installStatus) return null;
-      if (installStatus.uninstalledIds.includes(pluginId)) {
-        return false;
-      }
-      if (installStatus.installedIds.includes(pluginId)) {
-        return true;
-      }
-      const plugin = tools.find((item) => item.id === pluginId);
-      return !!plugin?.defaultInstalled;
-    },
-    [installStatus, tools]
   );
 
   const displayTools: ToolCardItemType[] = useMemo(() => {
@@ -101,7 +80,7 @@ const ToolKitProvider = () => {
       })
       .filter((tool) => {
         if (installedFilter === 'all') return true;
-        const isInstalled = getPluginInstallStatus(tool.id);
+        const isInstalled = tool.isInstalled;
         if (installedFilter === 'installed') return !!isInstalled;
         if (installedFilter === 'uninstalled') return !isInstalled;
         return true;
@@ -113,9 +92,9 @@ const ToolKitProvider = () => {
       description: parseI18nString(tool.intro || '', i18n.language),
       icon: tool.avatar,
       tags: tool.tags?.map((tag) => parseI18nString(tag.tagName || '', i18n.language)),
-      status: tool.status === 1 ? (getPluginInstallStatus(tool.id) ? 3 : 1) : tool.status
+      status: tool.status === 1 ? (tool.isInstalled ? 3 : 1) : tool.status
     }));
-  }, [tools, searchText, selectedTagIds, installedFilter, getPluginInstallStatus]);
+  }, [tools, searchText, selectedTagIds, installedFilter]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -126,7 +105,7 @@ const ToolKitProvider = () => {
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        isLoading={loadingTools || loadingTags || loadingInstallStatus}
+        isLoading={loadingTools && displayTools.length === 0}
       >
         <Box px={8} flexShrink={0}>
           <Button

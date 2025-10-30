@@ -22,7 +22,9 @@ export type getSystemPluginsQuery = {
 
 export type getSystemPluginsBody = {};
 
-export type getSystemPluginsResponse = Array<SystemPluginTemplateListItemType>;
+export type getSystemPluginsResponse = Array<
+  SystemPluginTemplateListItemType & { isInstalled?: boolean }
+>;
 
 async function handler(
   req: ApiRequestProps<getSystemPluginsBody, getSystemPluginsQuery>,
@@ -55,10 +57,14 @@ async function handler(
 
     systemTools = systemTools.filter((plugin) => {
       if (installedSet.has(plugin.id)) {
+        // @ts-ignore
+        plugin.isInstalled = true;
         return true;
       }
       // 管理员用户从插件市场安装后，资源库默认安装，减少重复安装
       if (isRoot && !uninstalledSet.has(plugin.id)) {
+        // @ts-ignore
+        plugin.isInstalled = true;
         return true;
       }
 
