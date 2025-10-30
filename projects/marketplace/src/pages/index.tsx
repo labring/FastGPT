@@ -429,7 +429,7 @@ const ToolkitMarketplace = () => {
                       key={tool.id}
                       item={tool}
                       isLoading={operatingToolId === tool.id}
-                      onToggleInstall={() => window.open(tool.downloadUrl)}
+                      onToggleInstall={() => window.open(tool.downloadUrl, '_blank')}
                       onClick={() => setSelectedTool(tool)}
                     />
                   );
