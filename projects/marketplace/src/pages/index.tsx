@@ -204,15 +204,14 @@ const ToolkitMarketplace = () => {
   }, [isSearchExpanded, inputValue]);
 
   return (
-    <Box h="100vh">
+    <>
       <MyBox
         bg={'white'}
-        h="calc(100vh - 48px)"
-        rounded={'8px'}
+        h="100vh"
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        isLoading={loadingTools}
+        isLoading={loadingTools && displayTools.length === 0}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
           <Flex gap={3} position={'absolute'} right={8} top={6} alignItems={'center'}>
@@ -340,7 +339,7 @@ const ToolkitMarketplace = () => {
           </Box>
         </Box>
 
-        <ScrollData flex={1} minHeight={0} height="auto">
+        <ScrollData flex={1} minHeight={0} height="auto" pb={10}>
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}
@@ -473,7 +472,7 @@ const ToolkitMarketplace = () => {
           onToggleInstall={() => window.open(selectedTool.downloadUrl)}
         />
       )}
-    </Box>
+    </>
   );
 };
 
