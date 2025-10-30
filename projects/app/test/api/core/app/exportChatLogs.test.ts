@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from 'date-fns';
 import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { StreamCall } from '@test/utils/request';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -82,11 +82,11 @@ describe('exportChatLogs API', () => {
       time: new Date()
     });
 
-    // 执行导出
+    // 执行导出 - 使用 StreamCall 处理流式 CSV 响应
     const dateStart = addDays(new Date(), -1);
     const dateEnd = addDays(new Date(), 1);
 
-    const result: any = await Call<ExportChatLogsBody, {}, {}>(exportChatLogsApi.default, {
+    const result: any = await StreamCall<ExportChatLogsBody, {}, {}>(exportChatLogsApi.default, {
       auth: user,
       body: {
         appId: String(app._id),
@@ -107,6 +107,11 @@ describe('exportChatLogs API', () => {
     // 验证 CSV 数据
     const csvData = result.raw as string;
     expect(csvData).toBeDefined();
+    expect(csvData.length).toBeGreaterThan(0);
+
+    // 验证响应头包含正确的 Content-Type 和 Content-Disposition
+    expect(result.headers?.['Content-Type']).toContain('text/csv');
+    expect(result.headers?.['Content-Disposition']).toContain('attachment');
 
     // 核心验证:检查反馈数据中是否包含 chatItemId
     // 好评反馈应该包含 chatItemId 和反馈内容
