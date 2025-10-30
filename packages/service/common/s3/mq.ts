@@ -8,7 +8,7 @@ export type S3MQJobData = {
   bucketName: string;
 };
 
-export async function addS3Job(data: S3MQJobData): Promise<void> {
+export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
   const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
 
   await queue.add(
@@ -24,9 +24,8 @@ export async function addS3Job(data: S3MQJobData): Promise<void> {
       }
     }
   );
-}
-
-export async function startS3Worker() {
+};
+export const startS3DelWorker = async () => {
   return getWorker<S3MQJobData>(
     QueueNames.s3FileDelete,
     async (job) => {
@@ -75,4 +74,4 @@ export async function startS3Worker() {
       concurrency: 1
     }
   );
-}
+};
