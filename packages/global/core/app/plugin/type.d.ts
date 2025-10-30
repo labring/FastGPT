@@ -91,3 +91,19 @@ export type ToolDetailResponse = {
   tools: Array<ToolDetailType & { readme: string }>;
   downloadUrl: string;
 };
+
+// Marketplace API types
+export type GetMarketplaceToolsBody = PaginationProps<{
+  searchKey?: string;
+  tags?: string[];
+}>;
+
+export type GetMarketplaceToolsResponse = PaginationResponse<ToolListItem>;
+
+export type GetMarketplaceToolDetailQuery = {
+  toolId: string;
+};
+
+export type GetMarketplaceToolDetailResponse = ToolDetailResponse;
+
+export type GetToolTagsResponse = PluginTagType[];
