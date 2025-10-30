@@ -9,13 +9,8 @@ export const parseI18nString = (str: I18nStringType | string = '', lang = 'en') 
   }
 
   // 如果当前语言是繁体中文但没有对应翻译，优先回退到简体中文
-  if (lang === 'zh-Hant' && str['zh-CN']) {
-    return str['zh-CN'] || '';
-  }
-
-  // 对于其他语言，也优先尝试简体中文
-  if (str['zh-CN']) {
-    return str['zh-CN'] || '';
+  if (lang === 'zh-Hant' && !str['zh-Hant'] && str['zh-CN']) {
+    return str['zh-CN'];
   }
 
   // 最后回退到英文
