@@ -6,6 +6,16 @@ import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { WorkflowTemplateType } from '../../workflow/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
 import type { ParentIdType } from 'common/parentFolder/type';
+import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { I18nStringType } from '../../../common/i18n/type';
+import type { ToolSimpleType, ToolDetailType } from '@fastgpt-sdk/plugin';
+
+export type PluginTagType = {
+  tagId: string;
+  tagName: I18nStringStrictType | string;
+  tagOrder: number;
+  isSystem: boolean;
+};
 
 export type PluginRuntimeType = {
   id: string;
@@ -25,8 +35,6 @@ export type PluginRuntimeType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
-  templateType: string;
-
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
@@ -49,7 +57,9 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  isActive?: boolean;
+  pluginTags?: string[];
+  status?: number;
+  defaultInstalled?: boolean;
   isOfficial?: boolean;
 
   // Admin config
@@ -57,14 +67,46 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 
-  // Plugin source type
-  toolSource?: 'uploaded' | 'built-in';
+  // @deprecated use pluginTags instead
+  isActive?: boolean;
+  templateType?: string;
 };
 
 export type SystemPluginTemplateListItemType = Omit<
   SystemPluginTemplateItemType,
-  'name' | 'intro'
+  'name' | 'intro' | 'workflow'
 > & {
   name: string;
   intro: string;
+  tags?: PluginTagType[];
 };
+
+export type ToolListItem = ToolSimpleType & {
+  downloadUrl: string;
+  // not implemented
+  // downloadCount: number;
+};
+
+export type ToolDetailResponse = {
+  tools: Array<ToolDetailType & { readme: string }>;
+  downloadUrl: string;
+};
+
+// Marketplace API types
+export type GetMarketplaceToolsBody = PaginationProps<{
+  searchKey?: string;
+  tags?: string[];
+}>;
+
+export type GetMarketplaceToolsResponse = {
+  total: number;
+  list: ToolListItem[];
+};
+
+export type GetMarketplaceToolDetailQuery = {
+  toolId: string;
+};
+
+export type GetMarketplaceToolDetailResponse = ToolDetailResponse;
+
+export type GetToolTagsResponse = PluginTagType[];

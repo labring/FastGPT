@@ -6,8 +6,8 @@ import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/co
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
-import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoToolGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
+import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -20,7 +20,7 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
+import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 
 export const readConfigData = async (name: string) => {
@@ -112,9 +112,11 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi',
-  systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
+  systemPluginCourseUrl: 'https://doc.fastgpt.cn/docs/introduction/guide/plugins/dev_system_tool',
+  submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
+  marketPlaceUrl: 'marketplace.fastgpt.cn',
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)',
@@ -169,33 +171,30 @@ export async function initSystemConfig() {
   });
 }
 
-export async function initSystemPluginGroups() {
+export async function initSystemPluginTags() {
   try {
-    const { groupOrder, ...restDefaultGroup } = defaultGroup;
+    const tags = await getSystemToolTags();
 
-    const toolTypes = await getSystemToolTypes();
-
-    if (toolTypes.length > 0) {
-      await MongoToolGroups.updateOne(
-        {
-          groupId: defaultGroup.groupId
-        },
-        {
-          $set: {
-            ...restDefaultGroup,
-            groupTypes: toolTypes.map((toolType) => ({
-              typeId: toolType.type,
-              typeName: toolType.name
-            }))
-          }
-        },
-        {
+    if (tags.length > 0) {
+      const bulkOps = tags.map((tag, index) => ({
+        updateOne: {
+          filter: { tagId: tag.id },
+          update: {
+            $set: {
+              tagId: tag.id,
+              tagName: tag.name,
+              tagOrder: index,
+              isSystem: true
+            }
+          },
           upsert: true
         }
-      );
+      }));
+
+      await MongoPluginTag.bulkWrite(bulkOps);
     }
   } catch (error) {
-    console.error('Error initializing system plugins:', error);
+    console.error('Error initializing system plugin tags:', error);
   }
 }
 

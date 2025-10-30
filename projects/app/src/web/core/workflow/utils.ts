@@ -6,6 +6,7 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
+  AppNodeFlowNodeTypeMap,
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -25,6 +26,7 @@ import {
   getHandleId
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
+import { getSystemPlugins } from '../app/api/plugin';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType,
@@ -171,6 +173,42 @@ export const storeNode2FlowNode = ({
     zIndex
   };
 };
+
+export const batchFillPluginData = async (nodes: StoreNodeItemType[]) => {
+  const pluginIdsSet = new Set<string>();
+  nodes.forEach((node) => {
+    const isAppNode = AppNodeFlowNodeTypeMap[node.flowNodeType];
+    if (isAppNode && node.pluginId) {
+      pluginIdsSet.add(node.pluginId);
+    }
+  });
+
+  if (pluginIdsSet.size === 0) return;
+
+  try {
+    const systemPlugins = await getSystemPlugins({});
+
+    const pluginDataMap = new Map<string, { status?: number; pluginTags?: string[] }>();
+    systemPlugins.forEach((plugin) => {
+      pluginDataMap.set(plugin.id, {
+        status: plugin.status,
+        pluginTags: plugin.pluginTags
+      });
+    });
+
+    nodes.forEach((node) => {
+      if (node.pluginId && pluginDataMap.has(node.pluginId)) {
+        node.pluginData = {
+          ...node.pluginData,
+          ...pluginDataMap.get(node.pluginId)
+        };
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to batch fill plugin data:', error);
+  }
+};
+
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
 
