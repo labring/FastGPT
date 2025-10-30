@@ -100,6 +100,7 @@ async function migratePluginData(typeToGroupMap: Map<string, string>): Promise<n
     const unsetFields: any = {};
 
     // 迁移 templateType → pluginTags
+    // @ts-ignore
     const templateType = plugin.customConfig?.templateType;
     if (templateType) {
       const groupId = typeToGroupMap.get(templateType);
