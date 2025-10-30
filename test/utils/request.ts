@@ -5,83 +5,124 @@ import { vi } from 'vitest';
 export async function Call<B = any, Q = any, R = any>(
   handler: NextApiHandler<R>,
   props?: MockReqType<B, Q>
-): Promise<{
-  code: number;
-  data: R;
-  error?: any;
-  raw?: any;
-}> {
+) {
   const { body = {}, query = {}, ...rest } = props || {};
-  let raw: string | any = '';
+  let raw;
+  const res: any = {
+    setHeader: vi.fn(),
+    write: vi.fn((data: any) => {
+      raw = data;
+    }),
+    end: vi.fn(),
+    on: vi.fn((event: string, callback: Function) => {
+      if (event === 'drain') {
+        // 模拟 drain 事件
+      }
+    }),
+    status: vi.fn()
+  };
+  const response = (await handler(
+    {
+      body: JSON.parse(JSON.stringify(body)),
+      query: JSON.parse(JSON.stringify(query)),
+      ...(rest as any)
+    },
+    res
+  )) as any;
+  return {
+    ...response,
+    raw
+  } as {
+    code: number;
+    data: R;
+    error?: any;
+    raw?: any;
+  };
+}
 
-  return new Promise((resolve) => {
-    let endResolve: (() => void) | null = null;
-    const endPromise = new Promise<void>((res) => {
-      endResolve = res;
-    });
+// Stream call for handling streaming responses like CSV downloads
+export async function StreamCall<B = any, Q = any, R = any>(
+  handler: NextApiHandler<R>,
+  props?: MockReqType<B, Q>
+) {
+  const { body = {}, query = {}, ...rest } = props || {};
+  const chunks: any[] = [];
+  const headers: Record<string, string> = {};
 
-    const res: any = {
-      setHeader: vi.fn(),
-      write: vi.fn((data: any) => {
-        if (typeof data === 'string') {
-          raw += data;
-        } else {
-          raw = data;
-        }
-        return true;
-      }),
-      end: vi.fn(() => {
-        // 流式响应结束
-        if (endResolve) {
-          endResolve();
-        }
-      }),
-      on: vi.fn((event: string, callback: Function) => {
-        if (event === 'drain') {
-          // 模拟 drain 事件
-        }
-      }),
-      status: vi.fn()
-    };
-    // 启动 handler（立即返回,开始流式处理)
-    const handlerPromise = handler(
-      {
-        body: JSON.parse(JSON.stringify(body)),
-        query: JSON.parse(JSON.stringify(query)),
-        ...(rest as any)
-      },
-      res
-    );
-
-    // 等待流式响应结束
-    Promise.all([handlerPromise, endPromise])
-      .then(([response]: [any, void]) => {
-        // Handler 和流都完成了
-        if (response && typeof response === 'object' && 'code' in response) {
-          // JSON 响应
-          resolve({
-            ...response,
-            raw
-          });
-        } else {
-          // 流式响应
-          setImmediate(() => {
-            resolve({
-              code: 200,
-              data: null as R,
-              error: undefined,
-              raw
-            });
-          });
-        }
-      })
-      .catch((error: any) => {
-        resolve({
-          code: 500,
-          error,
-          data: null as R,
-          raw
-        });
-      });
+  // Create a promise that resolves when stream ends
+  let resolveStream: () => void;
+  let rejectStream: (err: any) => void;
+  const streamEndPromise = new Promise<void>((resolve, reject) => {
+    resolveStream = resolve;
+    rejectStream = reject;
   });
+
+  let statusCode = 200;
+  const eventListeners: Record<string, Function[]> = {};
+
+  const res: any = {
+    setHeader: vi.fn((key: string, value: string) => {
+      headers[key] = value;
+    }),
+    write: vi.fn((data: any) => {
+      chunks.push(data);
+      return true; // Indicate write was successful (no backpressure)
+    }),
+    end: vi.fn((data?: any) => {
+      if (data) {
+        chunks.push(data);
+      }
+      // Resolve the promise when stream ends
+      resolveStream();
+    }),
+    on: vi.fn((event: string, callback: Function) => {
+      // Store event listeners for potential triggering
+      if (!eventListeners[event]) {
+        eventListeners[event] = [];
+      }
+      eventListeners[event].push(callback);
+      return res; // Support chaining
+    }),
+    status: vi.fn((code: number) => {
+      statusCode = code;
+      return res;
+    }),
+    // Add closed property to check if response is closed
+    closed: false
+  };
+
+  // Call handler (may return immediately while stream continues)
+  const response = (await handler(
+    {
+      body: JSON.parse(JSON.stringify(body)),
+      query: JSON.parse(JSON.stringify(query)),
+      ...(rest as any)
+    },
+    res
+  )) as any;
+
+  // Wait for stream to finish writing all data (res.end() to be called)
+  await streamEndPromise;
+
+  // Mark response as closed
+  res.closed = true;
+
+  // Combine all chunks into a single string or buffer
+  const raw = chunks.join('');
+
+  return {
+    code: statusCode,
+    data: response?.data,
+    error: response?.error,
+    raw,
+    chunks,
+    headers
+  } as {
+    code: number;
+    data: R;
+    error?: any;
+    raw?: any;
+    chunks?: any[];
+    headers?: Record<string, string>;
+  };
 }
