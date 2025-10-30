@@ -52,7 +52,7 @@ async function handler(
     author
   } = req.body;
 
-  const pluginId = `${PluginSourceEnum.commercial}-${getNanoid(12)}`;
+  const pluginId = getNanoid(12);
 
   const firstPlugin = await MongoSystemPlugin.findOne().sort({ pluginOrder: 1 }).lean();
   const pluginOrder = firstPlugin ? firstPlugin.pluginOrder ?? 0 - 1 : 0;

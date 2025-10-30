@@ -40,7 +40,8 @@ const SystemPluginSchema = new Schema({
   inputListVal: Object,
 
   // @deprecated
-  inputConfig: Array
+  inputConfig: Array,
+  isActive: Boolean
 });
 
 SystemPluginSchema.index({ pluginId: 1 });
