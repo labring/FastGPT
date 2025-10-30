@@ -21,6 +21,7 @@ import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
 import type { GetSubAppInfoFnType } from '../../type';
 import { getStepDependon } from '../../common/dependon';
+import { parseSystemPrompt } from '../../utils';
 
 type PlanAgentConfig = {
   systemPrompt?: string;
@@ -70,8 +71,7 @@ export const dispatchPlanAgent = async ({
       role: 'system',
       content: getPlanAgentSystemPrompt({
         getSubAppInfo,
-        subAppList,
-        systemPrompt
+        subAppList
       })
     },
     ...historyMessages
@@ -95,9 +95,15 @@ export const dispatchPlanAgent = async ({
       content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
     });
   } else {
+    let userContent = `任务描述：${userInput}`;
+
+    if (systemPrompt) {
+      userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。`;
+    }
+    console.log('userContent:', userInput);
     requestMessages.push({
       role: 'user',
-      content: userInput
+      content: userContent
     });
   }
 
@@ -212,7 +218,7 @@ export const dispatchReplanAgent = async ({
   userInput,
   plan,
   background,
-  referencePlans,
+  systemPrompt,
 
   model,
   temperature,
@@ -271,7 +277,7 @@ export const dispatchReplanAgent = async ({
         task: userInput,
         dependsSteps: replanSteps,
         background,
-        referencePlans
+        systemPrompt: parseSystemPrompt({ systemPrompt, getSubAppInfo })
       })
     });
   }

@@ -24,16 +24,12 @@ const getSubAppPrompt = ({
 
 export const getPlanAgentSystemPrompt = ({
   getSubAppInfo,
-  subAppList,
-  systemPrompt
+  subAppList
 }: {
   getSubAppInfo: GetSubAppInfoFnType;
   subAppList: ChatCompletionTool[];
-  systemPrompt?: string;
 }) => {
-  const userSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
   const subAppPrompt = getSubAppPrompt({ getSubAppInfo, subAppList });
-  console.log(userSystemPrompt);
   return `
 <role>
   你是一个专业的主题计划构建专家，擅长将复杂的主题学习和探索过程转化为结构清晰、可执行的渐进式学习路径。你的规划方法强调：
@@ -45,14 +41,14 @@ export const getPlanAgentSystemPrompt = ({
 <core_philosophy>
   1. **渐进式规划**：只规划到下一个关键信息点或决策点，通过 'replan' 标识需要基于执行结果调整的任务节点
   2. **最小化假设**：不对未知信息做过多预设，而是通过执行步骤获取
-  3. **前置信息优先**：制定计划前，优先收集必要的前置信息，而不是将信息收集作为计划的一部分
+  3. **前置信息优先**：制定计划前，优先收集必要的前置信息，而不是将信息收集作为计划的一部分，如果用户提供的 PLAN 中有前置搜集工作请在规划之前搜集
   4. **格式限制**：所有输出的信息必须输出符合 JSON Schema 的格式
   5. **目标强化**：所有的任务信息必须要规划出一个 PLAN
 </core_philosophy>
 <toolset>
   「以下是在规划 PLAN 过程中可以使用在每个 step 的 description 中的工具」
     ${subAppPrompt}
-  「以下是在规划 PLAN 过程中可以用来调用的工具」
+  「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
     - [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
 </toolset>
 <process>
@@ -254,46 +250,77 @@ export const getReplanAgentSystemPrompt = ({
 }) => {
   const subAppPrompt = getSubAppPrompt({ getSubAppInfo, subAppList });
 
-  return `<role>   
-    你是一个智能流程优化专家，专门负责在已完成的任务步骤基础上，追加生成优化步骤来完善整个流程，确保任务目标的完美达成。  
-  你的任务不是重新规划，而是基于现有执行结果，识别可以进一步优化和完善的环节，并生成具体的追加步骤，如果现有的结果已经可以实现当前的目标可以不用进行重新规划，直接输出总结。    
-</role>        
-<optimization_philosophy>  
-  核心原则：  
-  1. **追加优化**：在现有步骤基础上增加新步骤，不修改已完成的工作  
-  2. **结果导向**：基于实际执行结果，识别需要进一步完善的方面  
-  3. **价值最大化**：确保每个新步骤都能为整体目标提供实际价值  
-  4. **流程闭环**：补充遗漏的环节，形成完整的任务闭环
-  5. **任务核查**：确保最终输出的步骤能够完整覆盖用户最初提出的任务目标
-</optimization_philosophy>    
+  return `<role>
+    你是一个智能流程优化专家，专门负责在已完成的任务步骤基础上，追加生成优化步骤来完善整个流程，确保任务目标的完美达成。
+  你的任务不是重新规划，而是基于现有执行结果和任务类型，决定是输出总结还是继续生成优化步骤。
+</role>
+<optimization_philosophy>
+  核心原则：
+  1. **任务类型识别**：区分确定性任务（Deterministic Task）和探究性任务（Exploratory Task）
+  2. **追加优化**：在现有步骤基础上增加新步骤，不修改已完成的工作
+  3. **结果导向**：基于实际执行结果，识别需要进一步完善的方面
+  4. **价值最大化**：确保每个新步骤都能为整体目标提供实际价值
+  5. **流程闭环**：补充遗漏的环节，形成完整的任务闭环
+  6. **任务核查**：确保最终输出的步骤能够完整覆盖用户最初提出的任务目标
+</optimization_philosophy>
+
+<task_type_definition>
+  1. **确定性任务（Deterministic Task）**：
+     - 特征：有明确的答案或结论，问题边界清晰
+     - 示例：查询天气、查找特定信息、计算数值、回答事实性问题、解决明确定义的问题
+     - 策略：如果已有信息足以给出准确答案，直接输出总结步骤
+
+  2. **探究性任务（Exploratory Task）**：
+     - 特征：需要深入探索、多维度分析、创造性规划，答案越详细越好
+     - 示例：制定旅游计划、设计解决方案、学习某个主题、评估多个选项、创作内容、规划项目
+     - 策略：即使已有一些结果，也应该生成更详细的优化步骤，追求全面性和深度
+</task_type_definition>    
 
 <tools>
+「以下是在规划 PLAN 过程中可以使用在每个 step 的 description 中的工具」
 ${subAppPrompt}
+「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
+- [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
 </tools>
 
-<process>  
-  1. **完整性评估：**
-     * 审视「关键步骤执行结果」及其「执行结果」。
+<process>
+  1. **任务类型识别：**
+     * 首先判断「任务目标」属于哪种类型：
+       * **确定性任务**：是否是查询特定信息、回答事实问题、计算、查找等明确答案的任务？
+       * **探究性任务**：是否需要规划、设计、学习、评估、创作等深入探索的任务？
+     * 记住这个判断，它将影响后续的决策
+
+  2. **完整性评估：**
+     * 审视「关键步骤执行结果」及其「执行结果」
      * 深度思考：
        * (a) 基于现有的信息，是否能够对用户最初提出的「任务目标」，给出一个准确、完整、且具有实践指导意义的【最终结论】？
        * (b) 是否存在任何潜在的风险、遗漏的信息、或未充分考虑的因素，可能导致【最终结论】不够可靠或有效？
-     * 评估结果：
-       * 如果(a)为【是】，且(b)为【否】，则进入【总结步骤】。
-       * 否则，进入【优化步骤】。
-  
-  2. **优化步骤 (当完整性评估为“否”时执行)：**
+     * 结合任务类型做出决策：
+       * **确定性任务**：如果(a)为【是】且(b)为【否】，直接进入【总结步骤】
+       * **探究性任务**：即使(a)为【是】，也要考虑是否可以通过更多步骤提供更全面、更深入的结果。只有当已有信息非常充分、全面时才进入【总结步骤】，否则进入【优化步骤】生成更详细的规划
+
+  3. **优化步骤 (当需要继续优化时执行)：**
      * 识别需要进一步优化和完善的环节：
-       * 针对「关键步骤执行结果」的不足之处，明确指出需要补充的信息、需要重新审视的假设、或者需要进一步探索的方向。
+       * 针对「关键步骤执行结果」的不足之处，明确指出需要补充的信息、需要重新审视的假设、或者需要进一步探索的方向
+       * **对于探究性任务**：即使现有结果不错，也考虑如何让答案更全面、更详细、更有价值
+     * 前置信息检查：
+        * 首先判断是否具备制定计划所需的所有关键信息
+        * 如果缺少用户偏好、具体场景细节、关键约束、目标参数等前置信息
+        * **立即调用 ${SubAppIds.ask} 工具**，提出清晰的问题列表收集信息
+        * **切记**：不要将"询问用户"、"收集信息"作为计划的步骤
      * 生成具体的追加步骤：
-       * 基于上述识别结果，设计清晰、可操作的后续行动步骤，确保每个步骤都能够有效地弥补已发现的不足，并将流程导向更完善的状态。
-       * 确保新步骤与已有工作形成有机整体  
-  
-  3. **总结步骤 (当完整性评估为“是”时执行)：**
-     * 对「关键步骤执行结果」及其【最终结论】进行高度概括和提炼。
-     * 强调流程中的关键决策点、核心发现、以及最具价值的实践经验。
-     * 输出一步step为总结性质的步骤要求. 步骤标题为 \`生成总结报告\` 步骤描述为  \`基于现有步骤的结果，生成一个总结报告\`
-     
-  **所有输出严格遵循 JSON Schema 格式的追加优化步骤** 
+       * 基于上述识别结果，设计清晰、可操作的后续行动步骤
+       * 确保新步骤与已有工作形成有机整体
+       * **对于探究性任务**：追求深度和广度，生成多个维度的优化步骤
+
+  4. **总结步骤 (当可以总结时执行)：**
+     * **确定性任务**：如果已有足够信息可以给出准确答案
+     * **探究性任务**：如果已经进行了充分的多轮探索，信息已经非常全面和详细
+     * 输出格式：
+       * 步骤标题为 \`生成总结报告\`
+       * 步骤描述为 \`基于现有步骤的结果，生成一个总结报告\`
+
+  **所有输出严格遵循 JSON Schema 格式的追加优化步骤**
 </process>
   - 必须严格输出 JSON 格式  
   - 生成的是**追加步骤**，用于在现有工作基础上进一步优化  
@@ -417,14 +444,15 @@ ${subAppPrompt}
 export const getReplanAgentUserPrompt = ({
   task,
   background,
-  referencePlans,
+  systemPrompt,
   dependsSteps
 }: {
   task: string;
   background?: string;
-  referencePlans?: string;
+  systemPrompt?: string;
   dependsSteps: AgentPlanStepType[];
 }) => {
+  console.log('replan systemPrompt:', systemPrompt);
   const stepsResponsePrompt = dependsSteps
     .map(
       (step) => `步骤 ${step.id}:
@@ -438,10 +466,9 @@ export const getReplanAgentUserPrompt = ({
       ${background ? `「背景信息」：${background}` : ''}
       
       ${
-        referencePlans
+        systemPrompt
           ? `「用户前置规划」：
-      ${referencePlans}
-      请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。`
+        ${systemPrompt}`
           : ''
       }
       
@@ -451,6 +478,6 @@ export const getReplanAgentUserPrompt = ({
       
       ${stepsResponsePrompt}
       
-      请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤。
+      请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤,如果有「用户前置规划」请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。。
       如果「关键步骤执行结果」已经满足了当前的「任务目标」，请直接返回一个总结的步骤来提取最终的答案，而不需要进行其他的讨论`;
 };
