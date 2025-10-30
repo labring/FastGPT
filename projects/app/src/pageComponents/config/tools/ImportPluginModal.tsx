@@ -14,14 +14,15 @@ import {
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
+import { getToolTags } from '../../../web/core/app/api/plugin';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
   errorMsg?: string;
-  toolId?: string; // 解析后的 toolId
-  toolName?: string; // 工具名称
-  toolIntro?: string; // 工具简介
-  toolTags?: string[]; // 工具标签
+  toolId?: string;
+  toolName?: string;
+  toolIntro?: string;
+  toolTags?: string[];
 };
 
 const ImportPluginModal = ({
@@ -34,25 +35,23 @@ const ImportPluginModal = ({
   const { t, i18n } = useTranslation();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
+
   console.log('uploadedFiles', uploadedFiles);
 
-  // 步骤1: 上传并解析单个文件
-  const uploadAndParseFile = async (file: SelectFileItemType | UploadedPluginFile) => {
-    // 找到该文件在 uploadedFiles 中的索引
-    const fileIndex = uploadedFiles.findIndex((f) => f.name === file.name);
+  const { data: allTags = [] } = useRequest2(() => getToolTags(), {
+    manual: false
+  });
 
+  const uploadAndParseFile = async (file: SelectFileItemType | UploadedPluginFile) => {
     try {
-      // 更新状态为上传中
       setUploadedFiles((prev) =>
         prev.map((f) =>
           f.name === file.name ? { ...f, status: 'uploading', errorMsg: undefined } : f
         )
       );
 
-      // 获取预签名上传 URL
       const presignedData = await getPluginUploadURL({ filename: file.name });
 
-      // 上传文件到 S3
       const formData = new FormData();
       Object.entries(presignedData.formData).forEach(([key, value]) => {
         formData.append(key, value);
@@ -61,16 +60,12 @@ const ImportPluginModal = ({
 
       await postS3UploadFile(presignedData.postURL, formData);
 
-      // 更新状态为解析中
       setUploadedFiles((prev) =>
         prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
       );
 
-      // 解析上传的插件
       const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
-      console.log('parseResult', parseResult);
 
-      // 获取 parentId (toolId)
       const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {
         return Promise.reject(new Error(`未找到插件 ID`));
@@ -87,13 +82,16 @@ const ImportPluginModal = ({
                 toolName: parseI18nString(toolDetail?.name || '', i18n.language),
                 icon: toolDetail?.icon || '',
                 toolIntro: parseI18nString(toolDetail?.description || '', i18n.language) || '',
-                toolTags: toolDetail?.tags || []
+                toolTags:
+                  toolDetail?.tags?.map((tag) => {
+                    const currentTag = allTags.find((item) => item.type === tag);
+                    return parseI18nString(currentTag?.name || '', i18n.language) || '';
+                  }) || []
               }
             : f
         )
       );
     } catch (error: any) {
-      // 更新为错误状态
       setUploadedFiles((prev) =>
         prev.map((f) =>
           f.name === file.name ? { ...f, status: 'error', errorMsg: error.message } : f
@@ -103,29 +101,21 @@ const ImportPluginModal = ({
     }
   };
 
-  // 步骤2: 批量上传新增的文件
   const { runAsync: handleBatchUpload, loading: uploadLoading } = useRequest2(
     async () => {
-      // 找出未上传的新文件(不在 uploadedFiles 中的文件)
       const uploadedFileNames = new Set(uploadedFiles.map((f) => f.name));
       const newFiles = selectFiles.filter((f) => !uploadedFileNames.has(f.name));
 
       if (newFiles.length === 0) return;
 
-      // 将新文件添加到 uploadedFiles,初始状态为 uploading
       const newUploadedFiles: UploadedPluginFile[] = newFiles.map((f) => ({
         ...f,
         status: 'uploading' as const
       }));
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
 
-      // 依次上传所有新文件
       for (const file of newFiles) {
-        try {
-          await uploadAndParseFile(file);
-        } catch (error) {
-          console.error(`上传文件 ${file.name} 失败:`, error);
-        }
+        await uploadAndParseFile(file);
       }
     },
     {
@@ -158,7 +148,7 @@ const ImportPluginModal = ({
       manual: true,
       onSuccess: () => {
         setUploadedFiles([]);
-        onSuccess?.(); // 调用父组件的 onSuccess 回调刷新列表
+        onSuccess?.();
         onClose();
       }
     }
@@ -234,13 +224,7 @@ const ImportPluginModal = ({
         {uploadedFiles.length > 0 && (
           <VStack mt={1} gap={1}>
             {uploadedFiles.map((item, index) => (
-              <Flex
-                key={index}
-                w={'full'}
-                fontSize={'12px'}
-                borderBottom={'1px solid'}
-                borderColor={'myGray.100'}
-              >
+              <Flex key={index} w={'full'} fontSize={'12px'}>
                 <Flex w={'20%'} px={1} py={'15px'} align={'center'} gap={2}>
                   <Avatar src={item.icon} borderRadius={'xs'} w={'20px'} />
                   <Box
@@ -257,12 +241,15 @@ const ImportPluginModal = ({
                     item.toolTags.map((tag, tagIndex) => (
                       <Box
                         key={tagIndex}
+                        as={'span'}
+                        bg={'myGray.100'}
                         px={2}
-                        py={0.5}
-                        bg={'primary.50'}
-                        color={'primary.600'}
-                        borderRadius={'sm'}
-                        fontSize={'11px'}
+                        py={1}
+                        color={'myGray.700'}
+                        borderRadius={'8px'}
+                        fontSize={'xs'}
+                        flexShrink={0}
+                        data-tag-item
                       >
                         {tag}
                       </Box>
@@ -274,7 +261,6 @@ const ImportPluginModal = ({
                 <Flex
                   w={'40%'}
                   px={1}
-                  py={'15px'}
                   color={'myGray.600'}
                   overflow={'hidden'}
                   textOverflow={'ellipsis'}
@@ -284,21 +270,35 @@ const ImportPluginModal = ({
                   {item.status === 'success' && item.toolIntro ? item.toolIntro : '-'}
                 </Flex>
                 <Flex w={'10%'} px={1} py={'15px'}>
-                  {item.status === 'uploading' && (
-                    <Flex alignItems={'center'} fontSize={'xs'} color={'blue.500'}>
+                  {(item.status === 'uploading' || item.status === 'parsing') && (
+                    <Flex
+                      alignItems={'center'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      color={'blue.500'}
+                    >
                       {t('app:custom_plugin_uploading')}
                     </Flex>
                   )}
-                  {item.status === 'parsing' && (
-                    <Flex alignItems={'center'} fontSize={'xs'} color={'blue.500'}>
-                      {t('app:custom_plugin_parsing')}
+                  {item.status === 'success' && (
+                    <Flex
+                      alignItems={'center'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      color={'green.500'}
+                    >
+                      {t('app:custom_plugin_uploaded')}
                     </Flex>
                   )}
-                  {item.status === 'success' && (
-                    <MyIcon name={'common/check'} w={'1rem'} color={'green.500'} />
-                  )}
                   {item.status === 'error' && (
-                    <MyIcon name={'common/error'} w={'1rem'} color={'red.500'} />
+                    <Flex
+                      alignItems={'center'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      color={'green.500'}
+                    >
+                      {t('app:custom_plugin_upload_failed')}
+                    </Flex>
                   )}
                 </Flex>
                 <Flex w={'10%'} px={1} py={'15px'} align={'center'} gap={2}>

@@ -8,7 +8,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useDebounce } from 'ahooks';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
@@ -36,10 +37,7 @@ const ToolkitMarketplace = () => {
   const { search, tags } = router.query;
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const marketplaceUrl =
-    feConfigs?.marketPlaceUrl ||
-    process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
-    'https://marketplace.fastgpt.cn';
+  const marketplaceUrl = feConfigs?.marketPlaceUrl || 'https://marketplace.fastgpt.cn';
 
   const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -50,6 +48,9 @@ const ToolkitMarketplace = () => {
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
+
+  // 使用 debounce 进行实时搜索
+  const debouncedSearchText = useDebounce(inputValue, { wait: 500 });
 
   // 从 URL 初始化状态
   useEffect(() => {
@@ -64,31 +65,35 @@ const ToolkitMarketplace = () => {
     }
   }, [search, tags]);
 
-  // 处理搜索提交
-  const handleSearch = () => {
-    setSearchText(inputValue);
-  };
+  // debounce 后更新 searchText 进行实时搜索
+  useEffect(() => {
+    setSearchText(debouncedSearchText);
+    setIsSearchExpanded(false);
+  }, [debouncedSearchText]);
 
   // 更新 URL 的函数
-  const updateUrlParams = (newSearch: string, newTags: string[]) => {
-    const params = new URLSearchParams();
-    if (newSearch) {
-      params.set('search', newSearch);
-    }
-    if (newTags.length > 0) {
-      params.set('tags', newTags.join(','));
-    }
-    const queryString = params.toString();
-    const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
-    router.replace(newUrl, undefined, { shallow: true });
-  };
+  const updateUrlParams = useCallback(
+    (newSearch: string, newTags: string[]) => {
+      const params = new URLSearchParams();
+      if (newSearch) {
+        params.set('search', newSearch);
+      }
+      if (newTags.length > 0) {
+        params.set('tags', newTags.join(','));
+      }
+      const queryString = params.toString();
+      const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
+      router.replace(newUrl, undefined, { shallow: true });
+    },
+    [router]
+  );
 
-  // 监听 searchText 变化,更新 URL
-  useEffect(() => {
+  // 处理搜索框失焦,更新 URL
+  const handleSearchBlur = useCallback(() => {
     if (router.isReady) {
       updateUrlParams(searchText, selectedTagIds);
     }
-  }, [searchText]);
+  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
 
   // 监听 selectedTagIds 变化,更新 URL
   useEffect(() => {
@@ -131,19 +136,16 @@ const ToolkitMarketplace = () => {
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
       setOperatingToolId(tool.id);
-      try {
-        await installMarketplaceTool({
-          downloadUrls: [tool.downloadUrl]
-        });
-      } finally {
-        setOperatingToolId(null);
-      }
+      await installMarketplaceTool({
+        downloadUrls: [tool.downloadUrl]
+      });
     },
     {
       manual: true,
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
+        setOperatingToolId(null);
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
         }
@@ -153,17 +155,14 @@ const ToolkitMarketplace = () => {
   const { runAsync: handleDeleteTool, loading: deleteToolLoading } = useRequest2(
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
-      try {
-        await deletePlugin({ toolId: tool.id });
-      } finally {
-        setOperatingToolId(null);
-      }
+      await deletePlugin({ toolId: tool.id });
     },
     {
       manual: true,
       onSuccess: async () => {
         await refetchTools();
         await refreshCurrentTools({});
+        setOperatingToolId(null);
         if (selectedTool) {
           setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
         }
@@ -273,7 +272,7 @@ const ToolkitMarketplace = () => {
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        isLoading={loadingTools}
+        isLoading={loadingTools && !operatingToolId}
       >
         <Box px={8} flexShrink={0} position={'relative'}>
           <MyIconButton
@@ -350,13 +349,9 @@ const ToolkitMarketplace = () => {
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSearch();
-                          }
-                        }}
                         autoFocus
                         onBlur={() => {
+                          handleSearchBlur();
                           if (!inputValue) {
                             setIsSearchExpanded(false);
                           }
@@ -416,7 +411,7 @@ const ToolkitMarketplace = () => {
         </Box>
 
         <ScrollData flex={1}>
-          <VStack ref={heroSectionRef} w={'full'} gap={6} px={8} pt={4} pb={8} mt={8}>
+          <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}
               display={'inline-flex'}
@@ -471,11 +466,7 @@ const ToolkitMarketplace = () => {
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch();
-                    }
-                  }}
+                  onBlur={handleSearchBlur}
                 />
               </InputGroup>
             </Box>
@@ -570,7 +561,7 @@ const ToolkitMarketplace = () => {
               handleInstallTool(selectedTool);
             }
           }}
-          isLoading={installToolLoading || deleteToolLoading || loadingTools || loadingCurrentTools}
+          isLoading={!!operatingToolId}
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />

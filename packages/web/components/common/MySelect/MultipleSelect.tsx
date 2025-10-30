@@ -43,7 +43,7 @@ export type SelectProps<T = any> = {
     value: T;
   }[];
   value: T[];
-  isSelectAll: boolean;
+  isSelectAll?: boolean;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
@@ -443,24 +443,28 @@ const MultipleSelect = <T = any,>({
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          <MenuItem
-            color={isSelectAll ? 'primary.600' : 'myGray.900'}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onSelectAll();
-            }}
-            whiteSpace={'pre-wrap'}
-            fontSize={'sm'}
-            gap={2}
-            mb={1}
-            {...menuItemStyles}
-          >
-            <Checkbox isChecked={isSelectAll} />
-            <Box flex={'1 0 0'}>{t('common:All')}</Box>
-          </MenuItem>
+          {setIsSelectAll && (
+            <>
+              <MenuItem
+                color={isSelectAll ? 'primary.600' : 'myGray.900'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onSelectAll();
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                gap={2}
+                mb={1}
+                {...menuItemStyles}
+              >
+                <Checkbox isChecked={isSelectAll} />
+                <Box flex={'1 0 0'}>{t('common:All')}</Box>
+              </MenuItem>
 
-          <MyDivider my={1} />
+              <MyDivider my={1} />
+            </>
+          )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
         </MenuList>

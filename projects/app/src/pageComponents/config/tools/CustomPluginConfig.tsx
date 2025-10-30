@@ -221,10 +221,10 @@ const CustomPluginConfig = ({
       onClose={onClose}
       isLoading={loadingPlugins || loadingTags}
     >
-      <ModalBody flex={1} overflow={'auto'} w={'full'}>
+      <ModalBody flex={1} overflow={'hidden'} w={'full'}>
         <Flex w={'full'} gap={5}>
           <Box w={'full'}>
-            <Box color={'myGray.800'} fontWeight={'bold'}>
+            <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
               {t('app:custom_plugin_name_label')}
             </Box>
             <Flex mt={2} alignItems={'center'}>
@@ -256,8 +256,8 @@ const CustomPluginConfig = ({
                 })}
               />
             </Flex>
-            <Box mt={3}>
-              <Box fontSize={'sm'} fontWeight={'medium'} mb={2}>
+            <Box mt={6}>
+              <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'} mb={2}>
                 {t('app:custom_plugin_intro_label')}
               </Box>
               <Textarea
@@ -266,8 +266,8 @@ const CustomPluginConfig = ({
                 placeholder={t('app:custom_plugin_intro_placeholder')}
               />
             </Box>
-            <HStack mt={3}>
-              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_associated_plugin_label')}
               </Box>
               <Flex flex={'1 0 0'} flexDirection={'column'}>
@@ -275,14 +275,15 @@ const CustomPluginConfig = ({
                   <Avatar
                     src={currentPlugin?.avatar}
                     mt={2}
-                    ml={2}
+                    ml={4}
                     w={'20px'}
                     borderRadius={'2px'}
                     position="absolute"
+                    zIndex={1}
                   />
                 )}
                 <Input
-                  pl={associatedPluginId ? 8 : 4}
+                  pl={associatedPluginId ? 10 : 4}
                   fontSize={'14px'}
                   placeholder={t('app:custom_plugin_associated_plugin_placeholder')}
                   value={currentPlugin?.name}
@@ -299,6 +300,7 @@ const CustomPluginConfig = ({
                     if (associatedPluginId) return;
                     setValue('associatedPluginId', lastPluginId);
                   }}
+                  bg={'myGray.50'}
                 />
                 {isOpenPluginListMenu && plugins.length > 0 && (
                   <Flex
@@ -341,8 +343,14 @@ const CustomPluginConfig = ({
                 )}
               </Flex>
             </HStack>
-            <HStack mt={3}>
-              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+            <HStack mt={6}>
+              <Box
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                mb={2}
+              >
                 {t('app:custom_plugin_tags_label')}
               </Box>
               <MultipleSelect
@@ -358,58 +366,56 @@ const CustomPluginConfig = ({
                   }
                   setSelectedTags(newTags);
                 }}
-                isSelectAll={isSelectAllTags}
-                setIsSelectAll={(val) => {
-                  if (val && pluginTypeSelectList.length > 3) {
-                    toast({
-                      title: t('app:custom_plugin_tags_max_limit'),
-                      status: 'warning'
-                    });
-                    return;
-                  }
-                  setIsSelectAllTags(val);
-                }}
                 placeholder={t('app:custom_plugin_tags_label')}
                 maxW={270}
+                h={9}
+                borderRadius={'sm'}
+                bg={'myGray.50'}
               />
             </HStack>
-            <HStack mt={3}>
-              <Box flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_author_label')}
               </Box>
               <Box flex={1}>
                 <Input
                   placeholder={t('app:custom_plugin_author_placeholder')}
+                  h={9}
+                  bg={'myGray.50'}
                   {...register('author')}
                 />
               </Box>
             </HStack>
-            <HStack mt={3}>
-              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_plugin_status_label')}
               </Box>
-              <MySelect
-                value={status}
-                w={'full'}
-                list={[
-                  { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
-                  {
-                    label: t('app:toolkit_status_soon_offline'),
-                    value: PluginStatusEnum.SoonOffline
-                  },
-                  { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
-                ]}
-                onChange={(e) => {
-                  const newStatus = Number(e);
-                  setValue('status', newStatus);
-                  if (newStatus !== PluginStatusEnum.Normal) {
-                    setValue('defaultInstalled', false);
-                  }
-                }}
-              />
+              <Box flex={'1 0 0'}>
+                <MySelect
+                  value={status}
+                  w={'full'}
+                  bg={'myGray.50'}
+                  list={[
+                    { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
+                    {
+                      label: t('app:toolkit_status_soon_offline'),
+                      value: PluginStatusEnum.SoonOffline
+                    },
+                    { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
+                  ]}
+                  onChange={(e) => {
+                    const newStatus = Number(e);
+                    setValue('status', newStatus);
+                    if (newStatus !== PluginStatusEnum.Normal) {
+                      setValue('defaultInstalled', false);
+                    }
+                  }}
+                  fontWeight={'normal'}
+                />
+              </Box>
             </HStack>
-            <HStack mt={3}>
-              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={1} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_default_installed_label')}
               </Box>
               <Switch
@@ -423,34 +429,39 @@ const CustomPluginConfig = ({
                 }}
               />
             </HStack>
-            <HStack mt={5}>
-              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={1} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_has_token_fee_label')}
               </Box>
               <Switch {...register('hasTokenFee')} />
             </HStack>
-            <HStack mt={5}>
-              <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+            <HStack mt={6}>
+              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
                 {t('app:custom_plugin_call_price_label')}
               </Box>
-              <MyNumberInput
-                value={currentCost ?? 0}
-                onChange={(e) => setValue('currentCost', e ?? 0)}
-                max={1000}
-                min={0}
-                step={0.1}
-              />
+              <Box flex={'1 0 0'}>
+                <MyNumberInput
+                  value={currentCost ?? 0}
+                  onChange={(e) => setValue('currentCost', e ?? 0)}
+                  max={1000}
+                  min={0}
+                  step={0.1}
+                  w={'full'}
+                  h={9}
+                />
+              </Box>
             </HStack>
           </Box>
           <Box w={'full'}>
-            <Box mb={'9px'} fontSize={'sm'} fontWeight={'medium'}>
+            <Box mb={'9px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
               {t('app:custom_plugin_user_guide_label')}
             </Box>
             <Textarea
               {...register('userGuide')}
               placeholder={t('app:custom_plugin_user_guide_placeholder')}
               bg={'myGray.50'}
-              minH={'472px'}
+              minH={'562px'}
+              maxH={'562px'}
             />
           </Box>
         </Flex>
