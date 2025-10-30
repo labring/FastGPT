@@ -112,7 +112,9 @@ async function migratePluginData(typeToGroupMap: Map<string, string>): Promise<n
     const templateType = plugin.customConfig?.templateType;
     if (templateType) {
       const groupId = typeToGroupMap.get(templateType);
-      updateFields['customConfig.pluginTags'] = groupId ? [groupId, templateType] : [templateType];
+      // 对于 systemPlugin 分组,只保留 templateType,不包含 groupId
+      updateFields['customConfig.pluginTags'] =
+        groupId && groupId !== 'systemPlugin' ? [groupId, templateType] : [templateType];
       unsetFields['customConfig.templateType'] = '';
     }
 
