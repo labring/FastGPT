@@ -129,7 +129,7 @@ const ToolProvider = () => {
         </Box>
         <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
         <Box w={2 / 10}>{t('common:Intro')}</Box>
-        <Box w={1 / 10} pl={5}>
+        <Box w={1 / 10} pl={6}>
           {t('app:toolkit_status')}
         </Box>
         <Box w={1 / 10}>{t('app:toolkit_default_install')}</Box>
@@ -140,6 +140,7 @@ const ToolProvider = () => {
             alignItems={'center'}
             ml={1}
             label={t('app:toolkit_token_fee_tip')}
+            color={'myGray.300'}
           />
         </Box>
         <Box w={1 / 10}>{t('app:toolkit_call_points')}</Box>
@@ -150,6 +151,7 @@ const ToolProvider = () => {
             alignItems={'center'}
             ml={1}
             label={t('app:toolkit_system_key_tip')}
+            color={'myGray.300'}
           />
         </Box>
       </Flex>
