@@ -12,9 +12,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -224,10 +222,6 @@ const NodeTemplateList = ({
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
-    manual: false
-  });
-
   const handleAddNode = useCallback(
     async ({
       template,
@@ -370,7 +364,7 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (map[item.templateType]) {
+          if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
               name: t(item.name as any),
@@ -393,48 +387,6 @@ const NodeTemplateList = ({
         ];
       }
 
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        console.log(pluginGroups, 222);
-        return pluginGroups.map((group) => {
-          const map = group.groupTypes.reduce<
-            Record<
-              string,
-              {
-                list: NodeTemplateListItemType[];
-                label: string;
-              }
-            >
-          >((acc, item) => {
-            acc[item.typeId] = {
-              list: [],
-              label: t(parseI18nString(item.typeName, i18n.language))
-            };
-            return acc;
-          }, {});
-
-          templates.forEach((item) => {
-            if (map[item.templateType]) {
-              map[item.templateType].list.push({
-                ...item,
-                name: t(parseI18nString(item.name, i18n.language)),
-                intro: t(parseI18nString(item.intro, i18n.language))
-              });
-            }
-          });
-          return {
-            label: group.groupName,
-            list: Object.entries(map)
-              .map(([type, { list, label }]) => ({
-                type,
-                label,
-                list
-              }))
-              .filter((item) => item.list.length > 0)
-          };
-        });
-      }
-
-      // Team apps
       return [
         {
           label: '',
@@ -442,16 +394,21 @@ const NodeTemplateList = ({
             {
               type: '',
               label: '',
-              list: templates
+              list: templates.map((item) => ({
+                ...item,
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro || '', i18n.language))
+              }))
             }
           ]
         }
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, t, pluginGroups, i18n.language]);
+  }, [templateType, templates, templates, t, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+    console.log('list', list);
     return (
       <>
         {list.map((item) => {
@@ -500,9 +457,7 @@ const NodeTemplateList = ({
     );
   });
 
-  return templates.length === 0 ? (
-    <EmptyTip text={t('app:module.No Modules')} />
-  ) : (
+  return (
     <Box flex={'1 0 0'} overflow={'overlay'} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
       <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
         {formatTemplatesArrayData.length > 1 ? (

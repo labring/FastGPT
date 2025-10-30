@@ -80,7 +80,9 @@ export type FastGPTFeConfigsType = {
   docUrl?: string;
   openAPIDocUrl?: string;
   systemPluginCourseUrl?: string;
+  submitPluginRequestUrl?: string;
   appTemplateCourse?: string;
+  marketPlaceUrl?: string;
   customApiDomain?: string;
   customSharePageDomain?: string;
 

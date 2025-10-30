@@ -1,4 +1,4 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
+import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {
@@ -16,8 +16,8 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
+import type { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
@@ -31,8 +31,46 @@ import type {
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
+import type {
+  getSystemPluginsQuery,
+  getSystemPluginsResponse
+} from '@/pages/api/core/app/plugin/list';
+import type { GetPluginTagListResponse } from '@/pages/api/core/app/plugin/tag/list';
+import type {
+  CreatePluginTagBody,
+  CreatePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/create';
+import type {
+  UpdatePluginTagBody,
+  UpdatePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/update';
+import type {
+  UpdatePluginTagOrderBody,
+  UpdatePluginTagOrderResponse
+} from '@/pages/api/core/app/plugin/tag/updateOrder';
+import type {
+  DeletePluginTagQuery,
+  DeletePluginTagResponse
+} from '@/pages/api/core/app/plugin/tag/delete';
+import type { updatePluginOrderBody } from '@/pages/api/core/app/plugin/updateOrder';
+import type {
+  ToggleInstallPluginBody,
+  ToggleInstallPluginResponse
+} from '@/pages/api/core/app/plugin/team/toggleInstall';
+import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
+import type { updatePluginBody } from '@/pages/api/core/app/plugin/update';
+import type { createPluginBody } from '@/pages/api/core/app/plugin/create';
+import {
+  ToolListItem,
+  type GetMarketplaceToolsBody,
+  type GetMarketplaceToolsResponse,
+  type GetMarketplaceToolDetailQuery,
+  type GetMarketplaceToolDetailResponse,
+  type GetToolTagsResponse
+} from '@fastgpt/global/core/app/plugin/type';
+import type { InstallToolBody, InstallToolResponse } from '@/pages/api/plugin/tool/install';
+import type { ParseUploadedToolResponse } from '@/pages/api/plugin/tool/upload/parse';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -96,9 +134,6 @@ export const getTeamPlugTemplates = async (data?: {
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
-export const getPluginGroups = () =>
-  GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
-
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
   return GET<ParentTreePathItemType[]>('/core/app/plugin/path', data);
@@ -110,10 +145,21 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
 
-export const pluginClient = createClient({
-  baseUrl: '/api/plugin',
-  token: ''
-});
+/* ============ plugin upload ============== */
+export const getPluginUploadURL = (params: { filename: string }) =>
+  GET<{ postURL: string; formData: Record<string, string>; objectName: string }>(
+    `/plugin/tool/upload/url`,
+    params
+  );
+
+export const parseUploadedPlugin = (params: { objectName: string }) =>
+  GET<ParseUploadedToolResponse>(`/plugin/tool/upload/parse`, params);
+
+export const confirmPluginUpload = (data: { toolIds: string[] }) =>
+  POST(`/plugin/tool/upload/confirm`, data);
+
+export const deletePlugin = (data: { toolId: string }) =>
+  DELETE('/plugin/tool/upload/delete', data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
@@ -149,3 +195,54 @@ export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
 
 export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
+
+/* ============ plugin management ============== */
+export const getSystemPlugins = (data: getSystemPluginsQuery) => {
+  return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
+};
+
+export const putUpdatePlugin = (data: updatePluginBody) => PUT('/core/app/plugin/update', data);
+
+export const postCreatePlugin = (data: createPluginBody) => POST('/core/app/plugin/create', data);
+
+export const delPlugin = (data: { id: string }) => DELETE('/core/app/plugin/delete', data);
+
+export const getAllUserPlugins = (data: { searchKey?: string }) =>
+  POST<SystemPluginListItemType[]>('/core/app/plugin/allPlugin', data);
+
+export const putUpdatePluginOrder = (data: updatePluginOrderBody) =>
+  PUT('/core/app/plugin/updateOrder', data);
+
+/* ============ plugin tags ============== */
+export const getPluginTags = () => GET<GetPluginTagListResponse>(`/core/app/plugin/tag/list`);
+
+export const createPluginTag = (data: CreatePluginTagBody) =>
+  POST<CreatePluginTagResponse>(`/core/app/plugin/tag/create`, data);
+
+export const updatePluginTag = (data: UpdatePluginTagBody) =>
+  PUT<UpdatePluginTagResponse>(`/core/app/plugin/tag/update`, data);
+
+export const deletePluginTag = (data: DeletePluginTagQuery) =>
+  DELETE<DeletePluginTagResponse>(`/core/app/plugin/tag/delete`, data);
+
+export const updatePluginTagOrder = (data: UpdatePluginTagOrderBody) =>
+  PUT<UpdatePluginTagOrderResponse>(`/core/app/plugin/tag/updateOrder`, data);
+
+/* ============ team plugin installation ============== */
+export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
+  POST<ToggleInstallPluginResponse>(`/core/app/plugin/team/toggleInstall`, data);
+
+export const getTeamInstalledPluginIds = () =>
+  GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);
+
+/* ============ marketplace ============== */
+export const getMarketplaceTools = (data: GetMarketplaceToolsBody) =>
+  POST<GetMarketplaceToolsResponse>('/marketplace/api/tool/list', data);
+
+export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQuery) =>
+  GET<GetMarketplaceToolDetailResponse>('/marketplace/api/tool/detail', data);
+
+export const installMarketplaceTool = (data: InstallToolBody) =>
+  POST<InstallToolResponse>('/plugin/tool/install', data);
+
+export const getToolTags = () => GET<GetToolTagsResponse>('/marketplace/api/tool/tags');

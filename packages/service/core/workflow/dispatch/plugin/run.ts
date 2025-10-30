@@ -22,12 +22,13 @@ import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables, getNodeErrResponse } from '../utils';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById, getSystemToolById } from '../../../app/plugin/controller';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
 import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
