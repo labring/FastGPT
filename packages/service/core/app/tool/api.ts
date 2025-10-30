@@ -7,7 +7,6 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export async function APIGetSystemToolList() {
   const res = await pluginClient.tool.list();
-  console.log('res', JSON.stringify(res, null, 2));
 
   if (res.status === 200) {
     return res.body.map((item) => {
@@ -37,7 +36,7 @@ type SystemToolTypeItem = {
 
 export const getSystemToolTypes = (): Promise<SystemToolTypeItem[]> => {
   return retryFn(async () => {
-    const res = await pluginClient.tool.getType();
+    const res = await pluginClient.tool.getTags();
 
     if (res.status === 200) {
       const toolTypes = res.body || [];

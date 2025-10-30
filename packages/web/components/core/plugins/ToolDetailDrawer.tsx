@@ -89,7 +89,7 @@ const ParamSection = ({
                 px={2}
                 py={0.5}
                 borderRadius="4px"
-                fontSize="14px"
+                fontSize={'xs'}
                 color="myGray.500"
                 bg={'myGray.100'}
                 border={'1px solid'}
@@ -117,11 +117,20 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
 
   return (
     <AccordionItem borderRadius="md" mb={2} border={'none'}>
-      <AccordionButton px={2} py={2} _hover={{ bg: 'myGray.50' }} borderRadius="md">
+      <AccordionButton
+        px={2}
+        py={2}
+        _hover={{ bg: 'myGray.50' }}
+        borderRadius="md"
+        alignItems={'start'}
+      >
         <Flex align="center" gap={3} flex={1} textAlign="left">
           <Box flex={1}>
-            <Box fontSize="14px" fontWeight={500} color="myGray.900">
+            <Box fontSize="md" fontWeight={500} color="myGray.900">
               {parseI18nString(tool.name, i18n.language)}
+            </Box>
+            <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
+              {tool.intro || parseI18nString(tool.description, i18n.language)}
             </Box>
           </Box>
         </Flex>
@@ -129,9 +138,6 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
       </AccordionButton>
 
       <AccordionPanel px={2} pb={4} pt={0}>
-        <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
-          {tool.intro || parseI18nString(tool.description, i18n.language)}
-        </Box>
         <Flex gap={1} fontSize={'12px'}>
           <MyIcon name={'common/info'} color={'primary.600'} w={4} />
           {!!tool?.currentCost ? (
@@ -197,8 +203,6 @@ const ToolDetailDrawer = ({
         try {
           const detail = await onFetchDetail(selectedTool.id);
           setToolDetail(detail as any);
-        } catch (error) {
-          console.error('Failed to fetch tool detail:', error);
         } finally {
           setLoading(false);
         }
@@ -206,7 +210,7 @@ const ToolDetailDrawer = ({
     };
 
     fetchToolDetail();
-  }, [selectedTool?.id, onFetchDetail]);
+  }, []);
 
   const isToolSet = useMemo(() => {
     if (!toolDetail?.tools || !Array.isArray(toolDetail?.tools) || toolDetail?.tools.length === 0) {
@@ -279,7 +283,7 @@ const ToolDetailDrawer = ({
         </DrawerHeader>
 
         <DrawerBody position="relative">
-          <MyBox isLoading={loading}>
+          <MyBox>
             <Flex gap={2} flexWrap="wrap">
               {parentTool?.tags?.map((tag: string) => (
                 <Box
@@ -307,7 +311,7 @@ const ToolDetailDrawer = ({
               <Button
                 w="full"
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
-                isLoading={isLoading}
+                isLoading={isLoading || loading}
                 onClick={() => {
                   onToggleInstall(!isInstalled);
                 }}
@@ -364,6 +368,7 @@ const ToolDetailDrawer = ({
                     setActiveTab(value as 'guide' | 'params');
                   }
                 }}
+                gap={4}
               />
               <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
             </Box>
@@ -394,7 +399,10 @@ const ToolDetailDrawer = ({
               {activeTab === 'params' && (
                 <VStack align="stretch" spacing={4}>
                   {isToolSet && subTools.length > 0 && (
-                    <Accordion allowMultiple>
+                    <Accordion
+                      allowMultiple
+                      {...(subTools.length === 1 ? { defaultIndex: [0] } : {})}
+                    >
                       {subTools.map((subTool: ToolDetailType) => (
                         <SubToolAccordionItem key={subTool.toolId} tool={subTool} />
                       ))}

@@ -2,6 +2,8 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 
 export type GetUploadURLQuery = {
   toolId: string;
@@ -26,6 +28,9 @@ async function handler(
   if (result.status !== 200) {
     return Promise.reject(result.body);
   }
+
+  const pluginId = `${PluginSourceEnum.systemTool}-${toolId}`;
+  await MongoTeamInstalledPlugin.deleteMany({ pluginId });
 
   return result.body;
 }

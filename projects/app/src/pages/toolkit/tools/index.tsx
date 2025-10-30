@@ -30,7 +30,9 @@ const ToolKitProvider = () => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [installedFilter, setInstalledFilter] = useState<boolean>(false);
+  const [installedFilter, setInstalledFilter] = useState<'all' | 'installed' | 'uninstalled'>(
+    'all'
+  );
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [searchText, setSearchText] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -94,8 +96,11 @@ const ToolKitProvider = () => {
         return tool.tags?.some((tag) => selectedTagIds.includes(tag.tagId));
       })
       .filter((tool) => {
-        if (!installedFilter) return true;
-        return !!getPluginInstallStatus(tool.id);
+        if (installedFilter === 'all') return true;
+        const isInstalled = getPluginInstallStatus(tool.id);
+        if (installedFilter === 'installed') return !!isInstalled;
+        if (installedFilter === 'uninstalled') return !isInstalled;
+        return true;
       });
 
     return filteredTools.map((tool) => ({
@@ -220,7 +225,11 @@ const ToolKitProvider = () => {
                 <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
                   <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
                   <Box fontSize={'12px'}>
-                    {installedFilter ? t('app:toolkit_installed') : t('common:All')}
+                    {installedFilter === 'installed'
+                      ? t('app:toolkit_installed')
+                      : installedFilter === 'uninstalled'
+                        ? t('app:toolkit_uninstalled')
+                        : t('common:All')}
                   </Box>
                 </Flex>
               }
@@ -229,13 +238,18 @@ const ToolKitProvider = () => {
                   children: [
                     {
                       label: t('common:All'),
-                      onClick: () => setInstalledFilter(false),
-                      isActive: !installedFilter
+                      onClick: () => setInstalledFilter('all'),
+                      isActive: installedFilter === 'all'
                     },
                     {
                       label: t('app:toolkit_installed'),
-                      onClick: () => setInstalledFilter(true),
-                      isActive: installedFilter
+                      onClick: () => setInstalledFilter('installed'),
+                      isActive: installedFilter === 'installed'
+                    },
+                    {
+                      label: t('app:toolkit_uninstalled'),
+                      onClick: () => setInstalledFilter('uninstalled'),
+                      isActive: installedFilter === 'uninstalled'
                     }
                   ]
                 }

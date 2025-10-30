@@ -1,9 +1,10 @@
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard, { ToolStatusEnum } from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
@@ -17,6 +18,9 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const { search, tags } = router.query;
+  const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
@@ -24,6 +28,68 @@ const ToolkitMarketplace = () => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
+
+  // 从 URL 初始化状态
+  useEffect(() => {
+    if (search && typeof search === 'string') {
+      setInputValue(search);
+      setSearchText(search);
+      setIsSearchExpanded(true);
+    }
+    if (tags) {
+      const tagArray = typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
+      setSelectedTagIds(tagArray);
+    }
+  }, [search, tags]);
+
+  // 使用自定义 debounce 进行实时搜索
+  const [debouncedSearchText, setDebouncedSearchText] = useState(inputValue);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchText(inputValue);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [inputValue]);
+
+  // debounce 后更新 searchText 进行实时搜索
+  useEffect(() => {
+    setSearchText(debouncedSearchText);
+  }, [debouncedSearchText]);
+
+  // 更新 URL 的函数
+  const updateUrlParams = useCallback(
+    (newSearch: string, newTags: string[]) => {
+      const params = new URLSearchParams();
+      if (newSearch) {
+        params.set('search', newSearch);
+      }
+      if (newTags.length > 0) {
+        params.set('tags', newTags.join(','));
+      }
+      const queryString = params.toString();
+      const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
+      router.replace(newUrl, undefined, { shallow: true });
+    },
+    [router]
+  );
+
+  // 处理搜索框失焦,更新 URL
+  const handleSearchBlur = useCallback(() => {
+    if (router.isReady) {
+      updateUrlParams(searchText, selectedTagIds);
+    }
+  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+
+  // 监听 selectedTagIds 变化,更新 URL
+  useEffect(() => {
+    if (router.isReady) {
+      updateUrlParams(searchText, selectedTagIds);
+    }
+  }, [selectedTagIds]);
 
   const {
     data: tools,
@@ -43,7 +109,6 @@ const ToolkitMarketplace = () => {
       refreshDeps: [searchText, selectedTagIds]
     }
   );
-  console.log('tools', tools);
 
   const { data: toolTags } = useRequest2(getToolTags, {
     manual: false
@@ -79,7 +144,7 @@ const ToolkitMarketplace = () => {
         const shouldShowCompact = !entry.isIntersecting;
         setShowCompactSearch(shouldShowCompact);
 
-        if (entry.isIntersecting && isSearchExpanded && !searchText) {
+        if (entry.isIntersecting && isSearchExpanded && !inputValue) {
           setIsSearchExpanded(false);
         }
       },
@@ -93,7 +158,7 @@ const ToolkitMarketplace = () => {
     return () => {
       observer.disconnect();
     };
-  }, [isSearchExpanded, searchText]);
+  }, [isSearchExpanded, inputValue]);
 
   return (
     <Box h="100vh" py={6} pr={6}>
@@ -115,20 +180,26 @@ const ToolkitMarketplace = () => {
           </Flex>
 
           <Box
-            h={showCompactSearch ? '120px' : '0'}
-            transition={'height 0.15s ease-out'}
+            h={showCompactSearch ? '90px' : '0'}
             overflow={'hidden'}
+            position={'absolute'}
+            bg={'white'}
+            right={0}
+            left={0}
+            roundedTop={'md'}
+            px={8}
           >
             <Box
               opacity={showCompactSearch ? 1 : 0}
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex pl={4} pt={8} alignItems={'center'}>
+              <Flex mt={2} pt={6} alignItems={'center'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
                   w={isSearchExpanded ? '320px' : 'auto'}
+                  mr={4}
                 >
                   {isSearchExpanded ? (
                     <InputGroup>
@@ -147,16 +218,17 @@ const ToolkitMarketplace = () => {
                         h={10}
                         borderRadius={'md'}
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
                         autoFocus
                         onBlur={() => {
-                          if (!searchText) {
+                          handleSearchBlur();
+                          if (!inputValue) {
                             setIsSearchExpanded(false);
                           }
                         }}
                       />
-                      {searchText && (
+                      {inputValue && (
                         <MyIcon
                           position={'absolute'}
                           zIndex={10}
@@ -168,6 +240,7 @@ const ToolkitMarketplace = () => {
                           color={'myGray.500'}
                           cursor={'pointer'}
                           onClick={() => {
+                            setInputValue('');
                             setSearchText('');
                             setIsSearchExpanded(false);
                           }}
@@ -179,10 +252,12 @@ const ToolkitMarketplace = () => {
                       alignItems={'center'}
                       justifyContent={'center'}
                       cursor={'pointer'}
-                      borderRadius={'md'}
-                      _hover={{ bg: 'myGray.100' }}
+                      borderRadius={'10px'}
+                      _hover={{ borderColor: 'primary.600' }}
                       onClick={() => setIsSearchExpanded(true)}
                       p={2}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
                     >
                       <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
                       <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
@@ -191,9 +266,6 @@ const ToolkitMarketplace = () => {
                     </Flex>
                   )}
                 </Flex>
-              </Flex>
-
-              <Flex mt={2} mb={4} alignItems={'center'}>
                 <PluginTagFilter
                   tags={toolTags || []}
                   selectedTagIds={selectedTagIds}
@@ -206,7 +278,7 @@ const ToolkitMarketplace = () => {
 
         <ScrollData flex={1} minHeight={0} height="auto">
           {/* 英雄区域 - 只在初始状态显示 */}
-          <VStack ref={heroSectionRef} w={'full'} gap={6} px={8} pt={4} pb={8} mt={8}>
+          <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}
               display={'inline-flex'}
@@ -259,8 +331,9 @@ const ToolkitMarketplace = () => {
                   h={12}
                   borderRadius={'10px'}
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onBlur={handleSearchBlur}
                 />
               </InputGroup>
             </Box>

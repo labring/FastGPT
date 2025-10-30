@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
@@ -18,7 +19,11 @@ async function handler(
 ): Promise<deletePluginResponse> {
   await authSystemAdmin({ req });
 
-  await MongoSystemPlugin.deleteOne({ pluginId: req.query.id });
+  const pluginId = req.query.id;
+
+  await MongoSystemPlugin.deleteOne({ pluginId });
+
+  await MongoTeamInstalledPlugin.deleteMany({ pluginId });
 
   await refreshVersionKey(SystemCacheKeyEnum.systemTool);
 

@@ -17,7 +17,7 @@ async function handler(
 ): Promise<GetToolTagsResponse> {
   await authCert({ req, authToken: true });
 
-  const result = await pluginClient.tool.getType();
+  const result = await pluginClient.tool.getTags();
 
   if (result.status !== 200) {
     return Promise.reject(result.body);
