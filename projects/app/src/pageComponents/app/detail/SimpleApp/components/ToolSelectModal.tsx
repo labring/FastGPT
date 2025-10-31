@@ -217,7 +217,6 @@ const RenderList = React.memo(function RenderList({
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {

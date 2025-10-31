@@ -1,7 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
@@ -55,7 +53,7 @@ async function handler(
   const pluginId = getNanoid(12);
 
   const firstPlugin = await MongoSystemPlugin.findOne().sort({ pluginOrder: 1 }).lean();
-  const pluginOrder = firstPlugin ? firstPlugin.pluginOrder ?? 0 - 1 : 0;
+  const pluginOrder = firstPlugin ? (firstPlugin.pluginOrder ?? 0) - 1 : 0;
 
   await MongoSystemPlugin.create({
     pluginId,

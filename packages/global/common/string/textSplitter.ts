@@ -63,7 +63,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
+  let { text = '', chunkSize } = props;
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());

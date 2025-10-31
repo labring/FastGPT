@@ -79,16 +79,7 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const {
-    res,
-    stream,
-    runningUserInfo,
-    runningAppInfo,
-    lastInteractive,
-    histories,
-    query,
-    chatConfig
-  } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([

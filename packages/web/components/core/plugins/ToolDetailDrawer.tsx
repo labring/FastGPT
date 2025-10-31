@@ -226,7 +226,7 @@ const ToolDetailDrawer = ({
       ...parentTool,
       tags: selectedTool.tags
     };
-  }, [isToolSet, toolDetail?.tools]);
+  }, [selectedTool.tags, toolDetail?.tools]);
   const subTools = useMemo(() => {
     if (!isToolSet || !toolDetail?.tools) return [];
     return toolDetail?.tools.filter((subTool: toolDetailType) => !!subTool.parentId);
@@ -397,23 +397,22 @@ const ToolDetailDrawer = ({
             <Box mt={4}>
               {activeTab === 'guide' && (
                 <VStack align="stretch" spacing={4}>
-                  {readmeContent ||
-                    (parentTool?.userGuide && (
-                      <Box
-                        px={4}
-                        py={3}
-                        border="1px solid"
-                        borderColor="myGray.200"
-                        borderRadius="md"
-                        bg="myGray.50"
-                        fontSize="sm"
-                        color="myGray.900"
-                        maxH="400px"
-                        overflowY="auto"
-                      >
-                        <Markdown source={readmeContent || parentTool?.userGuide} />
-                      </Box>
-                    ))}
+                  {(readmeContent || parentTool?.userGuide) && (
+                    <Box
+                      px={4}
+                      py={3}
+                      border="1px solid"
+                      borderColor="myGray.200"
+                      borderRadius="md"
+                      bg="myGray.50"
+                      fontSize="sm"
+                      color="myGray.900"
+                      maxH="400px"
+                      overflowY="auto"
+                    >
+                      <Markdown source={readmeContent || parentTool?.userGuide} />
+                    </Box>
+                  )}
                 </VStack>
               )}
 
