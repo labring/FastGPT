@@ -1,4 +1,3 @@
-import { type I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { RunToolWithStream } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { pluginClient, PLUGIN_BASE_URL, PLUGIN_TOKEN } from '../../../thirdProvider/fastgptPlugin';

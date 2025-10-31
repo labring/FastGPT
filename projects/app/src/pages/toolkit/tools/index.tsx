@@ -285,6 +285,7 @@ const ToolKitProvider = () => {
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
+          showPoint={false}
           onToggleInstall={(installed) => {
             if (selectedTool) {
               toggleInstall({ pluginId: selectedTool.id, installed });
