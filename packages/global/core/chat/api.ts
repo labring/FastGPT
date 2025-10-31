@@ -47,11 +47,22 @@ export type PresignChatFilePostUrlParams = z.infer<typeof PresignChatFilePostUrl
   outLinkAuthData?: OutLinkChatAuthType;
 };
 
-export const UpdateChatFeedbackSchema = z.object({
-  appId: z.string().min(1),
-  chatId: z.string().min(1),
-  dataId: z.string().min(1),
-  userBadFeedback: z.string().optional(),
-  userGoodFeedback: z.boolean().optional()
-});
+export const UpdateChatFeedbackSchema = z
+  .object({
+    appId: z.string().min(1),
+    chatId: z.string().min(1),
+    dataId: z.string().min(1),
+    userBadFeedback: z.string().optional(),
+    userGoodFeedback: z.string().optional()
+  })
+  .meta({
+    description: '更新对话反馈',
+    example: {
+      appId: '1234567890',
+      chatId: '1234567890',
+      dataId: '1234567890',
+      userBadFeedback: '1234567890',
+      userGoodFeedback: '1234567890'
+    }
+  });
 export type UpdateChatFeedbackProps = z.infer<typeof UpdateChatFeedbackSchema>;

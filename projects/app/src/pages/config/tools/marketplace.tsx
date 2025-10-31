@@ -177,7 +177,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           );
           return {
             id: tool.toolId,
-            name: parseI18nString(tool.name || '', i18n.language) || '',
+            name: parseI18nString(tool.name, i18n.language) || '',
             description: parseI18nString(tool.description || '', i18n.language) || '',
             icon: tool.icon,
             author: tool.author || '',
@@ -543,6 +543,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
+          showPoint={false}
           onToggleInstall={() => {
             if (selectedTool.status === 3) {
               handleDeleteTool(selectedTool);

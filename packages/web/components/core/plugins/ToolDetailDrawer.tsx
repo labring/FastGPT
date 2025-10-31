@@ -100,7 +100,7 @@ const ParamSection = ({
               </Box>
             </Flex>
             {param.description && (
-              <Box fontSize="12px" color="myGray.500" mt={1}>
+              <Box fontSize="sm" color="myGray.500" mt={1}>
                 {parseI18nString(param.description, i18n.language)}
               </Box>
             )}
@@ -129,7 +129,7 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
             <Box fontSize="md" fontWeight={500} color="myGray.900">
               {parseI18nString(tool.name, i18n.language)}
             </Box>
-            <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
+            <Box fontSize={'12px'} color={'myGray.600'}>
               {tool.intro || parseI18nString(tool.description, i18n.language)}
             </Box>
           </Box>
@@ -170,7 +170,8 @@ const ToolDetailDrawer = ({
   onToggleInstall,
   systemTitle,
   onFetchDetail,
-  isLoading
+  isLoading,
+  showPoint
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
@@ -180,6 +181,7 @@ const ToolDetailDrawer = ({
     toolId: string
   ) => Promise<{ tools: Array<ToolDetailType & { readme: string }>; downloadUrl: string }>;
   isLoading?: boolean;
+  showPoint: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
@@ -345,16 +347,19 @@ const ToolDetailDrawer = ({
               </Button>
             </Flex>
 
-            <Flex mt={4} gap={1.5} alignItems={'center'}>
-              <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-                {t('app:toolkit_call_points_label')}
-              </Box>
-              <Box fontSize={'12px'} color={'myGray.600'}>
-                {!!parentTool?.currentCost
-                  ? parentTool?.currentCost
-                  : t('app:toolkit_no_call_points')}
-              </Box>
-            </Flex>
+            {showPoint && (
+              <Flex mt={4} gap={1.5} alignItems={'center'}>
+                <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
+                  {t('app:toolkit_call_points_label')}
+                </Box>
+                <Box fontSize={'12px'} color={'myGray.600'}>
+                  {!!parentTool?.currentCost
+                    ? parentTool?.currentCost
+                    : t('app:toolkit_no_call_points')}
+                </Box>
+              </Flex>
+            )}
+
             <Flex mt={4} gap={1.5} alignItems={'center'}>
               <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
                 {t('app:toolkit_activation_label')}

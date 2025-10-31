@@ -1,31 +1,32 @@
 import { z } from 'zod';
-import { ToolDetailSchema, ToolSimpleSchema } from '@fastgpt-sdk/plugin';
-import { PaginationPropsSchema } from '../../../api';
+import type { ToolSimpleType } from '../../../../sdk/fastgpt-plugin';
+import { PaginationSchema } from '../../../api';
 import { PluginToolTagSchema } from '../../../../core/plugin/type';
 
+const formatToolDetailSchema = z.object({});
+const formatToolSimpleSchema = z.object({});
+
 // Create intersection types for extended schemas
-export const MarketplaceToolListItemSchema = ToolSimpleSchema.extend({
+export const MarketplaceToolListItemSchema = formatToolSimpleSchema.extend({
   downloadUrl: z.string()
 });
+export type MarketplaceToolListItemType = ToolSimpleType & {
+  downloadUrl: string;
+};
 
-export type MarketplaceToolListItemType = z.infer<typeof MarketplaceToolListItemSchema>;
-
-export const MarketplaceToolDetailItemSchema = ToolDetailSchema.extend({
+export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
   readme: z.string().optional()
 });
-
 export const MarketplaceToolDetailSchema = z.object({
   tools: z.array(MarketplaceToolDetailItemSchema),
   downloadUrl: z.string()
 });
 
 // List
-export const GetMarketplaceToolsBodySchema = PaginationPropsSchema(
-  z.object({
-    searchKey: z.string().optional(),
-    tags: z.array(z.string()).optional()
-  })
-);
+export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
+  searchKey: z.string().optional(),
+  tags: z.array(z.string()).optional()
+});
 export type GetMarketplaceToolsBodyType = z.infer<typeof GetMarketplaceToolsBodySchema>;
 
 export const MarketplaceToolsResponseSchema = z.object({
