@@ -34,8 +34,6 @@ const InputRender = (props: InputRenderProps) => {
 
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
-  // File
-  const [urlInput, setUrlInput] = useState('');
 
   const isSelectAll = useMemo(() => {
     return (
