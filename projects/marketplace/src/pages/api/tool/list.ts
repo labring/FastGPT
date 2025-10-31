@@ -6,7 +6,6 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
 import { getPkgdownloadURL } from '@/service/s3';
-import { object } from 'zod';
 
 export type ToolListQuery = {};
 export type ToolListBody = PaginationProps<{
@@ -21,6 +20,7 @@ async function handler(
 ): Promise<ToolListResponse> {
   const { pageSize, offset } = parsePaginationRequest(req);
   const { searchKey, tags } = req.body;
+
   const data = await getToolList();
   const filteredData = data.filter((item) => {
     if (item.parentId) {

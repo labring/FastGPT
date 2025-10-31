@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolSimpleType } from '../../../../sdk/fastgpt-plugin';
+import { type ToolSimpleType } from '../../../../sdk/fastgpt-plugin';
 import { PaginationSchema } from '../../../api';
 import { PluginToolTagSchema } from '../../../../core/plugin/type';
 
