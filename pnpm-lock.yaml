@@ -73,7 +73,7 @@ importers:
         version: 1.2.8
       '@fastgpt-sdk/plugin':
         specifier: ^0.2.8
-        version: link:../../../../dev/fastgpt-plugin/sdk
+        version: 0.2.8(@types/node@20.14.0)(zod@4.1.12)
       axios:
         specifier: ^1.12.1
         version: 1.12.1
@@ -2332,6 +2332,11 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
+  '@fastgpt-sdk/plugin@0.2.8':
+    resolution: {integrity: sha512-FpQBZNNh1ljR7k3RcxU5s1I3TpieyX14rvBpqlnWWt8PWVSbcylG807F7pevCtrnaD8TIl/+cvL9RLONDPKCSQ==}
+    peerDependencies:
+      zod: ^3.25.76
+
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
     engines: {node: '>=14'}
@@ -4064,6 +4069,17 @@ packages:
   '@trysound/sax@0.2.0':
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
     engines: {node: '>=10.13.0'}
+
+  '@ts-rest/core@3.52.1':
+    resolution: {integrity: sha512-tAjz7Kxq/grJodcTA1Anop4AVRDlD40fkksEV5Mmal88VoZeRKAG8oMHsDwdwPZz+B/zgnz0q2sF+cm5M7Bc7g==}
+    peerDependencies:
+      '@types/node': ^18.18.7 || >=20.8.4
+      zod: ^3.22.3
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      zod:
+        optional: true
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -13020,6 +13036,14 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
+  '@fastgpt-sdk/plugin@0.2.8(@types/node@20.14.0)(zod@4.1.12)':
+    dependencies:
+      '@fortaine/fetch-event-source': 3.0.6
+      '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@4.1.12)
+      zod: 4.1.12
+    transitivePeerDependencies:
+      - '@types/node'
+
   '@fastify/accept-negotiator@1.1.0': {}
 
   '@fastify/ajv-compiler@3.6.0':
@@ -15028,6 +15052,11 @@ snapshots:
   '@tokenizer/token@0.3.0': {}
 
   '@trysound/sax@0.2.0': {}
+
+  '@ts-rest/core@3.52.1(@types/node@20.14.0)(zod@4.1.12)':
+    optionalDependencies:
+      '@types/node': 20.14.0
+      zod: 4.1.12
 
   '@tsconfig/node10@1.0.11': {}
 
