@@ -163,7 +163,7 @@ const ToolkitMarketplace = () => {
         description: parseI18nString(tool.description || '', i18n.language) || '',
         icon: tool.icon,
         author: tool.author || '',
-        tags: tool.tags?.map((tag: any) => {
+        tags: tool.tags?.map((tag) => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
