@@ -2,14 +2,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import type { PluginTagSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { UpdatePluginToolTagOrderBody } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
 
 export type UpdatePluginTagOrderQuery = {};
 
-export type UpdatePluginTagOrderBody = {
-  tags: PluginTagSchemaType[];
-};
+export type UpdatePluginTagOrderBody = UpdatePluginToolTagOrderBody;
 
 export type UpdatePluginTagOrderResponse = {};
 

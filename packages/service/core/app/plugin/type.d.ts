@@ -53,13 +53,6 @@ export type SystemToolGroupSchemaType = {
   groupOrder: number;
 };
 
-export type PluginTagSchemaType = {
-  tagId: string;
-  tagName: I18nStringStrictType | string;
-  tagOrder: number;
-  isSystem: boolean;
-};
-
 export type TeamInstalledPluginSchemaType = {
   _id: string;
   teamId: string;

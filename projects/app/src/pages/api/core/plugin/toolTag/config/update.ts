@@ -2,25 +2,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-
-export type DeletePluginTagQuery = {
-  tagId: string;
-};
-
-export type DeletePluginTagBody = {};
-
-export type DeletePluginTagResponse = {};
+import type { UpdatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
 
 async function handler(
-  req: ApiRequestProps<DeletePluginTagBody, DeletePluginTagQuery>,
+  req: ApiRequestProps<UpdatePluginToolTagBody>,
   res: ApiResponseType<any>
-): Promise<DeletePluginTagResponse> {
+): Promise<{}> {
   await authSystemAdmin({ req });
 
-  const { tagId } = req.query;
+  const { tagId, tagName } = req.body;
 
-  if (!tagId) {
-    return Promise.reject('Tag ID is required');
+  if (!tagId || !tagName || !tagName.trim()) {
+    return Promise.reject('Missing params');
   }
 
   const tag = await MongoPluginTag.findOne({ tagId });
@@ -29,7 +22,14 @@ async function handler(
     return Promise.reject('Tag not found');
   }
 
-  await MongoPluginTag.deleteOne({ tagId });
+  await MongoPluginTag.updateOne(
+    { tagId },
+    {
+      $set: {
+        tagName: tagName.trim()
+      }
+    }
+  );
 
   return {};
 }

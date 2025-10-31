@@ -7,10 +7,8 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import type {
-  SystemPluginConfigSchemaType,
-  PluginTagSchemaType
-} from '@fastgpt/service/core/app/plugin/type';
+import type { SystemPluginConfigSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { PluginToolTagType } from '@fastgpt/global/core/plugin/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -83,7 +81,7 @@ async function handler(
     });
 
   const allTags = await MongoPluginTag.find().sort({ tagOrder: 1 }).lean();
-  const tagMap = new Map<string, PluginTagSchemaType>();
+  const tagMap = new Map<string, PluginToolTagType>();
   allTags.forEach((tag) => {
     tagMap.set(tag.tagId, tag);
   });
@@ -104,7 +102,7 @@ async function handler(
     const tags = pluginTags
       ? pluginTags
           .map((tagId) => tagMap.get(tagId))
-          .filter((tag): tag is PluginTagSchemaType => tag !== undefined)
+          .filter((tag): tag is PluginToolTagType => tag !== undefined)
       : [];
 
     return {

@@ -16,14 +16,12 @@ import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilte
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { installMarketplaceTool, getSystemPlugins, deletePlugin } from '@/web/core/app/api/plugin';
 import {
-  getMarketplaceTools,
-  getToolTags,
+  getMarketPlaceToolTags,
   getMarketplaceToolDetail,
-  installMarketplaceTool,
-  getSystemPlugins,
-  deletePlugin
-} from '@/web/core/app/api/plugin';
+  getMarketplaceTools
+} from '@/web/core/plugin/marketplace/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
@@ -121,17 +119,14 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       refreshDeps: [searchText, selectedTagIds]
     }
   );
-  const {
-    data: currentTools = [],
-    runAsync: refreshCurrentTools,
-    loading: loadingCurrentTools
-  } = useRequest2(getSystemPlugins, {
+  const { data: currentTools = [], runAsync: refreshCurrentTools } = useRequest2(getSystemPlugins, {
     manual: false
   });
-  const { data: allTags = [] } = useRequest2(() => getToolTags(), {
+  const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
   });
-  const { runAsync: handleInstallTool, loading: installToolLoading } = useRequest2(
+
+  const { runAsync: handleInstallTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
       setOperatingToolId(tool.id);

@@ -21,10 +21,10 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   delPlugin,
   getAllUserPlugins,
-  getPluginTags,
   postCreatePlugin,
   putUpdatePlugin
 } from '@/web/core/app/api/plugin';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -126,7 +126,7 @@ const CustomPluginConfig = ({
     return plugins.find((item) => item._id === associatedPluginId);
   }, [plugins, associatedPluginId]);
 
-  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginTags, {
+  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
     manual: false
   });
   const pluginTypeSelectList = useMemo(

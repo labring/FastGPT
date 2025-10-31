@@ -1,12 +1,13 @@
 import { z } from 'zod';
-import { formatSuccessResponse, getErrorResponse, type OpenAPIPath } from '../../type';
+import { type OpenAPIPath } from '../../type';
 import { ApiKeyHealthParamsSchema, ApiKeyHealthResponseSchema } from './api';
+import { TagsMap } from '../../tag';
 
 export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/health': {
     get: {
       summary: '检查 API Key 是否健康',
-      tags: ['APIKey'],
+      tags: [TagsMap.apiKey],
       requestParams: {
         query: ApiKeyHealthParamsSchema
       },

@@ -1,26 +1,24 @@
+import type { OpenAPIPath } from '../../type';
 import { ChatSettingPath } from './setting';
 import { ChatFavouriteAppPath } from './favourite/index';
 import { z } from 'zod';
-import { ObjectIdSchema } from '../../../common/type/mongo';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
+import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from '../../../core/chat/api';
+import { TagsMap } from '../../tag';
 
-export const ChatPath = {
+export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
 
-  '/proApi/core/chat/presignChatFileGetUrl': {
+  '/core/chat/presignChatFileGetUrl': {
     post: {
       summary: '获取对话文件预签名 URL',
       description: '获取对话文件的预签名 URL',
-      tags: ['对话页'],
+      tags: [TagsMap.chatPage],
       requestBody: {
         content: {
           'application/json': {
-            schema: z.object({
-              key: z.string().min(1),
-              appId: ObjectIdSchema,
-              outLinkAuthData: z.record(z.string(), z.any())
-            })
+            schema: PresignChatFileGetUrlSchema
           }
         }
       },
@@ -36,20 +34,15 @@ export const ChatPath = {
       }
     }
   },
-  '/proApi/core/chat/presignChatFilePostUrl': {
+  '/core/chat/presignChatFilePostUrl': {
     post: {
       summary: '上传对话文件预签名 URL',
       description: '上传对话文件的预签名 URL',
-      tags: ['对话页'],
+      tags: [TagsMap.chatPage],
       requestBody: {
         content: {
           'application/json': {
-            schema: z.object({
-              filename: z.string().min(1),
-              appId: ObjectIdSchema,
-              chatId: ObjectIdSchema,
-              outLinkAuthData: z.record(z.string(), z.any())
-            })
+            schema: PresignChatFilePostUrlSchema
           }
         }
       },
