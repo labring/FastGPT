@@ -410,7 +410,7 @@ const ToolDetailDrawer = ({
                       maxH="400px"
                       overflowY="auto"
                     >
-                      <Markdown source={readmeContent || parentTool?.userGuide} />
+                      <Markdown source={readmeContent || parentTool?.userGuide || ''} />
                     </Box>
                   )}
                 </VStack>

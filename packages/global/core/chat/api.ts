@@ -46,3 +46,12 @@ export const PresignChatFilePostUrlSchema = z
 export type PresignChatFilePostUrlParams = z.infer<typeof PresignChatFilePostUrlSchema> & {
   outLinkAuthData?: OutLinkChatAuthType;
 };
+
+export const UpdateChatFeedbackSchema = z.object({
+  appId: z.string().min(1),
+  chatId: z.string().min(1),
+  dataId: z.string().min(1),
+  userBadFeedback: z.string().optional(),
+  userGoodFeedback: z.boolean().optional()
+});
+export type UpdateChatFeedbackProps = z.infer<typeof UpdateChatFeedbackSchema>;
