@@ -35,13 +35,8 @@ const ToolkitMarketplace = () => {
   useEffect(() => {
     try {
       if (search && typeof search === 'string') {
-        // 清理搜索输入，防止 XSS
-        const sanitizedSearch = search.replace(
-          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-          ''
-        );
-        setInputValue(sanitizedSearch);
-        setSearchText(sanitizedSearch);
+        setInputValue(search);
+        setSearchText(search);
         setIsSearchExpanded(true);
       }
       if (tags) {
@@ -281,11 +276,7 @@ const ToolkitMarketplace = () => {
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => {
-                          // 清理输入，防止恶意字符
-                          const cleanValue = e.target.value
-                            .replace(/[\x00-\x1F\x7F]/g, '') // 移除控制字符
-                            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''); // 移除脚本标签
-                          setInputValue(cleanValue);
+                          setInputValue(e.target.value);
                         }}
                         autoFocus
                         onBlur={() => {
@@ -399,11 +390,7 @@ const ToolkitMarketplace = () => {
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => {
-                    // 清理输入，防止恶意字符
-                    const cleanValue = e.target.value
-                      .replace(/[\x00-\x1F\x7F]/g, '') // 移除控制字符
-                      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''); // 移除脚本标签
-                    setInputValue(cleanValue);
+                    setInputValue(e.target.value);
                   }}
                   onBlur={handleSearchBlur}
                 />
