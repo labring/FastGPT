@@ -60,12 +60,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     if (toolConfig?.systemTool?.toolId) {
       const tool = await getSystemToolById(toolConfig.systemTool!.toolId);
 
-      if (tool.status === 0) {
-        return getNodeErrResponse({
-          error: i18nT('app:Plugin_offline_tips')
-        });
-      }
-
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
           case SystemToolInputTypeEnum.team:

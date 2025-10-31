@@ -1228,7 +1228,7 @@
   "support.wallet.usage.Time": "Generation Time",
   "support.wallet.usage.Token Length": "Token Length",
   "support.wallet.usage.Total": "Total Amount",
-  "support.wallet.usage.Total points": "AI Points Consumption",
+  "support.wallet.usage.Total points": "Total credit",
   "support.wallet.usage.Usage Detail": "Usage Details",
   "support.wallet.usage.Whisper": "Voice Input",
   "sure_delete_tool_cannot_undo": "Are you sure to delete the tool? \nThis operation cannot be withdrawn",
