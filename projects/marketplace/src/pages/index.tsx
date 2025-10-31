@@ -458,6 +458,7 @@ const ToolkitMarketplace = () => {
       {!!selectedTool && (
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
+          showPoint={false}
           selectedTool={selectedTool}
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => window.open(selectedTool.downloadUrl)}

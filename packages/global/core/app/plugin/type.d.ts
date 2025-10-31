@@ -8,7 +8,7 @@ import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workfl
 import type { ParentIdType } from 'common/parentFolder/type';
 import type { I18nStringStrictType } from '../../../common/i18n/type';
 import type { I18nStringType } from '../../../common/i18n/type';
-import type { ToolSimpleType, ToolDetailType } from '../../sdk/fastgpt-plugin';
+import type { ToolSimpleType, ToolDetailType } from '../../../sdk/fastgpt-plugin';
 
 export type PluginTagType = {
   tagId: string;
