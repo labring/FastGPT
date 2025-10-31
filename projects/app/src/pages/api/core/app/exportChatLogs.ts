@@ -247,27 +247,39 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         }
       },
       {
+        $unwind: {
+          path: '$chatData',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $unwind: {
+          path: '$chatItemResponsesData',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $addFields: {
-          messageCount: { $ifNull: [{ $arrayElemAt: ['$chatData.messageCount', 0] }, 0] },
+          messageCount: { $ifNull: ['$chatData.messageCount', 0] },
           userGoodFeedbackCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatData.goodFeedback', 0] }, 0]
+            $ifNull: ['$chatData.goodFeedback', 0]
           },
           userBadFeedbackCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatData.badFeedback', 0] }, 0]
+            $ifNull: ['$chatData.badFeedback', 0]
           },
           customFeedbacksCount: {
-            $ifNull: [{ $arrayElemAt: ['$chatData.customFeedback', 0] }, 0]
+            $ifNull: ['$chatData.customFeedback', 0]
           },
-          markCount: { $ifNull: [{ $arrayElemAt: ['$chatData.adminMark', 0] }, 0] },
+          markCount: { $ifNull: ['$chatData.adminMark', 0] },
           averageResponseTime: {
             $cond: [
               {
-                $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatData.aiMessageCount', 0] }, 0] }, 0]
+                $gt: [{ $ifNull: ['$chatData.aiMessageCount', 0] }, 0]
               },
               {
                 $divide: [
-                  { $ifNull: [{ $arrayElemAt: ['$chatData.totalResponseTime', 0] }, 0] },
-                  { $ifNull: [{ $arrayElemAt: ['$chatData.aiMessageCount', 0] }, 1] }
+                  { $ifNull: ['$chatData.totalResponseTime', 0] },
+                  { $ifNull: ['$chatData.aiMessageCount', 1] }
                 ]
               },
               0
@@ -276,19 +288,19 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           // Merge errorCount from both sources
           errorCount: {
             $add: [
-              { $ifNull: [{ $arrayElemAt: ['$chatData.errorCountFromChatItem', 0] }, 0] },
+              { $ifNull: ['$chatData.errorCountFromChatItem', 0] },
               {
-                $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0]
+                $ifNull: ['$chatItemResponsesData.errorCountFromResponse', 0]
               }
             ]
           },
           // Merge totalPoints from both sources
           totalPoints: {
             $add: [
-              { $ifNull: [{ $arrayElemAt: ['$chatData.totalPointsFromChatItem', 0] }, 0] },
+              { $ifNull: ['$chatData.totalPointsFromChatItem', 0] },
               {
                 $ifNull: [
-                  { $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] },
+                  '$chatItemResponsesData.totalPointsFromResponse',
                   0
                 ]
               }
@@ -296,28 +308,28 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           },
           userGoodFeedbackItems: {
             $filter: {
-              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
+              input: { $ifNull: ['$chatData.chatitems', []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userGoodFeedback', false] }
             }
           },
           userBadFeedbackItems: {
             $filter: {
-              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
+              input: { $ifNull: ['$chatData.chatitems', []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userBadFeedback', false] }
             }
           },
           customFeedbackItems: {
             $filter: {
-              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
+              input: { $ifNull: ['$chatData.chatitems', []] },
               as: 'item',
               cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
             }
           },
           markItems: {
             $filter: {
-              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
+              input: { $ifNull: ['$chatData.chatitems', []] },
               as: 'item',
               cond: { $ifNull: ['$$item.adminFeedback', false] }
             }
@@ -325,7 +337,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           chatDetails: {
             $map: {
               input: {
-                $slice: [{ $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] }, -100]
+                $slice: [{ $ifNull: ['$chatData.chatitems', []] }, -100]
               },
               as: 'item',
               in: {
