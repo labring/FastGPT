@@ -72,8 +72,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: ^0.2.4
-        version: 0.2.4(@types/node@20.14.0)(zod@4.1.12)
+        specifier: ^0.2.6
+        version: 0.2.6(@types/node@20.14.0)(zod@4.1.12)
       axios:
         specifier: ^1.12.1
         version: 1.12.1
@@ -2392,8 +2392,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.2.4':
-    resolution: {integrity: sha512-FwipYMM7vl1vmZKzBzFKyeyDDfd9qb9WCZ+JMXJgLYdx9SczgWLHgOlzxelrUW4M8SeVe4dlI6Zy+xkDmzr0iQ==}
+  '@fastgpt-sdk/plugin@0.2.6':
+    resolution: {integrity: sha512-J373iTK8pwG4lwZtYcmVjGt7lFuWuc7ibS2VHjWLCzPJoieIr+aEexF88wUMw1fOxF1n9ZsE5VpEhqCG8+rLUQ==}
     peerDependencies:
       zod: ^4.1.12
 
@@ -4249,15 +4249,12 @@ packages:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
     engines: {node: '>=10.13.0'}
 
-  '@ts-rest/core@3.52.1':
-    resolution: {integrity: sha512-tAjz7Kxq/grJodcTA1Anop4AVRDlD40fkksEV5Mmal88VoZeRKAG8oMHsDwdwPZz+B/zgnz0q2sF+cm5M7Bc7g==}
+  '@ts-rest/core@3.53.0-rc.1':
+    resolution: {integrity: sha512-hDMXqKHSys6w+kXFW1Q6EvN8QgRvtXKXJ2TpYByKI4TquaPjiTOv99aLD26X4LNRzdna8Ci1PVyzr0jYZv0oNQ==}
     peerDependencies:
       '@types/node': ^18.18.7 || >=20.8.4
-      zod: ^3.22.3
     peerDependenciesMeta:
       '@types/node':
-        optional: true
-      zod:
         optional: true
 
   '@tsconfig/node10@1.0.11':
@@ -13339,10 +13336,10 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.2.4(@types/node@20.14.0)(zod@4.1.12)':
+  '@fastgpt-sdk/plugin@0.2.6(@types/node@20.14.0)(zod@4.1.12)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
-      '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@4.1.12)
+      '@ts-rest/core': 3.53.0-rc.1(@types/node@20.14.0)
       zod: 4.1.12
     transitivePeerDependencies:
       - '@types/node'
@@ -15437,10 +15434,9 @@ snapshots:
 
   '@trysound/sax@0.2.0': {}
 
-  '@ts-rest/core@3.52.1(@types/node@20.14.0)(zod@4.1.12)':
+  '@ts-rest/core@3.53.0-rc.1(@types/node@20.14.0)':
     optionalDependencies:
       '@types/node': 20.14.0
-      zod: 4.1.12
 
   '@tsconfig/node10@1.0.11': {}
 
