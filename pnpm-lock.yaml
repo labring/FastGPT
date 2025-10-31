@@ -72,8 +72,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: 0.2.12
-        version: 0.2.12(@types/node@20.14.0)(zod@4.1.12)
+        specifier: 0.2.13
+        version: 0.2.13(@types/node@20.14.0)
       axios:
         specifier: ^1.12.1
         version: 1.12.1
@@ -2332,10 +2332,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.2.12':
-    resolution: {integrity: sha512-4eRfD0aSB/HAK21v1x95m03QfqBFCSjoHKfI2ODQQxCjWyPmxmnV8AtbULoXbmx+/129f3iwKbTdp8IkA8v1Kw==}
-    peerDependencies:
-      zod: ^3.25.76
+  '@fastgpt-sdk/plugin@0.2.13':
+    resolution: {integrity: sha512-P0Rq3rYNr3HC6Op68YUFSF0un7ZwgwwLxtygITQfy4XqWTWzMogb4npXJPMWiD89f3WvkdqPkVZfFEZzg2wzJQ==}
 
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
@@ -13036,11 +13034,11 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.2.12(@types/node@20.14.0)(zod@4.1.12)':
+  '@fastgpt-sdk/plugin@0.2.13(@types/node@20.14.0)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
-      '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@4.1.12)
-      zod: 4.1.12
+      '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@3.25.76)
+      zod: 3.25.76
     transitivePeerDependencies:
       - '@types/node'
 
@@ -15053,10 +15051,10 @@ snapshots:
 
   '@trysound/sax@0.2.0': {}
 
-  '@ts-rest/core@3.52.1(@types/node@20.14.0)(zod@4.1.12)':
+  '@ts-rest/core@3.52.1(@types/node@20.14.0)(zod@3.25.76)':
     optionalDependencies:
       '@types/node': 20.14.0
-      zod: 4.1.12
+      zod: 3.25.76
 
   '@tsconfig/node10@1.0.11': {}
 
