@@ -24,7 +24,7 @@
     "next-i18next": "15.4.2",
     "react-i18next": "14.1.2",
     "i18next": "23.16.8",
-    "zod": "^3.24.2"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "typescript": "^5",

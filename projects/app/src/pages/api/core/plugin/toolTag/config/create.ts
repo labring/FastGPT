@@ -3,17 +3,14 @@ import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { CreatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
 
 export type CreatePluginTagQuery = {};
-
-export type CreatePluginTagBody = {
-  tagName: string;
-};
 
 export type CreatePluginTagResponse = {};
 
 async function handler(
-  req: ApiRequestProps<CreatePluginTagBody, CreatePluginTagQuery>,
+  req: ApiRequestProps<CreatePluginToolTagBody, CreatePluginTagQuery>,
   res: ApiResponseType<any>
 ): Promise<CreatePluginTagResponse> {
   await authSystemAdmin({ req });

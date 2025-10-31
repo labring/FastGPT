@@ -2,12 +2,11 @@
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import {
-  getPluginTags,
   getPreviewPluginNode,
   getSystemPlugins,
-  getTeamInstalledPluginIds,
   postToggleInstallPlugin
 } from '@/web/core/app/api/plugin';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
@@ -50,7 +49,7 @@ const ToolKitProvider = () => {
   } = useRequest2(() => getSystemPlugins({ source: 'team' }), {
     manual: false
   });
-  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginTags, {
+  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
     manual: false
   });
 

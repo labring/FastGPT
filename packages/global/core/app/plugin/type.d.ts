@@ -92,21 +92,4 @@ export type ToolDetailResponse = {
   downloadUrl: string;
 };
 
-// Marketplace API types
-export type GetMarketplaceToolsBody = PaginationProps<{
-  searchKey?: string;
-  tags?: string[];
-}>;
-
-export type GetMarketplaceToolsResponse = {
-  total: number;
-  list: ToolListItem[];
-};
-
-export type GetMarketplaceToolDetailQuery = {
-  toolId: string;
-};
-
-export type GetMarketplaceToolDetailResponse = ToolDetailResponse;
-
-export type GetToolTagsResponse = PluginTagType[];
+export type GetToolTagsResponse = Array<PluginTagType>;

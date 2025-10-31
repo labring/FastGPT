@@ -14,7 +14,7 @@ import {
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
-import { getToolTags } from '../../../web/core/app/api/plugin';
+import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
@@ -38,7 +38,7 @@ const ImportPluginModal = ({
 
   console.log('uploadedFiles', uploadedFiles);
 
-  const { data: allTags = [] } = useRequest2(() => getToolTags(), {
+  const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
   });
 
