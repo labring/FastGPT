@@ -8,6 +8,12 @@ export const appTypeMap = {
     title: i18nT('app:type.Create simple bot'),
     emptyCreateText: i18nT('app:create_empty_app')
   },
+  [AppTypeEnum.simple]: {
+    icon: 'core/app/simpleBot',
+    title: i18nT('app:type.Create simple bot'),
+    avatar: 'core/app/type/simpleFill',
+    emptyCreateText: i18nT('app:create_empty_app')
+  },
   [AppTypeEnum.workflow]: {
     icon: 'core/app/type/workflowFill',
     avatar: 'core/app/type/workflowFill',
@@ -20,11 +26,16 @@ export const appTypeMap = {
     title: i18nT('app:type.Create plugin bot'),
     emptyCreateText: i18nT('app:create_empty_plugin')
   },
-  // deprecated
-  [AppTypeEnum.simple]: {
-    icon: 'core/app/simpleBot',
-    title: i18nT('app:type.Create simple bot'),
-    avatar: 'core/app/type/simpleFill',
-    emptyCreateText: i18nT('app:create_empty_app')
+  [AppTypeEnum.toolSet]: {
+    icon: 'core/app/type/mcpToolsFill',
+    avatar: 'core/app/type/mcpToolsFill',
+    title: '',
+    emptyCreateText: ''
+  },
+  [AppTypeEnum.httpToolSet]: {
+    icon: 'core/app/type/httpPluginFill',
+    avatar: 'core/app/type/httpPluginFill',
+    title: '',
+    emptyCreateText: ''
   }
 };

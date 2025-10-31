@@ -14,7 +14,12 @@ import {
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const emptyTemplates: Record<
-  AppTypeEnum.plugin | AppTypeEnum.workflow | AppTypeEnum.agent,
+  | AppTypeEnum.simple
+  | AppTypeEnum.toolSet
+  | AppTypeEnum.httpToolSet
+  | AppTypeEnum.plugin
+  | AppTypeEnum.workflow
+  | AppTypeEnum.agent,
   {
     name: string;
     avatar: string;
@@ -26,6 +31,27 @@ export const emptyTemplates: Record<
   [AppTypeEnum.agent]: {
     avatar: 'core/app/aiAgent',
     name: i18nT('common:core.module.template.empty_agent'),
+    nodes: [],
+    edges: [],
+    chatConfig: {}
+  },
+  [AppTypeEnum.simple]: {
+    avatar: 'core/app/type/simpleFill',
+    name: '',
+    nodes: [],
+    edges: [],
+    chatConfig: {}
+  },
+  [AppTypeEnum.toolSet]: {
+    avatar: 'core/app/type/mcpToolsFill',
+    name: '',
+    nodes: [],
+    edges: [],
+    chatConfig: {}
+  },
+  [AppTypeEnum.httpToolSet]: {
+    avatar: 'core/app/type/httpPluginFill',
+    name: '',
     nodes: [],
     edges: [],
     chatConfig: {}

@@ -107,7 +107,7 @@ export const getToolVersionList = (data: getToolVersionListProps) =>
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
-  POST('/core/app/mcpTools/create', data);
+  POST<string>('/core/app/mcpTools/create', data);
 
 export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);

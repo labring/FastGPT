@@ -1,13 +1,11 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
-import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
@@ -32,16 +30,9 @@ import List from '@/pageComponents/dashboard/apps/List';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
-);
-const HttpToolsCreateModal = dynamic(
-  () => import('@/pageComponents/dashboard/apps/HttpToolsCreateModal')
-);
-const MCPToolsEditModal = dynamic(
-  () => import('@/pageComponents/dashboard/apps/MCPToolsEditModal')
 );
 
 const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
@@ -278,8 +269,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />
       )}
-      {isOpenCreateHttpTools && <HttpToolsCreateModal onClose={onCloseCreateHttpTools} />}
-      {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );
