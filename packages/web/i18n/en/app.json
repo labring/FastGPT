@@ -189,7 +189,7 @@
   "logs_keys_customFeedback": "Custom Feedback",
   "logs_keys_errorCount": "Error Count",
   "logs_keys_feedback": "User Feedback",
-  "logs_keys_lastConversationTime": "Last Conversation Time",
+  "logs_keys_lastConversationTime": "last conversation time",
   "logs_keys_messageCount": "Message Count",
   "logs_keys_points": "Points Consumed",
   "logs_keys_responseTime": "Average Response Time",

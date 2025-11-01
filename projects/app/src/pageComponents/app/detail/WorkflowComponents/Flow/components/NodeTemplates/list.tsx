@@ -405,10 +405,9 @@ const NodeTemplateList = ({
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, templates, t, i18n.language]);
+  }, [templateType, templates, t, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
-    console.log('list', list);
     return (
       <>
         {list.map((item) => {

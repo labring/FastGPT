@@ -193,7 +193,7 @@
   "logs_keys_customFeedback": "自定义反馈",
   "logs_keys_errorCount": "报错数量",
   "logs_keys_feedback": "用户反馈",
-  "logs_keys_lastConversationTime": "上次对话时间",
+  "logs_keys_lastConversationTime": "最后对话时间",
   "logs_keys_messageCount": "消息总数",
   "logs_keys_points": "积分消耗",
   "logs_keys_responseTime": "平均响应时长",

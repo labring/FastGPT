@@ -25,6 +25,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -43,8 +44,8 @@ export type ExportChatLogsBody = GetAppChatLogsProps & {
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
   let {
     appId,
-    dateStart = addDays(new Date(), -7),
-    dateEnd = new Date(),
+    dateStart,
+    dateEnd,
     sources,
     tmbIds,
     chatSearch,
@@ -57,6 +58,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
+  const timezoneCode = getTimezoneCodeFromStr(dateStart);
+
   const { teamId, tmbId, app } = await authApp({
     req,
     authToken: true,
@@ -68,6 +71,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     (item) => item.type !== VariableInputEnum.password
   );
 
+  // Get members
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
     {
@@ -380,10 +384,10 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 
   cursor.on('data', (doc) => {
     const createdTime = doc.createTime
-      ? dayjs(doc.createTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      ? dayjs(doc.createTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const lastConversationTime = doc.updateTime
-      ? dayjs(doc.updateTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      ? dayjs(doc.updateTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
     const titleStr = doc.customTitle || doc.title || '';
@@ -473,6 +477,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 }
 
 export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
+  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 1, limit: 1, force: true }),
   handler
 );
