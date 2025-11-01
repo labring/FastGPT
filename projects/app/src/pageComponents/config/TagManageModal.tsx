@@ -12,10 +12,10 @@ import { nanoid } from 'nanoid';
 import {
   createPluginToolag,
   deletePluginToolTag,
-  getPluginToolTags,
   updatePluginToolTag,
   updatePluginToolTagOrder
-} from '@/web/core/plugin/toolTag/api';
+} from '@/web/core/plugin/admin/tool/api';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {

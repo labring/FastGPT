@@ -11,6 +11,12 @@ import type {
   GetAllSystemAppTypeToolsResponse,
   CreateAppToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import type {
+  CreatePluginToolTagBody,
+  UpdatePluginToolTagBody,
+  DeletePluginToolTagQuery,
+  UpdatePluginToolTagOrderBody
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 
 export const getAdminSystemTools = (data: GetAdminSystemToolsQueryType) =>
   GET<GetAdminSystemToolsResponseType>('/core/plugin/admin/tool/list', data);
@@ -33,3 +39,16 @@ export const getAdminAllSystemAppTool = (data: GetAllSystemAppsBodyType) =>
 
 export const postAdminCreateAppTypeTool = (data: CreateAppToolBodyType) =>
   POST('/core/plugin/admin/tool/app/create', data);
+
+/* ===== Tool tag ===== */
+export const createPluginToolag = (data: CreatePluginToolTagBody) =>
+  POST<{}>(`/core/plugin/toolTag/config/create`, data);
+
+export const updatePluginToolTag = (data: UpdatePluginToolTagBody) =>
+  PUT<{}>(`/core/plugin/toolTag/config/update`, data);
+
+export const deletePluginToolTag = (data: DeletePluginToolTagQuery) =>
+  DELETE<{}>(`/core/plugin/toolTag/config/delete`, data);
+
+export const updatePluginToolTagOrder = (data: UpdatePluginToolTagOrderBody) =>
+  PUT<{}>(`/core/plugin/toolTag/config/updateOrder`, data);
