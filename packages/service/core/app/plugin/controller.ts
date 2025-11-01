@@ -24,7 +24,7 @@ import {
   getAppVersionById
 } from '../version/controller';
 import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
-import { MongoSystemPlugin } from './systemPluginSchema';
+import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import {
@@ -70,7 +70,7 @@ export const getSystemPluginByIdAndVersionId = async (
   // Admin selected system tool
   if (plugin.associatedPluginId) {
     // The verification plugin is set as a system plugin
-    const systemPlugin = await MongoSystemPlugin.findOne(
+    const systemPlugin = await MongoSystemTool.findOne(
       { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
       'associatedPluginId'
     ).lean();
@@ -507,8 +507,17 @@ export async function getChildAppRuntimeById({
 }
 
 const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
-  const { name, avatar, intro, toolDescription, version, weight, associatedPluginId, userGuide } =
-    item.customConfig!;
+  const {
+    name,
+    avatar,
+    intro,
+    toolDescription,
+    version,
+    associatedPluginId,
+    userGuide,
+    author = '',
+    toolTags
+  } = item.customConfig!;
 
   return {
     id: item.pluginId,
@@ -516,13 +525,13 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     defaultInstalled: item.defaultInstalled ?? false,
     isFolder: false,
     parentId: null,
-    author: item.customConfig?.author || '',
+    author,
     version,
     name,
     avatar,
     intro,
     toolDescription,
-    weight,
+    toolTags,
     templateType: FlowNodeTemplateTypeEnum.tools,
     originCost: item.originCost,
     currentCost: item.currentCost,
@@ -543,7 +552,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
   const tools = await APIGetSystemToolList();
 
   // 从数据库里加载插件配置进行替换
-  const systemToolsArray = await MongoSystemPlugin.find({}).lean();
+  const systemToolsArray = await MongoSystemTool.find({}).lean();
   const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
 
   const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
@@ -563,7 +572,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      pluginTags: item.tags,
+      toolTags: item.tags,
       workflow: {
         nodes: [],
         edges: []
@@ -604,7 +613,7 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
     return Promise.reject(PluginErrEnum.unExist);
   }
 
-  const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
+  const dbPlugin = await MongoSystemTool.findOne({ pluginId }).lean();
   if (!dbPlugin) return Promise.reject(PluginErrEnum.unExist);
   return dbPluginFormat(dbPlugin);
 };

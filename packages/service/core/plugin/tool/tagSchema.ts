@@ -2,9 +2,9 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import type { PluginToolTagType } from '@fastgpt/global/core/plugin/type';
 const { Schema } = connectionMongo;
 
-export const collectionName = 'app_plugin_tags';
+export const collectionName = 'system_plugin_tool_tags';
 
-const PluginTagSchema = new Schema({
+const SystemPluginToolTagSchema = new Schema({
   tagId: {
     type: String,
     required: true
@@ -23,7 +23,10 @@ const PluginTagSchema = new Schema({
   }
 });
 
-PluginTagSchema.index({ tagId: 1 }, { unique: true });
-PluginTagSchema.index({ tagOrder: 1 });
+SystemPluginToolTagSchema.index({ tagId: 1 }, { unique: true });
+SystemPluginToolTagSchema.index({ tagOrder: 1 });
 
-export const MongoPluginTag = getMongoModel<PluginToolTagType>(collectionName, PluginTagSchema);
+export const MongoPluginToolTag = getMongoModel<PluginToolTagType>(
+  collectionName,
+  SystemPluginToolTagSchema
+);

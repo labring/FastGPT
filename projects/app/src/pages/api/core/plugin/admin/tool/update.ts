@@ -1,27 +1,27 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { UpdatePluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
-export type updatePluginQuery = {};
+export type updateToolQuery = {};
 
-export type updatePluginBody = UpdatePluginBodyType;
+export type updateToolBody = UpdateToolBodyType;
 
-export type updatePluginResponse = {};
+export type updateToolResponse = {};
 
 async function handler(
-  req: ApiRequestProps<updatePluginBody, updatePluginQuery>,
+  req: ApiRequestProps<updateToolBody, updateToolQuery>,
   res: ApiResponseType<any>
-): Promise<updatePluginResponse> {
+): Promise<updateToolResponse> {
   await authSystemAdmin({ req });
   const { pluginId, ...updateFields } = req.body;
 
-  const plugin = await MongoSystemPlugin.findOne({ pluginId });
+  const plugin = await MongoSystemTool.findOne({ pluginId });
 
   // 基础更新字段
   const baseUpdateFields = {
@@ -42,7 +42,7 @@ async function handler(
       plugin.customConfig.avatar !== updateFields.avatar ||
       plugin.customConfig.intro !== updateFields.intro;
 
-    await MongoSystemPlugin.findOneAndUpdate(
+    await MongoSystemTool.findOneAndUpdate(
       { pluginId },
       {
         ...baseUpdateFields,
@@ -51,9 +51,7 @@ async function handler(
           avatar: updateFields.avatar,
           intro: updateFields.intro,
           version: isUpdateVersion ? getNanoid() : plugin.customConfig.version,
-          weight: updateFields.weight,
-          workflow: updateFields.workflow,
-          pluginTags: updateFields.pluginTags,
+          toolTags: updateFields.tagIds,
           associatedPluginId: updateFields.associatedPluginId,
           userGuide: updateFields.userGuide,
           author: updateFields.author
@@ -63,21 +61,14 @@ async function handler(
   } else {
     // 系统插件只更新基础字段, 如果有 child，需要更新 child
     await mongoSessionRun(async (session) => {
-      await MongoSystemPlugin.updateOne({ pluginId }, baseUpdateFields, { upsert: true, session });
+      await MongoSystemTool.updateOne({ pluginId }, baseUpdateFields, { upsert: true, session });
 
-      for await (const tool of updateFields.childConfigs || []) {
-        await MongoSystemPlugin.updateOne(
+      for await (const tool of updateFields.childTools || []) {
+        await MongoSystemTool.updateOne(
           { pluginId: tool.pluginId },
           {
             pluginId: tool.pluginId,
-            status: tool.status,
-            defaultInstalled: tool.defaultInstalled,
-            originCost: tool.originCost,
-            currentCost: tool.currentCost,
-            hasTokenFee: tool.hasTokenFee,
-            systemKeyCost: tool.systemKeyCost,
-
-            inputListVal: updateFields.inputListVal ?? null
+            systemKeyCost: tool.systemKeyCost
           },
           { upsert: true, session }
         );

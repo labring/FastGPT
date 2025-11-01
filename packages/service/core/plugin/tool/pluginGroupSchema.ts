@@ -1,5 +1,6 @@
+// 已弃用
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import { type SystemToolGroupSchemaType, type TGroupType } from './type';
+import { type SystemToolGroupSchemaType, type TGroupType } from '../../app/plugin/type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_plugin_groups';

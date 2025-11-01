@@ -18,12 +18,6 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import {
-  delAppPlugin,
-  getAllSystemAppPlugins,
-  postCreateAppPlugin,
-  putUpdatePlugin
-} from '@/web/core/plugin/admin/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -34,97 +28,106 @@ import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
+import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  delAdminSystemTool,
+  getAdminAllSystemAppTool,
+  getAdminSystemToolDetail,
+  postAdminCreateAppTypeTool,
+  putAdminUpdateTool
+} from '@/web/core/plugin/admin/tool/api';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
-type EditCustomPluginType = {
-  id?: string;
-  pluginTags?: string[];
-  name: string;
-  avatar: string;
-  intro?: string;
-  originCost?: number;
-  currentCost?: number;
-  hasTokenFee?: boolean;
-  status?: number;
-  defaultInstalled?: boolean;
-  associatedPluginId?: string;
-  userGuide?: string;
-  author?: string;
-
-  inputList?: FlowNodeInputItemType['inputList'];
-  inputListVal?: Record<string, any>;
-
-  // @deprecated
-  templateType?: string;
-};
-
-export const defaultCustomPluginForm: EditCustomPluginType = {
-  id: '',
-  pluginTags: [],
+export const defaultForm: UpdateToolBodyType = {
+  pluginId: '',
+  defaultInstalled: false,
   name: '',
   avatar: 'core/app/type/pluginFill',
   intro: '',
   status: PluginStatusEnum.Normal,
-  defaultInstalled: false,
   hasTokenFee: false,
   originCost: 0,
   currentCost: 0,
   userGuide: '',
-
-  inputList: [],
-  inputListVal: {}
+  author: '',
+  associatedPluginId: ''
 };
 
-const CustomPluginConfig = ({
-  defaultForm = defaultCustomPluginForm,
+const AppToolConfigModal = ({
+  toolId,
   onSuccess,
   onClose
 }: {
-  defaultForm: EditCustomPluginType;
+  toolId: string;
   onSuccess: (data: getSystemPluginsQuery) => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
-  const isEdit = !!defaultForm.id;
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
-  const [searchKey, setSearchKey] = useState('');
-  const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
+  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>([], false);
 
-  const { data: plugins = [], loading: loadingPlugins } = useRequest2(
-    () => getAllSystemAppPlugins({ searchKey }),
-    {
-      manual: false,
-      refreshDeps: [searchKey]
-    }
-  );
-
-  const { register, setValue, watch, handleSubmit } = useForm({
+  const { register, reset, setValue, watch, handleSubmit } = useForm<UpdateToolBodyType>({
     defaultValues: defaultForm
   });
   const name = watch('name');
   const avatar = watch('avatar');
-  const pluginTags = watch('pluginTags');
   const associatedPluginId = watch('associatedPluginId');
   const currentCost = watch('currentCost');
   const status = watch('status');
   const defaultInstalled = watch('defaultInstalled');
 
-  const {
-    value: selectedTags,
-    setValue: setSelectedTags,
-    isSelectAll: isSelectAllTags,
-    setIsSelectAll: setIsSelectAllTags
-  } = useMultipleSelect<string>(pluginTags || [], false);
-
   React.useEffect(() => {
-    setValue('pluginTags', selectedTags);
+    setValue('tagIds', selectedTags);
   }, [selectedTags, setValue]);
 
-  const currentPlugin = useMemo(() => {
-    return plugins.find((item) => item._id === associatedPluginId);
-  }, [plugins, associatedPluginId]);
+  const { loading } = useRequest2(
+    async () => {
+      if (toolId) {
+        const res = await getAdminSystemToolDetail({ toolId });
+        const form: UpdateToolBodyType = {
+          pluginId: res.id,
+          status: res.status,
+          defaultInstalled: res.defaultInstalled,
+          originCost: res.originCost,
+          currentCost: res.currentCost,
+          systemKeyCost: res.systemKeyCost,
+          hasTokenFee: res.hasTokenFee,
+          inputListVal: res.inputListVal,
+          name: res.name,
+          avatar: res.avatar,
+          intro: res.intro,
+          tagIds: res.tags,
+          associatedPluginId: res.associatedPluginId,
+          userGuide: res.userGuide || '',
+          author: res.author
+        };
+        setSelectedTags(res.tags || []);
+        return form;
+      }
+      return defaultForm;
+    },
+    {
+      onSuccess(res) {
+        reset(res);
+      },
+      manual: false
+    }
+  );
+
+  const isEdit = !!toolId;
+
+  const [searchKey, setSearchKey] = useState('');
+  const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
+
+  const { data: apps = [], loading: loadingPlugins } = useRequest2(
+    () => getAdminAllSystemAppTool({ searchKey }),
+    {
+      manual: false,
+      refreshDeps: [searchKey]
+    }
+  );
 
   const { data: tags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
     manual: false
@@ -132,17 +135,20 @@ const CustomPluginConfig = ({
   const pluginTypeSelectList = useMemo(
     () =>
       tags?.map((tag) => ({
-        label:
-          typeof tag.tagName === 'string' ? tag.tagName : tag.tagName['zh-CN'] || tag.tagName['en'],
+        label: parseI18nString(tag.tagName, i18n.language),
         value: tag.tagId
       })) || [],
-    [tags]
+    [i18n.language, tags]
   );
 
+  const currentApp = useMemo(() => {
+    return apps.find((item) => item._id === associatedPluginId);
+  }, [apps, associatedPluginId]);
+
   const {
-    isOpen: isOpenPluginListMenu,
-    onClose: onClosePluginListMenu,
-    onOpen: onOpenPluginListMenu
+    isOpen: isOpenAppListMenu,
+    onClose: onCloseAppListMenu,
+    onOpen: onOpenAppListMenu
   } = useDisclosure();
 
   const {
@@ -155,50 +161,36 @@ const CustomPluginConfig = ({
     }
   });
 
-  const { runAsync: onSubmit, loading } = useRequest2(
-    (data: EditCustomPluginType) => {
+  const { runAsync: onSubmit, loading: isSubmitting } = useRequest2(
+    (data: UpdateToolBodyType) => {
       if (!data.associatedPluginId) {
         return Promise.reject(t('app:custom_plugin_associated_plugin_required'));
       }
 
-      const formatData = {
-        pluginId: defaultForm.id ? defaultForm.id : '',
-        name: data.name,
-        avatar: data.avatar,
-        intro: data.intro,
-        inputListVal: data.inputListVal,
-        pluginTags: data.pluginTags && data.pluginTags.length > 0 ? data.pluginTags : undefined,
-        status: data.status,
-        defaultInstalled: data.defaultInstalled,
-        hasTokenFee: data.hasTokenFee,
-        originCost: data.originCost,
-        currentCost: data.currentCost,
-        associatedPluginId: data.associatedPluginId,
-        userGuide: data.userGuide,
-        author: data.author
+      const formatData: UpdateToolBodyType = {
+        ...data,
+        pluginId: toolId
       };
 
       if (formatData.pluginId) {
-        return putUpdatePlugin(formatData);
+        return putAdminUpdateTool(formatData);
       }
 
-      return postCreateAppPlugin(formatData);
+      return postAdminCreateAppTypeTool(formatData);
     },
     {
+      manual: true,
+      successToast: t('app:custom_plugin_config_success'),
       onSuccess: () => {
-        toast({
-          title: t('app:custom_plugin_config_success'),
-          status: 'success'
-        });
         onSuccess({});
         onClose();
       },
       onError() {},
-      refreshDeps: [defaultForm.id]
+      refreshDeps: [toolId]
     }
   );
 
-  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delAppPlugin, {
+  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delAdminSystemTool, {
     onSuccess() {
       toast({
         title: t('app:custom_plugin_delete_success'),
@@ -221,7 +213,7 @@ const CustomPluginConfig = ({
       onClose={onClose}
       isLoading={loadingPlugins || loadingTags}
     >
-      <ModalBody flex={1} overflow={'hidden'} w={'full'}>
+      <ModalBody flex={1} w={'full'}>
         <Flex w={'full'} gap={5}>
           <Box w={'full'}>
             <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
@@ -273,7 +265,7 @@ const CustomPluginConfig = ({
               <Flex flex={'1 0 0'} flexDirection={'column'}>
                 {associatedPluginId && (
                   <Avatar
-                    src={currentPlugin?.avatar}
+                    src={currentApp?.avatar}
                     mt={2}
                     ml={4}
                     w={'20px'}
@@ -286,23 +278,23 @@ const CustomPluginConfig = ({
                   pl={associatedPluginId ? 10 : 4}
                   fontSize={'14px'}
                   placeholder={t('app:custom_plugin_associated_plugin_placeholder')}
-                  value={currentPlugin?.name}
+                  value={currentApp?.name}
                   onChange={(e) => {
                     setSearchKey(e.target.value);
                   }}
                   onFocus={() => {
-                    onOpenPluginListMenu();
+                    onOpenAppListMenu();
                     setLastPluginId(associatedPluginId);
                     setValue('associatedPluginId', undefined);
                   }}
                   onBlur={() => {
-                    onClosePluginListMenu();
+                    onCloseAppListMenu();
                     if (associatedPluginId) return;
                     setValue('associatedPluginId', lastPluginId);
                   }}
                   bg={'myGray.50'}
                 />
-                {isOpenPluginListMenu && plugins.length > 0 && (
+                {isOpenAppListMenu && apps.length > 0 && (
                   <Flex
                     position={'absolute'}
                     mt={9}
@@ -318,7 +310,7 @@ const CustomPluginConfig = ({
                     maxW={'260px'}
                     overflow={'auto'}
                   >
-                    {plugins.map((item) => (
+                    {apps.map((item) => (
                       <Flex
                         key={item._id}
                         p="2"
@@ -330,7 +322,7 @@ const CustomPluginConfig = ({
                         onMouseDown={() => {
                           setSearchKey(item.name);
                           setValue('associatedPluginId', item._id);
-                          onClosePluginListMenu();
+                          onCloseAppListMenu();
                         }}
                       >
                         <Avatar src={item.avatar} w="1.25rem" rounded={'2px'} />
@@ -467,11 +459,11 @@ const CustomPluginConfig = ({
         </Flex>
       </ModalBody>
       <ModalFooter justifyContent={'space-between'}>
-        {defaultForm.id ? (
+        {toolId ? (
           <PopoverConfirm
             type="delete"
-            content={t('app:custom_plugin_delete_confirm')}
-            onConfirm={() => onDelete({ id: defaultForm.id! })}
+            content={t('app:confirm_delete_tool')}
+            onConfirm={() => onDelete({ toolId })}
             Trigger={
               <Button variant={'whiteDanger'} isLoading={isDeleting}>
                 {t('common:Delete')}
@@ -486,7 +478,7 @@ const CustomPluginConfig = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Close')}
           </Button>
-          <Button isLoading={loading || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
+          <Button isLoading={isSubmitting || isUploadingAvatar} onClick={handleSubmit(onSubmit)}>
             {isEdit ? t('app:custom_plugin_update') : t('app:custom_plugin_create')}
           </Button>
         </Flex>
@@ -496,4 +488,4 @@ const CustomPluginConfig = ({
   );
 };
 
-export default CustomPluginConfig;
+export default AppToolConfigModal;

@@ -7,7 +7,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -189,7 +189,7 @@ export async function initSystemPluginTags() {
         }
       }));
 
-      await MongoPluginTag.bulkWrite(bulkOps);
+      await MongoPluginToolTag.bulkWrite(bulkOps);
     }
   } catch (error) {
     console.error('Error initializing system plugin tags:', error);

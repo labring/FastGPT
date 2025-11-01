@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -8,42 +8,31 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import PluginCard from '@/pageComponents/config/tools/PluginCard';
+import ToolRow from '@/pageComponents/config/tool/ToolRow';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemPlugins } from '@/web/core/app/api/plugin';
-import { putUpdatePluginOrder } from '@/web/core/plugin/admin/api';
-import TagManageModal from '@/pageComponents/config/tools/TagManageModal';
-import { defaultCustomPluginForm } from '@/pageComponents/config/tools/CustomPluginConfig';
+import TagManageModal from '@/pageComponents/config/TagManageModal';
 import dynamic from 'next/dynamic';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
+import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
+import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
 
 const SystemToolConfigModal = dynamic(
-  () => import('@/pageComponents/config/tools/SystemToolConfigModal'),
-  {
-    ssr: false
-  }
+  () => import('@/pageComponents/config/tool/SystemToolConfigModal')
 );
-const CustomPluginConfig = dynamic(
-  () => import('@/pageComponents/config/tools/CustomPluginConfig'),
-  {
-    ssr: false
-  }
-);
-const ImportPluginModal = dynamic(() => import('@/pageComponents/config/tools/ImportPluginModal'), {
-  ssr: false
-});
+const AppToolConfig = dynamic(() => import('@/pageComponents/config/tool/AppToolConfigModal'));
+const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
 
 const ToolProvider = () => {
   const { t } = useSafeTranslation();
   const router = useRouter();
 
-  const [localPlugins, setLocalPlugins] = useState<Array<SystemPluginTemplateListItemType>>([]);
-  const [editingPlugin, setEditingPlugin] = useState<SystemPluginTemplateListItemType>();
+  const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);
+  const [editingToolId, setEditingToolId] = useState<string>();
 
   const {
     isOpen: isOpenTagModal,
@@ -56,28 +45,23 @@ const ToolProvider = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
 
-  const {
-    data: tools = [],
-    run: refreshTools,
-    loading: loadingTools
-  } = useRequest2(getSystemPlugins, {
-    manual: false
-  });
-
-  useEffect(() => {
-    if (tools.length > 0) {
-      setLocalPlugins(tools);
+  const { runAsync: refreshTools, loading: loadingTools } = useRequest2(
+    () => getAdminSystemTools({ parentId: null }),
+    {
+      onSuccess: (data) => {
+        setLocalTools(data);
+      },
+      manual: false
     }
-  }, [tools]);
+  );
 
   return (
     <MyBox pt={4} pl={3} pr={8} isLoading={loadingTools}>
+      {/* Header */}
       <Flex alignItems={'center'}>
-        <Flex flex={'1'} overflow={'auto'}>
-          <Box px={4} py={2} fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
-            {t('common:navbar.toolkit')}
-          </Box>
-        </Flex>
+        <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
+          {t('common:navbar.toolkit')}
+        </Box>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
           {t('app:toolkit_tags_manage')}
         </Button>
@@ -106,7 +90,7 @@ const ToolProvider = () => {
                 {
                   label: t('app:toolkit_select_app'),
                   onClick: () => {
-                    setEditingPlugin(defaultCustomPluginForm as SystemPluginTemplateListItemType);
+                    setEditingToolId('');
                   }
                 }
               ]
@@ -158,17 +142,17 @@ const ToolProvider = () => {
       </Flex>
 
       <Box overflow={'auto'} mt={2} h={'calc(100vh - 150px)'}>
-        {localPlugins.length > 0 ? (
-          <DndDrag<SystemPluginTemplateListItemType>
-            onDragEndCb={async (list: Array<SystemPluginTemplateListItemType>) => {
+        {localTools.length > 0 ? (
+          <DndDrag<AdminSystemToolListItemType>
+            onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
               const newOrder = list.map((item, index) => ({
                 pluginId: item.id,
                 pluginOrder: index
               }));
-              setLocalPlugins(list);
-              await putUpdatePluginOrder({ plugins: newOrder });
+              setLocalTools(list);
+              await putAdminUpdateToolOrder({ plugins: newOrder });
             }}
-            dataList={localPlugins}
+            dataList={localTools}
           >
             {({ provided }) => (
               <Flex
@@ -178,14 +162,14 @@ const ToolProvider = () => {
                 {...provided.droppableProps}
                 ref={provided.innerRef}
               >
-                {localPlugins.map((item, index) => (
+                {localTools.map((item, index) => (
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided, snapshot) => (
-                      <PluginCard
+                      <ToolRow
                         key={item.id}
-                        plugin={item}
-                        setEditingPlugin={setEditingPlugin}
-                        setLocalPlugins={setLocalPlugins}
+                        tool={item}
+                        setEditingToolId={setEditingToolId}
+                        setLocalTools={setLocalTools}
                         provided={provided}
                         snapshot={snapshot}
                       />
@@ -204,22 +188,22 @@ const ToolProvider = () => {
 
       {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
       {isOpenImportModal && (
-        <ImportPluginModal onClose={onCloseImportModal} onSuccess={() => refreshTools({})} />
+        <ImportPluginModal onClose={onCloseImportModal} onSuccess={refreshTools} />
       )}
-      {!!editingPlugin &&
-        splitCombinePluginId(editingPlugin.id).source === PluginSourceEnum.systemTool && (
+      {editingToolId !== undefined &&
+        splitCombinePluginId(editingToolId).source === PluginSourceEnum.systemTool && (
           <SystemToolConfigModal
-            plugin={editingPlugin}
+            toolId={editingToolId}
             onSuccess={refreshTools}
-            onClose={() => setEditingPlugin(undefined)}
+            onClose={() => setEditingToolId(undefined)}
           />
         )}
-      {!!editingPlugin &&
-        splitCombinePluginId(editingPlugin.id).source !== PluginSourceEnum.systemTool && (
-          <CustomPluginConfig
-            defaultForm={editingPlugin}
+      {editingToolId !== undefined &&
+        splitCombinePluginId(editingToolId).source !== PluginSourceEnum.systemTool && (
+          <AppToolConfig
+            toolId={editingToolId}
             onSuccess={refreshTools}
-            onClose={() => setEditingPlugin(undefined)}
+            onClose={() => setEditingToolId(undefined)}
           />
         )}
     </MyBox>

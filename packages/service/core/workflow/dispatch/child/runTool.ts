@@ -12,7 +12,7 @@ import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
-import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
+import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSystemToolById } from '../../../app/plugin/controller';
@@ -72,7 +72,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           case SystemToolInputTypeEnum.system:
           default:
             // read from mongo
-            const dbPlugin = await MongoSystemPlugin.findOne({
+            const dbPlugin = await MongoSystemTool.findOne({
               pluginId: toolConfig.systemTool?.toolId
             }).lean();
             return dbPlugin?.inputListVal || {};

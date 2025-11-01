@@ -188,11 +188,11 @@ export const batchFillPluginData = async (nodes: StoreNodeItemType[]) => {
   try {
     const systemPlugins = await getSystemPlugins({});
 
-    const pluginDataMap = new Map<string, { status?: number; pluginTags?: string[] }>();
+    const pluginDataMap = new Map<string, { status?: number; toolTags?: string[] }>();
     systemPlugins.forEach((plugin) => {
       pluginDataMap.set(plugin.id, {
         status: plugin.status,
-        pluginTags: plugin.pluginTags
+        toolTags: plugin.toolTags
       });
     });
 

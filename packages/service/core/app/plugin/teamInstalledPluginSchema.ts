@@ -10,6 +10,10 @@ const TeamInstalledPluginSchema = new Schema({
     ref: 'teams',
     required: true
   },
+  pluginType: {
+    type: String,
+    default: 'tool'
+  },
   pluginId: {
     type: String,
     required: true
@@ -22,7 +26,6 @@ const TeamInstalledPluginSchema = new Schema({
 });
 
 TeamInstalledPluginSchema.index({ teamId: 1, pluginId: 1 }, { unique: true });
-TeamInstalledPluginSchema.index({ teamId: 1 });
 
 export const MongoTeamInstalledPlugin = getMongoModel<TeamInstalledPluginSchemaType>(
   collectionName,

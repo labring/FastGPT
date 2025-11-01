@@ -105,8 +105,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     data: tools,
     isLoading: loadingTools,
     error: toolsError,
-    ScrollData,
-    getData: refetchTools
+    ScrollData
   } = usePagination(
     ({ pageNum, pageSize }) =>
       getMarketplaceTools({
@@ -121,9 +120,21 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       refreshDeps: [searchText, selectedTagIds]
     }
   );
-  const { data: currentTools = [], runAsync: refreshCurrentTools } = useRequest2(getSystemPlugins, {
-    manual: false
-  });
+  const { data: installedToolsMap = {}, runAsync: refreshCurrentTools } = useRequest2(
+    async () => {
+      const tools = await getSystemPlugins({ source: 'admin' });
+      return tools.reduce(
+        (map, tool) => {
+          map[tool.id] = tool;
+          return map;
+        },
+        {} as Record<string, any>
+      );
+    },
+    {
+      manual: false
+    }
+  );
   const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
   });
@@ -135,8 +146,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       await intallPluginWithUrl({
         downloadUrls: [tool.downloadUrl]
       });
-      await refetchTools();
-      await refreshCurrentTools({});
+      await refreshCurrentTools();
     },
     {
       manual: true,
@@ -150,12 +160,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
     }
   );
-  const { runAsync: handleDeleteTool, loading: deleteToolLoading } = useRequest2(
+  const { runAsync: handleDeleteTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
       await deletePkgPlugin({ toolId: tool.id });
-      await refetchTools();
-      await refreshCurrentTools({});
+      await refreshCurrentTools();
     },
     {
       manual: true,
@@ -174,9 +183,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     return (
       tools
         ?.map((tool) => {
-          const isInstalled = currentTools.some(
-            (item) => item.id === `${PluginSourceEnum.systemTool}-${tool.toolId}`
-          );
+          const formatToolId = `${PluginSourceEnum.systemTool}-${tool.toolId}`;
+          const isInstalled = !!installedToolsMap[formatToolId];
+
           return {
             id: tool.toolId,
             name: parseI18nString(tool.name, i18n.language) || '',
@@ -196,7 +205,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           return tool.status !== 3; // 仅显示未安装的
         }) || []
     );
-  }, [tools, allTags, currentTools, i18n.language, installedFilter]);
+  }, [tools, installedToolsMap, i18n.language, allTags, installedFilter]);
 
   useEffect(() => {
     const heroSection = heroSectionRef.current;

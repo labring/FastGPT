@@ -1,10 +1,10 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 const { Schema } = connectionMongo;
-import type { SystemPluginConfigSchemaType } from './type';
+import type { SystemPluginConfigSchemaType } from '../../app/plugin/type';
 
-export const collectionName = 'app_system_plugins';
+export const collectionName = 'system_plugin_tools';
 
-const SystemPluginSchema = new Schema({
+const SystemToolSchema = new Schema({
   pluginId: {
     type: String,
     required: true
@@ -44,9 +44,9 @@ const SystemPluginSchema = new Schema({
   isActive: Boolean
 });
 
-SystemPluginSchema.index({ pluginId: 1 });
+SystemToolSchema.index({ pluginId: 1 });
 
-export const MongoSystemPlugin = getMongoModel<SystemPluginConfigSchemaType>(
+export const MongoSystemTool = getMongoModel<SystemPluginConfigSchemaType>(
   collectionName,
-  SystemPluginSchema
+  SystemToolSchema
 );

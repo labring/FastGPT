@@ -1,35 +1,13 @@
 import { GET, PUT, POST, DELETE } from '@/web/common/api/request';
 import type {
-  CreateAppPluginBodyType,
-  UpdatePluginBodyType,
-  DeleteAppPluginQueryType,
-  UpdatePluginOrderBodyType,
   GetPkgPluginUploadURLQueryType,
   GetPkgPluginUploadURLResponseType,
   ParseUploadedPkgPluginQueryType,
   ParseUploadedPkgPluginResponseType,
   ConfirmUploadPkgPluginBodyType,
   DeletePkgPluginQueryType,
-  InstallPluginFromUrlBodyType,
-  GetAllSystemPluginAppsResponseType,
-  GetAllSystemPluginAppsBodyType
+  InstallPluginFromUrlBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/api';
-
-// Common
-export const putUpdatePlugin = (data: UpdatePluginBodyType) =>
-  PUT('/core/plugin/admin/update', data);
-export const putUpdatePluginOrder = (data: UpdatePluginOrderBodyType) =>
-  PUT('/core/plugin/admin/updateOrder', data);
-
-// App Plugin
-export const getAllSystemAppPlugins = (data: GetAllSystemPluginAppsBodyType) =>
-  POST<GetAllSystemPluginAppsResponseType>('/core/plugin/admin/app/systemApps', data);
-
-export const postCreateAppPlugin = (data: CreateAppPluginBodyType) =>
-  POST('/core/plugin/admin/app/create', data);
-
-export const delAppPlugin = (data: DeleteAppPluginQueryType) =>
-  DELETE('/core/plugin/admin/app/delete', data);
 
 // Pkg plugin
 export const getPkgPluginUploadURL = (params: GetPkgPluginUploadURLQueryType) =>

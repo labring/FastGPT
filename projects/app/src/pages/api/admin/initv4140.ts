@@ -1,10 +1,10 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { MongoToolGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { MongoToolGroups } from '@fastgpt/service/core/plugin/tool/pluginGroupSchema';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
@@ -13,7 +13,7 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
  *
  * 迁移内容:
  * 1. app_plugin_groups → app_plugin_tags (扁平化 group 和 groupTypes)
- * 2. plugin.templateType → plugin.pluginTags
+ * 2. plugin.templateType → plugin.toolTags
  * 3. plugin.isActive → plugin.status
  * 4. 添加 plugin.defaultInstalled 字段
  * 5. 为所有团队和所有插件创建已安装记录
@@ -60,7 +60,7 @@ async function migrateGroupsToTags(): Promise<{
     return { migratedCount: 0, typeToGroupMap: new Map() };
   }
 
-  await MongoPluginTag.deleteMany({});
+  await MongoPluginToolTag.deleteMany({});
 
   const tags: Array<{ tagId: string; tagName: any; tagOrder: number }> = [];
   const typeToGroupMap = new Map<string, string>();
@@ -83,7 +83,7 @@ async function migrateGroupsToTags(): Promise<{
   const uniqueTags = Array.from(new Map(tags.map((tag) => [tag.tagId, tag])).values());
 
   if (uniqueTags.length) {
-    await MongoPluginTag.insertMany(uniqueTags);
+    await MongoPluginToolTag.insertMany(uniqueTags);
     addLog.info(`[initv4140] 已迁移 ${uniqueTags.length} 个标签`);
   }
 
@@ -91,10 +91,10 @@ async function migrateGroupsToTags(): Promise<{
 }
 
 /**
- * 迁移插件数据：templateType → pluginTags, isActive → status
+ * 迁移插件数据：templateType → toolTags, isActive → status
  */
 async function migratePluginData(typeToGroupMap: Map<string, string>): Promise<number> {
-  const plugins = await MongoSystemPlugin.find({}).lean();
+  const plugins = await MongoSystemTool.find({}).lean();
 
   if (!plugins.length) {
     addLog.warn('[initv4140] 无插件数据，跳过迁移');
@@ -107,13 +107,13 @@ async function migratePluginData(typeToGroupMap: Map<string, string>): Promise<n
     const updateFields: any = {};
     const unsetFields: any = {};
 
-    // 迁移 templateType → pluginTags
+    // 迁移 templateType → toolTags
     // @ts-ignore
     const templateType = plugin.customConfig?.templateType;
     if (templateType) {
       const groupId = typeToGroupMap.get(templateType);
       // 对于 systemPlugin 分组,只保留 templateType,不包含 groupId
-      updateFields['customConfig.pluginTags'] =
+      updateFields['customConfig.toolTags'] =
         groupId && groupId !== 'systemPlugin' ? [groupId, templateType] : [templateType];
       unsetFields['customConfig.templateType'] = '';
     }
@@ -139,7 +139,7 @@ async function migratePluginData(typeToGroupMap: Map<string, string>): Promise<n
       if (Object.keys(updateFields).length) updateOps.$set = updateFields;
       if (Object.keys(unsetFields).length) updateOps.$unset = unsetFields;
 
-      await MongoSystemPlugin.updateOne({ pluginId: plugin.pluginId }, updateOps);
+      await MongoSystemTool.updateOne({ pluginId: plugin.pluginId }, updateOps);
       updatedCount++;
     }
   }
@@ -160,7 +160,7 @@ async function createTeamInstalledRecords(): Promise<number> {
   }
 
   // 获取所有插件
-  const plugins = await MongoSystemPlugin.find({}).lean();
+  const plugins = await MongoSystemTool.find({}).lean();
   if (!plugins.length) {
     addLog.warn('[initv4140] 无插件数据，跳过创建安装记录');
     return 0;

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Box,
   Button,
@@ -19,128 +19,82 @@ import {
 } from '@chakra-ui/react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getSystemPlugins } from '@/web/core/app/api/plugin';
-import { deletePkgPlugin, putUpdatePlugin } from '@/web/core/plugin/admin/api';
-import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
+import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
+import {
+  getAdminSystemToolDetail,
+  getAdminSystemTools,
+  putAdminUpdateTool
+} from '@/web/core/plugin/admin/tool/api';
+import type { AdminSystemToolDetailType } from '@fastgpt/global/core/plugin/admin/tool/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
-import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
-import type { UpdateToolFormChildType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
-const defaultPlugin: SystemPluginTemplateListItemType = {
-  id: '',
-  name: '',
-  avatar: '',
-  intro: '',
-  version: '',
-  originCost: 0,
-  currentCost: 0,
-  hasTokenFee: false,
-  status: PluginStatusEnum.Normal,
-  defaultInstalled: true
-};
-
 const SystemToolConfigModal = ({
-  plugin = defaultPlugin,
+  toolId,
   onSuccess,
   onClose
 }: {
-  plugin: SystemPluginTemplateListItemType;
-  onSuccess: (data: getSystemPluginsQuery) => void;
+  toolId: string;
+  onSuccess: () => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { register, handleSubmit, setValue, watch, control } = useForm<UpdateToolFormChildType>({
-    defaultValues: {
-      status: plugin.status ?? PluginStatusEnum.Normal,
-      defaultInstalled: plugin.defaultInstalled ?? false,
-      originCost: plugin.originCost || 0,
-      currentCost: plugin.currentCost || 0,
-      hasTokenFee: plugin.hasTokenFee || false,
-      systemKeyCost: plugin.systemKeyCost ?? 0,
-      inputListVal: plugin.inputListVal
-        ? plugin.inputList?.reduce(
-            (acc: Record<string, any>, item: InputConfigType) => {
-              acc[item.key] = item.value;
-              return acc;
-            },
-            {} as Record<string, any>
-          )
-        : undefined,
-      childConfigs: []
-    }
+  const { register, reset, handleSubmit, setValue, watch, control } =
+    useForm<AdminSystemToolDetailType>();
+
+  const { data: tool, loading } = useRequest2(() => getAdminSystemToolDetail({ toolId }), {
+    onSuccess(res) {
+      reset(res);
+    },
+    manual: false
   });
 
-  const [status, defaultInstalled, inputListVal] = watch([
+  const [inputList, status, defaultInstalled, inputListVal, childTools] = watch([
+    'inputList',
     'status',
     'defaultInstalled',
-    'inputListVal'
+    'inputListVal',
+    'childTools'
   ]);
 
   // 是否显示系统密钥配置
-  const showSystemSecretInput = useMemo(() => {
-    return !!plugin.inputList && plugin.inputList.length > 0;
-  }, [plugin.inputList]);
+  const showSystemSecretInput = !!inputList && inputList.length > 0;
 
-  // Toolset child configs
-  const { fields: childConfigs, replace: replaceChildConfigs } = useFieldArray({
-    control: control,
-    name: 'childConfigs'
-  });
-
-  const { data: childTools = [], loading: loadingChild } = useRequest2(
-    () => getSystemPlugins({ parentId: plugin.id }),
-    {
-      onSuccess(res) {
-        replaceChildConfigs(
-          res.map((tool) => {
-            return {
-              pluginId: tool.id,
-              status: tool.status ?? PluginStatusEnum.Normal,
-              defaultInstalled: tool.defaultInstalled ?? false,
-              originCost: tool.originCost || 0,
-              currentCost: tool.currentCost || 0,
-              hasTokenFee: tool.hasTokenFee || false,
-              systemKeyCost: tool.systemKeyCost || 0
-            };
-          })
-        );
-        return res;
-      },
-      refreshDeps: [plugin.id],
-      manual: !plugin.isFolder
-    }
-  );
-
-  const { runAsync: onSubmit, loading } = useRequest2(
-    (formData: UpdateToolFormChildType) =>
-      putUpdatePlugin({
-        pluginId: plugin.id,
-        ...formData
+  const { runAsync: onSubmit, loading: submitting } = useRequest2(
+    (formData: AdminSystemToolDetailType) =>
+      putAdminUpdateTool({
+        ...formData,
+        pluginId: toolId,
+        childTools: formData.childTools?.map((tool) => {
+          return {
+            pluginId: tool.pluginId,
+            systemKeyCost: tool.systemKeyCost
+          };
+        })
       }),
     {
       successToast: t('common:Config') + t('common:Success'),
       onSuccess() {
-        onSuccess({});
+        onSuccess();
         onClose();
       }
     }
   );
 
   const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
-    () => deletePkgPlugin({ toolId: plugin.id.split('-')[1] }),
+    () => deletePkgPlugin({ toolId: toolId.split('-')[1] }),
     {
       onSuccess() {
-        onSuccess({});
+        onSuccess();
         onClose();
       }
     }
@@ -187,11 +141,12 @@ const SystemToolConfigModal = ({
       </Box>
     );
   };
+
   const systemConfigSection = showSystemSecretInput && !!inputListVal && (
     <>
       <MyDivider my={2} />
 
-      {!plugin.isFolder && (
+      {!tool?.isFolder && (
         <HStack>
           <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
             {t('app:toolkit_system_key_cost')}
@@ -200,28 +155,29 @@ const SystemToolConfigModal = ({
             width={'100px'}
             register={register}
             name="systemKeyCost"
+            defaultValue={0}
             {...COST_LIMITS}
           />
         </HStack>
       )}
-      {plugin.inputList?.map(renderInputField)}
+      {tool?.inputList?.map(renderInputField)}
     </>
   );
 
   return (
     <MyModal
       isOpen
-      title={t('app:toolkit_tool_config', { name: plugin?.name })}
-      iconSrc={plugin.avatar}
+      isLoading={loading}
+      title={t('app:toolkit_tool_config', { name: tool?.name })}
+      iconSrc={tool?.avatar}
       onClose={onClose}
-      width={plugin.isFolder ? '900px' : '450px'}
-      height={plugin.isFolder ? '500px' : 'auto'}
-      maxW={plugin.isFolder ? '900px' : '600px'}
+      width={tool?.isFolder ? '900px' : '450px'}
+      height={tool?.isFolder ? '500px' : 'auto'}
+      maxW={tool?.isFolder ? '900px' : '600px'}
       bg={'white'}
-      isLoading={loadingChild}
     >
       <ModalBody>
-        {plugin.isFolder ? (
+        {tool?.isFolder ? (
           <Flex gap={5}>
             <Flex flexDirection={'column'} gap={5} flex={'0 0 300px'}>
               <Box fontWeight={'medium'} color={'myGray.900'}>
@@ -280,10 +236,9 @@ const SystemToolConfigModal = ({
                       onChange={(e) => {
                         const val = e.target.checked;
                         if (val) {
-                          // @ts-ignore
                           setValue('inputListVal', {});
                         } else {
-                          setValue('inputListVal', undefined);
+                          setValue('inputListVal', null);
                         }
                       }}
                     />
@@ -313,42 +268,20 @@ const SystemToolConfigModal = ({
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {childTools.map((tool, index) => {
+                    {childTools?.map((tool, index) => {
                       return (
-                        <Tr key={tool.id}>
+                        <Tr key={tool.pluginId}>
                           <Td fontSize="xs">
                             <Text fontSize="xs" fontWeight="medium">
                               {parseI18nString(tool.name)}
                             </Text>
                           </Td>
-                          {/* <Td fontSize="xs">
-                            <MySelect
-                              size={'sm'}
-                              value={watch(`childConfigs.${index}.status`)}
-                              list={[
-                                {
-                                  label: t('app:toolkit_status_normal'),
-                                  value: PluginStatusEnum.Normal
-                                },
-                                {
-                                  label: t('app:toolkit_status_soon_offline'),
-                                  value: PluginStatusEnum.SoonOffline
-                                },
-                                {
-                                  label: t('app:toolkit_status_offline'),
-                                  value: PluginStatusEnum.Offline
-                                }
-                              ]}
-                              onChange={(e) => {
-                                setValue(`childConfigs.${index}.status`, Number(e));
-                              }}
-                            />
-                          </Td> */}
                           <Td fontSize="xs">
                             <MyNumberInput
                               width={'100px'}
                               register={register}
-                              name={`childConfigs.${index}.systemKeyCost`}
+                              defaultValue={0}
+                              name={`childTools.${index}.systemKeyCost`}
                               {...COST_LIMITS}
                             />
                           </Td>
@@ -366,7 +299,7 @@ const SystemToolConfigModal = ({
               <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:toolkit_plugin_status')}
               </Box>
-              <MySelect
+              <MySelect<number>
                 width={'120px'}
                 value={status}
                 list={[
@@ -378,10 +311,8 @@ const SystemToolConfigModal = ({
                   { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                 ]}
                 onChange={(e) => {
-                  const newStatus = Number(e);
-                  // @ts-ignore
-                  setValue('status', newStatus);
-                  if (newStatus !== PluginStatusEnum.Normal) {
+                  setValue('status', e);
+                  if (e !== PluginStatusEnum.Normal) {
                     setValue('defaultInstalled', false);
                   }
                 }}
@@ -429,7 +360,7 @@ const SystemToolConfigModal = ({
           </Flex>
         )}
       </ModalBody>
-      <ModalFooter gap={4}>
+      <ModalFooter gap={4} justifyContent={'start'}>
         <Button
           variant={'whiteBase'}
           colorScheme="red"
@@ -438,7 +369,12 @@ const SystemToolConfigModal = ({
         >
           {t('common:Delete')}
         </Button>
-        <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
+        <Box flex={1} />
+
+        <Button variant={'whiteBase'} onClick={onClose}>
+          {t('common:Close')}
+        </Button>
+        <Button isLoading={submitting} onClick={handleSubmit(onSubmit)}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>

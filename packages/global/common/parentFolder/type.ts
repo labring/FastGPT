@@ -1,3 +1,8 @@
+import z from 'zod';
+
+export const ParentIdSchema = z.string().nullable().optional();
+export type ParentIdType = string | null | undefined;
+
 export type GetPathProps = {
   sourceId?: ParentIdType;
   type: 'current' | 'parent';
@@ -7,7 +12,6 @@ export type ParentTreePathItemType = {
   parentId: string;
   parentName: string;
 };
-export type ParentIdType = string | null | undefined;
 
 export type GetResourceFolderListProps = {
   parentId: ParentIdType;
