@@ -188,7 +188,7 @@
   "logs_keys_customFeedback": "自訂回饋",
   "logs_keys_errorCount": "錯誤數量",
   "logs_keys_feedback": "使用者回饋",
-  "logs_keys_lastConversationTime": "上次對話時間",
+  "logs_keys_lastConversationTime": "最後對話時間",
   "logs_keys_messageCount": "訊息總數",
   "logs_keys_points": "積分消耗",
   "logs_keys_responseTime": "平均回應時長",
