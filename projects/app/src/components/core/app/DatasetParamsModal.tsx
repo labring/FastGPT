@@ -6,7 +6,6 @@ import {
   HStack,
   ModalBody,
   ModalFooter,
-  Select,
   Switch,
   Slider,
   SliderTrack,
@@ -32,6 +31,7 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -337,21 +337,26 @@ const DatasetParamsModal = ({
                           {t('common:rerank_method')}
                         </Box>
                         <Box flex={'1 0 0'}>
-                          <Select
+                          <MySelect
                             bg={'myGray.50'}
                             h={'36px'}
                             value={rerankMethodWatch}
-                            onChange={(e) => {
-                              setValue('rerankMethod', e.target.value as RerankMethodEnum); // 直接使用字段名
+                            list={[
+                              {
+                                label: t('common:rerank_method.q2a'),
+                                value: RerankMethodEnum.content,
+                                description: t('common:rerank_method_q2a_desc')
+                              },
+                              {
+                                label: t('common:rerank_method.q2q'),
+                                value: RerankMethodEnum.question,
+                                description: t('common:rerank_method_q2q_desc')
+                              }
+                            ]}
+                            onChange={(val) => {
+                              setValue('rerankMethod', val);
                             }}
-                          >
-                            <option value={RerankMethodEnum.content}>
-                              {t('common:rerank_method.q2a')}
-                            </option>
-                            <option value={RerankMethodEnum.question}>
-                              {t('common:rerank_method.q2q')}
-                            </option>
-                          </Select>
+                          />
                         </Box>
                       </HStack>
                       <HStack mt={3} justifyContent={'space-between'}>

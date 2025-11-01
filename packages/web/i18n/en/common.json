@@ -1028,6 +1028,8 @@
   "rerank_method": "Method",
   "rerank_method.q2q": "Rerank based on questions",
   "rerank_method.q2a": "Rerank based on contents",
+  "rerank_method_q2a_desc": "QA mode data will concatenate Q and A for reranking",
+  "rerank_method_q2q_desc": "When knowledge base has many QA data, try question-based (Q) reranking to compare accuracy",
   "resume_failed": "Restoration failed.",
   "root_folder": "Root",
   "save_failed": "Failed to save the settings.",
