@@ -10,7 +10,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { putUpdatePlugin } from '@/web/core/app/api/plugin';
+import { putUpdatePlugin } from '@/web/core/plugin/admin/api';
 import { useRef, useState, useEffect } from 'react';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 

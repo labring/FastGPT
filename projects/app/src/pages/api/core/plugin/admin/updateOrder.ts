@@ -4,15 +4,11 @@ import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { UpdatePluginOrderBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 export type updatePluginOrderQuery = {};
 
-export type updatePluginOrderBody = {
-  plugins: {
-    pluginId: string;
-    pluginOrder: number;
-  }[];
-};
+export type updatePluginOrderBody = UpdatePluginOrderBodyType;
 
 export type updatePluginOrderResponse = {};
 

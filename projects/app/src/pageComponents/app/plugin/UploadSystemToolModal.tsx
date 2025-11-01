@@ -9,10 +9,10 @@ import { postS3UploadFile } from '@/web/common/file/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
-  getPluginUploadURL,
-  parseUploadedPlugin,
-  confirmPluginUpload
-} from '@/web/core/app/api/plugin';
+  getPkgPluginUploadURL,
+  parseUploadedPkgPlugin,
+  confirmPkgPluginUpload
+} from '@/web/core/plugin/admin/api';
 
 function UploadSystemToolModal({
   onClose,
@@ -28,7 +28,7 @@ function UploadSystemToolModal({
     async () => {
       const file = selectFiles[0];
 
-      const presignedData = await getPluginUploadURL({ filename: file.name });
+      const presignedData = await getPkgPluginUploadURL({ filename: file.name });
 
       const formData = new FormData();
       Object.entries(presignedData.formData).forEach(([key, value]) => {
@@ -38,14 +38,14 @@ function UploadSystemToolModal({
 
       await postS3UploadFile(presignedData.postURL, formData);
 
-      const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
+      const parseResult = await parseUploadedPkgPlugin({ objectName: presignedData.objectName });
 
       const parentId = parseResult.find((item) => !!item.parentId)?.toolId;
       if (!parentId) {
         return Promise.reject(new Error('Parent ID not found'));
       }
 
-      await confirmPluginUpload({ toolIds: [parentId] });
+      await confirmPkgPluginUpload({ toolIds: [parentId] });
     },
     {
       manual: true,

@@ -1,13 +1,16 @@
 import { z } from 'zod';
 
-export const I18nStringStrictSchema = z.object({
+export const I18nStringSchema = z.object({
   en: z.string(),
-  'zh-CN': z.string(),
-  'zh-Hant': z.string()
+  'zh-CN': z.string().optional(),
+  'zh-Hant': z.string().optional()
 });
+// I18nStringType can be either an object with language keys or a plain string
+export const I18nUnioStringSchema = z.union([I18nStringSchema, z.string()]);
+
 export const PluginToolTagSchema = z.object({
   tagId: z.string(),
-  tagName: z.union([z.string(), I18nStringStrictSchema]),
+  tagName: z.union([z.string(), I18nStringSchema]),
   tagOrder: z.number(),
   isSystem: z.boolean()
 });
