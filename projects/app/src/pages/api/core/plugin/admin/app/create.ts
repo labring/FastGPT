@@ -6,25 +6,11 @@ import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { CreateAppPluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 export type createPluginQuery = {};
 
-export type createPluginBody = {
-  name: string;
-  avatar: string;
-  intro?: string;
-  pluginTags?: string[];
-  templateType?: string;
-  originCost?: number;
-  currentCost?: number;
-  hasTokenFee?: boolean;
-  status?: number;
-  defaultInstalled?: boolean;
-  inputListVal?: Record<string, any>;
-  associatedPluginId?: string;
-  userGuide?: string;
-  author?: string;
-};
+export type createPluginBody = CreateAppPluginBodyType;
 
 export type createPluginResponse = {};
 

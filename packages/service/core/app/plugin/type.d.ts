@@ -1,4 +1,3 @@
-import { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';

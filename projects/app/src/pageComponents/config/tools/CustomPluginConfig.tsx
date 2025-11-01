@@ -19,11 +19,11 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
-  delPlugin,
-  getAllUserPlugins,
-  postCreatePlugin,
+  delAppPlugin,
+  getAllSystemAppPlugins,
+  postCreateAppPlugin,
   putUpdatePlugin
-} from '@/web/core/app/api/plugin';
+} from '@/web/core/plugin/admin/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -93,7 +93,7 @@ const CustomPluginConfig = ({
   const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
 
   const { data: plugins = [], loading: loadingPlugins } = useRequest2(
-    () => getAllUserPlugins({ searchKey }),
+    () => getAllSystemAppPlugins({ searchKey }),
     {
       manual: false,
       refreshDeps: [searchKey]
@@ -182,7 +182,7 @@ const CustomPluginConfig = ({
         return putUpdatePlugin(formatData);
       }
 
-      return postCreatePlugin(formatData);
+      return postCreateAppPlugin(formatData);
     },
     {
       onSuccess: () => {
@@ -198,7 +198,7 @@ const CustomPluginConfig = ({
     }
   );
 
-  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delPlugin, {
+  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delAppPlugin, {
     onSuccess() {
       toast({
         title: t('app:custom_plugin_delete_success'),

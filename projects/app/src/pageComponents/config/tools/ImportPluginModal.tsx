@@ -7,10 +7,10 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { postS3UploadFile } from '@/web/common/file/api';
 import {
-  getPluginUploadURL,
-  parseUploadedPlugin,
-  confirmPluginUpload
-} from '@/web/core/app/api/plugin';
+  getPkgPluginUploadURL,
+  parseUploadedPkgPlugin,
+  confirmPkgPluginUpload
+} from '@/web/core/plugin/admin/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
@@ -50,7 +50,7 @@ const ImportPluginModal = ({
         )
       );
 
-      const presignedData = await getPluginUploadURL({ filename: file.name });
+      const presignedData = await getPkgPluginUploadURL({ filename: file.name });
 
       const formData = new FormData();
       Object.entries(presignedData.formData).forEach(([key, value]) => {
@@ -64,7 +64,7 @@ const ImportPluginModal = ({
         prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
       );
 
-      const parseResult = await parseUploadedPlugin({ objectName: presignedData.objectName });
+      const parseResult = await parseUploadedPkgPlugin({ objectName: presignedData.objectName });
 
       const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {
@@ -142,7 +142,7 @@ const ImportPluginModal = ({
         .filter((file) => file.status === 'success' && file.toolId)
         .map((file) => file.toolId!);
 
-      await confirmPluginUpload({ toolIds: successToolIds });
+      await confirmPkgPluginUpload({ toolIds: successToolIds });
     },
     {
       manual: true,

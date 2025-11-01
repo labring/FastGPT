@@ -224,12 +224,6 @@ export type AppFileSelectConfigType = {
   customFileExtensionList?: string[];
 };
 
-export type SystemPluginListItemType = {
-  _id: string;
-  name: string;
-  avatar: string;
-};
-
 export type AppTemplateSchemaType = {
   templateId: string;
   name: string;

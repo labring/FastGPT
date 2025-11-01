@@ -1,11 +1,10 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import type { ConfirmUploadPkgPluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
-export type ConfirmUploadBody = {
-  toolIds: string[];
-};
+export type ConfirmUploadBody = ConfirmUploadPkgPluginBodyType;
 
 export type ConfirmUploadResponse = {};
 
@@ -13,12 +12,12 @@ async function handler(
   req: ApiRequestProps<ConfirmUploadBody, {}>,
   res: ApiResponseType<ConfirmUploadResponse>
 ): Promise<ConfirmUploadResponse> {
-  await authCert({ req, authToken: true });
+  await authSystemAdmin({ req });
 
   const { toolIds } = req.body;
 
   if (!toolIds || toolIds.length === 0) {
-    throw new Error('Tool IDs are required');
+    return Promise.reject('Tool IDs are required');
   }
 
   const result = await pluginClient.tool.upload.confirmUpload({

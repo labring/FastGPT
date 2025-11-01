@@ -1,37 +1,26 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import type {
+  ParseUploadedPkgPluginQueryType,
+  ParseUploadedPkgPluginResponseType
+} from '@fastgpt/global/openapi/core/plugin/admin/api';
 
-export type ParseUploadedToolQuery = {
-  objectName: string;
-};
+export type ParseUploadedToolQuery = ParseUploadedPkgPluginQueryType;
 
-export type ParseUploadedToolResponse = Array<{
-  toolId: string;
-  name: {
-    'zh-CN'?: string;
-    en: string;
-  };
-  description: {
-    'zh-CN'?: string;
-    en: string;
-  };
-  icon: string;
-  parentId?: string;
-  tags?: string[];
-}>;
+export type ParseUploadedToolResponse = ParseUploadedPkgPluginResponseType;
 
 async function handler(
   req: ApiRequestProps<{}, ParseUploadedToolQuery>,
   res: ApiResponseType<ParseUploadedToolResponse>
 ): Promise<ParseUploadedToolResponse> {
-  await authCert({ req, authToken: true });
+  await authSystemAdmin({ req });
 
   const { objectName } = req.query;
 
   if (!objectName) {
-    return Promise.reject(new Error('Object name is required'));
+    return Promise.reject('Object name is required');
   }
 
   const result = await pluginClient.tool.upload.parseUploadedTool({

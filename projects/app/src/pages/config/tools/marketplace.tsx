@@ -16,7 +16,9 @@ import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilte
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { installMarketplaceTool, getSystemPlugins, deletePlugin } from '@/web/core/app/api/plugin';
+import { getSystemPlugins } from '@/web/core/app/api/plugin';
+import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
+import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
   getMarketPlaceToolTags,
   getMarketplaceToolDetail,
@@ -130,7 +132,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
       setOperatingToolId(tool.id);
-      await installMarketplaceTool({
+      await intallPluginWithUrl({
         downloadUrls: [tool.downloadUrl]
       });
       await refetchTools();
@@ -151,7 +153,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { runAsync: handleDeleteTool, loading: deleteToolLoading } = useRequest2(
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
-      await deletePlugin({ toolId: tool.id });
+      await deletePkgPlugin({ toolId: tool.id });
       await refetchTools();
       await refreshCurrentTools({});
     },

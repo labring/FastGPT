@@ -1,42 +1,16 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type/index';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { UpdatePluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 export type updatePluginQuery = {};
 
-export type UpdateToolFormType = {
-  status?: number;
-  defaultInstalled?: boolean;
-  originCost?: number;
-  currentCost?: number;
-  systemKeyCost?: number;
-  hasTokenFee?: boolean;
-
-  inputListVal?: Record<string, any>; // for internal form render
-  childConfigs?: ({ pluginId: string } & UpdateToolFormType)[];
-};
-
-export type updatePluginBody = UpdateToolFormType & {
-  pluginId: string;
-
-  // 自定义插件字段
-  name?: I18nStringType | string;
-  avatar?: string;
-  intro?: I18nStringType | string;
-  weight?: number;
-  workflow?: WorkflowTemplateBasicType;
-  pluginTags?: string[];
-  associatedPluginId?: string;
-  userGuide?: string;
-  author?: string;
-};
+export type updatePluginBody = UpdatePluginBodyType;
 
 export type updatePluginResponse = {};
 

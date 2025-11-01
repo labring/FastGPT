@@ -22,16 +22,17 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useFieldArray, useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getSystemPlugins, putUpdatePlugin, deletePlugin } from '@/web/core/app/api/plugin';
+import { getSystemPlugins } from '@/web/core/app/api/plugin';
+import { deletePkgPlugin, putUpdatePlugin } from '@/web/core/plugin/admin/api';
 import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import type { UpdateToolFormType } from '@/pages/api/core/app/plugin/update';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
+import type { UpdateToolFormChildType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
@@ -58,7 +59,7 @@ const SystemToolConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { register, handleSubmit, setValue, watch, control } = useForm<UpdateToolFormType>({
+  const { register, handleSubmit, setValue, watch, control } = useForm<UpdateToolFormChildType>({
     defaultValues: {
       status: plugin.status ?? PluginStatusEnum.Normal,
       defaultInstalled: plugin.defaultInstalled ?? false,
@@ -121,7 +122,7 @@ const SystemToolConfigModal = ({
   );
 
   const { runAsync: onSubmit, loading } = useRequest2(
-    (formData: UpdateToolFormType) =>
+    (formData: UpdateToolFormChildType) =>
       putUpdatePlugin({
         pluginId: plugin.id,
         ...formData
@@ -136,7 +137,7 @@ const SystemToolConfigModal = ({
   );
 
   const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
-    () => deletePlugin({ toolId: plugin.id.split('-')[1] }),
+    () => deletePkgPlugin({ toolId: plugin.id.split('-')[1] }),
     {
       onSuccess() {
         onSuccess({});

@@ -15,9 +15,8 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
+import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemToolTemplates';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
-import type { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
@@ -36,16 +35,15 @@ import type {
   getSystemPluginsQuery,
   getSystemPluginsResponse
 } from '@/pages/api/core/app/plugin/list';
-import type { updatePluginOrderBody } from '@/pages/api/core/app/plugin/updateOrder';
 import type {
   ToggleInstallPluginBody,
   ToggleInstallPluginResponse
 } from '@/pages/api/core/app/plugin/team/toggleInstall';
 import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
-import type { updatePluginBody } from '@/pages/api/core/app/plugin/update';
-import type { createPluginBody } from '@/pages/api/core/app/plugin/create';
-import type { InstallToolBody, InstallToolResponse } from '@/pages/api/plugin/tool/install';
-import type { ParseUploadedToolResponse } from '@/pages/api/plugin/tool/upload/parse';
+import type {
+  InstallToolBody,
+  InstallToolResponse
+} from '@/pages/api/core/plugin/admin/installWithUrl';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -107,7 +105,7 @@ export const getTeamPlugTemplates = async (data?: {
 
 /* ============ system plugin ============== */
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
-  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
+  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemToolTemplates', data);
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
@@ -119,22 +117,6 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
-
-/* ============ plugin upload ============== */
-export const getPluginUploadURL = (params: { filename: string }) =>
-  GET<{ postURL: string; formData: Record<string, string>; objectName: string }>(
-    `/plugin/tool/upload/url`,
-    params
-  );
-
-export const parseUploadedPlugin = (params: { objectName: string }) =>
-  GET<ParseUploadedToolResponse>(`/plugin/tool/upload/parse`, params);
-
-export const confirmPluginUpload = (data: { toolIds: string[] }) =>
-  POST(`/plugin/tool/upload/confirm`, data);
-
-export const deletePlugin = (data: { toolId: string }) =>
-  DELETE('/plugin/tool/upload/delete', data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
@@ -176,24 +158,9 @@ export const getSystemPlugins = (data: getSystemPluginsQuery) => {
   return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
 };
 
-export const putUpdatePlugin = (data: updatePluginBody) => PUT('/core/app/plugin/update', data);
-
-export const postCreatePlugin = (data: createPluginBody) => POST('/core/app/plugin/create', data);
-
-export const delPlugin = (data: { id: string }) => DELETE('/core/app/plugin/delete', data);
-
-export const getAllUserPlugins = (data: { searchKey?: string }) =>
-  POST<SystemPluginListItemType[]>('/core/app/plugin/allPlugin', data);
-
-export const putUpdatePluginOrder = (data: updatePluginOrderBody) =>
-  PUT('/core/app/plugin/updateOrder', data);
-
 /* ============ team plugin installation ============== */
 export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
   POST<ToggleInstallPluginResponse>(`/core/app/plugin/team/toggleInstall`, data);
 
 export const getTeamInstalledPluginIds = () =>
   GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);
-
-export const installMarketplaceTool = (data: InstallToolBody) =>
-  POST<InstallToolResponse>('/plugin/tool/install', data);
