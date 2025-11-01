@@ -3,7 +3,7 @@ import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema'
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { CreatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
+import type { CreatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 
 export type CreatePluginTagQuery = {};
 

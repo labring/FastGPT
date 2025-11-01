@@ -13,6 +13,7 @@ import {
 import { TagsMap } from '../../../../tag';
 import { z } from 'zod';
 import { AdminSystemToolDetailSchema } from '../../../../../core/plugin/admin/tool/type';
+import { SystemToolTagPath } from './tag';
 
 export const AdminPluginToolPath: OpenAPIPath = {
   '/core/plugin/admin/tool/list': {
@@ -171,5 +172,6 @@ export const AdminPluginToolPath: OpenAPIPath = {
         }
       }
     }
-  }
+  },
+  ...SystemToolTagPath
 };
