@@ -69,13 +69,24 @@ export const createChatUsage = ({
   return { totalPoints };
 };
 
-export type DatasetTrainingMode = 'paragraph' | 'qa' | 'autoIndex' | 'imageIndex' | 'imageParse';
+export type DatasetTrainingMode =
+  | 'paragraph'
+  | 'qa'
+  | 'autoIndex'
+  | 'imageIndex'
+  | 'imageParse'
+  | 'hype_embed'
+  | 'hype_llm'
+  | 'hype_rerank';
 export const datasetTrainingUsageIndexMap: Record<DatasetTrainingMode, number> = {
   paragraph: 1,
   qa: 2,
   autoIndex: 3,
   imageIndex: 4,
-  imageParse: 5
+  imageParse: 5,
+  hype_embed: 6,
+  hype_llm: 7,
+  hype_rerank: 8
 };
 export const createTrainingUsage = async ({
   teamId,
@@ -85,6 +96,7 @@ export const createTrainingUsage = async ({
   vectorModel,
   agentModel,
   vllmModel,
+  rerankModel,
   session
 }: {
   teamId: string;
@@ -94,6 +106,7 @@ export const createTrainingUsage = async ({
   vectorModel?: string;
   agentModel?: string;
   vllmModel?: string;
+  rerankModel?: string;
   session?: ClientSession;
 }) => {
   const [{ _id }] = await MongoUsage.create(
@@ -153,6 +166,31 @@ export const createTrainingUsage = async ({
                 {
                   moduleName: i18nT('account_usage:image_parse'),
                   model: vllmModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                }
+              ]
+            : []),
+          ...(vectorModel && agentModel
+            ? [
+                {
+                  moduleName: i18nT('account_usage:hype_index'),
+                  model: vectorModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
+                {
+                  moduleName: i18nT('account_usage:hype_index'),
+                  model: agentModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
+                rerankModel ?? {
+                  moduleName: i18nT('account_usage:hype_index'),
+                  model: rerankModel,
                   amount: 0,
                   inputTokens: 0,
                   outputTokens: 0

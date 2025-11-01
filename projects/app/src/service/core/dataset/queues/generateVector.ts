@@ -29,7 +29,7 @@ const reduceQueue = () => {
 
 type PopulateType = {
   dataset: { vectorModel: string };
-  collection: { name: string; indexPrefixTitle: boolean };
+  collection: { name: string; indexPrefixTitle: boolean; hypeIndexes: boolean };
   data: { _id: string; indexes: DatasetDataSchemaType['indexes'] };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
@@ -71,7 +71,7 @@ export async function generateVector(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'name indexPrefixTitle'
+                select: 'name indexPrefixTitle hypeIndexes'
               },
               {
                 path: 'data',
@@ -258,7 +258,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
     // insert new data to dataset
-    const { tokens } = await insertData2Dataset({
+    const { tokens, insertId } = await insertData2Dataset({
       teamId: trainingData.teamId,
       tmbId: trainingData.tmbId,
       datasetId: trainingData.datasetId,
@@ -279,6 +279,32 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       embeddingModel: trainingData.dataset.vectorModel,
       session
     });
+
+    // ========== Check if Hype index enhancement is needed ==========
+    if (trainingData.collection?.hypeIndexes && global.feConfigs?.isPlus) {
+      // Vector is completed, now we can safely push Hype task
+      addLog.info(`[Vector Queue] Pushing Hype task for data: ${insertId}`);
+      await MongoDatasetTraining.create(
+        [
+          {
+            teamId: trainingData.teamId,
+            tmbId: trainingData.tmbId,
+            datasetId: trainingData.datasetId,
+            collectionId: trainingData.collectionId,
+            mode: TrainingModeEnum.hype,
+            q: trainingData.q,
+            a: trainingData.a || '',
+            chunkIndex: trainingData.chunkIndex,
+            dataId: insertId, // MongoDatasetData._id for later appending indexes
+            lockTime: new Date('2000/1/1'),
+            retryCount: 5,
+            billId: trainingData.billId
+          }
+        ],
+        { session }
+      );
+    }
+
     // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 

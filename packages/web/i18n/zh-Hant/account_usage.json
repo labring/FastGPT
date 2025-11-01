@@ -59,5 +59,6 @@
   "user_type": "類型",
   "wecom": "企業微信",
   "evaluation_summary_generation": "評估-總結生成",
-  "generate_answer": "產生應用回答"
+  "generate_answer": "產生應用回答",
+  "hype_index":"構建高質量的假定問題索引"
 }

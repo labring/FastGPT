@@ -34,6 +34,10 @@ export const ChunkSettings = {
   imageIndex: Boolean,
   autoIndexes: Boolean,
   indexPrefixTitle: Boolean,
+  hypeIndexes: Boolean,
+
+  hypePrompt: String,
+  autoIndexesPrompt: String,
 
   chunkSettingMode: {
     type: String,
