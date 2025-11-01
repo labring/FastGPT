@@ -20,8 +20,7 @@ export type SystemPluginConfigSchemaType = {
     intro?: string;
     toolDescription?: string;
     version: string;
-    weight?: number;
-    pluginTags?: string[];
+    toolTags?: string[];
     associatedPluginId: string;
     userGuide: string;
     author?: string;

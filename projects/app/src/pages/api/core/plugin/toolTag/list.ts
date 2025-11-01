@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type GetPluginTagListResponse } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
@@ -14,7 +14,7 @@ async function handler(
 ): Promise<GetPluginTagListResponse> {
   await authCert({ req, authToken: true });
 
-  return await MongoPluginTag.find().sort({ tagOrder: 1 }).lean();
+  return await MongoPluginToolTag.find().sort({ tagOrder: 1 }).lean();
 }
 
 export default NextAPI(handler);

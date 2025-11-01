@@ -1,16 +1,16 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { CreateAppPluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 export type createPluginQuery = {};
 
-export type createPluginBody = CreateAppPluginBodyType;
+export type createPluginBody = CreateAppToolBodyType;
 
 export type createPluginResponse = {};
 
@@ -23,11 +23,11 @@ async function handler(
     name,
     avatar,
     intro,
-    pluginTags,
-    templateType,
+    tagIds,
     inputListVal,
     originCost,
     currentCost,
+    systemKeyCost,
     hasTokenFee,
     status,
     defaultInstalled,
@@ -38,16 +38,17 @@ async function handler(
 
   const pluginId = getNanoid(12);
 
-  const firstPlugin = await MongoSystemPlugin.findOne().sort({ pluginOrder: 1 }).lean();
+  const firstPlugin = await MongoSystemTool.findOne().sort({ pluginOrder: 1 }).lean();
   const pluginOrder = firstPlugin ? (firstPlugin.pluginOrder ?? 0) - 1 : 0;
 
-  await MongoSystemPlugin.create({
+  await MongoSystemTool.create({
     pluginId,
     status: status ?? PluginStatusEnum.Normal,
     defaultInstalled: defaultInstalled ?? false,
     inputListVal,
     originCost,
     currentCost,
+    systemKeyCost,
     hasTokenFee,
     pluginOrder,
     customConfig: {
@@ -55,8 +56,7 @@ async function handler(
       avatar,
       intro,
       version: getNanoid(),
-      pluginTags,
-      templateType,
+      toolTags: tagIds,
       associatedPluginId,
       userGuide,
       author

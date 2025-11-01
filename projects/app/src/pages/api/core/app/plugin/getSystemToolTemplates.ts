@@ -69,7 +69,7 @@ async function handler(
       intro: parseI18nString(plugin.intro ?? '', lang),
       instructions: parseI18nString(plugin.userGuide ?? '', lang),
       toolDescription: plugin.toolDescription,
-      pluginTags: plugin.pluginTags
+      toolTags: plugin.toolTags
     }))
     .filter((item) => {
       if (searchKey) {

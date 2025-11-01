@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -25,7 +25,7 @@ async function handler(
 
   await mongoSessionRun(async (session) => {
     for (const tag of tags) {
-      await MongoPluginTag.updateOne(
+      await MongoPluginToolTag.updateOne(
         { tagId: tag.tagId },
         { $set: { tagOrder: tag.tagOrder } },
         { session }

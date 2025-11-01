@@ -1,140 +1,20 @@
 import type { OpenAPIPath } from '../../../type';
 import {
-  CreateAppPluginBodySchema,
-  UpdatePluginBodySchema,
-  DeleteAppPluginQuerySchema,
-  UpdatePluginOrderBodySchema,
   GetPkgPluginUploadURLQuerySchema,
   GetPkgPluginUploadURLResponseSchema,
   ParseUploadedPkgPluginQuerySchema,
   ParseUploadedPkgPluginResponseSchema,
   ConfirmUploadPkgPluginBodySchema,
   DeletePkgPluginQuerySchema,
-  InstallPluginFromUrlBodySchema,
-  GetAllSystemPluginAppsBodySchema,
-  GetAllSystemPluginAppsResponseSchema
+  InstallPluginFromUrlBodySchema
 } from './api';
 import { TagsMap } from '../../../tag';
 import { z } from 'zod';
+import { AdminPluginToolPath } from './tool';
 
 export const PluginAdminPath: OpenAPIPath = {
-  '/core/plugin/admin/update': {
-    put: {
-      summary: '更新插件',
-      description: '更新插件配置，包括基础字段和自定义字段，支持递归更新子配置，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdatePluginBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功更新插件',
-          content: {
-            'application/json': {
-              schema: z.object({})
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/admin/updateOrder': {
-    put: {
-      summary: '更新插件顺序',
-      description: '批量更新插件的排序顺序，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdatePluginOrderBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功更新插件顺序',
-          content: {
-            'application/json': {
-              schema: z.object({})
-            }
-          }
-        }
-      }
-    }
-  },
-  // App Plugin
-  '/core/plugin/admin/app/systemApps': {
-    post: {
-      summary: '获取所有系统插件',
-      description: '获取所有系统插件，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: GetAllSystemPluginAppsBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功获取系统插件',
-          content: {
-            'application/json': {
-              schema: GetAllSystemPluginAppsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/admin/app/create': {
-    post: {
-      summary: '创建App类型插件',
-      description: '创建新的App类型系统插件，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: CreateAppPluginBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功创建插件',
-          content: {
-            'application/json': {
-              schema: z.object({})
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/admin/app/delete': {
-    delete: {
-      summary: '删除App类型插件',
-      description: '根据ID删除App类型插件，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
-      requestParams: {
-        query: DeleteAppPluginQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功删除插件',
-          content: {
-            'application/json': {
-              schema: z.object({})
-            }
-          }
-        }
-      }
-    }
-  },
+  ...AdminPluginToolPath,
+
   // Pkg Plugin
   '/core/plugin/admin/pkg/presign': {
     get: {

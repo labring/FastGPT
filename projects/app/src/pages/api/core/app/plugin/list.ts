@@ -4,8 +4,8 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import type { SystemPluginConfigSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import type { PluginToolTagType } from '@fastgpt/global/core/plugin/type';
@@ -70,7 +70,7 @@ async function handler(
     });
   }
 
-  const dbPlugins = await MongoSystemPlugin.find()
+  const dbPlugins = await MongoSystemTool.find()
     .lean()
     .then((res) => {
       const map = new Map<string, SystemPluginConfigSchemaType>();
@@ -80,7 +80,7 @@ async function handler(
       return map;
     });
 
-  const allTags = await MongoPluginTag.find().sort({ tagOrder: 1 }).lean();
+  const allTags = await MongoPluginToolTag.find().sort({ tagOrder: 1 }).lean();
   const tagMap = new Map<string, PluginToolTagType>();
   allTags.forEach((tag) => {
     tagMap.set(tag.tagId, tag);
@@ -98,9 +98,9 @@ async function handler(
       };
     });
 
-    const pluginTags = dbPlugin?.customConfig?.pluginTags || item.pluginTags;
-    const tags = pluginTags
-      ? pluginTags
+    const toolTags = dbPlugin?.customConfig?.toolTags || item.toolTags;
+    const tags = toolTags
+      ? toolTags
           .map((tagId) => tagMap.get(tagId))
           .filter((tag): tag is PluginToolTagType => tag !== undefined)
       : [];
@@ -112,7 +112,7 @@ async function handler(
       toolDescription: parseI18nString(item.toolDescription, lang),
       inputList: formattedInputList,
       inputListVal: dbPlugin?.inputListVal,
-      pluginTags,
+      toolTags,
       tags,
       versionList: item.versionList
     };

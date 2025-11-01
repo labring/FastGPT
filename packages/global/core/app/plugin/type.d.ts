@@ -57,7 +57,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  pluginTags?: string[];
+  toolTags?: string[];
   status?: number;
   defaultInstalled?: boolean;
   isOfficial?: boolean;
@@ -67,7 +67,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 
-  // @deprecated use pluginTags instead
+  // @deprecated use toolTags instead
   isActive?: boolean;
   templateType?: string;
 };

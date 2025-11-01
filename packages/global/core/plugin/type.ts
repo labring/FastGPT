@@ -10,7 +10,7 @@ export const I18nUnioStringSchema = z.union([I18nStringSchema, z.string()]);
 
 export const PluginToolTagSchema = z.object({
   tagId: z.string(),
-  tagName: z.union([z.string(), I18nStringSchema]),
+  tagName: I18nUnioStringSchema,
   tagOrder: z.number(),
   isSystem: z.boolean()
 });

@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoPluginTag } from '@fastgpt/service/core/app/plugin/pluginTagSchema';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { UpdatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
@@ -16,13 +16,13 @@ async function handler(
     return Promise.reject('Missing params');
   }
 
-  const tag = await MongoPluginTag.findOne({ tagId });
+  const tag = await MongoPluginToolTag.findOne({ tagId });
 
   if (!tag) {
     return Promise.reject('Tag not found');
   }
 
-  await MongoPluginTag.updateOne(
+  await MongoPluginToolTag.updateOne(
     { tagId },
     {
       $set: {
