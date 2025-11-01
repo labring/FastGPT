@@ -342,6 +342,10 @@
   "connection_pool_size_tooltip": "The app must be connected to the database for query. To ensure normal database operations, a connection pool will be established to ensure that the number of connections does not exceed the pool size. Please configure the pool size properly based on the database performance and concurrent access.",
   "database_table_desc_tip": "To increase the accuracy of answers, please accurately describe the meaning and purpose of the table. The model will call the table based on the description.",
   "database_tables": "Tables",
-  "remove_warning": "Confirm"
+  "remove_warning": "Confirm",
+  "config_prompt": "Configure prompt",
+  "hype_enhanced_index": "HyPE enhanced index",
+  "hype_enhanced_index_tips": "Use Hypothetical Prompt Embeddings technology to generate hypothetical questions, simulate retrieval and recall to filter truly high-quality questions as indexes, improving retrieval accuracy. (Takes longer time when data volume is large)",
+  "template_csv_format_tip": "The template uses CSV format and contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question"
 }
 

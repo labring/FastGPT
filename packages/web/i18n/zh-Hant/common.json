@@ -1025,6 +1025,8 @@
   "rerank_method": "重排方式",
   "rerank_method.q2q": "基於問題重排",
   "rerank_method.q2a": "基於内容重排",
+  "rerank_method_q2a_desc": "QA模式數據會將Q與A拼接後進行重排",
+  "rerank_method_q2q_desc": "知識庫中較多QA數據時,可嘗試基於問題(Q)重排對比準確度",
   "resume_failed": "恢復失敗",
   "root_folder": "根目錄",
   "save_failed": "儲存失敗",
