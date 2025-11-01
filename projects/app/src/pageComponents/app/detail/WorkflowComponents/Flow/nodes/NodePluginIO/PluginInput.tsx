@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -40,51 +40,54 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
-  const onSubmit = (data: FlowNodeInputItemType) => {
-    if (!editField) return;
+  const onSubmit = useCallback(
+    (data: FlowNodeInputItemType) => {
+      if (!editField) return;
 
-    if (editField?.key) {
-      const output = outputs.find((output) => output.key === editField.key);
-      const newOutput: FlowNodeOutputItemType = {
-        ...(output as FlowNodeOutputItemType),
-        valueType: data.valueType,
-        key: data.key,
-        label: data.label
-      };
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: editField.key,
-        value: data
-      });
-      onChangeNode({
-        nodeId,
-        type: 'replaceOutput',
-        key: editField.key,
-        value: newOutput
-      });
-    } else {
-      const newOutput: FlowNodeOutputItemType = {
-        id: data.key,
-        valueType: data.valueType,
-        key: data.key,
-        label: data.label,
-        type: FlowNodeOutputTypeEnum.hidden
-      };
+      if (editField?.key) {
+        const output = outputs.find((output) => output.key === editField.key);
+        const newOutput: FlowNodeOutputItemType = {
+          ...(output as FlowNodeOutputItemType),
+          valueType: data.valueType,
+          key: data.key,
+          label: data.label
+        };
+        onChangeNode({
+          nodeId,
+          type: 'replaceInput',
+          key: editField.key,
+          value: data
+        });
+        onChangeNode({
+          nodeId,
+          type: 'replaceOutput',
+          key: editField.key,
+          value: newOutput
+        });
+      } else {
+        const newOutput: FlowNodeOutputItemType = {
+          id: data.key,
+          valueType: data.valueType,
+          key: data.key,
+          label: data.label,
+          type: FlowNodeOutputTypeEnum.hidden
+        };
 
-      // add_new_input
-      onChangeNode({
-        nodeId,
-        type: 'addInput',
-        value: data
-      });
-      onChangeNode({
-        nodeId,
-        type: 'addOutput',
-        value: newOutput
-      });
-    }
-  };
+        // add_new_input
+        onChangeNode({
+          nodeId,
+          type: 'addInput',
+          value: data
+        });
+        onChangeNode({
+          nodeId,
+          type: 'addOutput',
+          value: newOutput
+        });
+      }
+    },
+    [editField, nodeId, onChangeNode, outputs]
+  );
 
   const Render = useMemo(() => {
     return (

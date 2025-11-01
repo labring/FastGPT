@@ -11,6 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import dayjs from 'dayjs';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -178,8 +179,11 @@ function request(
 ): any {
   /* 去空 */
   for (const key in data) {
+    const val = data[key];
     if (data[key] === undefined) {
       delete data[key];
+    } else if (val instanceof Date) {
+      data[key] = dayjs(val).format();
     }
   }
 

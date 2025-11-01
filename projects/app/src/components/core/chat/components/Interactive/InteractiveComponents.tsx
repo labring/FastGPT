@@ -100,6 +100,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 min={input.min}
                 max={input.max}
                 list={input.list}
+                isRichText={false}
               />
             );
           }}

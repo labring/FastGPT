@@ -1,18 +1,14 @@
 import { MongoDatasetTraining } from './schema';
-import type {
-  PushDatasetDataChunkProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { simpleText } from '@fastgpt/global/common/string/tools';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
-import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -101,22 +97,26 @@ export async function pushDataListToTrainingQueue({
   });
 
   // insert data to db
-  const insertLen = data.length;
+  const batchSize = 500; // Batch insert size
+  const maxBatchesPerTransaction = 20; // Every session can insert at most 20 batches
 
-  // 使用 insertMany 批量插入
-  const batchSize = 500;
-  const insertData = async (startIndex: number, session: ClientSession) => {
-    const list = data.slice(startIndex, startIndex + batchSize);
+  const insertDataIterative = async (
+    dataToInsert: typeof data,
+    session: ClientSession
+  ): Promise<number> => {
+    let insertedCount = 0;
 
-    if (list.length === 0) return;
+    for (let i = 0; i < dataToInsert.length; i += batchSize) {
+      const batch = dataToInsert.slice(i, i + batchSize);
 
-    try {
+      if (batch.length === 0) continue;
+
       const result = await MongoDatasetTraining.insertMany(
-        list.map((item) => ({
+        batch.map((item) => ({
           teamId,
           tmbId,
-          datasetId: datasetId,
-          collectionId: collectionId,
+          datasetId,
+          collectionId,
           billId,
           mode,
           ...(item.q && { q: item.q }),
@@ -130,34 +130,58 @@ export async function pushDataListToTrainingQueue({
         })),
         {
           session,
-          ordered: false,
+          ordered: true, // 改为 true: 任何失败立即停止,事务回滚
           rawResult: true,
-          includeResultMetadata: false // 进一步减少返回数据
+          includeResultMetadata: false
         }
       );
 
-      if (result.insertedCount !== list.length) {
-        return Promise.reject(`Insert data error, ${JSON.stringify(result)}`);
-      }
-    } catch (error: any) {
-      addLog.error(`Insert error`, error);
-      return Promise.reject(error);
+      // ordered: true 模式下,成功必定等于批次大小
+      insertedCount += result.insertedCount;
+
+      addLog.debug(`Training data insert progress: ${insertedCount}/${dataToInsert.length}`);
     }
 
-    return insertData(startIndex + batchSize, session);
+    return insertedCount;
   };
 
-  if (session) {
-    await insertData(0, session);
-  } else {
-    await mongoSessionRun(async (session) => {
-      await insertData(0, session);
-    });
+  // 大数据量分段事务处理 (避免事务超时)
+  const chunkSize = maxBatchesPerTransaction * batchSize; // 10,000 条
+  let start = Date.now();
+
+  if (data.length > chunkSize) {
+    addLog.info(`Large dataset detected (${data.length} items), using chunked transactions`);
+
+    let totalInserted = 0;
+
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, i + chunkSize);
+
+      await retryFn(async () => {
+        const inserted = await mongoSessionRun(async (chunkSession) => {
+          return insertDataIterative(chunk, chunkSession);
+        });
+        totalInserted += inserted;
+      });
+    }
+
+    addLog.info(`Chunked transactions completed in ${Date.now() - start}ms`);
+
+    return { insertLen: totalInserted };
   }
 
-  return {
-    insertLen
-  };
+  // 小数据量单事务处理
+  if (session) {
+    const insertedCount = await insertDataIterative(data, session);
+    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    return { insertLen: insertedCount };
+  } else {
+    const insertedCount = await mongoSessionRun(async (session) => {
+      return insertDataIterative(data, session);
+    });
+    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    return { insertLen: insertedCount };
+  }
 }
 
 export const pushDatasetToParseQueue = async ({

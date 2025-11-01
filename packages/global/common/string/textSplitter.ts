@@ -82,9 +82,10 @@ const markdownTableSplit = (props: SplitProps): SplitResponse => {
     .join(' | ')} |`;
 
   const chunks: string[] = [];
-  let chunk = `${header}
+  const defaultChunk = `${header}
 ${mdSplitString}
 `;
+  let chunk = defaultChunk;
 
   for (let i = 2; i < splitText2Lines.length; i++) {
     const chunkLength = getTextValidLength(chunk);
@@ -93,9 +94,7 @@ ${mdSplitString}
     // Over size
     if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
-      chunk = `${header}
-${mdSplitString}
-`;
+      chunk = defaultChunk;
     }
     chunk += `${splitText2Lines[i]}\n`;
   }

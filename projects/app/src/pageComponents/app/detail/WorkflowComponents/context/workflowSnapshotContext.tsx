@@ -201,7 +201,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
       );
 
       if (isPastEqual) {
-        console.debug('[Snapshot] Snapshot is identical to previous, skipping');
+        console.log('[Snapshot] Snapshot is identical to previous, skipping');
         return false;
       }
 
@@ -216,12 +216,21 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         };
 
         setFuture([]);
-        setPast((past) => [
-          newSnapshot,
-          ...past.slice(0, maxSnapshots - 1) // 保留最近100个快照
-        ]);
+        setPast((past) => {
+          if (past.length === 0) {
+            return [newSnapshot];
+          }
+          const initialSnapshot = past[past.length - 1];
 
-        console.debug('[Snapshot] Snapshot saved successfully:', {
+          // 如果还没达到上限，正常添加（不重复保存 initialSnapshot）
+          if (past.length < maxSnapshots) {
+            return [newSnapshot, ...past];
+          }
+
+          return [newSnapshot, ...past.slice(0, -1).slice(0, maxSnapshots - 2), initialSnapshot];
+        });
+
+        console.log('[Snapshot] Snapshot saved successfully:', {
           title: newSnapshot.title,
           nodeCount: newSnapshot.nodes.length,
           edgeCount: newSnapshot.edges.length,

@@ -136,10 +136,7 @@ export const WholeResponseContent = ({
     >
       {/* common info */}
       <>
-        <Row
-          label={t('common:core.chat.response.module name')}
-          value={t(activeModule.moduleName as any)}
-        />
+        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
         {activeModule?.totalPoints !== undefined && (
           <Row
             label={t('common:support.wallet.usage.Total points')}

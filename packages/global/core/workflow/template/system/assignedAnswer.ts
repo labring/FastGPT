@@ -24,6 +24,8 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.any,
       required: true,
+      isRichText: false,
+      maxLength: 100000,
       label: i18nT('common:core.module.input.label.Response content'),
       description: i18nT('common:core.module.input.description.Response content'),
       placeholder: i18nT('common:core.module.input.description.Response content')

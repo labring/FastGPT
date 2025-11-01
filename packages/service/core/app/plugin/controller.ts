@@ -24,7 +24,7 @@ import {
   getAppVersionById
 } from '../version/controller';
 import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
-import { MongoSystemPlugin } from './systemPluginSchema';
+import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import {
@@ -70,7 +70,7 @@ export const getSystemPluginByIdAndVersionId = async (
   // Admin selected system tool
   if (plugin.associatedPluginId) {
     // The verification plugin is set as a system plugin
-    const systemPlugin = await MongoSystemPlugin.findOne(
+    const systemPlugin = await MongoSystemTool.findOne(
       { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
       'associatedPluginId'
     ).lean();
@@ -350,7 +350,7 @@ export async function getChildAppPreviewNode({
                   systemToolSet: {
                     toolId: app.id,
                     toolList: children
-                      .filter((item) => item.isActive !== false)
+                      .filter((item) => item.status === 1 || item.status === undefined)
                       .map((item) => ({
                         toolId: item.id,
                         name: parseI18nString(item.name, lang),
@@ -407,7 +407,7 @@ export async function getChildAppPreviewNode({
   return {
     id: getNanoid(),
     pluginId: app.id,
-    templateType: app.templateType,
+    templateType: app.templateType ?? FlowNodeTemplateTypeEnum.tools,
     flowNodeType,
     avatar: app.avatar,
     name: parseI18nString(app.name, lang),
@@ -513,25 +513,26 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
     intro,
     toolDescription,
     version,
-    weight,
-    templateType,
     associatedPluginId,
-    userGuide
+    userGuide,
+    author = '',
+    toolTags
   } = item.customConfig!;
 
   return {
     id: item.pluginId,
-    isActive: item.isActive,
+    status: item.status ?? 1,
+    defaultInstalled: item.defaultInstalled ?? false,
     isFolder: false,
     parentId: null,
-    author: item.customConfig?.author || '',
+    author,
     version,
     name,
     avatar,
     intro,
     toolDescription,
-    weight,
-    templateType,
+    toolTags,
+    templateType: FlowNodeTemplateTypeEnum.tools,
     originCost: item.originCost,
     currentCost: item.currentCost,
     hasTokenFee: item.hasTokenFee,
@@ -551,7 +552,7 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
   const tools = await APIGetSystemToolList();
 
   // 从数据库里加载插件配置进行替换
-  const systemToolsArray = await MongoSystemPlugin.find({}).lean();
+  const systemToolsArray = await MongoSystemTool.find({}).lean();
   const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
 
   const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
@@ -571,16 +572,15 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      weight: item.weight,
-      toolSource: item.toolSource || 'built-in',
+      toolTags: item.tags,
       workflow: {
         nodes: [],
         edges: []
       },
       versionList,
-      templateType: item.templateType,
       showStatus: true,
-      isActive: dbPluginConfig?.isActive ?? item.isActive ?? true,
+      status: dbPluginConfig?.status ?? 1,
+      defaultInstalled: dbPluginConfig?.defaultInstalled ?? false,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
 
@@ -599,11 +599,6 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
   const concatTools = [...formatTools, ...dbPlugins];
   concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
 
-  global.systemToolsTypeCache = {};
-  concatTools.forEach((item) => {
-    global.systemToolsTypeCache[item.templateType] = 1;
-  });
-
   return concatTools;
 };
 
@@ -618,11 +613,7 @@ export const getSystemToolById = async (id: string): Promise<SystemPluginTemplat
     return Promise.reject(PluginErrEnum.unExist);
   }
 
-  const dbPlugin = await MongoSystemPlugin.findOne({ pluginId }).lean();
+  const dbPlugin = await MongoSystemTool.findOne({ pluginId }).lean();
   if (!dbPlugin) return Promise.reject(PluginErrEnum.unExist);
   return dbPluginFormat(dbPlugin);
 };
-
-declare global {
-  var systemToolsTypeCache: Record<string, 1>;
-}

@@ -20,5 +20,5 @@
       "@test": ["test/*"]
     }
   },
-  "exclude": ["**/node_modules"]
+  "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]
 }

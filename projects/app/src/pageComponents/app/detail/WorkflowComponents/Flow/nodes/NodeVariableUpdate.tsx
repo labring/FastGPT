@@ -23,12 +23,8 @@ import {
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
 import {
@@ -109,7 +105,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     [inputs, nodeId, onChangeNode]
   );
 
-  const ValueRender = useMemoizedFn(
+  const ValueRender = useCallback(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
@@ -126,9 +122,22 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             return {
               inputType: variableInputTypeToInputType(variable.type),
               formParams: {
+                // 获取变量中一些表单配置
+                maxLength: variable.maxLength,
+                minLength: variable.minLength,
                 min: variable.min,
                 max: variable.max,
-                list: variable.list
+                list: variable.list,
+                timeGranularity: variable.timeGranularity,
+                timeRangeStart: variable.timeRangeStart,
+                timeRangeEnd: variable.timeRangeEnd,
+                maxFiles: variable.maxFiles,
+                canSelectFile: variable.canSelectFile,
+                canSelectImg: variable.canSelectImg,
+                canSelectVideo: variable.canSelectVideo,
+                canSelectAudio: variable.canSelectAudio,
+                canSelectCustomFileExtension: variable.canSelectCustomFileExtension,
+                customFileExtensionList: variable.customFileExtensionList
               }
             };
           }
@@ -268,11 +277,12 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               }
 
               return (
-                <Box w={'300px'} borderRadius={'sm'}>
+                <Box minW={'250px'} maxW={'400px'} borderRadius={'sm'}>
                   <InputRender
                     // @ts-ignore
                     inputType={inputType}
                     {...formParams}
+                    isRichText={false}
                     variables={[...variables, ...externalProviderWorkflowVariables]}
                     variableLabels={variables}
                     value={updateItem.value?.[1]}
@@ -284,7 +294,18 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           </Flex>
         </Container>
       );
-    }
+    },
+    [
+      appDetail.chatConfig,
+      externalProviderWorkflowVariables,
+      getNodeById,
+      nodeId,
+      onUpdateList,
+      systemConfigNode,
+      t,
+      updateList,
+      variables
+    ]
   );
 
   const Render = useMemo(() => {

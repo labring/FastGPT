@@ -8,12 +8,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 /* clear chat history */
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
   const { appId, chatId } = req.query;
 
-  await authChatCrud({
+  const { uid: uId } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
@@ -40,6 +41,7 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
       },
       { session }
     );
+    await getS3ChatSource().deleteChatFilesByPrefix({ appId, chatId, uId });
   });
 
   return;

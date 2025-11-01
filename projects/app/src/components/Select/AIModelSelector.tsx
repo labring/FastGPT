@@ -13,9 +13,17 @@ import React, { useCallback, useMemo, useState } from 'react';
 type Props = SelectProps & {
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
+  cacheModel?: boolean;
 };
 
-const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Props) => {
+const OneRowSelector = ({
+  list,
+  onChange,
+  disableTip,
+  noOfLines,
+  cacheModel = true,
+  ...props
+}: Props) => {
   const { t } = useTranslation();
   const {
     llmModelList,
@@ -30,7 +38,9 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
   const { data: myModels } = useRequest2(
     async () => {
       const set = await getMyModelList();
-      set.add(props.value);
+      if (cacheModel) {
+        set.add(props.value);
+      }
       return set;
     },
     {

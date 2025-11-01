@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef } from 'react';
 
 import {
   Box,
@@ -100,7 +100,27 @@ const Editor = React.memo(function Editor({
   showResize?: boolean;
 }) {
   const { t } = useTranslation();
-  const [scrollHeight, setScrollHeight] = useState(0);
+  const cursorPositionRef = useRef<number | null>(null);
+
+  // 使用 useRef 保存 onChange,避免依赖变化导致 handleChange 重新创建
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // 使用 useLayoutEffect 同步恢复光标位置,避免闪烁
+  useLayoutEffect(() => {
+    if (textareaRef.current && cursorPositionRef.current !== null) {
+      const pos = cursorPositionRef.current;
+      textareaRef.current.setSelectionRange(pos, pos);
+      cursorPositionRef.current = null;
+    }
+  });
+
+  // 移除 onChange 依赖,使 handleChange 引用永远稳定
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // 保存光标位置
+    cursorPositionRef.current = e.target.selectionStart;
+    onChangeRef.current?.(e);
+  }, []);
 
   return (
     <Box h={'100%'} w={'100%'} position={'relative'}>
@@ -120,25 +140,25 @@ const Editor = React.memo(function Editor({
         {...props}
         maxH={`${maxH}px`}
         minH={`${minH}px`}
-        onChange={(e) => {
-          setScrollHeight(e.target.scrollHeight);
-          onChange?.(e);
-        }}
+        onChange={handleChange}
       />
-      {onOpenModal && maxH && scrollHeight > Number(maxH) && (
-        <Box
-          zIndex={1}
-          position={'absolute'}
-          bottom={1}
-          right={2}
-          cursor={'pointer'}
-          onClick={onOpenModal}
-        >
-          <MyTooltip label={t('common:ui.textarea.Magnifying')}>
-            <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
-          </MyTooltip>
-        </Box>
-      )}
+      {onOpenModal &&
+        maxH &&
+        textareaRef.current &&
+        textareaRef.current.scrollHeight > Number(maxH) && (
+          <Box
+            zIndex={1}
+            position={'absolute'}
+            bottom={1}
+            right={2}
+            cursor={'pointer'}
+            onClick={onOpenModal}
+          >
+            <MyTooltip label={t('common:ui.textarea.Magnifying')}>
+              <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
+            </MyTooltip>
+          </Box>
+        )}
     </Box>
   );
 });

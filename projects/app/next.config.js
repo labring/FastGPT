@@ -115,7 +115,7 @@ const nextConfig = {
       // 启用持久化缓存
       config.cache = {
         type: 'filesystem',
-        name: isServer ? 'server' : 'client',
+        name: 'client',
         buildDependencies: {
           config: [__filename]
         },

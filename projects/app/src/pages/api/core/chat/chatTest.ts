@@ -21,9 +21,9 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   getPluginRunUserQuery,
   updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/service/core/app/plugin/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { chatValue2RuntimePrompt, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
         return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+          pluginInputs: getPluginInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
@@ -210,7 +210,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // save chat
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
     const newTitle = isPlugin
       ? variables.cTime ?? formatTime2YMDHM()

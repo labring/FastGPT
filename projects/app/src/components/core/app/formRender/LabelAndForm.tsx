@@ -44,6 +44,7 @@ const LabelAndFormRender = ({
   form: UseFormReturn<any>;
   fieldName: string;
 
+  isDisabled?: boolean;
   minLength?: number;
 } & SpecificProps &
   BoxProps) => {
@@ -62,8 +63,13 @@ const LabelAndFormRender = ({
         name={props.fieldName}
         rules={{
           validate: (value) => {
-            if (!required) return true;
             if (typeof value === 'number' || typeof value === 'boolean') return true;
+            if (inputType === InputTypeEnum.password && props.minLength) {
+              if (!value || typeof value !== 'object' || !value.value) return false;
+              return value.value.length >= props.minLength;
+            }
+            if (!required) return true;
+
             return !!value;
           },
           ...(!!props?.minLength
@@ -79,6 +85,7 @@ const LabelAndFormRender = ({
           return (
             <InputRender
               inputType={inputType}
+              isRichText={false}
               value={value}
               onChange={onChange}
               placeholder={placeholder}

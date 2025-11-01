@@ -1,9 +1,7 @@
 import {
   Box,
   Flex,
-  IconButton,
   Step,
-  StepDescription,
   StepIcon,
   StepIndicator,
   StepNumber,

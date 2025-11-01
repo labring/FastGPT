@@ -7,6 +7,7 @@ import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants'
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 
 type CommonRenderProps = {
   placeholder?: string;
@@ -27,12 +28,14 @@ type SpecificProps =
       variableLabels?: EditorVariableLabelPickerType[];
       title?: string;
       maxLength?: number;
+      isRichText?: boolean;
     } & {
       ExtensionPopover?: EditorProps['ExtensionPopover'];
     })
   | {
       // password
       inputType: InputTypeEnum.password;
+      minLength?: number;
     }
   | {
       // numberInput
@@ -53,6 +56,12 @@ type SpecificProps =
       enums?: { value: string }[];
     }
   | {
+      // selectDataset
+      inputType: InputTypeEnum.selectDataset;
+      list?: { label: string; value: string }[];
+      dataset?: { name: string; datasetId: string; avatar: string }[];
+    }
+  | {
       // JSONEditor
       inputType: InputTypeEnum.JSONEditor;
     }
@@ -61,16 +70,15 @@ type SpecificProps =
       inputType: InputTypeEnum.selectLLMModel;
       modelList?: { model: string; name: string }[];
     }
-  | {
+  | ({
       // fileSelect
       inputType: InputTypeEnum.fileSelect;
-      canSelectFile?: boolean;
-      canSelectImg?: boolean;
-      maxFiles?: number;
       setUploading?: React.Dispatch<React.SetStateAction<boolean>>;
       form?: UseFormReturn<any>;
       fieldName?: string;
-    }
+      canLocalUpload?: boolean;
+      canUrlUpload?: boolean;
+    } & AppFileSelectConfigType)
   | {
       // timePointSelect
       inputType: InputTypeEnum.timePointSelect;

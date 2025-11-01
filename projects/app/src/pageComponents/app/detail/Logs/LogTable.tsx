@@ -149,8 +149,8 @@ const LogTable = ({
         filename: 'chat_logs.csv',
         body: {
           appId,
-          dateStart: dateRange.from || new Date(),
-          dateEnd: addDays(dateRange.to || new Date(), 1),
+          dateStart: dayjs(dateRange.from || new Date()).format(),
+          dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,

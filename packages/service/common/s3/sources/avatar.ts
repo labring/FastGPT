@@ -31,7 +31,10 @@ class S3AvatarSource {
   }) {
     return this.bucket.createPostPresignedUrl(
       { filename, teamId, source: S3Sources.avatar },
-      { expiredHours: autoExpired ? 1 : undefined } // 1 Hourse
+      {
+        expiredHours: autoExpired ? 1 : undefined, // 1 Hours
+        maxFileSize: 5 // 5MB
+      }
     );
   }
 

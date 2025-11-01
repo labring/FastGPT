@@ -164,6 +164,7 @@ const ConfigToolModal = ({
                       return (
                         <InputRender
                           {...input}
+                          isRichText={false}
                           isInvalid={!!error}
                           inputType={nodeInputTypeToInputType(input.renderTypeList)}
                           value={value}

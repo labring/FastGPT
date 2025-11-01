@@ -48,7 +48,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
-  const computedResult = useMemo(() => {
+  const computedResult = useMemoEnhance(() => {
     return {
       nodeWidth: Math.round(
         Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value) || 500
@@ -146,6 +146,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     setTimeout(() => {
       resetParentNodeSizeAndPosition(nodeId);
     }, 50);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size?.height]);
 
   return (

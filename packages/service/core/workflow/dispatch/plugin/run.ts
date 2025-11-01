@@ -4,7 +4,10 @@ import {
 } from '@fastgpt/global/core/app/plugin/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -24,6 +27,7 @@ import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
 import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import { anyValueDecrypt } from '../../../../common/secret/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -99,10 +103,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         return {
           ...node,
           showStatus: false,
-          inputs: node.inputs.map((input) => ({
-            ...input,
-            value: data[input.key] ?? input.value
-          }))
+          inputs: node.inputs.map((input) => {
+            let val = data[input.key] ?? input.value;
+            if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+              val = anyValueDecrypt(val);
+            }
+
+            return {
+              ...input,
+              value: val
+            };
+          })
         };
       }
       return {

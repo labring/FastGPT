@@ -15,9 +15,18 @@ export type CustomFieldConfigType = {
   showDescription?: boolean;
 };
 export type InputComponentPropsType = {
+  key: `${NodeInputKeyEnum}` | string;
+  label: string;
+
+  valueType?: WorkflowIOValueTypeEnum; // data type
+  required?: boolean;
+  defaultValue?: any;
+
   referencePlaceholder?: string;
+  isRichText?: boolean;
   placeholder?: string; // input,textarea
   maxLength?: number; // input,textarea
+  minLength?: number; // password
 
   list?: { label: string; value: string }[]; // select
 
@@ -27,12 +36,29 @@ export type InputComponentPropsType = {
   min?: number; // slider, number input
   precision?: number; // number input
 
-  defaultValue?: string;
-
   llmModelType?: `${LLMModelTypeEnum}`;
+
+  // file
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  canSelectVideo?: boolean;
+  canSelectAudio?: boolean;
+  canSelectCustomFileExtension?: boolean;
+  customFileExtensionList?: string[];
+  canLocalUpload?: boolean;
+  canUrlUpload?: boolean;
+  maxFiles?: number;
+
+  // Time
+  timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
 
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
+
+  // @deprecated
+  enums?: { value: string; label: string }[];
 };
 export type InputConfigType = {
   key: string;
@@ -50,29 +76,19 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   selectedTypeIndex?: number;
   renderTypeList: FlowNodeInputTypeEnum[]; // Node Type. Decide on a render style
 
-  key: `${NodeInputKeyEnum}` | string;
-  valueType?: WorkflowIOValueTypeEnum; // data type
   valueDesc?: string; // data desc
   value?: any;
-  label: string;
   debugLabel?: string;
   description?: string; // field desc
-  required?: boolean;
-  enum?: string;
-
-  inputList?: InputConfigType[]; // when key === 'system_input_config', this field is used
-
   toolDescription?: string; // If this field is not empty, it is entered as a tool
+
+  enum?: string;
+  inputList?: InputConfigType[]; // when key === 'system_input_config', this field is used
 
   // render components params
   canEdit?: boolean; // dynamic inputs
   isPro?: boolean; // Pro version field
   isToolOutput?: boolean;
-
-  // file
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
-  maxFiles?: number;
 
   deprecated?: boolean;
 };

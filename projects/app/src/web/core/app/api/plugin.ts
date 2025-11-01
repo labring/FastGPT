@@ -1,4 +1,4 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
+import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {
@@ -15,8 +15,7 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import type { SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemToolTemplates';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
@@ -31,8 +30,20 @@ import type {
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { createClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
+import type {
+  getSystemPluginsQuery,
+  getSystemPluginsResponse
+} from '@/pages/api/core/app/plugin/list';
+import type {
+  ToggleInstallPluginBody,
+  ToggleInstallPluginResponse
+} from '@/pages/api/core/app/plugin/team/toggleInstall';
+import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
+import type {
+  InstallToolBody,
+  InstallToolResponse
+} from '@/pages/api/core/plugin/admin/installWithUrl';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -94,10 +105,7 @@ export const getTeamPlugTemplates = async (data?: {
 
 /* ============ system plugin ============== */
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
-  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
-
-export const getPluginGroups = () =>
-  GET<SystemToolGroupSchemaType[]>('/core/app/plugin/getToolGroups');
+  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemToolTemplates', data);
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
@@ -109,11 +117,6 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
-
-export const pluginClient = createClient({
-  baseUrl: '/api/plugin',
-  token: ''
-});
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
@@ -149,3 +152,15 @@ export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
 
 export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
+
+/* ============ plugin management ============== */
+export const getSystemPlugins = (data: getSystemPluginsQuery) => {
+  return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
+};
+
+/* ============ team plugin installation ============== */
+export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
+  POST<ToggleInstallPluginResponse>(`/core/app/plugin/team/toggleInstall`, data);
+
+export const getTeamInstalledPluginIds = () =>
+  GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);

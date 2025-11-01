@@ -73,8 +73,8 @@ export const getTimeZoneList = () => {
 };
 export const timeZoneList = getTimeZoneList();
 
-export const getMongoTimezoneCode = (timeString: string) => {
-  if (!timeString.includes(':')) {
+export const getTimezoneCodeFromStr = (timeString: string | Date) => {
+  if (typeof timeString !== 'string' || !timeString.includes(':')) {
     return '+00:00';
   }
 

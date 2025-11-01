@@ -3,7 +3,7 @@ import type {
   GetPathProps,
   ParentIdType,
   ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type.d';
+} from '@fastgpt/global/common/parentFolder/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

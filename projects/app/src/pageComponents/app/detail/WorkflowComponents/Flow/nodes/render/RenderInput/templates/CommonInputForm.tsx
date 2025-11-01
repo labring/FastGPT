@@ -4,10 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
@@ -128,8 +125,10 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       inputType={inputType}
       value={value}
       onChange={handleChange}
+      isRichText={item.isRichText}
       placeholder={item.placeholder}
       maxLength={item.maxLength}
+      minLength={item.minLength}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
       min={item.min}

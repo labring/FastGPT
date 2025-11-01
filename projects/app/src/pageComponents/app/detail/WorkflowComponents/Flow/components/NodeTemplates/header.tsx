@@ -149,24 +149,22 @@ const NodeTemplateListHeader = ({
               <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
             </Flex>
           )}
-          {!isPopover &&
-            templateType === TemplateTypeEnum.systemPlugin &&
-            feConfigs.systemPluginCourseUrl && (
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                _hover={{
-                  color: 'primary.600'
-                }}
-                fontSize={'sm'}
-                onClick={() => window.open(feConfigs.systemPluginCourseUrl)}
-                gap={1}
-                ml={4}
-              >
-                <Box>{t('common:plugin.contribute')}</Box>
-                <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
-              </Flex>
-            )}
+          {!isPopover && templateType === TemplateTypeEnum.systemPlugin && (
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              _hover={{
+                color: 'primary.600'
+              }}
+              fontSize={'sm'}
+              onClick={() => router.push('/toolkit/tools')}
+              gap={1}
+              ml={4}
+            >
+              <Box>{t('app:toolkit_more_plugins')}</Box>
+              <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+            </Flex>
+          )}
         </Flex>
       )}
       {/* paths */}

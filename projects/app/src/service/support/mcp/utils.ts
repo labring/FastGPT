@@ -18,7 +18,7 @@ import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core
 import {
   getPluginRunUserQuery,
   updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/service/core/app/plugin/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import {
   ChatItemValueTypeEnum,

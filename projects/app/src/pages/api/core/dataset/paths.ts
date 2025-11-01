@@ -3,7 +3,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type {
   GetPathProps,
   ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type.d';
+} from '@fastgpt/global/common/parentFolder/type';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
