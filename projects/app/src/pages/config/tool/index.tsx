@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolRow from '@/pageComponents/config/tool/ToolRow';
@@ -24,7 +24,9 @@ import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/ad
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
 );
-const AppToolConfig = dynamic(() => import('@/pageComponents/config/tool/AppToolConfigModal'));
+const WorkflowToolConfig = dynamic(
+  () => import('@/pageComponents/config/tool/WorkflowToolConfigModal')
+);
 const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
 
 const ToolProvider = () => {
@@ -78,7 +80,7 @@ const ToolProvider = () => {
                 {
                   label: t('app:toolkit_open_marketplace'),
                   onClick: () => {
-                    router.push('/config/tools/marketplace');
+                    router.push('/config/tool/marketplace');
                   }
                 },
                 {
@@ -109,11 +111,11 @@ const ToolProvider = () => {
         fontWeight={'medium'}
         color={'myGray.600'}
       >
-        <Box w={1.5 / 10} pl={8}>
+        <Box w={2 / 10} pl={8}>
           {t('app:toolkit_name')}
         </Box>
         <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
-        <Box w={2 / 10}>{t('common:Intro')}</Box>
+        <Box w={2.5 / 10}>{t('common:Intro')}</Box>
         <Box w={1 / 10} pl={6}>
           {t('app:toolkit_status')}
         </Box>
@@ -128,7 +130,6 @@ const ToolProvider = () => {
             color={'myGray.300'}
           />
         </Box>
-        <Box w={1 / 10}>{t('app:toolkit_call_points')}</Box>
         <Box w={1 / 10} display={'flex'} alignItems={'center'}>
           {t('app:toolkit_system_key')}
           <QuestionTip
@@ -191,7 +192,7 @@ const ToolProvider = () => {
         <ImportPluginModal onClose={onCloseImportModal} onSuccess={refreshTools} />
       )}
       {editingToolId !== undefined &&
-        splitCombineToolId(editingToolId).source === WorkflowToolSourceEnum.systemTool && (
+        splitCombineToolId(editingToolId).source === AppToolSourceEnum.systemTool && (
           <SystemToolConfigModal
             toolId={editingToolId}
             onSuccess={refreshTools}
@@ -199,8 +200,8 @@ const ToolProvider = () => {
           />
         )}
       {editingToolId !== undefined &&
-        splitCombineToolId(editingToolId).source !== WorkflowToolSourceEnum.systemTool && (
-          <AppToolConfig
+        splitCombineToolId(editingToolId).source !== AppToolSourceEnum.systemTool && (
+          <WorkflowToolConfig
             toolId={editingToolId}
             onSuccess={refreshTools}
             onClose={() => setEditingToolId(undefined)}

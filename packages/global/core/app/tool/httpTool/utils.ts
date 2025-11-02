@@ -3,7 +3,7 @@ import type { PathDataType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { type HttpToolConfigType } from '../../type';
-import { WorkflowToolSourceEnum } from '../constants';
+import { AppToolSourceEnum } from '../constants';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
@@ -66,7 +66,7 @@ export const getHTTPToolRuntimeNode = ({
     intro: tool.description,
     toolConfig: {
       httpTool: {
-        toolId: `${WorkflowToolSourceEnum.http}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.http}-${parentId}/${tool.name}`
       }
     },
     inputs: jsonSchema2NodeInput(tool.inputSchema),

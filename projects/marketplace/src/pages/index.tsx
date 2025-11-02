@@ -5,10 +5,9 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
-import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
-import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
+import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { ToolListItem } from '@/pages/api/tool/list';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -149,7 +148,7 @@ const ToolkitMarketplace = () => {
     }
   );
 
-  const { data: toolTags } = useRequest2(getToolTags, {
+  const { data: toolTags = [] } = useRequest2(getToolTags, {
     manual: false
   });
 
@@ -249,7 +248,7 @@ const ToolkitMarketplace = () => {
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex mt={2} pt={6} alignItems={'center'}>
+              <Flex mt={2} pt={4} alignItems={'center'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
@@ -323,8 +322,8 @@ const ToolkitMarketplace = () => {
                     </Flex>
                   )}
                 </Flex>
-                <PluginTagFilter
-                  tags={toolTags || []}
+                <ToolTagFilterBox
+                  tags={toolTags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />
@@ -413,8 +412,8 @@ const ToolkitMarketplace = () => {
                 transition={'opacity 0.15s ease-out'}
                 pointerEvents={showCompactSearch ? 'none' : 'auto'}
               >
-                <PluginTagFilter
-                  tags={toolTags || []}
+                <ToolTagFilterBox
+                  tags={toolTags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />

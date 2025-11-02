@@ -8,12 +8,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, useReducer } from 'react';
 import { useDebounce, useMount } from 'ahooks';
-import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
-import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
-import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
+import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
@@ -61,6 +60,28 @@ const useSearchParams = () => {
   return { searchText, tagIds, updateParams };
 };
 
+type OperatingAction = { type: 'TRY_ADD'; toolId: string } | { type: 'REMOVE'; toolId: string };
+
+const operatingReducer = (state: Set<string>, action: OperatingAction): Set<string> => {
+  if (action.type === 'TRY_ADD') {
+    if (state.has(action.toolId)) {
+      return state;
+    }
+    const newSet = new Set(state);
+    newSet.add(action.toolId);
+    return newSet;
+  }
+  if (action.type === 'REMOVE') {
+    if (!state.has(action.toolId)) {
+      return state;
+    }
+    const newSet = new Set(state);
+    newSet.delete(action.toolId);
+    return newSet;
+  }
+  return state;
+};
+
 const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -71,7 +92,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { searchText, tagIds, updateParams } = useSearchParams();
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
+  const [operatingToolIds, dispatchOperating] = useReducer(operatingReducer, new Set<string>());
+  const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   // Type filter
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
@@ -157,44 +179,70 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { runAsync: handleInstallTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
-      setOperatingToolId(tool.id);
-      await intallPluginWithUrl({
-        downloadUrls: [tool.downloadUrl]
-      });
-      setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: true }));
+
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const operationPromise = (async () => {
+        dispatchOperating({ type: 'TRY_ADD', toolId: tool.id });
+
+        try {
+          await intallPluginWithUrl({
+            downloadUrls: [tool.downloadUrl || '']
+          });
+          setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: true }));
+
+          if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
+          }
+        } finally {
+          dispatchOperating({ type: 'REMOVE', toolId: tool.id });
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+
+      await operationPromise;
     },
     {
-      manual: true,
-      onSuccess: async () => {
-        if (selectedTool) {
-          setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
-        }
-      },
-      onFinally: () => {
-        setOperatingToolId(null);
-      }
+      manual: true
     }
   );
   const { runAsync: handleDeleteTool } = useRequest2(
     async (tool: ToolCardItemType) => {
-      setOperatingToolId(tool.id);
-      await deletePkgPlugin({ toolId: tool.id });
-      setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: false }));
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const operationPromise = (async () => {
+        dispatchOperating({ type: 'TRY_ADD', toolId: tool.id });
+
+        try {
+          await deletePkgPlugin({ toolId: tool.id });
+          setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: false }));
+
+          if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
+          }
+        } finally {
+          dispatchOperating({ type: 'REMOVE', toolId: tool.id });
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+
+      await operationPromise;
     },
     {
-      manual: true,
-      onSuccess: async () => {
-        if (selectedTool) {
-          setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
-        }
-      },
-      onFinally: () => {
-        setOperatingToolId(null);
-      }
+      manual: true
     }
   );
 
-  // 使用 IntersectionObserver 监听英雄区域是否在视窗中
   const heroSectionRef = useRef<HTMLDivElement>(null);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   useEffect(() => {
@@ -251,7 +299,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push('/config/tools')}
+          onClick={() => router.push('/config/tool')}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -304,7 +352,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push('/config/tools')}
+            onClick={() => router.push('/config/tool')}
             position={'absolute'}
             top={4}
             zIndex={'999'}
@@ -312,26 +360,28 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           />
           {!showCompactSearch && (
             <Flex gap={3} position={'absolute'} right={4} top={4}>
-              <Button
-                onClick={() => {
-                  const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
-                  if (url) {
-                    window.open(url, '_blank');
-                  }
-                }}
-              >
-                {t('app:toolkit_contribute_resource')}
-              </Button>
-              <Button
-                variant={'whiteBase'}
-                onClick={() => {
-                  if (feConfigs?.submitPluginRequestUrl) {
+              {feConfigs?.docUrl && (
+                <Button
+                  onClick={() => {
+                    const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
+                    if (url) {
+                      window.open(url, '_blank');
+                    }
+                  }}
+                >
+                  {t('app:toolkit_contribute_resource')}
+                </Button>
+              )}
+              {feConfigs?.submitPluginRequestUrl && (
+                <Button
+                  variant={'whiteBase'}
+                  onClick={() => {
                     window.open(feConfigs.submitPluginRequestUrl);
-                  }
-                }}
-              >
-                {t('app:toolkit_marketplace_submit_request')}
-              </Button>
+                  }}
+                >
+                  {t('app:toolkit_marketplace_submit_request')}
+                </Button>
+              )}
             </Flex>
           )}
 
@@ -350,7 +400,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex mt={2} pt={6} alignItems={'center'}>
+              <Flex mt={2} pt={4} alignItems={'center'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
@@ -416,7 +466,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     </Flex>
                   )}
                 </Flex>
-                <PluginTagFilter
+                <ToolTagFilterBox
                   tags={allTags}
                   selectedTagIds={tagIds}
                   onTagSelect={handleTagSelect}
@@ -499,11 +549,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
               userSelect={'none'}
             >
-              <PluginTagFilter
-                tags={allTags}
-                selectedTagIds={tagIds}
-                onTagSelect={handleTagSelect}
-              />
+              <Box flex={'1'}>
+                <ToolTagFilterBox
+                  tags={allTags}
+                  selectedTagIds={tagIds}
+                  onTagSelect={handleTagSelect}
+                />
+              </Box>
               <MyMenu
                 trigger="hover"
                 Button={
@@ -543,7 +595,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     <ToolCard
                       key={tool.id}
                       item={tool}
-                      isLoading={operatingToolId === tool.id}
+                      isLoading={operatingToolIds.has(tool.id)}
                       mode="admin"
                       onClickButton={(installed) => {
                         if (installed) {
@@ -576,7 +628,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               handleInstallTool(selectedTool);
             }
           }}
-          isLoading={!!operatingToolId}
+          isLoading={operatingToolIds.has(selectedTool.id)}
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />

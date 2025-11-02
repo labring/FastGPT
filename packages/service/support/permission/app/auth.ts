@@ -14,7 +14,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -31,7 +31,7 @@ export const authPluginByTmbId = async ({
   per: PermissionValueType;
 }) => {
   const { source } = splitCombineToolId(appId);
-  if (source === WorkflowToolSourceEnum.personal) {
+  if (source === AppToolSourceEnum.personal) {
     const { app } = await authAppByTmbId({
       appId,
       tmbId,

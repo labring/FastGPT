@@ -4,7 +4,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './tool/controller';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -59,7 +59,7 @@ export async function rewriteAppWorkflowToDetail({
             versionId: node.version,
             lang
           }),
-          ...(source === WorkflowToolSourceEnum.personal
+          ...(source === AppToolSourceEnum.personal
             ? [
                 authAppByTmbId({
                   tmbId: ownerTmbId,

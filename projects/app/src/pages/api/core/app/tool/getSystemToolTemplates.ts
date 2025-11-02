@@ -8,14 +8,13 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
+import { getSystemToolsWithInstalled } from '@fastgpt/service/core/app/tool/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
   parentId?: ParentIdType;
+  tags?: string[];
 };
 
 async function handler(
@@ -23,53 +22,31 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, isRoot } = await authCert({ req, authToken: true });
-  const { searchKey, parentId } = req.body;
+  const { searchKey, parentId, tags } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const plugins = await getSystemTools();
+  const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
 
-  const records = await MongoTeamInstalledPlugin.find({ teamId }).lean();
-  const installedSet = new Set<string>();
-  const uninstalledSet = new Set<string>();
-
-  records.forEach((record) => {
-    if (record.installed) {
-      installedSet.add(record.pluginId);
-    } else {
-      uninstalledSet.add(record.pluginId);
-    }
-  });
-
-  return plugins
-    .filter((plugin) => {
-      if (plugin.parentId) return true;
-      if (plugin.status !== PluginStatusEnum.Normal) {
-        return false;
-      }
-      if (uninstalledSet.has(plugin.id)) {
-        return false;
-      }
-      if (installedSet.has(plugin.id)) {
-        return true;
-      }
-      // 管理员用户从插件市场安装后，资源库默认安装，减少重复安装
-      if (isRoot) {
-        return true;
-      }
-
-      return !!plugin.defaultInstalled;
+  return tools
+    .filter((tool) => {
+      if (tool.parentId) return true;
+      return !!tool.installed;
     })
-    .map<NodeTemplateListItemType>((plugin) => ({
-      ...plugin,
-      parentId: plugin.parentId === undefined ? null : plugin.parentId,
-      templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-      flowNodeType: plugin.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-      name: parseI18nString(plugin.name, lang),
-      intro: parseI18nString(plugin.intro ?? '', lang),
-      instructions: parseI18nString(plugin.userGuide ?? '', lang),
-      toolDescription: plugin.toolDescription,
-      toolTags: plugin.toolTags
+    .filter((tool) => {
+      if (!tags || tags.length === 0) return true;
+      return tool.toolTags?.some((toolTag) => tags.includes(toolTag));
+    })
+    .map<NodeTemplateListItemType>((tool) => ({
+      ...tool,
+      parentId: tool.parentId === undefined ? null : tool.parentId,
+      templateType: tool.templateType ?? FlowNodeTemplateTypeEnum.other,
+      flowNodeType: tool.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      name: parseI18nString(tool.name, lang),
+      intro: parseI18nString(tool.intro ?? '', lang),
+      instructions: parseI18nString(tool.userGuide ?? '', lang),
+      toolDescription: tool.toolDescription,
+      toolTags: tool.toolTags
     }))
     .filter((item) => {
       if (searchKey) {

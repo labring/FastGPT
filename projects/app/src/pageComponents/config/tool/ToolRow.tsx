@@ -29,41 +29,6 @@ const ToolRow = ({
 }) => {
   const { t, i18n } = useTranslation();
 
-  // Tag compute
-  const tagsContainerRef = useRef<HTMLDivElement>(null);
-  const [visibleTagsCount, setVisibleTagsCount] = useState(tool.tags?.length || 0);
-  useEffect(() => {
-    const calculate = () => {
-      const container = tagsContainerRef.current;
-      if (!container || !tool.tags?.length) return;
-
-      const containerWidth = container.offsetWidth;
-      const tagElements = container.querySelectorAll('[data-tag-item]');
-      if (!containerWidth || !tagElements.length) return;
-
-      let totalWidth = 0;
-      let count = 0;
-
-      for (let i = 0; i < tagElements.length; i++) {
-        const width = totalWidth + (tagElements[i] as HTMLElement).offsetWidth + (i > 0 ? 4 : 0);
-        if (width + (i < tagElements.length - 1 ? 64 : 0) > containerWidth) break;
-        totalWidth = width;
-        count++;
-      }
-
-      setVisibleTagsCount(Math.max(1, count));
-    };
-
-    const timer = setTimeout(calculate, 0);
-    const observer = new ResizeObserver(calculate);
-    if (tagsContainerRef.current) observer.observe(tagsContainerRef.current);
-
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, [tool.tags?.length]);
-
   const { runAsync: updateSystemTool, loading } = useRequest2(
     async (updateFields: {
       defaultInstalled?: boolean;
@@ -114,7 +79,7 @@ const ToolRow = ({
         setEditingToolId(tool.id);
       }}
     >
-      <Box display={'flex'} w={1.5 / 10} pl={2}>
+      <Box display={'flex'} w={2 / 10} pl={2}>
         <Flex
           h={'full'}
           rounded={'xs'}
@@ -145,8 +110,8 @@ const ToolRow = ({
       </Box>
       <Box w={1.5 / 10}>
         {tool.tags && tool.tags.length > 0 ? (
-          <Flex gap={1} overflow={'hidden'} whiteSpace={'nowrap'} ref={tagsContainerRef}>
-            {tool.tags.slice(0, visibleTagsCount).map((tag, index) => (
+          <Flex gap={1} overflow={'hidden'} whiteSpace={'nowrap'}>
+            {tool.tags.map((tag, index) => (
               <Box
                 key={index}
                 as={'span'}
@@ -162,20 +127,6 @@ const ToolRow = ({
                 {tag}
               </Box>
             ))}
-            {tool.tags.length > visibleTagsCount && (
-              <Box
-                as={'span'}
-                bg={'myGray.100'}
-                px={2}
-                py={1}
-                color={'myGray.700'}
-                borderRadius={'8px'}
-                fontSize={'xs'}
-                flexShrink={0}
-              >
-                +{tool.tags.length - visibleTagsCount}
-              </Box>
-            )}
           </Flex>
         ) : (
           <Box as={'span'} color={'myGray.500'} fontSize={'xs'}>
@@ -183,8 +134,8 @@ const ToolRow = ({
           </Box>
         )}
       </Box>
-      <Box w={2 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-        {tool?.intro}
+      <Box w={2.5 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+        {tool?.intro || '-'}
       </Box>
       <Box w={1 / 10} pl={6}>
         <Box
@@ -244,9 +195,6 @@ const ToolRow = ({
         ) : (
           <Box pl={4}>-</Box>
         )}
-      </Box>
-      <Box w={1 / 10} pl={4}>
-        {tool?.associatedPluginId ? tool?.currentCost ?? 0 : '-'}
       </Box>
       <Box w={1 / 10}>
         {!!tool?.hasSecretInput ? (

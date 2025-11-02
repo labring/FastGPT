@@ -28,6 +28,8 @@ import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/Co
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
@@ -47,9 +49,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { t } = useTranslation();
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const {
-    data: templates = [],
+    data: rawTemplates = [],
     runAsync: loadTemplates,
     loading: isLoading
   } = useRequest2(
@@ -70,6 +73,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       errorToast: t('common:core.module.templates.Load plugin error')
     }
   );
+
+  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
+
+  const templates = useMemo(() => {
+    if (selectedTagIds.length === 0) {
+      return rawTemplates;
+    }
+    return rawTemplates.filter((template) => {
+      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
+    });
+  }, [rawTemplates, selectedTagIds]);
 
   const { data: paths = [] } = useRequest2(
     () => {
@@ -116,6 +132,16 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           />
         </Box>
       </Box>
+      {/* Tag filter */}
+      {allTags.length > 0 && (
+        <Box mt={3} px={[3, 6]}>
+          <ToolTagFilterBox
+            tags={allTags}
+            selectedTagIds={selectedTagIds}
+            onTagSelect={setSelectedTagIds}
+          />
+        </Box>
+      )}
       {/* route components */}
       {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
@@ -124,7 +150,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
         <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
-          <RenderList templates={templates} setParentId={onUpdateParentId} {...props} />
+          <RenderList
+            templates={templates}
+            setParentId={onUpdateParentId}
+            allTags={allTags}
+            {...props}
+          />
         </Box>
       </MyBox>
     </MyModal>
@@ -139,10 +170,12 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig = {}
+  chatConfig = {},
+  allTags
 }: Props & {
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
+  allTags: Array<{ tagId: string; tagName: any }>;
 }) {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
