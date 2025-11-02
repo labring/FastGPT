@@ -26,7 +26,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { pathData2ToolList } from '@fastgpt/global/core/app/httpTools/utils';
+import { pathData2ToolList } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import {

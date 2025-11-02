@@ -19,13 +19,9 @@ import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import type {
-  AppDetailType,
-  AppSchema,
-  McpToolConfigType,
-  HttpToolConfigType
-} from '../../app/type';
-import type { ParentIdType } from 'common/parentFolder/type';
+import type { AppDetailType, AppSchema, HttpToolConfigType } from '../../app/type';
+import type { McpToolConfigType } from '../../app/tool/mcpTool/type';
+import type { ParentIdType } from '../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import type { StoreSecretValueType } from '../../../common/secret/type';

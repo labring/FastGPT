@@ -28,7 +28,7 @@ import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
-import type { getSystemPluginsQuery } from '@/pages/api/core/app/plugin/list';
+import type { getSystemPluginsQuery } from '@/pages/api/core/app/tool/list';
 import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import {
   delAdminSystemTool,

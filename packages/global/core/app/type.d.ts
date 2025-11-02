@@ -115,12 +115,6 @@ export type AppSimpleEditFormType = {
   chatConfig: AppChatConfigType;
 };
 
-export type McpToolConfigType = {
-  name: string;
-  description: string;
-  inputSchema: JSONSchemaInputType;
-};
-
 export type HttpToolConfigType = {
   name: string;
   description: string;

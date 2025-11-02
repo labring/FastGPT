@@ -1,14 +1,18 @@
 import { getToolList } from '@/service/tool/data';
-import { ToolDetailSchema } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ToolDetailSchema, type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getPkgdownloadURL, getReadmeURL } from '@/service/s3';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ToolDetailResponse } from '@fastgpt/global/core/app/plugin/type';
 
 export type ToolDetailQuery = {
   toolId: string;
 };
 export type ToolDetailBody = {};
+
+export type ToolDetailResponse = {
+  tools: Array<ToolDetailType & { readme: string }>;
+  downloadUrl: string;
+};
 
 async function handler(
   req: ApiRequestProps<ToolDetailBody, ToolDetailQuery>,

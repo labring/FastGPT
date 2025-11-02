@@ -1,5 +1,6 @@
 import type { ToolListBody, ToolListResponse } from '@/pages/api/tool/list';
-import type { GetToolTagsResponse, ToolDetailResponse } from '@fastgpt/global/core/app/plugin/type';
+import type { ToolDetailResponse } from '@/pages/api/tool/detail';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 export const getMarketplaceTools = async (body: ToolListBody) => {
   const res = await fetch('api/tool/list', {
@@ -19,5 +20,5 @@ export const getMarketplaceToolDetail = async ({ toolId }: { toolId: string }) =
 
 export const getToolTags = async () => {
   const res = await fetch('api/tool/tags', { method: 'GET' }).then((res) => res.json());
-  return res.data as Promise<GetToolTagsResponse>;
+  return res.data as Promise<Array<SystemPluginToolTagType>>;
 };

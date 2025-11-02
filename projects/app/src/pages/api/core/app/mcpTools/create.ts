@@ -4,10 +4,10 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type CreateAppBody, onCreateApp } from '../create';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';

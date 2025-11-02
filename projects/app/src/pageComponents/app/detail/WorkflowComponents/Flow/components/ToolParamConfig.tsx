@@ -6,7 +6,7 @@ import { Box, Button } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
+import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import SecretInputModal, {
   type ToolParamsFormType
 } from '@/pageComponents/app/plugin/SecretInputModal';
@@ -28,7 +28,7 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
     }
 
     return t('workflow:tool_active_config_type', {
-      type: t(SystemToolInputTypeMap[val.type]?.text as any)
+      type: t(SystemToolSecretInputTypeMap[val.type]?.text as any)
     });
   }, [inputConfig?.value, t]);
 

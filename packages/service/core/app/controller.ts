@@ -8,7 +8,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { type ClientSession } from '../../common/mongo';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
@@ -45,7 +45,7 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
         input.inputList?.forEach((inputItem) => {
           if (
             inputItem.inputType === 'secret' &&
-            input.value?.type === SystemToolInputTypeEnum.manual &&
+            input.value?.type === SystemToolSecretInputTypeEnum.manual &&
             input.value?.value
           ) {
             input.value.value[inputItem.key] = encryptSecretValue(input.value.value[inputItem.key]);

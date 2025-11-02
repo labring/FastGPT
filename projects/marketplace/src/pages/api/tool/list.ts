@@ -1,10 +1,9 @@
 import { getToolList } from '@/service/tool/data';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { ToolSimpleSchema } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ToolSimpleSchema, type ToolSimpleType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
 import { getPkgdownloadURL } from '@/service/s3';
 
 export type ToolListQuery = {};
@@ -12,6 +11,11 @@ export type ToolListBody = PaginationProps<{
   searchKey?: string;
   tags?: string[];
 }>;
+
+export type ToolListItem = ToolSimpleType & {
+  downloadUrl: string;
+};
+
 export type ToolListResponse = PaginationResponse<ToolListItem>;
 
 async function handler(

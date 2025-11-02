@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { DeletePkgPluginQueryType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
 export type GetUploadURLQuery = DeletePkgPluginQueryType;
@@ -28,7 +28,7 @@ async function handler(
     return Promise.reject(result.body);
   }
 
-  const pluginId = `${PluginSourceEnum.systemTool}-${toolId}`;
+  const pluginId = `${WorkflowToolSourceEnum.systemTool}-${toolId}`;
   await MongoTeamInstalledPlugin.deleteMany({ pluginId });
 
   return result.body;

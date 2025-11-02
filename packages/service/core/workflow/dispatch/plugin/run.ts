@@ -1,9 +1,7 @@
-import {
-  getPluginInputsFromStoreNodes,
-  splitCombinePluginId
-} from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -26,7 +24,7 @@ import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
-import type { WorkflowToolRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
@@ -53,12 +51,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return getNodeErrResponse({ error: 'pluginId can not find' });
   }
 
-  let plugin: WorkflowToolRuntimeType | undefined;
+  let plugin: AppToolRuntimeType | undefined;
 
   try {
     // Adapt <= 4.10 system tool
-    const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
-    if (source === PluginSourceEnum.systemTool) {
+    const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
+    if (source === WorkflowToolSourceEnum.systemTool) {
       return await dispatchRunTool({
         ...props,
         node: {
@@ -149,7 +147,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         },
         variables: runtimeVariables,
         query: getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(plugin.nodes),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
           variables: runtimeVariables,
           files
         }).value,

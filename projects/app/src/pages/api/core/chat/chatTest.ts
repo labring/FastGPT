@@ -38,7 +38,7 @@ import {
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
         return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(nodes),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
