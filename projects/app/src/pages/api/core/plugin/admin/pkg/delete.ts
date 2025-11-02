@@ -33,7 +33,6 @@ async function handler(
   }
 
   const pluginId = `${AppToolSourceEnum.systemTool}-${toolId}`;
-  await MongoTeamInstalledPlugin.deleteMany({ pluginId });
 
   await mongoSessionRun(async (session) => {
     await MongoTeamInstalledPlugin.deleteMany({ pluginId }, { session });

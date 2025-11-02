@@ -208,7 +208,6 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             templates={templates}
             type={templateType}
             setParentId={onUpdateParentId}
-            allTags={allTags}
             {...props}
           />
         </Box>
@@ -226,14 +225,11 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig,
-  selectedModel,
-  allTags
+  chatConfig
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
-  allTags: Array<{ tagId: string; tagName: any }>;
 }) {
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
