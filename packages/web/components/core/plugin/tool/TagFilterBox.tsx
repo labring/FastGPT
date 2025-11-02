@@ -2,17 +2,18 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
+import React, { useMemo } from 'react';
 
-const PluginTagFilter = ({
+const ToolTagFilterBox = ({
   tags,
   selectedTagIds,
   onTagSelect,
-  isPopover = false
+  size = 'base'
 }: {
   tags: SystemPluginToolTagType[];
   selectedTagIds: string[];
   onTagSelect: (tagIds: string[]) => void;
-  isPopover?: boolean;
+  size?: 'base' | 'sm';
 }) => {
   const { t, i18n } = useTranslation();
 
@@ -24,21 +25,34 @@ const PluginTagFilter = ({
     }
   };
 
-  const tagBaseStyles = {
-    px: isPopover ? 2 : 3,
-    py: isPopover ? 1 : 1.5,
-    fontSize: '12px',
-    fontWeight: 'medium',
-    color: 'myGray.700',
-    border: '1px solid',
-    borderColor: 'myGray.200',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    cursor: 'pointer'
-  };
+  const tagBaseStyles = useMemo(() => {
+    const sizeStyles = {
+      base: {
+        px: 3,
+        py: 1.5,
+        fontSize: 'sm'
+      },
+      sm: {
+        px: 2,
+        py: 1,
+        fontSize: '11px'
+      }
+    };
+
+    return {
+      ...sizeStyles[size],
+      fontWeight: 'medium',
+      color: 'myGray.700',
+      border: '1px solid',
+      borderColor: 'myGray.200',
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
+      cursor: 'pointer'
+    };
+  }, [size]);
 
   return (
-    <>
+    <Flex alignItems={'center'} userSelect={'none'}>
       <Box
         {...tagBaseStyles}
         rounded={'sm'}
@@ -55,8 +69,7 @@ const PluginTagFilter = ({
         flexWrap="nowrap"
         css={{
           scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          '&::-webkit-scrollbar': { display: 'none' }
+          msOverflowStyle: 'none'
         }}
       >
         {tags.map((tag) => {
@@ -74,8 +87,8 @@ const PluginTagFilter = ({
           );
         })}
       </Flex>
-    </>
+    </Flex>
   );
 };
 
-export default PluginTagFilter;
+export default React.memo(ToolTagFilterBox);

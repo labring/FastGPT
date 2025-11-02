@@ -52,6 +52,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { MongoTeamInstalledPlugin } from '../../plugin/schema/teamInstalledPluginSchema';
 
 type ChildAppType = AppToolTemplateItemType & {
   teamId?: string;
@@ -62,6 +63,52 @@ type ChildAppType = AppToolTemplateItemType & {
 };
 
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
+
+export const getSystemToolsWithInstalled = async ({
+  teamId,
+  isRoot
+}: {
+  teamId: string;
+  isRoot: boolean;
+}) => {
+  const [tools, { installedSet, uninstalledSet }] = await Promise.all([
+    getSystemTools(),
+    MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')
+      .lean()
+      .then((res) => {
+        const installedSet = new Set<string>();
+        const uninstalledSet = new Set<string>();
+        res.forEach((item) => {
+          if (item.installed) {
+            installedSet.add(item.pluginId);
+          } else {
+            uninstalledSet.add(item.pluginId);
+          }
+        });
+        return { installedSet, uninstalledSet };
+      })
+  ]);
+
+  return tools.map((tool) => {
+    const installed = (() => {
+      if (installedSet.has(tool.id)) {
+        return true;
+      }
+      if (isRoot && !uninstalledSet.has(tool.id)) {
+        return true;
+      }
+      if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
+        return true;
+      }
+      return false;
+    })();
+
+    return {
+      ...tool,
+      installed
+    };
+  });
+};
 
 export const getSystemToolByIdAndVersionId = async (
   pluginId: string,

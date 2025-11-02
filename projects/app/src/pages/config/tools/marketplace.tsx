@@ -10,10 +10,9 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect, useCallback, useReducer } from 'react';
 import { useDebounce, useMount } from 'ahooks';
-import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
-import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
-import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
+import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
@@ -401,7 +400,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex mt={2} pt={6} alignItems={'center'}>
+              <Flex mt={2} pt={4} alignItems={'center'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
@@ -467,7 +466,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     </Flex>
                   )}
                 </Flex>
-                <PluginTagFilter
+                <ToolTagFilterBox
                   tags={allTags}
                   selectedTagIds={tagIds}
                   onTagSelect={handleTagSelect}
@@ -550,11 +549,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
               userSelect={'none'}
             >
-              <PluginTagFilter
-                tags={allTags}
-                selectedTagIds={tagIds}
-                onTagSelect={handleTagSelect}
-              />
+              <Box flex={'1'}>
+                <ToolTagFilterBox
+                  tags={allTags}
+                  selectedTagIds={tagIds}
+                  onTagSelect={handleTagSelect}
+                />
+              </Box>
               <MyMenu
                 trigger="hover"
                 Button={

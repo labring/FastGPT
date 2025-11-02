@@ -32,7 +32,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     onUpdateParentId,
     selectedTagIds,
     setSelectedTagIds,
-    allTags
+    toolTags
   } = useNodeTemplates();
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
@@ -91,14 +91,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           onUpdateParentId={onUpdateParentId}
           selectedTagIds={selectedTagIds}
           setSelectedTagIds={setSelectedTagIds}
-          allTags={allTags}
+          toolTags={toolTags}
         />
         <NodeTemplateList
           onAddNode={onAddNode}
           templates={templates}
           templateType={templateType}
           onUpdateParentId={onUpdateParentId}
-          allTags={allTags}
         />
       </MyBox>
     </>

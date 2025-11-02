@@ -13,17 +13,16 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
-import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
-import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
+import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
-import type { GetTeamSystemPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
+import type { GetTeamPluginToolListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -69,7 +68,7 @@ const ToolKitProvider = () => {
   });
 
   // TODO: 把 filter 放到后端
-  const [tools, setTools] = useState<GetTeamSystemPluginListResponseType>([]);
+  const [tools, setTools] = useState<GetTeamPluginToolListResponseType>([]);
   const { loading: loadingTools } = useRequest2(() => getTeamSystemPluginList({ type: 'tool' }), {
     manual: false,
     onSuccess(data) {
@@ -155,34 +154,42 @@ const ToolKitProvider = () => {
         isLoading={loadingTools && displayTools.length === 0}
       >
         <Box px={8} flexShrink={0}>
-          {feConfigs?.docUrl && (
-            <Button
-              position={'absolute'}
-              right={8}
-              top={8}
-              onClick={() =>
-                window.open(
-                  getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
-                  '_blank'
-                )
-              }
+          <Flex alignItems={'center'}>
+            <Box
+              mt={8}
+              mb={4}
+              fontSize={'20px'}
+              fontWeight={'medium'}
+              color={'myGray.900'}
+              flex={'1 0 0'}
             >
-              {t('app:toolkit_contribute_resource')}
-            </Button>
-          )}
-          {feConfigs?.submitPluginRequestUrl && (
-            <Button
-              variant={'whiteBase'}
-              onClick={() => {
-                window.open(feConfigs.submitPluginRequestUrl);
-              }}
-            >
-              {t('app:toolkit_marketplace_submit_request')}
-            </Button>
-          )}
-          <Box mt={8} mb={4} fontSize={'20px'} fontWeight={'medium'} color={'black'}>
-            {t('common:navbar.Tools')}
-          </Box>
+              {t('common:navbar.Tools')}
+            </Box>
+            {feConfigs?.docUrl && (
+              <Button
+                mr={4}
+                onClick={() =>
+                  window.open(
+                    getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
+                    '_blank'
+                  )
+                }
+              >
+                {t('app:toolkit_contribute_resource')}
+              </Button>
+            )}
+            {feConfigs?.submitPluginRequestUrl && (
+              <Button
+                variant={'whiteBase'}
+                onClick={() => {
+                  window.open(feConfigs.submitPluginRequestUrl);
+                }}
+              >
+                {t('app:toolkit_marketplace_submit_request')}
+              </Button>
+            )}
+          </Flex>
+          {/* Tags */}
           <Flex mt={2} mb={4} alignItems={'center'}>
             <Flex alignItems={'center'}>
               <Flex
@@ -256,11 +263,13 @@ const ToolKitProvider = () => {
                 )}
               </Flex>
             </Flex>
-            <PluginTagFilter
-              tags={tags}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={setSelectedTagIds}
-            />
+            <Box flex={'1'}>
+              <ToolTagFilterBox
+                tags={tags}
+                selectedTagIds={selectedTagIds}
+                onTagSelect={setSelectedTagIds}
+              />
+            </Box>
             <Box w={40} />
             <MyMenu
               trigger="hover"
@@ -324,16 +333,20 @@ const ToolKitProvider = () => {
             </Grid>
           ) : (
             <VStack>
-              {!loadingTools && <EmptyTip pb={4} />}
-              {userInfo?.username === 'root' && (
-                <Button
-                  onClick={() => {
-                    router.push('/config/tools');
-                  }}
-                  w={'160px'}
-                >
-                  {t('app:click_to_config')}
-                </Button>
+              {!loadingTools && (
+                <>
+                  <EmptyTip pb={4} />
+                  {userInfo?.username === 'root' && (
+                    <Button
+                      onClick={() => {
+                        router.push('/config/tools');
+                      }}
+                      w={'160px'}
+                    >
+                      {t('app:click_to_config')}
+                    </Button>
+                  )}
+                </>
               )}
             </VStack>
           )}

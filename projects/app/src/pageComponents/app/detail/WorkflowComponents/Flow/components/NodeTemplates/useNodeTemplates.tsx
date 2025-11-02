@@ -20,13 +20,17 @@ export const useNodeTemplates = () => {
   const searchKeyLock = useRef(false);
 
   const [parentId, setParentId] = useState<ParentIdType>('');
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const { basicNodeTemplates, hasToolNode, getNodeList, nodeAmount } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
+
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { data: toolTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
 
   const { data: basicNodes } = useRequest2(
     async () => {
@@ -74,18 +78,20 @@ export const useNodeTemplates = () => {
   );
 
   const {
-    data: rawTeamAndSystemApps,
+    data: teamAndSystemTools,
     loading: templatesIsLoading,
     runAsync: loadNodeTemplates
   } = useRequest2(
     async ({
       parentId,
       type = templateType,
-      searchVal
+      searchVal,
+      tags
     }: {
       parentId?: ParentIdType;
       type?: TemplateTypeEnum;
       searchVal?: string;
+      tags?: string[];
     }) => {
       if (type === TemplateTypeEnum.teamApp) {
         // app, workflow-plugin, mcp
@@ -98,7 +104,8 @@ export const useNodeTemplates = () => {
         // systemTool
         return getAppToolTemplates({
           searchKey: searchVal,
-          parentId
+          parentId,
+          tags
         });
       }
     },
@@ -109,27 +116,13 @@ export const useNodeTemplates = () => {
     }
   );
 
-  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
-    manual: false
-  });
-
-  const teamAndSystemApps = useMemo(() => {
-    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.systemPlugin) {
-      return rawTeamAndSystemApps;
-    }
-    return rawTeamAndSystemApps?.filter((template) => {
-      // @ts-ignore
-      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
-    });
-  }, [rawTeamAndSystemApps, selectedTagIds, templateType]);
-
   useDebounceEffect(
     () => {
       if (searchKeyLock.current) {
         return;
       }
 
-      loadNodeTemplates({ parentId, searchVal: searchKey });
+      loadNodeTemplates({ parentId, searchVal: searchKey, tags: selectedTagIds });
     },
     [searchKey],
     {
@@ -151,18 +144,26 @@ export const useNodeTemplates = () => {
       searchKeyLock.current = true;
       setSearchKey('');
       setParentId('');
+      setSelectedTagIds([]);
       setTemplateType(type);
       loadNodeTemplates({ type });
     },
     [loadNodeTemplates]
+  );
+  const onUpdateSelectedTagIds = useCallback(
+    (tags: string[]) => {
+      setSelectedTagIds(tags);
+      loadNodeTemplates({ parentId, searchVal: searchKey, tags });
+    },
+    [loadNodeTemplates, parentId, searchKey]
   );
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
       return basicNodes || [];
     }
-    return teamAndSystemApps || [];
-  }, [basicNodes, teamAndSystemApps, templateType]);
+    return teamAndSystemTools || [];
+  }, [basicNodes, teamAndSystemTools, templateType]);
 
   return {
     templateType,
@@ -174,7 +175,7 @@ export const useNodeTemplates = () => {
     searchKey,
     setSearchKey,
     selectedTagIds,
-    setSelectedTagIds,
-    allTags
+    setSelectedTagIds: onUpdateSelectedTagIds,
+    toolTags
   };
 };

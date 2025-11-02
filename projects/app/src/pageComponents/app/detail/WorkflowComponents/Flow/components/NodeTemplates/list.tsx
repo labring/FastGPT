@@ -45,7 +45,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
-import type { PluginTagType } from '@fastgpt/global/core/app/plugin/type';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -53,7 +52,6 @@ export type TemplateListProps = {
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
   onUpdateParentId: (parentId: string) => void;
-  allTags: PluginTagType[];
 };
 
 const NodeTemplateListItem = ({
@@ -61,8 +59,7 @@ const NodeTemplateListItem = ({
   templateType,
   handleAddNode,
   isPopover,
-  onUpdateParentId,
-  allTags
+  onUpdateParentId
 }: {
   template: NodeTemplateListItemType;
   templateType: TemplateTypeEnum;
@@ -72,9 +69,8 @@ const NodeTemplateListItem = ({
   }) => void;
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
-  allTags: PluginTagType[];
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -177,32 +173,6 @@ const NodeTemplateListItem = ({
           >
             {t(template.name as any)}
           </Box>
-          {!isPopover && template.toolTags && template.toolTags.length > 0 && (
-            <Flex gap={1} mt={0.5} flexWrap={'wrap'}>
-              {template.toolTags.slice(0, 2).map((tagId) => {
-                const tag = allTags.find((t) => t.tagId === tagId);
-                if (!tag) return null;
-                return (
-                  <Box
-                    key={tagId}
-                    px={1}
-                    border={'1px solid'}
-                    borderRadius={'4px'}
-                    borderColor={'myGray.200'}
-                    fontSize={'10px'}
-                    color={'myGray.600'}
-                  >
-                    {t(parseI18nString(tag.tagName, i18n.language))}
-                  </Box>
-                );
-              })}
-              {template.toolTags.length > 2 && (
-                <Box px={1} fontSize={'10px'} color={'myGray.500'}>
-                  +{template.toolTags.length - 2}
-                </Box>
-              )}
-            </Flex>
-          )}
         </Box>
         {/* Folder right arrow */}
         {template.isFolder && (
@@ -243,8 +213,7 @@ const NodeTemplateList = ({
   isPopover = false,
   templates,
   templateType,
-  onUpdateParentId,
-  allTags
+  onUpdateParentId
 }: TemplateListProps) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -437,7 +406,7 @@ const NodeTemplateList = ({
     return data.filter(({ list }) => list.length > 0);
   }, [templateType, templates, t, i18n.language]);
 
-  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+  const NodeListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (
       <>
         {list.map((item) => {
@@ -476,7 +445,6 @@ const NodeTemplateList = ({
                     handleAddNode={handleAddNode}
                     isPopover={isPopover}
                     onUpdateParentId={onUpdateParentId}
-                    allTags={allTags}
                   />
                 ))}
               </Grid>
@@ -507,13 +475,13 @@ const NodeTemplateList = ({
                   <AccordionIcon />
                 </AccordionButton>
                 <AccordionPanel py={0}>
-                  <PluginListRender list={list} />
+                  <NodeListRender list={list} />
                 </AccordionPanel>
               </AccordionItem>
             ))}
           </>
         ) : (
-          <PluginListRender list={formatTemplatesArrayData?.[0]?.list} />
+          <NodeListRender list={formatTemplatesArrayData?.[0]?.list} />
         )}
       </Accordion>
     </Box>

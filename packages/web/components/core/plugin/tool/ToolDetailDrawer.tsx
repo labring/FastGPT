@@ -16,19 +16,19 @@ import {
   AccordionIcon
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import Avatar from '../../common/Avatar';
+import Avatar from '../../../common/Avatar';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import MyIconButton from '../../common/Icon/button';
-import LightRowTabs from '../../common/Tabs/LightRowTabs';
+import MyIconButton from '../../../common/Icon/button';
+import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type ToolCardItemType } from './ToolCard';
-import MyBox from '../../common/MyBox';
-import Markdown from '../../common/Markdown';
+import MyBox from '../../../common/MyBox';
+import Markdown from '../../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import MyIcon from '../../common/Icon';
+import MyIcon from '../../../common/Icon';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 
 type toolDetailType = ToolDetailType & {

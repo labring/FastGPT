@@ -11,8 +11,8 @@ import { getAppToolPaths } from '@/web/core/app/api/tool';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
-import type { PluginTagType } from '@fastgpt/global/core/app/plugin/type';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
@@ -29,9 +29,10 @@ export type NodeTemplateListHeaderProps = {
   setSearchKey: Dispatch<SetStateAction<string>>;
   onUpdateTemplateType: (type: TemplateTypeEnum) => void;
   onUpdateParentId: (parentId: string) => void;
-  selectedTagIds?: string[];
-  setSelectedTagIds?: Dispatch<SetStateAction<string[]>>;
-  allTags?: PluginTagType[];
+
+  selectedTagIds: string[];
+  setSelectedTagIds: (e: string[]) => any;
+  toolTags: SystemPluginToolTagType[];
 };
 
 const NodeTemplateListHeader = ({
@@ -45,7 +46,7 @@ const NodeTemplateListHeader = ({
   onUpdateParentId,
   selectedTagIds,
   setSelectedTagIds,
-  allTags
+  toolTags
 }: NodeTemplateListHeaderProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -156,37 +157,35 @@ const NodeTemplateListHeader = ({
               <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
             </Flex>
           )}
-          {!isPopover && templateType === TemplateTypeEnum.appTool && (
+          {templateType === TemplateTypeEnum.appTool && (
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
               _hover={{
                 color: 'primary.600'
               }}
-              fontSize={'sm'}
               onClick={() => router.push('/toolkit/tools')}
               gap={1}
               ml={4}
             >
-              <Box>{t('app:toolkit_more_plugins')}</Box>
-              <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+              <Box fontSize={'sm'}>{t('app:find_more_tools')}</Box>
+              <MyIcon name={'common/rightArrowLight'} w={'0.9rem'} />
             </Flex>
           )}
         </Flex>
       )}
       {/* Tag filter */}
-      {templateType === TemplateTypeEnum.systemPlugin &&
-        allTags &&
-        allTags.length > 0 &&
+      {templateType === TemplateTypeEnum.appTool &&
         selectedTagIds !== undefined &&
         setSelectedTagIds && (
-          <Flex mt={2} alignItems={'center'}>
-            <PluginTagFilter
-              tags={allTags}
+          <Box mt={2}>
+            <ToolTagFilterBox
+              tags={toolTags}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
+              size={isPopover ? 'sm' : 'base'}
             />
-          </Flex>
+          </Box>
         )}
       {/* paths */}
       {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) &&

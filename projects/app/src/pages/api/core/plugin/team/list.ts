@@ -1,9 +1,9 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import {
-  TeamPluginListItemSchema,
+  TeamPluginToolListItemSchema,
   type GetTeamSystemPluginListQueryType,
-  type GetTeamSystemPluginListResponseType
+  type GetTeamPluginToolListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/api';
 import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -16,7 +16,7 @@ export type listQuery = GetTeamSystemPluginListQueryType;
 
 export type listBody = {};
 
-export type listResponse = GetTeamSystemPluginListResponseType;
+export type listResponse = GetTeamPluginToolListResponseType;
 
 async function handler(
   req: ApiRequestProps<listBody, listQuery>,
@@ -57,7 +57,7 @@ async function handler(
           }
           return false;
         })();
-        return TeamPluginListItemSchema.parse({
+        return TeamPluginToolListItemSchema.parse({
           ...tool,
           name: parseI18nString(tool.name, lang),
           intro: parseI18nString(tool.intro, lang),

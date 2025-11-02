@@ -34,7 +34,7 @@ import ConfigToolModal from './ConfigToolModal';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 
 type Props = {
@@ -188,13 +188,13 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         </Box>
       </Box>
       {templateType === TemplateTypeEnum.appTool && allTags.length > 0 && (
-        <Flex mt={3} px={[3, 6]} alignItems={'center'}>
-          <PluginTagFilter
+        <Box mt={3} px={[3, 6]}>
+          <ToolTagFilterBox
             tags={allTags}
             selectedTagIds={selectedTagIds}
             onTagSelect={setSelectedTagIds}
           />
-        </Flex>
+        </Box>
       )}
       {/* route components */}
       {!searchKey && parentId && (
@@ -398,33 +398,6 @@ const RenderList = React.memo(function RenderList({
                       >
                         {t(parseI18nString(template.name, i18n.language))}
                       </Box>
-                      {template.toolTags && template.toolTags.length > 0 && (
-                        <Flex gap={1} mt={1} flexWrap={'wrap'}>
-                          {template.toolTags.slice(0, 2).map((tagId) => {
-                            const tag = allTags.find((t) => t.tagId === tagId);
-                            if (!tag) return null;
-                            return (
-                              <Box
-                                key={tagId}
-                                px={1}
-                                py={0.5}
-                                border={'1px solid'}
-                                borderRadius={'4px'}
-                                borderColor={'myGray.200'}
-                                fontSize={'10px'}
-                                color={'myGray.600'}
-                              >
-                                {t(parseI18nString(tag.tagName, i18n.language))}
-                              </Box>
-                            );
-                          })}
-                          {template.toolTags.length > 2 && (
-                            <Box px={1} py={0.5} fontSize={'10px'} color={'myGray.500'}>
-                              +{template.toolTags.length - 2}
-                            </Box>
-                          )}
-                        </Flex>
-                      )}
                     </Box>
 
                     {selected ? (

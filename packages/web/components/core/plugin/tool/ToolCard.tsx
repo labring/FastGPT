@@ -1,9 +1,9 @@
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
-import Avatar from '../../common/Avatar';
-import MyBox from '../../common/MyBox';
+import Avatar from '../../../common/Avatar';
+import MyBox from '../../../common/MyBox';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '../../common/Icon';
+import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
