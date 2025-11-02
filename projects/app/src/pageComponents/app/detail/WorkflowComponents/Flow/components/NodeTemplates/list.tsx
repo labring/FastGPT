@@ -45,6 +45,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
+import type { PluginTagType } from '@fastgpt/global/core/app/plugin/type';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -52,16 +53,7 @@ export type TemplateListProps = {
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
   onUpdateParentId: (parentId: string) => void;
-  allTags: Array<{
-    tagId: string;
-    tagName:
-      | string
-      | {
-          en: string;
-          'zh-CN'?: string | undefined;
-          'zh-Hant'?: string | undefined;
-        };
-  }>;
+  allTags: PluginTagType[];
 };
 
 const NodeTemplateListItem = ({
@@ -80,16 +72,7 @@ const NodeTemplateListItem = ({
   }) => void;
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
-  allTags: Array<{
-    tagId: string;
-    tagName:
-      | string
-      | {
-          en: string;
-          'zh-CN'?: string | undefined;
-          'zh-Hant'?: string | undefined;
-        };
-  }>;
+  allTags: PluginTagType[];
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
