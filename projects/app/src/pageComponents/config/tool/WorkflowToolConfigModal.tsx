@@ -28,7 +28,6 @@ import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
-import type { getSystemPluginsQuery } from '@/pages/api/core/app/tool/list';
 import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import {
   delAdminSystemTool,
@@ -54,13 +53,13 @@ export const defaultForm: UpdateToolBodyType = {
   associatedPluginId: ''
 };
 
-const AppToolConfigModal = ({
+const WorkflowToolConfigModal = ({
   toolId,
   onSuccess,
   onClose
 }: {
   toolId: string;
-  onSuccess: (data: getSystemPluginsQuery) => void;
+  onSuccess: () => void;
   onClose: () => void;
 }) => {
   const { t, i18n } = useTranslation();
@@ -182,7 +181,7 @@ const AppToolConfigModal = ({
       manual: true,
       successToast: t('app:custom_plugin_config_success'),
       onSuccess: () => {
-        onSuccess({});
+        onSuccess();
         onClose();
       },
       onError() {},
@@ -196,7 +195,7 @@ const AppToolConfigModal = ({
         title: t('app:custom_plugin_delete_success'),
         status: 'success'
       });
-      onSuccess({});
+      onSuccess();
       onClose();
     }
   });
@@ -487,4 +486,4 @@ const AppToolConfigModal = ({
   );
 };
 
-export default AppToolConfigModal;
+export default WorkflowToolConfigModal;

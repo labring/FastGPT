@@ -6,7 +6,7 @@ import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../../jsonschema';
 import { getNanoid } from '../../../../common/string/tools';
-import { WorkflowToolSourceEnum } from '../constants';
+import { AppToolSourceEnum } from '../constants';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -59,7 +59,7 @@ export const getMCPToolRuntimeNode = ({
     intro: tool.description,
     toolConfig: {
       mcpTool: {
-        toolId: `${WorkflowToolSourceEnum.mcp}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.mcp}-${parentId}/${tool.name}`
       }
     },
     inputs: jsonSchema2NodeInput(tool.inputSchema),

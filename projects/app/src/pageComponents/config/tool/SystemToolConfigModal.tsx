@@ -22,12 +22,9 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
-import {
-  getAdminSystemToolDetail,
-  getAdminSystemTools,
-  putAdminUpdateTool
-} from '@/web/core/plugin/admin/tool/api';
+import { getAdminSystemToolDetail, putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
 import type { AdminSystemToolDetailType } from '@fastgpt/global/core/plugin/admin/tool/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -359,23 +356,26 @@ const SystemToolConfigModal = ({
           </Flex>
         )}
       </ModalBody>
-      <ModalFooter gap={4} justifyContent={'start'}>
-        <Button
-          variant={'whiteBase'}
-          colorScheme="red"
-          isLoading={deleteLoading}
-          onClick={onDelete}
-        >
-          {t('common:Delete')}
-        </Button>
-        <Box flex={1} />
+      <ModalFooter gap={4} justifyContent={'space-between'}>
+        <PopoverConfirm
+          type="delete"
+          content={t('app:confirm_delete_tool')}
+          onConfirm={onDelete}
+          Trigger={
+            <Button variant={'whiteDanger'} isLoading={deleteLoading}>
+              {t('common:Delete')}
+            </Button>
+          }
+        />
 
-        <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button isLoading={submitting} onClick={handleSubmit(onSubmit)}>
-          {t('common:Confirm')}
-        </Button>
+        <Flex gap={4}>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button isLoading={submitting} onClick={handleSubmit(onSubmit)}>
+            {t('common:Confirm')}
+          </Button>
+        </Flex>
       </ModalFooter>
     </MyModal>
   );

@@ -1,5 +1,5 @@
 import { RunToolWithStream } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { pluginClient, PLUGIN_BASE_URL, PLUGIN_TOKEN } from '../../../thirdProvider/fastgptPlugin';
 import { addLog } from '../../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -11,10 +11,8 @@ export async function APIGetSystemToolList() {
     return res.body.map((item) => {
       return {
         ...item,
-        id: `${WorkflowToolSourceEnum.systemTool}-${item.toolId}`,
-        parentId: item.parentId
-          ? `${WorkflowToolSourceEnum.systemTool}-${item.parentId}`
-          : undefined,
+        id: `${AppToolSourceEnum.systemTool}-${item.toolId}`,
+        parentId: item.parentId ? `${AppToolSourceEnum.systemTool}-${item.parentId}` : undefined,
         avatar: item.icon
       };
     });

@@ -28,7 +28,7 @@ import type {
 } from '@fastgpt/global/core/app/tool/type';
 import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum
@@ -52,6 +52,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { MongoTeamInstalledPlugin } from '../../plugin/schema/teamInstalledPluginSchema';
 
 type ChildAppType = AppToolTemplateItemType & {
   teamId?: string;
@@ -62,6 +63,52 @@ type ChildAppType = AppToolTemplateItemType & {
 };
 
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
+
+export const getSystemToolsWithInstalled = async ({
+  teamId,
+  isRoot
+}: {
+  teamId: string;
+  isRoot: boolean;
+}) => {
+  const [tools, { installedSet, uninstalledSet }] = await Promise.all([
+    getSystemTools(),
+    MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')
+      .lean()
+      .then((res) => {
+        const installedSet = new Set<string>();
+        const uninstalledSet = new Set<string>();
+        res.forEach((item) => {
+          if (item.installed) {
+            installedSet.add(item.pluginId);
+          } else {
+            uninstalledSet.add(item.pluginId);
+          }
+        });
+        return { installedSet, uninstalledSet };
+      })
+  ]);
+
+  return tools.map((tool) => {
+    const installed = (() => {
+      if (installedSet.has(tool.id)) {
+        return true;
+      }
+      if (isRoot && !uninstalledSet.has(tool.id)) {
+        return true;
+      }
+      if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
+        return true;
+      }
+      return false;
+    })();
+
+    return {
+      ...tool,
+      installed
+    };
+  });
+};
 
 export const getSystemToolByIdAndVersionId = async (
   pluginId: string,
@@ -177,7 +224,7 @@ export async function getChildAppPreviewNode({
   const app: ChildAppType = await (async () => {
     // 1. App
     // 2. MCP ToolSets
-    if (source === WorkflowToolSourceEnum.personal) {
+    if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -227,7 +274,7 @@ export async function getChildAppPreviewNode({
       };
     }
     // mcp tool
-    else if (source === WorkflowToolSourceEnum.mcp) {
+    else if (source === AppToolSourceEnum.mcp) {
       const [parentId, toolName] = pluginId.split('/');
       // 1. get parentApp
       const item = await MongoApp.findById(parentId).lean();
@@ -268,7 +315,7 @@ export async function getChildAppPreviewNode({
       };
     }
     // http tool
-    else if (source === WorkflowToolSourceEnum.http) {
+    else if (source === AppToolSourceEnum.http) {
       const [parentId, toolName] = pluginId.split('/');
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -323,7 +370,7 @@ export async function getChildAppPreviewNode({
       showTargetHandle?: boolean;
     };
   }> => {
-    if (source === WorkflowToolSourceEnum.systemTool) {
+    if (source === AppToolSourceEnum.systemTool) {
       // system Tool or Toolsets
       const children = app.isFolder
         ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
@@ -457,7 +504,7 @@ export async function getChildAppRuntimeById({
   const app = await (async () => {
     const { source, pluginId } = splitCombineToolId(id);
 
-    if (source === WorkflowToolSourceEnum.personal) {
+    if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 

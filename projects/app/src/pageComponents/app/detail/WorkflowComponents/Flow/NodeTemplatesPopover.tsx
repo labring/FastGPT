@@ -27,7 +27,10 @@ const NodeTemplatesPopover = () => {
     templatesIsLoading,
     templates,
     onUpdateTemplateType,
-    onUpdateParentId
+    onUpdateParentId,
+    toolTags,
+    selectedTagIds,
+    setSelectedTagIds
   } = useNodeTemplates();
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
@@ -121,6 +124,9 @@ const NodeTemplatesPopover = () => {
               onUpdateParentId={onUpdateParentId}
               searchKey={searchKey}
               setSearchKey={setSearchKey}
+              toolTags={toolTags}
+              selectedTagIds={selectedTagIds}
+              setSelectedTagIds={setSelectedTagIds}
             />
             <NodeTemplateList
               onAddNode={onAddNode}

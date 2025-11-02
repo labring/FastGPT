@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -15,6 +15,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
 import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
@@ -33,16 +34,16 @@ const ImportPluginModal = ({
   onSuccess?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
+  const { toast } = useToast();
+
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
-
-  console.log('uploadedFiles', uploadedFiles);
 
   const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
   });
 
-  const uploadAndParseFile = async (file: SelectFileItemType | UploadedPluginFile) => {
+  const uploadAndParseFile = async (file: UploadedPluginFile) => {
     try {
       setUploadedFiles((prev) =>
         prev.map((f) =>
@@ -97,30 +98,45 @@ const ImportPluginModal = ({
           f.name === file.name ? { ...f, status: 'error', errorMsg: error.message } : f
         )
       );
-      throw error;
     }
   };
 
   const { runAsync: handleBatchUpload, loading: uploadLoading } = useRequest2(
-    async () => {
-      const uploadedFileNames = new Set(uploadedFiles.map((f) => f.name));
-      const newFiles = selectFiles.filter((f) => !uploadedFileNames.has(f.name));
-
-      if (newFiles.length === 0) return;
-
-      const newUploadedFiles: UploadedPluginFile[] = newFiles.map((f) => ({
+    async (files: SelectFileItemType[]) => {
+      const newUploadedFiles: UploadedPluginFile[] = files.map((f) => ({
         ...f,
         status: 'uploading' as const
       }));
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
 
-      for (const file of newFiles) {
+      for (const file of newUploadedFiles) {
         await uploadAndParseFile(file);
       }
     },
     {
       manual: true
     }
+  );
+
+  const onSelectFiles = useCallback(
+    (files: SelectFileItemType[]) => {
+      const filteredFiles = files
+        .filter((file, index, self) => self.findIndex((f) => f.name === file.name) === index)
+        .filter((file) => !uploadedFiles.some((f) => f.name === file.name));
+
+      if (filteredFiles.length !== files.length) {
+        toast({
+          title: t('app:upload_file_exists_filtered'),
+          status: 'info'
+        });
+      }
+      setSelectFiles(filteredFiles);
+
+      if (filteredFiles.length > 0) {
+        handleBatchUpload(filteredFiles);
+      }
+    },
+    [handleBatchUpload, t, toast, uploadedFiles]
   );
 
   const handleRetry = async (file: UploadedPluginFile) => {
@@ -154,12 +170,6 @@ const ImportPluginModal = ({
     }
   );
 
-  useEffect(() => {
-    if (selectFiles.length > 0) {
-      handleBatchUpload();
-    }
-  }, [selectFiles.length]);
-
   return (
     <MyRightDrawer
       onClose={onClose}
@@ -192,7 +202,7 @@ const ImportPluginModal = ({
           maxSize="100MB"
           fileType=".pkg"
           selectFiles={selectFiles}
-          setSelectFiles={setSelectFiles}
+          setSelectFiles={onSelectFiles}
           h={120}
         />
 

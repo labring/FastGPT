@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   TeamPluginListItemSchema,
   type GetTeamSystemPluginListQueryType,
-  type GetTeamSystemPluginListResponseType
+  type GetTeamPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/api';
 import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -16,7 +16,7 @@ export type listQuery = GetTeamSystemPluginListQueryType;
 
 export type listBody = {};
 
-export type listResponse = GetTeamSystemPluginListResponseType;
+export type listResponse = GetTeamPluginListResponseType;
 
 async function handler(
   req: ApiRequestProps<listBody, listQuery>,

@@ -7,7 +7,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { getSystemToolByIdAndVersionId } from '@fastgpt/service/core/app/tool/controller';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
@@ -39,7 +39,7 @@ async function handler(
   const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
 
   // System tool plugin
-  if (source === WorkflowToolSourceEnum.systemTool) {
+  if (source === AppToolSourceEnum.systemTool) {
     const item = await getSystemToolByIdAndVersionId(formatPluginId);
 
     return {
@@ -54,7 +54,7 @@ async function handler(
 
   // Workflow plugin
   const appId = await (async () => {
-    if (source === WorkflowToolSourceEnum.personal || source === WorkflowToolSourceEnum.mcp) {
+    if (source === AppToolSourceEnum.personal || source === AppToolSourceEnum.mcp) {
       const appId = getMCPParentId(formatPluginId);
       const { app } = await authApp({
         appId,

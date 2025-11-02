@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { GetTeamSystemPluginListResponseSchema, ToggleInstallPluginBodySchema } from './api';
+import { GetTeamPluginListResponseSchema, ToggleInstallPluginBodySchema } from './api';
 import { TagsMap } from '../../../tag';
 
 export const PluginTeamPath: OpenAPIPath = {
@@ -13,7 +13,7 @@ export const PluginTeamPath: OpenAPIPath = {
           description: '获取团队插件列表成功',
           content: {
             'application/json': {
-              schema: GetTeamSystemPluginListResponseSchema
+              schema: GetTeamPluginListResponseSchema
             }
           }
         }

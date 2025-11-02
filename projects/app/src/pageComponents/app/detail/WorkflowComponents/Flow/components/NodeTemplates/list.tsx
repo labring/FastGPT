@@ -43,7 +43,6 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
@@ -71,7 +70,7 @@ const NodeTemplateListItem = ({
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -165,15 +164,15 @@ const NodeTemplateListItem = ({
           borderRadius={'sm'}
           flexShrink={0}
         />
-        <Box
-          color={'myGray.900'}
-          fontWeight={'500'}
-          fontSize={isPopover ? 'xs' : 'sm'}
-          flex={'1 0 0'}
-          ml={3}
-          className="textEllipsis"
-        >
-          {t(template.name as any)}
+        <Box flex={'1 0 0'} ml={3}>
+          <Box
+            color={'myGray.900'}
+            fontWeight={'500'}
+            fontSize={isPopover ? 'xs' : 'sm'}
+            className="textEllipsis"
+          >
+            {t(template.name as any)}
+          </Box>
         </Box>
         {/* Folder right arrow */}
         {template.isFolder && (
@@ -407,7 +406,7 @@ const NodeTemplateList = ({
     return data.filter(({ list }) => list.length > 0);
   }, [templateType, templates, t, i18n.language]);
 
-  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+  const NodeListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (
       <>
         {list.map((item) => {
@@ -476,13 +475,13 @@ const NodeTemplateList = ({
                   <AccordionIcon />
                 </AccordionButton>
                 <AccordionPanel py={0}>
-                  <PluginListRender list={list} />
+                  <NodeListRender list={list} />
                 </AccordionPanel>
               </AccordionItem>
             ))}
           </>
         ) : (
-          <PluginListRender list={formatTemplatesArrayData?.[0]?.list} />
+          <NodeListRender list={formatTemplatesArrayData?.[0]?.list} />
         )}
       </Accordion>
     </Box>
