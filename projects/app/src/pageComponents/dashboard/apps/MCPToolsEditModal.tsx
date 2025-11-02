@@ -1,4 +1,4 @@
-import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
+import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/tool';
 import {
   Box,
   Button,

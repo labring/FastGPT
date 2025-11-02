@@ -20,7 +20,7 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
+import { putUpdateHttpPlugin } from '@/web/core/app/api/tool';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SchemaConfigModal from './SchemaConfigModal';
 import ManualToolModal from './ManualToolModal';

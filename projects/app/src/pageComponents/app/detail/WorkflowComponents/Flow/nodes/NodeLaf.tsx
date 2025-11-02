@@ -8,7 +8,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getApiSchemaByUrl } from '@/web/core/app/api/plugin';
+import { getApiSchemaByUrl } from '@/web/core/app/api/tool';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';

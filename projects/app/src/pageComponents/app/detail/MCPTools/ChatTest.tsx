@@ -11,7 +11,7 @@ import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/ty
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
-import { postRunMCPTool } from '@/web/core/app/api/plugin';
+import { postRunMCPTool } from '@/web/core/app/api/tool';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/jsonschema';

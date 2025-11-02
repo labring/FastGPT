@@ -7,15 +7,15 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemPluginPaths } from '@/web/core/app/api/plugin';
+import { getAppToolPaths } from '@/web/core/app/api/tool';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
+  'appTool' = 'appTool',
+  'teamApp' = 'teamApp'
 }
 
 export type NodeTemplateListHeaderProps = {
@@ -46,9 +46,9 @@ const NodeTemplateListHeader = ({
   // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin)
+      if (templateType === TemplateTypeEnum.teamApp)
         return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -71,12 +71,12 @@ const NodeTemplateListHeader = ({
               {
                 icon: 'phoneTabbar/tool',
                 label: t('common:navbar.Toolkit'),
-                value: TemplateTypeEnum.systemPlugin
+                value: TemplateTypeEnum.appTool
               },
               {
-                icon: 'core/modules/teamPlugin',
+                icon: 'core/modules/teamApp',
                 label: t('common:core.module.template.Team app'),
-                value: TemplateTypeEnum.teamPlugin
+                value: TemplateTypeEnum.teamApp
               }
             ]}
             width={'100%'}
@@ -113,8 +113,7 @@ const NodeTemplateListHeader = ({
         )}
       </Flex>
       {/* Search */}
-      {(templateType === TemplateTypeEnum.teamPlugin ||
-        templateType === TemplateTypeEnum.systemPlugin) && (
+      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) && (
         <Flex mt={2} alignItems={'center'} h={isPopover ? 8 : 10}>
           <InputGroup h={'full'}>
             <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -124,7 +123,7 @@ const NodeTemplateListHeader = ({
               h={'full'}
               bg={'myGray.50'}
               placeholder={
-                templateType === TemplateTypeEnum.teamPlugin
+                templateType === TemplateTypeEnum.teamApp
                   ? t('common:plugin.Search_app')
                   : t('common:search_tool')
               }
@@ -133,7 +132,7 @@ const NodeTemplateListHeader = ({
             />
           </InputGroup>
           <Box flex={1} />
-          {!isPopover && templateType === TemplateTypeEnum.teamPlugin && (
+          {!isPopover && templateType === TemplateTypeEnum.teamApp && (
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
@@ -149,7 +148,7 @@ const NodeTemplateListHeader = ({
               <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
             </Flex>
           )}
-          {!isPopover && templateType === TemplateTypeEnum.systemPlugin && (
+          {!isPopover && templateType === TemplateTypeEnum.appTool && (
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
@@ -168,8 +167,7 @@ const NodeTemplateListHeader = ({
         </Flex>
       )}
       {/* paths */}
-      {(templateType === TemplateTypeEnum.teamPlugin ||
-        templateType === TemplateTypeEnum.systemPlugin) &&
+      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) &&
         !searchKey &&
         parentId && (
           <Flex alignItems={'center'} mt={2}>

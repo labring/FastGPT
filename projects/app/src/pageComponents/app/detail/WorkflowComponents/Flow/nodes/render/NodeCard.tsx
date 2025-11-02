@@ -18,7 +18,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { getPreviewPluginNode, getToolVersionList } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -474,7 +474,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
+        const template = await getToolPreviewNode({ appId: node.pluginId, versionId });
 
         if (!!template) {
           onResetNode({

@@ -33,7 +33,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
@@ -240,7 +240,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
-          const node = await getPreviewPluginNode({ appId: toolId });
+          const node = await getToolPreviewNode({ appId: toolId });
           node.inputs = node.inputs.map((input) => {
             const tool = availableTools.find((tool) => tool.pluginId === toolId);
             const value = tool?.inputs?.[input.key];

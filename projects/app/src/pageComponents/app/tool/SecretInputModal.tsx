@@ -22,7 +22,7 @@ import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
 import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
-import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import { getAppToolTemplates } from '@/web/core/app/api/tool';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
@@ -84,7 +84,7 @@ const SecretInputModal = ({
   const { data: childTools = [] } = useRequest2<NodeTemplateListItemType[], []>(
     async () => {
       if (!isFolder) return [];
-      return getSystemPlugTemplates({ parentId });
+      return getAppToolTemplates({ parentId });
     },
     {
       manual: false,

@@ -12,13 +12,9 @@ import {
   type NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getPreviewPluginNode,
-  getSystemPlugTemplates,
-  getSystemPluginPaths
-} from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
+import { getTeamAppTemplates } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
@@ -55,15 +51,15 @@ export const childAppSystemKey: string[] = [
 ];
 
 enum TemplateTypeEnum {
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
+  'appTool' = 'appTool',
+  'teamApp' = 'teamApp'
 }
 
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemPlugin);
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.appTool);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
 
@@ -81,10 +77,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentId?: ParentIdType;
       searchVal?: string;
     }) => {
-      if (type === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates({ parentId, searchKey: searchVal });
-      } else if (type === TemplateTypeEnum.teamPlugin) {
-        return getTeamPlugTemplates({
+      if (type === TemplateTypeEnum.appTool) {
+        return getAppToolTemplates({ parentId, searchKey: searchVal });
+      } else if (type === TemplateTypeEnum.teamApp) {
+        return getTeamAppTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appDetail._id));
@@ -102,9 +98,9 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin)
+      if (templateType === TemplateTypeEnum.teamApp)
         return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -144,12 +140,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             {
               icon: 'phoneTabbar/tool',
               label: t('common:navbar.Toolkit'),
-              value: TemplateTypeEnum.systemPlugin
+              value: TemplateTypeEnum.appTool
             },
             {
-              icon: 'core/modules/teamPlugin',
+              icon: 'core/modules/teamApp',
               label: t('common:core.module.template.Team app'),
-              value: TemplateTypeEnum.teamPlugin
+              value: TemplateTypeEnum.teamApp
             }
           ]}
           py={'5px'}
@@ -167,7 +163,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
-              templateType === TemplateTypeEnum.systemPlugin
+              templateType === TemplateTypeEnum.appTool
                 ? t('common:search_tool')
                 : t('app:search_app')
             }
@@ -220,7 +216,7 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
-      const res = await getPreviewPluginNode({ appId: template.id });
+      const res = await getToolPreviewNode({ appId: template.id });
 
       /* Invalid plugin check
         1. Reference type. but not tool description;
@@ -308,7 +304,7 @@ const RenderList = React.memo(function RenderList({
   );
 
   const PluginListRender = useMemoizedFn(() => {
-    const isSystemTool = type === TemplateTypeEnum.systemPlugin;
+    const isSystemTool = type === TemplateTypeEnum.appTool;
     return (
       <>
         {templates.length > 0 ? (

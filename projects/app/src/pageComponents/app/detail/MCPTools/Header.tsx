@@ -9,7 +9,7 @@ import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
+import { postUpdateMCPTools } from '@/web/core/app/api/tool';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const Header = ({

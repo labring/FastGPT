@@ -11,11 +11,7 @@ import {
   type NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getPreviewPluginNode,
-  getSystemPlugTemplates,
-  getSystemPluginPaths
-} from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
@@ -64,7 +60,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentId?: ParentIdType;
       searchVal?: string;
     }) => {
-      return getSystemPlugTemplates({ parentId, searchKey: searchVal });
+      return getAppToolTemplates({ parentId, searchKey: searchVal });
     },
     {
       onSuccess(_, [{ parentId = '' }]) {
@@ -77,7 +73,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const { data: paths = [] } = useRequest2(
     () => {
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -157,7 +153,7 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
-      const res = await getPreviewPluginNode({ appId: template.id });
+      const res = await getToolPreviewNode({ appId: template.id });
 
       /* Invalid plugin check
         1. Reference type. but not tool description;

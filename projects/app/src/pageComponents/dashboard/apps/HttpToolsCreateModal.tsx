@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { HttpPluginImgUrl } from '@fastgpt/global/common/file/image/constants';
-import { postCreateHttpTools } from '@/web/core/app/api/plugin';
+import { postCreateHttpTools } from '@/web/core/app/api/tool';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
