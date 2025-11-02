@@ -1,7 +1,21 @@
-import { SystemToolBasicSchema, ToolSecretInputItemSchema } from '../../tool/type';
+import { ParentIdSchema } from '../../../../common/parentFolder/type';
+import { SystemToolBasicConfigSchema, ToolSecretInputItemSchema } from '../../tool/type';
 import z from 'zod';
 
-export const AdminSystemToolListItemSchema = SystemToolBasicSchema.extend({
+export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.extend({
+  id: z.string(),
+  parentId: ParentIdSchema,
+  name: z.string(),
+  intro: z.string().optional(),
+  author: z.string().optional(),
+  avatar: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+
+  hasSystemSecret: z.boolean().optional(),
+
+  // App tool
+  associatedPluginId: z.string().optional(),
+
   isFolder: z.boolean().optional(),
   hasSecretInput: z.boolean()
 });

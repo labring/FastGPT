@@ -38,7 +38,7 @@ import { useBoolean, useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';

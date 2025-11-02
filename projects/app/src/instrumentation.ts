@@ -37,7 +37,7 @@ export async function register() {
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
         import('@fastgpt/service/common/otel/trace/register'),
-        import('@fastgpt/service/core/app/plugin/controller'),
+        import('@fastgpt/service/core/app/tool/controller'),
         import('@fastgpt/service/common/middle/tracks/processor'),
         import('@/service/common/bullmq'),
         import('@fastgpt/service/common/s3')

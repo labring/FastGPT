@@ -2,15 +2,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { AppToolTemplateListItemType } from '@fastgpt/global/core/app/tool/type';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import type { SystemPluginConfigSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type getSystemPluginsQuery = {
@@ -73,7 +73,7 @@ async function handler(
   const dbPlugins = await MongoSystemTool.find()
     .lean()
     .then((res) => {
-      const map = new Map<string, SystemPluginConfigSchemaType>();
+      const map = new Map<string, SystemPluginToolCollectionType>();
       res.forEach((item) => {
         map.set(String(item.pluginId), item);
       });

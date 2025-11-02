@@ -5,7 +5,7 @@ import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema'
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoToolGroups } from '@fastgpt/service/core/plugin/tool/pluginGroupSchema';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 /**

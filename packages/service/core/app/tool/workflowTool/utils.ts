@@ -1,8 +1,4 @@
-import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { type AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { anyValueDecrypt, encryptSecretValue } from '../../../common/secret/utils';
+import { anyValueDecrypt, encryptSecretValue } from '../../../../common/secret/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   FlowNodeInputTypeEnum,
@@ -15,40 +11,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 
-/*
-  Plugin points calculation:
-  1. 系统插件/商业版插件：
-    - 有错误：返回 0
-    - 无错误：返回 单次积分 + 子流程积分（可配置）
-  2. 个人插件
-    - 返回 子流程积分
-*/
-export const computedPluginUsage = async ({
-  plugin,
-  childrenUsage,
-  error
-}: {
-  plugin: AppToolRuntimeType;
-  childrenUsage: ChatNodeUsageType[];
-  error?: boolean;
-}) => {
-  const { source } = splitCombineToolId(plugin.id);
-  const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  if (source !== WorkflowToolSourceEnum.personal) {
-    if (error) return 0;
-
-    const pluginCurrentCost = plugin.currentCost ?? 0;
-
-    return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
-  }
-
-  // Personal plugins are charged regardless of whether they are successful or not
-  return childrenUsages;
-};
-
-// add value to plugin input node when run plugin
-export const updatePluginInputByVariables = (
+// add value to tool input node when run tool
+export const updateWorkflowToolInputByVariables = (
   nodes: RuntimeNodeItemType[],
   variables: Record<string, any>
 ) => {
@@ -83,8 +47,9 @@ export const updatePluginInputByVariables = (
       : node
   );
 };
-/* Get plugin runtime input user query */
-export const getPluginRunUserQuery = ({
+
+/* Get tool runtime input user query */
+export const serverGetWorkflowToolRunUserQuery = ({
   pluginInputs,
   variables,
   files = []
@@ -93,7 +58,7 @@ export const getPluginRunUserQuery = ({
   variables: Record<string, any>;
   files?: RuntimeUserPromptType['files'];
 }): UserChatItemType & { dataId: string } => {
-  const getPluginRunContent = ({
+  const getRunContent = ({
     pluginInputs,
     variables
   }: {
@@ -120,7 +85,7 @@ export const getPluginRunUserQuery = ({
     dataId: getNanoid(24),
     obj: ChatRoleEnum.Human,
     value: runtimePrompt2ChatsValue({
-      text: getPluginRunContent({
+      text: getRunContent({
         pluginInputs: pluginInputs,
         variables
       }),

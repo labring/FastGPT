@@ -3,7 +3,7 @@
  */
 import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getChildAppPreviewNode } from '@fastgpt/service/core/app/plugin/controller';
+import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';

@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type {

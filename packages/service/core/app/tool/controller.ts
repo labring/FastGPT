@@ -34,9 +34,9 @@ import {
   NodeInputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { APIGetSystemToolList } from '../tool/api';
+import { APIGetSystemToolList } from './api';
 import { Types } from '../../../common/mongo';
-import type { SystemPluginConfigSchemaType } from './type';
+import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -508,49 +508,49 @@ export async function getChildAppRuntimeById({
   };
 }
 
-const dbPluginFormat = (item: SystemPluginConfigSchemaType): AppToolTemplateItemType => {
-  const {
-    name,
-    avatar,
-    intro,
-    toolDescription,
-    version,
-    associatedPluginId,
-    userGuide,
-    author = '',
-    toolTags
-  } = item.customConfig!;
-
-  return {
-    id: item.pluginId,
-    status: item.status ?? PluginStatusEnum.Normal,
-    defaultInstalled: item.defaultInstalled ?? false,
-    isFolder: false,
-    parentId: null,
-    author,
-    version,
-    name,
-    avatar,
-    intro,
-    toolDescription,
-    toolTags,
-    templateType: FlowNodeTemplateTypeEnum.tools,
-    originCost: item.originCost,
-    currentCost: item.currentCost,
-    hasTokenFee: item.hasTokenFee,
-    pluginOrder: item.pluginOrder,
-    systemKeyCost: item.systemKeyCost,
-    associatedPluginId,
-    userGuide,
-    workflow: {
-      nodes: [],
-      edges: []
-    }
-  };
-};
-
-/* FastsGPT-Pluign api: */
+/* FastsGPT-tool api: */
 export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> => {
+  const workflowToolFormat = (item: SystemPluginToolCollectionType): AppToolTemplateItemType => {
+    const {
+      name,
+      avatar,
+      intro,
+      toolDescription,
+      version,
+      associatedPluginId,
+      userGuide,
+      author = '',
+      toolTags
+    } = item.customConfig!;
+
+    return {
+      id: item.pluginId,
+      status: item.status ?? PluginStatusEnum.Normal,
+      defaultInstalled: item.defaultInstalled ?? false,
+      isFolder: false,
+      parentId: null,
+      author,
+      version,
+      name,
+      avatar,
+      intro,
+      toolDescription,
+      toolTags,
+      templateType: FlowNodeTemplateTypeEnum.tools,
+      originCost: item.originCost,
+      currentCost: item.currentCost,
+      hasTokenFee: item.hasTokenFee,
+      pluginOrder: item.pluginOrder,
+      systemKeyCost: item.systemKeyCost,
+      associatedPluginId,
+      userGuide,
+      workflow: {
+        nodes: [],
+        edges: []
+      }
+    };
+  };
+
   const tools = await APIGetSystemToolList();
 
   // 从数据库里加载插件配置进行替换
@@ -596,7 +596,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
 
   const dbPlugins = systemToolsArray
     .filter((item) => item.customConfig?.associatedPluginId)
-    .map((item) => dbPluginFormat(item));
+    .map((item) => workflowToolFormat(item));
 
   const concatTools = [...formatTools, ...dbPlugins];
   concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));

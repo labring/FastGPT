@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ToggleInstallPluginBodyType } from '@fastgpt/global/openapi/core/plugin/team/api';
 

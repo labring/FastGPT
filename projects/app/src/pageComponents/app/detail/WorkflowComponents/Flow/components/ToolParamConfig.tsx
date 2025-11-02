@@ -9,7 +9,7 @@ import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import SecretInputModal, {
   type ToolParamsFormType
-} from '@/pageComponents/app/plugin/SecretInputModal';
+} from '@/pageComponents/app/tool/SecretInputModal';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {

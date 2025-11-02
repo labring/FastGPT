@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 const { Schema } = connectionMongo;
-import type { SystemPluginConfigSchemaType } from '../../app/plugin/type';
+import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 
 export const collectionName = 'system_plugin_tools';
 
@@ -46,7 +46,7 @@ const SystemToolSchema = new Schema({
 
 SystemToolSchema.index({ pluginId: 1 });
 
-export const MongoSystemTool = getMongoModel<SystemPluginConfigSchemaType>(
+export const MongoSystemTool = getMongoModel<SystemPluginToolCollectionType>(
   collectionName,
   SystemToolSchema
 );

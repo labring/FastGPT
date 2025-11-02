@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 
 export type pathQuery = GetPathProps;
 

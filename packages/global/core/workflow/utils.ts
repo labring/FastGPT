@@ -384,7 +384,7 @@ export const getElseIFLabel = (i: number) => {
 };
 
 /* Get plugin runtime input user query */
-export const getPluginRunUserQuery = ({
+export const clientGetWorkflowToolRunUserQuery = ({
   pluginInputs,
   variables,
   files = []

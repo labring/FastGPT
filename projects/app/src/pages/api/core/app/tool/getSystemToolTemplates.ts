@@ -8,9 +8,9 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 export type GetSystemPluginTemplatesBody = {

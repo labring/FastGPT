@@ -1,27 +1,48 @@
-import { ParentIdSchema } from '../../../common/parentFolder/type';
 import z from 'zod';
 import { PluginStatusEnum, PluginStatusSchema } from '../type';
 
-export const SystemToolBasicSchema = z.object({
-  id: z.string(),
-  parentId: ParentIdSchema,
+// 无论哪种 Tool，都会有这一层配置
+export const SystemToolBasicConfigSchema = z.object({
   defaultInstalled: z.boolean().optional(),
   status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
-  name: z.string(),
-  intro: z.string().optional(),
-  author: z.string().optional(),
-  avatar: z.string().optional(),
   originCost: z.number().optional(),
   currentCost: z.number().optional(),
   hasTokenFee: z.boolean().optional(),
-  pluginOrder: z.number().optional(),
   systemKeyCost: z.number().optional(),
-  tags: z.array(z.string()).optional(),
-  hasSystemSecret: z.boolean().optional(),
-
-  // App tool
-  associatedPluginId: z.string().optional()
+  pluginOrder: z.number().optional()
 });
+
+export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.extend({
+  pluginId: z.string(),
+  customConfig: z
+    .object({
+      name: z.string(),
+      avatar: z.string().optional(),
+      intro: z.string().optional(),
+      toolDescription: z.string().optional(),
+      version: z.string(),
+      toolTags: z.array(z.string()).optional(),
+      associatedPluginId: z.string().optional(),
+      userGuide: z.string().optional(),
+      author: z.string().optional()
+    })
+    .optional(),
+  inputListVal: z.record(z.string(), z.any()).optional(),
+
+  // @deprecated
+  isActive: z.boolean().optional(),
+  inputConfig: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        value: z.any().optional()
+      })
+    )
+    .optional()
+});
+export type SystemPluginToolCollectionType = z.infer<typeof SystemPluginToolCollectionSchema>;
 
 // TODO: 移动到 plugin sdk 里
 export const ToolSecretInputItemSchema = z.object({

@@ -16,11 +16,11 @@ import {
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { computedPluginUsage } from '../../../app/plugin/utils';
+import { computedAppToolUsage } from '../../../app/tool/runtime/utils';
 import { filterSystemVariables, getNodeErrResponse } from '../utils';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById } from '../../../app/tool/controller';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
@@ -146,7 +146,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           isChildApp: true
         },
         variables: runtimeVariables,
-        query: getPluginRunUserQuery({
+        query: serverGetWorkflowToolRunUserQuery({
           pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
           variables: runtimeVariables,
           files
@@ -157,7 +157,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       });
     const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
 
-    const usagePoints = await computedPluginUsage({
+    const usagePoints = await computedAppToolUsage({
       plugin,
       childrenUsage: flowUsages,
       error: !!output?.pluginOutput?.error
