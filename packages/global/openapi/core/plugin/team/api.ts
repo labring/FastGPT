@@ -5,7 +5,7 @@ export const GetTeamSystemPluginListQuerySchema = z.object({
   type: z.enum(['tool'])
 });
 export type GetTeamSystemPluginListQueryType = z.infer<typeof GetTeamSystemPluginListQuerySchema>;
-export const TeamPluginToolListItemSchema = z.object({
+export const TeamPluginListItemSchema = z.object({
   id: z.string(),
   avatar: z.string().optional(),
   name: z.string(),
@@ -16,8 +16,8 @@ export const TeamPluginToolListItemSchema = z.object({
   installed: z.boolean(),
   associatedPluginId: z.string().optional()
 });
-export const GetTeamPluginToolListResponseSchema = z.array(TeamPluginToolListItemSchema);
-export type GetTeamPluginToolListResponseType = z.infer<typeof GetTeamPluginToolListResponseSchema>;
+export const GetTeamPluginListResponseSchema = z.array(TeamPluginListItemSchema);
+export type GetTeamPluginListResponseType = z.infer<typeof GetTeamPluginListResponseSchema>;
 
 export const ToggleInstallPluginBodySchema = z.object({
   pluginId: z.string(),

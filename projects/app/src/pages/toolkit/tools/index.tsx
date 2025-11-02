@@ -22,7 +22,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
-import type { GetTeamPluginToolListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
+import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -68,7 +68,7 @@ const ToolKitProvider = () => {
   });
 
   // TODO: 把 filter 放到后端
-  const [tools, setTools] = useState<GetTeamPluginToolListResponseType>([]);
+  const [tools, setTools] = useState<GetTeamPluginListResponseType>([]);
   const { loading: loadingTools } = useRequest2(() => getTeamSystemPluginList({ type: 'tool' }), {
     manual: false,
     onSuccess(data) {
