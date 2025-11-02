@@ -6,7 +6,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { getSystemToolByIdAndVersionId } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemToolByIdAndVersionId } from '@fastgpt/service/core/app/tool/controller';
 import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -65,7 +65,6 @@ async function handler(
       return app._id;
     } else {
       const item = await getSystemToolByIdAndVersionId(formatPluginId);
-      // const item = getSystemTools
       if (!item) return Promise.reject(PluginErrEnum.unAuth);
       return item.associatedPluginId;
     }

@@ -19,9 +19,9 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/service/core/app/plugin/utils';
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
@@ -97,7 +97,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
-        return getPluginRunUserQuery({
+        return serverGetWorkflowToolRunUserQuery({
           pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
@@ -147,7 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
-      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);

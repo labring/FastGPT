@@ -49,9 +49,9 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/service/core/app/plugin/utils';
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -200,7 +200,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        return getPluginRunUserQuery({
+        return serverGetWorkflowToolRunUserQuery({
           pluginInputs: getWorkflowToolInputsFromStoreNodes(app.modules),
           variables,
           files: variables.files
@@ -243,7 +243,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
-      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       // Plugin runtime does not need global variables(It has been injected into the pluginInputNode)
       variables = {};
     }

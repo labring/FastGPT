@@ -1,6 +1,7 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import type { TeamInstalledPluginSchemaType } from './type';
+import type { TeamInstalledPluginSchemaType } from '@fastgpt/global/core/plugin/schema/type';
+
 const { Schema } = connectionMongo;
 
 export const collectionName = 'team_installed_plugins';

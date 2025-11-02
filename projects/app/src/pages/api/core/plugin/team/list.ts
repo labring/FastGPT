@@ -5,9 +5,9 @@ import {
   type GetTeamSystemPluginListQueryType,
   type GetTeamSystemPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/api';
-import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
+import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';

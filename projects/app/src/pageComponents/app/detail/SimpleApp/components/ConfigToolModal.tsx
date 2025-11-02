@@ -17,7 +17,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import SecretInputModal, {
   type ToolParamsFormType
-} from '@/pageComponents/app/plugin/SecretInputModal';
+} from '@/pageComponents/app/tool/SecretInputModal';
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { useBoolean } from 'ahooks';
 

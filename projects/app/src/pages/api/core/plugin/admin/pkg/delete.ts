@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
+import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { DeletePkgPluginQueryType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 

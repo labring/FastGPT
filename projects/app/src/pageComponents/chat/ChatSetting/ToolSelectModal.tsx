@@ -30,7 +30,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {

@@ -1,9 +1,21 @@
 // 已弃用
+import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import { type SystemToolGroupSchemaType, type TGroupType } from '../../app/plugin/type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_plugin_groups';
+
+export type TGroupType = {
+  typeName: I18nStringStrictType | string;
+  typeId: string;
+};
+export type SystemToolGroupSchemaType = {
+  groupId: string;
+  groupAvatar: string;
+  groupName: string;
+  groupTypes: TGroupType[];
+  groupOrder: number;
+};
 
 const PluginGroupSchema = new Schema({
   groupId: {
