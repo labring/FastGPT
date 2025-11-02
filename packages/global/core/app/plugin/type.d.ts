@@ -9,15 +9,9 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import type { I18nStringStrictType } from '../../../common/i18n/type';
 import type { I18nStringType } from '../../../common/i18n/type';
 import type { ToolSimpleType, ToolDetailType } from '../../../sdk/fastgpt-plugin';
+import type { PluginStatusType, SystemPluginToolTagType } from '../../plugin/type';
 
-export type PluginTagType = {
-  tagId: string;
-  tagName: I18nStringStrictType | string;
-  tagOrder: number;
-  isSystem: boolean;
-};
-
-export type PluginRuntimeType = {
+export type WorkflowToolRuntimeType = {
   id: string;
   teamId?: string;
   tmbId?: string;
@@ -34,7 +28,8 @@ export type PluginRuntimeType = {
 };
 
 // system plugin
-export type SystemPluginTemplateItemType = WorkflowTemplateType & {
+export type WorkflowSystemToolTemplateItemType = WorkflowTemplateType & {
+  status?: PluginStatusType;
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
   outputs?: FlowNodeOutputItemType[];
@@ -58,7 +53,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   pluginOrder?: number;
 
   toolTags?: string[];
-  status?: number;
   defaultInstalled?: boolean;
   isOfficial?: boolean;
 
@@ -73,12 +67,12 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
 };
 
 export type SystemPluginTemplateListItemType = Omit<
-  SystemPluginTemplateItemType,
+  WorkflowSystemToolTemplateItemType,
   'name' | 'intro' | 'workflow'
 > & {
   name: string;
   intro: string;
-  tags?: PluginTagType[];
+  tags?: SystemPluginToolTagType[];
 };
 
 export type ToolListItem = ToolSimpleType & {
@@ -92,4 +86,4 @@ export type ToolDetailResponse = {
   downloadUrl: string;
 };
 
-export type GetToolTagsResponse = Array<PluginTagType>;
+export type GetToolTagsResponse = Array<SystemPluginToolTagType>;

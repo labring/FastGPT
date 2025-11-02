@@ -1,5 +1,5 @@
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import { type WorkflowToolRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { anyValueDecrypt, encryptSecretValue } from '../../../common/secret/utils';
@@ -28,7 +28,7 @@ export const computedPluginUsage = async ({
   childrenUsage,
   error
 }: {
-  plugin: PluginRuntimeType;
+  plugin: WorkflowToolRuntimeType;
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {

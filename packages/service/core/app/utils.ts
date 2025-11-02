@@ -71,11 +71,12 @@ export async function rewriteAppWorkflowToDetail({
         ]);
 
         node.pluginData = {
+          name: preview.name,
+          avatar: preview.avatar,
+          status: preview.status,
           diagram: preview.diagram,
           userGuide: preview.userGuide,
-          courseUrl: preview.courseUrl,
-          name: preview.name,
-          avatar: preview.avatar
+          courseUrl: preview.courseUrl
         };
         node.versionLabel = preview.versionLabel;
         node.isLatestVersion = preview.isLatestVersion;

@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import type { PluginToolTagType } from '@fastgpt/global/core/plugin/type';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'system_plugin_tool_tags';
@@ -26,7 +26,7 @@ const SystemPluginToolTagSchema = new Schema({
 SystemPluginToolTagSchema.index({ tagId: 1 }, { unique: true });
 SystemPluginToolTagSchema.index({ tagOrder: 1 });
 
-export const MongoPluginToolTag = getMongoModel<PluginToolTagType>(
+export const MongoPluginToolTag = getMongoModel<SystemPluginToolTagType>(
   collectionName,
   SystemPluginToolTagSchema
 );

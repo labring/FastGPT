@@ -29,6 +29,7 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import type { StoreSecretValueType } from '../../../common/secret/type';
+import type { PluginStatusType } from '../../plugin/type';
 
 export type NodeToolConfigType = {
   mcpToolSet?: {
@@ -105,8 +106,8 @@ export type PluginDataType = {
   name?: string;
   avatar?: string;
   error?: string;
-  status?: number;
-  toolTags?: string[];
+  status?: PluginStatusType;
+  // toolTags?: string[];
 };
 
 type HandleType = {
@@ -119,6 +120,7 @@ type HandleType = {
 export type FlowNodeTemplateType = FlowNodeCommonType & {
   id: string; // node id, unique
   templateType: string;
+  status?: PluginStatusType;
 
   showSourceHandle?: boolean;
   showTargetHandle?: boolean;
@@ -133,11 +135,9 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
-  status?: number;
   toolTags?: string[];
 
   // @deprecated
-  // show handle
   sourceHandle?: HandleType;
   targetHandle?: HandleType;
 };

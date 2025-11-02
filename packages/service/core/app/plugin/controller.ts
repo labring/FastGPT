@@ -17,13 +17,13 @@ import { MongoApp } from '../schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
+import type { WorkflowSystemToolTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
 import {
   checkIsLatestVersion,
   getAppLatestVersion,
   getAppVersionById
 } from '../version/controller';
-import { type PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import type { WorkflowToolRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
@@ -39,7 +39,6 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { isProduction } from '@fastgpt/global/common/system/constants';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
@@ -50,8 +49,9 @@ import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getCachedData } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
-type ChildAppType = SystemPluginTemplateItemType & {
+type ChildAppType = WorkflowSystemToolTemplateItemType & {
   teamId?: string;
   tmbId?: string;
   workflow?: WorkflowTemplateBasicType;
@@ -61,41 +61,41 @@ type ChildAppType = SystemPluginTemplateItemType & {
 
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
 
-export const getSystemPluginByIdAndVersionId = async (
+export const getSystemToolByIdAndVersionId = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const plugin = await getSystemToolById(pluginId);
+  const tool = await getSystemToolById(pluginId);
 
-  // Admin selected system tool
-  if (plugin.associatedPluginId) {
-    // The verification plugin is set as a system plugin
+  // App type system tool
+  if (tool.associatedPluginId) {
+    // The verification tool is set as a system tool
     const systemPlugin = await MongoSystemTool.findOne(
-      { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+      { pluginId: tool.id, 'customConfig.associatedPluginId': tool.associatedPluginId },
       'associatedPluginId'
     ).lean();
     if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
 
-    const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+    const app = await MongoApp.findById(tool.associatedPluginId).lean();
     if (!app) return Promise.reject(PluginErrEnum.unExist);
 
     const version = versionId
       ? await getAppVersionById({
-          appId: plugin.associatedPluginId,
+          appId: tool.associatedPluginId,
           versionId,
           app
         })
-      : await getAppLatestVersion(plugin.associatedPluginId, app);
+      : await getAppLatestVersion(tool.associatedPluginId, app);
     if (!version.versionId) return Promise.reject(new UserError('App version not found'));
     const isLatest = version.versionId
       ? await checkIsLatestVersion({
-          appId: plugin.associatedPluginId,
+          appId: tool.associatedPluginId,
           versionId: version.versionId
         })
       : true;
 
     return {
-      ...plugin,
+      ...tool,
       workflow: {
         nodes: version.nodes,
         edges: version.edges,
@@ -110,22 +110,22 @@ export const getSystemPluginByIdAndVersionId = async (
   }
 
   // System toolset
-  if (plugin.isFolder) {
+  if (tool.isFolder) {
     return {
-      ...plugin,
+      ...tool,
       inputs: [],
       outputs: [],
-      inputList: plugin.inputList,
+      inputList: tool.inputList,
       version: '',
       isLatestVersion: true
     };
   }
 
   // System tool
-  const versionList = (plugin.versionList as SystemPluginTemplateItemType['versionList']) || [];
+  const versionList = (tool.versionList as WorkflowSystemToolTemplateItemType['versionList']) || [];
 
   if (versionList.length === 0) {
-    return Promise.reject(new UserError('Can not find plugin version list'));
+    return Promise.reject(new UserError('Can not find tool version list'));
   }
 
   const version = versionId
@@ -134,7 +134,7 @@ export const getSystemPluginByIdAndVersionId = async (
   const lastVersion = versionList[0];
 
   // concat parent (if exists) input config
-  const parent = plugin.parentId ? await getSystemToolById(plugin.parentId) : undefined;
+  const parent = tool.parentId ? await getSystemToolById(tool.parentId) : undefined;
   if (parent?.inputList) {
     version?.inputs?.unshift({
       key: NodeInputKeyEnum.systemInputConfig,
@@ -145,7 +145,7 @@ export const getSystemPluginByIdAndVersionId = async (
   }
 
   return {
-    ...plugin,
+    ...tool,
     inputs: version.inputs ?? [],
     outputs: version.outputs ?? [],
     version: versionId ? version?.value : '',
@@ -307,7 +307,7 @@ export async function getChildAppPreviewNode({
     // 1. System Tools
     // 2. System Plugins configured in Pro (has associatedPluginId)
     else {
-      return getSystemPluginByIdAndVersionId(pluginId, versionId);
+      return getSystemToolByIdAndVersionId(pluginId, versionId);
     }
   })();
 
@@ -451,7 +451,7 @@ export async function getChildAppRuntimeById({
   id: string;
   versionId?: string;
   lang?: localeType;
-}): Promise<PluginRuntimeType> {
+}): Promise<WorkflowToolRuntimeType> {
   const app = await (async () => {
     const { source, pluginId } = splitCombinePluginId(id);
 
@@ -487,7 +487,7 @@ export async function getChildAppRuntimeById({
         pluginOrder: 0
       };
     } else {
-      return getSystemPluginByIdAndVersionId(pluginId, versionId);
+      return getSystemToolByIdAndVersionId(pluginId, versionId);
     }
   })();
 
@@ -506,7 +506,7 @@ export async function getChildAppRuntimeById({
   };
 }
 
-const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplateItemType => {
+const dbPluginFormat = (item: SystemPluginConfigSchemaType): WorkflowSystemToolTemplateItemType => {
   const {
     name,
     avatar,
@@ -521,7 +521,7 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 
   return {
     id: item.pluginId,
-    status: item.status ?? 1,
+    status: item.status ?? PluginStatusEnum.Normal,
     defaultInstalled: item.defaultInstalled ?? false,
     isFolder: false,
     parentId: null,
@@ -548,18 +548,19 @@ const dbPluginFormat = (item: SystemPluginConfigSchemaType): SystemPluginTemplat
 };
 
 /* FastsGPT-Pluign api: */
-export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType[]> => {
+export const refreshSystemTools = async (): Promise<WorkflowSystemToolTemplateItemType[]> => {
   const tools = await APIGetSystemToolList();
 
   // 从数据库里加载插件配置进行替换
   const systemToolsArray = await MongoSystemTool.find({}).lean();
   const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
 
-  const formatTools = tools.map<SystemPluginTemplateItemType>((item) => {
+  const formatTools = tools.map<WorkflowSystemToolTemplateItemType>((item) => {
     const dbPluginConfig = systemTools.get(item.id);
     const isFolder = tools.some((tool) => tool.parentId === item.id);
 
-    const versionList = (item.versionList as SystemPluginTemplateItemType['versionList']) || [];
+    const versionList =
+      (item.versionList as WorkflowSystemToolTemplateItemType['versionList']) || [];
 
     return {
       id: item.id,
@@ -602,18 +603,14 @@ export const refreshSystemTools = async (): Promise<SystemPluginTemplateItemType
   return concatTools;
 };
 
-export const getSystemToolById = async (id: string): Promise<SystemPluginTemplateItemType> => {
-  const { source, pluginId } = splitCombinePluginId(id);
-  if (source === PluginSourceEnum.systemTool) {
-    const tools = await getSystemTools();
-    const tool = tools.find((item) => item.id === pluginId);
-    if (tool) {
-      return cloneDeep(tool);
-    }
-    return Promise.reject(PluginErrEnum.unExist);
+export const getSystemToolById = async (
+  id: string
+): Promise<WorkflowSystemToolTemplateItemType> => {
+  const { pluginId } = splitCombinePluginId(id);
+  const tools = await getSystemTools();
+  const tool = tools.find((item) => item.id === pluginId);
+  if (tool) {
+    return cloneDeep(tool);
   }
-
-  const dbPlugin = await MongoSystemTool.findOne({ pluginId }).lean();
-  if (!dbPlugin) return Promise.reject(PluginErrEnum.unExist);
-  return dbPluginFormat(dbPlugin);
+  return Promise.reject(PluginErrEnum.unExist);
 };

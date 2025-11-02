@@ -1,4 +1,4 @@
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import type { I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -9,7 +9,7 @@ export type SystemPluginConfigSchemaType = {
   originCost: number; // n points/one time
   currentCost: number;
   hasTokenFee: boolean;
-  status?: number;
+  status?: PluginStatusType;
   defaultInstalled?: boolean;
   pluginOrder?: number;
   systemKeyCost?: number;

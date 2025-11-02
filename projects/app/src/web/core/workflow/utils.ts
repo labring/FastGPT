@@ -22,11 +22,9 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getGuideModule,
   getHandleId
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
-import { getSystemPlugins } from '../app/api/plugin';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType,
@@ -172,41 +170,6 @@ export const storeNode2FlowNode = ({
     position: storeNode.position || { x: 0, y: 0 },
     zIndex
   };
-};
-
-export const batchFillPluginData = async (nodes: StoreNodeItemType[]) => {
-  const pluginIdsSet = new Set<string>();
-  nodes.forEach((node) => {
-    const isAppNode = AppNodeFlowNodeTypeMap[node.flowNodeType];
-    if (isAppNode && node.pluginId) {
-      pluginIdsSet.add(node.pluginId);
-    }
-  });
-
-  if (pluginIdsSet.size === 0) return;
-
-  try {
-    const systemPlugins = await getSystemPlugins({});
-
-    const pluginDataMap = new Map<string, { status?: number; toolTags?: string[] }>();
-    systemPlugins.forEach((plugin) => {
-      pluginDataMap.set(plugin.id, {
-        status: plugin.status,
-        toolTags: plugin.toolTags
-      });
-    });
-
-    nodes.forEach((node) => {
-      if (node.pluginId && pluginDataMap.has(node.pluginId)) {
-        node.pluginData = {
-          ...node.pluginData,
-          ...pluginDataMap.get(node.pluginId)
-        };
-      }
-    });
-  } catch (error) {
-    console.warn('Failed to batch fill plugin data:', error);
-  }
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
