@@ -760,10 +760,10 @@ importers:
         specifier: 15.4.2
         version: 15.4.2(i18next@23.16.8)(next@14.2.33(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
-        specifier: ^18
+        specifier: 18.3.1
         version: 18.3.1
       react-dom:
-        specifier: ^18
+        specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       react-i18next:
         specifier: 14.1.2

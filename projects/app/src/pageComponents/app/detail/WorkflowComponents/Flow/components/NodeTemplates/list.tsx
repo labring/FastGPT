@@ -12,7 +12,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -77,7 +77,7 @@ const NodeTemplateListItem = ({
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
-  const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
+  const isSystemTool = templateType === TemplateTypeEnum.appTool;
 
   return (
     <MyTooltip
@@ -234,7 +234,7 @@ const NodeTemplateList = ({
         const templateNode = await (async () => {
           try {
             if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
-              return await getPreviewPluginNode({ appId: template.id });
+              return await getToolPreviewNode({ appId: template.id });
             }
 
             const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
@@ -434,7 +434,7 @@ const NodeTemplateList = ({
 
               <Grid
                 gridTemplateColumns={
-                  templateType === TemplateTypeEnum.teamPlugin ? ['1fr'] : ['1fr', '1fr 1fr']
+                  templateType === TemplateTypeEnum.teamApp ? ['1fr'] : ['1fr', '1fr 1fr']
                 }
                 rowGap={2}
               >

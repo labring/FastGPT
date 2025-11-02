@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/plugin';
+import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/tool';
 import { useForm } from 'react-hook-form';
 import type { HttpToolsType } from '@/pageComponents/dashboard/apps/HttpToolsCreateModal';
 import { useContextSelector } from 'use-context-selector';

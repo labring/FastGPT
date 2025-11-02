@@ -3,7 +3,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getTeamPlugTemplates, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import { getTeamAppTemplates, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
@@ -85,16 +85,16 @@ export const useNodeTemplates = () => {
       type?: TemplateTypeEnum;
       searchVal?: string;
     }) => {
-      if (type === TemplateTypeEnum.teamPlugin) {
+      if (type === TemplateTypeEnum.teamApp) {
         // app, workflow-plugin, mcp
-        return getTeamPlugTemplates({
+        return getTeamAppTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));
       }
-      if (type === TemplateTypeEnum.systemPlugin) {
+      if (type === TemplateTypeEnum.appTool) {
         // systemTool
-        return getSystemPlugTemplates({
+        return getAppToolTemplates({
           searchKey: searchVal,
           parentId
         });

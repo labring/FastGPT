@@ -31,13 +31,9 @@ import type {
 } from '@/pages/api/core/app/mcpTools/getChildren';
 import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
-import type {
-  getSystemPluginsQuery,
-  getSystemPluginsResponse
-} from '@/pages/api/core/app/tool/list';
 
 /* ============ team plugin ============== */
-export const getTeamPlugTemplates = async (data?: {
+export const getTeamAppTemplates = async (data?: {
   parentId?: ParentIdType;
   searchKey?: string;
 }) => {
@@ -95,15 +91,15 @@ export const getTeamPlugTemplates = async (data?: {
 };
 
 /* ============ Tool ============== */
-export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
+export const getAppToolTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/tool/getSystemToolTemplates', data);
 
-export const getSystemPluginPaths = (data: GetPathProps) => {
+export const getAppToolPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
   return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };
 
-export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
+export const getToolPreviewNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
@@ -143,8 +139,3 @@ export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
 
 export const postRunHTTPTool = (data: RunHTTPToolBody) =>
   POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);
-
-/* ============ plugin management ============== */
-export const getSystemPlugins = (data: getSystemPluginsQuery) => {
-  return GET<getSystemPluginsResponse>(`/core/app/tool/list`, data);
-};

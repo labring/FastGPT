@@ -1,7 +1,7 @@
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getPreviewPluginNode, getSystemPlugins } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -304,13 +304,14 @@ const ToolKitProvider = () => {
           // @ts-ignore
           onFetchDetail={async (toolId: string) => {
             if (splitCombineToolId(toolId).source === WorkflowToolSourceEnum.systemTool) {
-              const tools = await getSystemPlugins({ parentId: toolId });
+              // TODO: 替换成新的
+              // const tools = await getSystemPlugins({ parentId: toolId });
               return {
-                tools: [selectedTool, ...tools],
+                tools: [selectedTool],
                 downloadUrl: ''
               };
             } else {
-              const toolDetail = await getPreviewPluginNode({ appId: toolId });
+              const toolDetail = await getToolPreviewNode({ appId: toolId });
               return {
                 tools: [
                   {
