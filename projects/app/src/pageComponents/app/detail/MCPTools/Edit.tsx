@@ -7,7 +7,7 @@ import AppCard from './AppCard';
 import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const Edit = ({

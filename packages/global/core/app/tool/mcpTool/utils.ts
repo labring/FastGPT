@@ -1,12 +1,12 @@
-import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
-import { i18nT } from '../../../../web/i18n/utils';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
-import { type McpToolConfigType } from '../type';
-import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
-import { type StoreSecretValueType } from '../../../common/secret/type';
-import { jsonSchema2NodeInput } from '../jsonschema';
-import { getNanoid } from '../../../common/string/tools';
-import { PluginSourceEnum } from '../plugin/constants';
+import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
+import { i18nT } from '../../../../../web/i18n/utils';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
+import { type McpToolConfigType } from '../../tool/mcpTool/type';
+import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
+import { type StoreSecretValueType } from '../../../../common/secret/type';
+import { jsonSchema2NodeInput } from '../../jsonschema';
+import { getNanoid } from '../../../../common/string/tools';
+import { WorkflowToolSourceEnum } from '../constants';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -59,7 +59,7 @@ export const getMCPToolRuntimeNode = ({
     intro: tool.description,
     toolConfig: {
       mcpTool: {
-        toolId: `${PluginSourceEnum.mcp}-${parentId}/${tool.name}`
+        toolId: `${WorkflowToolSourceEnum.mcp}-${parentId}/${tool.name}`
       }
     },
     inputs: jsonSchema2NodeInput(tool.inputSchema),

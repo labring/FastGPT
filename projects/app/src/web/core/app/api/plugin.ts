@@ -8,33 +8,33 @@ import type {
 import { getAppDetailById, getMyApps } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
+import type { GetPreviewNodeQuery } from '@/pages/api/core/app/tool/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetPathProps,
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemToolTemplates';
+import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import type {
   getToolVersionListProps,
   getToolVersionResponse
-} from '@/pages/api/core/app/plugin/getVersionList';
+} from '@/pages/api/core/app/tool/getVersionList';
 import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 import type {
   getSystemPluginsQuery,
   getSystemPluginsResponse
-} from '@/pages/api/core/app/plugin/list';
+} from '@/pages/api/core/app/tool/list';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -57,7 +57,7 @@ export const getTeamPlugTemplates = async (data?: {
       const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
       if (!toolList) return [];
       return toolList.map((item) => ({
-        id: `${PluginSourceEnum.http}-${app._id}/${item.name}`,
+        id: `${WorkflowToolSourceEnum.http}-${app._id}/${item.name}`,
         avatar: app.avatar,
         name: item.name,
         intro: item.description || '',
@@ -94,20 +94,20 @@ export const getTeamPlugTemplates = async (data?: {
   );
 };
 
-/* ============ system plugin ============== */
+/* ============ Tool ============== */
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
-  POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemToolTemplates', data);
+  POST<NodeTemplateListItemType[]>('/core/app/tool/getSystemToolTemplates', data);
 
 export const getSystemPluginPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
-  return GET<ParentTreePathItemType[]>('/core/app/plugin/path', data);
+  return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
-  GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
+  GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
-  POST<getToolVersionResponse>('/core/app/plugin/getVersionList', data);
+  POST<getToolVersionResponse>('/core/app/tool/getVersionList', data);
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
@@ -146,5 +146,5 @@ export const postRunHTTPTool = (data: RunHTTPToolBody) =>
 
 /* ============ plugin management ============== */
 export const getSystemPlugins = (data: getSystemPluginsQuery) => {
-  return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
+  return GET<getSystemPluginsResponse>(`/core/app/tool/list`, data);
 };

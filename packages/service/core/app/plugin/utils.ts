@@ -1,7 +1,7 @@
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { type WorkflowToolRuntimeType } from '@fastgpt/global/core/app/plugin/type';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { type AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { anyValueDecrypt, encryptSecretValue } from '../../../common/secret/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -28,14 +28,14 @@ export const computedPluginUsage = async ({
   childrenUsage,
   error
 }: {
-  plugin: WorkflowToolRuntimeType;
+  plugin: AppToolRuntimeType;
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {
-  const { source } = splitCombinePluginId(plugin.id);
+  const { source } = splitCombineToolId(plugin.id);
   const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
-  if (source !== PluginSourceEnum.personal) {
+  if (source !== WorkflowToolSourceEnum.personal) {
     if (error) return 0;
 
     const pluginCurrentCost = plugin.currentCost ?? 0;

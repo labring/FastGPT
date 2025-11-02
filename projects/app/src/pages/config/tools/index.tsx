@@ -8,8 +8,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolRow from '@/pageComponents/config/tool/ToolRow';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -191,7 +191,7 @@ const ToolProvider = () => {
         <ImportPluginModal onClose={onCloseImportModal} onSuccess={refreshTools} />
       )}
       {editingToolId !== undefined &&
-        splitCombinePluginId(editingToolId).source === PluginSourceEnum.systemTool && (
+        splitCombineToolId(editingToolId).source === WorkflowToolSourceEnum.systemTool && (
           <SystemToolConfigModal
             toolId={editingToolId}
             onSuccess={refreshTools}
@@ -199,7 +199,7 @@ const ToolProvider = () => {
           />
         )}
       {editingToolId !== undefined &&
-        splitCombinePluginId(editingToolId).source !== PluginSourceEnum.systemTool && (
+        splitCombineToolId(editingToolId).source !== WorkflowToolSourceEnum.systemTool && (
           <AppToolConfig
             toolId={editingToolId}
             onSuccess={refreshTools}

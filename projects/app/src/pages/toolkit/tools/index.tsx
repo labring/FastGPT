@@ -17,8 +17,8 @@ import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/Tool
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
@@ -303,7 +303,7 @@ const ToolKitProvider = () => {
           isLoading={loadingPluginId === selectedTool.id}
           // @ts-ignore
           onFetchDetail={async (toolId: string) => {
-            if (splitCombinePluginId(toolId).source === PluginSourceEnum.systemTool) {
+            if (splitCombineToolId(toolId).source === WorkflowToolSourceEnum.systemTool) {
               const tools = await getSystemPlugins({ parentId: toolId });
               return {
                 tools: [selectedTool, ...tools],

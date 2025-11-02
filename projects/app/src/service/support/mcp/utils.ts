@@ -19,7 +19,7 @@ import {
   getPluginRunUserQuery,
   updatePluginInputByVariables
 } from '@fastgpt/service/core/app/plugin/utils';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   ChatItemValueTypeEnum,
   ChatRoleEnum,
@@ -179,7 +179,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
         return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(nodes || app.modules),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes || app.modules),
           variables
         });
       }

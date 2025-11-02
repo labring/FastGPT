@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { SystemPluginTemplateListItemType } from '@fastgpt/global/core/app/plugin/type';
+import type { AppToolTemplateListItemType } from '@fastgpt/global/core/app/tool/type';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
@@ -21,7 +21,7 @@ export type getSystemPluginsQuery = {
 export type getSystemPluginsBody = {};
 
 export type getSystemPluginsResponse = Array<
-  SystemPluginTemplateListItemType & { isInstalled?: boolean }
+  AppToolTemplateListItemType & { isInstalled?: boolean }
 >;
 
 async function handler(

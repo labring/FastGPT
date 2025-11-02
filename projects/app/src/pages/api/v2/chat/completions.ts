@@ -57,7 +57,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
@@ -201,7 +201,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
         return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(app.modules),
           variables,
           files: variables.files
         });

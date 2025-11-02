@@ -8,7 +8,7 @@ import {
   ModalFooter,
   useDisclosure
 } from '@chakra-ui/react';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
@@ -28,7 +28,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 
 export type ToolParamsFormType = {
-  type: SystemToolInputTypeEnum;
+  type: SystemToolSecretInputTypeEnum;
   value?: StoreSecretValueType;
 };
 
@@ -64,7 +64,9 @@ const SecretInputModal = ({
         const defaultValue = inputConfig.value;
         return (
           defaultValue || {
-            type: hasSystemSecret ? SystemToolInputTypeEnum.system : SystemToolInputTypeEnum.manual,
+            type: hasSystemSecret
+              ? SystemToolSecretInputTypeEnum.system
+              : SystemToolSecretInputTypeEnum.manual,
             value:
               inputList?.reduce(
                 (acc, item) => {
@@ -121,9 +123,9 @@ const SecretInputModal = ({
                     {
                       title: t('app:system_secret'),
                       desc: t('app:tool_active_system_config_desc'),
-                      value: SystemToolInputTypeEnum.system,
+                      value: SystemToolSecretInputTypeEnum.system,
                       children:
-                        configType === SystemToolInputTypeEnum.system && hasCost ? (
+                        configType === SystemToolSecretInputTypeEnum.system && hasCost ? (
                           <Box>
                             {isFolder ? (
                               <>
@@ -205,9 +207,9 @@ const SecretInputModal = ({
                   t('app:manual_secret')
                 ),
                 desc: t('app:tool_active_manual_config_desc'),
-                value: SystemToolInputTypeEnum.manual,
+                value: SystemToolSecretInputTypeEnum.manual,
                 children:
-                  configType === SystemToolInputTypeEnum.manual ? (
+                  configType === SystemToolSecretInputTypeEnum.manual ? (
                     <>
                       {inputList.map((item, i) => {
                         const inputKey = `value.${item.key}.value` as any;

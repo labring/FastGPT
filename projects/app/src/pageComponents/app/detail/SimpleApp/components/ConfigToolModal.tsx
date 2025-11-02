@@ -18,7 +18,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import SecretInputModal, {
   type ToolParamsFormType
 } from '@/pageComponents/app/plugin/SecretInputModal';
-import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
+import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { useBoolean } from 'ahooks';
 
 const ConfigToolModal = ({
@@ -119,7 +119,7 @@ const ConfigToolModal = ({
                             }
 
                             return t('workflow:tool_active_config_type', {
-                              type: t(SystemToolInputTypeMap[val.type]?.text as any)
+                              type: t(SystemToolSecretInputTypeMap[val.type]?.text as any)
                             });
                           })()}
                         </Button>

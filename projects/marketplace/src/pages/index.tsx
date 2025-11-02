@@ -10,7 +10,7 @@ import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { ToolListItem } from '@fastgpt/global/core/app/plugin/type';
+import type { ToolListItem } from '@/pages/api/tool/list';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';

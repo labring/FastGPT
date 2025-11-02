@@ -7,7 +7,7 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { cardStyles } from '../constants';
 import { useTranslation } from 'next-i18next';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';

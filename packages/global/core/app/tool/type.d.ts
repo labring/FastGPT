@@ -11,7 +11,7 @@ import type { I18nStringType } from '../../../common/i18n/type';
 import type { ToolSimpleType, ToolDetailType } from '../../../sdk/fastgpt-plugin';
 import type { PluginStatusType, SystemPluginToolTagType } from '../../plugin/type';
 
-export type WorkflowToolRuntimeType = {
+export type AppToolRuntimeType = {
   id: string;
   teamId?: string;
   tmbId?: string;
@@ -27,8 +27,8 @@ export type WorkflowToolRuntimeType = {
   hasTokenFee?: boolean;
 };
 
-// system plugin
-export type WorkflowSystemToolTemplateItemType = WorkflowTemplateType & {
+// System tool
+export type AppToolTemplateItemType = WorkflowTemplateType & {
   status?: PluginStatusType;
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
@@ -66,24 +66,11 @@ export type WorkflowSystemToolTemplateItemType = WorkflowTemplateType & {
   templateType?: string;
 };
 
-export type SystemPluginTemplateListItemType = Omit<
-  WorkflowSystemToolTemplateItemType,
+export type AppToolTemplateListItemType = Omit<
+  AppToolTemplateItemType,
   'name' | 'intro' | 'workflow'
 > & {
   name: string;
   intro: string;
   tags?: SystemPluginToolTagType[];
 };
-
-export type ToolListItem = ToolSimpleType & {
-  downloadUrl: string;
-  // not implemented
-  // downloadCount: number;
-};
-
-export type ToolDetailResponse = {
-  tools: Array<ToolDetailType & { readme: string }>;
-  downloadUrl: string;
-};
-
-export type GetToolTagsResponse = Array<SystemPluginToolTagType>;

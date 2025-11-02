@@ -17,8 +17,8 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';

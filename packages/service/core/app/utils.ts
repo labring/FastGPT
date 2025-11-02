@@ -4,11 +4,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './plugin/controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
@@ -50,7 +50,7 @@ export async function rewriteAppWorkflowToDetail({
   await Promise.all(
     nodes.map(async (node) => {
       if (!node.pluginId) return;
-      const { source, pluginId } = splitCombinePluginId(node.pluginId);
+      const { source, pluginId } = splitCombineToolId(node.pluginId);
 
       try {
         const [preview] = await Promise.all([
@@ -59,7 +59,7 @@ export async function rewriteAppWorkflowToDetail({
             versionId: node.version,
             lang
           }),
-          ...(source === PluginSourceEnum.personal
+          ...(source === WorkflowToolSourceEnum.personal
             ? [
                 authAppByTmbId({
                   tmbId: ownerTmbId,
