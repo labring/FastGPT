@@ -1,7 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { PluginTagType } from '@fastgpt/global/core/app/plugin/type';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 const PluginTagFilter = ({
   tags,
@@ -9,7 +9,7 @@ const PluginTagFilter = ({
   onTagSelect,
   isPopover = false
 }: {
-  tags: PluginTagType[];
+  tags: SystemPluginToolTagType[];
   selectedTagIds: string[];
   onTagSelect: (tagIds: string[]) => void;
   isPopover?: boolean;

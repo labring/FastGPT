@@ -43,6 +43,11 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -227,25 +232,6 @@ const NodeCard = (props: Props) => {
               />
 
               <Box flex={1} mr={1} />
-              {nodeTemplate?.status !== undefined && nodeTemplate.status !== 1 && (
-                <MyTooltip
-                  label={
-                    nodeTemplate.status === 0
-                      ? t('app:tool_offset_tips')
-                      : t('app:tool_soon_offset_tips')
-                  }
-                >
-                  <MyTag
-                    mr={2}
-                    colorSchema={nodeTemplate.status === 0 ? 'red' : 'yellow'}
-                    type="borderFill"
-                  >
-                    {nodeTemplate.status === 0
-                      ? t('app:toolkit_status_offline')
-                      : t('app:toolkit_status_soon_offline')}
-                  </MyTag>
-                </MyTooltip>
-              )}
 
               {showVersion && <NodeVersion node={node!} />}
 
@@ -255,7 +241,7 @@ const NodeCard = (props: Props) => {
                 rtDoms={rtDoms}
               />
 
-              <NodeErrorBadge error={error} />
+              <NodeStatusBadge status={nodeTemplate?.status} error={error} />
             </Flex>
 
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -824,29 +810,49 @@ const NodeActionButtons = React.memo<{
 NodeActionButtons.displayName = 'NodeActionButtons';
 
 // 节点错误徽章组件
-const NodeErrorBadge = React.memo<{ error?: string | null }>(({ error }) => {
-  const { t } = useTranslation();
+const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
+  ({ status, error }) => {
+    const { t } = useTranslation();
 
-  if (!error) {
+    if (error) {
+      return (
+        <Flex
+          bg={'red.50'}
+          alignItems={'center'}
+          h={8}
+          px={2}
+          rounded={'6px'}
+          fontSize={'xs'}
+          fontWeight={'medium'}
+        >
+          <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+          <Box color={'red.600'}>{t(error as any)}</Box>
+        </Flex>
+      );
+    }
+    if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      return (
+        <MyTooltip
+          label={
+            status === PluginStatusEnum.Offline
+              ? t('app:tool_offset_tips')
+              : t('app:tool_soon_offset_tips')
+          }
+        >
+          <MyTag
+            mr={2}
+            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
+            type="borderFill"
+          >
+            {t(PluginStatusMap[status].label)}
+          </MyTag>
+        </MyTooltip>
+      );
+    }
     return null;
   }
-
-  return (
-    <Flex
-      bg={'red.50'}
-      alignItems={'center'}
-      h={8}
-      px={2}
-      rounded={'6px'}
-      fontSize={'xs'}
-      fontWeight={'medium'}
-    >
-      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-      <Box color={'red.600'}>{t(error as any)}</Box>
-    </Flex>
-  );
-});
-NodeErrorBadge.displayName = 'NodeErrorBadge';
+);
+NodeStatusBadge.displayName = 'NodeStatusBadge';
 
 // 节点 Secret 组件
 const NodeSecret = React.memo(function NodeSecret({

@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
-import type { PluginToolTagType } from '@fastgpt/global/core/plugin/type';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useEffect, useRef, useState } from 'react';
@@ -23,7 +23,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { toast } = useToast();
   const newTagInputRef = useRef<HTMLInputElement>(null);
 
-  const [localTags, setLocalTags] = useState<PluginToolTagType[]>([]);
+  const [localTags, setLocalTags] = useState<SystemPluginToolTagType[]>([]);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
 
@@ -81,7 +81,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: handleDeleteTag } = useRequest2(
-    async (tag: PluginToolTagType) => {
+    async (tag: SystemPluginToolTagType) => {
       await deletePluginToolTag({ tagId: tag.tagId });
     },
     {
@@ -92,7 +92,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: handleUpdateOrder } = useRequest2(
-    async (newList: PluginToolTagType[]) => {
+    async (newList: SystemPluginToolTagType[]) => {
       await updatePluginToolTagOrder({ tags: newList });
     },
     {
@@ -175,8 +175,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             </Flex>
           )}
 
-          <DndDrag<PluginToolTagType>
-            onDragEndCb={async (tags: PluginToolTagType[]) => {
+          <DndDrag<SystemPluginToolTagType>
+            onDragEndCb={async (tags: SystemPluginToolTagType[]) => {
               const newList = tags.map((item, index) => ({
                 ...item,
                 tagOrder: index

@@ -26,7 +26,7 @@ import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
-import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import type { WorkflowToolRuntimeType } from '@fastgpt/global/core/app/plugin/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
@@ -53,7 +53,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return getNodeErrResponse({ error: 'pluginId can not find' });
   }
 
-  let plugin: PluginRuntimeType | undefined;
+  let plugin: WorkflowToolRuntimeType | undefined;
 
   try {
     // Adapt <= 4.10 system tool
