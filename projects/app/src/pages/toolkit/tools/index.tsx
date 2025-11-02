@@ -8,7 +8,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useReducer, useRef } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -18,12 +18,34 @@ import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
 import type { GetTeamSystemPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
+
+type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
+
+const loadingReducer = (state: Set<string>, action: LoadingAction): Set<string> => {
+  if (action.type === 'TRY_ADD') {
+    if (state.has(action.pluginId)) {
+      return state;
+    }
+    const newSet = new Set(state);
+    newSet.add(action.pluginId);
+    return newSet;
+  }
+  if (action.type === 'REMOVE') {
+    if (!state.has(action.pluginId)) {
+      return state;
+    }
+    const newSet = new Set(state);
+    newSet.delete(action.pluginId);
+    return newSet;
+  }
+  return state;
+};
 
 const ToolKitProvider = () => {
   const router = useRouter();
@@ -38,7 +60,8 @@ const ToolKitProvider = () => {
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null);
+  const [loadingPluginIds, dispatchLoading] = useReducer(loadingReducer, new Set<string>());
+  const loadingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: tags = [] } = useRequest2(getPluginToolTags, {
@@ -56,18 +79,34 @@ const ToolKitProvider = () => {
 
   const { runAsync: toggleInstall } = useRequest2(
     async (data: { pluginId: string; installed: boolean }) => {
-      setLoadingPluginId(data.pluginId);
-      try {
-        await postToggleInstallPlugin({
-          ...data,
-          type: 'tool'
-        });
-        setTools((prev) =>
-          prev.map((t) => (t.id === data.pluginId ? { ...t, installed: data.installed } : t))
-        );
-      } finally {
-        setLoadingPluginId(null);
+      const existingPromise = loadingPromisesRef.current.get(data.pluginId);
+      if (existingPromise) {
+        await existingPromise;
+        return;
       }
+
+      const operationPromise = (async () => {
+        dispatchLoading({ type: 'TRY_ADD', pluginId: data.pluginId });
+
+        try {
+          await postToggleInstallPlugin({
+            ...data,
+            type: 'tool'
+          });
+          setTools((prev) =>
+            prev.map((t) => (t.id === data.pluginId ? { ...t, installed: data.installed } : t))
+          );
+        } finally {
+          dispatchLoading({ type: 'REMOVE', pluginId: data.pluginId });
+          loadingPromisesRef.current.delete(data.pluginId);
+        }
+      })();
+      loadingPromisesRef.current.set(data.pluginId, operationPromise);
+
+      await operationPromise;
+    },
+    {
+      manual: true
     }
   );
 
@@ -99,7 +138,8 @@ const ToolKitProvider = () => {
         author: tool.author,
         tags: tool.tags,
         status: tool.status,
-        installed: tool.installed
+        installed: tool.installed,
+        associatedPluginId: tool.associatedPluginId
       }));
   }, [tools, searchText, selectedTagIds, installedFilter]);
 
@@ -115,20 +155,31 @@ const ToolKitProvider = () => {
         isLoading={loadingTools && displayTools.length === 0}
       >
         <Box px={8} flexShrink={0}>
-          <Button
-            position={'absolute'}
-            right={8}
-            top={8}
-            onClick={() => {
-              const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
-
-              if (url) {
-                window.open(url, '_blank');
+          {feConfigs?.docUrl && (
+            <Button
+              position={'absolute'}
+              right={8}
+              top={8}
+              onClick={() =>
+                window.open(
+                  getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
+                  '_blank'
+                )
               }
-            }}
-          >
-            {t('app:toolkit_contribute_resource')}
-          </Button>
+            >
+              {t('app:toolkit_contribute_resource')}
+            </Button>
+          )}
+          {feConfigs?.submitPluginRequestUrl && (
+            <Button
+              variant={'whiteBase'}
+              onClick={() => {
+                window.open(feConfigs.submitPluginRequestUrl);
+              }}
+            >
+              {t('app:toolkit_marketplace_submit_request')}
+            </Button>
+          )}
           <Box mt={8} mb={4} fontSize={'20px'} fontWeight={'medium'} color={'black'}>
             {t('common:navbar.Tools')}
           </Box>
@@ -263,10 +314,10 @@ const ToolKitProvider = () => {
                     key={tool.id}
                     item={tool}
                     systemTitle={feConfigs?.systemTitle}
-                    isLoading={loadingPluginId === tool.id}
                     mode="team"
                     onClickButton={(installed) => toggleInstall({ pluginId: tool.id, installed })}
                     onClickCard={() => setSelectedTool(tool)}
+                    isLoading={loadingPluginIds.has(tool.id)}
                   />
                 );
               })}
@@ -300,10 +351,10 @@ const ToolKitProvider = () => {
             }
           }}
           systemTitle={feConfigs.systemTitle}
-          isLoading={loadingPluginId === selectedTool.id}
+          isLoading={loadingPluginIds.has(selectedTool.id)}
           // @ts-ignore
           onFetchDetail={async (toolId: string) => {
-            if (splitCombineToolId(toolId).source === WorkflowToolSourceEnum.systemTool) {
+            if (splitCombineToolId(toolId).source === AppToolSourceEnum.systemTool) {
               // TODO: 替换成新的
               // const tools = await getSystemPlugins({ parentId: toolId });
               return {
@@ -311,7 +362,10 @@ const ToolKitProvider = () => {
                 downloadUrl: ''
               };
             } else {
-              const toolDetail = await getToolPreviewNode({ appId: toolId });
+              // TODO: 待修复
+              const toolDetail = await getToolPreviewNode({
+                appId: selectedTool.id
+              });
               return {
                 tools: [
                   {

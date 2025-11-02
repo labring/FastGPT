@@ -459,6 +459,7 @@
   "type.hidden": "隐藏应用",
   "type_not_recognized": "未识别到应用类型",
   "un_auth": "无权限",
+  "upload_file_exists_filtered": "已自动过滤重复文件",
   "upload_file_extension_type_canSelectAudio": "音频",
   "upload_file_extension_type_canSelectCustomFileExtension": "自定义文件扩展类型",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "文件扩展名",

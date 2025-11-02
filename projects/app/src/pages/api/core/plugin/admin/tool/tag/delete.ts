@@ -1,8 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { DeletePluginToolTagQuery } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { refreshVersionKey } from '@fastgpt/service/common/cache';
+import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 async function handler(
   req: ApiRequestProps<{}, DeletePluginToolTagQuery>,
@@ -22,7 +26,17 @@ async function handler(
     return Promise.reject('Tag not found');
   }
 
-  await MongoPluginToolTag.deleteOne({ tagId });
+  await mongoSessionRun(async (session) => {
+    await MongoPluginToolTag.deleteOne({ tagId }, { session });
+
+    await MongoSystemTool.updateMany(
+      { 'customConfig.toolTags': tagId },
+      { $pull: { 'customConfig.toolTags': tagId } },
+      { session }
+    );
+  });
+
+  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
 
   return {};
 }

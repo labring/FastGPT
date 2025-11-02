@@ -1,7 +1,7 @@
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -56,7 +56,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   try {
     // Adapt <= 4.10 system tool
     const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
-    if (source === WorkflowToolSourceEnum.systemTool) {
+    if (source === AppToolSourceEnum.systemTool) {
       return await dispatchRunTool({
         ...props,
         node: {

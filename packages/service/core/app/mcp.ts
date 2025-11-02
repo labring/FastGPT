@@ -5,7 +5,7 @@ import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -142,7 +142,7 @@ export const getMCPChildren = async (app: AppSchema) => {
     return (
       app.modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,
-        id: `${WorkflowToolSourceEnum.mcp}-${id}/${item.name}`,
+        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar
       })) ?? []
     );
@@ -159,7 +159,7 @@ export const getMCPChildren = async (app: AppSchema) => {
 
       return {
         avatar: app.avatar,
-        id: `${WorkflowToolSourceEnum.mcp}-${id}/${item.name}`,
+        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         ...toolData
       };
     });

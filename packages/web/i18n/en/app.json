@@ -442,6 +442,7 @@
   "type.hidden": "Hide app",
   "type_not_recognized": "App type not recognized",
   "un_auth": "No permission",
+  "upload_file_exists_filtered": "Duplicate files have been automatically filtered.",
   "upload_file_extension_type_canSelectAudio": "Audio",
   "upload_file_extension_type_canSelectCustomFileExtension": "Custom file extension type",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "file extension name",

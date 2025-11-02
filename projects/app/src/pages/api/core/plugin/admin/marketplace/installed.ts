@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { APIGetSystemToolList } from '@fastgpt/service/core/app/tool/api';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 export type installedQuery = GetSystemInstalledPluginsQueryType;
 
@@ -26,7 +26,7 @@ async function handler(
   const tools = await APIGetSystemToolList();
 
   return {
-    ids: tools.map((tool) => tool.id.replace(`${WorkflowToolSourceEnum.systemTool}-`, ''))
+    ids: tools.map((tool) => tool.id.replace(`${AppToolSourceEnum.systemTool}-`, ''))
   };
 }
 

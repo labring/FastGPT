@@ -10,6 +10,7 @@ import { WorkflowBufferDataContext } from '../../../context/workflowInitContext'
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 
 export const useNodeTemplates = () => {
   const { feConfigs } = useSystemStore();
@@ -19,6 +20,7 @@ export const useNodeTemplates = () => {
   const searchKeyLock = useRef(false);
 
   const [parentId, setParentId] = useState<ParentIdType>('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const { basicNodeTemplates, hasToolNode, getNodeList, nodeAmount } = useContextSelector(
@@ -72,7 +74,7 @@ export const useNodeTemplates = () => {
   );
 
   const {
-    data: teamAndSystemApps,
+    data: rawTeamAndSystemApps,
     loading: templatesIsLoading,
     runAsync: loadNodeTemplates
   } = useRequest2(
@@ -106,6 +108,20 @@ export const useNodeTemplates = () => {
       }
     }
   );
+
+  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
+
+  const teamAndSystemApps = useMemo(() => {
+    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.systemPlugin) {
+      return rawTeamAndSystemApps;
+    }
+    return rawTeamAndSystemApps?.filter((template) => {
+      // @ts-ignore
+      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
+    });
+  }, [rawTeamAndSystemApps, selectedTagIds, templateType]);
 
   useDebounceEffect(
     () => {
@@ -156,6 +172,9 @@ export const useNodeTemplates = () => {
     onUpdateParentId,
     onUpdateTemplateType,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    selectedTagIds,
+    setSelectedTagIds,
+    allTags
   };
 };

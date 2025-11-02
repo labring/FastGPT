@@ -1,5 +1,5 @@
 import { isProduction } from '@fastgpt/global/common/system/constants';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
@@ -61,7 +61,7 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
 };
 
 export const isCommercialTemaplte = (templateId: string) => {
-  return templateId.startsWith(WorkflowToolSourceEnum.commercial);
+  return templateId.startsWith(AppToolSourceEnum.commercial);
 };
 
 declare global {

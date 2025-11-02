@@ -29,7 +29,7 @@ import type {
   McpGetChildrenmQuery,
   McpGetChildrenmResponse
 } from '@/pages/api/core/app/mcpTools/getChildren';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
 
 /* ============ team plugin ============== */
@@ -53,7 +53,7 @@ export const getTeamAppTemplates = async (data?: {
       const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
       if (!toolList) return [];
       return toolList.map((item) => ({
-        id: `${WorkflowToolSourceEnum.http}-${app._id}/${item.name}`,
+        id: `${AppToolSourceEnum.http}-${app._id}/${item.name}`,
         avatar: app.avatar,
         name: item.name,
         intro: item.description || '',

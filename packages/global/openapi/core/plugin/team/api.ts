@@ -13,7 +13,8 @@ export const TeamPluginListItemSchema = z.object({
   author: z.string().optional(),
   tags: z.array(z.string()).optional(),
   status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
-  installed: z.boolean()
+  installed: z.boolean(),
+  associatedPluginId: z.string().optional()
 });
 export const GetTeamSystemPluginListResponseSchema = z.array(TeamPluginListItemSchema);
 export type GetTeamSystemPluginListResponseType = z.infer<

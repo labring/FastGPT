@@ -15,6 +15,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
 import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
@@ -35,8 +36,7 @@ const ImportPluginModal = ({
   const { t, i18n } = useTranslation();
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
-
-  console.log('uploadedFiles', uploadedFiles);
+  const { toast } = useToast();
 
   const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
@@ -155,6 +155,16 @@ const ImportPluginModal = ({
   );
 
   useEffect(() => {
+    const filteredFiles = selectFiles.filter(
+      (file, index, self) => self.findIndex((f) => f.name === file.name) === index
+    );
+    if (filteredFiles.length !== selectFiles.length) {
+      toast({
+        title: t('app:upload_file_exists_filtered'),
+        status: 'info'
+      });
+    }
+    setSelectFiles(filteredFiles);
     if (selectFiles.length > 0) {
       handleBatchUpload();
     }

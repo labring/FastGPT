@@ -1,4 +1,4 @@
-import { WorkflowToolSourceEnum } from '../tool/constants';
+import { AppToolSourceEnum } from '../tool/constants';
 
 /**
   Tool id rule:
@@ -13,32 +13,32 @@ export function splitCombineToolId(id: string) {
   if (splitRes.length === 1) {
     // app id
     return {
-      source: WorkflowToolSourceEnum.personal,
+      source: AppToolSourceEnum.personal,
       pluginId: id
     };
   }
 
-  const [source, ...rest] = id.split('-') as [WorkflowToolSourceEnum, string | undefined];
+  const [source, ...rest] = id.split('-') as [AppToolSourceEnum, string | undefined];
   const pluginId = rest.join('-');
   if (!source || !pluginId) throw new Error('pluginId not found');
 
   // 兼容4.10.0 之前的插件
   if (source === 'community' || id === 'commercial-dalle3') {
     return {
-      source: WorkflowToolSourceEnum.systemTool,
-      pluginId: `${WorkflowToolSourceEnum.systemTool}-${pluginId}`
+      source: AppToolSourceEnum.systemTool,
+      pluginId: `${AppToolSourceEnum.systemTool}-${pluginId}`
     };
   }
 
   if (source === 'mcp') {
     return {
-      source: WorkflowToolSourceEnum.mcp,
+      source: AppToolSourceEnum.mcp,
       pluginId
     };
   }
   if (source === 'http') {
     return {
-      source: WorkflowToolSourceEnum.http,
+      source: AppToolSourceEnum.http,
       pluginId
     };
   }

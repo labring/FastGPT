@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolRow from '@/pageComponents/config/tool/ToolRow';
@@ -191,7 +191,7 @@ const ToolProvider = () => {
         <ImportPluginModal onClose={onCloseImportModal} onSuccess={refreshTools} />
       )}
       {editingToolId !== undefined &&
-        splitCombineToolId(editingToolId).source === WorkflowToolSourceEnum.systemTool && (
+        splitCombineToolId(editingToolId).source === AppToolSourceEnum.systemTool && (
           <SystemToolConfigModal
             toolId={editingToolId}
             onSuccess={refreshTools}
@@ -199,7 +199,7 @@ const ToolProvider = () => {
           />
         )}
       {editingToolId !== undefined &&
-        splitCombineToolId(editingToolId).source !== WorkflowToolSourceEnum.systemTool && (
+        splitCombineToolId(editingToolId).source !== AppToolSourceEnum.systemTool && (
           <AppToolConfig
             toolId={editingToolId}
             onSuccess={refreshTools}

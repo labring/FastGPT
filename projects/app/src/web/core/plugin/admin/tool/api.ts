@@ -41,14 +41,14 @@ export const postAdminCreateAppTypeTool = (data: CreateAppToolBodyType) =>
   POST('/core/plugin/admin/tool/app/create', data);
 
 /* ===== Tool tag ===== */
-export const createPluginToolag = (data: CreatePluginToolTagBody) =>
-  POST<{}>(`/core/plugin/toolTag/config/create`, data);
+export const createPluginToolTag = (data: CreatePluginToolTagBody) =>
+  POST<{}>(`/core/plugin/admin/tool/tag/create`, data);
 
 export const updatePluginToolTag = (data: UpdatePluginToolTagBody) =>
-  PUT<{}>(`/core/plugin/toolTag/config/update`, data);
+  PUT<{}>(`/core/plugin/admin/tool/tag/update`, data);
 
 export const deletePluginToolTag = (data: DeletePluginToolTagQuery) =>
-  DELETE<{}>(`/core/plugin/toolTag/config/delete`, data);
+  DELETE<{}>(`/core/plugin/admin/tool/tag/delete`, data);
 
 export const updatePluginToolTagOrder = (data: UpdatePluginToolTagOrderBody) =>
-  PUT<{}>(`/core/plugin/toolTag/config/updateOrder`, data);
+  PUT<{}>(`/core/plugin/admin/tool/tag/updateOrder`, data);

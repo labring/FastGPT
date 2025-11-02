@@ -1,7 +1,7 @@
 /*
   get plugin preview modules
  */
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -22,9 +22,10 @@ async function handler(
 
   const { source, pluginId } = splitCombineToolId(appId);
 
-  if (source === WorkflowToolSourceEnum.personal) {
+  if (source === AppToolSourceEnum.personal) {
     await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
   }
+
   return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });
 }
 

@@ -10,7 +10,7 @@ import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { nanoid } from 'nanoid';
 import {
-  createPluginToolag,
+  createPluginToolTag,
   deletePluginToolTag,
   updatePluginToolTag,
   updatePluginToolTagOrder
@@ -56,7 +56,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: handleAddTag } = useRequest2(
     async (tagName: string) => {
-      await createPluginToolag({ tagName });
+      await createPluginToolTag({ tagName });
     },
     {
       onSuccess: () => {

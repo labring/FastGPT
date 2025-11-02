@@ -28,7 +28,7 @@ import type {
 } from '@fastgpt/global/core/app/tool/type';
 import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { WorkflowToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum
@@ -177,7 +177,7 @@ export async function getChildAppPreviewNode({
   const app: ChildAppType = await (async () => {
     // 1. App
     // 2. MCP ToolSets
-    if (source === WorkflowToolSourceEnum.personal) {
+    if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -227,7 +227,7 @@ export async function getChildAppPreviewNode({
       };
     }
     // mcp tool
-    else if (source === WorkflowToolSourceEnum.mcp) {
+    else if (source === AppToolSourceEnum.mcp) {
       const [parentId, toolName] = pluginId.split('/');
       // 1. get parentApp
       const item = await MongoApp.findById(parentId).lean();
@@ -268,7 +268,7 @@ export async function getChildAppPreviewNode({
       };
     }
     // http tool
-    else if (source === WorkflowToolSourceEnum.http) {
+    else if (source === AppToolSourceEnum.http) {
       const [parentId, toolName] = pluginId.split('/');
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -323,7 +323,7 @@ export async function getChildAppPreviewNode({
       showTargetHandle?: boolean;
     };
   }> => {
-    if (source === WorkflowToolSourceEnum.systemTool) {
+    if (source === AppToolSourceEnum.systemTool) {
       // system Tool or Toolsets
       const children = app.isFolder
         ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
@@ -457,7 +457,7 @@ export async function getChildAppRuntimeById({
   const app = await (async () => {
     const { source, pluginId } = splitCombineToolId(id);
 
-    if (source === WorkflowToolSourceEnum.personal) {
+    if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 

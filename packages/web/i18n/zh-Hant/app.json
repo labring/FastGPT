@@ -440,6 +440,7 @@
   "type.hidden": "隱藏應用",
   "type_not_recognized": "未識別到應用程式類型",
   "un_auth": "無權限",
+  "upload_file_exists_filtered": "已自動過濾重複檔案",
   "upload_file_extension_type_canSelectAudio": "音頻",
   "upload_file_extension_type_canSelectCustomFileExtension": "自定義文件擴展類型",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "文件擴展名",

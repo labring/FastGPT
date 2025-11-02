@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -34,6 +34,8 @@ import ConfigToolModal from './ConfigToolModal';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -62,9 +64,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.appTool);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const {
-    data: templates = [],
+    data: rawTemplates = [],
     runAsync: loadTemplates,
     loading: isLoading
   } = useRequest2(
@@ -96,6 +99,16 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
+  const templates = useMemo(() => {
+    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.appTool) {
+      return rawTemplates;
+    }
+    return rawTemplates.filter((template) => {
+      // @ts-ignore
+      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
+    });
+  }, [rawTemplates, selectedTagIds, templateType]);
+
   const { data: paths = [] } = useRequest2(
     () => {
       if (templateType === TemplateTypeEnum.teamApp)
@@ -107,6 +120,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       refreshDeps: [parentId]
     }
   );
+
+  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
@@ -170,6 +187,15 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           />
         </Box>
       </Box>
+      {templateType === TemplateTypeEnum.appTool && allTags.length > 0 && (
+        <Flex mt={3} px={[3, 6]} alignItems={'center'}>
+          <PluginTagFilter
+            tags={allTags}
+            selectedTagIds={selectedTagIds}
+            onTagSelect={setSelectedTagIds}
+          />
+        </Flex>
+      )}
       {/* route components */}
       {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
@@ -182,6 +208,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             templates={templates}
             type={templateType}
             setParentId={onUpdateParentId}
+            allTags={allTags}
             {...props}
           />
         </Box>
@@ -200,11 +227,13 @@ const RenderList = React.memo(function RenderList({
   setParentId,
   selectedTools,
   chatConfig,
-  selectedModel
+  selectedModel,
+  allTags
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
+  allTags: Array<{ tagId: string; tagName: any }>;
 }) {
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
@@ -369,6 +398,33 @@ const RenderList = React.memo(function RenderList({
                       >
                         {t(parseI18nString(template.name, i18n.language))}
                       </Box>
+                      {template.toolTags && template.toolTags.length > 0 && (
+                        <Flex gap={1} mt={1} flexWrap={'wrap'}>
+                          {template.toolTags.slice(0, 2).map((tagId) => {
+                            const tag = allTags.find((t) => t.tagId === tagId);
+                            if (!tag) return null;
+                            return (
+                              <Box
+                                key={tagId}
+                                px={1}
+                                py={0.5}
+                                border={'1px solid'}
+                                borderRadius={'4px'}
+                                borderColor={'myGray.200'}
+                                fontSize={'10px'}
+                                color={'myGray.600'}
+                              >
+                                {t(parseI18nString(tag.tagName, i18n.language))}
+                              </Box>
+                            );
+                          })}
+                          {template.toolTags.length > 2 && (
+                            <Box px={1} py={0.5} fontSize={'10px'} color={'myGray.500'}>
+                              +{template.toolTags.length - 2}
+                            </Box>
+                          )}
+                        </Flex>
+                      )}
                     </Box>
 
                     {selected ? (

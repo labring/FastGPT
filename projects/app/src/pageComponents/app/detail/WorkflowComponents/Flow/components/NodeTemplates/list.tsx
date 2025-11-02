@@ -43,7 +43,6 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
@@ -53,6 +52,16 @@ export type TemplateListProps = {
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
   onUpdateParentId: (parentId: string) => void;
+  allTags: Array<{
+    tagId: string;
+    tagName:
+      | string
+      | {
+          en: string;
+          'zh-CN'?: string | undefined;
+          'zh-Hant'?: string | undefined;
+        };
+  }>;
 };
 
 const NodeTemplateListItem = ({
@@ -60,7 +69,8 @@ const NodeTemplateListItem = ({
   templateType,
   handleAddNode,
   isPopover,
-  onUpdateParentId
+  onUpdateParentId,
+  allTags
 }: {
   template: NodeTemplateListItemType;
   templateType: TemplateTypeEnum;
@@ -70,8 +80,18 @@ const NodeTemplateListItem = ({
   }) => void;
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
+  allTags: Array<{
+    tagId: string;
+    tagName:
+      | string
+      | {
+          en: string;
+          'zh-CN'?: string | undefined;
+          'zh-Hant'?: string | undefined;
+        };
+  }>;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -165,15 +185,41 @@ const NodeTemplateListItem = ({
           borderRadius={'sm'}
           flexShrink={0}
         />
-        <Box
-          color={'myGray.900'}
-          fontWeight={'500'}
-          fontSize={isPopover ? 'xs' : 'sm'}
-          flex={'1 0 0'}
-          ml={3}
-          className="textEllipsis"
-        >
-          {t(template.name as any)}
+        <Box flex={'1 0 0'} ml={3}>
+          <Box
+            color={'myGray.900'}
+            fontWeight={'500'}
+            fontSize={isPopover ? 'xs' : 'sm'}
+            className="textEllipsis"
+          >
+            {t(template.name as any)}
+          </Box>
+          {!isPopover && template.toolTags && template.toolTags.length > 0 && (
+            <Flex gap={1} mt={0.5} flexWrap={'wrap'}>
+              {template.toolTags.slice(0, 2).map((tagId) => {
+                const tag = allTags.find((t) => t.tagId === tagId);
+                if (!tag) return null;
+                return (
+                  <Box
+                    key={tagId}
+                    px={1}
+                    border={'1px solid'}
+                    borderRadius={'4px'}
+                    borderColor={'myGray.200'}
+                    fontSize={'10px'}
+                    color={'myGray.600'}
+                  >
+                    {t(parseI18nString(tag.tagName, i18n.language))}
+                  </Box>
+                );
+              })}
+              {template.toolTags.length > 2 && (
+                <Box px={1} fontSize={'10px'} color={'myGray.500'}>
+                  +{template.toolTags.length - 2}
+                </Box>
+              )}
+            </Flex>
+          )}
         </Box>
         {/* Folder right arrow */}
         {template.isFolder && (
@@ -214,7 +260,8 @@ const NodeTemplateList = ({
   isPopover = false,
   templates,
   templateType,
-  onUpdateParentId
+  onUpdateParentId,
+  allTags
 }: TemplateListProps) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -446,6 +493,7 @@ const NodeTemplateList = ({
                     handleAddNode={handleAddNode}
                     isPopover={isPopover}
                     onUpdateParentId={onUpdateParentId}
+                    allTags={allTags}
                   />
                 ))}
               </Grid>
