@@ -7,9 +7,3 @@ export enum PluginSourceEnum {
   // @deprecated
   community = 'community' // this is deprecated, will be replaced by systemTool
 }
-
-export enum PluginStatusEnum {
-  Offline = 0,
-  Normal = 1,
-  SoonOffline = 2
-}

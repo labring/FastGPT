@@ -35,15 +35,6 @@ import type {
   getSystemPluginsQuery,
   getSystemPluginsResponse
 } from '@/pages/api/core/app/plugin/list';
-import type {
-  ToggleInstallPluginBody,
-  ToggleInstallPluginResponse
-} from '@/pages/api/core/app/plugin/team/toggleInstall';
-import type { GetInstalledIdsResponse } from '@/pages/api/core/app/plugin/team/installedIds';
-import type {
-  InstallToolBody,
-  InstallToolResponse
-} from '@/pages/api/core/plugin/admin/installWithUrl';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = async (data?: {
@@ -157,10 +148,3 @@ export const postRunHTTPTool = (data: RunHTTPToolBody) =>
 export const getSystemPlugins = (data: getSystemPluginsQuery) => {
   return GET<getSystemPluginsResponse>(`/core/app/plugin/list`, data);
 };
-
-/* ============ team plugin installation ============== */
-export const postToggleInstallPlugin = (data: ToggleInstallPluginBody) =>
-  POST<ToggleInstallPluginResponse>(`/core/app/plugin/team/toggleInstall`, data);
-
-export const getTeamInstalledPluginIds = () =>
-  GET<GetInstalledIdsResponse>(`/core/app/plugin/team/installedIds`);

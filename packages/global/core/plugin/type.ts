@@ -15,3 +15,11 @@ export const PluginToolTagSchema = z.object({
   isSystem: z.boolean()
 });
 export type PluginToolTagType = z.infer<typeof PluginToolTagSchema>;
+
+export const PluginStatusSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+export type PluginStatusType = z.infer<typeof PluginStatusSchema>;
+export enum PluginStatusEnum {
+  Normal = 1,
+  SoonOffline = 2,
+  Offline = 3
+}

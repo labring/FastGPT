@@ -259,7 +259,7 @@
   "plugin_cost_per_times": "{{cost}} points/time",
   "plugin_dispatch": "Plugin Invocation",
   "plugin_dispatch_tip": "Adds extra capabilities to the model. The specific plugins to be invoked will be autonomously decided by the model.\nIf a plugin is selected, the Dataset invocation will automatically be treated as a special plugin.",
-  "plugin_offline_tips": "Your system is offline and cannot directly access the plugin marketplace,\nPlease manually copy the URL and visit to get more resources",
+  "plugin_offline_tips": "Your system does not have direct access to plugin market data,\n\nPlease manually copy the URL and go to get more plugins",
   "plugin_offline_url": "URL",
   "pro_modal_feature_1": "External organization structure integration and multi-tenancy",
   "pro_modal_feature_2": "Team-exclusive application showcase page",

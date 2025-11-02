@@ -24,7 +24,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '插件相关',
-      tags: [TagsMap.pluginToolTag]
+      tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },
     {
       name: '插件-管理员',

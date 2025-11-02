@@ -34,10 +34,7 @@ const PluginTagFilter = ({
     borderColor: 'myGray.200',
     whiteSpace: 'nowrap',
     flexShrink: 0,
-    cursor: 'pointer',
-    _hover: {
-      bg: 'myGray.50'
-    }
+    cursor: 'pointer'
   };
 
   return (
@@ -69,7 +66,7 @@ const PluginTagFilter = ({
               key={tag.tagId}
               {...tagBaseStyles}
               rounded={'full'}
-              bg={isSelected ? 'myGray.150' : 'transparent'}
+              bg={isSelected ? 'myGray.150 !important' : 'transparent'}
               onClick={() => toggleTag(tag.tagId)}
             >
               {t(parseI18nString(tag.tagName, i18n.language))}

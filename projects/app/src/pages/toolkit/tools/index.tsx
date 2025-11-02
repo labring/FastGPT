@@ -1,17 +1,14 @@
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import {
-  getPreviewPluginNode,
-  getSystemPlugins,
-  postToggleInstallPlugin
-} from '@/web/core/app/api/plugin';
+import { getPreviewPluginNode, getSystemPlugins } from '@/web/core/app/api/plugin';
+import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -20,53 +17,62 @@ import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/Tool
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
+import type { GetTeamSystemPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 
 const ToolKitProvider = () => {
-  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
-  const router = useRouter();
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
   const [installedFilter, setInstalledFilter] = useState<'all' | 'installed' | 'uninstalled'>(
     'all'
   );
-  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [searchText, setSearchText] = useState('');
+
+  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null);
 
-  const {
-    data: tools = [],
-    runAsync: refetchTools,
-    loading: loadingTools
-  } = useRequest2(() => getSystemPlugins({ source: 'team' }), {
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { data: tags = [] } = useRequest2(getPluginToolTags, {
     manual: false
   });
-  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
-    manual: false
+
+  // TODO: 把 filter 放到后端
+  const [tools, setTools] = useState<GetTeamSystemPluginListResponseType>([]);
+  const { loading: loadingTools } = useRequest2(() => getTeamSystemPluginList({ type: 'tool' }), {
+    manual: false,
+    onSuccess(data) {
+      setTools(data);
+    }
   });
 
   const { runAsync: toggleInstall } = useRequest2(
     async (data: { pluginId: string; installed: boolean }) => {
       setLoadingPluginId(data.pluginId);
       try {
-        await postToggleInstallPlugin(data);
-        await refetchTools();
+        await postToggleInstallPlugin({
+          ...data,
+          type: 'tool'
+        });
+        setTools((prev) =>
+          prev.map((t) => (t.id === data.pluginId ? { ...t, installed: data.installed } : t))
+        );
       } finally {
         setLoadingPluginId(null);
       }
     }
   );
 
-  const displayTools: ToolCardItemType[] = useMemo(() => {
-    const filteredTools = tools
+  const displayTools = useMemo(() => {
+    return tools
       .filter((tool) => {
         if (!searchText) return true;
         const name = tool.name.toLowerCase();
@@ -76,25 +82,26 @@ const ToolKitProvider = () => {
       })
       .filter((tool) => {
         if (selectedTagIds.length === 0) return true;
-        return tool.tags?.some((tag) => selectedTagIds.includes(tag.tagId));
+        return tool.tags?.some((tag) => selectedTagIds.includes(tag));
       })
       .filter((tool) => {
         if (installedFilter === 'all') return true;
-        const isInstalled = tool.isInstalled;
+        const isInstalled = tool.installed;
         if (installedFilter === 'installed') return !!isInstalled;
         if (installedFilter === 'uninstalled') return !isInstalled;
         return true;
-      });
-
-    return filteredTools.map((tool) => ({
-      ...tool,
-      name: parseI18nString(tool.name || '', i18n.language),
-      description: parseI18nString(tool.intro || '', i18n.language),
-      icon: tool.avatar,
-      tags: tool.tags?.map((tag) => parseI18nString(tag.tagName || '', i18n.language)),
-      status: tool.status === 1 ? (tool.isInstalled ? 3 : 1) : tool.status
-    }));
-  }, [tools, searchText, selectedTagIds, installedFilter, i18n.language]);
+      })
+      .map<ToolCardItemType>((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        description: tool.intro,
+        icon: tool.avatar,
+        author: tool.author,
+        tags: tool.tags,
+        status: tool.status,
+        installed: tool.installed
+      }));
+  }, [tools, searchText, selectedTagIds, installedFilter]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -255,17 +262,18 @@ const ToolKitProvider = () => {
                   <ToolCard
                     key={tool.id}
                     item={tool}
-                    onToggleInstall={(installed) => toggleInstall({ pluginId: tool.id, installed })}
-                    systemTitle={feConfigs.systemTitle}
-                    onClick={() => setSelectedTool(tool)}
+                    systemTitle={feConfigs?.systemTitle}
                     isLoading={loadingPluginId === tool.id}
+                    mode="team"
+                    onClickButton={(installed) => toggleInstall({ pluginId: tool.id, installed })}
+                    onClickCard={() => setSelectedTool(tool)}
                   />
                 );
               })}
             </Grid>
           ) : (
             <VStack>
-              <EmptyTip pb={4} />
+              {!loadingTools && <EmptyTip pb={4} />}
               {userInfo?.username === 'root' && (
                 <Button
                   onClick={() => {

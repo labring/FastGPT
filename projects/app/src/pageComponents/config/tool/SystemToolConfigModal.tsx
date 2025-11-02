@@ -32,7 +32,7 @@ import type { AdminSystemToolDetailType } from '@fastgpt/global/core/plugin/admi
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 
@@ -188,7 +188,7 @@ const SystemToolConfigModal = ({
                 <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
                   {t('app:toolkit_plugin_status')}
                 </Box>
-                <MySelect
+                <MySelect<PluginStatusEnum>
                   width={'120px'}
                   value={status}
                   list={[
@@ -200,9 +200,8 @@ const SystemToolConfigModal = ({
                     { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                   ]}
                   onChange={(e) => {
-                    const newStatus = Number(e);
-                    setValue('status', newStatus);
-                    if (newStatus !== PluginStatusEnum.Normal) {
+                    setValue('status', e);
+                    if (e !== PluginStatusEnum.Normal) {
                       setValue('defaultInstalled', false);
                     }
                   }}
@@ -299,7 +298,7 @@ const SystemToolConfigModal = ({
               <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
                 {t('app:toolkit_plugin_status')}
               </Box>
-              <MySelect<number>
+              <MySelect<PluginStatusEnum>
                 width={'120px'}
                 value={status}
                 list={[

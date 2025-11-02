@@ -48,3 +48,17 @@ export const GetMarketplaceToolTagsResponseSchema = z.array(PluginToolTagSchema)
 export type GetMarketplaceToolTagsResponseType = z.infer<
   typeof GetMarketplaceToolTagsResponseSchema
 >;
+
+// Get installed plugins
+export const GetSystemInstalledPluginsQuerySchema = z.object({
+  type: z.enum(['tool']).optional()
+});
+export type GetSystemInstalledPluginsQueryType = z.infer<
+  typeof GetSystemInstalledPluginsQuerySchema
+>;
+export const GetSystemInstalledPluginsResponseSchema = z.object({
+  ids: z.array(z.string())
+});
+export type GetSystemInstalledPluginsResponseType = z.infer<
+  typeof GetSystemInstalledPluginsResponseSchema
+>;

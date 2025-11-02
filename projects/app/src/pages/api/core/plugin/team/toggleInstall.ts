@@ -3,15 +3,11 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ToggleInstallPluginBodyType } from '@fastgpt/global/openapi/core/plugin/team/api';
 
-export type ToggleInstallPluginBody = {
-  pluginId: string;
-  installed: boolean;
-};
+export type ToggleInstallPluginBody = ToggleInstallPluginBodyType;
 
-export type ToggleInstallPluginResponse = {
-  success: boolean;
-};
+export type ToggleInstallPluginResponse = {};
 
 async function handler(
   req: ApiRequestProps<ToggleInstallPluginBody>,
@@ -33,12 +29,11 @@ async function handler(
       installed
     },
     {
-      upsert: true,
-      new: true
+      upsert: true
     }
   );
 
-  return { success: true };
+  return {};
 }
 
 export default NextAPI(handler);

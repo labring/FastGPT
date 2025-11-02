@@ -22,7 +22,7 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
   useMultipleSelect
@@ -82,7 +82,7 @@ const AppToolConfigModal = ({
     setValue('tagIds', selectedTags);
   }, [selectedTags, setValue]);
 
-  const { loading } = useRequest2(
+  useRequest2(
     async () => {
       if (toolId) {
         const res = await getAdminSystemToolDetail({ toolId });
@@ -383,7 +383,7 @@ const AppToolConfigModal = ({
                 {t('app:custom_plugin_plugin_status_label')}
               </Box>
               <Box flex={'1 0 0'}>
-                <MySelect
+                <MySelect<PluginStatusEnum>
                   value={status}
                   w={'full'}
                   bg={'myGray.50'}
@@ -396,9 +396,8 @@ const AppToolConfigModal = ({
                     { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                   ]}
                   onChange={(e) => {
-                    const newStatus = Number(e);
-                    setValue('status', newStatus);
-                    if (newStatus !== PluginStatusEnum.Normal) {
+                    setValue('status', e);
+                    if (e !== PluginStatusEnum.Normal) {
                       setValue('defaultInstalled', false);
                     }
                   }}

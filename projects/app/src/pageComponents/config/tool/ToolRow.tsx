@@ -10,7 +10,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
 import React, { useRef, useState, useEffect } from 'react';
-import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
@@ -68,7 +68,7 @@ const ToolRow = ({
     async (updateFields: {
       defaultInstalled?: boolean;
       hasTokenFee?: boolean;
-      status?: number;
+      status?: PluginStatusEnum;
     }) => {
       return putAdminUpdateTool({
         ...tool,
@@ -189,11 +189,17 @@ const ToolRow = ({
       <Box w={1 / 10} pl={6}>
         <Box
           as={'span'}
-          color={tool.status === 0 ? 'red.600' : tool.status === 2 ? 'yellow.500' : 'myGray.600'}
+          color={
+            tool.status === PluginStatusEnum.Offline
+              ? 'red.600'
+              : tool.status === PluginStatusEnum.SoonOffline
+                ? 'yellow.500'
+                : 'myGray.600'
+          }
         >
-          {tool.status === 0
+          {tool.status === PluginStatusEnum.Offline
             ? t('app:toolkit_status_offline')
-            : tool.status === 2
+            : tool.status === PluginStatusEnum.SoonOffline
               ? t('app:toolkit_status_soon_offline')
               : t('app:toolkit_status_normal')}
         </Box>
