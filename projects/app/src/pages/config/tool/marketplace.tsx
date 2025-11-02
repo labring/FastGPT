@@ -299,7 +299,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         <MyIconButton
           icon={'common/closeLight'}
           size={'6'}
-          onClick={() => router.push('/config/tools')}
+          onClick={() => router.push('/config/tool')}
           position={'absolute'}
           zIndex={'999'}
           top={8}
@@ -352,7 +352,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
-            onClick={() => router.push('/config/tools')}
+            onClick={() => router.push('/config/tool')}
             position={'absolute'}
             top={4}
             zIndex={'999'}

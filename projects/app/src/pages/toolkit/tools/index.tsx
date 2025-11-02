@@ -339,7 +339,7 @@ const ToolKitProvider = () => {
                   {userInfo?.username === 'root' && (
                     <Button
                       onClick={() => {
-                        router.push('/config/tools');
+                        router.push('/config/tool');
                       }}
                       w={'160px'}
                     >
