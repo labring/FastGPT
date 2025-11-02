@@ -4,7 +4,7 @@ import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSch
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
-import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 

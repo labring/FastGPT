@@ -9,97 +9,107 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useDebounce } from 'ahooks';
+import { useDebounce, useMount } from 'ahooks';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
 import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemPlugins } from '@/web/core/app/api/plugin';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
 import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
   getMarketPlaceToolTags,
   getMarketplaceToolDetail,
-  getMarketplaceTools
+  getMarketplaceTools,
+  getSystemInstalledPlugins
 } from '@/web/core/plugin/marketplace/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
-const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
-  const { t, i18n } = useTranslation();
+// Custom hook for managing URL search params
+const useSearchParams = () => {
   const router = useRouter();
   const { search, tags } = router.query;
-  const { copyData } = useCopyData();
-  const { feConfigs } = useSystemStore();
 
-  const [inputValue, setInputValue] = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [showCompactSearch, setShowCompactSearch] = useState(false);
-  const [installedFilter, setInstalledFilter] = useState<boolean>(false);
-  const heroSectionRef = useRef<HTMLDivElement>(null);
+  const searchText = typeof search === 'string' ? search : '';
+  const tagIds = useMemoEnhance(() => {
+    return typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
+  }, [tags]);
 
-  // 使用 debounce 进行实时搜索
-  const debouncedSearchText = useDebounce(inputValue, { wait: 500 });
-
-  // 从 URL 初始化状态
-  useEffect(() => {
-    if (search && typeof search === 'string') {
-      setInputValue(search);
-      setSearchText(search);
-      setIsSearchExpanded(true);
-    }
-    if (tags) {
-      const tagArray = typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
-      setSelectedTagIds(tagArray);
-    }
-  }, [search, tags]);
-
-  // debounce 后更新 searchText 进行实时搜索
-  useEffect(() => {
-    setSearchText(debouncedSearchText);
-    setIsSearchExpanded(false);
-  }, [debouncedSearchText]);
-
-  // 更新 URL 的函数
-  const updateUrlParams = useCallback(
-    (newSearch: string, newTags: string[]) => {
-      const params = new URLSearchParams();
-      if (newSearch) {
-        params.set('search', newSearch);
-      }
-      if (newTags.length > 0) {
-        params.set('tags', newTags.join(','));
-      }
-      const queryString = params.toString();
-      const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
-      router.replace(newUrl, undefined, { shallow: true });
+  const updateParams = useCallback(
+    ({ newSearch, newTags }: { newSearch?: string; newTags?: string[] }) => {
+      router.replace(
+        {
+          pathname: router.pathname,
+          query: {
+            search: newSearch !== undefined ? newSearch : router.query.search,
+            tags: newTags !== undefined ? newTags.join(',') : router.query.tags
+          }
+        },
+        undefined,
+        { shallow: true }
+      );
     },
     [router]
   );
 
-  // 处理搜索框失焦,更新 URL
-  const handleSearchBlur = useCallback(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+  return { searchText, tagIds, updateParams };
+};
 
-  // 监听 selectedTagIds 变化,更新 URL
+const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const { copyData } = useCopyData();
+  const { feConfigs } = useSystemStore();
+
+  // Use custom hook for URL params management
+  const { searchText, tagIds, updateParams } = useSearchParams();
+
+  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [operatingToolId, setOperatingToolId] = useState<string | null>(null);
+
+  // Type filter
+  const [installedFilter, setInstalledFilter] = useState<boolean>(false);
+
+  // Input value for controlled component and debounce
+  const [inputValue, setInputValue] = useState(searchText);
+  const debouncedSearchText = useDebounce(inputValue, { wait: 500 });
+
+  // Initialize inputValue from URL
+  useMount(() => {
+    setInputValue(searchText);
+  });
+
+  // Update URL when debounced search text changes (triggers API call)
   useEffect(() => {
     if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
+      updateParams({ newSearch: debouncedSearchText });
     }
-  }, [selectedTagIds]);
+  }, [debouncedSearchText, router.isReady]);
+
+  // Handle tag selection - update URL immediately
+  const handleTagSelect = useCallback(
+    (newTags: string[]) => {
+      updateParams({ newTags });
+    },
+    [updateParams]
+  );
+
+  // Control search box expansion based on focus and input value
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  useEffect(() => {
+    if (isFocused) {
+      setIsSearchExpanded(true);
+    } else if (!inputValue) {
+      setIsSearchExpanded(false);
+    }
+  }, [isFocused, inputValue]);
 
   const {
     data: tools,
@@ -112,33 +122,38 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         pageNum,
         pageSize,
         searchKey: searchText || undefined,
-        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined
+        tags: tagIds.length > 0 ? tagIds : undefined
       }),
     {
       type: 'scroll',
       defaultPageSize: 20,
-      refreshDeps: [searchText, selectedTagIds]
+      refreshDeps: [searchText, tagIds]
     }
   );
-  const { data: installedToolsMap = {}, runAsync: refreshCurrentTools } = useRequest2(
+
+  const [installedPluginsMap, setInstalledPluginsMap] = useState<Record<string, boolean>>({});
+  useRequest2(
     async () => {
-      const tools = await getSystemPlugins({ source: 'admin' });
-      return tools.reduce(
-        (map, tool) => {
-          map[tool.id] = tool;
-          return map;
+      const { ids } = await getSystemInstalledPlugins({ type: 'tool' });
+      const data = ids.reduce(
+        (acc, id) => {
+          acc[id] = true;
+          return acc;
         },
-        {} as Record<string, any>
+        {} as Record<string, boolean>
       );
+      setInstalledPluginsMap(data);
     },
     {
       manual: false
     }
   );
+
   const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
     manual: false
   });
 
+  // Controler
   const { runAsync: handleInstallTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       if (!tool.downloadUrl) return;
@@ -146,7 +161,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       await intallPluginWithUrl({
         downloadUrls: [tool.downloadUrl]
       });
-      await refreshCurrentTools();
+      setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: true }));
     },
     {
       manual: true,
@@ -164,7 +179,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     async (tool: ToolCardItemType) => {
       setOperatingToolId(tool.id);
       await deletePkgPlugin({ toolId: tool.id });
-      await refreshCurrentTools();
+      setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: false }));
     },
     {
       manual: true,
@@ -179,34 +194,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const displayTools: ToolCardItemType[] = useMemo(() => {
-    return (
-      tools
-        ?.map((tool) => {
-          const formatToolId = `${PluginSourceEnum.systemTool}-${tool.toolId}`;
-          const isInstalled = !!installedToolsMap[formatToolId];
-
-          return {
-            id: tool.toolId,
-            name: parseI18nString(tool.name, i18n.language) || '',
-            description: parseI18nString(tool.description || '', i18n.language) || '',
-            icon: tool.icon,
-            author: tool.author || '',
-            tags: tool.tags?.map((tag: string) => {
-              const currentTag = allTags.find((t) => t.tagId === tag);
-              return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
-            }),
-            downloadUrl: tool.downloadUrl,
-            status: isInstalled ? 3 : 1 // 1: normal, 3: installed
-          };
-        })
-        .filter((tool) => {
-          if (!installedFilter) return true; // 未开启过滤,显示所有
-          return tool.status !== 3; // 仅显示未安装的
-        }) || []
-    );
-  }, [tools, installedToolsMap, i18n.language, allTags, installedFilter]);
-
+  // 使用 IntersectionObserver 监听英雄区域是否在视窗中
+  const heroSectionRef = useRef<HTMLDivElement>(null);
+  const [showCompactSearch, setShowCompactSearch] = useState(false);
   useEffect(() => {
     const heroSection = heroSectionRef.current;
     if (!heroSection) return;
@@ -227,6 +217,33 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       observer.disconnect();
     };
   }, []);
+
+  const displayTools: ToolCardItemType[] = useMemo(() => {
+    return (
+      tools
+        ?.map((tool) => {
+          const isInstalled = !!installedPluginsMap[tool.toolId];
+
+          return {
+            id: tool.toolId,
+            name: parseI18nString(tool.name, i18n.language) || '',
+            description: parseI18nString(tool.description || '', i18n.language) || '',
+            icon: tool.icon,
+            author: tool.author || '',
+            tags: tool.tags?.map((tag: string) => {
+              const currentTag = allTags.find((t) => t.tagId === tag);
+              return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
+            }),
+            downloadUrl: tool.downloadUrl,
+            installed: isInstalled
+          };
+        })
+        ?.filter((tool) => {
+          if (!installedFilter) return true; // 未开启过滤,显示所有
+          return !tool.installed;
+        }) || []
+    );
+  }, [tools, installedPluginsMap, i18n.language, allTags, installedFilter]);
 
   if (toolsError && !loadingTools) {
     return (
@@ -360,12 +377,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         autoFocus
-                        onBlur={() => {
-                          handleSearchBlur();
-                          if (!inputValue) {
-                            setIsSearchExpanded(false);
-                          }
-                        }}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setIsFocused(false)}
                       />
                       {inputValue && (
                         <MyIcon
@@ -380,8 +393,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                           cursor={'pointer'}
                           onClick={() => {
                             setInputValue('');
-                            setSearchText('');
-                            setIsSearchExpanded(false);
                           }}
                         />
                       )}
@@ -407,8 +418,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                 </Flex>
                 <PluginTagFilter
                   tags={allTags}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
+                  selectedTagIds={tagIds}
+                  onTagSelect={handleTagSelect}
                 />
               </Flex>
             </Box>
@@ -471,7 +482,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onBlur={handleSearchBlur}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                 />
               </InputGroup>
             </Box>
@@ -485,11 +497,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               opacity={showCompactSearch ? 0 : 1}
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
+              userSelect={'none'}
             >
               <PluginTagFilter
                 tags={allTags}
-                selectedTagIds={selectedTagIds}
-                onTagSelect={setSelectedTagIds}
+                selectedTagIds={tagIds}
+                onTagSelect={handleTagSelect}
               />
               <MyMenu
                 trigger="hover"
@@ -531,14 +544,15 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       key={tool.id}
                       item={tool}
                       isLoading={operatingToolId === tool.id}
-                      onToggleInstall={() => {
-                        if (tool.status === 3) {
-                          handleDeleteTool(tool);
-                        } else {
+                      mode="admin"
+                      onClickButton={(installed) => {
+                        if (installed) {
                           handleInstallTool(tool);
+                        } else {
+                          handleDeleteTool(tool);
                         }
                       }}
-                      onClick={() => setSelectedTool(tool)}
+                      onClickCard={() => setSelectedTool(tool)}
                     />
                   );
                 })}

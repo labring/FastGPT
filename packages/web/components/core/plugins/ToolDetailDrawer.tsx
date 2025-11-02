@@ -24,7 +24,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { ToolStatusEnum, type ToolCardItemType } from './ToolCard';
+import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../common/MyBox';
 import Markdown from '../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -195,7 +195,8 @@ const ToolDetailDrawer = ({
     return selectedTool.status === 3;
   }, [selectedTool.status]);
   const isDownload = useMemo(() => {
-    return selectedTool.status === ToolStatusEnum.Download;
+    return false;
+    // return selectedTool.status === ToolStatusEnum.Download;
   }, [selectedTool.status]);
 
   useEffect(() => {

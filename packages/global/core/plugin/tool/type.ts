@@ -1,10 +1,12 @@
+import { ParentIdSchema } from '../../../common/parentFolder/type';
 import z from 'zod';
+import { PluginStatusEnum, PluginStatusSchema } from '../type';
 
 export const SystemToolBasicSchema = z.object({
   id: z.string(),
-  parentId: z.string().optional(),
+  parentId: ParentIdSchema,
   defaultInstalled: z.boolean().optional(),
-  status: z.number().optional(),
+  status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
   name: z.string(),
   intro: z.string().optional(),
   author: z.string().optional(),

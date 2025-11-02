@@ -4,11 +4,32 @@ import {
   GetMarketplaceToolsBodySchema,
   MarketplaceToolDetailSchema,
   MarketplaceToolsResponseSchema,
-  GetMarketplaceToolTagsResponseSchema
+  GetMarketplaceToolTagsResponseSchema,
+  GetSystemInstalledPluginsQuerySchema,
+  GetSystemInstalledPluginsResponseSchema
 } from './api';
 import { TagsMap } from '../../../tag';
 
 export const MarketplacePath: OpenAPIPath = {
+  '/core/plugin/admin/marketplace/installed': {
+    get: {
+      summary: '获取系统已安装插件的 ID 列表(管理员视角)',
+      tags: [TagsMap.pluginMarketplace],
+      requestParams: {
+        query: GetSystemInstalledPluginsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '获取系统已安装插件的 ID 列表成功',
+          content: {
+            'application/json': {
+              schema: GetSystemInstalledPluginsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/marketplace/api/tool/list': {
     get: {
       summary: '获取工具列表',

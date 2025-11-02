@@ -6,7 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { ToolCardItemType } from '@fastgpt/web/components/core/plugins/ToolCard';
-import ToolCard, { ToolStatusEnum } from '@fastgpt/web/components/core/plugins/ToolCard';
+import ToolCard from '@fastgpt/web/components/core/plugins/ToolCard';
 import PluginTagFilter from '@fastgpt/web/components/core/plugins/PluginTagFilter';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugins/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -167,7 +167,6 @@ const ToolkitMarketplace = () => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
-        status: ToolStatusEnum.Download,
         downloadUrl: tool.downloadUrl
       };
     });
@@ -433,7 +432,8 @@ const ToolkitMarketplace = () => {
                       key={tool.id}
                       item={tool}
                       isLoading={operatingToolId === tool.id}
-                      onToggleInstall={() => {
+                      mode="marketplace"
+                      onClickButton={() => {
                         if (tool.downloadUrl) {
                           const link = document.createElement('a');
                           link.href = tool.downloadUrl;
@@ -443,7 +443,7 @@ const ToolkitMarketplace = () => {
                           document.body.removeChild(link);
                         }
                       }}
-                      onClick={() => setSelectedTool(tool)}
+                      onClickCard={() => setSelectedTool(tool)}
                     />
                   );
                 })}

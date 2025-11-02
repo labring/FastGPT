@@ -271,7 +271,7 @@
   "plugin_cost_per_times": "{{cost}} 积分/次",
   "plugin_dispatch": "插件调用",
   "plugin_dispatch_tip": "给模型附加获取外部数据的能力，具体调用哪些插件，将由模型自主决定，所有插件都将以非流模式运行。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
-  "plugin_offline_tips": "您的系统处于离线状态，无法直接访问插件市场，\n请手动复制网址并前往，以获得更多插件",
+  "plugin_offline_tips": "您的系统无法直接访问插件市场数据，\n请手动复制网址并前往，以获得更多插件",
   "plugin_offline_url": "网址",
   "pro_modal_feature_1": "外部组织架构接入与多租户",
   "pro_modal_feature_2": "团队专属的应用展示页",

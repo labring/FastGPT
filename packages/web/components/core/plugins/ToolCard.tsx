@@ -5,52 +5,44 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
-export enum ToolStatusEnum {
-  Offline = 0,
-  Installing = 1,
-  SoonOffline = 2,
-  Installed = 3,
-  Download = 4
-}
+/* 
+  3 种使用场景：
+  1. admin 视角插件市场：显示是否安装，无状态，显示安装/卸载
+  2. team 视角资源库：显示是否安装，状态文本，以及安装/卸载
+  3. 开放的插件市场：不显示任何状态，只显示下载按钮
+*/
 export type ToolCardItemType = {
   id: string;
   name: string;
-  description: string;
-  icon: string;
-  status?: number;
+  description?: string;
+  icon?: string;
   author?: string;
   tags?: string[];
   downloadUrl?: string;
+  status?: number;
+  installed?: boolean;
 };
 
 const ToolCard = ({
   item,
-  onToggleInstall,
   systemTitle,
-  onClick,
-  isLoading
+  isLoading,
+  mode,
+  onClickButton,
+  onClickCard
 }: {
   item: ToolCardItemType;
-  onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
-  onClick?: () => void;
   isLoading?: boolean;
+  mode: 'admin' | 'team' | 'marketplace';
+  onClickButton: (installed: boolean) => void;
+  onClickCard?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
-
-  const isInstalled = useMemo(() => {
-    return (
-      item.status === ToolStatusEnum.Installed ||
-      item.status === ToolStatusEnum.SoonOffline ||
-      item.status === ToolStatusEnum.Offline
-    );
-  }, [item.status]);
-  const isDownload = useMemo(() => {
-    return item.status === ToolStatusEnum.Download;
-  }, [item.status]);
 
   useEffect(() => {
     const calculate = () => {
@@ -84,29 +76,40 @@ const ToolCard = ({
     };
   }, [item.tags]);
 
-  const currentStatus = useMemo(() => {
-    const statusMap: Record<
-      number | string,
-      { label: string; color: string; icon?: string } | null
-    > = {
-      [ToolStatusEnum.Offline]: {
-        label: t('app:toolkit_status_offline'),
-        color: 'red.600'
-      },
-      [ToolStatusEnum.SoonOffline]: {
-        label: t('app:toolkit_status_soon_offline'),
-        color: 'yellow.600'
-      },
-      [ToolStatusEnum.Installed]: {
-        label: t('app:toolkit_installed'),
-        color: 'myGray.500',
-        icon: 'common/check'
-      }
-    };
+  const statusMap = useMemo(() => {
+    if (mode === 'marketplace') return null;
 
-    if (!item.status) return null;
-    return statusMap[item.status];
-  }, [item.status, t]);
+    const pluginStatusMap: Record<number, { label: string; color: string; icon?: string } | null> =
+      {
+        [PluginStatusEnum.Offline]: {
+          label: t('app:toolkit_status_offline'),
+          color: 'red.600'
+        },
+        [PluginStatusEnum.SoonOffline]: {
+          label: t('app:toolkit_status_soon_offline'),
+          color: 'yellow.600'
+        }
+      };
+
+    const installedStatusMap = item.installed
+      ? {
+          label: t('app:toolkit_installed'),
+          color: 'myGray.500',
+          icon: 'common/check'
+        }
+      : null;
+
+    if (mode === 'admin') {
+      return installedStatusMap;
+    }
+
+    if (mode === 'team') {
+      if (item.status && pluginStatusMap[item.status]) {
+        return pluginStatusMap[item.status];
+      }
+      return installedStatusMap;
+    }
+  }, [item.installed, item.status]);
 
   return (
     <MyBox
@@ -118,8 +121,8 @@ const ToolCard = ({
       borderRadius={'10px'}
       display={'flex'}
       flexDirection={'column'}
-      cursor={onClick ? 'pointer' : 'default'}
-      onClick={onClick}
+      cursor={onClickCard ? 'pointer' : 'default'}
+      onClick={onClickCard}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {
@@ -132,10 +135,10 @@ const ToolCard = ({
         <Box color={'myGray.900'} fontWeight={'medium'}>
           {parseI18nString(item.name, i18n.language)}
         </Box>
-        {currentStatus && (
-          <Flex fontSize={'12px'} fontWeight={'medium'} color={currentStatus.color} gap={1}>
-            {currentStatus.icon && <MyIcon name={currentStatus.icon as any} w={4} />}
-            {currentStatus.label}
+        {statusMap && (
+          <Flex fontSize={'12px'} fontWeight={'medium'} color={statusMap.color} gap={1}>
+            {statusMap.icon && <MyIcon name={statusMap.icon as any} w={4} />}
+            {statusMap.label}
           </Flex>
         )}
       </HStack>
@@ -192,24 +195,35 @@ const ToolCard = ({
 
       <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
         <Box color={'myGray.500'} mt={3}>{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
-        <Button
-          className="install-button"
-          size={'sm'}
-          variant={isInstalled ? 'primaryOutline' : 'primary'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleInstall(!isInstalled);
-          }}
-          isLoading={isLoading}
-          // display={'none'}
-          {...(!isLoading ? { display: 'none' } : {})}
-        >
-          {isDownload
-            ? t('common:Download')
-            : isInstalled
-              ? t('app:toolkit_uninstall')
-              : t('app:toolkit_install')}
-        </Button>
+        {mode === 'marketplace' ? (
+          <Button
+            className="install-button"
+            size={'sm'}
+            variant={'primary'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClickButton(false);
+            }}
+            isLoading={isLoading}
+            {...(!isLoading ? { display: 'none' } : {})}
+          >
+            {t('common:Download')}
+          </Button>
+        ) : (
+          <Button
+            className="install-button"
+            {...(!isLoading ? { display: 'none' } : {})}
+            size={'sm'}
+            variant={item.installed ? 'primaryOutline' : 'primary'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClickButton(!item.installed);
+            }}
+            isLoading={isLoading}
+          >
+            {item.installed ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
+          </Button>
+        )}
       </Flex>
     </MyBox>
   );

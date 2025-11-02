@@ -11,7 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemTools } from '@fastgpt/service/core/app/plugin/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/app/plugin/teamInstalledPluginSchema';
-import { PluginStatusEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;

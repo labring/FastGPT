@@ -1,3 +1,4 @@
+import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import type { TeamInstalledPluginSchemaType } from './type';
 const { Schema } = connectionMongo;
@@ -7,7 +8,7 @@ export const collectionName = 'team_installed_plugins';
 const TeamInstalledPluginSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
-    ref: 'teams',
+    ref: TeamCollectionName,
     required: true
   },
   pluginType: {
@@ -20,8 +21,7 @@ const TeamInstalledPluginSchema = new Schema({
   },
   installed: {
     type: Boolean,
-    required: true,
-    default: true
+    required: true
   }
 });
 

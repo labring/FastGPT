@@ -5,6 +5,7 @@ import {
 } from '../../../../../core/plugin/admin/tool/type';
 import z from 'zod';
 import { ParentIdSchema } from '../../../../../common/parentFolder/type';
+import { PluginStatusSchema } from '../../../../../core/plugin/type';
 
 // Admin tool list
 export const GetAdminSystemToolsQuery = z.object({
@@ -38,7 +39,7 @@ const UpdateChildToolSchema = ToolsetChildSchema.omit({
 });
 export const UpdateToolBodySchema = z.object({
   pluginId: z.string(),
-  status: z.number().optional(),
+  status: PluginStatusSchema.optional(),
   defaultInstalled: z.boolean().optional(),
   originCost: z.number().optional(),
   currentCost: z.number().nullable().optional(),

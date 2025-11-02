@@ -5,5 +5,6 @@ export const TagsMap = {
   pluginToolTag: '工具标签',
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
+  pluginTeam: '团队插件管理',
   apiKey: 'APIKey'
 };
