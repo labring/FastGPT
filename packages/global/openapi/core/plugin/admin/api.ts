@@ -26,7 +26,7 @@ export const ParseUploadedPkgPluginResponseSchema = z.array(
     description: I18nStringSchema,
     icon: z.string(),
     parentId: z.string().optional(),
-    tags: z.array(z.string()).optional()
+    tags: z.array(z.string()).nullish()
   })
 );
 export type ParseUploadedPkgPluginResponseType = z.infer<

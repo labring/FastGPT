@@ -25,7 +25,7 @@ export const MarketplaceToolDetailSchema = z.object({
 // List
 export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
   searchKey: z.string().optional(),
-  tags: z.array(z.string()).optional()
+  tags: z.array(z.string()).nullish()
 });
 export type GetMarketplaceToolsBodyType = z.infer<typeof GetMarketplaceToolsBodySchema>;
 

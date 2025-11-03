@@ -97,7 +97,7 @@ const WorkflowToolConfigModal = ({
           name: res.name,
           avatar: res.avatar,
           intro: res.intro,
-          tagIds: res.tags,
+          tagIds: res.tags || [],
           associatedPluginId: res.associatedPluginId,
           userGuide: res.userGuide || '',
           author: res.author
