@@ -9,7 +9,7 @@ export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.extend(
   intro: z.string().optional(),
   author: z.string().optional(),
   avatar: z.string().optional(),
-  tags: z.array(z.string()).nullable().optional(),
+  tags: z.array(z.string()).nullish(),
 
   hasSystemSecret: z.boolean().optional(),
 
@@ -30,9 +30,9 @@ export const ToolsetChildSchema = z.object({
 export const AdminSystemToolDetailSchema = AdminSystemToolListItemSchema.omit({
   hasSecretInput: true
 }).extend({
-  userGuide: z.string().nullable().optional(),
+  userGuide: z.string().nullish(),
   inputList: z.array(ToolSecretInputItemSchema).optional(),
-  inputListVal: z.record(z.string(), z.any()).nullable().optional(),
+  inputListVal: z.record(z.string(), z.any()).nullish(),
   childTools: z.array(ToolsetChildSchema).optional()
 });
 export type AdminSystemToolDetailType = z.infer<typeof AdminSystemToolDetailSchema>;

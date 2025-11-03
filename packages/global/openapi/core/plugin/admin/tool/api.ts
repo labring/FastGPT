@@ -42,19 +42,19 @@ export const UpdateToolBodySchema = z.object({
   status: PluginStatusSchema.optional(),
   defaultInstalled: z.boolean().optional(),
   originCost: z.number().optional(),
-  currentCost: z.number().nullable().optional(),
+  currentCost: z.number().nullish(),
   systemKeyCost: z.number().optional(),
   hasTokenFee: z.boolean().optional(),
-  inputListVal: z.record(z.string(), z.any()).nullable().optional(),
+  inputListVal: z.record(z.string(), z.any()).nullish(),
   childTools: z.array(UpdateChildToolSchema).optional(),
 
   // App tool fields
   name: z.string().optional(),
   avatar: z.string().optional(),
   intro: z.string().optional(),
-  tagIds: z.array(z.string()).optional(),
+  tagIds: z.array(z.string()).nullish(),
   associatedPluginId: z.string().optional(),
-  userGuide: z.string().nullable().optional(),
+  userGuide: z.string().nullish(),
   author: z.string().optional()
 });
 export type UpdateToolBodyType = z.infer<typeof UpdateToolBodySchema>;
