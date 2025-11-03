@@ -1,5 +1,4 @@
 import z from 'zod';
-import { toolValueTypeList, WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 
 export const GetTeamToolDetailQuerySchema = z.object({
   toolId: z.string()
