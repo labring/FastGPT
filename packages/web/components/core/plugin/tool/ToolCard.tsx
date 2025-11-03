@@ -19,7 +19,7 @@ export type ToolCardItemType = {
   description?: string;
   icon?: string;
   author?: string;
-  tags?: string[];
+  tags?: string[] | null;
   downloadUrl?: string;
   status?: number;
   installed?: boolean;
