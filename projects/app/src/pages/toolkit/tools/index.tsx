@@ -16,13 +16,12 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getTeamToolDetail } from '@/web/core/plugin/tool/api';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -48,7 +47,7 @@ const loadingReducer = (state: Set<string>, action: LoadingAction): Set<string> 
 
 const ToolKitProvider = () => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
 
@@ -120,7 +119,7 @@ const ToolKitProvider = () => {
       })
       .filter((tool) => {
         if (selectedTagIds.length === 0) return true;
-        return tool.tags?.some((tag) => selectedTagIds.includes(tag));
+        return tool.toolTags?.some((tagId) => selectedTagIds.includes(tagId));
       })
       .filter((tool) => {
         if (installedFilter === 'all') return true;
@@ -135,7 +134,9 @@ const ToolKitProvider = () => {
         description: tool.intro,
         icon: tool.avatar,
         author: tool.author,
-        tags: tool.tags,
+        tags: tool.toolTags?.map((tagId) =>
+          parseI18nString(tags.find((tag) => tag.tagId === tagId)?.tagName || '', i18n.language)
+        ),
         status: tool.status,
         installed: tool.installed,
         associatedPluginId: tool.associatedPluginId
@@ -263,7 +264,7 @@ const ToolKitProvider = () => {
                 )}
               </Flex>
             </Flex>
-            <Box flex={'1'}>
+            <Box flex={'1'} overflow={'auto'}>
               <ToolTagFilterBox
                 tags={tags}
                 selectedTagIds={selectedTagIds}
@@ -365,39 +366,13 @@ const ToolKitProvider = () => {
           }}
           systemTitle={feConfigs.systemTitle}
           isLoading={loadingPluginIds.has(selectedTool.id)}
-          // @ts-ignore
+          //@ts-ignore
           onFetchDetail={async (toolId: string) => {
-            if (splitCombineToolId(toolId).source === AppToolSourceEnum.systemTool) {
-              // TODO: 替换成新的
-              // const tools = await getSystemPlugins({ parentId: toolId });
-              return {
-                tools: [selectedTool],
-                downloadUrl: ''
-              };
-            } else {
-              // TODO: 待修复
-              const toolDetail = await getToolPreviewNode({
-                appId: selectedTool.id
-              });
-              return {
-                tools: [
-                  {
-                    ...selectedTool,
-                    versionList: [
-                      {
-                        inputs: toolDetail.inputs.filter(
-                          (input) => input.key !== NodeInputKeyEnum.forbidStream
-                        ),
-                        outputs: toolDetail.outputs.filter(
-                          (output) => output.key !== NodeOutputKeyEnum.errorText
-                        )
-                      }
-                    ]
-                  }
-                ],
-                downloadUrl: ''
-              };
-            }
+            const res = await getTeamToolDetail({ toolId });
+            return {
+              tools: res.tools,
+              downloadUrl: ''
+            };
           }}
         />
       )}

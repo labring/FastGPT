@@ -49,7 +49,7 @@ async function handler(
   const childTools = systemTool.isFolder
     ? systemTools.filter((tool) => tool.parentId === systemTool.id)
     : [];
-  console.log(systemTool);
+
   return AdminSystemToolDetailSchema.parse({
     ...systemTool,
     name: parseI18nString(systemTool.name, lang),

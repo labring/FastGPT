@@ -479,6 +479,7 @@ export async function getChildAppPreviewNode({
     hasTokenFee: app.hasTokenFee,
     hasSystemSecret: app.hasSystemSecret,
     isFolder: app.isFolder,
+    status: app.status,
 
     ...nodeIOConfig,
     outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)

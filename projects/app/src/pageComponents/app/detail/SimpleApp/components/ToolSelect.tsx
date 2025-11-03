@@ -18,6 +18,8 @@ import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
+import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const ToolSelect = ({
   appForm,
@@ -38,6 +40,7 @@ const ToolSelect = ({
     onClose: onCloseToolsSelect
   } = useDisclosure();
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  console.log('appForm.selectedTools', appForm.selectedTools);
 
   return (
     <>
@@ -66,6 +69,7 @@ const ToolSelect = ({
       >
         {appForm.selectedTools.map((item) => {
           const toolError = formatToolError(item.pluginData?.error);
+          const status = item.status || item.pluginData?.status;
 
           return (
             <MyTooltip key={item.id} label={item.intro}>
@@ -113,6 +117,23 @@ const ToolSelect = ({
                 >
                   {item.name}
                 </Box>
+                {status !== undefined && status !== PluginStatusEnum.Normal && (
+                  <MyTooltip
+                    label={
+                      status === PluginStatusEnum.Offline
+                        ? t('app:tool_offset_tips')
+                        : t('app:tool_soon_offset_tips')
+                    }
+                  >
+                    <MyTag
+                      mr={2}
+                      colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
+                      type="borderFill"
+                    >
+                      {t(PluginStatusMap[status].label)}
+                    </MyTag>
+                  </MyTooltip>
+                )}
                 {toolError && (
                   <Flex
                     bg={'red.50'}

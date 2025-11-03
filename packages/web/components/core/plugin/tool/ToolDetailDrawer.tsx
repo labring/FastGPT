@@ -190,14 +190,11 @@ const ToolDetailDrawer = ({
   >(undefined);
   const [loading, setLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string>('');
+  const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
 
-  const isInstalled = useMemo(() => {
-    return selectedTool.status === 3;
-  }, [selectedTool.status]);
   const isDownload = useMemo(() => {
     return false;
-    // return selectedTool.status === ToolStatusEnum.Download;
-  }, [selectedTool.status]);
+  }, []);
 
   useEffect(() => {
     const fetchToolDetail = async () => {
@@ -258,8 +255,6 @@ const ToolDetailDrawer = ({
           /!\[([^\]]*)\]\((?!http|https|\/\/)([^)]+)\)/g,
           (match, alt, path) => `![${alt}](${baseUrl}${path})`
         );
-        console.log(content);
-
         setReadmeContent(content);
       } catch (error) {
         console.error('Failed to fetch README:', error);
@@ -336,8 +331,9 @@ const ToolDetailDrawer = ({
                 w="full"
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
                 isLoading={isLoading || loading}
-                onClick={() => {
-                  onToggleInstall(!isInstalled);
+                onClick={async () => {
+                  await onToggleInstall(!isInstalled);
+                  setIsInstalled(!isInstalled);
                 }}
               >
                 {isDownload

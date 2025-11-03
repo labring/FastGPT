@@ -549,7 +549,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
               userSelect={'none'}
             >
-              <Box flex={'1'}>
+              <Box flex={'1'} overflow={'auto'}>
                 <ToolTagFilterBox
                   tags={allTags}
                   selectedTagIds={tagIds}
