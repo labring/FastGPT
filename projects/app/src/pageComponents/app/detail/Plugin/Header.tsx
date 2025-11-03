@@ -106,6 +106,10 @@ const Header = () => {
           )
         );
       }
+    },
+    {
+      manual: true,
+      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
     }
   );
 
