@@ -5,9 +5,8 @@ import {
   type GetTeamSystemPluginListQueryType,
   type GetTeamPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/api';
-import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
+import { getSystemToolsWithInstalled } from '@fastgpt/service/core/app/tool/controller';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -28,40 +27,17 @@ async function handler(
   const { teamId, isRoot } = await authCert({ req, authToken: true });
 
   if (type === 'tool') {
-    const [tools, { installedSet, uninstalledSet }] = await Promise.all([
-      getSystemTools().then((res) => res.filter((item) => !item.parentId)),
-      MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')
-        .lean()
-        .then((res) => {
-          const installedSet = new Set<string>();
-          const uninstalledSet = new Set<string>();
-          res.forEach((item) => {
-            if (item.installed) {
-              installedSet.add(item.pluginId);
-            } else {
-              uninstalledSet.add(item.pluginId);
-            }
-          });
-          return { installedSet, uninstalledSet };
-        })
-    ]);
+    const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
 
     return tools
+      .filter((tool) => {
+        return !tool.parentId;
+      })
       .map((tool) => {
-        const installed = (() => {
-          if (installedSet.has(tool.id)) {
-            return true;
-          }
-          if (isRoot && !uninstalledSet.has(tool.id)) {
-            return true;
-          }
-          return false;
-        })();
         return TeamPluginListItemSchema.parse({
           ...tool,
           name: parseI18nString(tool.name, lang),
-          intro: parseI18nString(tool.intro, lang),
-          installed
+          intro: parseI18nString(tool.intro, lang)
         });
       })
       .filter((tool) => {

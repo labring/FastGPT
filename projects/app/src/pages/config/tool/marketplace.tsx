@@ -476,7 +476,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           </Box>
         </Box>
 
-        <ScrollData flex={1}>
+        <ScrollData flex={1} pb={3}>
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}

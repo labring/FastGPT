@@ -193,6 +193,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             tags={allTags}
             selectedTagIds={selectedTagIds}
             onTagSelect={setSelectedTagIds}
+            size="sm"
           />
         </Box>
       )}
