@@ -160,23 +160,29 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
-    try {
-      if (!appDetail.permission.hasWritePer) return;
-      await postPublishApp(appId, data);
-      setAppDetail((state) => ({
-        ...state,
-        ...data,
-        modules: data.nodes || state.modules
-      }));
-      reloadAppLatestVersion();
-    } catch (error: any) {
-      if (error.statusText == AppErrEnum.unExist) {
-        return;
+  const { runAsync: onSaveApp } = useRequest2(
+    async (data: PostPublishAppProps) => {
+      try {
+        if (!appDetail.permission.hasWritePer) return;
+        await postPublishApp(appId, data);
+        setAppDetail((state) => ({
+          ...state,
+          ...data,
+          modules: data.nodes || state.modules
+        }));
+        reloadAppLatestVersion();
+      } catch (error: any) {
+        if (error.statusText == AppErrEnum.unExist) {
+          return;
+        }
+        return Promise.reject(error);
       }
-      return Promise.reject(error);
+    },
+    {
+      manual: true,
+      refreshDeps: [appDetail.permission.hasWritePer, appId]
     }
-  });
+  );
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('app:confirm_del_app_tip', { name: appDetail.name }),
