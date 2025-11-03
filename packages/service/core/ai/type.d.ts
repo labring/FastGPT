@@ -38,7 +38,7 @@ export type SystemDefaultModelType = {
 };
 
 declare global {
-  var ModelProviderRawCache: { provider: string; value: I18nStringStrictType }[];
+  var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
   var aiproxyIdMapCache: AiproxyMapProviderType;
