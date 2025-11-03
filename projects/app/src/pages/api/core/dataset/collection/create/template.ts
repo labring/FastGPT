@@ -15,8 +15,16 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 
 export type templateImportQuery = {};
-
-export type templateImportBody = { datasetId: string };
+type enhanceConfig = {
+  autoIndexes?: boolean;
+  hypeIndexes?: boolean;
+  small2bigIndexes?: boolean;
+  hypePrompt?: String;
+  small2bigChunkSize?: number;
+  small2bigMaxChildChunks?: number;
+  autoIndexesPrompt?: String;
+};
+export type templateImportBody = { datasetId: string; enhanceConfig: enhanceConfig };
 
 export type templateImportResponse = {};
 
@@ -97,7 +105,8 @@ async function handler(
         name: file.originalname,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.template
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        ...data.enhanceConfig
       }
     });
 

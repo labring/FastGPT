@@ -35,8 +35,16 @@ export const ChunkSettings = {
   autoIndexes: Boolean,
   indexPrefixTitle: Boolean,
   hypeIndexes: Boolean,
-
+  small2bigIndexes: Boolean,
   hypePrompt: String,
+  small2bigChunkSize: {
+    type: Number,
+    default: 500
+  },
+  small2bigMaxChildChunks: {
+    type: Number,
+    default: 10
+  },
   autoIndexesPrompt: String,
 
   chunkSettingMode: {

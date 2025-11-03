@@ -77,6 +77,7 @@ export function initGlobalVariables() {
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   global.hypeQueueLen = global.hypeQueueLen ?? 0;
+  global.small2bigQueueLen = global.small2bigQueueLen ?? 0;
   initHttpAgent();
   initPlusRequest();
 }
