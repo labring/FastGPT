@@ -51,7 +51,9 @@ const ToolProvider = () => {
     () => getAdminSystemTools({ parentId: null }),
     {
       onSuccess: (data) => {
-        setLocalTools(data);
+        if (data) {
+          setLocalTools(data);
+        }
       },
       manual: false
     }

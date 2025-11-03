@@ -110,11 +110,12 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  const pathname = window.location.pathname;
   const isOutlinkPage = {
     [`${subRoute}/chat/share`]: true,
-    [`${subRoute}/chat`]: true,
+    [`${subRoute}/price`]: true,
     [`${subRoute}/login`]: true
-  }[window.location.pathname];
+  }[pathname];
 
   const data = err?.response?.data || err;
 
@@ -128,9 +129,9 @@ function responseError(err: any) {
     return Promise.reject(data);
   }
 
-  // 有报错响应
+  // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!isOutlinkPage) {
+    if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -139,6 +140,7 @@ function responseError(err: any) {
 
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
+  // Blance error
   if (
     data?.statusText &&
     [

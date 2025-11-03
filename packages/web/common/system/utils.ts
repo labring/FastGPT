@@ -6,7 +6,7 @@ export const getUserFingerprint = async () => {
   console.log(result.visitorId);
 };
 
-export const subRoute = process.env.NEXT_PUBLIC_BASE_URL;
+export const subRoute = process.env.NEXT_PUBLIC_BASE_URL || '';
 
 export const getWebReqUrl = (url: string = '') => {
   if (!url) return '/';
