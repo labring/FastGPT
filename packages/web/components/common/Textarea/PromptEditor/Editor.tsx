@@ -216,14 +216,18 @@ export default function Editor({
           <FocusPlugin focus={focus} setFocus={setFocus} />
           <KeyDownPlugin onKeyDown={onKeyDown} />
 
-          <VariablePlugin variables={variables} />
           {variableLabels.length > 0 && (
             <>
               <VariableLabelPlugin variables={variableLabels} />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
-          {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {variables.length > 0 && (
+            <>
+              <VariablePlugin variables={variables} />
+              {/* <VariablePickerPlugin variables={variables} /> */}
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
           <OnChangePlugin
             onChange={(editorState, editor) => {
