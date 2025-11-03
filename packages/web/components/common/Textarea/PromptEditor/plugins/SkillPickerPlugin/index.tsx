@@ -7,208 +7,354 @@ import {
   $isRangeSelection,
   $isTextNode,
   COMMAND_PRIORITY_HIGH,
+  KEY_ARROW_DOWN_COMMAND,
+  KEY_ARROW_UP_COMMAND,
   KEY_ARROW_LEFT_COMMAND,
   KEY_ARROW_RIGHT_COMMAND,
-  KEY_SPACE_COMMAND
+  KEY_SPACE_COMMAND,
+  KEY_ENTER_COMMAND
 } from 'lexical';
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
-import { useRequest2 } from '../../../../../../hooks/useRequest';
 import MyBox from '../../../../MyBox';
+import { useMount } from 'ahooks';
+import { useRequest2 } from '../../../../../../hooks/useRequest';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-export type SkillOptionType = {
-  key: string;
-  label: string;
-  icon?: string;
-  parentKey?: string;
-  canOpen?: boolean;
-  categoryType?: string;
-  categoryLabel?: string;
+export type SkillOptionItemType = {
+  description?: string;
+  list: SkillItemType[];
+
+  onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
+  onClick?: (id: string) => Promise<string | undefined>;
+  onFolderLoad?: (id: string) => Promise<SkillOptionItemType | undefined>;
 };
 
-const getDisplayState = ({
-  selectedKey,
-  skillOptionList,
-  skillOption
-}: {
-  selectedKey: string;
-  skillOptionList: SkillOptionType[];
-  skillOption: SkillOptionType;
-}) => {
-  const isCurrentFocus = selectedKey === skillOption.key;
-  const hasSelectedChild = skillOptionList.some(
-    (item) =>
-      item.parentKey === skillOption.key &&
-      (selectedKey === item.key ||
-        skillOptionList.some(
-          (subItem) => subItem.parentKey === item.key && selectedKey === subItem.key
-        ))
-  );
-
-  return {
-    isCurrentFocus,
-    hasSelectedChild
-  };
+export type SkillItemType = {
+  parentId?: ParentIdType;
+  id: string;
+  label: string;
+  icon?: string;
+  showArrow?: boolean;
+  isFolder?: boolean;
+  open?: boolean;
+  children?: SkillOptionItemType;
+  folderChildren?: SkillItemType[];
 };
 
 export default function SkillPickerPlugin({
-  skillOptionList,
-  isFocus,
-  onAddToolFromEditor,
-  selectedKey,
-  setSelectedKey,
-  queryString,
-  setQueryString,
-  loadFolderContent,
-  removeFolderContent,
-  loadedFolders
+  skillOption,
+  isFocus
 }: {
-  skillOptionList: SkillOptionType[];
+  skillOption: SkillOptionItemType;
   isFocus: boolean;
-  onAddToolFromEditor?: (toolKey: string) => Promise<string>;
-  selectedKey: string;
-  setSelectedKey: (key: string) => void;
-  queryString?: string | null;
-  setQueryString?: (value: string | null) => void;
-  loadFolderContent?: (folderId: string) => Promise<void>;
-  removeFolderContent?: (folderId: string) => void;
-  loadedFolders?: Set<string>;
 }) {
-  const [editor] = useLexicalComposerContext();
+  const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const highlightedRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const nextIndexRef = useRef<number | null>(null);
+  useEffect(() => {
+    setSkillOptions((state) => {
+      const newOptions = [...state];
+      newOptions[0] = skillOption;
+      return newOptions;
+    });
+  }, [skillOption]);
+
+  const [editor] = useLexicalComposerContext();
+  const [selectedRowIndex, setSelectedRowIndex] = useState<Record<number, number>>({
+    0: 0
+  });
+  const [currentColumnIndex, setCurrentColumnIndex] = useState<number>(0);
+  const [currentRowIndex, setCurrentRowIndex] = useState<number>(0);
+
+  // Refs for scroll management
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Scroll selected item into view
+  const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
+    const itemKey = `${columnIndex}-${rowIndex}`;
+    const itemElement = itemRefs.current.get(itemKey);
+    if (itemElement) {
+      itemElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+    } else if (retryCount < 5) {
+      // Retry if element not found yet (DOM not ready)
+      setTimeout(() => {
+        scrollIntoView(columnIndex, rowIndex, retryCount + 1);
+      }, 20);
+    }
+  }, []);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const currentRef = highlightedRefs.current[selectedKey];
-      if (currentRef) {
-        currentRef.scrollIntoView({
-          behavior: 'auto',
-          block: 'nearest'
+  // Handle item selection (hover/keyboard navigation)
+  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest2(
+    async ({
+      currentColumnIndex,
+      item,
+      option
+    }: {
+      currentColumnIndex: number;
+      item?: SkillItemType;
+      option?: SkillOptionItemType;
+    }) => {
+      if (!item) return;
+      const buffer = item.children;
+      if (buffer) {
+        setSkillOptions((prev) => {
+          const newOptions = [...prev];
+          newOptions[currentColumnIndex + 1] = buffer;
+          return newOptions;
         });
+        return;
       }
-    }, 0);
 
-    return () => clearTimeout(timer);
-  }, [selectedKey]);
+      const result = await option?.onSelect?.(item.id);
 
-  const { runAsync: addTool, loading: isAddToolLoading } = useRequest2(
-    async (selectedOption: SkillOptionType) => {
-      if ((selectedOption.parentKey || queryString) && onAddToolFromEditor) {
-        return await onAddToolFromEditor(selectedOption.key);
-      } else {
-        return '';
-      }
-    },
-    {
-      manual: true
+      setSkillOptions((prev) => {
+        const newOptions = [...prev];
+        if (result?.list && result?.list?.length > 0) {
+          newOptions[currentColumnIndex + 1] = result;
+        } else {
+          for (let i = currentColumnIndex + 1; i < newOptions.length; i++) {
+            // @ts-ignore
+            newOptions[i] = undefined;
+          }
+        }
+        return newOptions.filter(Boolean);
+      });
     }
   );
 
-  const currentOptions = useMemo(() => {
-    const currentOption = skillOptionList.find((option) => option.key === selectedKey);
-    if (!currentOption) {
-      return skillOptionList.filter((item) => !item.parentKey);
-    }
+  // Handle item click (confirm selection)
+  const { runAsync: handleItemClick, loading: isItemClickLoading } = useRequest2(
+    async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
+      // Step 1: Execute async onClick to get skillId (outside editor.update)
+      const skillId = await option?.onClick?.(item.id);
 
-    // 对于 AppSkill，返回所有可见的选项（递归展开的树形结构）
-    const isInAppTree = (optionKey: string): boolean => {
-      const option = skillOptionList.find((opt) => opt.key === optionKey);
-      if (!option) return false;
-      if (option.parentKey === 'app') return true;
-      if (option.parentKey) return isInAppTree(option.parentKey);
-      return false;
-    };
+      // Step 2: Update editor with the skillId (inside a fresh editor.update)
+      if (skillId) {
+        editor.update(() => {
+          // Re-acquire selection in this update cycle to avoid stale node references
+          const selection = $getSelection();
+          if (!$isRangeSelection(selection)) return;
 
-    if (isInAppTree(selectedKey)) {
-      const getVisibleOptions = (parentKey: string): any[] => {
-        const children = skillOptionList.filter((opt) => opt.parentKey === parentKey);
-        const result: any[] = [];
+          // Re-acquire nodes in this update cycle
+          const nodes = selection.getNodes();
+          nodes.forEach((node) => {
+            if ($isTextNode(node)) {
+              const text = node.getTextContent();
+              const atIndex = text.lastIndexOf('@');
+              if (atIndex !== -1) {
+                // Remove the '@' trigger character
+                const beforeAt = text.substring(0, atIndex);
+                const afterAt = text.substring(atIndex + 1);
+                node.setTextContent(beforeAt + afterAt);
 
-        children.forEach((child) => {
-          result.push({ ...child, setRefElement: () => {} });
-          // 如果有子项（已加载），递归添加
-          const hasChildren = skillOptionList.some((opt) => opt.parentKey === child.key);
-          if (hasChildren) {
-            result.push(...getVisibleOptions(child.key));
-          }
+                // Move cursor to where '@' was
+                const newOffset = beforeAt.length;
+                node.select(newOffset, newOffset);
+              }
+            }
+          });
+
+          // Insert skill node text at current selection
+          selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
         });
-
-        return result;
-      };
-
-      return getVisibleOptions('app');
+      }
+    },
+    {
+      refreshDeps: [editor]
     }
+  );
 
-    // 对于 ToolSkill，保持原有逻辑
-    const filteredOptions = skillOptionList.filter(
-      (item) => item.parentKey === currentOption.parentKey
-    );
+  // Handle folder toggle
+  const handleFolderToggle = useCallback(
+    (folderId: string, columnIndex: number, item?: SkillItemType) => {},
+    []
+  );
 
-    return filteredOptions.map((option) => ({
-      ...option,
-      setRefElement: () => {}
-    }));
-  }, [skillOptionList, selectedKey]);
-
-  // overWrite arrow keys
+  // First init
+  useMount(() => {
+    handleItemSelect({ currentColumnIndex: 0, item: skillOption.list[0], option: skillOption });
+  });
+  // Scroll to selected item when menu opens
   useEffect(() => {
-    if (!isFocus || queryString === null) return;
-    const removeRightCommand = editor.registerCommand(
-      KEY_ARROW_RIGHT_COMMAND,
+    if (isMenuOpen) {
+      // Delay to ensure DOM is rendered and refs are attached
+      setTimeout(() => {
+        scrollIntoView(currentColumnIndex, currentRowIndex);
+      });
+    }
+  }, [isMenuOpen, scrollIntoView, currentColumnIndex, currentRowIndex]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isFocus || !isMenuOpen) return;
+
+    const removeUpCommand = editor.registerCommand(
+      KEY_ARROW_UP_COMMAND,
       (e: KeyboardEvent) => {
-        const currentOption = skillOptionList.find((option) => option.key === selectedKey);
-        if (!currentOption) return false;
+        if (!isMenuOpen) return true;
 
-        const firstChildOption = skillOptionList.find(
-          (item) => item.parentKey === currentOption.key
-        );
-        if (firstChildOption) {
-          setSelectedKey(firstChildOption.key);
-          nextIndexRef.current = 0;
+        e.preventDefault();
+        e.stopPropagation();
 
-          e.preventDefault();
-          e.stopPropagation();
-          return true;
+        if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
+          const columnItems = skillOptions[currentColumnIndex]?.list;
+          if (!columnItems || columnItems.length === 0) return true;
+
+          // Use functional update to get the latest row index
+          setCurrentRowIndex((prevRowIndex) => {
+            const newIndex = prevRowIndex > 0 ? prevRowIndex - 1 : columnItems.length - 1;
+
+            handleItemSelect({
+              currentColumnIndex: currentColumnIndex,
+              item: columnItems[newIndex],
+              option: skillOptions[currentColumnIndex]
+            });
+
+            // Scroll into view after state update
+            requestAnimationFrame(() => {
+              scrollIntoView(currentColumnIndex, newIndex);
+            });
+
+            return newIndex;
+          });
         }
-        return false;
+
+        return true;
       },
       COMMAND_PRIORITY_HIGH
     );
+
+    const removeDownCommand = editor.registerCommand(
+      KEY_ARROW_DOWN_COMMAND,
+      (e: KeyboardEvent) => {
+        if (!isMenuOpen) return true;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
+          const columnItems = skillOptions[currentColumnIndex]?.list;
+          if (!columnItems || columnItems.length === 0) return true;
+
+          // Use functional update to get the latest row index
+          setCurrentRowIndex((prevRowIndex) => {
+            const newIndex = prevRowIndex < columnItems.length - 1 ? prevRowIndex + 1 : 0;
+
+            handleItemSelect({
+              currentColumnIndex: currentColumnIndex,
+              item: columnItems[newIndex],
+              option: skillOptions[currentColumnIndex]
+            });
+
+            // Scroll into view after state update
+            requestAnimationFrame(() => {
+              scrollIntoView(currentColumnIndex, newIndex);
+            });
+
+            return newIndex;
+          });
+        }
+
+        return true;
+      },
+      COMMAND_PRIORITY_HIGH
+    );
+
+    const removeRightCommand = editor.registerCommand(
+      KEY_ARROW_RIGHT_COMMAND,
+      (e: KeyboardEvent) => {
+        if (!isMenuOpen) return true;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Use functional updates to get the latest state
+        setCurrentColumnIndex((prevColumnIndex) => {
+          if (prevColumnIndex >= skillOptions.length - 1) return prevColumnIndex;
+
+          const newColumnIndex = prevColumnIndex + 1;
+
+          setSelectedRowIndex((state) => ({
+            ...state,
+            [prevColumnIndex]: currentRowIndex
+          }));
+
+          setCurrentRowIndex(0);
+
+          // Use the latest skillOptions from closure to get the new column items
+          const newColumnOption = skillOptions[newColumnIndex];
+          const newColumnItems = newColumnOption?.list;
+          if (newColumnItems && newColumnItems.length > 0) {
+            handleItemSelect({
+              currentColumnIndex: newColumnIndex,
+              item: newColumnItems[0],
+              option: newColumnOption
+            });
+
+            // Scroll into view after state update
+            requestAnimationFrame(() => {
+              scrollIntoView(newColumnIndex, 0);
+            });
+          }
+
+          return newColumnIndex;
+        });
+
+        return true;
+      },
+      COMMAND_PRIORITY_HIGH
+    );
+
     const removeLeftCommand = editor.registerCommand(
       KEY_ARROW_LEFT_COMMAND,
       (e: KeyboardEvent) => {
-        const currentOption = skillOptionList.find((option) => option.key === selectedKey);
-        if (!currentOption) return false;
+        if (!isMenuOpen) return true;
 
-        if (currentOption.parentKey) {
-          const parentOption = skillOptionList.find((item) => item.key === currentOption.parentKey);
-          if (parentOption) {
-            const parentSiblings = skillOptionList.filter(
-              (item) => item.parentKey === parentOption.parentKey
-            );
-            const parentIndexInSiblings = parentSiblings.findIndex(
-              (item) => item.key === parentOption.key
-            );
-            nextIndexRef.current = parentIndexInSiblings >= 0 ? parentIndexInSiblings : 0;
+        e.preventDefault();
+        e.stopPropagation();
 
-            setSelectedKey(parentOption.key);
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-          }
-        }
-        return false;
+        // Use functional updates to get the latest state
+        setCurrentColumnIndex((prevColumnIndex) => {
+          if (prevColumnIndex <= 0) return prevColumnIndex;
+
+          const newColumnIndex = prevColumnIndex - 1;
+
+          setSelectedRowIndex((state) => ({
+            ...state,
+            [prevColumnIndex]: currentRowIndex
+          }));
+
+          const newRowIndex = selectedRowIndex[newColumnIndex] || 0;
+          setCurrentRowIndex(() => newRowIndex);
+
+          // Only keep data up to and including the current column
+          setSkillOptions((state) => {
+            return state.slice(0, prevColumnIndex + 1);
+          });
+
+          // Scroll into view after state update
+          requestAnimationFrame(() => {
+            scrollIntoView(newColumnIndex, newRowIndex);
+          });
+
+          return newColumnIndex;
+        });
+
+        return true;
       },
       COMMAND_PRIORITY_HIGH
     );
@@ -216,36 +362,39 @@ export default function SkillPickerPlugin({
     const removeSpaceCommand = editor.registerCommand(
       KEY_SPACE_COMMAND,
       (e: KeyboardEvent) => {
-        // 只在菜单聚焦且查询字符串不为空时处理
-        if (!isFocus || queryString === null) return false;
+        if (!isMenuOpen) return true;
 
-        const currentOption = skillOptionList.find((option) => option.key === selectedKey);
-        if (!currentOption) return false;
+        // Use the latest values from closure to avoid stale state
+        const latestOption = skillOptions[currentColumnIndex];
+        const latestItem = latestOption?.list[currentRowIndex];
 
-        console.log(
-          'Space key pressed, currentOption:',
-          currentOption,
-          'loadFolderContent:',
-          !!loadFolderContent,
-          'removeFolderContent:',
-          !!removeFolderContent,
-          'loadedFolders:',
-          loadedFolders
-        );
-
-        // 如果是文件夹且有相关函数
-        if (currentOption.canOpen && loadFolderContent && removeFolderContent && loadedFolders) {
-          // 检查是否已加载
-          if (!loadedFolders.has(selectedKey)) {
-            console.log('Loading folder:', selectedKey);
-            loadFolderContent(selectedKey);
-          } else {
-            console.log('Collapsing folder:', selectedKey);
-            removeFolderContent(selectedKey);
-          }
+        if (latestItem?.isFolder) {
           e.preventDefault();
           e.stopPropagation();
-          return true; // 阻止默认的空格插入行为
+          handleFolderToggle(latestItem.id, currentColumnIndex, latestItem);
+          return true;
+        }
+
+        return false;
+      },
+      COMMAND_PRIORITY_HIGH
+    );
+
+    const removeEnterCommand = editor.registerCommand(
+      KEY_ENTER_COMMAND,
+      (e: KeyboardEvent) => {
+        if (!isMenuOpen) return true;
+
+        // Use the latest values from closure to avoid stale state
+        const latestOption = skillOptions[currentColumnIndex];
+        const latestItem = latestOption?.list[currentRowIndex];
+
+        if (latestItem && latestOption) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleItemClick({ item: latestItem, option: latestOption });
+
+          return true;
         }
 
         return false;
@@ -254,483 +403,219 @@ export default function SkillPickerPlugin({
     );
 
     return () => {
+      removeUpCommand();
+      removeDownCommand();
       removeRightCommand();
       removeLeftCommand();
       removeSpaceCommand();
+      removeEnterCommand();
     };
   }, [
     editor,
     isFocus,
-    queryString,
-    selectedKey,
-    skillOptionList,
-    setSelectedKey,
-    loadFolderContent,
-    removeFolderContent,
-    loadedFolders
+    isMenuOpen,
+    currentColumnIndex,
+    currentRowIndex,
+    skillOptions,
+    handleItemSelect,
+    handleFolderToggle,
+    handleItemClick,
+    selectedRowIndex,
+    scrollIntoView
   ]);
 
-  const onSelectOption = useCallback(
-    async (
-      selectedOption: SkillOptionType,
-      nodeToRemove: TextNode | null,
-      closeMenu: () => void
-    ) => {
-      const skillId = await addTool(selectedOption);
-      if (!skillId) {
-        return;
-      }
+  // Render single column
+  const renderColumn = useCallback(
+    (columnData: SkillOptionItemType, columnIndex: number) => {
+      const activeRowIndex = selectedRowIndex[columnIndex]; // Active item in this column
 
-      editor.update(() => {
-        const selection = $getSelection();
-        if (!$isRangeSelection(selection)) return;
+      return (
+        <MyBox
+          isLoading={currentColumnIndex === columnIndex && isItemClickLoading}
+          key={columnIndex}
+          ml={columnIndex > 0 ? 2 : 0}
+          p={1.5}
+          borderRadius={'sm'}
+          w={'200px'}
+          boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
+          bg={'white'}
+          flexShrink={0}
+          maxH={'300px'}
+          overflow={'auto'}
+        >
+          {columnData.description && (
+            <Box color={'myGray.500'} fontSize={'xs'}>
+              {columnData.description}
+            </Box>
+          )}
+          {columnData.list.map((item, index) => {
+            // 前面的列，才有激活态
+            const isActive = columnIndex < currentColumnIndex && index === activeRowIndex;
+            // 当前选中的东西
+            const isSelected = columnIndex === currentColumnIndex && index === currentRowIndex;
 
-        const nodes = selection.getNodes();
-        nodes.forEach((node) => {
-          if ($isTextNode(node)) {
-            const text = node.getTextContent();
-            const atIndex = text.lastIndexOf('@');
-            if (atIndex !== -1) {
-              const queryLength = queryString ? queryString.length : 0;
-              const deleteLength = 1 + queryLength;
-              const beforeAt = text.substring(0, atIndex);
-              const afterQuery = text.substring(atIndex + deleteLength);
-              node.setTextContent(beforeAt + afterQuery);
-
-              const newOffset = beforeAt.length;
-              node.select(newOffset, newOffset);
-            }
-          }
-        });
-
-        selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-        closeMenu();
-      });
+            return (
+              <Flex
+                key={item.id}
+                ref={(el) => {
+                  if (el) {
+                    itemRefs.current.set(`${columnIndex}-${index}`, el);
+                  } else {
+                    itemRefs.current.delete(`${columnIndex}-${index}`);
+                  }
+                }}
+                px={2}
+                py={1.5}
+                gap={2}
+                pl={2}
+                borderRadius={'4px'}
+                cursor={'pointer'}
+                bg={isActive || isSelected ? 'myGray.100' : ''}
+                color={isSelected ? 'primary.700' : 'myGray.600'}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (item.isFolder) {
+                    handleFolderToggle(item.id, columnIndex, item);
+                  } else {
+                    handleItemClick({
+                      item,
+                      option: columnData
+                    });
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.preventDefault();
+                  setCurrentRowIndex(index);
+                  setCurrentColumnIndex(columnIndex);
+                  if (!item.isFolder) {
+                    handleItemSelect({
+                      currentColumnIndex: columnIndex,
+                      item,
+                      option: columnData
+                    });
+                  }
+                }}
+              >
+                {/* Folder expand/collapse icon */}
+                {item.isFolder && (
+                  <MyIcon
+                    name={'core/chat/chevronRight'}
+                    w={'12px'}
+                    color={'myGray.400'}
+                    // transform={foldedIds.has(item.id) ? 'rotate(90deg)' : 'none'}
+                  />
+                )}
+                {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
+                <Box fontSize={'sm'} fontWeight={'medium'} flex={1}>
+                  {item.label}
+                </Box>
+                {item.showArrow && (
+                  <MyIcon name={'core/chat/chevronRight'} w={'0.8rem'} color={'myGray.400'} />
+                )}
+              </Flex>
+            );
+          })}
+        </MyBox>
+      );
     },
-    [editor, addTool, queryString]
+    [
+      selectedRowIndex,
+      currentColumnIndex,
+      isItemClickLoading,
+      currentRowIndex,
+      handleFolderToggle,
+      handleItemClick,
+      handleItemSelect
+    ]
   );
 
+  // For LexicalTypeaheadMenuPlugin compatibility
   const menuOptions = useMemo(() => {
-    return currentOptions.map((option) => ({
-      ...option,
-      setRefElement: () => {}
-    }));
-  }, [currentOptions]);
+    return skillOptions.flatMap((item) =>
+      item.list.map((item) => ({
+        key: item.id,
+        ...item
+      }))
+    );
+  }, [skillOptions]);
+  const onSelectOption = useCallback(
+    async (selectedOption: any, nodeToRemove: TextNode | null, closeMenu: () => void) => {
+      // Step 1: Call async onClick handler (outside editor.update)
+      const skillId = await selectedOption.onClick?.(selectedOption.id);
 
-  const handleQueryChange = useCallback(
-    (() => {
-      let timeout: NodeJS.Timeout;
-      return (query: string | null) => {
-        if (setQueryString) {
-          clearTimeout(timeout);
-          if (!query?.trim()) {
-            setQueryString(query);
-            return;
-          }
-          timeout = setTimeout(() => setQueryString(query), 300);
-        }
-      };
-    })(),
-    [setQueryString]
+      // Step 2: Update editor with the skill (inside a fresh editor.update)
+      if (skillId) {
+        editor.update(() => {
+          // Re-acquire selection in this update cycle to avoid stale node references
+          const selection = $getSelection();
+          if (!$isRangeSelection(selection)) return;
+
+          // Re-acquire nodes in this update cycle
+          const nodes = selection.getNodes();
+          nodes.forEach((node) => {
+            if ($isTextNode(node)) {
+              const text = node.getTextContent();
+              const atIndex = text.lastIndexOf('@');
+              if (atIndex !== -1) {
+                // Remove the '@' trigger character
+                const beforeAt = text.substring(0, atIndex);
+                const afterAt = text.substring(atIndex + 1);
+                node.setTextContent(beforeAt + afterAt);
+
+                // Move cursor to where '@' was
+                const newOffset = beforeAt.length;
+                node.select(newOffset, newOffset);
+              }
+            }
+          });
+
+          // Insert skill node text at current selection
+          selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+          closeMenu();
+        });
+      } else {
+        // If onClick didn't return a skillId, just close the menu
+        closeMenu();
+      }
+    },
+    [editor]
   );
 
   return (
     <LexicalTypeaheadMenuPlugin
-      onQueryChange={handleQueryChange}
+      onQueryChange={(matchingString) => {
+        // Update menu open state based on query
+        setIsMenuOpen(matchingString !== null);
+      }}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={menuOptions}
-      menuRenderFn={(
-        anchorElementRef,
-        { selectedIndex: currentSelectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
-      ) => {
-        if (currentOptions.length === 0) {
-          return null;
+      menuRenderFn={(anchorElementRef) => {
+        const shouldShow = skillOptions.length > 0 && anchorElementRef.current !== null && isFocus;
+
+        // Sync menu open state with render
+        if (!shouldShow && isMenuOpen) {
+          setIsMenuOpen(false);
+        } else if (shouldShow && !isMenuOpen) {
+          setIsMenuOpen(true);
         }
-        if (anchorElementRef.current === null || !isFocus) {
-          return null;
-        }
-
-        if (nextIndexRef.current !== null) {
-          setHighlightedIndex(nextIndexRef.current);
-          nextIndexRef.current = null;
-        }
-
-        const currentOption = currentOptions[currentSelectedIndex || 0] || currentOptions[0];
-
-        if (currentOption && currentOption.key !== selectedKey) {
-          setSelectedKey(currentOption.key);
-        }
-
-        // 判断层级：没有 parentKey 的是顶级，有 parentKey 的根据父级判断层级
-        const getNodeDepth = (nodeKey: string): number => {
-          const node = skillOptionList.find((opt) => opt.key === nodeKey);
-          if (!node?.parentKey) return 0;
-          return 1 + getNodeDepth(node.parentKey);
-        };
-
-        const currentDepth = currentOption ? getNodeDepth(currentOption.key) : 0;
-
-        const selectedSkillKey = (() => {
-          if (currentDepth === 0) {
-            return currentOption?.key;
-          } else if (currentOption?.parentKey) {
-            if (currentDepth === 1) {
-              return currentOption.parentKey;
-            } else if (currentDepth === 2) {
-              const parentOption = skillOptionList.find(
-                (item) => item.key === currentOption.parentKey
-              );
-              return parentOption?.parentKey;
-            }
-          }
-          return null;
-        })();
-        const selectedToolKey = (() => {
-          // AppSkill 不需要第三级菜单
-          if (selectedSkillKey === 'app') {
-            return null;
-          }
-
-          if (currentDepth === 1) {
-            return currentOption?.key;
-          } else if (currentDepth === 2) {
-            return currentOption?.parentKey;
-          }
-          return null;
-        })();
 
         return ReactDOM.createPortal(
-          <Flex position="relative" align="flex-start" zIndex={99999}>
-            {/* 一级菜单 */}
-            <MyBox
-              p={1.5}
-              borderRadius={'sm'}
-              w={queryString ? '200px' : '160px'}
-              boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
-              bg={'white'}
-              flexShrink={0}
-              isLoading={isAddToolLoading}
-            >
-              {skillOptionList
-                .filter((option) => !option.parentKey)
-                .map((skillOption) => {
-                  const { isCurrentFocus, hasSelectedChild } = getDisplayState({
-                    selectedKey,
-                    skillOptionList,
-                    skillOption
-                  });
-                  return (
-                    <Flex
-                      key={skillOption.key}
-                      px={2}
-                      py={1.5}
-                      gap={2}
-                      borderRadius={'4px'}
-                      cursor={'pointer'}
-                      ref={(el) => {
-                        highlightedRefs.current[skillOption.key] = el;
-                      }}
-                      {...(isCurrentFocus || hasSelectedChild
-                        ? {
-                            bg: '#1118240D'
-                          }
-                        : {
-                            bg: 'white'
-                          })}
-                      _hover={{
-                        bg: '#1118240D'
-                      }}
-                      onMouseDown={(e) => {
-                        const menuOption = menuOptions.find(
-                          (option) => option.key === skillOption.key
-                        );
-                        menuOption && selectOptionAndCleanUp(menuOption);
-                      }}
-                    >
-                      <Avatar src={skillOption.icon} w={'16px'} borderRadius={'3px'} />
-                      <Box
-                        color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
-                        fontSize={'12px'}
-                        fontWeight={'medium'}
-                        letterSpacing={'0.5px'}
-                        flex={1}
-                      >
-                        {skillOption.label}
-                      </Box>
-                    </Flex>
-                  );
-                })}
-            </MyBox>
-
-            {/* 二级菜单 */}
-            {selectedSkillKey && !queryString && (
-              <MyBox
-                ml={2}
-                p={1.5}
-                borderRadius={'sm'}
-                w={'200px'}
-                boxShadow={
-                  '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
-                }
-                bg={'white'}
-                flexShrink={0}
-                maxH={'320px'}
-                overflow={'auto'}
-                isLoading={
-                  isAddToolLoading ||
-                  skillOptionList.filter((item) => item.parentKey === selectedSkillKey).length === 0
-                }
-                minH={
-                  skillOptionList.filter((item) => item.parentKey === selectedSkillKey).length === 0
-                    ? '200px'
-                    : '0'
-                }
-              >
-                {(() => {
-                  const secondaryOptions = skillOptionList.filter(
-                    (item) => item.parentKey === selectedSkillKey
-                  );
-
-                  // App 的特殊渲染：递归显示树形结构
-                  if (selectedSkillKey === 'app') {
-                    // 递归渲染函数
-                    const renderAppTree = (
-                      parentKey: string,
-                      depth: number = 0
-                    ): React.ReactNode[] => {
-                      const children = skillOptionList.filter((opt) => opt.parentKey === parentKey);
-                      const results: React.ReactNode[] = [];
-
-                      children.forEach((option) => {
-                        const { isCurrentFocus, hasSelectedChild } = getDisplayState({
-                          selectedKey,
-                          skillOptionList,
-                          skillOption: option
-                        });
-
-                        // 渲染当前项
-                        results.push(
-                          <Flex
-                            key={option.key}
-                            px={2}
-                            py={1.5}
-                            gap={2}
-                            pl={2 + depth * 4} // 根据深度缩进
-                            borderRadius={'4px'}
-                            cursor={'pointer'}
-                            ref={(el) => {
-                              highlightedRefs.current[option.key] = el;
-                            }}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              const menuOption = skillOptionList.find(
-                                (item) => item.key === option.key
-                              );
-                              menuOption &&
-                                selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
-                            }}
-                            {...(isCurrentFocus || hasSelectedChild
-                              ? {
-                                  bg: '#1118240D'
-                                }
-                              : {
-                                  bg: 'white'
-                                })}
-                            _hover={{
-                              bg: '#1118240D'
-                            }}
-                          >
-                            {/* 文件夹展开/折叠图标 */}
-                            {option.canOpen && (
-                              <MyIcon
-                                name={'core/chat/chevronRight'}
-                                w={'12px'}
-                                color={'myGray.400'}
-                                transform={
-                                  skillOptionList.some((child) => child.parentKey === option.key)
-                                    ? 'rotate(90deg)'
-                                    : 'none'
-                                }
-                              />
-                            )}
-                            <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
-                            <Box
-                              color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
-                              fontSize={'12px'}
-                              fontWeight={'medium'}
-                              letterSpacing={'0.5px'}
-                              flex={1}
-                            >
-                              {option.label}
-                            </Box>
-                          </Flex>
-                        );
-
-                        // 如果有子项，递归渲染
-                        const childItems = renderAppTree(option.key, depth + 1);
-                        results.push(...childItems);
-                      });
-
-                      return results;
-                    };
-
-                    return renderAppTree('app');
-                  }
-
-                  // Organize by category
-                  const categories = new Map();
-                  secondaryOptions.forEach((item) => {
-                    if (item.categoryType && item.categoryLabel) {
-                      if (!categories.has(item.categoryType)) {
-                        categories.set(item.categoryType, {
-                          label: item.categoryLabel,
-                          options: []
-                        });
-                      }
-                      categories.get(item.categoryType).options.push(item);
-                    }
-                  });
-
-                  return Array.from(categories.entries()).map(([categoryType, categoryData]) => (
-                    <Box key={categoryType} mb={3}>
-                      <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'} mb={1} px={2}>
-                        {categoryData.label}
-                      </Box>
-                      {categoryData.options.map((option: SkillOptionType) => {
-                        const { isCurrentFocus, hasSelectedChild } = getDisplayState({
-                          selectedKey,
-                          skillOptionList,
-                          skillOption: option
-                        });
-                        return (
-                          <Flex
-                            key={option.key}
-                            px={2}
-                            py={1.5}
-                            gap={2}
-                            borderRadius={'4px'}
-                            cursor={'pointer'}
-                            ref={(el) => {
-                              highlightedRefs.current[option.key] = el;
-                            }}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              const menuOption = skillOptionList.find(
-                                (item) => item.key === option.key
-                              );
-                              menuOption &&
-                                selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
-                            }}
-                            {...(isCurrentFocus || hasSelectedChild
-                              ? {
-                                  bg: '#1118240D'
-                                }
-                              : {
-                                  bg: 'white'
-                                })}
-                            _hover={{
-                              bg: '#1118240D'
-                            }}
-                          >
-                            <Avatar src={option.icon} w={'16px'} borderRadius={'3px'} />
-                            <Box
-                              color={isCurrentFocus ? 'primary.700' : 'myGray.600'}
-                              fontSize={'12px'}
-                              fontWeight={'medium'}
-                              letterSpacing={'0.5px'}
-                              flex={1}
-                            >
-                              {option.label}
-                            </Box>
-                            {option.canOpen && (
-                              <MyIcon
-                                name={'core/chat/chevronRight'}
-                                w={'12px'}
-                                color={'myGray.400'}
-                              />
-                            )}
-                          </Flex>
-                        );
-                      })}
-                    </Box>
-                  ));
-                })()}
-              </MyBox>
-            )}
-
-            {/* 三级菜单 */}
-            {selectedToolKey &&
-              (() => {
-                const tertiaryOptions = skillOptionList.filter(
-                  (option) => option.parentKey === selectedToolKey
-                );
-
-                if (tertiaryOptions.length > 0) {
-                  return (
-                    <MyBox
-                      ml={2}
-                      p={1.5}
-                      borderRadius={'sm'}
-                      w={'200px'}
-                      boxShadow={
-                        '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
-                      }
-                      bg={'white'}
-                      flexShrink={0}
-                      maxH={'280px'}
-                      overflow={'auto'}
-                      isLoading={isAddToolLoading}
-                    >
-                      {tertiaryOptions.map((option: SkillOptionType) => (
-                        <Flex
-                          key={option.key}
-                          px={2}
-                          py={1.5}
-                          gap={2}
-                          borderRadius={'4px'}
-                          cursor={'pointer'}
-                          ref={(el) => {
-                            highlightedRefs.current[option.key] = el;
-                          }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            const menuOption = skillOptionList.find(
-                              (item) => item.key === option.key
-                            );
-                            menuOption &&
-                              selectOptionAndCleanUp({ ...menuOption, setRefElement: () => {} });
-                          }}
-                          {...(selectedKey === option.key
-                            ? {
-                                bg: '#1118240D'
-                              }
-                            : {
-                                bg: 'white'
-                              })}
-                          _hover={{
-                            bg: '#1118240D'
-                          }}
-                        >
-                          <Box flex={1}>
-                            <Box
-                              color={selectedKey === option.key ? 'primary.700' : 'myGray.600'}
-                              fontSize={'12px'}
-                              fontWeight={'medium'}
-                              letterSpacing={'0.5px'}
-                            >
-                              {option.label}
-                            </Box>
-                          </Box>
-                        </Flex>
-                      ))}
-                    </MyBox>
-                  );
-                }
-                return null;
-              })()}
+          <Flex
+            visibility={shouldShow ? 'visible' : 'hidden'}
+            position="relative"
+            align="flex-start"
+            zIndex={99999}
+          >
+            {skillOptions.map((column, index) => {
+              return renderColumn(column, index);
+            })}
           </Flex>,
-          anchorElementRef.current
+          anchorElementRef.current!
         );
       }}
     />
