@@ -1,4 +1,5 @@
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type EditorVariablePickerType = {
   key: string;
@@ -86,9 +87,10 @@ export type VariableEditorNode = BaseEditorNode & {
 
 export type SkillEditorNode = BaseEditorNode & {
   type: 'skill';
-  skillKey: string;
-  skillName?: string;
-  skillAvatar?: string;
+  id: string;
+  name?: string;
+  icon?: string;
+  skillType?: `${FlowNodeTypeEnum}`;
   format: number;
 };
 

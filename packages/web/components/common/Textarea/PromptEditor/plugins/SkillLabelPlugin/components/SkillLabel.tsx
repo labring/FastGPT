@@ -4,30 +4,29 @@ import Avatar from '../../../../../Avatar';
 import MyTooltip from '../../../../../MyTooltip';
 import MyIcon from '../../../../../Icon';
 import { useTranslation } from 'next-i18next';
-
-type SkillLabelProps = {
-  skillKey: string;
-  skillName?: string;
-  skillAvatar?: string;
-  skillType?: 'tool' | 'app';
-  isInvalid?: boolean;
-  isUnconfigured?: boolean;
-  onConfigureClick?: () => void;
-};
+import type { SkillLabelNodeBasicType } from '../node';
+import { useMemoEnhance } from '../../../../../../../hooks/useMemoEnhance';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export default function SkillLabel({
-  skillKey,
-  skillName,
-  skillAvatar,
-  skillType = 'tool',
-  isInvalid = false,
-  isUnconfigured = false,
-  onConfigureClick
-}: SkillLabelProps) {
+  id,
+  name,
+  icon,
+  skillType,
+  status,
+  onClick
+}: SkillLabelNodeBasicType) {
   const { t } = useTranslation();
 
-  const getColors = () => {
-    if (isInvalid) {
+  const isInvalid = useMemoEnhance(() => {
+    return status === 'invalid';
+  }, [status]);
+  const isUnconfigured = useMemoEnhance(() => {
+    return status === 'waitingForConfig';
+  }, [status]);
+
+  const colors = useMemoEnhance(() => {
+    if (status === 'invalid') {
       return {
         bg: 'red.50',
         color: 'red.600',
@@ -37,7 +36,7 @@ export default function SkillLabel({
       };
     }
 
-    if (skillType === 'app') {
+    if (skillType === FlowNodeTypeEnum.appModule) {
       return {
         bg: 'green.50',
         color: 'green.700',
@@ -54,15 +53,14 @@ export default function SkillLabel({
       hoverBg: 'yellow.100',
       hoverBorderColor: 'yellow.300'
     };
-  };
-
-  const colors = getColors();
+  }, [status, skillType]);
 
   return (
     <Box
       as="span"
       display="inline-flex"
       alignItems="center"
+      userSelect={'none'}
       px={2}
       mx={1}
       bg={colors.bg}
@@ -77,7 +75,7 @@ export default function SkillLabel({
         bg: colors.hoverBg,
         borderColor: colors.hoverBorderColor
       }}
-      onClick={isUnconfigured ? onConfigureClick : undefined}
+      onClick={() => onClick(id)}
       transform={'translateY(2px)'}
     >
       <MyTooltip
@@ -92,13 +90,8 @@ export default function SkillLabel({
         }
       >
         <Flex alignItems="center" gap={1}>
-          <Avatar
-            src={skillAvatar || 'core/workflow/template/toolCall'}
-            w={'14px'}
-            h={'14px'}
-            borderRadius={'2px'}
-          />
-          <Box>{skillName || skillKey}</Box>
+          <Avatar src={icon} w={'14px'} h={'14px'} borderRadius={'2px'} />
+          <Box>{name || id}</Box>
           {isUnconfigured && <Box w="6px" h="6px" bg="primary.600" borderRadius="50%" ml={1} />}
           {isInvalid && <Box w="6px" h="6px" bg="red.600" borderRadius="50%" ml={1} />}
         </Flex>

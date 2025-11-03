@@ -35,6 +35,8 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useToolManager, type ExtendedToolType } from './hooks/useToolManager';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useAppManager } from './hooks/useAppManager';
+import { useSkillManager } from './hooks/useSkillManager';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -43,7 +45,6 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
-const ConfigToolModal = dynamic(() => import('../component/ConfigToolModal'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -74,45 +75,24 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const [selectedSkillKey, setSelectedSkillKey] = useState<string>('');
-  const [configTool, setConfigTool] = useState<ExtendedToolType>();
-  const onAddTool = useCallback(
-    (tool: FlowNodeTemplateType) => {
-      setAppForm((state: any) => ({
+
+  // Skill picker
+  const selectedTools = useMemoEnhance(() => appForm.selectedTools, [appForm.selectedTools]);
+  const setSelectedTools = useCallback(
+    (tools: FlowNodeTemplateType[]) => {
+      setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools.map((t: ExtendedToolType) =>
-          t.id === tool.id ? { ...tool, isUnconfigured: false } : t
-        )
+        selectedTools: tools
       }));
-      setConfigTool(undefined);
     },
-    [setAppForm, setConfigTool]
+    [setAppForm]
   );
-
-  const {
-    toolSkillOptions,
-    queryString,
-    setQueryString,
-    handleAddToolFromEditor,
-    handleConfigureTool,
-    handleRemoveToolFromEditor
-  } = useToolManager({
-    appForm,
-    setAppForm,
-    setConfigTool,
-    selectedSkillKey
+  const { SkillModal, skillOption, selectedSkills, onClickSkill, onRemoveSkill } = useSkillManager({
+    selectedTools,
+    setSelectedTools,
+    canSelectFile: appForm.chatConfig?.fileSelectConfig?.canSelectFile,
+    canSelectImg: appForm.chatConfig?.fileSelectConfig?.canSelectImg
   });
-
-  const { appSkillOptions, loadFolderContent, removeFolderContent, loadedFolders } = useAppManager({
-    selectedSkillKey,
-    currentAppId: appDetail._id
-  });
-
-  const skillOptionList = useMemo(() => {
-    return [...appSkillOptions, ...toolSkillOptions];
-  }, [appSkillOptions, toolSkillOptions]);
-
-  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -170,7 +150,7 @@ const EditForm = ({
     }
   }, [selectedModel, setAppForm]);
 
-  const OptimizerPopverComponent = useCallback(
+  const OptimizerPromptPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
       return (
         <OptimizerPopover
@@ -257,23 +237,14 @@ const EditForm = ({
                     }));
                   });
                 }}
-                onAddToolFromEditor={handleAddToolFromEditor}
-                onRemoveToolFromEditor={handleRemoveToolFromEditor}
-                onConfigureTool={handleConfigureTool}
-                selectedTools={appForm.selectedTools}
                 variableLabels={formatVariables}
-                variables={formatVariables}
-                skillOptionList={skillOptionList}
-                queryString={queryString}
-                setQueryString={setQueryString}
-                selectedSkillKey={selectedSkillKey}
-                setSelectedSkillKey={setSelectedSkillKey}
-                loadFolderContent={loadFolderContent}
-                removeFolderContent={removeFolderContent}
-                loadedFolders={loadedFolders}
+                skillOption={skillOption}
+                selectedSkills={selectedSkills}
+                onClickSkill={onClickSkill}
+                onRemoveSkill={onRemoveSkill}
                 placeholder={t('common:agent_prompt_tips')}
                 title={t('common:core.ai.Prompt')}
-                ExtensionPopover={[OptimizerPopverComponent]}
+                ExtensionPopover={[OptimizerPromptPopverComponent]}
                 isRichText={true}
               />
             </Box>
@@ -516,13 +487,7 @@ const EditForm = ({
           }}
         />
       )}
-      {!!configTool && (
-        <ConfigToolModal
-          configTool={configTool}
-          onCloseConfigTool={onCloseConfigTool}
-          onAddTool={onAddTool}
-        />
-      )}
+      <SkillModal />
     </>
   );
 };

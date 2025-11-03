@@ -21,15 +21,16 @@ import SecretInputModal, {
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { useBoolean } from 'ahooks';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const ConfigToolModal = ({
   configTool,
   onCloseConfigTool,
   onAddTool
 }: {
-  configTool: AppFormEditFormType['selectedTools'][number];
+  configTool: FlowNodeTemplateType;
   onCloseConfigTool: () => void;
-  onAddTool: (tool: AppFormEditFormType['selectedTools'][number]) => void;
+  onAddTool: (tool: FlowNodeTemplateType) => void;
 }) => {
   const { t } = useSafeTranslation();
   const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =

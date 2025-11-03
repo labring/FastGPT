@@ -12,7 +12,7 @@ import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
-import type { SkillNode } from './plugins/SkillPlugin/node';
+import type { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type {
   ListItemEditorNode,
   ListEditorNode,
@@ -438,7 +438,7 @@ const processListItem = ({
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
     } else if (child.type === 'skill') {
-      itemText.push(`{{@${child.skillKey}@}}`);
+      itemText.push(`{{@${child.id}@}}`);
     } else if (child.type === 'list') {
       nestedLists.push(child);
     }
@@ -572,7 +572,7 @@ export const editorStateToText = (editor: LexicalEditor) => {
         } else if (child.type === 'variableLabel' || child.type === 'Variable') {
           paragraphText.push(child.variableKey);
         } else if (child.type === 'skill') {
-          paragraphText.push(`{{@${child.skillKey}@}}`);
+          paragraphText.push(`{{@${child.id}@}}`);
         }
       });
 

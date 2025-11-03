@@ -44,10 +44,11 @@ import MyIcon from '../../Icon';
 import ListExitPlugin from './plugins/ListExitPlugin';
 import KeyDownPlugin from './plugins/KeyDownPlugin';
 import SkillPickerPlugin from './plugins/SkillPickerPlugin';
-import SkillPlugin from './plugins/SkillPlugin';
-import { SkillNode } from './plugins/SkillPlugin/node';
-import type { SkillOptionType } from './plugins/SkillPickerPlugin';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import type { SkillLabelItemType } from './plugins/SkillLabelPlugin';
+import SkillLabelPlugin from './plugins/SkillLabelPlugin';
+import { SkillNode } from './plugins/SkillLabelPlugin/node';
+import type { SkillOptionItemType } from './plugins/SkillPickerPlugin';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box
@@ -80,16 +81,14 @@ export type EditorProps = {
   onAddToolFromEditor?: (toolKey: string) => Promise<string>;
   onRemoveToolFromEditor?: (toolId: string) => void;
   onConfigureTool?: (toolId: string) => void;
-  selectedTools?: FlowNodeTemplateType[];
-  skillOptionList?: SkillOptionType[];
-  queryString?: string | null;
-  setQueryString?: (value: string | null) => void;
-  selectedSkillKey?: string;
-  setSelectedSkillKey?: (key: string) => void;
-  loadFolderContent?: (folderId: string) => Promise<void>;
-  removeFolderContent?: (folderId: string) => void;
-  loadedFolders?: Set<string>;
+
   value: string;
+
+  skillOption?: SkillOptionItemType;
+  onRemoveSkill?: (id: string) => void;
+  onClickSkill?: (id: string) => void;
+  selectedSkills?: SkillLabelItemType[];
+
   showOpenModal?: boolean;
   minH?: number;
   maxH?: number;
@@ -112,20 +111,17 @@ export default function Editor({
   maxLength,
   showOpenModal = true,
   onOpenModal,
+
+  // {{}} 类型，已弃用
   variables = [],
+  // /选择变量
   variableLabels = [],
-  skillOptionList = [],
-  queryString,
-  setQueryString,
-  onAddToolFromEditor,
-  onRemoveToolFromEditor,
-  onConfigureTool,
-  selectedTools = [],
-  selectedSkillKey,
-  setSelectedSkillKey,
-  loadFolderContent,
-  removeFolderContent,
-  loadedFolders,
+  // @选择技能
+  skillOption,
+  selectedSkills,
+  onClickSkill,
+  onRemoveSkill,
+
   onChange,
   onChangeText,
   onBlur,
@@ -169,7 +165,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels, selectedTools]);
+  }, [value, variables, variableLabels, skillOption, selectedSkills]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -204,45 +200,65 @@ export default function Editor({
       borderRadius={'md'}
     >
       <LexicalComposer initialConfig={initialConfig} key={key}>
-        {/* Text type */}
-        {isRichText ? (
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
-                style={{
-                  minHeight: `${minH}px`,
-                  maxHeight: `${maxH}px`,
-                  ...boxStyle
-                }}
-              />
-            }
-            placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-        ) : (
-          <PlainTextPlugin
-            contentEditable={
-              <ContentEditable
-                className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
-                style={{
-                  minHeight: `${minH}px`,
-                  maxHeight: `${maxH}px`,
-                  ...boxStyle
-                }}
-              />
-            }
-            placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-        )}
-
-        {/* Basic Plugin */}
         <>
-          <HistoryPlugin />
-          <MaxLengthPlugin maxLength={maxLength || 999999} />
-          <FocusPlugin focus={focus} setFocus={setFocus} />
-          <KeyDownPlugin onKeyDown={onKeyDown} />
+          {/* Text type */}
+          {isRichText ? (
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable
+                  className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
+                  style={{
+                    minHeight: `${minH}px`,
+                    maxHeight: `${maxH}px`,
+                    ...boxStyle
+                  }}
+                />
+              }
+              placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          ) : (
+            <PlainTextPlugin
+              contentEditable={
+                <ContentEditable
+                  className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
+                  style={{
+                    minHeight: `${minH}px`,
+                    maxHeight: `${maxH}px`,
+                    ...boxStyle
+                  }}
+                />
+              }
+              placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          )}
+
+          {/* Basic Plugin */}
+          <>
+            <HistoryPlugin />
+            <MaxLengthPlugin maxLength={maxLength || 999999} />
+            <FocusPlugin focus={focus} setFocus={setFocus} />
+            <KeyDownPlugin onKeyDown={onKeyDown} />
+            <OnBlurPlugin onBlur={onBlur} />
+            <OnChangePlugin
+              onChange={(editorState, editor) => {
+                const rootElement = editor.getRootElement();
+                setScrollHeight(rootElement?.scrollHeight || 0);
+                startSts(() => {
+                  onChange?.(editor);
+                });
+              }}
+            />
+          </>
+
+          {/* 定制交互插件 */}
+          {variables.length > 0 && (
+            <>
+              <VariablePlugin variables={variables} />
+              {/* <VariablePickerPlugin variables={variables} /> */}
+            </>
+          )}
 
           {variableLabels.length > 0 && (
             <>
@@ -250,44 +266,17 @@ export default function Editor({
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
-          {variables.length > 0 && (
+
+          {skillOption && onClickSkill && onRemoveSkill && selectedSkills && (
             <>
-              <VariablePlugin variables={variables} />
-              {/* <VariablePickerPlugin variables={variables} /> */}
+              <SkillLabelPlugin
+                selectedSkills={selectedSkills}
+                onClickSkill={onClickSkill}
+                onRemoveSkill={onRemoveSkill}
+              />
+              <SkillPickerPlugin skillOption={skillOption} isFocus={focus} />
             </>
           )}
-          {skillOptionList && skillOptionList.length > 0 && setSelectedSkillKey && (
-            <>
-              <SkillPlugin
-                selectedTools={selectedTools}
-                onConfigureTool={onConfigureTool}
-                onRemoveToolFromEditor={onRemoveToolFromEditor}
-              />
-              <SkillPickerPlugin
-                skillOptionList={skillOptionList}
-                queryString={queryString}
-                setQueryString={setQueryString}
-                isFocus={focus}
-                onAddToolFromEditor={onAddToolFromEditor}
-                selectedKey={selectedSkillKey || ''}
-                setSelectedKey={setSelectedSkillKey}
-                // temp
-                loadFolderContent={loadFolderContent}
-                removeFolderContent={removeFolderContent}
-                loadedFolders={loadedFolders}
-              />
-            </>
-          )}
-          <OnBlurPlugin onBlur={onBlur} />
-          <OnChangePlugin
-            onChange={(editorState, editor) => {
-              const rootElement = editor.getRootElement();
-              setScrollHeight(rootElement?.scrollHeight || 0);
-              startSts(() => {
-                onChange?.(editor);
-              });
-            }}
-          />
 
           {isRichText && (
             <>
