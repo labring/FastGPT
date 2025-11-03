@@ -189,6 +189,7 @@ export interface CreateEvaluationParams {
   evalDatasetCollectionId: string;
   target: EvalTarget; // Only supports workflow type target configuration
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
+  autoStart?: boolean; // Whether to automatically start the evaluation task after creation (default: true)
 }
 
 type EvaluationParamsType = Omit<CreateEvaluationParams, 'autoStart'>;

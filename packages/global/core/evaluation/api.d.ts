@@ -5,7 +5,8 @@ import type {
   EvaluationItemSchemaType,
   EvaluationDisplayType,
   EvaluationItemDisplayType,
-  EvaluationDataItemType
+  EvaluationDataItemType,
+  EvaluationStatistics
 } from './type';
 import type { EvaluationStatusEnum } from './constants';
 import type { EvalDatasetDataKeyEnum } from './dataset/constants';

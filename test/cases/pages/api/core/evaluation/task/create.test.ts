@@ -7,7 +7,6 @@ import {
   checkTeamEvaluationTaskLimit
 } from '@fastgpt/service/support/permission/teamLimit';
 import { validateTargetConfig } from '@fastgpt/service/core/evaluation/target';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 
@@ -157,6 +156,7 @@ describe('Create Evaluation Task API Handler', () => {
         evalDatasetCollectionId: mockReq.body.evalDatasetCollectionId,
         target: mockReq.body.target,
         evaluators: mockReq.body.evaluators,
+        autoStart: undefined, // 用户未传递 autoStart 参数时应该是 undefined，服务层会设置默认值
         teamId: mockTeamId,
         tmbId: mockTmbId
       })

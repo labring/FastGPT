@@ -61,6 +61,7 @@ async function handler(
     evalDatasetCollectionId,
     target: target as EvalTarget,
     evaluators,
+    autoStart,
     teamId,
     tmbId
   });
