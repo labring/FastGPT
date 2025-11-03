@@ -52,7 +52,7 @@ export type AppToolTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  toolTags?: string[];
+  toolTags?: string[] | null;
   defaultInstalled?: boolean;
   isOfficial?: boolean;
 

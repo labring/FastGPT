@@ -131,7 +131,7 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
-  toolTags?: string[];
+  toolTags?: string[] | null;
 
   // @deprecated
   sourceHandle?: HandleType;
@@ -144,7 +144,7 @@ export type NodeTemplateListItemType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
   templateType?: string;
-  toolTags?: string[];
+  toolTags?: string[] | null;
   avatar?: string;
   name: string;
   intro?: string; // template list intro
