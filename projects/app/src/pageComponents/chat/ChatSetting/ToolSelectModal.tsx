@@ -136,6 +136,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       {allTags.length > 0 && (
         <Box mt={3} px={[3, 6]}>
           <ToolTagFilterBox
+            size="sm"
             tags={allTags}
             selectedTagIds={selectedTagIds}
             onTagSelect={setSelectedTagIds}

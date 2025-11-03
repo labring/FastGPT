@@ -9,7 +9,7 @@ export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.extend(
   intro: z.string().optional(),
   author: z.string().optional(),
   avatar: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).nullable().optional(),
 
   hasSystemSecret: z.boolean().optional(),
 

@@ -62,7 +62,7 @@ async function handler(
         systemKeyCost: tool.systemKeyCost
       });
     }),
-    tags: systemTool.toolTags
+    tags: systemTool.toolTags || []
   });
 }
 
