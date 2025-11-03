@@ -202,7 +202,7 @@ const A = ({
     );
   }
 
-  return <Link {...props}>{content || props?.href}</Link>;
+  return <Link {...props}>{children || props?.href}</Link>;
 };
 
 export default React.memo(A);
