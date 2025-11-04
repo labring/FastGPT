@@ -26,7 +26,8 @@ export async function getRootUser(): Promise<parseHeaderCertRet> {
   const tmb = await MongoTeamMember.create({
     teamId: team._id,
     userId: rootUser._id,
-    status: 'active'
+    status: 'active',
+    name: rootUser.username
   });
 
   return {
@@ -72,7 +73,8 @@ export async function getUser(username: string, teamId?: string): Promise<parseH
     return MongoTeamMember.create({
       teamId,
       userId: user._id,
-      status: 'active'
+      status: 'active',
+      name: username
     });
   })();
 
