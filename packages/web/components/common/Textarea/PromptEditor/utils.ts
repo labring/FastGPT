@@ -524,9 +524,21 @@ export const editorStateToText = (editor: LexicalEditor) => {
       return node.children.map(extractText).join('');
     }
 
-    // Unknown node type
+    // Unknown node type - return the raw text content if available
     console.warn('Unknown node type in extractText:', (node as any).type, node);
-    return '';
+
+    // Try to extract text content from unknown node types
+    if ('text' in node && typeof (node as any).text === 'string') {
+      return (node as any).text;
+    }
+
+    // Try to recursively extract from children if present
+    if ('children' in node && Array.isArray((node as any).children)) {
+      return (node as any).children.map(extractText).join('');
+    }
+
+    // Fallback to stringifying the node content
+    return JSON.stringify(node);
   };
 
   paragraphs.forEach((paragraph) => {
