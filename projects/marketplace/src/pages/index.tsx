@@ -462,7 +462,16 @@ const ToolkitMarketplace = () => {
           selectedTool={selectedTool}
           // @ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
-          onToggleInstall={() => window.open(selectedTool.downloadUrl)}
+          onToggleInstall={() => {
+            if (selectedTool.downloadUrl) {
+              const link = document.createElement('a');
+              link.href = selectedTool.downloadUrl;
+              link.download = '';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          }}
         />
       )}
     </>

@@ -189,7 +189,7 @@ const ToolDetailDrawer = ({
 
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     const fetchToolDetail = async () => {
@@ -327,7 +327,7 @@ const ToolDetailDrawer = ({
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
                 isLoading={isLoading || loading}
                 onClick={async () => {
-                  await onToggleInstall(!isInstalled);
+                  onToggleInstall(!isInstalled);
                   if (mode === 'marketplace') return;
                   setIsInstalled(!isInstalled);
                 }}
