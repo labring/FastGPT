@@ -34,6 +34,7 @@ import {
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useMemoizedFn } from 'ahooks';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -105,7 +106,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     [inputs, nodeId, onChangeNode]
   );
 
-  const ValueRender = useCallback(
+  const ValueRender = useMemoizedFn(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
       const { inputType, formParams = {} } = (() => {
         const value = updateItem.variable;
@@ -279,7 +280,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               return (
                 <Box minW={'250px'} maxW={'400px'} borderRadius={'sm'}>
                   <InputRender
-                    // @ts-ignore
                     inputType={inputType}
                     {...formParams}
                     isRichText={false}
@@ -294,18 +294,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           </Flex>
         </Container>
       );
-    },
-    [
-      appDetail.chatConfig,
-      externalProviderWorkflowVariables,
-      getNodeById,
-      nodeId,
-      onUpdateList,
-      systemConfigNode,
-      t,
-      updateList,
-      variables
-    ]
+    }
   );
 
   const Render = useMemo(() => {

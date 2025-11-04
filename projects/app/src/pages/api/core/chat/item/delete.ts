@@ -9,8 +9,8 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
-async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
-  const { appId, chatId, contentId } = req.query;
+async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiResponse) {
+  const { appId, chatId, contentId, delFile = true } = req.body;
 
   if (!contentId || !chatId) {
     return Promise.reject('contentId or chatId is empty');
@@ -20,7 +20,7 @@ async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextA
     req,
     authToken: true,
     authApiKey: true,
-    ...req.query
+    ...req.body
   });
 
   await mongoSessionRun(async (session) => {
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextA
       dataId: contentId
     }).session(session);
 
-    if (item?.obj === ChatRoleEnum.Human) {
+    if (item?.obj === ChatRoleEnum.Human && delFile) {
       const s3ChatSource = getS3ChatSource();
       for (const value of item.value) {
         if (value.type === ChatItemValueTypeEnum.file && value.file?.key) {

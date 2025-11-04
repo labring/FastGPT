@@ -46,6 +46,54 @@ const { LOG_LEVEL, STORE_LOG_LEVEL, SIGNOZ_STORE_LEVEL } = (() => {
   };
 })();
 
+/**
+ * Sanitize object to prevent circular references for BSON serialization
+ * Remove properties that may contain circular references
+ */
+const sanitizeObjectForBSON = (obj: Record<string, any>): Record<string, any> => {
+  try {
+    // Use JSON stringify with replacer to handle circular references
+    const seen = new WeakSet();
+    const sanitized = JSON.parse(
+      JSON.stringify(obj, (key, value) => {
+        // Handle circular references
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) {
+            return '[Circular Reference]';
+          }
+          seen.add(value);
+        }
+
+        // Remove known problematic properties from axios config
+        if (key === 'config' && value && typeof value === 'object') {
+          return {
+            method: value.method,
+            url: value.url,
+            baseURL: value.baseURL,
+            headers: value.headers,
+            timeout: value.timeout,
+            responseType: value.responseType
+          };
+        }
+
+        // Remove functions and other non-serializable values
+        if (typeof value === 'function' || typeof value === 'symbol') {
+          return undefined;
+        }
+
+        return value;
+      })
+    );
+    return sanitized;
+  } catch (error) {
+    // If sanitization fails, return a safe fallback
+    return {
+      error: 'Failed to sanitize object',
+      originalKeys: Object.keys(obj)
+    };
+  }
+};
+
 /* add logger */
 export const addLog = {
   log(level: LogLevelEnum, msg: string, obj: Record<string, any> = {}) {
@@ -77,10 +125,13 @@ export const addLog = {
     if (level >= STORE_LOG_LEVEL && connectionMongo.connection.readyState === 1) {
       (async () => {
         try {
+          // Sanitize metadata to prevent circular reference errors
+          const safeMetadata = sanitizeObjectForBSON(obj);
+
           await getMongoLog().create({
             text: msg,
             level,
-            metadata: obj
+            metadata: safeMetadata
           });
         } catch (error) {
           console.error('store log error', error);

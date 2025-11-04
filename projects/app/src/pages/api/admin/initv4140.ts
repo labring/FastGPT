@@ -174,7 +174,7 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
       pluginId: plugin.pluginId?.startsWith(AppToolSourceEnum.community)
         ? plugin.pluginId.replace(AppToolSourceEnum.community, AppToolSourceEnum.systemTool)
         : plugin.pluginId,
-      status: !plugin.isActive ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
+      status: plugin.isActive === false ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
       defaultInstalled: false,
       originCost: plugin.originCost || 0,
       currentCost: plugin.currentCost || 0,
@@ -182,7 +182,7 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
       pluginOrder: plugin.pluginOrder,
       systemKeyCost: plugin.systemKeyCost || 0,
       customConfig: plugin.customConfig ? { ...plugin.customConfig } : {},
-      inputListVal: plugin.inputListVal || {}
+      inputListVal: plugin.inputListVal
     };
 
     // 迁移 templateType → tags

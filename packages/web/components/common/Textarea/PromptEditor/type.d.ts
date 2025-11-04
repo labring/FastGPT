@@ -42,28 +42,11 @@ export type TextEditorNode = BaseEditorNode & {
 export type LineBreakEditorNode = BaseEditorNode & {
   type: 'linebreak';
 };
-
-export type VariableLabelEditorNode = BaseEditorNode & {
-  type: 'variableLabel';
-  variableKey: string;
-};
-
-export type VariableEditorNode = BaseEditorNode & {
-  type: 'Variable';
-  variableKey: string;
-};
-
 export type TabEditorNode = BaseEditorNode & {
   type: 'tab';
 };
 
-export type ChildEditorNode =
-  | TextEditorNode
-  | LineBreakEditorNode
-  | VariableLabelEditorNode
-  | VariableEditorNode
-  | TabEditorNode;
-
+// Rich text
 export type ParagraphEditorNode = BaseEditorNode & {
   type: 'paragraph';
   children: ChildEditorNode[];
@@ -72,13 +55,31 @@ export type ParagraphEditorNode = BaseEditorNode & {
   indent: number;
 };
 
+// ListItem 节点的 children 可以包含嵌套的 list 节点
+export type ListItemChildEditorNode =
+  | TextEditorNode
+  | LineBreakEditorNode
+  | TabEditorNode
+  | VariableLabelEditorNode
+  | VariableEditorNode;
+
 export type ListItemEditorNode = BaseEditorNode & {
   type: 'listitem';
-  children: Array<ChildEditorNode | ListEditorNode>;
+  children: (ListItemChildEditorNode | ListEditorNode)[];
   direction: string | null;
   format: string;
   indent: number;
   value: number;
+};
+
+// Custom variable node types
+export type VariableLabelEditorNode = BaseEditorNode & {
+  type: 'variableLabel';
+  variableKey: string;
+};
+export type VariableEditorNode = BaseEditorNode & {
+  type: 'Variable';
+  variableKey: string;
 };
 
 export type ListEditorNode = BaseEditorNode & {
@@ -92,10 +93,20 @@ export type ListEditorNode = BaseEditorNode & {
   tag: 'ul' | 'ol';
 };
 
+export type ChildEditorNode =
+  | TextEditorNode
+  | LineBreakEditorNode
+  | TabEditorNode
+  | ParagraphEditorNode
+  | ListEditorNode
+  | ListItemEditorNode
+  | VariableLabelEditorNode
+  | VariableEditorNode;
+
 export type EditorState = {
   root: {
     type: 'root';
-    children: Array<ParagraphEditorNode | ListEditorNode>;
+    children: ChildEditorNode[];
     direction: string;
     format: string;
     indent: number;
