@@ -18,7 +18,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { getPreviewPluginNode, getToolVersionList } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -38,11 +38,16 @@ import { useBoolean, useCreation } from 'ahooks';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -236,7 +241,7 @@ const NodeCard = (props: Props) => {
                 rtDoms={rtDoms}
               />
 
-              <NodeErrorBadge error={error} />
+              <NodeStatusBadge status={nodeTemplate?.status} error={error} />
             </Flex>
 
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -469,7 +474,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
+        const template = await getToolPreviewNode({ appId: node.pluginId, versionId });
 
         if (!!template) {
           onResetNode({
@@ -805,29 +810,49 @@ const NodeActionButtons = React.memo<{
 NodeActionButtons.displayName = 'NodeActionButtons';
 
 // 节点错误徽章组件
-const NodeErrorBadge = React.memo<{ error?: string | null }>(({ error }) => {
-  const { t } = useTranslation();
+const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
+  ({ status, error }) => {
+    const { t } = useTranslation();
 
-  if (!error) {
+    if (error) {
+      return (
+        <Flex
+          bg={'red.50'}
+          alignItems={'center'}
+          h={8}
+          px={2}
+          rounded={'6px'}
+          fontSize={'xs'}
+          fontWeight={'medium'}
+        >
+          <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+          <Box color={'red.600'}>{t(error as any)}</Box>
+        </Flex>
+      );
+    }
+    if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      return (
+        <MyTooltip
+          label={
+            status === PluginStatusEnum.Offline
+              ? t('app:tool_offset_tips')
+              : t('app:tool_soon_offset_tips')
+          }
+        >
+          <MyTag
+            mr={2}
+            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
+            type="borderFill"
+          >
+            {t(PluginStatusMap[status].label)}
+          </MyTag>
+        </MyTooltip>
+      );
+    }
     return null;
   }
-
-  return (
-    <Flex
-      bg={'red.50'}
-      alignItems={'center'}
-      h={8}
-      px={2}
-      rounded={'6px'}
-      fontSize={'xs'}
-      fontWeight={'medium'}
-    >
-      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-      <Box color={'red.600'}>{t(error as any)}</Box>
-    </Flex>
-  );
-});
-NodeErrorBadge.displayName = 'NodeErrorBadge';
+);
+NodeStatusBadge.displayName = 'NodeStatusBadge';
 
 // 节点 Secret 组件
 const NodeSecret = React.memo(function NodeSecret({

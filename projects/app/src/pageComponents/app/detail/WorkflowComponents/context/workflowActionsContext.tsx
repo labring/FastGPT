@@ -112,7 +112,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const { toast } = useToast();
 
   // 获取 WorkflowBufferDataContext 的数据
-  const { forbiddenSaveSnapshot, setEdges, setNodes, getNodeById } = useContextSelector(
+  const { forbiddenSaveSnapshot, setEdges, setNodes } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );

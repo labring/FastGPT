@@ -125,12 +125,10 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
-      HeadingNode,
-      ListNode,
-      ListItemNode,
-      QuoteNode,
-      CodeNode,
-      CodeHighlightNode
+      // Only register rich text nodes when in rich text mode
+      ...(isRichText
+        ? [HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode]
+        : [])
     ],
     editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
@@ -218,14 +216,18 @@ export default function Editor({
           <FocusPlugin focus={focus} setFocus={setFocus} />
           <KeyDownPlugin onKeyDown={onKeyDown} />
 
-          <VariablePlugin variables={variables} />
           {variableLabels.length > 0 && (
             <>
               <VariableLabelPlugin variables={variableLabels} />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
-          {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {variables.length > 0 && (
+            <>
+              <VariablePlugin variables={variables} />
+              {/* <VariablePickerPlugin variables={variables} /> */}
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
           <OnChangePlugin
             onChange={(editorState, editor) => {

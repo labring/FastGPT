@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 const WorkOrderShowRouter: { [key: string]: boolean } = {
   '/dashboard/apps': true,
   '/dataset/list': true,
-  '/toolkit': true
+  '/plugin': true
 };
 
 function WorkorderButton() {

@@ -22,7 +22,6 @@ import type {
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowActionsContext } from './workflowActionsContext';
 
 // 创建 Context

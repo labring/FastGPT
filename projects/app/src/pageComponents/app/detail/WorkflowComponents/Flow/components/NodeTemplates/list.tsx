@@ -12,9 +12,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -25,7 +23,7 @@ import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
   AppNodeFlowNodeTypeMap
@@ -45,7 +43,6 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
@@ -73,13 +70,13 @@ const NodeTemplateListItem = ({
   isPopover?: boolean;
   onUpdateParentId: (parentId: string) => void;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
-  const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
+  const isSystemTool = templateType === TemplateTypeEnum.appTool;
 
   return (
     <MyTooltip
@@ -167,15 +164,15 @@ const NodeTemplateListItem = ({
           borderRadius={'sm'}
           flexShrink={0}
         />
-        <Box
-          color={'myGray.900'}
-          fontWeight={'500'}
-          fontSize={isPopover ? 'xs' : 'sm'}
-          flex={'1 0 0'}
-          ml={3}
-          className="textEllipsis"
-        >
-          {t(template.name as any)}
+        <Box flex={'1 0 0'} ml={3}>
+          <Box
+            color={'myGray.900'}
+            fontWeight={'500'}
+            fontSize={isPopover ? 'xs' : 'sm'}
+            className="textEllipsis"
+          >
+            {t(template.name as any)}
+          </Box>
         </Box>
         {/* Folder right arrow */}
         {template.isFolder && (
@@ -224,10 +221,6 @@ const NodeTemplateList = ({
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
-    manual: false
-  });
-
   const handleAddNode = useCallback(
     async ({
       template,
@@ -240,7 +233,7 @@ const NodeTemplateList = ({
         const templateNode = await (async () => {
           try {
             if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
-              return await getPreviewPluginNode({ appId: template.id });
+              return await getToolPreviewNode({ appId: template.id });
             }
 
             const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
@@ -370,7 +363,7 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (map[item.templateType]) {
+          if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
               name: t(item.name as any),
@@ -393,48 +386,6 @@ const NodeTemplateList = ({
         ];
       }
 
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        console.log(pluginGroups, 222);
-        return pluginGroups.map((group) => {
-          const map = group.groupTypes.reduce<
-            Record<
-              string,
-              {
-                list: NodeTemplateListItemType[];
-                label: string;
-              }
-            >
-          >((acc, item) => {
-            acc[item.typeId] = {
-              list: [],
-              label: t(parseI18nString(item.typeName, i18n.language))
-            };
-            return acc;
-          }, {});
-
-          templates.forEach((item) => {
-            if (map[item.templateType]) {
-              map[item.templateType].list.push({
-                ...item,
-                name: t(parseI18nString(item.name, i18n.language)),
-                intro: t(parseI18nString(item.intro, i18n.language))
-              });
-            }
-          });
-          return {
-            label: group.groupName,
-            list: Object.entries(map)
-              .map(([type, { list, label }]) => ({
-                type,
-                label,
-                list
-              }))
-              .filter((item) => item.list.length > 0)
-          };
-        });
-      }
-
-      // Team apps
       return [
         {
           label: '',
@@ -442,16 +393,20 @@ const NodeTemplateList = ({
             {
               type: '',
               label: '',
-              list: templates
+              list: templates.map((item) => ({
+                ...item,
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro || '', i18n.language))
+              }))
             }
           ]
         }
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, t, pluginGroups, i18n.language]);
+  }, [templateType, templates, t, i18n.language]);
 
-  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+  const NodeListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (
       <>
         {list.map((item) => {
@@ -478,7 +433,7 @@ const NodeTemplateList = ({
 
               <Grid
                 gridTemplateColumns={
-                  templateType === TemplateTypeEnum.teamPlugin ? ['1fr'] : ['1fr', '1fr 1fr']
+                  templateType === TemplateTypeEnum.teamApp ? ['1fr'] : ['1fr', '1fr 1fr']
                 }
                 rowGap={2}
               >
@@ -500,9 +455,7 @@ const NodeTemplateList = ({
     );
   });
 
-  return templates.length === 0 ? (
-    <EmptyTip text={t('app:module.No Modules')} />
-  ) : (
+  return (
     <Box flex={'1 0 0'} overflow={'overlay'} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
       <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
         {formatTemplatesArrayData.length > 1 ? (
@@ -522,13 +475,13 @@ const NodeTemplateList = ({
                   <AccordionIcon />
                 </AccordionButton>
                 <AccordionPanel py={0}>
-                  <PluginListRender list={list} />
+                  <NodeListRender list={list} />
                 </AccordionPanel>
               </AccordionItem>
             ))}
           </>
         ) : (
-          <PluginListRender list={formatTemplatesArrayData?.[0]?.list} />
+          <NodeListRender list={formatTemplatesArrayData?.[0]?.list} />
         )}
       </Accordion>
     </Box>

@@ -49,11 +49,8 @@ export const defaultVariable: VariableItemType = {
   canSelectImg: true,
   maxFiles: 5,
   timeGranularity: 'day',
-  timeType: 'point',
-  timeRangeStart: new Date(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-  ).toISOString(),
-  timeRangeEnd: new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+  timeRangeStart: undefined,
+  timeRangeEnd: undefined
 };
 
 export const addVariable = () => {
@@ -102,14 +99,6 @@ const VariableEdit = ({
   const handleTypeChange = useCallback(
     (newType: VariableInputEnum) => {
       const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-      const currentType = value.type;
-
-      const isCurrentTimeType =
-        currentType === VariableInputEnum.timePointSelect ||
-        currentType === VariableInputEnum.timeRangeSelect;
-      const isNewTimeType =
-        newType === VariableInputEnum.timePointSelect ||
-        newType === VariableInputEnum.timeRangeSelect;
 
       if (
         newType === VariableInputEnum.select ||
@@ -119,27 +108,9 @@ const VariableEdit = ({
         setValue('defaultValue', '');
       }
 
-      // Set time-related default values when switching from non-time type to time type
-      if (!isCurrentTimeType && isNewTimeType) {
-        setValue('defaultValue', '');
-        setValue('timeGranularity', 'day');
-        setValue(
-          'timeRangeStart',
-          new Date(
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-          ).toISOString()
-        );
-        setValue('timeRangeEnd', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
-      }
-
-      // Clear default value when switching from time type to other types
-      if (isCurrentTimeType && !isNewTimeType) {
-        setValue('defaultValue', '');
-      }
-
       setValue('type', newType);
     },
-    [setValue, value.defaultValue, value.type]
+    [setValue, value.defaultValue]
   );
 
   const formatVariables = useMemo(() => {
@@ -191,39 +162,6 @@ const VariableEdit = ({
         return;
       }
 
-      if (
-        data.type !== VariableInputEnum.select &&
-        data.type !== VariableInputEnum.multipleSelect &&
-        data.list
-      ) {
-        delete data.list;
-      }
-
-      if (data.type !== VariableInputEnum.file) {
-        delete data.canSelectFile;
-        delete data.canSelectImg;
-        delete data.maxFiles;
-      }
-
-      if (
-        data.type !== VariableInputEnum.timePointSelect &&
-        data.type !== VariableInputEnum.timeRangeSelect
-      ) {
-        delete data.timeGranularity;
-        delete data.timeRangeStart;
-        delete data.timeRangeEnd;
-      } else if (data.type === VariableInputEnum.timePointSelect) {
-        data.defaultValue = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      } else if (data.type === VariableInputEnum.timeRangeSelect) {
-        data.defaultValue = [
-          data.timeRangeStart ||
-            new Date(
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).setHours(0, 0, 0, 0)
-            ).toISOString(),
-          data.timeRangeEnd || new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
-        ];
-      }
-
       if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
@@ -232,6 +170,14 @@ const VariableEdit = ({
           .find((item) => item.value === data.type)?.defaultValueType;
       }
 
+      // Remove undefined keys
+      Object.keys(data).forEach((key) => {
+        if (data[key as keyof VariableItemType] === undefined) {
+          delete data[key as keyof VariableItemType];
+        }
+      });
+
+      console.log(data);
       const onChangeVariable = (() => {
         if (data.key) {
           return variables.map((item) => {

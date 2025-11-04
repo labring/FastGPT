@@ -1,4 +1,5 @@
 import { POST } from '@/web/common/api/request';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { type AxiosProgressEvent } from 'axios';
 
@@ -34,5 +35,22 @@ export const getUploadAvatarPresignedUrl = (params: {
   filename: string;
   autoExpired?: boolean;
 }) => {
-  return POST<CreatePostPresignedUrlResult>('/common/file/getAvatarPresign', params);
+  return POST<CreatePostPresignedUrlResult>('/common/file/presignAvatarPostUrl', params);
+};
+
+export const getUploadChatFilePresignedUrl = (params: {
+  filename: string;
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => {
+  return POST<CreatePostPresignedUrlResult>('/core/chat/presignChatFilePostUrl', params);
+};
+
+export const getPresignedChatFileGetUrl = (params: {
+  key: string;
+  appId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => {
+  return POST<string>('/core/chat/presignChatFileGetUrl', params);
 };

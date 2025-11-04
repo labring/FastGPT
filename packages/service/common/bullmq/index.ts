@@ -21,6 +21,7 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 export enum QueueNames {
   datasetSync = 'datasetSync',
   evaluation = 'evaluation',
+  s3FileDelete = 's3FileDelete',
   // abondoned
   websiteSync = 'websiteSync'
 }

@@ -80,7 +80,7 @@ addActiveNode(nodeId: string) {
 
 ---
 
-### 🔴 H2. MongoDB 连接池配置缺失
+### 🔴 H2. MongoDB 连接池配置缺失(已解决)
 
 **位置**:
 - `packages/service/common/mongo/index.ts:12-24`
@@ -147,7 +147,7 @@ connectionMongo.connection.on('connectionPoolClosed', () => {
 
 ---
 
-### 🔴 H3. SSE 流式响应未处理客户端断开
+### 🔴 H3. SSE 流式响应未处理客户端断开（已解决）
 
 **位置**: `packages/service/core/workflow/dispatch/index.ts:105-129`
 

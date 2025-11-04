@@ -7,15 +7,17 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemPluginPaths } from '@/web/core/app/api/plugin';
+import { getAppToolPaths } from '@/web/core/app/api/tool';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
+  'appTool' = 'appTool',
+  'teamApp' = 'teamApp'
 }
 
 export type NodeTemplateListHeaderProps = {
@@ -27,6 +29,10 @@ export type NodeTemplateListHeaderProps = {
   setSearchKey: Dispatch<SetStateAction<string>>;
   onUpdateTemplateType: (type: TemplateTypeEnum) => void;
   onUpdateParentId: (parentId: string) => void;
+
+  selectedTagIds: string[];
+  setSelectedTagIds: (e: string[]) => any;
+  toolTags: SystemPluginToolTagType[];
 };
 
 const NodeTemplateListHeader = ({
@@ -37,7 +43,10 @@ const NodeTemplateListHeader = ({
   searchKey,
   setSearchKey,
   onUpdateTemplateType,
-  onUpdateParentId
+  onUpdateParentId,
+  selectedTagIds,
+  setSelectedTagIds,
+  toolTags
 }: NodeTemplateListHeaderProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -46,9 +55,9 @@ const NodeTemplateListHeader = ({
   // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin)
+      if (templateType === TemplateTypeEnum.teamApp)
         return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -71,12 +80,12 @@ const NodeTemplateListHeader = ({
               {
                 icon: 'phoneTabbar/tool',
                 label: t('common:navbar.Toolkit'),
-                value: TemplateTypeEnum.systemPlugin
+                value: TemplateTypeEnum.appTool
               },
               {
-                icon: 'core/modules/teamPlugin',
+                icon: 'support/user/userLightSmall',
                 label: t('common:core.module.template.Team app'),
-                value: TemplateTypeEnum.teamPlugin
+                value: TemplateTypeEnum.teamApp
               }
             ]}
             width={'100%'}
@@ -113,8 +122,7 @@ const NodeTemplateListHeader = ({
         )}
       </Flex>
       {/* Search */}
-      {(templateType === TemplateTypeEnum.teamPlugin ||
-        templateType === TemplateTypeEnum.systemPlugin) && (
+      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) && (
         <Flex mt={2} alignItems={'center'} h={isPopover ? 8 : 10}>
           <InputGroup h={'full'}>
             <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -124,7 +132,7 @@ const NodeTemplateListHeader = ({
               h={'full'}
               bg={'myGray.50'}
               placeholder={
-                templateType === TemplateTypeEnum.teamPlugin
+                templateType === TemplateTypeEnum.teamApp
                   ? t('common:plugin.Search_app')
                   : t('common:search_tool')
               }
@@ -133,7 +141,7 @@ const NodeTemplateListHeader = ({
             />
           </InputGroup>
           <Box flex={1} />
-          {!isPopover && templateType === TemplateTypeEnum.teamPlugin && (
+          {!isPopover && templateType === TemplateTypeEnum.teamApp && (
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
@@ -149,29 +157,38 @@ const NodeTemplateListHeader = ({
               <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
             </Flex>
           )}
-          {!isPopover &&
-            templateType === TemplateTypeEnum.systemPlugin &&
-            feConfigs.systemPluginCourseUrl && (
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                _hover={{
-                  color: 'primary.600'
-                }}
-                fontSize={'sm'}
-                onClick={() => window.open(feConfigs.systemPluginCourseUrl)}
-                gap={1}
-                ml={4}
-              >
-                <Box>{t('common:plugin.contribute')}</Box>
-                <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
-              </Flex>
-            )}
+          {templateType === TemplateTypeEnum.appTool && (
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              _hover={{
+                color: 'primary.600'
+              }}
+              onClick={() => router.push('/plugin/tool')}
+              gap={1}
+              ml={4}
+            >
+              <Box fontSize={'sm'}>{t('app:find_more_tools')}</Box>
+              <MyIcon name={'common/rightArrowLight'} w={'0.9rem'} />
+            </Flex>
+          )}
         </Flex>
       )}
+      {/* Tag filter */}
+      {templateType === TemplateTypeEnum.appTool &&
+        selectedTagIds !== undefined &&
+        setSelectedTagIds && (
+          <Box mt={2}>
+            <ToolTagFilterBox
+              tags={toolTags}
+              selectedTagIds={selectedTagIds}
+              onTagSelect={setSelectedTagIds}
+              size={isPopover ? 'sm' : 'base'}
+            />
+          </Box>
+        )}
       {/* paths */}
-      {(templateType === TemplateTypeEnum.teamPlugin ||
-        templateType === TemplateTypeEnum.systemPlugin) &&
+      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) &&
         !searchKey &&
         parentId && (
           <Flex alignItems={'center'} mt={2}>

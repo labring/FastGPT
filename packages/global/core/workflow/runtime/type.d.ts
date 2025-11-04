@@ -30,6 +30,8 @@ import type {
 } from '../template/system/interactive/type';
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
+import { type UserChatItemValueItemType } from '../../chat/type';
+
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -102,7 +104,7 @@ export type SystemVariablesType = {
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
   name: StoreNodeItemType['name'];
-  avatar: StoreNodeItemType['avatar'];
+  avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
   toolDescription?: StoreNodeItemType['toolDescription'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
