@@ -107,6 +107,7 @@
   "custom_plugin_intro_placeholder": "Add an introduction for this application",
   "custom_plugin_name_label": "Name",
   "custom_plugin_name_required": "Application name cannot be empty",
+  "custom_plugin_parse_error": "Plugin parsing failed",
   "custom_plugin_plugin_status_label": "Plugin Status",
   "custom_plugin_tags_label": "Tags",
   "custom_plugin_tags_max_limit": "You can only select up to 3 tags",

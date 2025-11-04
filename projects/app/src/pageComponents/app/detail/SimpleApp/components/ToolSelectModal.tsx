@@ -206,7 +206,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         </Flex>
       )}
       <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
-        <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
+        <Box overflow={'overlay'} height={'100%'}>
           <RenderList
             templates={templates}
             type={templateType}
@@ -337,7 +337,7 @@ const RenderList = React.memo(function RenderList({
     return (
       <>
         {templates.length > 0 ? (
-          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3}>
+          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3} px={[3, 6]}>
             {templates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
               return (
@@ -473,26 +473,28 @@ const RenderList = React.memo(function RenderList({
   });
 
   return (
-    <Flex flexDirection={'column'} justifyContent={'space-between'} h={'100%'} pb={2}>
-      <PluginListRender />
-      <Flex justifyContent={'end'}>
-        {type === TemplateTypeEnum.appTool && (
-          <Flex
-            alignItems={'center'}
-            cursor={'pointer'}
-            _hover={{
-              color: 'primary.600'
-            }}
-            onClick={() => router.push('/plugin/tool')}
-            gap={1}
-            ml={4}
-          >
-            <Box fontSize={'sm'}>{t('app:find_more_tools')}</Box>
-            <MyIcon name={'common/rightArrowLight'} w={'0.9rem'} />
-          </Flex>
-        )}
-      </Flex>
-
+    <Flex position="relative" direction="column" h="100%">
+      <Box overflowY="auto" mb={8} w={'full'}>
+        <PluginListRender />
+      </Box>
+      {type === TemplateTypeEnum.appTool && (
+        <Flex
+          alignItems="center"
+          cursor="pointer"
+          _hover={{
+            color: 'primary.600'
+          }}
+          onClick={() => router.push('/toolkit/tools')}
+          gap={1}
+          bottom={0}
+          right={[3, 6]}
+          position="absolute"
+          zIndex={2}
+        >
+          <Box fontSize="sm">{t('app:find_more_tools')}</Box>
+          <MyIcon name="common/rightArrowLight" w="0.9rem" />
+        </Flex>
+      )}
       {!!configTool && (
         <ConfigToolModal
           configTool={configTool}

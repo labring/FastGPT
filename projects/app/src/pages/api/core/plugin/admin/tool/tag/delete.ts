@@ -30,8 +30,8 @@ async function handler(
     await MongoPluginToolTag.deleteOne({ tagId }, { session });
 
     await MongoSystemTool.updateMany(
-      { 'customConfig.toolTags': tagId },
-      { $pull: { 'customConfig.toolTags': tagId } },
+      { 'customConfig.tags': tagId },
+      { $pull: { 'customConfig.tags': tagId } },
       { session }
     );
   });

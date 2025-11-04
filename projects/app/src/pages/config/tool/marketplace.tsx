@@ -427,7 +427,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        autoFocus
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                       />
