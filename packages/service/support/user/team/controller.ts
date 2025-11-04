@@ -9,6 +9,8 @@ import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
 import { getTmbPermission } from '../../permission/controller';
+import { MongoUser } from '../user/schema';
+import { getResourcePermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { TeamDefaultRoleVal } from '@fastgpt/global/support/permission/user/constant';
@@ -100,6 +102,12 @@ export async function createDefaultTeam({
   });
 
   if (!tmb) {
+    // Get user to use username as default member name
+    const user = await MongoUser.findById(userId).lean();
+    if (!user) {
+      return Promise.reject('User not found');
+    }
+
     // create team
     const [{ _id: insertedId }] = await MongoTeam.create(
       [
@@ -118,7 +126,7 @@ export async function createDefaultTeam({
         {
           teamId: insertedId,
           userId,
-          name: 'Owner',
+          name: user.username,
           role: TeamMemberRoleEnum.owner,
           status: TeamMemberStatusEnum.active,
           createTime: new Date()
