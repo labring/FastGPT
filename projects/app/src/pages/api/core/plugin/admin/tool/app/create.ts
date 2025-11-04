@@ -57,7 +57,7 @@ async function handler(
       avatar,
       intro,
       version: getNanoid(),
-      toolTags: tagIds,
+      tags: tagIds,
       associatedPluginId,
       userGuide,
       author
