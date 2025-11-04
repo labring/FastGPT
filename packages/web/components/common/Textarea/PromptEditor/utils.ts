@@ -17,7 +17,8 @@ import type {
   ListEditorNode,
   ParagraphEditorNode,
   EditorState,
-  ListItemInfo
+  ListItemInfo,
+  ChildEditorNode
 } from './type';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
@@ -472,6 +473,47 @@ export const editorStateToText = (editor: LexicalEditor) => {
   const editorState = editor.getEditorState().toJSON() as EditorState;
   const paragraphs = editorState.root.children;
 
+  const extractText = (node: ChildEditorNode): string => {
+    if (!node) return '';
+
+    // 处理换行符节点
+    if (node.type === 'linebreak') {
+      return '\n';
+    }
+
+    // 处理 tab 节点
+    if (node.type === 'tab') {
+      return '  ';
+    }
+
+    // 处理文本节点
+    if (node.type === 'text') {
+      return node.text;
+    }
+
+    // 处理自定义变量节点
+    if (node.type === 'variableLabel' || node.type === 'Variable') {
+      return node.variableKey;
+    }
+
+    // 处理段落节点 - 递归处理其 children
+    if (node.type === 'paragraph') {
+      return node.children.map(extractText).join('');
+    }
+
+    // 处理列表项节点 - 递归处理其 children
+    if (node.type === 'listitem') {
+      return node.children.map(extractText).join('');
+    }
+
+    // 处理列表节点 - 递归处理其 children
+    if (node.type === 'list') {
+      return node.children.map(extractText).join('');
+    }
+
+    return '';
+  };
+
   paragraphs.forEach((paragraph) => {
     if (paragraph.type === 'list') {
       const listResults = processList({ list: paragraph });
@@ -483,43 +525,15 @@ export const editorStateToText = (editor: LexicalEditor) => {
       const indentSpaces = '  '.repeat(paragraph.indent || 0);
 
       children.forEach((child) => {
-        if (child.type === 'linebreak') {
-          paragraphText.push('\n');
-        } else if (child.type === 'text') {
-          paragraphText.push(child.text);
-        } else if (child.type === 'tab') {
-          paragraphText.push('  ');
-        } else if (child.type === 'variableLabel' || child.type === 'Variable') {
-          paragraphText.push(child.variableKey);
+        const val = extractText(child);
+        if (val) {
+          paragraphText.push(val);
         }
       });
 
       const finalText = paragraphText.join('');
       editorStateTextString.push(indentSpaces + finalText);
     } else {
-      // 处理其他未知类型节点(heading、quote、code 等)
-      // 递归提取所有子节点的文本内容
-      const extractText = (node: any): string => {
-        if (!node) return '';
-
-        // 如果有 text 属性,直接返回
-        if (node.text !== undefined) {
-          return node.text;
-        }
-
-        // 如果有 variableKey 属性(自定义变量节点)
-        if (node.variableKey) {
-          return node.variableKey;
-        }
-
-        // 如果有 children,递归处理
-        if (Array.isArray(node.children)) {
-          return node.children.map(extractText).join('');
-        }
-
-        return '';
-      };
-
       const text = extractText(paragraph);
       if (text) {
         editorStateTextString.push(text);
