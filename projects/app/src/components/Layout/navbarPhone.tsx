@@ -49,7 +49,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       },
       {
         label: t('common:navbar.toolkit'),
-        icon: 'core/app/type/pluginLight',
+        icon: 'core/app/pluginLight',
         activeIcon: 'core/app/pluginFill',
         link: '/toolkit/tools',
         activeLink: ['/toolkit/tools']

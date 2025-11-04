@@ -105,7 +105,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
     return rawTemplates.filter((template) => {
       // @ts-ignore
-      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
+      return template.tags?.some((tag) => selectedTagIds.includes(tag));
     });
   }, [rawTemplates, selectedTagIds, templateType]);
 
@@ -160,7 +160,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
               value: TemplateTypeEnum.appTool
             },
             {
-              icon: 'core/modules/teamApp',
+              icon: 'support/user/userLightSmall',
               label: t('common:core.module.template.Team app'),
               value: TemplateTypeEnum.teamApp
             }

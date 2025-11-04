@@ -83,7 +83,7 @@ const NodeTemplateListHeader = ({
                 value: TemplateTypeEnum.appTool
               },
               {
-                icon: 'core/modules/teamApp',
+                icon: 'support/user/userLightSmall',
                 label: t('common:core.module.template.Team app'),
                 value: TemplateTypeEnum.teamApp
               }

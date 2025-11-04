@@ -406,6 +406,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   transition={'all 0.3s'}
                   w={isSearchExpanded ? '320px' : 'auto'}
                   mr={4}
+                  flexShrink={0}
                 >
                   {isSearchExpanded ? (
                     <InputGroup>
@@ -454,10 +455,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       cursor={'pointer'}
                       borderRadius={'10px'}
                       _hover={{ borderColor: 'primary.600' }}
-                      onClick={() => setIsSearchExpanded(true)}
                       p={2}
                       border={'1px solid'}
                       borderColor={'myGray.200'}
+                      onClick={() => setIsSearchExpanded(true)}
                     >
                       <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
                       <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
@@ -549,7 +550,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
               userSelect={'none'}
             >
-              <Box flex={'1'}>
+              <Box flex={'1'} overflow={'auto'}>
                 <ToolTagFilterBox
                   tags={allTags}
                   selectedTagIds={tagIds}

@@ -7,6 +7,7 @@ import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 export type createPluginQuery = {};
 
@@ -36,7 +37,7 @@ async function handler(
     author
   } = req.body;
 
-  const pluginId = getNanoid(12);
+  const pluginId = `${AppToolSourceEnum.commercial}-${getNanoid(12)}`;
 
   const firstPlugin = await MongoSystemTool.findOne().sort({ pluginOrder: 1 }).lean();
   const pluginOrder = firstPlugin ? (firstPlugin.pluginOrder ?? 0) - 1 : 0;
