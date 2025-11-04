@@ -496,6 +496,34 @@ export const editorStateToText = (editor: LexicalEditor) => {
 
       const finalText = paragraphText.join('');
       editorStateTextString.push(indentSpaces + finalText);
+    } else {
+      // 处理其他未知类型节点(heading、quote、code 等)
+      // 递归提取所有子节点的文本内容
+      const extractText = (node: any): string => {
+        if (!node) return '';
+
+        // 如果有 text 属性,直接返回
+        if (node.text !== undefined) {
+          return node.text;
+        }
+
+        // 如果有 variableKey 属性(自定义变量节点)
+        if (node.variableKey) {
+          return node.variableKey;
+        }
+
+        // 如果有 children,递归处理
+        if (Array.isArray(node.children)) {
+          return node.children.map(extractText).join('');
+        }
+
+        return '';
+      };
+
+      const text = extractText(paragraph);
+      if (text) {
+        editorStateTextString.push(text);
+      }
     }
   });
   return editorStateTextString.join('\n');
