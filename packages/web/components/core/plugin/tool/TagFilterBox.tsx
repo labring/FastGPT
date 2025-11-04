@@ -35,7 +35,7 @@ const ToolTagFilterBox = ({
       sm: {
         px: 2,
         py: 1,
-        fontSize: '11px'
+        fontSize: 'xs'
       }
     };
 
