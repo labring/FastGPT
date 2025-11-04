@@ -88,6 +88,7 @@ export type DeleteChatItemProps = OutLinkChatAuthProps & {
   appId: string;
   chatId: string;
   contentId?: string;
+  delFile?: boolean;
 };
 
 export type AdminUpdateFeedbackParams = AdminFbkType & {

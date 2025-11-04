@@ -651,11 +651,12 @@ const ChatBox = ({
 
   // retry input
   const onDelMessage = useCallback(
-    (contentId: string) => {
+    (contentId: string, delFile = true) => {
       return delChatRecordById({
         appId,
         chatId,
         contentId,
+        delFile,
         ...outLinkAuthData
       });
     },
@@ -672,7 +673,7 @@ const ChatBox = ({
         await Promise.all(
           delHistory.map((item) => {
             if (item.dataId) {
-              return onDelMessage(item.dataId);
+              return onDelMessage(item.dataId, false);
             }
           })
         );
