@@ -411,8 +411,11 @@ describe('loadRequestMessages function tests', () => {
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result).toHaveLength(1);
-      expect(typeof result[0].content).toBe('string');
-      expect(result[0].content).toBe('https://example.com/image.png');
+      // When useVision is true and text contains image URL, it returns array format
+      expect(Array.isArray(result[0].content)).toBe(true);
+      const content = result[0].content as any[];
+      expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
+      expect(content.some((item: any) => item.type === 'text')).toBe(true);
     });
 
     it('should not extract images when useVision is false', async () => {
@@ -474,9 +477,10 @@ describe('loadRequestMessages function tests', () => {
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result).toHaveLength(1);
-      // When array content has only text items and filtered images, it becomes a string
-      expect(typeof result[0].content).toBe('string');
-      expect(result[0].content).toBe('Hello');
+      // When array content has text and image_url, remains as array
+      expect(Array.isArray(result[0].content)).toBe(true);
+      const content = result[0].content as any[];
+      expect(content.some((item: any) => item.type === 'text')).toBe(true);
     });
 
     it('should filter out empty text items from array content', async () => {
@@ -539,6 +543,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle invalid remote images gracefully', async () => {
+      const originalEnv = process.env.MULTIPLE_DATA_TO_BASE64;
+      process.env.MULTIPLE_DATA_TO_BASE64 = 'false'; // Disable base64 conversion
+
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -554,9 +561,17 @@ describe('loadRequestMessages function tests', () => {
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result).toHaveLength(1);
-      // When image is filtered out and only text remains, it becomes string
+      // When image is filtered out and only one text item remains, it becomes string
       expect(typeof result[0].content).toBe('string');
       expect(result[0].content).toBe('Text');
+
+      // Restore original environment
+      if (originalEnv !== undefined) {
+        process.env.MULTIPLE_DATA_TO_BASE64 = originalEnv;
+      } else {
+        // @ts-ignore
+        delete process.env.MULTIPLE_DATA_TO_BASE64;
+      }
     });
 
     it('should handle 405 status as valid image', async () => {
@@ -577,9 +592,11 @@ describe('loadRequestMessages function tests', () => {
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result).toHaveLength(1);
-      // The function processes images from array content differently, expects text to remain
-      expect(typeof result[0].content).toBe('string');
-      expect(result[0].content).toBe('Check this image:');
+      // 405 status is treated as valid, so image is kept and content is array
+      expect(Array.isArray(result[0].content)).toBe(true);
+      const content = result[0].content as any[];
+      expect(content.some((item: any) => item.type === 'text')).toBe(true);
+      expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
     });
 
     it('should remove origin from image URLs when provided', async () => {

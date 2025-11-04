@@ -163,7 +163,7 @@ export const loadRequestMessages = async ({
               // If imgUrl is a local path, load image from local, and set url to base64
               if (
                 imgUrl.startsWith('/') ||
-                process.env.MULTIPLE_DATA_TO_BASE64 === 'true' ||
+                process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
                 isInternalAddress(imgUrl)
               ) {
                 const url = await (async () => {
