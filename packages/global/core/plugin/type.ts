@@ -26,12 +26,18 @@ export enum PluginStatusEnum {
 }
 export const PluginStatusMap = {
   [PluginStatusEnum.Normal]: {
-    label: i18nT('app:toolkit_status_normal')
+    label: i18nT('app:toolkit_status_normal'),
+    tooltip: '',
+    tagColor: 'blue' as const
   },
   [PluginStatusEnum.SoonOffline]: {
-    label: i18nT('app:toolkit_status_soon_offline')
+    label: i18nT('app:toolkit_status_soon_offline'),
+    tooltip: i18nT('app:tool_soon_offset_tips'),
+    tagColor: 'yellow' as const
   },
   [PluginStatusEnum.Offline]: {
-    label: i18nT('app:toolkit_status_offline')
+    label: i18nT('app:toolkit_status_offline'),
+    tooltip: i18nT('app:tool_offset_tips'),
+    tagColor: 'red' as const
   }
 };

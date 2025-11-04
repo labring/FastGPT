@@ -35,7 +35,7 @@ async function handler(
     })
     .filter((tool) => {
       if (!tags || tags.length === 0) return true;
-      return tool.toolTags?.some((toolTag) => tags.includes(toolTag));
+      return tool.tags?.some((tag) => tags.includes(tag));
     })
     .map<NodeTemplateListItemType>((tool) => ({
       ...tool,
@@ -46,7 +46,7 @@ async function handler(
       intro: parseI18nString(tool.intro ?? '', lang),
       instructions: parseI18nString(tool.userGuide ?? '', lang),
       toolDescription: tool.toolDescription,
-      toolTags: tool.toolTags
+      tags: tool.tags
     }))
     .filter((item) => {
       if (searchKey) {

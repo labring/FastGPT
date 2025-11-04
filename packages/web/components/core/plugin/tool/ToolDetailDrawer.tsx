@@ -28,8 +28,9 @@ import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
 import Markdown from '../../../common/Markdown';
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import MyIcon from '../../../common/Icon';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
+import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 type toolDetailType = ToolDetailType & {
   versionList?: Array<{
@@ -82,21 +83,17 @@ const ParamSection = ({
                   *
                 </Box>
               )}
-              <Box fontSize="14px" fontWeight={500} color="myGray.500">
-                {parseI18nString(param.label || param.key, i18n.language)}
-              </Box>
+              <Box fontWeight={500}>{parseI18nString(param.label || param.key, i18n.language)}</Box>
               <Box
-                px={2}
-                py={0.5}
+                px={1}
                 borderRadius="4px"
-                fontSize={'xs'}
+                fontSize={'11px'}
                 color="myGray.500"
                 bg={'myGray.100'}
                 border={'1px solid'}
                 borderColor={'myGray.200'}
               >
-                {/* @ts-ignore */}
-                {FlowValueTypeMap[param.valueType]?.label || 'String'}
+                {FlowValueTypeMap[param.valueType as WorkflowIOValueTypeEnum]?.label || 'String'}
               </Box>
             </Flex>
             {param.description && (
@@ -122,23 +119,21 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
         py={2}
         _hover={{ bg: 'myGray.50' }}
         borderRadius="md"
-        alignItems={'start'}
+        alignItems={'center'}
       >
-        <Flex align="center" gap={3} flex={1} textAlign="left">
-          <Box flex={1}>
-            <Box fontSize="md" fontWeight={500} color="myGray.900">
-              {parseI18nString(tool.name, i18n.language)}
-            </Box>
-            <Box fontSize={'12px'} color={'myGray.600'}>
-              {tool.intro || parseI18nString(tool.description, i18n.language)}
-            </Box>
+        <Box flex={1} textAlign="left">
+          <Box fontSize="md" color="myGray.900">
+            {parseI18nString(tool.name, i18n.language)}
           </Box>
-        </Flex>
+          <Box fontSize={'sm'} color={'myGray.600'}>
+            {tool.intro || parseI18nString(tool.description, i18n.language)}
+          </Box>
+        </Box>
         <AccordionIcon />
       </AccordionButton>
 
       <AccordionPanel px={2} pb={4} pt={0}>
-        <Flex gap={1} fontSize={'12px'}>
+        {/* <Flex gap={1} fontSize={'12px'}>
           <MyIcon name={'common/info'} color={'primary.600'} w={4} />
           {!!tool?.currentCost ? (
             <Flex gap={1}>
@@ -148,7 +143,7 @@ const SubToolAccordionItem = ({ tool }: { tool: any }) => {
           ) : (
             t('app:toolkit_no_call_points')
           )}
-        </Flex>
+        </Flex> */}
         {tool.versionList && tool.versionList.length > 0 && (
           <VStack align="stretch" spacing={3} mt={3}>
             {tool.versionList[0]?.inputs && tool.versionList[0].inputs.length > 0 && (
@@ -177,9 +172,7 @@ const ToolDetailDrawer = ({
   selectedTool: ToolCardItemType;
   onToggleInstall: (installed: boolean) => void;
   systemTitle?: string;
-  onFetchDetail?: (
-    toolId: string
-  ) => Promise<{ tools: Array<ToolDetailType & { readme: string }>; downloadUrl: string }>;
+  onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
   isLoading?: boolean;
   showPoint: boolean;
 }) => {
@@ -190,14 +183,11 @@ const ToolDetailDrawer = ({
   >(undefined);
   const [loading, setLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string>('');
+  const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
 
-  const isInstalled = useMemo(() => {
-    return selectedTool.status === 3;
-  }, [selectedTool.status]);
   const isDownload = useMemo(() => {
     return false;
-    // return selectedTool.status === ToolStatusEnum.Download;
-  }, [selectedTool.status]);
+  }, []);
 
   useEffect(() => {
     const fetchToolDetail = async () => {
@@ -258,8 +248,6 @@ const ToolDetailDrawer = ({
           /!\[([^\]]*)\]\((?!http|https|\/\/)([^)]+)\)/g,
           (match, alt, path) => `![${alt}](${baseUrl}${path})`
         );
-        console.log(content);
-
         setReadmeContent(content);
       } catch (error) {
         console.error('Failed to fetch README:', error);
@@ -336,8 +324,9 @@ const ToolDetailDrawer = ({
                 w="full"
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
                 isLoading={isLoading || loading}
-                onClick={() => {
-                  onToggleInstall(!isInstalled);
+                onClick={async () => {
+                  await onToggleInstall(!isInstalled);
+                  setIsInstalled(!isInstalled);
                 }}
               >
                 {isDownload

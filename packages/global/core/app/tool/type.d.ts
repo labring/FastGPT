@@ -52,7 +52,7 @@ export type AppToolTemplateItemType = WorkflowTemplateType & {
   hasTokenFee?: boolean;
   pluginOrder?: number;
 
-  toolTags?: string[] | null;
+  tags?: string[] | null;
   defaultInstalled?: boolean;
   isOfficial?: boolean;
 
@@ -61,7 +61,7 @@ export type AppToolTemplateItemType = WorkflowTemplateType & {
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
 
-  // @deprecated use toolTags instead
+  // @deprecated use tags instead
   isActive?: boolean;
   templateType?: string;
 };
