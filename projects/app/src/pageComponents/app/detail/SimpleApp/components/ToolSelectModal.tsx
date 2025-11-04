@@ -105,7 +105,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
     return rawTemplates.filter((template) => {
       // @ts-ignore
-      return template.toolTags?.some((toolTag) => selectedTagIds.includes(toolTag));
+      return template.tags?.some((tag) => selectedTagIds.includes(tag));
     });
   }, [rawTemplates, selectedTagIds, templateType]);
 

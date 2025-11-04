@@ -40,7 +40,7 @@ async function handler(
         intro: parseI18nString(item.intro, lang),
         hasSecretInput: !!item.inputList,
         tags: tags
-          .filter((tag) => item.toolTags?.includes(tag.tagId))
+          .filter((tag) => item.tags?.includes(tag.tagId))
           .map((tag) => parseI18nString(tag.tagName, lang))
       });
     });

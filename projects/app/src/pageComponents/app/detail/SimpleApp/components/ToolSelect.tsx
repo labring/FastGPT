@@ -40,7 +40,6 @@ const ToolSelect = ({
     onClose: onCloseToolsSelect
   } = useDisclosure();
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
-  console.log('appForm.selectedTools', appForm.selectedTools);
 
   return (
     <>

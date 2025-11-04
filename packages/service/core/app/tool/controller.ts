@@ -568,7 +568,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       associatedPluginId,
       userGuide,
       author = '',
-      toolTags
+      tags
     } = item.customConfig!;
 
     return {
@@ -583,7 +583,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       avatar,
       intro,
       toolDescription,
-      toolTags,
+      tags,
       templateType: FlowNodeTemplateTypeEnum.tools,
       originCost: item.originCost,
       currentCost: item.currentCost,
@@ -622,7 +622,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      toolTags: item.tags,
+      tags: item.tags,
       workflow: {
         nodes: [],
         edges: []

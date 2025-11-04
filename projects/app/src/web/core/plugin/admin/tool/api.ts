@@ -35,10 +35,10 @@ export const delAdminSystemTool = (data: DeleteSystemToolQueryType) =>
 
 /* ===== App type tool ===== */
 export const getAdminAllSystemAppTool = (data: GetAllSystemAppsBodyType) =>
-  POST<GetAllSystemAppTypeToolsResponse>('/core/plugin/admin/tool/workflow/systemApps', data);
+  POST<GetAllSystemAppTypeToolsResponse>('/core/plugin/admin/tool/app/systemApps', data);
 
 export const postAdminCreateAppTypeTool = (data: CreateAppToolBodyType) =>
-  POST('/core/plugin/admin/tool/workflow/create', data);
+  POST('/core/plugin/admin/tool/app/create', data);
 
 /* ===== Tool tag ===== */
 export const createPluginToolTag = (data: CreatePluginToolTagBody) =>

@@ -167,13 +167,13 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
       inputListVal: plugin.inputListVal || {}
     };
 
-    // 迁移 templateType → toolTags
+    // 迁移 templateType → tags
     // @ts-ignore
     const templateType = plugin.customConfig?.templateType;
     if (templateType) {
       const groupId = typeToGroupMap.get(templateType);
       // 对于 systemPlugin 分组,只保留 templateType,不包含 groupId
-      newTool.customConfig.toolTags =
+      newTool.customConfig.tags =
         groupId && groupId !== 'systemPlugin' ? [groupId, templateType] : [templateType];
       delete newTool.customConfig.templateType;
     }
