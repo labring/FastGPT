@@ -191,7 +191,11 @@ const ToolProvider = () => {
 
       {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
       {isOpenImportModal && (
-        <ImportPluginModal onClose={onCloseImportModal} onSuccess={refreshTools} />
+        <ImportPluginModal
+          onClose={onCloseImportModal}
+          onSuccess={refreshTools}
+          tools={localTools}
+        />
       )}
       {editingToolId !== undefined &&
         splitCombineToolId(editingToolId).source === AppToolSourceEnum.systemTool && (

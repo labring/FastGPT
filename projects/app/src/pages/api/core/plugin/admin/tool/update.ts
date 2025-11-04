@@ -51,7 +51,7 @@ async function handler(
           avatar: updateFields.avatar,
           intro: updateFields.intro,
           version: isUpdateVersion ? getNanoid() : plugin.customConfig.version,
-          toolTags: updateFields.tagIds,
+          tags: updateFields.tagIds,
           associatedPluginId: updateFields.associatedPluginId,
           userGuide: updateFields.userGuide,
           author: updateFields.author

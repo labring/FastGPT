@@ -16,6 +16,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
 import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error';
@@ -28,10 +29,12 @@ type UploadedPluginFile = SelectFileItemType & {
 
 const ImportPluginModal = ({
   onClose,
-  onSuccess
+  onSuccess,
+  tools
 }: {
   onClose: () => void;
   onSuccess?: () => void;
+  tools: GetAdminSystemToolsResponseType;
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -121,7 +124,7 @@ const ImportPluginModal = ({
   const onSelectFiles = useCallback(
     (files: SelectFileItemType[]) => {
       const filteredFiles = files
-        .filter((file, index, self) => self.findIndex((f) => f.name === file.name) === index)
+        .filter((file) => !tools.some((tool) => tool.id.includes(file.name.split('.')[0])))
         .filter((file) => !uploadedFiles.some((f) => f.name === file.name));
 
       if (filteredFiles.length !== files.length) {
@@ -312,18 +315,20 @@ const ImportPluginModal = ({
                   )}
                 </Flex>
                 <Flex w={'10%'} px={1} py={'15px'} align={'center'} gap={2}>
-                  <Box
-                    p={2}
-                    onClick={() => handleRetry(item)}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'myGray.100',
-                      rounded: 'md',
-                      color: 'primary.600'
-                    }}
-                  >
-                    <MyIcon name={'common/confirm/restoreTip'} w={4} />
-                  </Box>
+                  {item.status === 'error' && (
+                    <Box
+                      p={2}
+                      onClick={() => handleRetry(item)}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'myGray.100',
+                        rounded: 'md',
+                        color: 'primary.600'
+                      }}
+                    >
+                      <MyIcon name={'common/confirm/restoreTip'} w={4} />
+                    </Box>
+                  )}
                   <Box
                     p={2}
                     onClick={() => handleDelete(item)}
