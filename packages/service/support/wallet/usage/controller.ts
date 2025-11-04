@@ -187,8 +187,12 @@ export const createTrainingUsage = async ({
                   amount: 0,
                   inputTokens: 0,
                   outputTokens: 0
-                },
-                rerankModel ?? {
+                }
+              ]
+            : []),
+          ...(rerankModel
+            ? [
+                {
                   moduleName: i18nT('account_usage:hype_index'),
                   model: rerankModel,
                   amount: 0,

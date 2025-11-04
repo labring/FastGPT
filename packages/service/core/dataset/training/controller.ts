@@ -51,7 +51,7 @@ export async function pushDataListToTrainingQueue({
   }
 
   const { model, maxToken, weight } = await (async () => {
-    if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.small2big) {
+    if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.small2Big) {
       return {
         maxToken: Infinity,
         model: vectorModelData.model,

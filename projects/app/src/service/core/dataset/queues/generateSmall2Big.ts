@@ -1,15 +1,3 @@
-/**
- * Small2Big 索引增强线程处理器
- *
- * 处理流程：
- * 1. 从 MongoDatasetTraining 队列获取 small2big 任务
- * 2. 对 Answer 文本进行分块
- * 3. 将子块作为索引追加到原 chunk
- * 4. 重新 push 到 chunk 队列进行向量化
- *
- * 参考：autoTrainingProcess.ts
- */
-
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -142,7 +130,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
 
     const originalIndexes = data.indexes || [];
     const small2bigIndexes = childChunks.map((text) => ({
-      type: DatasetDataIndexTypeEnum.small2big,
+      type: DatasetDataIndexTypeEnum.small2Big,
       text
     }));
     const allIndexes = [...originalIndexes, ...small2bigIndexes];
@@ -215,7 +203,7 @@ export async function generateSmall2Big(): Promise<any> {
         try {
           const data = await MongoDatasetTraining.findOneAndUpdate(
             {
-              mode: TrainingModeEnum.small2big,
+              mode: TrainingModeEnum.small2Big,
               retryCount: { $gt: 0 },
               lockTime: { $lte: addMinutes(new Date(), -3) }
             },

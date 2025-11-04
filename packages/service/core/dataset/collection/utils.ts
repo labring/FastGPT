@@ -241,7 +241,7 @@ export const getTrainingModeByCollection = ({
   // Template：small2big -> auto -> chunk
   if (trainingType === DatasetCollectionDataProcessModeEnum.template) {
     if (small2bigIndexes) {
-      return TrainingModeEnum.small2big;
+      return TrainingModeEnum.small2Big;
     }
     if (autoIndexes && global.feConfigs?.isPlus) {
       return TrainingModeEnum.auto;

@@ -37,6 +37,7 @@ export const ChunkSettings = {
   hypeIndexes: Boolean,
   small2bigIndexes: Boolean,
   hypePrompt: String,
+  imageIndexPrompt: String,
   small2bigChunkSize: {
     type: Number,
     default: 500

@@ -23,7 +23,7 @@ export const createDatasetTrainingMongoWatch = () => {
           datasetParseQueue();
         } else if (mode === TrainingModeEnum.databaseSchema) {
           generateDatabaseSchemaEmbedding();
-        } else if (mode === TrainingModeEnum.small2big) {
+        } else if (mode === TrainingModeEnum.small2Big) {
           generateSmall2Big();
         }
       }

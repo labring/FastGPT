@@ -18,6 +18,8 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { addLog } from '../../../common/system/log';
 
 export const loadSystemModels = async (init = false) => {
   const pushModel = (model: SystemModelItemType) => {
@@ -267,3 +269,172 @@ export const cronRefreshModels = async () => {
     await updateFastGPTConfigBuffer();
   });
 };
+
+// prompt Loader
+export interface PromptLoader {
+  // Load Prompt from certain language
+  loadTemplate(filename: string, locale: localeType, key: string): string;
+}
+
+// Default Loader
+export class DefaultPromptLoader implements PromptLoader {
+  loadTemplate(filename: string, locale: localeType, key: string): string {
+    return '';
+  }
+}
+
+export const setPromptLoader = (loader: PromptLoader) => {
+  global.promptLoader = loader;
+};
+
+export class ProPromptLoader implements PromptLoader {
+  private baseUrl: string;
+  private cache: Map<string, string> = new Map();
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl.replace(/\/$/, '');
+    addLog.info(`[ProPromptLoader] Initialized with baseUrl: ${this.baseUrl}`);
+  }
+
+  loadTemplate(filename: string, locale: localeType, key: string): string {
+    const cacheKey = `${filename}_${key}_${locale}`;
+
+    // Return from cache if available
+    if (this.cache.has(cacheKey)) {
+      addLog.debug(`[ProPromptLoader] Cache hit: ${cacheKey}`);
+      return this.cache.get(cacheKey)!;
+    }
+
+    return '';
+  }
+
+  /**
+   * Preload a single template
+   */
+  async preloadTemplate(filename: string, locale: localeType, key: string): Promise<void> {
+    try {
+      const url = `${this.baseUrl}/api/core/dataset/template/load?filename=${filename}&locale=${locale}&key=${key}`;
+
+      // Set timeout for individual request (5 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const content = await response.text();
+        const template = this.extractTemplate(content);
+
+        const cacheKey = `${filename}_${key}_${locale}`;
+        this.cache.set(cacheKey, template);
+
+        addLog.info(`[ProPromptLoader] Preloaded template: ${cacheKey}`);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error(`Request timeout after 5 seconds`);
+        }
+        throw fetchError;
+      }
+    } catch (error) {
+      addLog.error(`[ProPromptLoader] Failed to preload template:`, error);
+      throw error;
+    }
+  }
+
+  /*
+   * Extract template payload from the remote response.
+   * The remote service wraps templates in a JSON envelope: { code, data, ... }.
+   */
+  private extractTemplate(content: string): string {
+    try {
+      const parsed = JSON.parse(content);
+      const template = parsed?.data ?? parsed?.result ?? parsed?.template;
+      if (typeof template === 'string') {
+        return template;
+      }
+    } catch (error) {
+      addLog.debug(`[ProPromptLoader] Response is not JSON: ${(error as Error).message}`);
+    }
+    return content;
+  }
+
+  /**
+   * Preload all common templates
+   */
+  async preloadAllTemplates(): Promise<void> {
+    const templates = [
+      {
+        filename: 'hypeIndexes',
+        locale: 'zh-CN' as localeType,
+        key: 'generate_question_from_faq_prompt'
+      },
+      {
+        filename: 'hypeIndexes',
+        locale: 'en' as localeType,
+        key: 'generate_question_from_faq_prompt'
+      },
+      {
+        filename: 'hypeIndexes',
+        locale: 'zh-Hant' as localeType,
+        key: 'generate_question_from_faq_prompt'
+      },
+      {
+        filename: 'autoIndexes',
+        locale: 'zh-CN' as localeType,
+        key: 'auto_training_prompt'
+      },
+      {
+        filename: 'autoIndexes',
+        locale: 'en' as localeType,
+        key: 'auto_training_prompt'
+      },
+      {
+        filename: 'autoIndexes',
+        locale: 'zh-Hant' as localeType,
+        key: 'auto_training_prompt'
+      },
+      {
+        filename: 'imageIndex',
+        locale: 'zh-CN' as localeType,
+        key: 'image_index_prompt'
+      },
+      {
+        filename: 'imageIndex',
+        locale: 'zh-Hant' as localeType,
+        key: 'image_index_prompt'
+      },
+      {
+        filename: 'imageIndex',
+        locale: 'en' as localeType,
+        key: 'image_index_prompt'
+      }
+    ];
+
+    const results = await Promise.allSettled(
+      templates.map((t) => this.preloadTemplate(t.filename, t.locale, t.key))
+    );
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    const succeeded = results.filter((r) => r.status === 'fulfilled');
+
+    if (failed.length > 0) {
+      throw new Error(
+        `Failed to preload majority of templates: ${failed.length}/${templates.length} failed`
+      );
+    }
+
+    if (succeeded.length === 0) {
+      throw new Error('Failed to preload any templates');
+    }
+
+    addLog.info(
+      `[ProPromptLoader] Successfully preloaded ${succeeded.length}/${templates.length} templates`
+    );
+  }
+}
