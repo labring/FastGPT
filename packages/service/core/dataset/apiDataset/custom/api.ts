@@ -126,12 +126,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     teamId,
     tmbId,
     apiFileId,
-    customPdfParse
+    customPdfParse,
+    datasetId
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
+    datasetId: string;
   }): Promise<ApiFileReadContentResponse> => {
     const data = await request<
       {
@@ -148,7 +150,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (content) {
       return {
         title,
-        rawText: content
+        rawText: content,
+        imageKeys: []
       };
     }
     if (previewUrl) {
@@ -157,15 +160,17 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       if (buffer) {
         return {
           title,
-          rawText: buffer.text
+          rawText: buffer.text,
+          imageKeys: buffer.imageKeys || []
         };
       }
 
-      const rawText = await readFileRawTextByUrl({
+      const { rawText, imageKeys } = await readFileRawTextByUrl({
         teamId,
         tmbId,
         url: previewUrl,
         relatedId: apiFileId,
+        datasetId,
         customPdfParse,
         getFormatText: true
       });
@@ -174,12 +179,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         sourceId: previewUrl,
         sourceName: title || '',
         text: rawText,
-        expiredTime: addMinutes(new Date(), 30)
+        expiredTime: addMinutes(new Date(), 30),
+        imageKeys
       });
 
       return {
         title,
-        rawText
+        rawText,
+        imageKeys
       };
     }
     return Promise.reject('Invalid content type: content or previewUrl is required');

@@ -32,6 +32,7 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 const requestLLMPargraph = async ({
   rawText,
@@ -176,7 +177,12 @@ export const datasetParseQueue = async (): Promise<any> => {
         continue;
       }
 
-      addLog.info(`[Parse Queue] Start`);
+      addLog.info(`[Parse Queue] ========== START PROCESSING ==========`, {
+        collectionId: collection._id,
+        datasetId: dataset._id,
+        fileId: collection.fileId,
+        type: collection.type
+      });
 
       try {
         const trainingMode = getTrainingModeByCollection({
@@ -231,12 +237,26 @@ export const datasetParseQueue = async (): Promise<any> => {
         }
 
         // 2. Read source
-        const { title, rawText } = await readDatasetSourceRawText({
+        addLog.info('[Parse Queue] === START PARSING ===', {
+          collectionId: collection._id,
+          fileId: collection.fileId,
+          type: collection.type
+        });
+
+        let { title, rawText, imageKeys } = await readDatasetSourceRawText({
           teamId: data.teamId,
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,
           usageId: data.billId,
+          datasetId: data.datasetId,
           ...sourceReadType
+        });
+
+        addLog.info('[Parse Queue] Read source result', {
+          title,
+          rawTextLength: rawText.length,
+          imageKeysCount: imageKeys?.length || 0,
+          imageKeys
         });
 
         // 3. LLM Pargraph
@@ -268,7 +288,20 @@ export const datasetParseQueue = async (): Promise<any> => {
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
-          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup,
+          imageKeys
+        });
+
+        addLog.debug('[Parse Queue] After chunk split', {
+          chunksCount: chunks.length,
+          firstChunkImageKeys: chunks[0]?.imageKeys,
+          allChunksHaveImageKeys: chunks.every((chunk) => chunk.imageKeys),
+          detailedChunks: chunks.map((chunk, idx) => ({
+            index: idx,
+            qPreview: chunk.q?.substring(0, 100),
+            imageKeysCount: chunk.imageKeys?.length || 0,
+            imageKeys: chunk.imageKeys
+          }))
         });
 
         // Check dataset limit
@@ -303,6 +336,27 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
 
           // 6. Push to chunk queue
+          const trainingData = chunks.map((item, index) => ({
+            ...item,
+            indexes: item.indexes?.map((text) => ({
+              type: DatasetDataIndexTypeEnum.custom,
+              text
+            })),
+            chunkIndex: index
+          }));
+
+          addLog.debug('[Parse Queue] Before push to training queue', {
+            trainingDataCount: trainingData.length,
+            firstItemImageKeys: trainingData[0]?.imageKeys,
+            hasImageKeys: trainingData.some((item) => item.imageKeys && item.imageKeys.length > 0),
+            detailedTrainingData: trainingData.map((item, idx) => ({
+              index: idx,
+              qPreview: item.q?.substring(0, 100),
+              imageKeysCount: item.imageKeys?.length || 0,
+              imageKeys: item.imageKeys
+            }))
+          });
+
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -314,14 +368,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: chunks.map((item, index) => ({
-              ...item,
-              indexes: item.indexes?.map((text) => ({
-                type: DatasetDataIndexTypeEnum.custom,
-                text
-              })),
-              chunkIndex: index
-            })),
+            data: trainingData,
             session
           });
 
@@ -335,24 +382,57 @@ export const datasetParseQueue = async (): Promise<any> => {
             }
           );
 
-          // 8. Remove image ttl
-          const relatedImgId = collection.metadata?.relatedImgId;
-          if (relatedImgId) {
-            await MongoImage.updateMany(
-              {
-                teamId: collection.teamId,
-                'metadata.relatedId': relatedImgId
-              },
-              {
-                // Remove expiredTime to avoid ttl expiration
-                $unset: {
-                  expiredTime: 1
+          // 8. Remove TTLs (file, images)
+          const s3DatasetSource = getS3DatasetSource();
+
+          addLog.info('[Parse Queue] Before removing TTLs', {
+            hasFileId: !!collection.fileId,
+            isS3File: collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId),
+            imageKeysCount: imageKeys?.length || 0,
+            imageKeys: imageKeys
+          });
+
+          // 8.1 For S3 files, remove file TTL and image TTLs
+          if (collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId)) {
+            // Remove file TTL
+            await s3DatasetSource.removeDatasetFileTTL(collection.fileId, session);
+            addLog.info('[Parse Queue] Removed file TTL', { fileId: collection.fileId });
+
+            // Remove image TTLs
+            if (imageKeys && imageKeys.length > 0) {
+              await s3DatasetSource.removeDatasetImagesTTL(imageKeys, session);
+              addLog.info('[Parse Queue] Removed image TTLs', {
+                imageKeysCount: imageKeys.length,
+                imageKeys
+              });
+            } else {
+              addLog.warn('[Parse Queue] No imageKeys to remove TTL', {
+                imageKeysIsUndefined: imageKeys === undefined,
+                imageKeysIsNull: imageKeys === null,
+                imageKeysLength: imageKeys?.length
+              });
+            }
+          }
+          // 8.2 For GridFS files (legacy), remove MongoDB image TTL
+          else {
+            const relatedImgId = collection.metadata?.relatedImgId;
+            if (relatedImgId) {
+              await MongoImage.updateMany(
+                {
+                  teamId: collection.teamId,
+                  'metadata.relatedId': relatedImgId
+                },
+                {
+                  // Remove expiredTime to avoid ttl expiration
+                  $unset: {
+                    expiredTime: 1
+                  }
+                },
+                {
+                  session
                 }
-              },
-              {
-                session
-              }
-            );
+              );
+            }
           }
         });
 

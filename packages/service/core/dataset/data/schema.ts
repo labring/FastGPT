@@ -40,6 +40,10 @@ const DatasetDataSchema = new Schema({
     type: String
   },
   imageId: String,
+  imageKeys: {
+    type: [String],
+    default: []
+  },
   imageDescMap: Object,
   history: {
     type: [
@@ -104,6 +108,9 @@ try {
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
+
+  // Query images by collection efficiently
+  DatasetDataSchema.index({ collectionId: 1, imageKeys: 1 });
 
   // 为查询 initJieba 字段不存在的数据添加索引
   DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });

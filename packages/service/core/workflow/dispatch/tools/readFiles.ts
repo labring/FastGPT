@@ -7,7 +7,10 @@ import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
+import {
+  parsedFileContentS3Key,
+  readS3FileContentByBuffer
+} from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
@@ -16,6 +19,11 @@ import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/ra
 import { addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { S3Sources } from '../../../../common/s3/type';
+import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
+import { getS3ChatSource } from '../../../../common/s3/sources/chat';
+import { jwtSignS3ObjectKey, replaceDatasetQuoteTextWithJWT } from '../../../../common/s3/utils';
+import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -71,7 +79,10 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       teamId,
       tmbId,
       customPdfParse,
-      usageId
+      usageId,
+      appId: props.runningAppInfo.id,
+      chatId: props.chatId,
+      uId: props.uid
     });
 
     return {
@@ -124,7 +135,10 @@ export const getFileContentFromLinks = async ({
   teamId,
   tmbId,
   customPdfParse,
-  usageId
+  usageId,
+  appId,
+  chatId,
+  uId
 }: {
   urls: string[];
   requestOrigin?: string;
@@ -133,6 +147,9 @@ export const getFileContentFromLinks = async ({
   tmbId: string;
   customPdfParse?: boolean;
   usageId?: string;
+  appId: string;
+  chatId?: string;
+  uId: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -224,7 +241,7 @@ export const getFileContentFromLinks = async ({
           })();
 
           // Read file
-          const { rawText } = await readRawContentByFileBuffer({
+          const { rawText, imageKeys } = await readS3FileContentByBuffer({
             extension,
             teamId,
             tmbId,
@@ -232,18 +249,22 @@ export const getFileContentFromLinks = async ({
             encoding,
             customPdfParse,
             getFormatText: true,
+            uploadKeyPrefix: parsedFileContentS3Key.chat({ appId, chatId: chatId!, uId }),
             usageId
           });
+
+          const replacedText = await replaceDatasetQuoteTextWithJWT(rawText);
 
           // Add to buffer
           addRawTextBuffer({
             sourceId: url,
             sourceName: filename,
-            text: rawText,
-            expiredTime: addMinutes(new Date(), 20)
+            text: replacedText,
+            expiredTime: addMinutes(new Date(), 20),
+            imageKeys
           });
 
-          return formatResponseObject({ filename, url, content: rawText });
+          return formatResponseObject({ filename, url, content: replacedText });
         } catch (error) {
           return formatResponseObject({
             filename: '',

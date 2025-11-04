@@ -3,7 +3,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
+import {
+  parsedFileContentS3Key,
+  readRawTextByLocalFile
+} from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -51,7 +54,12 @@ async function handler(
       tmbId,
       path: file.path,
       encoding: file.encoding,
-      getFormatText: false
+      getFormatText: false,
+      uploadKey: parsedFileContentS3Key.dataset({
+        datasetId: dataset._id,
+        mimetype: file.mimetype,
+        filename: file.originalname
+      }).key
     });
     if (!rawText.trim().startsWith('q,a,indexes')) {
       return Promise.reject(i18nT('dataset:template_file_invalid'));

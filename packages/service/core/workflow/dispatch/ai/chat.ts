@@ -41,6 +41,11 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { S3Sources } from '../../../../common/s3/type';
+import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
+import { getS3ChatSource } from '../../../../common/s3/sources/chat';
+import { jwtSignS3ObjectKey, replaceDatasetQuoteTextWithJWT } from '../../../../common/s3/utils';
+import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -98,6 +103,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText //abandon
     }
   } = props;
+
   const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
   const modelConstantsData = getLLMModel(model);
@@ -133,9 +139,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
         usageId,
-        runningUserInfo
+        runningUserInfo,
+        appId: props.runningAppInfo.id,
+        chatId: props.chatId,
+        uId: props.uid
       })
     ]);
+    console.log('documentQuoteText====================', documentQuoteText);
 
     if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
@@ -303,7 +313,7 @@ async function filterDatasetQuote({
       : '';
 
   return {
-    datasetQuoteText
+    datasetQuoteText: await replaceDatasetQuoteTextWithJWT(datasetQuoteText)
   };
 }
 
@@ -316,7 +326,10 @@ async function getMultiInput({
   maxFiles,
   customPdfParse,
   usageId,
-  runningUserInfo
+  runningUserInfo,
+  appId,
+  chatId,
+  uId
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -327,6 +340,9 @@ async function getMultiInput({
   customPdfParse?: boolean;
   usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
+  appId: string;
+  chatId?: string;
+  uId: string;
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -366,7 +382,10 @@ async function getMultiInput({
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId,
     customPdfParse,
-    usageId
+    usageId,
+    appId,
+    chatId,
+    uId
   });
 
   return {

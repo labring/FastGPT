@@ -18,18 +18,21 @@ export const addRawTextBuffer = async ({
   sourceId,
   sourceName,
   text,
-  expiredTime
+  expiredTime,
+  imageKeys = []
 }: {
   sourceId: string;
   sourceName: string;
   text: string;
   expiredTime: Date;
+  imageKeys?: string[];
 }) => {
   const gridBucket = getGridBucket();
   const metadata = {
     sourceId,
     sourceName,
-    expiredTime
+    expiredTime,
+    imageKeys
   };
 
   const buffer = Buffer.from(text);
@@ -106,7 +109,8 @@ export const getRawTextBuffer = async (sourceId: string) => {
 
     return {
       text: rawText,
-      sourceName: bufferData.metadata?.sourceName || ''
+      sourceName: bufferData.metadata?.sourceName || '',
+      imageKeys: bufferData.metadata?.imageKeys || []
     };
   });
 };

@@ -95,7 +95,8 @@ async function handler(
     selector,
     externalFileId,
     customPdfParse,
-    apiDatasetServer: dataset.apiDatasetServer
+    apiDatasetServer: dataset.apiDatasetServer,
+    datasetId
   });
 
   const chunks = await rawText2Chunks({

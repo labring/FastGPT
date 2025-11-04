@@ -15,6 +15,8 @@ import { removeDatasetSyncJobScheduler } from './datasetSync';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getS3DatasetSource } from '../../common/s3/sources/dataset';
+import { getS3AvatarSource } from '../../common/s3/sources/avatar';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -122,6 +124,10 @@ export async function delDatasetRelevantData({
     teamId,
     datasetId: { $in: datasetIds }
   }).session(session);
+
+  for (const datasetId of datasetIds) {
+    await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
+  }
 }
 
 export const deleteDatasets = async ({
@@ -161,6 +167,10 @@ export const deleteDatasets = async ({
 
     for await (const dataset of datasets) {
       await removeImageByPath(dataset.avatar, session);
+    }
+
+    for await (const dataset of datasets) {
+      await getS3AvatarSource().deleteAvatar(dataset.avatar, session);
     }
   });
 };

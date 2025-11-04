@@ -1,4 +1,8 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  AIChatItemType,
+  AIChatItemValueItemType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -19,6 +23,7 @@ import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { MongoS3TTL } from '../../common/s3/schema';
 import type { ClientSession } from '../../common/mongo';
+import { getGlobalRedisConnection } from '../../common/redis';
 
 type Props = {
   chatId: string;
@@ -40,6 +45,44 @@ type Props = {
   durationSeconds: number; //s
   errorMsg?: string;
 };
+
+// TODO: 在我迁移完到 JWT 后移除这个 transformAiResponse
+// const transformAiResponse = async (value: AIChatItemValueItemType[]) => {
+//   const redis = getGlobalRedisConnection();
+//   const regex = /(!?)\[([^\]]+)\]\((https?:\/\/[^\s)]+\/api\/file\/temp[^\s)]*)\)/g;
+
+//   return Promise.all(
+//     value.map(async (item) => {
+//       if (item.type !== ChatItemValueTypeEnum.text || !item.text) return item;
+//       let content = item.text.content;
+//       const matches = Array.from(content.matchAll(regex));
+
+//       for (const match of matches.slice().reverse()) {
+//         const [full, bang, alt, link] = match;
+//         if (typeof match.index !== 'number') continue;
+
+//         try {
+//           const url = new URL(link); // 可能会发生解析错误
+//           const k = url.searchParams.get('k');
+//           if (!k) continue;
+
+//           const redisKey = `chat:temp_file:${decodeURIComponent(k)}`;
+//           const objectKey = await redis.get(redisKey);
+//           if (!objectKey) continue;
+
+//           const replacement = `${bang}[${alt}](${objectKey})`;
+//           content =
+//             content.slice(0, match.index) + replacement + content.slice(match.index + full.length);
+//         } catch {
+//           continue;
+//         }
+//       }
+
+//       item.text.content = content;
+//       return item;
+//     })
+//   );
+// };
 
 const beforProcess = (props: Props) => {
   // Remove url
@@ -108,6 +151,10 @@ const formatAiContent = ({
     }
     return responseItem;
   });
+
+  // aiResponse.value = await transformAiResponse(aiResponse.value);
+  // console.log('aiResponse ========================');
+  // console.dir(aiResponse, { depth: null });
 
   return {
     aiResponse: {

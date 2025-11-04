@@ -6,7 +6,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
-import { createFileFromText } from '@fastgpt/service/common/file/gridfs/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { name, text, ...body } = req.body as TextCreateDatasetCollectionParams;
@@ -21,14 +21,11 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
 
   // 1. Create file from text
   const filename = `${name}.txt`;
-  const { fileId } = await createFileFromText({
-    bucket: 'dataset',
-    filename,
-    text,
-    metadata: {
-      teamId,
-      uid: tmbId
-    }
+  const s3DatasetSource = getS3DatasetSource();
+  const key = await s3DatasetSource.uploadDatasetFileByBuffer({
+    datasetId: String(dataset._id),
+    buffer: Buffer.from(text),
+    filename
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -38,10 +35,12 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.file,
-      fileId,
+      fileId: key,
       name: filename
     }
   });
+
+  await s3DatasetSource.removeDatasetFileTTL(key);
 
   return {
     collectionId,

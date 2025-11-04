@@ -9,6 +9,12 @@ import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { getS3DatasetSource } from '../../s3/sources/dataset';
+import type { ParsedFileContentS3KeyParams } from '../../s3/sources/dataset/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import path from 'path';
+import { S3Sources } from '../../s3/type';
+import { randomUUID } from 'crypto';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -17,6 +23,7 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
+  uploadKey: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -26,7 +33,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const buffer = await fs.promises.readFile(path);
 
-  return readRawContentByFileBuffer({
+  return readS3FileContentByBuffer({
     extension,
     customPdfParse: params.customPdfParse,
     getFormatText: params.getFormatText,
@@ -34,21 +41,21 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata
+    uploadKeyPrefix: params.uploadKey
   });
 };
 
-export const readRawContentByFileBuffer = async ({
+export const readS3FileContentByBuffer = async ({
   teamId,
   tmbId,
 
   extension,
   buffer,
   encoding,
-  metadata,
   customPdfParse = false,
   usageId,
-  getFormatText = true
+  getFormatText = true,
+  uploadKeyPrefix
 }: {
   teamId: string;
   tmbId: string;
@@ -56,13 +63,14 @@ export const readRawContentByFileBuffer = async ({
   extension: string;
   buffer: Buffer;
   encoding: string;
-  metadata?: Record<string, any>;
 
   customPdfParse?: boolean;
   usageId?: string;
   getFormatText?: boolean;
+  uploadKeyPrefix: string;
 }): Promise<{
   rawText: string;
+  imageKeys?: string[];
 }> => {
   const systemParse = () =>
     readRawContentFromBuffer({
@@ -158,21 +166,25 @@ export const readRawContentByFileBuffer = async ({
   addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
 
   // markdown data format
-  if (imageList) {
+  const uploadedImageKeys: string[] = [];
+  if (imageList && imageList.length > 0) {
+    addLog.debug(`Processing ${imageList.length} images from parsed document`);
+
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
         try {
-          return await uploadMongoImg({
+          const ext = item.mime.split('/')[1].replace('x-', '');
+          const imageKey = await getS3DatasetSource().uploadDatasetImage({
             base64Img: `data:${item.mime};base64,${item.base64}`,
-            teamId,
-            metadata: {
-              ...metadata,
-              mime: item.mime
-            }
+            mimetype: `${ext}`,
+            filename: `${item.uuid}.${ext}`,
+            uploadKey: `${uploadKeyPrefix}/${item.uuid}.${ext}`
           });
+          uploadedImageKeys.push(imageKey);
+          return imageKey;
         } catch (error) {
-          addLog.warn('Upload file image error', { error });
-          return 'Upload load image error';
+          // Don't add to uploadedImageKeys if upload failed, but still continue processing
+          return `[Image Upload Failed: ${item.uuid}]`;
         }
       })();
       rawText = rawText.replace(item.uuid, src);
@@ -180,9 +192,60 @@ export const readRawContentByFileBuffer = async ({
         formatText = formatText.replace(item.uuid, src);
       }
     });
+
+    // Log summary of image processing
+    addLog.info(`Image processing completed`, {
+      total: imageList.length,
+      successful: uploadedImageKeys.length,
+      failed: imageList.length - uploadedImageKeys.length
+    });
   }
 
-  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
+  addLog.debug(`Upload file to S3 success, time: ${Date.now() - start}ms`, {
+    uploadedImageKeysCount: uploadedImageKeys.length,
+    uploadedImageKeys
+  });
 
-  return { rawText: getFormatText ? formatText || rawText : rawText };
+  return {
+    rawText: getFormatText ? formatText || rawText : rawText,
+    imageKeys: uploadedImageKeys
+  };
+};
+
+export const parsedFileContentS3Key = {
+  temp: (appId: string) => `chat/${appId}/temp/parsed/${randomUUID()}`,
+
+  chat: ({ appId, chatId, uId }: { chatId: string; uId: string; appId: string }) =>
+    `chat/${appId}/${uId}/${chatId}/parsed`,
+
+  dataset: (params: ParsedFileContentS3KeyParams) => {
+    const { datasetId, mimetype, filename, parentFileKey } = params;
+
+    const extension = mimetype;
+    const image = (() => {
+      if (filename) {
+        return Boolean(path.extname(filename))
+          ? `${getNanoid(6)}-${filename}`
+          : `${getNanoid(6)}-${filename}.${extension}`;
+      }
+      return `${getNanoid(6)}.${extension}`;
+    })();
+
+    const parentFilename = parentFileKey?.slice().split('/').at(-1);
+    const parsedParentFilename = parentFilename
+      ? `parsed-${path.basename(parentFilename, path.extname(parentFilename))}`
+      : '';
+    const parsedParentFileKey = parentFileKey
+      ?.split('/')
+      .slice(0, -1)
+      .concat(parsedParentFilename)
+      .join('/');
+
+    return {
+      key: parsedParentFileKey
+        ? `${parsedParentFileKey}/${image}`
+        : [S3Sources.dataset, datasetId, image].join('/'),
+      filename: image
+    };
+  }
 };

@@ -14,6 +14,12 @@ import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
+import { S3Sources } from '../../../common/s3/type';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { getGlobalRedisConnection } from '../../../common/redis';
+import { randomUUID } from 'node:crypto';
+import { TempFileURL } from '@fastgpt/global/common/file/image/constants';
+import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -127,7 +133,7 @@ export const loadRequestMessages = async ({
       const result: ChatCompletionContentPart[] = [];
 
       // 提取所有HTTPS图片URL并添加到result开头
-      const httpsImages = [...new Set(Array.from(input.matchAll(imageRegex), (m) => m[0]))];
+      const httpsImages = Array.from(new Set(input.matchAll(imageRegex)), (m) => m[0]);
       httpsImages.forEach((url) => {
         result.push({
           type: 'image_url',
@@ -276,6 +282,46 @@ export const loadRequestMessages = async ({
     return result.map((item) => item.text).join('\n');
   };
 
+  // const redis = getGlobalRedisConnection();
+  // const prefixPattern = Object.values(S3Sources)
+  //   .map((pattern) => `${pattern}\\/[^\\s)]+`)
+  //   .join('|');
+  // const regex = new RegExp(String.raw`(!?)\[([^\]]+)\]\((?!https?:\/\/)(${prefixPattern})\)`, 'g');
+
+  // TODO: 在我迁移完到 JWT 后移除这个 transformS3PreviewKey
+  // const transformS3PreviewKey = async (
+  //   origin: string | ChatCompletionContentPartText[] | undefined
+  // ) => {
+  //   if (!origin || typeof origin !== 'string') return origin as string;
+
+  //   const matches = Array.from(origin.matchAll(regex));
+  //   let content = origin;
+
+  //   for (const match of matches.slice().reverse()) {
+  //     const [full, bang, alt, objectKey] = match;
+
+  //     const filename = objectKey.split('/').pop()?.split('-')[1];
+  //     const name = `${randomUUID()}:${filename}`;
+
+  //     const redisKey = `chat:temp_file:${name}`;
+  //     try {
+  //       await redis.set(redisKey, objectKey);
+  //       await redis.expire(redisKey, 3600);
+  //     } catch {
+  //       continue;
+  //     }
+
+  //     const k = new URLSearchParams({ k: name });
+  //     const link = `${EndpointUrl}${TempFileURL}?${k}`;
+
+  //     const replacement = `${bang}[${alt}](${link})`;
+  //     content =
+  //       content.slice(0, match.index) + replacement + content.slice(match.index + full.length);
+  //   }
+
+  //   return content;
+  // };
+
   if (messages.length === 0) {
     return Promise.reject(i18nT('common:core.chat.error.Messages empty'));
   }
@@ -379,7 +425,10 @@ export const loadRequestMessages = async ({
 
           return {
             ...item,
-            content: formatContent
+            content:
+              typeof formatContent === 'string'
+                ? formatContent
+                : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
           if (item.tool_calls || item.function_call) {

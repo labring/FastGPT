@@ -1,5 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getCollectionSource } from '@/web/core/dataset/api';
+import { getPresignedDatasetFileGetUrl } from '@/web/core/dataset/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -16,7 +16,7 @@ export function getCollectionSourceAndOpen(
     try {
       setLoading(true);
 
-      const { value: url } = await getCollectionSource(props);
+      const url = await getPresignedDatasetFileGetUrl({ collectionId: props.collectionId });
 
       if (!url) {
         throw new Error('No file found');

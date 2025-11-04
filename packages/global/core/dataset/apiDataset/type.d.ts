@@ -40,6 +40,7 @@ export type ApiDatasetServerType = {
 export type ApiFileReadContentResponse = {
   title?: string;
   rawText: string;
+  imageKeys?: string[];
 };
 
 export type APIFileReadResponse = {

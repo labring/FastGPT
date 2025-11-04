@@ -161,9 +161,10 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     };
   })();
 
-  const { title, rawText } = await readDatasetSourceRawText({
+  const { title, rawText, imageKeys } = await readDatasetSourceRawText({
     teamId: collection.teamId,
     tmbId: collection.tmbId,
+    datasetId: collection.datasetId,
     ...sourceReadType
   });
 
@@ -188,6 +189,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         session,
         dataset,
         rawText: rawText,
+        imageKeys,
         createCollectionParams: {
           ...collection,
           name: title || collection.name,
@@ -208,7 +210,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   return DatasetCollectionSyncResultEnum.sameRaw;
 };
 
-/* 
+/*
   QA: 独立进程
   Chunk: Image Index -> Auto index -> chunk index
 */

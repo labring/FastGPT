@@ -1,4 +1,7 @@
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -31,11 +34,14 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { addLog } from '../../../common/system/log';
 
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
   imageIds,
+  imageKeys,
   createCollectionParams,
   backupParse = false,
   billId,
@@ -44,6 +50,7 @@ export const createCollectionAndInsertData = async ({
   dataset: DatasetSchemaType;
   rawText?: string;
   imageIds?: string[];
+  imageKeys?: string[];
   createCollectionParams: CreateOneCollectionParams;
 
   backupParse?: boolean;
@@ -133,7 +140,8 @@ export const createCollectionAndInsertData = async ({
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
           : [],
-        backupParse
+        backupParse,
+        imageKeys
       });
       return {
         chunks,
@@ -232,12 +240,14 @@ export const createCollectionAndInsertData = async ({
       }
     })();
 
-    // 6. Remove images ttl index
-    await removeDatasetImageExpiredTime({
-      ids: imageIds,
-      collectionId,
-      session
-    });
+    // Remove S3 image TTLs for imageKeys
+    if (imageKeys && imageKeys.length > 0) {
+      await getS3DatasetSource().removeDatasetImagesTTL(imageKeys, session);
+    }
+    // Remove S3 image TTLs for imageIds
+    if (imageIds && imageIds.length > 0) {
+      await getS3DatasetSource().removeDatasetImagesTTL(imageIds, session);
+    }
 
     return {
       collectionId: String(collectionId),
@@ -363,8 +373,39 @@ export async function delCollection({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
+  const s3DatasetSource = getS3DatasetSource();
   const datasetIds = Array.from(new Set(collections.map((item) => String(item.datasetId))));
   const collectionIds = collections.map((item) => String(item._id));
+
+  const allImageKeys = await (async () => {
+    const datas = await MongoDatasetData.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        collectionId: { $in: collectionIds }
+      },
+      { imageKeys: 1 }
+    ).lean();
+
+    const imageKeys = datas.flatMap((data) => data.imageKeys || []);
+    return [...new Set(imageKeys)].filter((key) => s3DatasetSource.isDatasetObjectKey(key));
+  })();
+
+  const allImageIds = await (async () => {
+    const datas = await MongoDatasetData.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        collectionId: { $in: collectionIds }
+      },
+      { imageId: 1 }
+    ).lean();
+    return [
+      ...new Set(
+        datas.map((data) => data.imageId).filter((key) => s3DatasetSource.isDatasetObjectKey(key))
+      )
+    ];
+  })();
 
   await retryFn(async () => {
     await Promise.all([
@@ -420,5 +461,23 @@ export async function delCollection({
       },
       { session }
     );
+
+    // delete s3 images which are parsed from docs
+    if (allImageKeys.length > 0) {
+      try {
+        await s3DatasetSource.deleteDatasetFilesByKeys(allImageKeys);
+      } catch (error) {
+        addLog.error('Failed to cleanup S3 images', error);
+      }
+    }
+
+    // delete s3 images
+    if (allImageIds.length > 0) {
+      try {
+        await s3DatasetSource.deleteDatasetFilesByKeys(allImageIds);
+      } catch (error) {
+        addLog.error('Failed to cleanup S3 images', error);
+      }
+    }
   });
 }

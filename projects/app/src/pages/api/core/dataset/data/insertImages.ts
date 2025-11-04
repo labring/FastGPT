@@ -14,6 +14,10 @@ import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/co
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { removeDatasetImageExpiredTime } from '@fastgpt/service/core/dataset/image/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import path from 'node:path';
+import fsp from 'node:fs/promises';
+import { parsedFileContentS3Key } from '@fastgpt/service/common/file/read/utils';
 
 export type insertImagesQuery = {};
 
@@ -60,17 +64,20 @@ async function handler(
 
     await authUploadLimit(tmbId, files.length);
 
-    // 1. Upload images to db
+    // 1. Upload images to S3
     const imageIds = await Promise.all(
-      files.map(async (file) => {
-        return (
-          await createDatasetImage({
-            teamId,
+      files.map(async (file) =>
+        getS3DatasetSource().uploadDatasetImage({
+          uploadKey: parsedFileContentS3Key.dataset({
             datasetId: dataset._id,
-            file
-          })
-        ).imageId;
-      })
+            mimetype: file.mimetype,
+            filename: path.basename(file.filename)
+          }).key,
+          mimetype: file.mimetype,
+          filename: path.basename(file.filename),
+          base64Img: (await fsp.readFile(file.path)).toString('base64')
+        })
+      )
     );
 
     // 2. Insert images to training queue
@@ -106,11 +113,7 @@ async function handler(
       });
 
       // 3. Clear ttl
-      await removeDatasetImageExpiredTime({
-        ids: imageIds,
-        collectionId,
-        session
-      });
+      await getS3DatasetSource().removeDatasetImagesTTL(imageIds, session);
     });
 
     return {};

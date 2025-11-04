@@ -64,23 +64,28 @@ export async function uploadMongoImg({
 export const copyAvatarImage = async ({
   teamId,
   imageUrl,
-  ttl,
+  temporary,
   session
 }: {
   teamId: string;
   imageUrl: string;
-  ttl: boolean;
+  temporary: boolean;
   session?: ClientSession;
 }) => {
   if (!imageUrl) return;
 
-  // S3
-  if (imageUrl.startsWith(`${imageBaseUrl}/${S3Sources.avatar}`)) {
-    const extendName = path.extname(imageUrl);
+  const avatarSource = getS3AvatarSource();
+  if (avatarSource.isAvatarKey(imageUrl)) {
+    const filename = (() => {
+      const last = imageUrl.split('/').pop()?.split('-')[1];
+      if (!last) return getNanoid(6).concat(path.extname(imageUrl));
+      return `${getNanoid(6)}-${last}`;
+    })();
     const key = await getS3AvatarSource().copyAvatar({
-      sourceKey: imageUrl.slice(imageBaseUrl.length),
-      targetKey: `${S3Sources.avatar}/${teamId}/${getNanoid(6)}${extendName}`,
-      ttl
+      key: imageUrl,
+      teamId,
+      filename,
+      temporary
     });
     return key;
   }

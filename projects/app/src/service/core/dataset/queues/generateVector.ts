@@ -78,6 +78,9 @@ export async function generateVector(): Promise<any> {
                 select: '_id indexes'
               }
             ])
+            .select(
+              'teamId tmbId datasetId collectionId q a imageId imageKeys imageDescMap chunkIndex indexSize billId mode retryCount lockTime indexes'
+            )
             .lean();
 
           // task preemption
@@ -257,6 +260,13 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
+    addLog.debug('[Vector Queue] insertData - before insert', {
+      trainingDataId: trainingData._id,
+      qPreview: trainingData.q?.substring(0, 100),
+      imageKeysCount: trainingData.imageKeys?.length || 0,
+      imageKeys: trainingData.imageKeys
+    });
+
     // insert new data to dataset
     const { tokens } = await insertData2Dataset({
       teamId: trainingData.teamId,
@@ -266,6 +276,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       q: trainingData.q,
       a: trainingData.a,
       imageId: trainingData.imageId,
+      imageKeys: trainingData.imageKeys,
       imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
       indexSize:

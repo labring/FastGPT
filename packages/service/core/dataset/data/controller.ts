@@ -1,6 +1,8 @@
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import { getDatasetImagePreviewUrl } from '../image/utils';
-import type { DatasetCiteItemType, DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
 
 export const formatDatasetDataValue = ({
   teamId,
@@ -56,12 +58,15 @@ export const formatDatasetDataValue = ({
     };
   }
 
-  const previewUrl = getDatasetImagePreviewUrl({
-    imageId,
-    teamId,
-    datasetId,
-    expiredMinutes: 60 * 24 * 7 // 7 days
-  });
+  const previewUrl =
+    getS3DatasetSource().isDatasetObjectKey(imageId) || getS3ChatSource().isChatFileKey(imageId)
+      ? imageId
+      : getDatasetImagePreviewUrl({
+          imageId,
+          teamId,
+          datasetId,
+          expiredMinutes: 60 * 24 * 7 // 7 days
+        });
 
   return {
     q: `![${q.replaceAll('\n', '')}](${previewUrl})`,
@@ -71,7 +76,7 @@ export const formatDatasetDataValue = ({
 };
 
 export const getFormatDatasetCiteList = (list: DatasetDataSchemaType[]) => {
-  return list.map<DatasetCiteItemType>((item) => ({
+  return list.map((item) => ({
     _id: item._id,
     ...formatDatasetDataValue({
       teamId: item.teamId,

@@ -75,6 +75,7 @@
   "query_extension_result": "Problem optimization results",
   "question_tip": "From top to bottom, the response order of each module",
   "read_raw_source": "Open the original text",
+  "images_collection_not_supported": "Image collection is not supported open the original file",
   "reasoning_text": "Thinking process",
   "release_cancel": "Release Cancel",
   "release_send": "Release send, slide up to cancel",

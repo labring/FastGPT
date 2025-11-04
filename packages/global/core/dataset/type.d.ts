@@ -118,6 +118,7 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   rawTextLength?: number;
   hashRawText?: string;
+
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections
@@ -147,6 +148,7 @@ export type DatasetDataFieldType = {
   q: string; // large chunks or question
   a?: string; // answer or custom content
   imageId?: string;
+  imageKeys?: string[];
 };
 export type DatasetDataSchemaType = DatasetDataFieldType & {
   _id: string;
@@ -191,6 +193,7 @@ export type DatasetTrainingSchemaType = {
   q: string;
   a: string;
   imageId?: string;
+  imageKeys?: string[];
   imageDescMap?: Record<string, string>;
   chunkIndex: number;
   indexSize?: number;
@@ -250,7 +253,10 @@ export type TagUsageType = {
 export type DatasetCollectionItemType = CollectionWithDatasetType & {
   sourceName: string;
   sourceId?: string;
-  file?: DatasetFileSchema;
+  file?: {
+    filename?: string;
+    contentLength?: number;
+  };
   permission: DatasetPermission;
   indexAmount: number;
   errorCount?: number;

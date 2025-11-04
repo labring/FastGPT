@@ -18,7 +18,12 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { text2Chunks } from '@fastgpt/service/worker/function';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { S3Sources } from '@fastgpt/service/common/s3/type';
+import _ from 'lodash';
 
 const formatIndexes = async ({
   indexes = [],
@@ -168,6 +173,7 @@ export async function insertData2Dataset({
   q,
   a,
   imageId,
+  imageKeys,
   chunkIndex = 0,
   indexSize = 512,
   indexes,
@@ -216,6 +222,13 @@ export async function insertData2Dataset({
   }));
 
   // 2. Create mongo data
+  addLog.debug('[insertData2Dataset] Creating mongo data', {
+    qPreview: q?.substring(0, 100),
+    imageKeysCount: imageKeys?.length || 0,
+    imageKeys,
+    chunkIndex
+  });
+
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -226,6 +239,7 @@ export async function insertData2Dataset({
         q,
         a,
         imageId,
+        imageKeys,
         imageDescMap,
         chunkIndex,
         indexes: results
@@ -406,6 +420,42 @@ export async function updateData2Dataset({
         idList: deleteVectorIdList
       });
     }
+
+    // Check if there are any images need to be deleted
+    const retrieveS3PreviewKeys = async (q: string) => {
+      const redis = getGlobalRedisConnection();
+      const prefixPattern = Object.values(S3Sources)
+        .map((pattern) => `${pattern}\\/[^\\s)]+`)
+        .join('|');
+      const regex = new RegExp(
+        String.raw`(!?)\[([^\]]+)\]\((?!https?:\/\/)(${prefixPattern})\)`,
+        'g'
+      );
+
+      const matches = Array.from(q.matchAll(regex));
+      const objectKeys = [];
+
+      for (const match of matches.slice().reverse()) {
+        const [, , , objectKey] = match;
+
+        if (getS3DatasetSource().isDatasetObjectKey(objectKey)) {
+          objectKeys.push(objectKey);
+        }
+      }
+
+      return objectKeys;
+    };
+
+    const objectKeys = await retrieveS3PreviewKeys(q);
+    const differenceKeys = _.difference(mongoData.imageKeys || [], objectKeys);
+    if (differenceKeys.length > 0) {
+      await getS3DatasetSource().deleteDatasetFilesByKeys(differenceKeys);
+    }
+    await MongoDatasetData.updateOne(
+      { _id: mongoData._id },
+      { $set: { imageKeys: objectKeys } },
+      { session }
+    );
   });
 
   return {
@@ -422,6 +472,10 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     // 2. If there are any image files, delete the image records and GridFS file.
     if (data.imageId) {
       await deleteDatasetImage(data.imageId);
+    }
+
+    if (data.imageKeys && data.imageKeys.length > 0) {
+      await getS3DatasetSource().deleteDatasetFilesByKeys(data.imageKeys);
     }
 
     // 3. Delete vector data

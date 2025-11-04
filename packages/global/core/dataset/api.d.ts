@@ -139,6 +139,7 @@ export type PushDatasetDataChunkProps = {
   q?: string;
   a?: string;
   imageId?: string;
+  imageKeys?: string[];
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
