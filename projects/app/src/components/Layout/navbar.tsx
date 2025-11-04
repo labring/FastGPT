@@ -74,11 +74,11 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('common:navbar.toolkit'),
+        label: t('common:navbar.plugin'),
         icon: 'core/app/pluginLight',
         activeIcon: 'core/app/pluginFill',
-        link: '/toolkit/tools',
-        activeLink: ['/toolkit/tools']
+        link: '/plugin/tool',
+        activeLink: ['/plugin/tool']
       },
       {
         label: t('common:navbar.Account'),
@@ -114,7 +114,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   );
 
   const isSecondNavbarPage = useMemo(() => {
-    return ['/toolkit'].includes(router.pathname);
+    return ['/plugin'].includes(router.pathname);
   }, [router.pathname]);
 
   return (
