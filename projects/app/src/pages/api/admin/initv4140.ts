@@ -65,23 +65,24 @@ async function migrateGroupsToTags(): Promise<{
   let order = 0;
 
   for (const group of groups) {
+    const isSystemGroup = group.groupId === 'systemPlugin';
+
     // systemPlugin 分组本身不迁移，但其下的 types 要迁移
-    if (group.groupId !== 'systemPlugin') {
+    if (!isSystemGroup) {
       tags.push({
         tagId: group.groupId,
         tagName: group.groupName,
         tagOrder: order++,
-        isSystem: true
+        isSystem: false
       });
     }
 
-    // 迁移所有 types
     group.groupTypes.forEach((type) => {
       tags.push({
         tagId: type.typeId,
         tagName: type.typeName,
         tagOrder: order++,
-        isSystem: true
+        isSystem: isSystemGroup
       });
       typeToGroupMap.set(type.typeId, group.groupId);
     });

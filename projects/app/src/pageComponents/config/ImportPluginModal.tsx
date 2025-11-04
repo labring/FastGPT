@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -17,9 +17,10 @@ import { getDocPath } from '@/web/common/system/doc';
 import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type UploadedPluginFile = SelectFileItemType & {
-  status: 'uploading' | 'parsing' | 'success' | 'error';
+  status: 'uploading' | 'parsing' | 'success' | 'error' | 'duplicate';
   errorMsg?: string;
   toolId?: string;
   toolName?: string;
@@ -72,22 +73,26 @@ const ImportPluginModal = ({
 
       const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {
-        return Promise.reject(new Error(`未找到插件 ID`));
+        return Promise.reject(new Error(`${t('app:custom_plugin_parse_error')}`));
       }
       const toolDetail = parseResult.find((item) => item.toolId === parentId);
+      if (!toolDetail) {
+        return Promise.reject(new Error(`${t('app:custom_plugin_parse_error')}`));
+      }
+      const isDuplicated = tools.some((tool) => tool.id.includes(toolDetail.toolId));
 
       setUploadedFiles((prev) =>
         prev.map((f) =>
           f.name === file.name
             ? {
                 ...f,
-                status: 'success',
+                status: isDuplicated ? 'duplicate' : 'success',
                 toolId: parentId,
-                toolName: parseI18nString(toolDetail?.name || '', i18n.language),
-                icon: toolDetail?.icon || '',
-                toolIntro: parseI18nString(toolDetail?.description || '', i18n.language) || '',
+                toolName: parseI18nString(toolDetail.name || '', i18n.language),
+                icon: toolDetail.icon || '',
+                toolIntro: parseI18nString(toolDetail.description || '', i18n.language) || '',
                 toolTags:
-                  toolDetail?.tags?.map((tag) => {
+                  toolDetail.tags?.map((tag) => {
                     const currentTag = allTags.find((item) => item.tagId === tag);
                     return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
                   }) || []
@@ -97,9 +102,7 @@ const ImportPluginModal = ({
       );
     } catch (error: any) {
       setUploadedFiles((prev) =>
-        prev.map((f) =>
-          f.name === file.name ? { ...f, status: 'error', errorMsg: error.message } : f
-        )
+        prev.map((f) => (f.name === file.name ? { ...f, status: 'error', errorMsg: error } : f))
       );
     }
   };
@@ -123,11 +126,14 @@ const ImportPluginModal = ({
 
   const onSelectFiles = useCallback(
     (files: SelectFileItemType[]) => {
-      const filteredFiles = files
-        .filter((file) => !tools.some((tool) => tool.id.includes(file.name.split('.')[0])))
-        .filter((file) => !uploadedFiles.some((f) => f.name === file.name));
+      const currentUploadFiles = files.filter(
+        (file) => !selectFiles.some((f) => f.name === file.name)
+      );
+      const filteredFiles = files.filter(
+        (file) => !uploadedFiles.some((f) => f.name === file.name)
+      );
 
-      if (filteredFiles.length !== files.length) {
+      if (filteredFiles.length !== currentUploadFiles.length) {
         toast({
           title: t('app:upload_file_exists_filtered'),
           status: 'info'
@@ -143,11 +149,7 @@ const ImportPluginModal = ({
   );
 
   const handleRetry = async (file: UploadedPluginFile) => {
-    try {
-      await uploadAndParseFile(file);
-    } catch (error) {
-      console.error(`重试上传文件 ${file.name} 失败:`, error);
-    }
+    await uploadAndParseFile(file);
   };
 
   const handleDelete = (file: UploadedPluginFile) => {
@@ -290,7 +292,19 @@ const ImportPluginModal = ({
                       fontWeight={'medium'}
                       color={'blue.500'}
                     >
-                      {t('app:custom_plugin_uploading')}
+                      {item.status === 'uploading'
+                        ? t('app:custom_plugin_uploading')
+                        : t('app:custom_plugin_parsing')}
+                    </Flex>
+                  )}
+                  {item.status === 'duplicate' && (
+                    <Flex
+                      alignItems={'center'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      color={'yellow.500'}
+                    >
+                      {t('app:custom_plugin_duplicate')}
                     </Flex>
                   )}
                   {item.status === 'success' && (
@@ -308,9 +322,11 @@ const ImportPluginModal = ({
                       alignItems={'center'}
                       fontSize={'xs'}
                       fontWeight={'medium'}
-                      color={'green.500'}
+                      color={'red.500'}
+                      gap={1}
                     >
                       {t('app:custom_plugin_upload_failed')}
+                      <QuestionTip label={item.errorMsg} />
                     </Flex>
                   )}
                 </Flex>
