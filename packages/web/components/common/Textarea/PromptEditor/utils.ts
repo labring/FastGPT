@@ -476,41 +476,56 @@ export const editorStateToText = (editor: LexicalEditor) => {
   const extractText = (node: ChildEditorNode): string => {
     if (!node) return '';
 
-    // 处理换行符节点
+    // Handle line break nodes
     if (node.type === 'linebreak') {
       return '\n';
     }
 
-    // 处理 tab 节点
+    // Handle tab nodes
     if (node.type === 'tab') {
       return '  ';
     }
 
-    // 处理文本节点
+    // Handle text nodes
     if (node.type === 'text') {
-      return node.text;
+      return node.text || '';
     }
 
-    // 处理自定义变量节点
+    // Handle custom variable nodes
     if (node.type === 'variableLabel' || node.type === 'Variable') {
-      return node.variableKey;
+      return node.variableKey || '';
     }
 
-    // 处理段落节点 - 递归处理其 children
+    // Handle paragraph nodes - recursively process children
     if (node.type === 'paragraph') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
       return node.children.map(extractText).join('');
     }
 
-    // 处理列表项节点 - 递归处理其 children
+    // Handle list item nodes - recursively process children (excluding nested lists)
     if (node.type === 'listitem') {
-      return node.children.map(extractText).join('');
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      // Filter out nested list nodes as they are handled separately
+      return node.children
+        .filter((child) => child.type !== 'list')
+        .map(extractText)
+        .join('');
     }
 
-    // 处理列表节点 - 递归处理其 children
+    // Handle list nodes - recursively process children
     if (node.type === 'list') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
       return node.children.map(extractText).join('');
     }
 
+    // Unknown node type
+    console.warn('Unknown node type in extractText:', (node as any).type, node);
     return '';
   };
 
@@ -526,18 +541,14 @@ export const editorStateToText = (editor: LexicalEditor) => {
 
       children.forEach((child) => {
         const val = extractText(child);
-        if (val) {
-          paragraphText.push(val);
-        }
+        paragraphText.push(val);
       });
 
       const finalText = paragraphText.join('');
       editorStateTextString.push(indentSpaces + finalText);
     } else {
       const text = extractText(paragraph);
-      if (text) {
-        editorStateTextString.push(text);
-      }
+      editorStateTextString.push(text);
     }
   });
   return editorStateTextString.join('\n');
