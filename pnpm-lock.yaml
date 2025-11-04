@@ -72,8 +72,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: 0.2.13
-        version: 0.2.13(@types/node@20.14.0)
+        specifier: 0.2.15
+        version: 0.2.15(@types/node@20.14.0)
       axios:
         specifier: ^1.12.1
         version: 1.12.1
@@ -2332,8 +2332,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/plugin@0.2.13':
-    resolution: {integrity: sha512-P0Rq3rYNr3HC6Op68YUFSF0un7ZwgwwLxtygITQfy4XqWTWzMogb4npXJPMWiD89f3WvkdqPkVZfFEZzg2wzJQ==}
+  '@fastgpt-sdk/plugin@0.2.15':
+    resolution: {integrity: sha512-z2JMoQ02gDHDM3feWemY10GyI9g0AH9g1IUAuqSfThkmPMhdLGsB4B6V6r2aSCUCb9FbdNqJblzriPYH9VtP9w==}
 
   '@fastify/accept-negotiator@1.1.0':
     resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
@@ -11460,6 +11460,9 @@ packages:
   zod@3.24.1:
     resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
 
+  zod@3.25.51:
+    resolution: {integrity: sha512-TQSnBldh+XSGL+opiSIq0575wvDPqu09AqWe1F7JhUMKY+M91/aGlK4MhpVNO7MgYfHcVCB1ffwAUTJzllKJqg==}
+
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -13034,7 +13037,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/plugin@0.2.13(@types/node@20.14.0)':
+  '@fastgpt-sdk/plugin@0.2.15(@types/node@20.14.0)':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       '@ts-rest/core': 3.52.1(@types/node@20.14.0)(zod@3.25.76)
@@ -13737,8 +13740,8 @@ snapshots:
       express-rate-limit: 7.5.0(express@5.1.0)
       pkce-challenge: 5.0.0
       raw-body: 3.0.0
-      zod: 3.25.76
-      zod-to-json-schema: 3.24.5(zod@3.25.76)
+      zod: 3.25.51
+      zod-to-json-schema: 3.24.5(zod@3.25.51)
     transitivePeerDependencies:
       - supports-color
 
@@ -19975,9 +19978,9 @@ snapshots:
   langbase@1.1.44(encoding@0.1.13)(react@19.1.1):
     dependencies:
       dotenv: 16.4.7
-      openai: 4.87.3(encoding@0.1.13)(zod@3.25.76)
-      zod: 3.25.76
-      zod-validation-error: 3.4.0(zod@3.25.76)
+      openai: 4.87.3(encoding@0.1.13)(zod@3.25.51)
+      zod: 3.25.51
+      zod-validation-error: 3.4.0(zod@3.25.51)
     optionalDependencies:
       react: 19.1.1
     transitivePeerDependencies:
@@ -21527,7 +21530,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  openai@4.87.3(encoding@0.1.13)(zod@3.25.76):
+  openai@4.87.3(encoding@0.1.13)(zod@3.25.51):
     dependencies:
       '@types/node': 18.19.80
       '@types/node-fetch': 2.6.12
@@ -21537,7 +21540,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0(encoding@0.1.13)
     optionalDependencies:
-      zod: 3.25.76
+      zod: 3.25.51
     transitivePeerDependencies:
       - encoding
 
@@ -24532,15 +24535,17 @@ snapshots:
     dependencies:
       zod: 4.1.12
 
-  zod-to-json-schema@3.24.5(zod@3.25.76):
+  zod-to-json-schema@3.24.5(zod@3.25.51):
     dependencies:
-      zod: 3.25.76
+      zod: 3.25.51
 
-  zod-validation-error@3.4.0(zod@3.25.76):
+  zod-validation-error@3.4.0(zod@3.25.51):
     dependencies:
-      zod: 3.25.76
+      zod: 3.25.51
 
   zod@3.24.1: {}
+
+  zod@3.25.51: {}
 
   zod@3.25.76: {}
 
