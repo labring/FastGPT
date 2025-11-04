@@ -64,7 +64,7 @@ const ToolProvider = () => {
       {/* Header */}
       <Flex alignItems={'center'}>
         <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
-          {t('common:navbar.toolkit')}
+          {t('common:navbar.plugin')}
         </Box>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
           {t('app:toolkit_tags_manage')}

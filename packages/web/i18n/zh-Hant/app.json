@@ -337,7 +337,7 @@
   "tool_soon_offset_tips": "該工具將在後續下線，為了您的業務穩定，請盡快替換",
   "tool_tip": "作為工具執行時，該字段是否作為工具響應結果",
   "tool_type_tools": "工具",
-  "toolkit": "資源庫",
+  "plugin_db": "資源庫",
   "toolkit_activation_label": "密鑰激活",
   "toolkit_activation_not_required": "免激活",
   "toolkit_activation_required": "需要激活",

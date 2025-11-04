@@ -338,7 +338,7 @@
   "tool_soon_offset_tips": "This tool will be offline in the future. For the sake of your business stability, please replace it as soon as possible.",
   "tool_tip": "When executed as a tool, is this field used as a tool response result?",
   "tool_type_tools": "tool",
-  "toolkit": "Resource library",
+  "plugin_db": "Plugins",
   "toolkit_activation_label": "Key Activation",
   "toolkit_activation_not_required": "No Activation",
   "toolkit_activation_required": "Activation Required",

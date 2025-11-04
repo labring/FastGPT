@@ -163,7 +163,7 @@ const ToolKitProvider = () => {
               color={'myGray.900'}
               flex={'1 0 0'}
             >
-              {t('common:navbar.Tools')}
+              {t('common:navbar.plugin')}
             </Box>
             {feConfigs?.docUrl && (
               <Button

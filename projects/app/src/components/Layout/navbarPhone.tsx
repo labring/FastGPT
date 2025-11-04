@@ -48,11 +48,11 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:navbar.toolkit'),
+        label: t('common:navbar.plugin'),
         icon: 'core/app/pluginLight',
         activeIcon: 'core/app/pluginFill',
-        link: '/toolkit/tools',
-        activeLink: ['/toolkit/tools']
+        link: '/plugin/tool',
+        activeLink: ['/plugin/tool']
       },
       {
         label: t('common:navbar.Account'),
