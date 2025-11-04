@@ -166,7 +166,8 @@ const ToolDetailDrawer = ({
   systemTitle,
   onFetchDetail,
   isLoading,
-  showPoint
+  showPoint,
+  mode
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
@@ -175,6 +176,7 @@ const ToolDetailDrawer = ({
   onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
   isLoading?: boolean;
   showPoint: boolean;
+  mode: 'admin' | 'team' | 'marketplace';
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
@@ -186,7 +188,7 @@ const ToolDetailDrawer = ({
   const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
 
   const isDownload = useMemo(() => {
-    return false;
+    return mode === 'marketplace';
   }, []);
 
   useEffect(() => {
@@ -326,6 +328,7 @@ const ToolDetailDrawer = ({
                 isLoading={isLoading || loading}
                 onClick={async () => {
                   await onToggleInstall(!isInstalled);
+                  if (mode === 'marketplace') return;
                   setIsInstalled(!isInstalled);
                 }}
               >
