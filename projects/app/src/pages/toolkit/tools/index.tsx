@@ -372,6 +372,7 @@ const ToolKitProvider = () => {
               downloadUrl: ''
             };
           }}
+          mode="team"
         />
       )}
     </Box>

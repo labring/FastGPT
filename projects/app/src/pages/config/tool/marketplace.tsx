@@ -467,11 +467,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     </Flex>
                   )}
                 </Flex>
-                <ToolTagFilterBox
-                  tags={allTags}
-                  selectedTagIds={tagIds}
-                  onTagSelect={handleTagSelect}
-                />
+                <Box overflow={'auto'} mr={6}>
+                  <ToolTagFilterBox
+                    tags={allTags}
+                    selectedTagIds={tagIds}
+                    onTagSelect={handleTagSelect}
+                  />
+                </Box>
               </Flex>
             </Box>
           </Box>
@@ -630,6 +632,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             }
           }}
           isLoading={operatingToolIds.has(selectedTool.id)}
+          mode="admin"
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />

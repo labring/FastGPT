@@ -245,7 +245,7 @@ const ToolkitMarketplace = () => {
           >
             <Box
               opacity={showCompactSearch ? 1 : 0}
-              transition={'opacity 0.15s ease-out'}
+              transition={'opacity 0.1s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
               <Flex mt={2} pt={4} alignItems={'center'}>
@@ -316,17 +316,24 @@ const ToolkitMarketplace = () => {
                       borderColor={'myGray.200'}
                     >
                       <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                      <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                      <Box
+                        fontSize={'16px'}
+                        fontWeight={'medium'}
+                        color={'myGray.500'}
+                        whiteSpace={'nowrap'}
+                      >
                         {t('common:Search')}
                       </Box>
                     </Flex>
                   )}
                 </Flex>
-                <ToolTagFilterBox
-                  tags={toolTags}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
-                />
+                <Box overflow={'auto'} mr={6}>
+                  <ToolTagFilterBox
+                    tags={toolTags}
+                    selectedTagIds={selectedTagIds}
+                    onTagSelect={setSelectedTagIds}
+                  />
+                </Box>
               </Flex>
             </Box>
           </Box>
@@ -396,29 +403,22 @@ const ToolkitMarketplace = () => {
             </Box>
           </VStack>
 
-          {/* 工具卡片网格 */}
           <Box px={8} pb={6}>
-            {/* 底部tag区域 - 使用固定高度容器 */}
-            <Box
-              h={showCompactSearch ? '0' : '56px'}
-              transition={'height 0.15s ease-out'}
-              overflow={'hidden'}
+            <Flex
+              mt={2}
+              mb={4}
+              alignItems={'center'}
+              opacity={showCompactSearch ? 0 : 1}
+              pointerEvents={showCompactSearch ? 'none' : 'auto'}
             >
-              <Flex
-                mt={2}
-                mb={4}
-                alignItems={'center'}
-                opacity={showCompactSearch ? 0 : 1}
-                transition={'opacity 0.15s ease-out'}
-                pointerEvents={showCompactSearch ? 'none' : 'auto'}
-              >
+              <Box flex={'1'} overflow={'auto'}>
                 <ToolTagFilterBox
                   tags={toolTags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />
-              </Flex>
-            </Box>
+              </Box>
+            </Flex>
             {displayTools.length > 0 ? (
               <Grid
                 gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
@@ -458,7 +458,9 @@ const ToolkitMarketplace = () => {
         <ToolDetailDrawer
           onClose={() => setSelectedTool(null)}
           showPoint={false}
+          mode="marketplace"
           selectedTool={selectedTool}
+          // @ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => window.open(selectedTool.downloadUrl)}
         />
