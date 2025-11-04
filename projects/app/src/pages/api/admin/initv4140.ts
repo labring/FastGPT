@@ -4,18 +4,23 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoToolGroups } from '@fastgpt/service/core/plugin/tool/pluginGroupSchema';
-import { MongoTeamInstalledPlugin } from '@fastgpt/service/core/plugin/schema/teamInstalledPluginSchema';
-import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { connectionMongo } from '@fastgpt/service/common/mongo/index';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 
 const { Schema } = connectionMongo;
 
 /**
- * 1. app_system_plugins → system_plugin_tools
- * 2. app_plugin_groups → system_plugin_tool_tags
- * 3. team_installed_plugins
+  表迁移（直接读取信息，然后复制过去）
+  1. fastgpt_plugins -> system_plugins （新表是空的，不会有任何数据，可以忽略操作）
+  2. app_system_plugins -> system_plugin_tools
+  数据迁移
+  1. app_plugin_groups 里的数据，当做一个 tag 加到 system_plugin_tool_tags 里
+  2. system_plugin_tools:
+    1. isActive -> status
+    2. templateType -> tags
+    3. defaultInstalled: false
  */
 async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>) {
   await authCert({ req, authRoot: true });
@@ -23,20 +28,16 @@ async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>
   addLog.info('[initv4140] 开始执行 v4.14.0 数据迁移');
 
   try {
+    // 1. 迁移 group 到 tags 里
     const { migratedCount, typeToGroupMap } = await migrateGroupsToTags();
+    // 2. 把 app_system_plugins 的数据迁移到 system_plugin_tools 里
     const migratedToolsCount = await migrateSystemPluginsToTools(typeToGroupMap);
-    const installedRecordsCount = await createTeamInstalledRecords();
-
-    addLog.info(
-      `[initv4140] 迁移完成: ${migratedCount} 个标签, ${migratedToolsCount} 个工具, ${installedRecordsCount} 条安装记录`
-    );
 
     return {
       success: true,
-      message: `迁移完成: ${migratedCount} 个标签, ${migratedToolsCount} 个工具, ${installedRecordsCount} 条安装记录`,
+      message: `迁移完成: ${migratedCount} 个标签, ${migratedToolsCount} 个工具`,
       migratedCount,
-      migratedToolsCount,
-      installedRecordsCount
+      migratedToolsCount
     };
   } catch (error) {
     addLog.error('[initv4140] 迁移失败:', error);
@@ -77,7 +78,7 @@ async function migrateGroupsToTags(): Promise<{
       });
     }
 
-    group.groupTypes.forEach((type) => {
+    group.groupTypes.forEach((type: { typeId: string; typeName: any }) => {
       tags.push({
         tagId: type.typeId,
         tagName: type.typeName,
@@ -100,7 +101,17 @@ async function migrateGroupsToTags(): Promise<{
 
   // 插入新标签
   if (tagsToInsert.length > 0) {
-    await MongoPluginToolTag.insertMany(tagsToInsert);
+    for (const tag of tagsToInsert) {
+      await MongoPluginToolTag.updateOne(
+        {
+          tagId: tag.tagId
+        },
+        tag,
+        {
+          upsert: true
+        }
+      );
+    }
     addLog.info(
       `[initv4140] 标签迁移: 源表 ${uniqueTags.length} 条, 已存在 ${existingTagIds.length} 条, 成功插入 ${tagsToInsert.length} 条`
     );
@@ -159,6 +170,8 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
       pluginId: plugin.pluginId?.startsWith(AppToolSourceEnum.community)
         ? plugin.pluginId.replace(AppToolSourceEnum.community, AppToolSourceEnum.systemTool)
         : plugin.pluginId,
+      status: !plugin.isActive ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
+      defaultInstalled: false,
       originCost: plugin.originCost || 0,
       currentCost: plugin.currentCost || 0,
       hasTokenFee: plugin.hasTokenFee || false,
@@ -179,106 +192,22 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
       delete newTool.customConfig.templateType;
     }
 
-    // 迁移 isActive → status
-    newTool.status = !plugin.isActive ? PluginStatusEnum.Offline : PluginStatusEnum.Normal;
-    // 添加 defaultInstalled 字段
-    newTool.defaultInstalled = false;
-
     newTools.push(newTool);
   }
 
-  // 4. 查询目标表中已存在的 toolId
-  const db = connectionMongo.connection.db;
-  const existingTools = await db
-    ?.collection('system_plugin_tools')
-    .find({}, { projection: { toolId: 1 } })
-    .toArray();
-
-  const existingToolIdSet = new Set(existingTools?.map((tool: any) => tool.toolId) || []);
-
-  // 过滤掉已存在的工具
-  const toolsToInsert = newTools.filter((tool) => !existingToolIdSet.has(tool.toolId));
-
   // 5. 批量插入新工具到新表
-  if (toolsToInsert.length > 0) {
-    await db?.collection('system_plugin_tools').insertMany(toolsToInsert);
-    addLog.info(
-      `[initv4140] 工具迁移: 源表 ${newTools.length} 条, 已存在 ${existingToolIdSet.size} 条, 成功插入 ${toolsToInsert.length} 条`
-    );
-  } else {
-    addLog.info(
-      `[initv4140] 工具迁移: 源表 ${newTools.length} 条, 已存在 ${existingToolIdSet.size} 条, 无需插入新数据`
-    );
-  }
-
-  return toolsToInsert.length;
-}
-
-/**
- * 为所有团队和所有工具创建已安装记录
- * 从新表 system_plugin_tools 读取工具数据(使用 toolId 字段)
- */
-async function createTeamInstalledRecords(): Promise<number> {
-  // 获取所有团队
-  const teams = await MongoTeam.find({}).lean();
-  if (!teams.length) {
-    addLog.warn('[initv4140] 无团队数据，跳过创建安装记录');
-    return 0;
-  }
-
-  // 从新表 system_plugin_tools 获取所有工具
-  const db = connectionMongo.connection.db;
-  const tools = await db?.collection('system_plugin_tools').find({}).toArray();
-
-  if (!tools?.length) {
-    addLog.warn('[initv4140] system_plugin_tools 无数据，跳过创建安装记录');
-    return 0;
-  }
-
-  // 查询已存在的安装记录
-  const existingRecords = await MongoTeamInstalledPlugin.find(
-    {},
-    { teamId: 1, pluginId: 1 }
-  ).lean();
-
-  // 构建已存在的 teamId-pluginId 组合的 Set
-  const existingRecordSet = new Set(
-    existingRecords.map((record) => `${record.teamId}-${record.pluginId}`)
-  );
-
-  // 为每个团队和每个工具创建安装记录
-  // 注意: team_installed_plugins 表的 pluginId 字段将存储新表的 toolId 值
-  const installedRecords = [];
-  for (const team of teams) {
-    for (const tool of tools) {
-      const toolId = tool.pluginId;
-      const recordKey = `${team._id}-${toolId}`;
-
-      // 跳过已存在的记录
-      if (!existingRecordSet.has(recordKey)) {
-        installedRecords.push({
-          teamId: team._id,
-          pluginType: 'tool',
-          pluginId: tool.pluginId,
-          installed: true
-        });
-      }
+  if (newTools.length > 0) {
+    for (const tool of newTools) {
+      await MongoSystemTool.updateOne({ pluginId: tool.pluginId }, tool, {
+        upsert: true
+      });
     }
-  }
-
-  // 批量插入新记录
-  if (installedRecords.length > 0) {
-    await MongoTeamInstalledPlugin.insertMany(installedRecords);
-    addLog.info(
-      `[initv4140] 安装记录创建: 应有 ${teams.length * tools.length} 条, 已存在 ${existingRecords.length} 条, 成功插入 ${installedRecords.length} 条`
-    );
+    addLog.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条`);
   } else {
-    addLog.info(
-      `[initv4140] 安装记录创建: 应有 ${teams.length * tools.length} 条, 已存在 ${existingRecords.length} 条, 无需插入新数据`
-    );
+    addLog.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条, 无需插入新数据`);
   }
 
-  return installedRecords.length;
+  return newTools.length;
 }
 
 export default NextAPI(handler);

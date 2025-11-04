@@ -7,7 +7,8 @@ export const collectionName = 'system_plugin_tool_tags';
 const SystemPluginToolTagSchema = new Schema({
   tagId: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   tagName: {
     type: Schema.Types.Mixed,
@@ -23,7 +24,6 @@ const SystemPluginToolTagSchema = new Schema({
   }
 });
 
-SystemPluginToolTagSchema.index({ tagId: 1 }, { unique: true });
 SystemPluginToolTagSchema.index({ tagOrder: 1 });
 
 export const MongoPluginToolTag = getMongoModel<SystemPluginToolTagType>(
