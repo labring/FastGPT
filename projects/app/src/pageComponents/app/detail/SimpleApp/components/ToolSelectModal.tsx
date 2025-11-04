@@ -36,6 +36,8 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import { types } from 'util';
+import { useRouter } from 'next/router';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -235,6 +237,7 @@ const RenderList = React.memo(function RenderList({
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
@@ -470,8 +473,25 @@ const RenderList = React.memo(function RenderList({
   });
 
   return (
-    <>
+    <Flex flexDirection={'column'} justifyContent={'space-between'} h={'100%'} pb={2}>
       <PluginListRender />
+      <Flex justifyContent={'end'}>
+        {type === TemplateTypeEnum.appTool && (
+          <Flex
+            alignItems={'center'}
+            cursor={'pointer'}
+            _hover={{
+              color: 'primary.600'
+            }}
+            onClick={() => router.push('/toolkit/tools')}
+            gap={1}
+            ml={4}
+          >
+            <Box fontSize={'sm'}>{t('app:find_more_tools')}</Box>
+            <MyIcon name={'common/rightArrowLight'} w={'0.9rem'} />
+          </Flex>
+        )}
+      </Flex>
 
       {!!configTool && (
         <ConfigToolModal
@@ -480,6 +500,6 @@ const RenderList = React.memo(function RenderList({
           onAddTool={onAddTool}
         />
       )}
-    </>
+    </Flex>
   );
 });
