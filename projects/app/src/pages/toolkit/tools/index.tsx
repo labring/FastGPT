@@ -1,7 +1,6 @@
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -21,7 +20,7 @@ import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getTeamToolDetail } from '@/web/core/plugin/tool/api';
+import { getTeamToolDetail } from '@/web/core/plugin/team/api';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -119,7 +118,7 @@ const ToolKitProvider = () => {
       })
       .filter((tool) => {
         if (selectedTagIds.length === 0) return true;
-        return tool.toolTags?.some((tagId) => selectedTagIds.includes(tagId));
+        return tool.tags?.some((tagId) => selectedTagIds.includes(tagId));
       })
       .filter((tool) => {
         if (installedFilter === 'all') return true;
@@ -134,14 +133,14 @@ const ToolKitProvider = () => {
         description: tool.intro,
         icon: tool.avatar,
         author: tool.author,
-        tags: tool.toolTags?.map((tagId) =>
+        tags: tool.tags?.map((tagId) =>
           parseI18nString(tags.find((tag) => tag.tagId === tagId)?.tagName || '', i18n.language)
         ),
         status: tool.status,
         installed: tool.installed,
         associatedPluginId: tool.associatedPluginId
       }));
-  }, [tools, searchText, selectedTagIds, installedFilter]);
+  }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
 
   return (
     <Box h={'full'} py={6} pr={6}>
@@ -213,7 +212,7 @@ const ToolKitProvider = () => {
                     />
                     <Input
                       px={8}
-                      h={10}
+                      h={'35px'}
                       borderRadius={'md'}
                       placeholder={t('common:search_tool')}
                       value={searchText}
@@ -252,12 +251,12 @@ const ToolKitProvider = () => {
                     _hover={{ bg: 'myGray.100' }}
                     onClick={() => setIsSearchExpanded(true)}
                     p={2}
-                    py={1.5}
+                    h={'35px'}
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                   >
                     <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                    <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                    <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.500'}>
                       {t('common:Search')}
                     </Box>
                   </Flex>
@@ -271,7 +270,7 @@ const ToolKitProvider = () => {
                 onTagSelect={setSelectedTagIds}
               />
             </Box>
-            <Box w={40} />
+            <Box w={10} />
             <MyMenu
               trigger="hover"
               Button={
@@ -366,7 +365,6 @@ const ToolKitProvider = () => {
           }}
           systemTitle={feConfigs.systemTitle}
           isLoading={loadingPluginIds.has(selectedTool.id)}
-          //@ts-ignore
           onFetchDetail={async (toolId: string) => {
             const res = await getTeamToolDetail({ toolId });
             return {

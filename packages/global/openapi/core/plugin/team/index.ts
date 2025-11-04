@@ -1,6 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
 import { GetTeamPluginListResponseSchema, ToggleInstallPluginBodySchema } from './api';
 import { TagsMap } from '../../../tag';
+import { GetTeamToolDetailQuerySchema, TeamToolDetailSchema } from './toolApi';
 
 export const PluginTeamPath: OpenAPIPath = {
   '/core/plugin/team/list': {
@@ -36,6 +37,28 @@ export const PluginTeamPath: OpenAPIPath = {
         200: {
           description: '请求成功',
           content: {}
+        }
+      }
+    }
+  },
+
+  // Tool
+  '/core/plugin/team/toolDetail': {
+    get: {
+      summary: '获取工具卡片详情',
+      description: '获取工具片详情',
+      tags: [TagsMap.pluginTeam],
+      requestParams: {
+        query: GetTeamToolDetailQuerySchema
+      },
+      responses: {
+        200: {
+          description: '获取工具卡片详情成功',
+          content: {
+            'application/json': {
+              schema: TeamToolDetailSchema
+            }
+          }
         }
       }
     }

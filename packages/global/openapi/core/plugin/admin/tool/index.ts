@@ -125,7 +125,8 @@ export const AdminPluginToolPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/admin/tool/app/systemApps': {
+  // Workflow tool
+  '/core/plugin/admin/tool/workflow/systemApps': {
     post: {
       summary: '获取所有系统工具类型应用',
       description: '获取所有系统工具类型应用，用于选择系统上的应用作为系统工具。需要系统管理员权限',
@@ -149,7 +150,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/admin/tool/app/create': {
+  '/core/plugin/admin/tool/workflow/create': {
     post: {
       summary: '将系统应用设置成系统工具',
       description: '将系统应用设置成系统工具，需要系统管理员权限',

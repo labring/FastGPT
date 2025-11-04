@@ -4,10 +4,12 @@ export const GetTeamToolDetailQuerySchema = z.object({
   toolId: z.string()
 });
 export type GetTeamToolDetailQueryType = z.infer<typeof GetTeamToolDetailQuerySchema>;
+
 export const ToolDetailItemSchema = z.object({
   name: z.string(),
   intro: z.string(),
   icon: z.string().nullish(),
+  readme: z.string().nullish(),
   versionList: z.array(
     z.object({
       inputs: z.array(

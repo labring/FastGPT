@@ -4,12 +4,11 @@ import { getChildAppPreviewNode, getSystemTools } from '@fastgpt/service/core/ap
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import type {
   GetTeamToolDetailQueryType,
   GetTeamToolDetailResponseType
-} from '@fastgpt/global/openapi/core/plugin/tool/api';
+} from '@fastgpt/global/openapi/core/plugin/team/toolApi';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type detailQuery = GetTeamToolDetailQueryType;
@@ -34,6 +33,7 @@ async function handler(
   if (!systemTool) {
     return Promise.reject(PluginErrEnum.unExist);
   }
+
   if (systemTool.associatedPluginId) {
     const actualTool = await getChildAppPreviewNode({
       appId: systemTool.associatedPluginId,
