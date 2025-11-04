@@ -136,13 +136,8 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
   // 增强的快照保存函数 - 优先保证数据保存
   const pushPastSnapshot = useCallback(
-    ({
-      pastNodes,
-      pastEdges,
-      chatConfig,
-      customTitle,
-      isSaved
-    }: Parameters<WorkflowSnapshotContextValue['pushPastSnapshot']>[0]) => {
+    (data: Parameters<WorkflowSnapshotContextValue['pushPastSnapshot']>[0]) => {
+      const { pastNodes, pastEdges, chatConfig, customTitle, isSaved } = data;
       // 1. 基础数据验证 - 仅确保基本结构存在
       if (!pastNodes || !pastEdges || !chatConfig) {
         console.warn('[Snapshot] Invalid snapshot data:', {
@@ -160,12 +155,11 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
       // 3. 处理被阻塞的快照
       if (forbiddenSaveSnapshot.current) {
+        forbiddenSaveSnapshot.current = false;
         console.warn('[Snapshot] Snapshot creation blocked, adding to pending queue');
 
         // 将快照加入待处理队列
-        pendingSnapshotRef.current = {
-          data: { pastNodes, pastEdges, chatConfig, customTitle, isSaved }
-        };
+        pendingSnapshotRef.current = { data };
 
         // 500ms后尝试处理待保存的快照
         if (pendingSnapshotRef.current.timeoutId) {
@@ -174,9 +168,8 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
         pendingSnapshotRef.current.timeoutId = setTimeout(() => {
           if (pendingSnapshotRef.current?.data) {
-            const snapshot = pendingSnapshotRef.current.data;
             console.log('[Snapshot] Processing pending snapshot from queue');
-            pushPastSnapshot(snapshot);
+            pushPastSnapshot(pendingSnapshotRef.current.data);
             pendingSnapshotRef.current = { data: null };
           } else {
             console.log('[Snapshot] No pending snapshot to process');
@@ -201,7 +194,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
       );
 
       if (isPastEqual) {
-        console.debug('[Snapshot] Snapshot is identical to previous, skipping');
+        console.log('[Snapshot] Snapshot is identical to previous, skipping');
         return false;
       }
 
@@ -216,12 +209,21 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         };
 
         setFuture([]);
-        setPast((past) => [
-          newSnapshot,
-          ...past.slice(0, maxSnapshots - 1) // 保留最近100个快照
-        ]);
+        setPast((past) => {
+          if (past.length === 0) {
+            return [newSnapshot];
+          }
+          const initialSnapshot = past[past.length - 1];
 
-        console.debug('[Snapshot] Snapshot saved successfully:', {
+          // 如果还没达到上限，正常添加（不重复保存 initialSnapshot）
+          if (past.length < maxSnapshots) {
+            return [newSnapshot, ...past];
+          }
+
+          return [newSnapshot, ...past.slice(0, -1).slice(0, maxSnapshots - 2), initialSnapshot];
+        });
+
+        console.log('[Snapshot] Snapshot saved successfully:', {
           title: newSnapshot.title,
           nodeCount: newSnapshot.nodes.length,
           edgeCount: newSnapshot.edges.length,

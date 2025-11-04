@@ -11,12 +11,12 @@ import MyIcon from '../Icon';
 const DateTimePicker = ({
   onChange,
   popPosition = 'bottom',
-  defaultDate = new Date(),
+  defaultDate,
   selectedDateTime,
   disabled,
   ...props
 }: {
-  onChange?: (dateTime: Date) => void;
+  onChange?: (dateTime: Date | undefined) => void;
   popPosition?: 'bottom' | 'top';
   defaultDate?: Date;
   selectedDateTime?: Date;
@@ -29,9 +29,7 @@ const DateTimePicker = ({
   const [showSelected, setShowSelected] = useState(false);
 
   useEffect(() => {
-    if (selectedDateTime) {
-      setSelectedDate(selectedDateTime);
-    }
+    setSelectedDate(selectedDateTime);
   }, [selectedDateTime]);
 
   const formatSelected = useMemo(() => {
@@ -39,7 +37,7 @@ const DateTimePicker = ({
       const dateStr = format(selectedDate, 'y/MM/dd');
       return dateStr;
     }
-    return format(new Date(), 'y/MM/dd');
+    return '';
   }, [selectedDate]);
 
   useOutsideClick({
@@ -60,7 +58,7 @@ const DateTimePicker = ({
         cursor={'pointer'}
         bg={'myGray.50'}
         fontSize={'sm'}
-        onClick={() => setShowSelected(true)}
+        onClick={() => setShowSelected((state) => !state)}
         alignItems={'center'}
         {...props}
       >
@@ -72,7 +70,7 @@ const DateTimePicker = ({
       {showSelected && (
         <Card
           position={'absolute'}
-          zIndex={1}
+          zIndex={10}
           css={{
             '--rdp-background-color': '#d6e8ff',
             '--rdp-accent-color': '#0000ff'
@@ -90,11 +88,9 @@ const DateTimePicker = ({
             selected={selectedDate}
             disabled={disabled}
             onSelect={(date) => {
-              if (date) {
-                setSelectedDate(date);
-                onChange?.(date);
-                setShowSelected(false);
-              }
+              setSelectedDate(date);
+              onChange?.(date);
+              setShowSelected(false);
             }}
           />
         </Card>

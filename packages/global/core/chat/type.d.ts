@@ -51,16 +51,18 @@ export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
 };
 
 /* --------- chat item ---------- */
+export type UserChatItemFileItemType = {
+  type: `${ChatFileTypeEnum}`;
+  name?: string;
+  key?: string;
+  url: string;
+};
 export type UserChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
     content: string;
   };
-  file?: {
-    type: `${ChatFileTypeEnum}`;
-    name?: string;
-    url: string;
-  };
+  file?: UserChatItemFileItemType;
 };
 export type UserChatItemType = {
   obj: ChatRoleEnum.Human;

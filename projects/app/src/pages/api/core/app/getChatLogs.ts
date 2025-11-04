@@ -17,19 +17,13 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(
-  req: NextApiRequest,
+  req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const {
-    appId,
-    dateStart = addDays(new Date(), -7),
-    dateEnd = new Date(),
-    sources,
-    tmbIds,
-    chatSearch
-  } = req.body as GetAppChatLogsParams;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 

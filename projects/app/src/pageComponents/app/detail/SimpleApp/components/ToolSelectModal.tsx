@@ -1,38 +1,20 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
-import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Box,
-  Button,
-  css,
-  Flex,
-  Grid
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   type FlowNodeTemplateType,
-  type NodeTemplateListItemType,
-  type NodeTemplateListType
+  type NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getPluginGroups,
-  getPreviewPluginNode,
-  getSystemPlugTemplates,
-  getSystemPluginPaths
-} from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
+import { getTeamAppTemplates } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
@@ -49,9 +31,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import { types } from 'util';
+import { useRouter } from 'next/router';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -69,20 +55,21 @@ export const childAppSystemKey: string[] = [
 ];
 
 enum TemplateTypeEnum {
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
+  'appTool' = 'appTool',
+  'teamApp' = 'teamApp'
 }
 
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemPlugin);
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.appTool);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const {
-    data: templates = [],
+    data: rawTemplates = [],
     runAsync: loadTemplates,
     loading: isLoading
   } = useRequest2(
@@ -95,10 +82,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentId?: ParentIdType;
       searchVal?: string;
     }) => {
-      if (type === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates({ parentId, searchKey: searchVal });
-      } else if (type === TemplateTypeEnum.teamPlugin) {
-        return getTeamPlugTemplates({
+      if (type === TemplateTypeEnum.appTool) {
+        return getAppToolTemplates({ parentId, searchKey: searchVal });
+      } else if (type === TemplateTypeEnum.teamApp) {
+        return getTeamAppTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appDetail._id));
@@ -114,17 +101,31 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
+  const templates = useMemo(() => {
+    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.appTool) {
+      return rawTemplates;
+    }
+    return rawTemplates.filter((template) => {
+      // @ts-ignore
+      return template.tags?.some((tag) => selectedTagIds.includes(tag));
+    });
+  }, [rawTemplates, selectedTagIds, templateType]);
+
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin)
+      if (templateType === TemplateTypeEnum.teamApp)
         return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
       refreshDeps: [parentId]
     }
   );
+
+  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
@@ -158,12 +159,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             {
               icon: 'phoneTabbar/tool',
               label: t('common:navbar.Toolkit'),
-              value: TemplateTypeEnum.systemPlugin
+              value: TemplateTypeEnum.appTool
             },
             {
-              icon: 'core/modules/teamPlugin',
+              icon: 'support/user/userLightSmall',
               label: t('common:core.module.template.Team app'),
-              value: TemplateTypeEnum.teamPlugin
+              value: TemplateTypeEnum.teamApp
             }
           ]}
           py={'5px'}
@@ -181,13 +182,23 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
-              templateType === TemplateTypeEnum.systemPlugin
+              templateType === TemplateTypeEnum.appTool
                 ? t('common:search_tool')
                 : t('app:search_app')
             }
           />
         </Box>
       </Box>
+      {templateType === TemplateTypeEnum.appTool && allTags.length > 0 && (
+        <Box mt={3} px={[3, 6]}>
+          <ToolTagFilterBox
+            tags={allTags}
+            selectedTagIds={selectedTagIds}
+            onTagSelect={setSelectedTagIds}
+            size="sm"
+          />
+        </Box>
+      )}
       {/* route components */}
       {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
@@ -195,7 +206,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         </Flex>
       )}
       <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
-        <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
+        <Box overflow={'overlay'} height={'100%'}>
           <RenderList
             templates={templates}
             type={templateType}
@@ -217,8 +228,7 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig,
-  selectedModel
+  chatConfig
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
@@ -227,6 +237,7 @@ const RenderList = React.memo(function RenderList({
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
@@ -234,7 +245,7 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
-      const res = await getPreviewPluginNode({ appId: template.id });
+      const res = await getToolPreviewNode({ appId: template.id });
 
       /* Invalid plugin check
         1. Reference type. but not tool description;
@@ -321,274 +332,169 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
-    manual: false
-  });
-
-  const formatTemplatesArray = useMemo(() => {
-    const data = (() => {
-      if (type === TemplateTypeEnum.systemPlugin) {
-        return pluginGroups.map((group) => {
-          const map = group.groupTypes.reduce<
-            Record<
-              string,
-              {
-                list: NodeTemplateListItemType[];
-                label: string;
-              }
-            >
-          >((acc, item) => {
-            acc[item.typeId] = {
-              list: [],
-              label: t(parseI18nString(item.typeName, i18n.language))
-            };
-            return acc;
-          }, {});
-
-          templates.forEach((item) => {
-            if (map[item.templateType]) {
-              map[item.templateType].list.push({
-                ...item,
-                name: t(parseI18nString(item.name, i18n.language)),
-                intro: t(parseI18nString(item.intro, i18n.language))
-              });
-            }
-          });
-          return {
-            label: group.groupName,
-            list: Object.entries(map)
-              .map(([type, { list, label }]) => ({
-                type,
-                label,
-                list
-              }))
-              .filter((item) => item.list.length > 0)
-          };
-        });
-      }
-
-      // Team apps
-      return [
-        {
-          list: [
-            {
-              list: templates,
-              type: '',
-              label: ''
-            }
-          ],
-          label: ''
-        }
-      ];
-    })();
-
-    return data.filter(({ list }) => list.length > 0);
-  }, [i18n.language, pluginGroups, t, templates, type]);
-
-  const gridStyle = useMemo(() => {
-    if (type === TemplateTypeEnum.teamPlugin) {
-      return {
-        gridTemplateColumns: ['1fr', '1fr'],
-        py: 2,
-        avatarSize: '2rem'
-      };
-    }
-
-    return {
-      gridTemplateColumns: ['1fr', '1fr 1fr'],
-      py: 3,
-      avatarSize: '1.75rem'
-    };
-  }, [type]);
-
-  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
-    const isSystemTool = type === TemplateTypeEnum.systemPlugin;
+  const PluginListRender = useMemoizedFn(() => {
+    const isSystemTool = type === TemplateTypeEnum.appTool;
     return (
       <>
-        {list.map((item, i) => {
-          return (
-            <Box
-              key={item.type}
-              css={css({
-                span: {
-                  display: 'block'
-                }
-              })}
-            >
-              <Flex>
-                <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
-                  {t(item.label as any)}
-                </Box>
-              </Flex>
-              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2} columnGap={3}>
-                {item.list.map((template) => {
-                  const selected = selectedTools.some((tool) => tool.pluginId === template.id);
-
-                  return (
-                    <MyTooltip
-                      key={template.id}
-                      label={
-                        <Box py={2} minW={['auto', '250px']}>
-                          <Flex alignItems={'center'}>
-                            <MyAvatar
-                              src={template.avatar}
-                              w={'1.75rem'}
-                              objectFit={'contain'}
-                              borderRadius={'sm'}
-                            />
-                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
-                              {t(template.name as any)}
-                            </Box>
-                            {isSystemTool && (
-                              <Box color={'myGray.500'}>
-                                By {template.author || feConfigs?.systemTitle}
-                              </Box>
-                            )}
-                          </Flex>
-                          <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                            {t(template.intro as any) || t('common:core.workflow.Not intro')}
-                          </Box>
-                          {isSystemTool && (
-                            <CostTooltip
-                              cost={template.currentCost}
-                              hasTokenFee={template.hasTokenFee}
-                            />
-                          )}
-                        </Box>
-                      }
-                    >
-                      <Flex
-                        alignItems={'center'}
-                        py={gridStyle.py}
-                        px={3}
-                        _hover={{ bg: 'myWhite.600' }}
-                        borderRadius={'sm'}
-                        whiteSpace={'nowrap'}
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                      >
+        {templates.length > 0 ? (
+          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3} px={[3, 6]}>
+            {templates.map((template) => {
+              const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+              return (
+                <MyTooltip
+                  key={template.id}
+                  label={
+                    <Box py={2} minW={['auto', '250px']}>
+                      <Flex alignItems={'center'}>
                         <MyAvatar
                           src={template.avatar}
-                          w={gridStyle.avatarSize}
+                          w={'1.75rem'}
                           objectFit={'contain'}
                           borderRadius={'sm'}
-                          flexShrink={0}
                         />
-                        <Box
-                          color={'myGray.900'}
-                          fontWeight={'500'}
-                          fontSize={'sm'}
-                          flex={'1 0 0'}
-                          ml={3}
-                          className="textEllipsis"
-                        >
-                          {t(template.name as any)}
+                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
+                          {t(parseI18nString(template.name, i18n.language))}
                         </Box>
-
-                        {selected ? (
-                          <Button
-                            size={'sm'}
-                            variant={'grayDanger'}
-                            leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
-                            onClick={() => onRemoveTool(template)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Remove')}
-                          </Button>
-                        ) : template.flowNodeType === 'toolSet' ? (
-                          <Flex gap={2}>
-                            <Button
-                              size={'sm'}
-                              variant={'whiteBase'}
-                              isLoading={isLoading}
-                              leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                              onClick={() => setParentId(template.id)}
-                              px={2}
-                              fontSize={'mini'}
-                            >
-                              {t('common:Open')}
-                            </Button>
-                            <Button
-                              size={'sm'}
-                              variant={'primaryOutline'}
-                              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
-                              isLoading={isLoading}
-                              onClick={() => onClickAdd(template)}
-                              px={2}
-                              fontSize={'mini'}
-                            >
-                              {t('common:Add')}
-                            </Button>
-                          </Flex>
-                        ) : template.isFolder ? (
-                          <Button
-                            size={'sm'}
-                            variant={'whiteBase'}
-                            leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                            onClick={() => setParentId(template.id)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Open')}
-                          </Button>
-                        ) : (
-                          <Button
-                            size={'sm'}
-                            variant={'primaryOutline'}
-                            leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
-                            isLoading={isLoading}
-                            onClick={() => onClickAdd(template)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Add')}
-                          </Button>
+                        {isSystemTool && (
+                          <Box color={'myGray.500'}>
+                            By {template.author || feConfigs?.systemTitle}
+                          </Box>
                         )}
                       </Flex>
-                    </MyTooltip>
-                  );
-                })}
-              </Grid>
-            </Box>
-          );
-        })}
+                      <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+                        {t(parseI18nString(template.intro || '', i18n.language)) ||
+                          t('common:core.workflow.Not intro')}
+                      </Box>
+                      {isSystemTool && (
+                        <CostTooltip
+                          cost={template.currentCost}
+                          hasTokenFee={template.hasTokenFee}
+                        />
+                      )}
+                    </Box>
+                  }
+                >
+                  <Flex
+                    alignItems={'center'}
+                    py={3}
+                    px={3}
+                    _hover={{ bg: 'myWhite.600' }}
+                    borderRadius={'sm'}
+                    h={'100%'}
+                  >
+                    <MyAvatar
+                      src={template.avatar}
+                      w={'1.75rem'}
+                      objectFit={'contain'}
+                      borderRadius={'sm'}
+                      flexShrink={0}
+                    />
+                    <Box flex={'1 0 0'} ml={3}>
+                      <Box
+                        color={'myGray.900'}
+                        fontWeight={'500'}
+                        fontSize={'sm'}
+                        className="textEllipsis"
+                      >
+                        {t(parseI18nString(template.name, i18n.language))}
+                      </Box>
+                    </Box>
+
+                    {selected ? (
+                      <Button
+                        size={'sm'}
+                        variant={'grayDanger'}
+                        leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
+                        onClick={() => onRemoveTool(template)}
+                        px={2}
+                        fontSize={'mini'}
+                      >
+                        {t('common:Remove')}
+                      </Button>
+                    ) : template.flowNodeType === 'toolSet' ? (
+                      <Flex gap={2}>
+                        <Button
+                          size={'sm'}
+                          variant={'whiteBase'}
+                          isLoading={isLoading}
+                          leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
+                          onClick={() => setParentId(template.id)}
+                          px={2}
+                          fontSize={'mini'}
+                        >
+                          {t('common:Open')}
+                        </Button>
+                        <Button
+                          size={'sm'}
+                          variant={'primaryOutline'}
+                          leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                          isLoading={isLoading}
+                          onClick={() => onClickAdd(template)}
+                          px={2}
+                          fontSize={'mini'}
+                        >
+                          {t('common:Add')}
+                        </Button>
+                      </Flex>
+                    ) : template.isFolder ? (
+                      <Button
+                        size={'sm'}
+                        variant={'whiteBase'}
+                        leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
+                        onClick={() => setParentId(template.id)}
+                        px={2}
+                        fontSize={'mini'}
+                      >
+                        {t('common:Open')}
+                      </Button>
+                    ) : (
+                      <Button
+                        size={'sm'}
+                        variant={'primaryOutline'}
+                        leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                        isLoading={isLoading}
+                        onClick={() => onClickAdd(template)}
+                        px={2}
+                        fontSize={'mini'}
+                      >
+                        {t('common:Add')}
+                      </Button>
+                    )}
+                  </Flex>
+                </MyTooltip>
+              );
+            })}
+          </Grid>
+        ) : (
+          <EmptyTip text={t('app:module.No Modules')} />
+        )}
       </>
     );
   });
 
-  return templates.length === 0 ? (
-    <EmptyTip text={t('app:module.No Modules')} />
-  ) : (
-    <>
-      <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
-        {formatTemplatesArray.length > 1 ? (
-          <>
-            {formatTemplatesArray.map(({ list, label }, index) => (
-              <AccordionItem key={index} border={'none'}>
-                <AccordionButton
-                  fontSize={'sm'}
-                  fontWeight={'500'}
-                  color={'myGray.900'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  px={3}
-                >
-                  {t(label as any)}
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel py={0}>
-                  <PluginListRender list={list} />
-                </AccordionPanel>
-              </AccordionItem>
-            ))}
-          </>
-        ) : (
-          <PluginListRender list={formatTemplatesArray?.[0]?.list} />
-        )}
-      </Accordion>
-
+  return (
+    <Flex position="relative" direction="column" h="100%">
+      <Box overflowY="auto" mb={8} w={'full'}>
+        <PluginListRender />
+      </Box>
+      {type === TemplateTypeEnum.appTool && (
+        <Flex
+          alignItems="center"
+          cursor="pointer"
+          _hover={{
+            color: 'primary.600'
+          }}
+          onClick={() => router.push('/toolkit/tools')}
+          gap={1}
+          bottom={0}
+          right={[3, 6]}
+          position="absolute"
+          zIndex={2}
+        >
+          <Box fontSize="sm">{t('app:find_more_tools')}</Box>
+          <MyIcon name="common/rightArrowLight" w="0.9rem" />
+        </Flex>
+      )}
       {!!configTool && (
         <ConfigToolModal
           configTool={configTool}
@@ -596,6 +502,6 @@ const RenderList = React.memo(function RenderList({
           onAddTool={onAddTool}
         />
       )}
-    </>
+    </Flex>
   );
 });

@@ -12,7 +12,9 @@ export type UserInputFileItemType = {
   icon: string; // img is base64
   status: 0 | 1; // 0: uploading, 1: success
   url?: string;
+  key?: string; // S3 key for the file
   process?: number;
+  error?: string;
 };
 
 export type ChatBoxInputFormType = {

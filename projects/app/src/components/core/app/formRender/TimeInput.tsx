@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 
 type TimeInputProps = {
   value?: Date;
-  onDateTimeChange: (date: Date) => void;
+  onDateTimeChange: (date: Date | undefined) => void;
   popPosition?: 'top' | 'bottom';
   timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
   minDate?: Date;
@@ -14,17 +14,25 @@ type TimeInputProps = {
 };
 
 const TimeInput: React.FC<TimeInputProps> = ({
-  value,
+  value: initialValue,
   onDateTimeChange,
   popPosition = 'bottom',
   timeGranularity = 'second',
   minDate,
   maxDate
 }) => {
+  const formatValue = useMemo(() => {
+    const val = initialValue ? new Date(initialValue) : undefined;
+    // 判断有效性
+    if (!val) return undefined;
+    if (isNaN(val.getTime())) return undefined;
+    return val;
+  }, [initialValue]);
+
   const { t } = useTranslation();
-  const hour = value ? value.getHours() : 0;
-  const minute = value ? value.getMinutes() : 0;
-  const second = value ? value.getSeconds() : 0;
+  const hour = formatValue ? formatValue.getHours() : 0;
+  const minute = formatValue ? formatValue.getMinutes() : 0;
+  const second = formatValue ? formatValue.getSeconds() : 0;
 
   const validateAndSetDateTime = (newDate: Date) => {
     if (minDate && newDate < minDate) {
@@ -38,26 +46,31 @@ const TimeInput: React.FC<TimeInputProps> = ({
     onDateTimeChange(newDate);
   };
 
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = (date: Date | undefined) => {
+    if (!date) {
+      onDateTimeChange(undefined);
+      return;
+    }
+
     const newDate = new Date(date);
     newDate.setHours(hour, minute, second);
     validateAndSetDateTime(newDate);
   };
 
   const handleHourChange = (newHour?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setHours(newHour || 0);
     validateAndSetDateTime(newDate);
   };
 
   const handleMinuteChange = (newMinute?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setMinutes(newMinute || 0);
     validateAndSetDateTime(newDate);
   };
 
   const handleSecondChange = (newSecond?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setSeconds(newSecond || 0);
     validateAndSetDateTime(newDate);
   };
@@ -69,7 +82,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
   return (
     <Flex alignItems={'center'} gap={2}>
       <DateTimePicker
-        selectedDateTime={value && !isNaN(value.getTime()) ? value : undefined}
+        selectedDateTime={formatValue}
         onChange={handleDateChange}
         popPosition={popPosition}
         disabled={[

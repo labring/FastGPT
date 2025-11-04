@@ -1,16 +1,19 @@
-import { Client, type RemoveOptions, type CopyConditions } from 'minio';
+import { Client, type RemoveOptions, type CopyConditions, InvalidObjectNameError } from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type CreatePostPresignedUrlResult,
-  type S3OptionsType
+  type S3OptionsType,
+  type createPreviewUrlParams,
+  CreateGetPresignedUrlParamsSchema
 } from '../type';
-import { defaultS3Options, Mimes } from '../constants';
+import { defaultS3Options, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours } from 'date-fns';
 import { addLog } from '../../system/log';
+import { addS3DelJob } from '../mq';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -84,8 +87,27 @@ export class S3BaseBucket {
     return this.client.bucketExists(this.name);
   }
 
-  delete(objectKey: string, options?: RemoveOptions): Promise<void> {
-    return this.client.removeObject(this.name, objectKey, options);
+  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
+    try {
+      if (!objectKey) return Promise.resolve();
+      return await this.client.removeObject(this.name, objectKey, options);
+    } catch (error) {
+      if (error instanceof InvalidObjectNameError) {
+        addLog.warn(`${this.name} delete object not found: ${objectKey}`, error);
+        return Promise.resolve();
+      }
+      return Promise.reject(error);
+    }
+  }
+
+  addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
+    return addS3DelJob({ prefix, key, bucketName: this.name });
+  }
+
+  listObjectsV2(
+    ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
+  ) {
+    return this.client.listObjectsV2(this.name, ...params);
   }
 
   async createPostPresignedUrl(
@@ -93,11 +115,11 @@ export class S3BaseBucket {
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
     try {
-      const { expiredHours } = options;
+      const { expiredHours, maxFileSize = getSystemMaxFileSize() } = options;
+      const formatMaxFileSize = maxFileSize * 1024 * 1024;
       const filename = params.filename;
       const ext = path.extname(filename).toLowerCase();
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
-      const maxFileSize = this.options.maxFileSize;
 
       const key = (() => {
         if ('rawKey' in params) return params.rawKey;
@@ -109,8 +131,8 @@ export class S3BaseBucket {
       policy.setKey(key);
       policy.setBucket(this.name);
       policy.setContentType(contentType);
-      if (maxFileSize) {
-        policy.setContentLengthRange(1, maxFileSize);
+      if (formatMaxFileSize) {
+        policy.setContentLengthRange(1, formatMaxFileSize);
       }
       policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
       policy.setUserMetaData({
@@ -131,11 +153,29 @@ export class S3BaseBucket {
 
       return {
         url: postURL,
-        fields: formData
+        fields: formData,
+        maxSize: formatMaxFileSize
       };
     } catch (error) {
       addLog.error('Failed to create post presigned url', error);
       return Promise.reject('Failed to create post presigned url');
     }
+  }
+
+  async createExtenalUrl(params: createPreviewUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    return await this.externalClient.presignedGetObject(this.name, key, expires);
+  }
+  async createPreviewlUrl(params: createPreviewUrlParams) {
+    const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
+
+    const { key, expiredHours } = parsed;
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    return await this.client.presignedGetObject(this.name, key, expires);
   }
 }

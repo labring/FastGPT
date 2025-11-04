@@ -19,11 +19,11 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { chatValue2RuntimePrompt, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
@@ -38,7 +38,7 @@ import {
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
@@ -97,8 +97,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
-        return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+        return serverGetWorkflowToolRunUserQuery({
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
@@ -147,7 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
-      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
@@ -210,7 +210,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // save chat
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
     const newTitle = isPlugin
       ? variables.cTime ?? formatTime2YMDHM()

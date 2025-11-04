@@ -1,4 +1,4 @@
-import type { I18nStringStrictType } from '@fastgpt-sdk/plugin';
+import type { I18nStringStrictType } from '../../sdk/fastgpt-plugin';
 
 export type ModelProviderItemType = {
   id: string;
@@ -23,16 +23,18 @@ export const defaultProvider: ModelProviderItemType = {
   order: 999
 };
 
-export const formatModelProviders = (data: { provider: string; value: I18nStringStrictType }[]) => {
+export const formatModelProviders = (
+  data: { provider: string; value: I18nStringStrictType; avatar: string }[]
+) => {
   const getLocalizedName = (translations: I18nStringStrictType, language = 'en'): string => {
     return translations[language as langType] || translations.en;
   };
 
   const formatModelProviderList = (language?: string): ModelProviderItemType[] => {
-    return data.map(({ provider, value }, index) => ({
+    return data.map(({ provider, value, avatar }, index) => ({
       id: provider,
       name: getLocalizedName(value, language),
-      avatar: `/api/system/plugin/models/${provider}.svg`,
+      avatar,
       order: index
     }));
   };
@@ -40,11 +42,11 @@ export const formatModelProviders = (data: { provider: string; value: I18nString
   const formatModelProviderMap = (language?: string) => {
     const provider = {} as Record<string, ModelProviderItemType>;
 
-    data.forEach(({ provider: id, value }, index) => {
+    data.forEach(({ provider: id, value, avatar }, index) => {
       provider[id] = {
         id,
         name: getLocalizedName(value, language),
-        avatar: `/api/system/plugin/models/${id}.svg`,
+        avatar,
         order: index
       };
     });

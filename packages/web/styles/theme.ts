@@ -80,6 +80,24 @@ const Button = defineStyleConfig({
       w: '30px',
       borderRadius: 'sm'
     },
+    base: {
+      fontSize: 'sm',
+      px: '4',
+      py: 0,
+      h: '34px',
+      minH: '34px',
+      fontWeight: 'medium',
+      borderRadius: 'sm'
+    },
+    baseSquare: {
+      fontSize: 'sm',
+      px: '0',
+      py: 0,
+      h: '34px',
+      w: '34px',
+      fontWeight: 'medium',
+      borderRadius: 'sm'
+    },
     md: {
       fontSize: 'sm',
       px: '4',
@@ -306,7 +324,7 @@ const Button = defineStyleConfig({
     }
   },
   defaultProps: {
-    size: 'md',
+    size: 'base',
     variant: 'primary'
   }
 });
@@ -876,7 +894,7 @@ export const theme = extendTheme({
     xxl: '1.25rem'
   },
   shadows: {
-    1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    1: '0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
     1.5: '0px 1px 2px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
     2: '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
     3: '0px 4px 10px 0px rgba(19, 51, 107, 0.08), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',

@@ -21,7 +21,7 @@ import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
 import { isArray } from 'lodash';
-import { useMount } from 'ahooks';
+import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -43,7 +43,7 @@ export type SelectProps<T = any> = {
     value: T;
   }[];
   value: T[];
-  isSelectAll: boolean;
+  isSelectAll?: boolean;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
@@ -62,8 +62,14 @@ export type SelectProps<T = any> = {
   tagStyle?: FlexProps;
 } & Omit<ButtonProps, 'onSelect'>;
 
+type SelectedItemType<T> = {
+  icon?: string;
+  label: string | React.ReactNode;
+  value: T;
+};
+
 const MultipleSelect = <T = any,>({
-  value = [],
+  value: initialValue = [],
   placeholder,
   list = [],
   onSelect,
@@ -90,32 +96,29 @@ const MultipleSelect = <T = any,>({
   const { isOpen, onOpen, onClose } = useDisclosure();
   const canInput = setInputValue !== undefined;
 
-  type SelectedItemType = {
-    icon?: string;
-    label: string | React.ReactNode;
-    value: T;
-  };
+  const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
+  const [overflowItems, setOverflowItems] = useState<SelectedItemType<T>[]>([]);
 
-  const [visibleItems, setVisibleItems] = useState<SelectedItemType[]>([]);
-  const [overflowItems, setOverflowItems] = useState<SelectedItemType[]>([]);
+  const formatValue = useMemoEnhance(() => {
+    return Array.isArray(initialValue) ? initialValue : [];
+  }, [initialValue]);
 
   const selectedItems = useMemo(() => {
-    if (!value || !isArray(value)) return [];
-    return value.map((val) => {
+    return formatValue.map((val) => {
       const listItem = list.find((item) => item.value === val);
       return listItem || { value: val, label: String(val) };
     });
-  }, [value, list]);
+  }, [formatValue, list]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Backspace' && (!inputValue || inputValue === '')) {
-        const newValue = [...value];
+        const newValue = [...formatValue];
         newValue.pop();
         onSelect(newValue);
       }
     },
-    [inputValue, value, onSelect]
+    [inputValue, formatValue, onSelect]
   );
   useEffect(() => {
     if (!isOpen) {
@@ -131,13 +134,13 @@ const MultipleSelect = <T = any,>({
         return;
       }
 
-      if (value.includes(val)) {
-        onSelect(value.filter((i) => i !== val));
+      if (formatValue.includes(val)) {
+        onSelect(formatValue.filter((i) => i !== val));
       } else {
-        onSelect([...value, val]);
+        onSelect([...formatValue, val]);
       }
     },
-    [isSelectAll, value, onSelect, list, setIsSelectAll]
+    [isSelectAll, formatValue, onSelect, list, setIsSelectAll]
   );
 
   const onSelectAll = useCallback(() => {
@@ -264,7 +267,7 @@ const MultipleSelect = <T = any,>({
     return (
       <>
         {list.map((item, i) => {
-          const isSelected = isSelectAll || value.includes(item.value);
+          const isSelected = isSelectAll || formatValue.includes(item.value);
           return (
             <MenuItem
               key={i}
@@ -293,7 +296,7 @@ const MultipleSelect = <T = any,>({
         })}
       </>
     );
-  }, [list, isSelectAll, value, onclickItem]);
+  }, [list, isSelectAll, formatValue, onclickItem]);
 
   return (
     <Box h={'100%'} w={'100%'}>
@@ -339,7 +342,7 @@ const MultipleSelect = <T = any,>({
                 <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
               </Flex>
             )}
-            {value.length === 0 && placeholder ? (
+            {formatValue.length === 0 && placeholder ? (
               <Box color={'myGray.500'} fontSize={formLabelFontSize} flex={1}>
                 {placeholder}
               </Box>
@@ -440,24 +443,28 @@ const MultipleSelect = <T = any,>({
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          <MenuItem
-            color={isSelectAll ? 'primary.600' : 'myGray.900'}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onSelectAll();
-            }}
-            whiteSpace={'pre-wrap'}
-            fontSize={'sm'}
-            gap={2}
-            mb={1}
-            {...menuItemStyles}
-          >
-            <Checkbox isChecked={isSelectAll} />
-            <Box flex={'1 0 0'}>{t('common:All')}</Box>
-          </MenuItem>
+          {setIsSelectAll && (
+            <>
+              <MenuItem
+                color={isSelectAll ? 'primary.600' : 'myGray.900'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onSelectAll();
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                gap={2}
+                mb={1}
+                {...menuItemStyles}
+              >
+                <Checkbox isChecked={isSelectAll} />
+                <Box flex={'1 0 0'}>{t('common:All')}</Box>
+              </MenuItem>
 
-          <MyDivider my={1} />
+              <MyDivider my={1} />
+            </>
+          )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
         </MenuList>

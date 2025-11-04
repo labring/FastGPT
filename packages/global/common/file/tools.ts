@@ -1,7 +1,7 @@
 import { detect } from 'jschardet';
 import { documentFileType } from './constants';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
-import { type UserChatItemValueItemType } from '../../core/chat/type';
+import { type UserChatItemFileItemType } from '../../core/chat/type';
 import * as fs from 'fs';
 
 export const formatFileSize = (bytes: number): string => {
@@ -36,7 +36,7 @@ export const detectFileEncodingByPath = async (path: string) => {
 };
 
 // Url => user upload file type
-export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file'] | undefined => {
+export const parseUrlToFileType = (url: string): UserChatItemFileItemType | undefined => {
   if (typeof url !== 'string') return;
 
   // Handle base64 image
@@ -74,13 +74,13 @@ export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file
     // Default to image type for non-document files
     return {
       type: ChatFileTypeEnum.image,
-      name: filename || 'null.png',
+      name: filename || 'null',
       url
     };
   } catch (error) {
     return {
-      type: ChatFileTypeEnum.image,
-      name: 'invalid.png',
+      type: ChatFileTypeEnum.file,
+      name: url,
       url
     };
   }

@@ -17,8 +17,8 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
@@ -117,11 +117,15 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (
-  variables: Record<string, any>,
-  removeObj: Record<string, string> = {},
-  userVariablesConfigs: VariableItemType[] = []
-) => {
+export const runtimeSystemVar2StoreType = ({
+  variables,
+  removeObj = {},
+  userVariablesConfigs = []
+}: {
+  variables: Record<string, any>;
+  removeObj?: Record<string, string>;
+  userVariablesConfigs?: VariableItemType[];
+}) => {
   const copyVariables = { ...variables };
 
   // Delete system variables
@@ -140,11 +144,13 @@ export const removeSystemVariable = (
   // Encrypt password variables
   userVariablesConfigs.forEach((item) => {
     const val = copyVariables[item.key];
-    if (item.type === VariableInputEnum.password && typeof val === 'string') {
-      copyVariables[item.key] = {
-        value: '',
-        secret: encryptSecret(val)
-      };
+    if (item.type === VariableInputEnum.password) {
+      if (typeof val === 'string') {
+        copyVariables[item.key] = {
+          value: '',
+          secret: encryptSecret(val)
+        };
+      }
     }
   });
 

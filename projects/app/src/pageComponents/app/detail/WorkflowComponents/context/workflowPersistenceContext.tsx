@@ -49,7 +49,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const { past, future } = useContextSelector(WorkflowSnapshotContext, (v) => v);
 
   // 保存状态
-  const [isSaved, setIsPublished] = useState(true);
+  const [isSaved, setIsSaved] = useState(true);
   // 离开保存标志
   const leaveSaveSign = useRef(true);
 
@@ -75,7 +75,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
           chatConfig: appDetail.chatConfig
         }
       );
-      setIsPublished(val);
+      setIsSaved(val);
     },
     [future, past, nodes, edges, appDetail.chatConfig],
     {

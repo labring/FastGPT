@@ -39,7 +39,6 @@ import {
   defaultWhisperConfig
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
-import { type RuntimeNodeItemType } from './runtime/type';
 import {
   Input_Template_File_Link,
   Input_Template_History,
@@ -51,7 +50,6 @@ import { type RuntimeUserPromptType, type UserChatItemType } from '../../core/ch
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
-import { getPluginRunContent } from '../../core/app/plugin/utils';
 
 export const getHandleId = (
   nodeId: string,
@@ -262,7 +260,7 @@ export const appData2FlowNodeIO = ({
           [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
           [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
           [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect],
-          [VariableInputEnum.modelSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+          [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
           [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
           [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
           [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
@@ -385,43 +383,8 @@ export const getElseIFLabel = (i: number) => {
   return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
 };
 
-// add value to plugin input node when run plugin
-export const updatePluginInputByVariables = (
-  nodes: RuntimeNodeItemType[],
-  variables: Record<string, any>
-) => {
-  return nodes.map((node) =>
-    node.flowNodeType === FlowNodeTypeEnum.pluginInput
-      ? {
-          ...node,
-          inputs: node.inputs.map((input) => {
-            const parseValue = (() => {
-              try {
-                if (
-                  input.valueType === WorkflowIOValueTypeEnum.string ||
-                  input.valueType === WorkflowIOValueTypeEnum.number ||
-                  input.valueType === WorkflowIOValueTypeEnum.boolean
-                )
-                  return variables[input.key];
-
-                return JSON.parse(variables[input.key]);
-              } catch (e) {
-                return variables[input.key];
-              }
-            })();
-
-            return {
-              ...input,
-              value: parseValue ?? input.value
-            };
-          })
-        }
-      : node
-  );
-};
-
 /* Get plugin runtime input user query */
-export const getPluginRunUserQuery = ({
+export const clientGetWorkflowToolRunUserQuery = ({
   pluginInputs,
   variables,
   files = []
@@ -430,6 +393,25 @@ export const getPluginRunUserQuery = ({
   variables: Record<string, any>;
   files?: RuntimeUserPromptType['files'];
 }): UserChatItemType & { dataId: string } => {
+  const getPluginRunContent = ({
+    pluginInputs,
+    variables
+  }: {
+    pluginInputs: FlowNodeInputItemType[];
+    variables: Record<string, any>;
+  }) => {
+    const pluginInputsWithValue = pluginInputs.map((input) => {
+      const { key } = input;
+      let value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+
+      return {
+        ...input,
+        value
+      };
+    });
+    return JSON.stringify(pluginInputsWithValue);
+  };
+
   return {
     dataId: getNanoid(24),
     obj: ChatRoleEnum.Human,

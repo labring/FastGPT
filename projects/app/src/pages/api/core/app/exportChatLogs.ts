@@ -9,7 +9,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { type GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
   ChatItemCollectionName,
@@ -25,6 +25,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -43,8 +44,8 @@ export type ExportChatLogsBody = GetAppChatLogsProps & {
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
   let {
     appId,
-    dateStart = addDays(new Date(), -7),
-    dateEnd = new Date(),
+    dateStart,
+    dateEnd,
     sources,
     tmbIds,
     chatSearch,
@@ -57,6 +58,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
+  const timezoneCode = getTimezoneCodeFromStr(dateStart);
+
   const { teamId, tmbId, app } = await authApp({
     req,
     authToken: true,
@@ -68,6 +71,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     (item) => item.type !== VariableInputEnum.password
   );
 
+  // Get members
   const teamMemberWithContact = await MongoTeamMember.aggregate([
     { $match: { teamId: new Types.ObjectId(teamId) } },
     {
@@ -201,6 +205,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                 // Detailed chat items collection
                 chatitems: {
                   $push: {
+                    _id: '$_id',
                     value: '$value',
                     userGoodFeedback: '$userGoodFeedback',
                     userBadFeedback: '$userBadFeedback',
@@ -295,35 +300,37 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           },
           userGoodFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userGoodFeedback', false] }
             }
           },
           userBadFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.userBadFeedback', false] }
             }
           },
           customFeedbackItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
             }
           },
           markItems: {
             $filter: {
-              input: '$chatData.chatitems',
+              input: { $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] },
               as: 'item',
               cond: { $ifNull: ['$$item.adminFeedback', false] }
             }
           },
           chatDetails: {
             $map: {
-              input: { $slice: ['$chatData.chatitems', -1000] },
+              input: {
+                $slice: [{ $ifNull: [{ $arrayElemAt: ['$chatData.chatitems', 0] }, []] }, -100]
+              },
               as: 'item',
               in: {
                 id: '$$item._id',
@@ -377,10 +384,10 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 
   cursor.on('data', (doc) => {
     const createdTime = doc.createTime
-      ? dayjs(doc.createTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      ? dayjs(doc.createTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const lastConversationTime = doc.updateTime
-      ? dayjs(doc.updateTime.toISOString()).format('YYYY-MM-DD HH:mm:ss')
+      ? dayjs(doc.updateTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
     const titleStr = doc.customTitle || doc.title || '';
@@ -470,6 +477,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 }
 
 export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
+  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 1, limit: 1, force: true }),
   handler
 );
