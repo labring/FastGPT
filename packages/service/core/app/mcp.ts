@@ -59,9 +59,10 @@ export class MCPClient {
   }
 
   // 内部方法：关闭连接
-  private async closeConnection() {
+  async closeConnection() {
     try {
       await retryFn(() => this.client.close(), 3);
+      addLog.debug(`[MCP Client] Closed connection：${this.url}`);
     } catch (error) {
       addLog.error('[MCP Client] Failed to close connection:', error);
     }
@@ -110,7 +111,15 @@ export class MCPClient {
    * @param params Parameters
    * @returns Tool execution result
    */
-  public async toolCall(toolName: string, params: Record<string, any>): Promise<any> {
+  public async toolCall({
+    toolName,
+    params,
+    closeConnection = true
+  }: {
+    toolName: string;
+    params: Record<string, any>;
+    closeConnection?: boolean;
+  }): Promise<any> {
     try {
       const client = await this.getConnection();
       addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
@@ -129,7 +138,9 @@ export class MCPClient {
       addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
       return Promise.reject(error);
     } finally {
-      await this.closeConnection();
+      if (closeConnection) {
+        await this.closeConnection();
+      }
     }
   }
 }
