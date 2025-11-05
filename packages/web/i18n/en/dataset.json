@@ -348,6 +348,9 @@
   "data_index_hype": "Hypothetical Prompt Index",
   "hype_enhanced_index": "HyPE enhanced index",
   "hype_enhanced_index_tips": "Use Hypothetical Prompt Embeddings technology to generate hypothetical questions, simulate retrieval and recall to filter truly high-quality questions as indexes, improving retrieval accuracy. (Takes longer time when data volume is large)",
-  "template_csv_format_tip": "The template uses CSV format and contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question"
+  "template_csv_format_tip": "The template uses CSV format and contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question",
+  "segment_enhanced_index": "分段增强索引",
+  "segment_enhanced_index_tips": "将数据中的“回答（A）”部分进行进一步分段作为索引内容，提高检索的精度。",
+  "process.segment_enhanced_index": "分段增强索引生成"
 }
 

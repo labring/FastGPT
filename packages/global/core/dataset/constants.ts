@@ -274,7 +274,8 @@ export enum TrainingModeEnum {
   image = 'image',
   imageParse = 'imageParse',
   databaseSchema = 'databaseSchema',
-  hype = 'hype'
+  hype = 'hype',
+  small2Big = 'small2Big'
 }
 
 /* ------------ search -------------- */
