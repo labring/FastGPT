@@ -70,6 +70,7 @@ const InputRender = (props: InputRenderProps) => {
         maxLength={props.maxLength}
         minH={40}
         maxH={120}
+        isRichText={props.isRichText}
       />
     );
   }

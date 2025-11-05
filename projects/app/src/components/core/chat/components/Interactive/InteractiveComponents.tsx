@@ -1,10 +1,9 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
-  type UserInputFormItemType,
   type UserInputInteractive,
   type UserSelectInteractive,
   type UserSelectOptionItemType
@@ -78,52 +77,45 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     defaultValues
   });
 
-  const RenderFormInput = useCallback(
-    ({ input, index }: { input: UserInputFormItemType; index: number }) => {
-      return (
-        <Controller
-          key={input.label}
-          control={control}
-          name={`field_${index}`}
-          rules={{ required: input.required }}
-          render={({ field: { onChange, value }, fieldState: { error } }) => {
-            const inputType = nodeInputTypeToInputType([input.type]);
-
-            return (
-              <InputRender
-                inputType={inputType}
-                value={value}
-                onChange={onChange}
-                isDisabled={submitted}
-                isInvalid={!!error}
-                maxLength={input.maxLength}
-                min={input.min}
-                max={input.max}
-                list={input.list}
-                isRichText={false}
-              />
-            );
-          }}
-        />
-      );
-    },
-    [control, submitted]
-  );
-
   return (
     <Box>
       <DescriptionBox description={description} />
       <Flex flexDirection={'column'} gap={3}>
-        {inputForm.map((input, index) => (
-          <Box key={input.label}>
-            <Flex alignItems={'center'} mb={1}>
-              {input.required && <Box color={'red.500'}>*</Box>}
-              <FormLabel>{input.label}</FormLabel>
-              {input.description && <QuestionTip ml={1} label={input.description} />}
-            </Flex>
-            <RenderFormInput input={input} index={index} />
-          </Box>
-        ))}
+        {inputForm.map((input, index) => {
+          const inputType = nodeInputTypeToInputType([input.type]);
+
+          return (
+            <Box key={input.label}>
+              <Flex alignItems={'center'} mb={1}>
+                {input.required && <Box color={'red.500'}>*</Box>}
+                <FormLabel>{input.label}</FormLabel>
+                {input.description && <QuestionTip ml={1} label={input.description} />}
+              </Flex>
+              <Controller
+                key={input.label} // 添加 key
+                control={control}
+                name={`field_${index}`}
+                rules={{ required: input.required }}
+                render={({ field: { onChange, value }, fieldState: { error } }) => {
+                  return (
+                    <InputRender
+                      inputType={inputType}
+                      value={value}
+                      onChange={onChange}
+                      isDisabled={submitted}
+                      isInvalid={!!error}
+                      maxLength={input.maxLength}
+                      min={input.min}
+                      max={input.max}
+                      list={input.list}
+                      isRichText={false}
+                    />
+                  );
+                }}
+              />
+            </Box>
+          );
+        })}
       </Flex>
 
       {!submitted && (

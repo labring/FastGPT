@@ -72,7 +72,7 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
-  value?: string;
+  value: string;
   showOpenModal?: boolean;
   minH?: number;
   maxH?: number;
@@ -100,7 +100,7 @@ export default function Editor({
   onChange,
   onChangeText,
   onBlur,
-  value,
+  value = '',
   placeholder = '',
   placeholderPadding = '12px 14px',
   bg = 'white',
@@ -111,7 +111,7 @@ export default function Editor({
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
-    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+    onChange: (editor: LexicalEditor) => void;
     onChangeText?: ((text: string) => void) | undefined;
     onBlur?: (editor: LexicalEditor) => void;
   }) {
@@ -185,8 +185,6 @@ export default function Editor({
                   maxHeight: `${maxH}px`,
                   ...boxStyle
                 }}
-                onFocus={() => setFocus(true)}
-                onBlur={() => setFocus(false)}
               />
             }
             placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
@@ -234,7 +232,7 @@ export default function Editor({
               const rootElement = editor.getRootElement();
               setScrollHeight(rootElement?.scrollHeight || 0);
               startSts(() => {
-                onChange?.(editorState, editor);
+                onChange?.(editor);
               });
             }}
           />

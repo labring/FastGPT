@@ -5,7 +5,7 @@ import type { EditorProps } from './Editor';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
-import type { EditorState, LexicalEditor } from 'lexical';
+import type { LexicalEditor } from 'lexical';
 import type { FormPropsType } from './type';
 
 const PromptEditor = ({
@@ -18,7 +18,8 @@ const PromptEditor = ({
   isDisabled,
   ...props
 }: FormPropsType &
-  EditorProps & {
+  Omit<EditorProps, 'value'> & {
+    value?: string;
     title?: string;
     isDisabled?: boolean;
     onChange?: (text: string) => void;
@@ -28,7 +29,7 @@ const PromptEditor = ({
   const { t } = useTranslation();
 
   const onChangeInput = useCallback(
-    (editorState: EditorState, editor: LexicalEditor) => {
+    (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
       onChange?.(text);
     },
@@ -37,10 +38,8 @@ const PromptEditor = ({
 
   const onBlurInput = useCallback(
     (editor: LexicalEditor) => {
-      if (onBlur) {
-        const text = editorStateToText(editor);
-        onBlur(text);
-      }
+      const text = editorStateToText(editor);
+      onBlur?.(text);
     },
     [onBlur]
   );

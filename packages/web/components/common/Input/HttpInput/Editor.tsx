@@ -45,7 +45,7 @@ export default function Editor({
   h?: number;
   variables: EditorVariablePickerType[];
   variableLabels: EditorVariableLabelPickerType[];
-  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
+  onChange?: (editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   currentValue?: string;
