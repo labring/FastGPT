@@ -190,8 +190,8 @@ const ToolKitProvider = () => {
             )}
           </Flex>
           {/* Tags */}
-          <Flex mt={2} mb={3} alignItems={'start'}>
-            <Flex alignItems={'center'}>
+          <Flex mt={2} mb={3} alignItems={'center'}>
+            <Flex alignItems={'start'} flex={'1 0 0'} w={0} mr={[3, 10]}>
               <Flex
                 alignItems={'center'}
                 transition={'all 0.3s'}
@@ -262,15 +262,15 @@ const ToolKitProvider = () => {
                   </Flex>
                 )}
               </Flex>
+              <Box flex={'1'} overflow={'auto'} mb={-1}>
+                <ToolTagFilterBox
+                  tags={tags}
+                  selectedTagIds={selectedTagIds}
+                  onTagSelect={setSelectedTagIds}
+                />
+              </Box>
             </Flex>
-            <Box flex={'1'} overflow={'auto'} mb={-1}>
-              <ToolTagFilterBox
-                tags={tags}
-                selectedTagIds={selectedTagIds}
-                onTagSelect={setSelectedTagIds}
-              />
-            </Box>
-            <Box w={10} />
+
             <MyMenu
               trigger="hover"
               Button={

@@ -68,7 +68,7 @@ const ToolTagFilterBox = ({
         },
         '&::-webkit-scrollbar': {
           marginTop: '2px',
-          height: '4px'
+          height: '6px'
         },
         '&::-webkit-scrollbar-track': {
           background: 'transparent'
