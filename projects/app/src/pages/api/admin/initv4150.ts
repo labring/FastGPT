@@ -2,11 +2,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
-import { RunAppNode } from '@fastgpt/global/core/workflow/template/system/runApp';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import type { ResourcePermissionType} from '@fastgpt/global/support/permission/type';
-import { ResourceType } from '@fastgpt/global/support/permission/type';
-import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -18,7 +15,7 @@ import { type NextApiRequest, type NextApiResponse } from 'next';
 async function appSplitMigration() {
   const allTeamIds = await MongoTeam.find({}, '_id').lean();
   for await (const teamId of allTeamIds) {
-    const allApps = await MongoApp.find({ teamId }, '_id parentId type').lean();
+    const allApps = await MongoApp.find({ teamId }).lean();
     // 1. judge if migration:
     // do not mirgation:
     //     a. do not have folder type apps
@@ -55,17 +52,16 @@ async function appSplitMigration() {
     await mongoSessionRun(async (session) => {
       // 2. create new folders
       const newFolders = await MongoApp.create(
-        allFolders.map(
-          (folder) => ({
-            ...folder,
-            teamId,
-            type: AppTypeEnum.resourceFolder
-          }),
-          {
-            session,
-            ordered: true
-          }
-        )
+        allFolders.map((folder) => ({
+          ...folder,
+          teamId,
+          type: AppTypeEnum.resourceFolder,
+          _id: undefined
+        })),
+        {
+          session,
+          ordered: true
+        }
       );
 
       for (let index = 0; index < newFolders.length; index++) {
@@ -82,8 +78,20 @@ async function appSplitMigration() {
         const rpOps: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
 
         for (const folder of allFolders) {
-          const obj = appMap.get(folder._id);
-          if (!obj || !obj.parentId) continue;
+          const obj = appMap.get(folder._id)!;
+
+          const oldRp = RPMap.get(folder._id)!;
+          rpOps.push({
+            insertOne: {
+              document: {
+                ...oldRp,
+                resourceId: obj.newId!,
+                _id: undefined
+              }
+            }
+          });
+
+          if (!obj.parentId) continue;
           ops.push({
             updateOne: {
               filter: {
@@ -95,27 +103,20 @@ async function appSplitMigration() {
               }
             }
           });
-
-          const oldRp = RPMap.get(folder._id)!;
-          rpOps.push({
-            insertOne: {
-              document: {
-                ...oldRp,
-                resourceId: obj.newId!
-              }
-            }
-          });
         }
 
         for (const app of allResources) {
           const obj = appMap.get(app._id);
           const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
+          if (!newParentId) {
+            continue;
+          }
 
           ops.push({
             updateOne: {
               filter: {
-                _id: app._id,
-                teamId
+                _id: app._id
+                // teamId
               },
               update: {
                 parentId: newParentId
@@ -124,8 +125,10 @@ async function appSplitMigration() {
           });
         }
 
+        console.log(JSON.stringify(ops, null, 2));
+        console.log(JSON.stringify(rpOps, null, 2));
         await MongoApp.bulkWrite(ops, { session });
-        await MongoResourcePermission.bulkWrite(ops, { session });
+        await MongoResourcePermission.bulkWrite(rpOps, { session });
       }
     });
   }

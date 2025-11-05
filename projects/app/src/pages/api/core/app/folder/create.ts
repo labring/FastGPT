@@ -25,14 +25,14 @@ export type CreateAppFolderBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId, type } = req.body;
+  const { name, intro, parentId, type = 'folder' } = req.body;
 
   if (!name) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (type !== AppTypeEnum.folder && type !== AppTypeEnum.resourceFolder) {
-    Promise.reject(CommonErrEnum.invalidParams);
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // 凭证校验
