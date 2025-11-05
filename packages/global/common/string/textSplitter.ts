@@ -63,7 +63,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize } = props;
+  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -93,7 +93,17 @@ ${mdSplitString}
 
     // Over size
     if (chunkLength + nextLineLength > chunkSize) {
-      chunks.push(chunk);
+      // 单行非常的长，直接分割
+      if (chunkLength > maxSize) {
+        const newChunks = commonSplit({
+          ...props,
+          text: chunk
+        }).chunks;
+        chunks.push(...newChunks);
+      } else {
+        chunks.push(chunk);
+      }
+
       chunk = defaultChunk;
     }
     chunk += `${splitText2Lines[i]}\n`;
