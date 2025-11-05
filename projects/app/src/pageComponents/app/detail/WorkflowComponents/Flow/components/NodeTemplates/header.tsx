@@ -178,7 +178,7 @@ const NodeTemplateListHeader = ({
       {templateType === TemplateTypeEnum.appTool &&
         selectedTagIds !== undefined &&
         setSelectedTagIds && (
-          <Box mt={2}>
+          <Box mt={2} mb={-1}>
             <ToolTagFilterBox
               tags={toolTags}
               selectedTagIds={selectedTagIds}

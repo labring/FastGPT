@@ -201,11 +201,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       {/* route components */}
       {!searchKey && parentId && (
-        <Flex mt={2} px={[3, 6]}>
+        <Flex mt={1} px={[3, 6]}>
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
+      <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0}>
         <Box overflow={'overlay'} height={'100%'}>
           <RenderList
             templates={templates}

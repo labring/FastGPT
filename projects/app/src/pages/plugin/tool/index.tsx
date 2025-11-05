@@ -190,7 +190,7 @@ const ToolKitProvider = () => {
             )}
           </Flex>
           {/* Tags */}
-          <Flex mt={2} mb={4} alignItems={'center'}>
+          <Flex mt={2} mb={3} alignItems={'start'}>
             <Flex alignItems={'center'}>
               <Flex
                 alignItems={'center'}
@@ -263,7 +263,7 @@ const ToolKitProvider = () => {
                 )}
               </Flex>
             </Flex>
-            <Box flex={'1'} overflow={'auto'}>
+            <Box flex={'1'} overflow={'auto'} mb={-1}>
               <ToolTagFilterBox
                 tags={tags}
                 selectedTagIds={selectedTagIds}

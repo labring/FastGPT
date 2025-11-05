@@ -134,7 +134,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       </Box>
       {/* Tag filter */}
       {allTags.length > 0 && (
-        <Box mt={3} px={[3, 6]}>
+        <Box mt={3} mb={-1} px={[3, 6]}>
           <ToolTagFilterBox
             size="sm"
             tags={allTags}

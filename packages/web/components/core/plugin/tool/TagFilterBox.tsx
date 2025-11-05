@@ -52,7 +52,37 @@ const ToolTagFilterBox = ({
   }, [size]);
 
   return (
-    <Flex alignItems={'center'} userSelect={'none'}>
+    <Flex
+      alignItems={'center'}
+      userSelect={'none'}
+      overflow={'auto'}
+      pb={1}
+      css={{
+        '&:hover': {
+          overflow: 'auto',
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '3px',
+            visibility: 'visible'
+          }
+        },
+        '&::-webkit-scrollbar': {
+          marginTop: '2px',
+          height: '4px'
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(0, 0, 0, 0)',
+          borderRadius: '3px',
+          visibility: 'hidden'
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: 'rgba(0, 0, 0, 0.3)'
+        }
+      }}
+    >
       <Box
         {...tagBaseStyles}
         rounded={'sm'}
@@ -62,31 +92,24 @@ const ToolTagFilterBox = ({
         {t('common:All')}
       </Box>
       <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} />
-      <Flex
-        gap={2}
-        flex={1}
-        overflowX="auto"
-        flexWrap="nowrap"
-        css={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}
-      >
-        {tags.map((tag) => {
-          const isSelected = selectedTagIds.includes(tag.tagId);
-          return (
-            <Box
-              key={tag.tagId}
-              {...tagBaseStyles}
-              rounded={'full'}
-              bg={isSelected ? 'myGray.150 !important' : 'transparent'}
-              onClick={() => toggleTag(tag.tagId)}
-            >
-              {t(parseI18nString(tag.tagName, i18n.language))}
-            </Box>
-          );
-        })}
-      </Flex>
+      <Box flex={1}>
+        <Flex gap={2} flexWrap="nowrap">
+          {tags.map((tag) => {
+            const isSelected = selectedTagIds.includes(tag.tagId);
+            return (
+              <Box
+                key={tag.tagId}
+                {...tagBaseStyles}
+                rounded={'full'}
+                bg={isSelected ? 'myGray.150 !important' : 'transparent'}
+                onClick={() => toggleTag(tag.tagId)}
+              >
+                {t(parseI18nString(tag.tagName, i18n.language))}
+              </Box>
+            );
+          })}
+        </Flex>
+      </Box>
     </Flex>
   );
 };
