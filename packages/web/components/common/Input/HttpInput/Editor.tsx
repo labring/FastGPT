@@ -119,7 +119,7 @@ export default function Editor({
         <OnChangePlugin
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
             startSts(() => {
-              onChange?.(editorState, editor);
+              onChange?.(editor);
             });
           }}
         />
