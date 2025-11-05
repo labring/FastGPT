@@ -147,6 +147,7 @@ const WorkflowInitContextProvider = ({
       nodesMap[node.data.nodeId] = node.data;
       compareNodeList.push({
         nodeId: node.data.nodeId,
+        name: node.data.name,
         parentNodeId: node.data.parentNodeId,
         flowNodeType: node.data.flowNodeType,
         inputs: node.data.inputs.map((input) => {
