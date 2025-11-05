@@ -20,20 +20,13 @@ const compressStepPrompt = async (
   const modelData = getLLMModel(model);
   if (!modelData) return stepPrompt;
 
-  // 计算 stepPrompt 的 token 数量
   const tokenCount = await countPromptTokens(stepPrompt);
   const maxTokenThreshold = modelData.maxContext * 0.7;
-  // const maxTokenThreshold = 5000;
 
-  console.log('tokenCount:', tokenCount, 'maxTokenThreshold:', maxTokenThreshold);
-
-  // 如果 token 数量未超过阈值，直接返回原始内容
   if (tokenCount <= maxTokenThreshold) {
-    console.log('无需压缩，直接返回原始内容');
     return stepPrompt;
   }
 
-  // 计算目标压缩比例
   const compressionRatio = 0.6;
 
   const compressionSystemPrompt = `<role>
@@ -137,17 +130,6 @@ ${stepPrompt}
         stream: false
       }
     });
-    console.log('原始 stepPrompt:', stepPrompt);
-    console.log('压缩后的 stepPrompt:', answerText);
-    const tokenCountCompress = await countPromptTokens(answerText);
-    console.log(
-      '压缩后 tokenCount:',
-      tokenCountCompress,
-      '压缩前 tokenCount',
-      tokenCount,
-      '压缩比例：',
-      (tokenCountCompress / tokenCount).toFixed(2)
-    );
 
     return answerText || stepPrompt;
   } catch (error) {

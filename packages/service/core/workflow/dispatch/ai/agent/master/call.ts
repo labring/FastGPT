@@ -137,6 +137,7 @@ export const stepCall = async ({
   const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,
+      currentStep: step,
       // interactiveEntryToolParams: lastInteractive?.toolParams,
       body: {
         messages: requestMessages,
