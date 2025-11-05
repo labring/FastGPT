@@ -41,7 +41,7 @@
   "context_menu.add_comment": "添加注释",
   "create_link_error": "创建链接异常",
   "custom_feedback": "自定义反馈",
-  "custom_input": "自定义输入",
+  "custom_input": "自定义变量",
   "dataset_quote_role": "角色",
   "dataset_quote_role_system_option_desc": "历史记录连贯优先（推荐）",
   "dataset_quote_role_tip": "设置为 System 时，将会把知识库引用内容放置到 system 消息中，可以确保历史记录的连贯性，但约束效果可能不佳，需要多调试。\n设置为 User 时，将会把知识库引用内容放置到 user 消息中，并且需要指定 {{question}} 变量位置。会对历史记录连贯性有一定影响，但通常约束效果更优。",
