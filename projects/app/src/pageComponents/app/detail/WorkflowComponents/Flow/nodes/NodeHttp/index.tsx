@@ -851,6 +851,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     };
   }, [Headers, HttpMethodAndUrl, HttpTimeout]);
 
+  // console.log(inputs);
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       {isTool && (

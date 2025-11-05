@@ -36,8 +36,8 @@ export const HttpNode468: FlowNodeTemplateType = {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
         showDefaultValue: true
-      },
-      deprecated: true
+      }
+      // deprecated: true
     },
     {
       key: NodeInputKeyEnum.httpMethod,

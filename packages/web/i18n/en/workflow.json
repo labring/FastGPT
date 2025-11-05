@@ -41,7 +41,7 @@
   "context_menu.add_comment": "Add comment",
   "create_link_error": "Error creating link",
   "custom_feedback": "Custom Feedback",
-  "custom_input": "Custom Input",
+  "custom_input": "Custom variables",
   "dataset_quote_role": "Role",
   "dataset_quote_role_system_option_desc": "Historical records should be consistent first (recommended)",
   "dataset_quote_role_tip": "When set to System, the knowledge base reference content will be placed in the system message, which can ensure the continuity of the history record, but the constraint effect may not be good.\n\nWhen set to User, the knowledge base reference content will be placed in the user message, and the {{question}} variable location needs to be specified. \nIt will have a certain impact on the consistency of historical records, but usually the constraint effect is better.",
