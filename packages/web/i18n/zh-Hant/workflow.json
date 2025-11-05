@@ -41,7 +41,7 @@
   "context_menu.add_comment": "新增註解",
   "create_link_error": "建立連結發生錯誤",
   "custom_feedback": "自訂回饋",
-  "custom_input": "自訂輸入",
+  "custom_input": "自定義變量",
   "dataset_quote_role": "角色",
   "dataset_quote_role_system_option_desc": "歷史紀錄連貫優先（建議）",
   "dataset_quote_role_tip": "設定為 System 時，會將知識庫引用內容放置到系統訊息中，可以確保歷史紀錄的連貫性，但約束效果可能不佳。\n設定為 User 時，會將知識庫引用內容放置到使用者訊息中，並且需要指定 {{question}} 變數位置。會對歷史紀錄連貫性有一定影響，但通常約束效果較佳。",
