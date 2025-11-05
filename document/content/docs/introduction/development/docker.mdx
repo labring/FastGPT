@@ -191,15 +191,24 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 
 </Alert>
 
-### 2. 修改环境变量
-按照您的需求自行修改环境变量，建议在生产环境修改账号密码等。
-对于 Zilliz 版本 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
+### 2. 开放外网端口/配置域名
 
-### 3. 修改 config.json 配置文件
+以下两个端口必须被访问到：
+
+1. 指向 3000 端口（FastGPT 主服务）
+2. 指向 9000 端口（S3 服务）
+
+### 3. 修改环境变量
+
+1. 修改 yml 文件顶部的`S3_EXTERNAL_BASE_URL`变量，改成 S3 的可访问地址（要求使用者可以访问）
+2. 按照您的需求自行修改环境变量，建议在生产环境修改账号密码等。
+3. 对于 Zilliz 版本 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
+
+### 4. 修改 config.json 配置文件
 
 修改`config.json`文件中的`mcpServerProxyEndpoint`值，设置成`mcp server`的公网可访问地址，yml 文件中默认给出了映射到 3005 端口，如通过 IP 访问，则可能是：`120.172.2.10:3005`。
 
-### 4. 启动容器
+### 5. 启动容器
 
 在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
@@ -208,19 +217,27 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 docker-compose up -d
 ```
 
-### 5. 访问 FastGPT
+### 6. 访问 FastGPT
 
-目前可以通过 `ip:3000` 直接访问(注意开放防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
+可通过第二步开放的端口/域名访问 FastGPT。  
+登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。  
+每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致）。  
 
-如果需要域名访问，请自行安装并配置 Nginx。
-
-首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志可能会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
-
-### 6. 配置模型
+### 7. 配置模型
 
 - 首次登录FastGPT后，系统会提示未配置`语言模型`和`索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
 - 如果系统未正常跳转，可以在`账号-模型提供商`页面，进行模型配置。[点击查看相关教程](/docs/introduction/development/modelConfig/ai-proxy)
 - 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该tab，重新打开一次即可。
+
+### 8. 安装系统插件
+
+从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
+
+* 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
+* 如果你的 FastGPT 无法访问插件市场，则可以手动访问[FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
+* 除了安装外，还可对工具进行排序、默认安装、标签管理等。
+
+![alt text](/imgs/image-121.png)
 
 ## FAQ
 
