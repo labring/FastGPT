@@ -9,16 +9,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 
-const TeamSelector = ({
-  showManage,
-  showAvatar = true,
-  onChange,
-  ...props
-}: Omit<ButtonProps, 'onChange'> & {
-  showManage?: boolean;
-  showAvatar?: boolean;
-  onChange?: () => void;
-}) => {
+const TeamSelector = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
@@ -45,45 +36,19 @@ const TeamSelector = ({
 
   const teamList = useMemo(() => {
     return myTeams.map((team) => ({
-      ...(showAvatar ? { icon: team.avatar } : {}),
+      icon: team.avatar,
       iconSize: '1.25rem',
       label: team.teamName,
       value: team.teamId
     }));
   }, [myTeams]);
 
-  const formatTeamList = useMemo(() => {
-    return [
-      ...(showManage
-        ? [
-            {
-              icon: 'common/setting',
-              iconSize: '1.25rem',
-              label: t('user:manage_team'),
-              value: 'manage',
-              showBorder: true
-            }
-          ]
-        : []),
-      ...teamList
-    ];
-  }, [showManage, t, teamList]);
-
-  const handleChange = (value: string) => {
-    if (value === 'manage') {
-      router.push('/account/team');
-    } else {
-      onSwitchTeam(value);
-    }
-  };
-
   return (
     <Box w={'100%'}>
       <MySelect
-        {...props}
         value={userInfo?.team?.teamId}
-        list={formatTeamList}
-        onChange={handleChange}
+        list={teamList}
+        onChange={(value) => onSwitchTeam(value)}
       />
     </Box>
   );

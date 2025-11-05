@@ -88,6 +88,7 @@ const MySelect = <T = any,>(
     customOnClose,
     isInvalid,
     isDisabled,
+    rightIcon,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -212,7 +213,9 @@ const MySelect = <T = any,>(
           ref={ButtonRef}
           width={width}
           px={3}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          rightIcon={
+            rightIcon ?? <MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />
+          }
           variant={'whitePrimaryOutline'}
           size={'md'}
           fontSize={'sm'}

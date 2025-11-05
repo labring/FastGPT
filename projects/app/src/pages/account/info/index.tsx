@@ -142,7 +142,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onOpen: onOpenUpdateContact
   } = useDisclosure();
 
-  const onclickSave = useCallback(
+  const onClickSave = useCallback(
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
@@ -160,9 +160,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const afterUploadAvatar = useCallback(
     (avatar: string) => {
       if (!userInfo) return;
-      onclickSave({ ...userInfo, avatar });
+      onClickSave({ ...userInfo, avatar });
     },
-    [onclickSave, userInfo]
+    [onClickSave, userInfo]
   );
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,

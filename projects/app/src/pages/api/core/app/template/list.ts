@@ -8,6 +8,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type ListParams = {
   isQuickTemplate?: boolean;
+  isRandom?: boolean;
   type?: AppTypeEnum | 'all';
 };
 
@@ -17,22 +18,22 @@ async function handler(
 ): Promise<AppTemplateSchemaType[]> {
   await authCert({ req, authToken: true });
 
-  const { isQuickTemplate = false, type = 'all' } = req.query;
+  const { isQuickTemplate = false, isRandom = false, type = 'all' } = req.query;
 
   const templateMarketItems = await getAppTemplatesAndLoadThem();
 
   let filteredItems = templateMarketItems.filter((item) => {
-    if (!item.isActive) return false;
-    if (type === 'all') return true;
-    return item.type === type;
+    // if (!item.isActive) return false;
+    // if (type === 'all') return true;
+    return true;
   });
 
   if (isQuickTemplate) {
-    if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
-      filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
-    } else {
-      filteredItems = filteredItems.slice(0, 3);
-    }
+    // if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
+    //   filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
+    // } else {
+    filteredItems = filteredItems.slice(0, 4);
+    // }
   }
 
   return filteredItems.map((item) => {

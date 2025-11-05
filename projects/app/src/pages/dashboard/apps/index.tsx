@@ -1,11 +1,9 @@
 'use client';
-import React, { useMemo, useState } from 'react';
-import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
@@ -29,7 +27,12 @@ import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
+import { getTemplateMarketItemList } from '@/web/core/app/api/template';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import TeamSelector from '@/pageComponents/account/TeamSelector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -49,23 +52,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     setMoveAppId,
     isFetchingApps,
     folderDetail,
-    refetchFolderDetail,
-    setSearchKey,
-    searchKey
+    refetchFolderDetail
   } = useContextSelector(AppListContext, (v) => v);
-  const { userInfo } = useUserStore();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+  const { userInfo } = useUserStore();
+  const [searchKey, setSearchKey] = useState('');
 
-  const {
-    isOpen: isOpenCreateHttpTools,
-    onOpen: onOpenCreateHttpTools,
-    onClose: onCloseCreateHttpTools
-  } = useDisclosure();
-  const {
-    isOpen: isOpenCreateMCPTools,
-    onOpen: onOpenCreateMCPTools,
-    onClose: onCloseCreateMCPTools
-  } = useDisclosure();
   const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
@@ -99,25 +91,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
 
-  const appTypeName = useMemo(() => {
-    const map: Record<AppTypeEnum | 'all', string> = {
-      all: t('common:core.module.template.Team app'),
-      [AppTypeEnum.agent]: 'AI Agent',
-      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
-      [AppTypeEnum.plugin]: t('app:type.Plugin'),
-      [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
-      [AppTypeEnum.folder]: t('common:Folder'),
-      [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
-      [AppTypeEnum.tool]: t('app:type.MCP tools'),
-      [AppTypeEnum.hidden]: t('app:type.hidden'),
-      [AppTypeEnum.simple]: t('app:type.Simple bot'),
-
-      // deprecated
-      [AppTypeEnum.httpPlugin]: t('app:type.Http plugin')
-    };
-    return map[appType] || map['all'];
-  }, [appType, t]);
-
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       {paths.length > 0 && (
@@ -147,72 +120,74 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex pt={paths.length > 0 ? 3 : [4, 6]} alignItems={'center'} gap={3}>
-            {isPc ? (
-              <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                {appTypeName}
-              </Box>
-            ) : (
-              MenuIcon
-            )}
-            <Box flex={1} />
-
-            {isPc && (
-              <SearchInput
-                maxW={['auto', '250px']}
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('app:search_app')}
-                maxLength={30}
+          <Box mt={6}>
+            <TemplateCreatePanel />
+          </Box>
+          <Box w={'full'} borderBottom={'1px solid'} borderColor={'myGray.200'} my={5} />
+          <Flex>
+            <Box>
+              <TeamSelector
+                height={'36px'}
+                fontSize={'20px'}
+                border={'none'}
+                showAvatar={false}
+                bg={'none'}
+                pl={0}
+                rightIcon={<MyIcon name={'core/chat/chevronDown'} w={6} color={'myGray.500'} />}
               />
-            )}
-
-            {(folderDetail
-              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
-              : userInfo?.team.permission.hasAppCreatePer) && (
-              <>
-                <Button
-                  variant={'grayBase'}
-                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                  onClick={() => setEditFolder({})}
-                >
-                  {t('common:Folder')}
-                </Button>
-                <Button
-                  variant={'grayBase'}
-                  leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                  onClick={onOpenJsonImportModal}
-                >
-                  {t('common:Import')}
-                </Button>
-                <Button
-                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                  onClick={() =>
-                    router.push({
-                      pathname: '/dashboard/apps/create',
-                      query: { parentId }
-                    })
-                  }
-                >
-                  <Box>{t('common:App')}</Box>
-                </Button>
-              </>
-            )}
-          </Flex>
-
-          {!isPc && (
-            <Box mt={2}>
-              {
+            </Box>
+            <Flex flex={1} />
+            <Flex alignItems={'center'} gap={3}>
+              {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}
                   value={searchKey}
+                  bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
                   placeholder={t('app:search_app')}
                   maxLength={30}
                 />
-              }
-            </Box>
-          )}
+              )}
+
+              {(folderDetail
+                ? folderDetail.permission.hasWritePer &&
+                  folderDetail?.type !== AppTypeEnum.httpPlugin
+                : userInfo?.team.permission.hasAppCreatePer) && (
+                <>
+                  <Button
+                    variant={'grayBase'}
+                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                    onClick={() => setEditFolder({})}
+                    px={5}
+                  >
+                    {t('common:Folder')}
+                  </Button>
+                  <Button
+                    variant={'grayBase'}
+                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
+                    onClick={onOpenJsonImportModal}
+                    px={5}
+                  >
+                    {t('common:Import')}
+                  </Button>
+                </>
+              )}
+            </Flex>
+
+            {!isPc && (
+              <Box mt={2}>
+                {
+                  <SearchInput
+                    maxW={['auto', '250px']}
+                    value={searchKey}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder={t('app:search_app')}
+                    maxLength={30}
+                  />
+                }
+              </Box>
+            )}
+          </Flex>
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
             <List />
@@ -271,6 +246,89 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
+  );
+};
+
+const TemplateCreatePanel = () => {
+  const { data: templateList = [] } = useRequest2(
+    () => getTemplateMarketItemList({ isQuickTemplate: true, type: AppTypeEnum.simple }),
+    {
+      manual: false,
+      refreshDeps: []
+    }
+  );
+
+  return (
+    <Box>
+      <Flex mb={5}>
+        <Box
+          color={'myGray.900'}
+          fontSize={'20px'}
+          fontWeight={'medium'}
+          lineHeight="26px"
+          letterSpacing="0.15px"
+        >
+          从模板新建
+        </Box>
+      </Flex>
+
+      <Box display={'grid'} gridTemplateColumns={'repeat(4, 1fr) 160px'} gap={4}>
+        {templateList.map((item, index) => (
+          <Box
+            key={index}
+            bg={'white'}
+            p={4}
+            borderRadius={'10px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            cursor={'pointer'}
+            _hover={{
+              borderColor: 'primary.500',
+              boxShadow: 'md'
+            }}
+            onClick={() => {
+              // TODO: 处理模板点击事件
+              console.log('Template clicked:', item);
+            }}
+          >
+            <Flex alignItems={'center'} gap={2} mb={2}>
+              <Avatar src={item.avatar} w={'24px'} h={'24px'} borderRadius={'4px'} />
+              <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} noOfLines={1}>
+                {item.name}
+              </Box>
+            </Flex>
+            <Box fontSize={'12px'} color={'myGray.500'} noOfLines={1}>
+              {item.intro || '这个应用还没写介绍~'}
+            </Box>
+          </Box>
+        ))}
+
+        <Box
+          bgImage={'url(/imgs/app/moreTemplateBg.svg)'}
+          bgSize={'cover'}
+          bgPosition={'center'}
+          bgRepeat={'no-repeat'}
+          borderRadius={'10px'}
+          p={4}
+          cursor={'pointer'}
+          display={'flex'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          _hover={{
+            borderColor: 'primary.500',
+            boxShadow: 'md'
+          }}
+          onClick={() => {
+            // TODO: 跳转到模板市场
+            // router.push('/app/list');
+          }}
+        >
+          <Box fontSize={'16px'} color={'myGray.600'} fontWeight={'medium'} ml={1}>
+            更多
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

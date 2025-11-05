@@ -1,7 +1,7 @@
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, Progress, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -13,6 +13,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
+import { useLocalStorageState } from 'ahooks';
+import { getOperationalAd } from '@/web/common/system/api';
 
 export enum TabEnum {
   apps = 'apps',
@@ -249,111 +254,259 @@ const DashboardContainer = ({
           pb={2.5}
           zIndex={100}
           userSelect={'none'}
+          display={'flex'}
+          flexDirection={'column'}
+          justifyContent={'space-between'}
         >
-          {groupList.map((group) => {
-            const selected = currentTab === group.groupId;
+          <Box>
+            {groupList.map((group) => {
+              const selected = currentTab === group.groupId;
 
-            return (
-              <Box key={group.groupId}>
-                <Flex
-                  p={2}
-                  fontSize={'sm'}
-                  rounded={'md'}
-                  color={'myGray.700'}
-                  cursor={'pointer'}
-                  _hover={{
-                    bg: 'primary.50'
-                  }}
-                  mb={0.5}
-                  onClick={() => {
-                    router.push(`/dashboard/${group.groupId}`);
-                    onCloseSidebar();
-                  }}
-                  {...(group.children.length === 0 &&
-                    selected && { bg: 'primary.100', color: 'primary.600' })}
-                >
-                  <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} />
-                  <Box fontWeight={'medium'}>{group.groupName}</Box>
-                  <Box flex={1} />
-                  {group.children.length > 0 && (
-                    <MyIcon
-                      name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                      w={'1rem'}
-                    />
-                  )}
-                </Flex>
-                {selected && (
-                  <Box>
-                    {group.children.map((child) => {
-                      const isActive = child.isActive || child.typeId === currentType;
+              return (
+                <Box key={group.groupId}>
+                  <Flex
+                    p={2}
+                    fontSize={'sm'}
+                    rounded={'md'}
+                    color={'myGray.700'}
+                    cursor={'pointer'}
+                    _hover={{
+                      bg: 'primary.50'
+                    }}
+                    mb={0.5}
+                    onClick={() => {
+                      router.push(`/dashboard/${group.groupId}`);
+                      onCloseSidebar();
+                    }}
+                    {...(group.children.length === 0 &&
+                      selected && { bg: 'primary.100', color: 'primary.600' })}
+                  >
+                    <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} />
+                    <Box fontWeight={'medium'}>{group.groupName}</Box>
+                    <Box flex={1} />
+                    {group.children.length > 0 && (
+                      <MyIcon
+                        name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                        w={'1rem'}
+                      />
+                    )}
+                  </Flex>
+                  {selected && (
+                    <Box>
+                      {group.children.map((child) => {
+                        const isActive = child.isActive || child.typeId === currentType;
 
-                      const childContent = (
-                        <Flex
-                          key={child.typeId}
-                          fontSize={'sm'}
-                          fontWeight={500}
-                          rounded={'md'}
-                          py={2}
-                          pl={'30px'}
-                          cursor={'pointer'}
-                          mb={0.5}
-                          _hover={{ bg: 'primary.50' }}
-                          {...(isActive
-                            ? {
-                                bg: 'primary.50',
-                                color: 'primary.600'
-                              }
-                            : {
-                                bg: 'transparent',
-                                color: 'myGray.500'
-                              })}
-                          onClick={() => {
-                            if (child.onClick) {
-                              child.onClick();
-                            } else {
-                              router.push({
-                                query: {
-                                  ...router.query,
-                                  type: child.typeId
+                        const childContent = (
+                          <Flex
+                            key={child.typeId}
+                            fontSize={'sm'}
+                            fontWeight={500}
+                            rounded={'md'}
+                            py={2}
+                            pl={'30px'}
+                            cursor={'pointer'}
+                            mb={0.5}
+                            _hover={{ bg: 'primary.50' }}
+                            {...(isActive
+                              ? {
+                                  bg: 'primary.50',
+                                  color: 'primary.600'
                                 }
-                              });
-                              onCloseSidebar();
-                            }
-                          }}
-                          alignItems={'center'}
-                        >
-                          {child.typeName}
-                          {child.tooltipLabel && (
-                            <MyTooltip label={child.tooltipLabel} placement={'right'}>
-                              <MyIcon
-                                name="common/warn"
-                                w={'12px'}
-                                h={'12px'}
-                                ml={1}
-                                cursor={'pointer'}
-                              />
-                            </MyTooltip>
-                          )}
-                        </Flex>
-                      );
+                              : {
+                                  bg: 'transparent',
+                                  color: 'myGray.500'
+                                })}
+                            onClick={() => {
+                              if (child.onClick) {
+                                child.onClick();
+                              } else {
+                                router.push({
+                                  query: {
+                                    ...router.query,
+                                    type: child.typeId
+                                  }
+                                });
+                                onCloseSidebar();
+                              }
+                            }}
+                            alignItems={'center'}
+                          >
+                            {child.typeName}
+                            {child.tooltipLabel && (
+                              <MyTooltip label={child.tooltipLabel} placement={'right'}>
+                                <MyIcon
+                                  name="common/warn"
+                                  w={'12px'}
+                                  h={'12px'}
+                                  ml={1}
+                                  cursor={'pointer'}
+                                />
+                              </MyTooltip>
+                            )}
+                          </Flex>
+                        );
 
-                      return childContent;
-                    })}
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
+                        return childContent;
+                      })}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+          <TeamPlanStatusCard />
         </MyBox>
       )}
 
-      <Box h={'100%'} pl={isPc ? `220px` : 0} position={'relative'}>
+      <Box h={'100%'} pl={isPc ? `220px` : 0} position={'relative'} bg={'myGray.25'}>
         {children({
           templateTags,
           templateList,
           MenuIcon
         })}
       </Box>
+    </Box>
+  );
+};
+
+const TeamPlanStatusCard = () => {
+  const { t } = useTranslation();
+  const { teamPlanStatus } = useUserStore();
+
+  const { data: operationalAd } = useRequest2(() => getOperationalAd(), {
+    manual: false
+  });
+
+  const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
+    'team-plan-banner-hidden-until',
+    {
+      defaultValue: undefined
+    }
+  );
+
+  const planName = useMemo(() => {
+    if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
+  }, [teamPlanStatus?.standard?.currentSubLevel]);
+
+  const aiPointsUsageMap = useMemo(() => {
+    if (!teamPlanStatus) {
+      return {
+        value: 0,
+        max: t('account_info:unlimited'),
+        rate: 0
+      };
+    }
+
+    return {
+      value: Math.round(teamPlanStatus.usedPoints),
+      max: teamPlanStatus.totalPoints,
+      rate:
+        ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) / teamPlanStatus.totalPoints) *
+        100
+    };
+  }, [t, teamPlanStatus]);
+
+  const valueColorSchema = useCallback((val: number) => {
+    if (val < 50) return 'red';
+    if (val < 80) return 'yellow';
+    return 'green';
+  }, []);
+
+  const shouldHide = useMemo(() => {
+    if (!hiddenUntil) return false;
+    return Date.now() < hiddenUntil;
+  }, [hiddenUntil]);
+
+  const handleClose = useCallback(() => {
+    const hideUntilTime = Date.now() + 24 * 60 * 60 * 1000;
+    setHiddenUntil(hideUntilTime);
+  }, [setHiddenUntil]);
+
+  return (
+    <Box
+      p={2}
+      borderRadius={'md'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+      fontSize={'xs'}
+      fontWeight={'medium'}
+    >
+      {!shouldHide && operationalAd?.operationalAdImage && (
+        <Flex mb={2} position={'relative'}>
+          <Box
+            as="img"
+            rounded={'sm'}
+            src={operationalAd.operationalAdImage}
+            alt="operational advertisement"
+            width="100%"
+            objectFit="cover"
+            cursor={'pointer'}
+            onClick={() => {
+              if (operationalAd?.operationalAdLink) {
+                window.open(operationalAd.operationalAdLink, '_blank');
+              }
+            }}
+          />
+          <Box
+            bg={'rgba(23, 23, 23, 0.05)'}
+            rounded={'full'}
+            position={'absolute'}
+            w={4}
+            h={4}
+            top={0.5}
+            right={0.5}
+            display={'flex'}
+            justifyContent={'center'}
+            alignItems={'center'}
+            cursor={'pointer'}
+            _hover={{
+              bg: 'rgba(23, 23, 23, 0.1)'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClose();
+            }}
+          >
+            <MyIcon name={'common/closeLight'} w={3} />
+          </Box>
+        </Flex>
+      )}
+
+      <Flex flexDirection={'column'} gap={1}>
+        <Flex color={'myGray.500'}>
+          <Box>剩余积分：</Box>
+          <Flex gap={0.5}>
+            <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}>
+              {aiPointsUsageMap.value}
+            </Box>
+            /<Box>{aiPointsUsageMap.max}</Box>
+          </Flex>
+        </Flex>
+        <Progress
+          size={'sm'}
+          value={aiPointsUsageMap.rate}
+          colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
+          borderRadius={'md'}
+          isAnimated
+          hasStripe
+          borderWidth={'1px'}
+          borderColor={'borderColor.low'}
+        />
+        <Flex>
+          <Box color={'myGray.500'}> {t('user:current_package')}</Box>
+          <Box color={'primary.400'}>{t(planName as any)}</Box>
+        </Flex>
+        <Button
+          borderRadius={'6px'}
+          bg={'linear-gradient(90deg, #64C2DB 0%, #7476ED 29.42%, #C994DF 57.87%, #E56F8C 95.82%)'}
+          color={'white'}
+          w={'full'}
+          leftIcon={<MyIcon name={'common/rocket'} w={4} />}
+        >
+          去升级
+        </Button>
+      </Flex>
     </Box>
   );
 };
