@@ -39,11 +39,14 @@ export type CreateAppBody = {
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
+
+  templateId?: string;
   utmParams?: ShortUrlParams;
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, utmParams } = req.body;
+  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
+    req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -122,6 +125,7 @@ export const onCreateApp = async ({
   pluginData,
   username,
   userAvatar,
+  templateId,
   session
 }: {
   parentId?: ParentIdType;
@@ -137,6 +141,7 @@ export const onCreateApp = async ({
   pluginData?: AppSchema['pluginData'];
   username?: string;
   userAvatar?: string;
+  templateId?: string;
   session?: ClientSession;
 }) => {
   const create = async (session: ClientSession) => {
@@ -154,7 +159,8 @@ export const onCreateApp = async ({
           chatConfig,
           type,
           version: 'v2',
-          pluginData
+          pluginData,
+          templateId
         }
       ],
       { session, ordered: true }

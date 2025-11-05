@@ -29,6 +29,7 @@ export type AppSchema = {
   name: string;
   avatar: string;
   intro: string;
+  templateId?: string; // Create by template
 
   updateTime: Date;
 
@@ -46,16 +47,18 @@ export type AppSchema = {
   scheduledTriggerConfig?: AppScheduledTriggerConfigType | null;
   scheduledTriggerNextTime?: Date;
 
-  inited?: boolean;
-  teamTags: string[];
   inheritPermission?: boolean;
 
   // if access the app by favourite or quick
   favourite?: boolean;
   quick?: boolean;
 
-  // abandon
+  /** @deprecated */
   defaultPermission?: number;
+  /** @deprecated */
+  inited?: boolean;
+  /** @deprecated */
+  teamTags: string[];
 };
 
 export type AppListItemType = {
