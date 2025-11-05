@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import {
@@ -17,7 +17,11 @@ import {
 import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { postTemplateDatasetCollection } from '@/web/core/dataset/api';
+import {
+  postTemplateDatasetCollection,
+  getDatasetEnhanceDefaultPrompts,
+  type EnhanceConfigType
+} from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
@@ -39,15 +43,18 @@ const TemplateImportModal = ({
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [percent, setPercent] = useState(0);
 
   // Index enhance states
-  const [autoIndexes, setAutoIndexes] = useState(false);
-  const [hypeIndexes, setHypeIndexes] = useState(false);
-  const [imageIndex, setImageIndex] = useState(false);
+  const [enhanceConfig, setEnhanceConfig] = useState<EnhanceConfigType>({
+    autoIndexes: false,
+    hypeIndexes: false,
+    small2bigIndexes: false,
+    autoIndexesPrompt: '',
+    hypePrompt: ''
+  });
 
   // Config prompt modal
   const {
@@ -57,14 +64,42 @@ const TemplateImportModal = ({
   } = useDisclosure();
   const [currentPromptType, setCurrentPromptType] = useState<string>('');
 
+  // 获取默认提示词
+  const { runAsync: fetchDefaultPrompts } = useRequest2(
+    async () => {
+      const prompts = await getDatasetEnhanceDefaultPrompts();
+      setEnhanceConfig((prev) => ({
+        ...prev,
+        autoIndexesPrompt: prompts.autoIndexesPrompt,
+        hypePrompt: prompts.hypePrompt
+      }));
+    },
+    {
+      manual: false
+    }
+  );
+
+  useEffect(() => {
+    fetchDefaultPrompts();
+  }, []);
+
   const handleOpenConfigPrompt = (type: string) => {
     setCurrentPromptType(type);
     onOpenConfigPrompt();
   };
 
   const handleSavePrompt = async (content: string) => {
-    // TODO: 后续联调补充保存逻辑
-    console.log('Save prompt:', currentPromptType, content);
+    setEnhanceConfig((prev) => ({
+      ...prev,
+      [currentPromptType === 'autoIndexes' ? 'autoIndexesPrompt' : 'hypePrompt']: content
+    }));
+  };
+
+  const handleCheckboxChange = (type: string, checked: boolean) => {
+    setEnhanceConfig((prev) => ({
+      ...prev,
+      [type]: checked
+    }));
   };
 
   const { runAsync: onImport, loading: isImporting } = useRequest2(
@@ -72,7 +107,8 @@ const TemplateImportModal = ({
       await postTemplateDatasetCollection({
         datasetId,
         file: selectFiles[0].file,
-        percentListen: setPercent
+        percentListen: setPercent,
+        enhanceConfig
       });
     },
     {
@@ -198,8 +234,8 @@ const TemplateImportModal = ({
                   <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
                     <Checkbox
                       isDisabled={!feConfigs?.isPlus}
-                      isChecked={autoIndexes}
-                      onChange={(e) => setAutoIndexes(e.target.checked)}
+                      isChecked={enhanceConfig.autoIndexes}
+                      onChange={(e) => handleCheckboxChange('autoIndexes', e.target.checked)}
                     >
                       <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
                     </Checkbox>
@@ -220,8 +256,8 @@ const TemplateImportModal = ({
                   <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
                     <Checkbox
                       isDisabled={!feConfigs?.isPlus}
-                      isChecked={hypeIndexes}
-                      onChange={(e) => setHypeIndexes(e.target.checked)}
+                      isChecked={enhanceConfig.hypeIndexes}
+                      onChange={(e) => handleCheckboxChange('hypeIndexes', e.target.checked)}
                     >
                       <FormLabel>{t('dataset:hype_enhanced_index')}</FormLabel>
                     </Checkbox>
@@ -239,34 +275,16 @@ const TemplateImportModal = ({
                   </MyTooltip>
                 </HStack>
                 <HStack flex={'1'} spacing={1}>
-                  <MyTooltip
-                    label={
-                      !feConfigs?.isPlus
-                        ? t('common:commercial_function_tip')
-                        : !datasetDetail?.vlmModel
-                          ? t('common:error_vlm_not_config')
-                          : ''
-                    }
-                  >
+                  <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
                     <Checkbox
-                      isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
-                      isChecked={imageIndex}
-                      onChange={(e) => setImageIndex(e.target.checked)}
+                      isDisabled={!feConfigs?.isPlus}
+                      isChecked={enhanceConfig.small2bigIndexes}
+                      onChange={(e) => handleCheckboxChange('small2bigIndexes', e.target.checked)}
                     >
-                      <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                      <FormLabel>{t('dataset:segment_enhanced_index')}</FormLabel>
                     </Checkbox>
                   </MyTooltip>
-                  <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-                  <MyTooltip label={t('dataset:config_prompt')}>
-                    <MyIcon
-                      name={'common/settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('imageIndex')}
-                    />
-                  </MyTooltip>
+                  <QuestionTip label={t('dataset:segment_enhanced_index_tips')} />
                 </HStack>
               </Grid>
             </Box>
@@ -291,7 +309,11 @@ const TemplateImportModal = ({
         <ConfigPromptModal
           isOpen={isOpenConfigPrompt}
           onClose={onCloseConfigPrompt}
-          defaultValue=""
+          defaultValue={
+            currentPromptType === 'autoIndexes'
+              ? enhanceConfig.autoIndexesPrompt
+              : enhanceConfig.hypePrompt
+          }
           onSuccess={handleSavePrompt}
         />
       )}

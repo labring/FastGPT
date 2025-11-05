@@ -34,6 +34,8 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getDatasetEnhanceDefaultPrompts, type EnhanceConfigType } from '@/web/core/dataset/api';
 import {
   chunkAutoChunkSize,
   getIndexSizeSelectList,
@@ -100,6 +102,9 @@ export type CollectionChunkFormType = {
   autoIndexes: boolean;
   hypeIndexes: boolean;
   indexPrefixTitle: boolean;
+  autoIndexesPrompt?: string;
+  hypePrompt?: string;
+  imageIndexPrompt?: string;
 
   // Chunk setting
   chunkSettingMode: ChunkSettingModeEnum; // 系统参数/自定义参数
@@ -233,9 +238,27 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   };
 
   const handleSavePrompt = async (content: string) => {
-    // TODO: 后续联调补充保存逻辑
-    console.log('Save prompt:', currentPromptType, content);
+    if (currentPromptType === 'autoIndexes') {
+      setValue('autoIndexesPrompt', content);
+    } else if (currentPromptType === 'hypeIndexes') {
+      setValue('hypePrompt', content);
+    } else if (currentPromptType === 'imageIndex') {
+      setValue('imageIndexPrompt', content);
+    }
   };
+
+  // 获取默认提示词
+  const { runAsync: fetchDefaultPrompts } = useRequest2(
+    async () => {
+      const prompts = await getDatasetEnhanceDefaultPrompts();
+      setValue('autoIndexesPrompt', prompts.autoIndexesPrompt);
+      setValue('hypePrompt', prompts.hypePrompt);
+      setValue('imageIndexPrompt', prompts.imageIndexPrompt || '');
+    },
+    {
+      manual: false
+    }
+  );
 
   // Adapt 4.9.0- auto training
   useEffect(() => {
@@ -244,6 +267,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       setValue('trainingType', DatasetCollectionDataProcessModeEnum.chunk);
     }
   }, [trainingType, setValue]);
+
+  // 在组件挂载时获取默认提示词
+  useEffect(() => {
+    fetchDefaultPrompts();
+  }, []);
 
   return (
     <>
@@ -318,16 +346,6 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
               <FormLabel>{t('dataset:index_prefix_title')}</FormLabel>
             </Checkbox>
             <QuestionTip label={t('dataset:index_prefix_title_tips')} />
-            <MyTooltip label={t('dataset:config_prompt')}>
-              <MyIcon
-                name={'common/settingLight'}
-                w={'16px'}
-                cursor={'pointer'}
-                color={'myGray.500'}
-                _hover={{ color: 'primary.500' }}
-                onClick={() => handleOpenConfigPrompt('indexPrefixTitle')}
-              />
-            </MyTooltip>
           </HStack>
           {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
             feConfigs?.show_dataset_enhance !== false && (
@@ -690,7 +708,15 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
         <ConfigPromptModal
           isOpen={isOpenConfigPrompt}
           onClose={onCloseConfigPrompt}
-          defaultValue=""
+          defaultValue={
+            currentPromptType === 'autoIndexes'
+              ? getValues('autoIndexesPrompt')
+              : currentPromptType === 'hypeIndexes'
+                ? getValues('hypePrompt')
+                : currentPromptType === 'imageIndex'
+                  ? getValues('imageIndexPrompt')
+                  : ''
+          }
           onSuccess={handleSavePrompt}
         />
       )}

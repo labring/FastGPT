@@ -29,7 +29,8 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
 import {
   DatasetCollectionTypeEnum,
-  ImportDataSourceEnum
+  ImportDataSourceEnum,
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
@@ -38,6 +39,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
+import AdjustTrainingParamsModal from './TrainingParamsModal';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -110,6 +112,12 @@ const DataCard = () => {
   ] = useBoolean();
   const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
 
+  // Training params modal state
+  const [
+    isTrainingParamsModalOpen,
+    { setTrue: openTrainingParamsModal, setFalse: closeTrainingParamsModal }
+  ] = useBoolean();
+
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
       await delOneDatasetDataById(dataId);
@@ -155,14 +163,18 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {datasetDetail.type !== 'websiteDataset' &&
+          {((datasetDetail.type !== 'websiteDataset' &&
             !!collection?.chunkSize &&
-            collection.permission?.hasWritePer && (
-              <Button
-                ml={2}
-                variant={'whitePrimary'}
-                size={['sm', 'md']}
-                onClick={() => {
+            collection.permission?.hasWritePer) ||
+            collection?.trainingType === DatasetCollectionDataProcessModeEnum.template) && (
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              onClick={() => {
+                if (collection?.trainingType === DatasetCollectionDataProcessModeEnum.template) {
+                  openTrainingParamsModal();
+                } else {
                   router.push({
                     query: {
                       datasetId,
@@ -171,11 +183,12 @@ const DataCard = () => {
                       collectionId
                     }
                   });
-                }}
-              >
-                {t('dataset:retain_collection')}
-              </Button>
-            )}
+                }
+              }}
+            >
+              {t('dataset:retain_collection')}
+            </Button>
+          )}
           {canWrite && !isImageCollection && (
             <Button
               ml={2}
@@ -448,6 +461,22 @@ const DataCard = () => {
       )}
       {isInsertImagesModalOpen && (
         <InsertImagesModal collectionId={collectionId} onClose={closeInsertImagesModal} />
+      )}
+      {isTrainingParamsModalOpen && collection && (
+        <AdjustTrainingParamsModal
+          isOpen={isTrainingParamsModalOpen}
+          onClose={closeTrainingParamsModal}
+          onConfirm={(params) => {
+            // TODO: 后续联调补充处理逻辑
+            console.log('Training params:', params);
+          }}
+          defaultValues={{
+            autoIndexes: collection.autoIndexes ?? false,
+            hypeIndexes: collection.hypeIndexes ?? false,
+            // small2bigIndexes: collection.small2bigIndexes ?? false
+            small2bigIndexes: false
+          }}
+        />
       )}
     </MyBox>
   );

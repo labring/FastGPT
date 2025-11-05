@@ -140,6 +140,19 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             }
           ]
         : []),
+      // small2Big
+      // ...(trainingDetail?.advancedTraining.small2BigIndexes
+      //   ? [
+      //     {
+      //       errorCount: trainingDetail.errorCounts.small2Big,
+      //       label: t(TrainingProcess.small2BigIndex.label),
+      //       statusText: getStatusText(TrainingModeEnum.small2Big),
+      //       status: getTrainingStatus({
+      //         errorCount: trainingDetail.errorCounts.small2Big
+      //       })
+      //     }
+      //   ]
+      //   : []),
       ...(trainingDetail?.advancedTraining.imageIndex
         ? [
             {
@@ -172,6 +185,19 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
           errorCount: trainingDetail.errorCounts.chunk
         })
       },
+      // hype
+      // ...(trainingDetail?.advancedTraining.hypeIndexes
+      //   ? [
+      //     {
+      //       errorCount: trainingDetail.errorCounts.hype,
+      //       label: t(TrainingProcess.hypeIndex.label),
+      //       statusText: getStatusText(TrainingModeEnum.hype),
+      //       status: getTrainingStatus({
+      //         errorCount: trainingDetail.errorCounts.hype
+      //       })
+      //     }
+      //   ]
+      //   : []),
       {
         errorCount: 0,
         label: t('dataset:process.Is_Ready'),
@@ -192,6 +218,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
     trainingDetail?.advancedTraining.imageIndex,
     trainingDetail?.advancedTraining.autoIndexes,
     trainingDetail.trainedCount,
+    isDatabaseParse,
     t,
     isImageParse,
     isQA
@@ -308,7 +335,8 @@ const ErrorView = ({
     [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index'),
     [TrainingModeEnum.hype]: t('dataset:process.Hype_Index'),
-    [TrainingModeEnum.databaseSchema]: t('dataset:process.databaseSchema')
+    [TrainingModeEnum.databaseSchema]: t('dataset:process.databaseSchema'),
+    [TrainingModeEnum.small2Big]: t('dataset:process.segment_enhanced_index')
   };
 
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();

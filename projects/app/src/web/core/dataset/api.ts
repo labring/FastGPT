@@ -162,18 +162,40 @@ export const postBackupDatasetCollection = ({
     }
   });
 };
+
+export type EnhanceConfigType = {
+  autoIndexes?: boolean;
+  hypeIndexes?: boolean;
+  small2bigIndexes?: boolean;
+  hypePrompt?: string;
+  small2bigChunkSize?: number;
+  small2bigMaxChildChunks?: number;
+  autoIndexesPrompt?: string;
+};
+
+// TODO: 后续联调时替换为真实接口
+export const getDatasetEnhanceDefaultPrompts = () => {
+  return Promise.resolve({
+    autoIndexesPrompt: '请为以下内容生成自动索引，帮助更好地检索和理解内容。',
+    hypePrompt: '请为以下内容生成超级增强索引，提升检索的准确性和相关性。',
+    imageIndexPrompt: '请为以下图片内容生成描述性索引，帮助更好地理解和检索图片信息。'
+  });
+};
+
 export const postTemplateDatasetCollection = ({
   file,
   percentListen,
-  datasetId
+  datasetId,
+  enhanceConfig
 }: {
   file: File;
   percentListen: (percent: number) => void;
   datasetId: string;
+  enhanceConfig?: EnhanceConfigType;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify({ datasetId }));
+  formData.append('data', JSON.stringify({ datasetId, enhanceConfig }));
 
   return POST(`/core/dataset/collection/create/template`, formData, {
     timeout: 600000,
