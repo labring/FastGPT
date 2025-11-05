@@ -65,8 +65,11 @@ const NodeTemplateListHeader = ({
     }
   );
 
+  const showToolTag =
+    templateType === TemplateTypeEnum.appTool && selectedTagIds !== undefined && setSelectedTagIds;
+
   return (
-    <Box px={'5'} mb={3} whiteSpace={'nowrap'} overflow={'hidden'}>
+    <Box px={'5'} mb={showToolTag ? 0.5 : 2} whiteSpace={'nowrap'} overflow={'hidden'}>
       {/* Tabs */}
       <Flex flex={'1 0 0'} alignItems={'center'} gap={2}>
         <Box flex={'1 0 0'}>
@@ -178,7 +181,7 @@ const NodeTemplateListHeader = ({
       {templateType === TemplateTypeEnum.appTool &&
         selectedTagIds !== undefined &&
         setSelectedTagIds && (
-          <Box mt={2} mb={-1}>
+          <Box mt={2}>
             <ToolTagFilterBox
               tags={toolTags}
               selectedTagIds={selectedTagIds}
