@@ -400,7 +400,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               transition={'opacity 0.15s ease-out'}
               pointerEvents={showCompactSearch ? 'auto' : 'none'}
             >
-              <Flex mt={2} pt={4} alignItems={'center'}>
+              <Flex mt={2} pt={4} alignItems={'start'}>
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
@@ -454,7 +454,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       cursor={'pointer'}
                       borderRadius={'10px'}
                       _hover={{ borderColor: 'primary.600' }}
-                      p={2}
+                      px={2}
+                      h={'35px'}
                       border={'1px solid'}
                       borderColor={'myGray.200'}
                       onClick={() => setIsSearchExpanded(true)}
@@ -466,7 +467,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     </Flex>
                   )}
                 </Flex>
-                <Box overflow={'auto'} mr={6}>
+                <Box overflow={'auto'} mr={6} mb={-1}>
                   <ToolTagFilterBox
                     tags={allTags}
                     selectedTagIds={tagIds}
@@ -551,7 +552,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
               userSelect={'none'}
             >
-              <Box flex={'1'} overflow={'auto'}>
+              <Box flex={'1'} overflow={'auto'} mb={-1}>
                 <ToolTagFilterBox
                   tags={allTags}
                   selectedTagIds={tagIds}
