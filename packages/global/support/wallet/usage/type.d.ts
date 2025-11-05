@@ -8,10 +8,11 @@ export type UsageSchemaType = {
   teamId: string;
   tmbId: string;
   appName: string;
-  appId?: string;
-  pluginId?: string;
   totalPoints: number;
   source: `${UsageSourceEnum}`;
+
+  appId?: string;
+  datasetId?: string;
 
   // @deprecated
   list?: UsageItemType[];
