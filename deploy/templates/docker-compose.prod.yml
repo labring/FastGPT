@@ -10,9 +10,9 @@ x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
-  DB_MAX_LINK: 30
+  DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  S3_EXTERNAL_BASE_URL:
+  S3_EXTERNAL_BASE_URL: https://minio.com # S3 的公网访问地址
   S3_ENDPOINT: fastgpt-minio
   S3_PORT: 9000
   S3_USE_SSL: false
@@ -98,6 +98,9 @@ ${{vec.db}}
     image: ${{minio.image}}:${{minio.tag}}
     container_name: fastgpt-minio
     restart: always
+    ports:
+      - 9000:9000
+      - 9001:9001
     networks:
       - fastgpt
     environment:
