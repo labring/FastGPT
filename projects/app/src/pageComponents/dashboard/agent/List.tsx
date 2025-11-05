@@ -471,7 +471,7 @@ const CreateButton = () => {
       rounded={'sm'}
       cursor={'pointer'}
       onClick={() => {
-        router.push('/dashboard/apps/create');
+        router.push('/dashboard/create');
       }}
       onMouseEnter={() => setIsHoverCreateButton(true)}
       onMouseLeave={() => setIsHoverCreateButton(false)}
@@ -543,7 +543,7 @@ const ListCreateButton = () => {
         }
       }}
       onClick={() => {
-        router.push('/dashboard/apps/create');
+        router.push('/dashboard/create');
       }}
     >
       <Box color={'myGray.900'} fontWeight={'medium'}>

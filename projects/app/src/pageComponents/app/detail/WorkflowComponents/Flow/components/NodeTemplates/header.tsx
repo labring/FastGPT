@@ -152,7 +152,7 @@ const NodeTemplateListHeader = ({
                 color: 'primary.600'
               }}
               fontSize={'sm'}
-              onClick={() => router.push('/dashboard/apps')}
+              onClick={() => router.push('/dashboard/agent')}
               gap={1}
               ml={4}
             >

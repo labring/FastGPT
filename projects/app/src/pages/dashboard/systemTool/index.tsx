@@ -21,6 +21,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getTeamToolDetail } from '@/web/core/plugin/team/api';
+import DashboardContainer from '@/pageComponents/dashboard/Container';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -143,7 +144,7 @@ const ToolKitProvider = () => {
   }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
 
   return (
-    <Box h={'full'} py={6} pr={6}>
+    <Box h={'full'} pr={6}>
       <MyBox
         bg={'white'}
         h={'full'}
@@ -313,7 +314,7 @@ const ToolKitProvider = () => {
         <Box flex={1} overflowY={'auto'} px={8} pb={6}>
           {displayTools.length > 0 ? (
             <Grid
-              gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+              gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)']}
               gridGap={5}
               alignItems={'stretch'}
             >
@@ -379,6 +380,12 @@ const ToolKitProvider = () => {
   );
 };
 
+function ContextRender() {
+  return <DashboardContainer>{({ MenuIcon }) => <ToolKitProvider />}</DashboardContainer>;
+}
+
+export default ContextRender;
+
 export async function getServerSideProps(content: any) {
   return {
     props: {
@@ -386,5 +393,3 @@ export async function getServerSideProps(content: any) {
     }
   };
 }
-
-export default ToolKitProvider;

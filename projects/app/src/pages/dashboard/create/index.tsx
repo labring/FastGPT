@@ -37,10 +37,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appTypeMap } from '@/pageComponents/app/constants';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { postCreateHttpTools, getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
-import type { McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { getMCPTools, postCreateHttpTools, postCreateMCPTools } from '@/web/core/app/api/tool';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 
 type FormType = {
   avatar: string;

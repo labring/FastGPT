@@ -97,7 +97,7 @@ export const useSystemStore = create<State>()(
             state.initd = true;
           });
         },
-        lastRoute: '/dashboard/apps',
+        lastRoute: '/dashboard/agent',
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;

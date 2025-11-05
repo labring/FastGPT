@@ -8,7 +8,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useContextSelector } from 'use-context-selector';
-import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
+import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/agent/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
@@ -22,17 +22,17 @@ import {
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
+import JsonImportModal from '@/pageComponents/dashboard/agent/JsonImportModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-import List from '@/pageComponents/dashboard/apps/List';
+import List from '@/pageComponents/dashboard/agent/List';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
-import { getTemplateMarketItemList } from '@/web/core/app/api/template';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import TemplateCreatePanel from '@/pageComponents/dashboard/agent/TemplateCreatePanel';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -216,6 +216,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
+                defaultRole: ReadRoleVal,
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 roleList: AppRoleList,
@@ -246,89 +247,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
-  );
-};
-
-const TemplateCreatePanel = () => {
-  const { data: templateList = [] } = useRequest2(
-    () => getTemplateMarketItemList({ isQuickTemplate: true, type: AppTypeEnum.simple }),
-    {
-      manual: false,
-      refreshDeps: []
-    }
-  );
-
-  return (
-    <Box>
-      <Flex mb={5}>
-        <Box
-          color={'myGray.900'}
-          fontSize={'20px'}
-          fontWeight={'medium'}
-          lineHeight="26px"
-          letterSpacing="0.15px"
-        >
-          从模板新建
-        </Box>
-      </Flex>
-
-      <Box display={'grid'} gridTemplateColumns={'repeat(4, 1fr) 160px'} gap={4}>
-        {templateList.map((item, index) => (
-          <Box
-            key={index}
-            bg={'white'}
-            p={4}
-            borderRadius={'10px'}
-            border={'1px solid'}
-            borderColor={'myGray.200'}
-            cursor={'pointer'}
-            _hover={{
-              borderColor: 'primary.500',
-              boxShadow: 'md'
-            }}
-            onClick={() => {
-              // TODO: 处理模板点击事件
-              console.log('Template clicked:', item);
-            }}
-          >
-            <Flex alignItems={'center'} gap={2} mb={2}>
-              <Avatar src={item.avatar} w={'24px'} h={'24px'} borderRadius={'4px'} />
-              <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} noOfLines={1}>
-                {item.name}
-              </Box>
-            </Flex>
-            <Box fontSize={'12px'} color={'myGray.500'} noOfLines={1}>
-              {item.intro || '这个应用还没写介绍~'}
-            </Box>
-          </Box>
-        ))}
-
-        <Box
-          bgImage={'url(/imgs/app/moreTemplateBg.svg)'}
-          bgSize={'cover'}
-          bgPosition={'center'}
-          bgRepeat={'no-repeat'}
-          borderRadius={'10px'}
-          p={4}
-          cursor={'pointer'}
-          display={'flex'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _hover={{
-            borderColor: 'primary.500',
-            boxShadow: 'md'
-          }}
-          onClick={() => {
-            // TODO: 跳转到模板市场
-            // router.push('/app/list');
-          }}
-        >
-          <Box fontSize={'16px'} color={'myGray.600'} fontWeight={'medium'} ml={1}>
-            更多
-          </Box>
-        </Box>
-      </Box>
-    </Box>
   );
 };
 

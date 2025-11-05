@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, Flex, Tab, TabIndicator, TabList, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
+import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/agent/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';

@@ -923,7 +923,7 @@
   "name": "name",
   "name_is_empty": "Name Cannot Be Empty",
   "navbar.Account": "Account",
-  "navbar.Chat": "Chat",
+  "navbar.Chat": "portal",
   "navbar.Config": "administrator",
   "navbar.Datasets": "Dataset",
   "navbar.Studio": "Studio",
