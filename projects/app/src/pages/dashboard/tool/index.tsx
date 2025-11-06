@@ -119,17 +119,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex>
-            <Box>
-              <TeamSelector
-                height={'36px'}
-                fontSize={'20px'}
-                border={'none'}
-                showAvatar={false}
-                bg={'none'}
-                pl={0}
-                rightIcon={<MyIcon name={'core/chat/chevronDown'} w={6} color={'myGray.500'} />}
-              />
+          <Flex alignItems={'center'}>
+            <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+              {t('common:navbar.Tools')}
             </Box>
             <Flex flex={1} />
             <Flex alignItems={'center'} gap={3}>

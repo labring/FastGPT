@@ -70,7 +70,12 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
       pb={isCollapsed ? 2 : 5}
       mb={isCollapsed ? 3 : 5}
     >
-      <Flex mb={isCollapsed ? 0 : 5} justifyContent={'space-between'} alignItems={'center'}>
+      <Flex
+        mb={isCollapsed ? 0 : 5}
+        transition={'all 0.2s ease-in-out'}
+        justifyContent={'space-between'}
+        alignItems={'center'}
+      >
         <Box
           color={'myGray.900'}
           fontSize={'20px'}

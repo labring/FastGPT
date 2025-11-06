@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Image, Flex } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -38,6 +37,7 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const ListItem = () => {
   const { t } = useTranslation();
@@ -52,7 +52,7 @@ const ListItem = () => {
     content: t('app:move.hint')
   });
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
+  const { myApps, appType, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
     useContextSelector(AppListContext, (v) => v);
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -134,7 +134,7 @@ const ListItem = () => {
   return (
     <>
       {myApps.length === 0 ? (
-        <CreateButton />
+        <CreateButton appType={appType} />
       ) : (
         <Grid
           py={4}
@@ -146,7 +146,7 @@ const ListItem = () => {
           gridGap={5}
           alignItems={'stretch'}
         >
-          <ListCreateButton />
+          <ListCreateButton appType={appType} />
           {myApps.map((app, index) => {
             return (
               <MyTooltip
@@ -459,7 +459,8 @@ const ListItem = () => {
   );
 };
 
-const CreateButton = () => {
+const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
+  const { t } = useTranslation();
   const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
   const router = useRouter();
 
@@ -471,7 +472,7 @@ const CreateButton = () => {
       rounded={'sm'}
       cursor={'pointer'}
       onClick={() => {
-        router.push('/dashboard/create');
+        router.push(`/dashboard/create?appType=${appType}`);
       }}
       onMouseEnter={() => setIsHoverCreateButton(true)}
       onMouseLeave={() => setIsHoverCreateButton(false)}
@@ -485,7 +486,7 @@ const CreateButton = () => {
     >
       <Box
         as="img"
-        src={'/imgs/app/createButton.png'}
+        src={getWebReqUrl('/imgs/app/createButton.png')}
         alt="operational advertisement"
         width="100%"
         maxW="100%"
@@ -493,7 +494,7 @@ const CreateButton = () => {
         transition="transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
         transform={isHoverCreateButton ? 'scale(1.2) translateY(-16px)' : 'scale(1) translateY(0)'}
       />
-      <Box
+      <VStack
         position="absolute"
         top="50%"
         left="50%"
@@ -504,7 +505,7 @@ const CreateButton = () => {
       >
         <Flex gap={2.5} alignItems={'center'}>
           <MyIcon name={'core/app/create'} w={8} />
-          创建你的第一个应用
+          {t('app:create_your_first_agent')}
         </Flex>
         <Box
           mt={4}
@@ -519,11 +520,11 @@ const CreateButton = () => {
         >
           <MyIcon name={'common/addLight'} w={8} color={'#7895FE'} />
         </Box>
-      </Box>
+      </VStack>
     </Box>
   );
 };
-const ListCreateButton = () => {
+const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
   return (
@@ -543,7 +544,7 @@ const ListCreateButton = () => {
         }
       }}
       onClick={() => {
-        router.push('/dashboard/create');
+        router.push(`/dashboard/create?appType=${appType}`);
       }}
     >
       <Box color={'myGray.900'} fontWeight={'medium'}>

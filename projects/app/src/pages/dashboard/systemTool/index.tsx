@@ -164,7 +164,7 @@ const ToolKitProvider = () => {
               color={'myGray.900'}
               flex={'1 0 0'}
             >
-              {t('common:navbar.plugin')}
+              {t('app:core.module.template.System Tools')}
             </Box>
             {feConfigs?.docUrl && (
               <Button

@@ -1,3 +1,4 @@
+import { CreateAppType } from '@/pages/dashboard/create';
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type AppSchema } from '@fastgpt/global/core/app/type';
@@ -13,28 +14,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
-export const emptyTemplates: Record<
-  | AppTypeEnum.simple
-  | AppTypeEnum.toolSet
-  | AppTypeEnum.httpToolSet
-  | AppTypeEnum.plugin
-  | AppTypeEnum.workflow
-  | AppTypeEnum.agent,
-  {
-    name: string;
-    avatar: string;
-    nodes: AppSchema['modules'];
-    edges: AppSchema['edges'];
-    chatConfig: AppSchema['chatConfig'];
-  }
-> = {
-  [AppTypeEnum.agent]: {
-    avatar: 'core/app/aiAgent',
-    name: i18nT('common:core.module.template.empty_agent'),
-    nodes: [],
-    edges: [],
-    chatConfig: {}
-  },
+export const emptyTemplates = {
   [AppTypeEnum.simple]: {
     avatar: 'core/app/type/simpleFill',
     name: '',

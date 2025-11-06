@@ -121,7 +121,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowX={'hidden'}
         >
           <TemplateCreatePanel type={appType} />
-          <Flex>
+          <Flex alignItems={'center'}>
             <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
               Agent
             </Box>

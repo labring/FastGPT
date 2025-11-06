@@ -43,7 +43,7 @@ async function handler(
     if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
       filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
     } else {
-      filteredItems = filteredItems.slice(0, 4);
+      filteredItems = filteredItems.slice(0, 9);
     }
   }
 
