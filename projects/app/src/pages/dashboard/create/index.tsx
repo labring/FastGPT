@@ -22,7 +22,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useRouter } from 'next/router';
-import { emptyTemplates, parsePluginFromCurlString } from '@/web/core/app/templates';
+import { emptyTemplates } from '@/web/core/app/templates';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -72,10 +72,8 @@ const CreateAppsPage = () => {
   const { isPc } = useSystem();
   const { query } = router;
   const { parentId, appType } = query;
-  const initialAppType =
-    (createAppTypeMap[appType as CreateAppType]?.type as CreateAppType) || AppTypeEnum.simple;
 
-  const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(initialAppType);
+  const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(appType as CreateAppType);
   const [showToolCreate, setShowToolCreate] = useState(ToolTypeList.includes(selectedAppType));
 
   const { data: templateData } = useRequest2(

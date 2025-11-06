@@ -34,6 +34,8 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { createAppTypeMap } from '@/pageComponents/app/constants';
+import type { CreateAppType } from '@/pages/dashboard/create';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -469,6 +471,10 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
   const router = useRouter();
   const parentId = router.query.parentId;
+  const createAppType =
+    createAppTypeMap[appType as CreateAppType]?.type || router.pathname.includes('/agent')
+      ? AppTypeEnum.simple
+      : AppTypeEnum.plugin;
 
   return (
     <Box
@@ -480,7 +486,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
       cursor={'pointer'}
       onClick={() => {
         router.push(
-          `/dashboard/create?appType=${appType}${parentId ? `&parentId=${parentId}` : ''}`
+          `/dashboard/create?appType=${createAppType}${parentId ? `&parentId=${parentId}` : ''}`
         );
       }}
       onMouseEnter={() => setIsHoverCreateButton(true)}
@@ -537,6 +543,10 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const parentId = router.query.parentId;
+  const createAppType =
+    createAppTypeMap[appType as CreateAppType]?.type || router.pathname.includes('/agent')
+      ? AppTypeEnum.simple
+      : AppTypeEnum.plugin;
 
   return (
     <MyBox
@@ -556,7 +566,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
       }}
       onClick={() => {
         router.push(
-          `/dashboard/create?appType=${appType}${parentId ? `&parentId=${parentId}` : ''}`
+          `/dashboard/create?appType=${createAppType}${parentId ? `&parentId=${parentId}` : ''}`
         );
       }}
     >

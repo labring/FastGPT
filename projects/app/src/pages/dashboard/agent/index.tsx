@@ -232,7 +232,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <EditFolderModal
           {...editFolder}
           onClose={() => setEditFolder(undefined)}
-          onCreate={(data) => onCreateFolder({ ...data, parentId })}
+          onCreate={(data) => onCreateFolder({ ...data, parentId, type: AppTypeEnum.folder })}
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />
       )}

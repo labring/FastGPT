@@ -128,15 +128,15 @@ const DashboardContainer = ({
             typeName: t('app:type.All')
           },
           {
-            typeId: 'workflow',
+            typeId: 'plugin',
             typeName: t('app:toolType_workflow')
           },
           {
-            typeId: 'http',
+            typeId: 'httpToolSet',
             typeName: t('app:toolType_http')
           },
           {
-            typeId: 'mcp',
+            typeId: 'toolSet',
             typeName: t('app:toolType_mcp')
           }
         ]
