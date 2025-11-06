@@ -42,7 +42,8 @@ const ChatHeader = ({
   totalRecordsCount,
 
   pane,
-  chatSettings
+  chatSettings,
+  reserveSpace
 }: {
   pane: ChatSidebarPaneEnum;
   chatSettings?: ChatSettingType;
@@ -51,6 +52,7 @@ const ChatHeader = ({
   showHistory?: boolean;
   apps?: AppListItemType[];
   totalRecordsCount: number;
+  reserveSpace?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -105,7 +107,9 @@ const ChatHeader = ({
         {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
-        {!isPlugin && <ToolMenu history={history} />}
+        {!isPlugin && <ToolMenu history={history} reserveSpace={reserveSpace} />}
+
+        {reserveSpace && <Box w={6} />}
       </Flex>
     </Flex>
   );
