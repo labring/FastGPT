@@ -88,36 +88,28 @@ export function initGlobalVariables() {
 
 /* Init remote prompt loader */
 export async function initProPromptLoader() {
+  const { setPromptLoader } = await import('@fastgpt/service/core/ai/config/utils');
+
+  // Get Pro service URL from environment variable
+  const proBaseUrl = process.env.PRO_URL || 'http://localhost:3000';
+
+  const loader = new ProPromptLoader(proBaseUrl);
+
+  // Set timeout for preloading (10 seconds)
+  const timeoutPromise = new Promise<void>((_, reject) => {
+    setTimeout(() => reject(new Error('Preload timeout')), 10000);
+  });
+
   try {
-    const { setPromptLoader } = await import('@fastgpt/service/core/ai/config/utils');
-
-    // Get Pro service URL from environment variable
-    const proBaseUrl = process.env.PRO_URL || 'http://localhost:3000';
-
-    const loader = new ProPromptLoader(proBaseUrl);
-
-    // Set timeout for preloading (10 seconds)
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => reject(new Error('Preload timeout')), 10000);
-    });
-
-    try {
-      await Promise.race([loader.preloadAllTemplates(), timeoutPromise]);
-      global.promptLoader = loader;
-      console.log('[initProPromptLoader] Remote prompt loader initialized successfully');
-    } catch (preloadError) {
-      console.error('[initProPromptLoader] Failed to preload templates:', preloadError);
-      console.log('[initProPromptLoader] Falling back to DefaultPromptLoader');
-
-      // Fallback to default loader
-      const DefaultPromptLoader = await import('@fastgpt/service/core/ai/config/utils').then(
-        (m) => m.DefaultPromptLoader
-      );
-      setPromptLoader(new DefaultPromptLoader());
-    }
-  } catch (error) {
+    await Promise.race([loader.preloadAllTemplates(), timeoutPromise]);
+    global.promptLoader = loader;
+  } catch (preloadError) {
+    console.error('[initProPromptLoader] Failed to preload templates:', preloadError);
+    // Fallback to default loader
+    const DefaultPromptLoader = await import('@fastgpt/service/core/ai/config/utils').then(
+      (m) => m.DefaultPromptLoader
+    );
     setPromptLoader(new DefaultPromptLoader());
-    console.log('[initProPromptLoader] Using DefaultPromptLoader as fallback');
   }
 }
 

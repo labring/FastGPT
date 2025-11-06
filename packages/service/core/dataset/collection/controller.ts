@@ -102,9 +102,8 @@ export const createCollectionAndInsertData = async ({
     trainingType === DatasetCollectionDataProcessModeEnum.backup
   ) {
     delete formatCreateCollectionParams.autoIndexes;
-    delete formatCreateCollectionParams.indexPrefixTitle;
     delete formatCreateCollectionParams.hypeIndexes;
-    delete formatCreateCollectionParams.hypePrompt;
+    delete formatCreateCollectionParams.hypeIndexPrompt;
   }
 
   if (

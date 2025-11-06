@@ -5,7 +5,10 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { addMinutes } from 'date-fns';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
-import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import type {
+  DatasetTrainingSchemaType,
+  small2bigConfigType
+} from '@fastgpt/global/core/dataset/type';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { text2Chunks } from '@fastgpt/service/worker/function';
@@ -20,8 +23,7 @@ const reduceQueue = () => {
 type PopulateType = {
   dataset: { vectorModel: string; agentModel: string; vlmModel: string };
   collection: {
-    small2bigChunkSize?: number;
-    small2bigMaxChildChunks?: number;
+    small2bigConfig?: small2bigConfigType;
     indexSize?: number;
     autoIndexes?: boolean;
   };
@@ -32,13 +34,24 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 // Truncate Answer chunks
 const chunkAnswerText = async ({
   answerText,
-  chunkSize = 500,
-  maxChildChunks = 10
+  small2bigConfig = {
+    chunkSize: 500,
+    maxChildChunks: 10,
+    overlapRatio: 0.1
+  } as small2bigConfigType
 }: {
   answerText: string;
-  chunkSize: number;
-  maxChildChunks: number;
+  small2bigConfig?: small2bigConfigType;
 }): Promise<string[]> => {
+  const {
+    chunkSize,
+    maxChildChunks,
+    overlapRatio,
+    paragraphChunkDeep,
+    paragraphChunkMinSize,
+    maxSize,
+    customReg
+  } = small2bigConfig;
   if (!answerText || answerText.trim().length === 0) {
     return [];
   }
@@ -52,7 +65,11 @@ const chunkAnswerText = async ({
     const { chunks } = await text2Chunks({
       text: answerText,
       chunkSize: chunkSize,
-      overlapRatio: 0.1
+      overlapRatio: overlapRatio,
+      paragraphChunkDeep: paragraphChunkDeep,
+      paragraphChunkMinSize: paragraphChunkMinSize,
+      maxSize: maxSize,
+      customReg: customReg
     });
 
     // Limit the maximum number of sub-blocks to avoid excessive Answer length and storage pressure
@@ -93,14 +110,9 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
       return;
     }
 
-    // split
-    const chunkSize = data.collection?.small2bigChunkSize || 500;
-    const maxChildChunks = data.collection?.small2bigMaxChildChunks || 10;
-
     const childChunks = await chunkAnswerText({
       answerText,
-      chunkSize,
-      maxChildChunks
+      small2bigConfig: data.collection?.small2bigConfig
     });
 
     // Change Mode if chunk less than 1.5 * chunkSize , No index gen
@@ -219,7 +231,7 @@ export async function generateSmall2Big(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'small2bigChunkSize small2bigMaxChildChunks indexSize autoIndexes'
+                select: 'small2bigConfig indexSize autoIndexes'
               }
             ])
             .lean();

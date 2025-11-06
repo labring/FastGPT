@@ -35,7 +35,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   let default_prompt;
   if (global.feConfigs.isPlus && global.promptLoader) {
     default_prompt = {
-      hypePrompt: global.promptLoader.loadTemplate(
+      hypeIndexPrompt: global.promptLoader.loadTemplate(
         'hypeIndexes',
         getLocale(req),
         'generate_question_from_faq_prompt'

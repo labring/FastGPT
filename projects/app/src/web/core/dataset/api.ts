@@ -167,7 +167,7 @@ export type EnhanceConfigType = {
   autoIndexes?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
-  hypePrompt?: string;
+  hypeIndexPrompt?: string;
   small2bigChunkSize?: number;
   small2bigMaxChildChunks?: number;
   autoIndexesPrompt?: string;
@@ -177,7 +177,7 @@ export type EnhanceConfigType = {
 export const getDatasetEnhanceDefaultPrompts = () => {
   return Promise.resolve({
     autoIndexesPrompt: '请为以下内容生成自动索引，帮助更好地检索和理解内容。',
-    hypePrompt: '请为以下内容生成超级增强索引，提升检索的准确性和相关性。',
+    hypeIndexPrompt: '请为以下内容生成超级增强索引，提升检索的准确性和相关性。',
     imageIndexPrompt: '请为以下图片内容生成描述性索引，帮助更好地理解和检索图片信息。'
   });
 };

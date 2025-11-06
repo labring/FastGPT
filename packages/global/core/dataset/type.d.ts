@@ -24,6 +24,11 @@ import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';
 import type { CollectionStatusEnum } from 'core/dataset/collection/schema';
+import type { SplitProps } from '@fastgpt/global/common/string/textSplitter';
+
+export type small2bigConfigType =  Omit<SplitProps,'text'> & {
+  maxChildChunks?: number;
+}
 export type ChunkSettingsType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;
 
@@ -40,11 +45,10 @@ export type ChunkSettingsType = {
   indexPrefixTitle?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
-  hypePrompt?: String;
-  small2bigChunkSize?: number;
-  small2bigMaxChildChunks?: number;
-  autoIndexesPrompt?: String;
-  imageIndexPrompt?: String;
+  hypeIndexPrompt?: string;
+  small2bigConfig?: small2bigConfigType;
+  autoIndexesPrompt?: string;
+  imageIndexPrompt?: string;
   // Chunk setting
   chunkSettingMode?: ChunkSettingModeEnum; // 系统参数/自定义参数
   chunkSplitMode?: DataChunkSplitModeEnum;

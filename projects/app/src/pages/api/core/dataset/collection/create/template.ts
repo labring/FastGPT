@@ -13,16 +13,16 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
 
 export type templateImportQuery = {};
 type enhanceConfig = {
   autoIndexes?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
-  hypePrompt?: String;
-  small2bigChunkSize?: number;
-  small2bigMaxChildChunks?: number;
-  autoIndexesPrompt?: String;
+  hypeIndexPrompt?: string;
+  smll2bigConfig?: small2bigConfigType;
+  autoIndexesPrompt?: string;
 };
 export type templateImportBody = { datasetId: string; enhanceConfig: enhanceConfig };
 
