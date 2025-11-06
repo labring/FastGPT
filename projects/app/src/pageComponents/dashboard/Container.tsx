@@ -71,16 +71,17 @@ const DashboardContainer = ({
       refreshDeps: [currentTab]
     }
   );
-  const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
+  const { data: templateData, loading: isLoadingTemplates } = useRequest2(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateMarketItemList({ type: appType })
-        : Promise.resolve([]),
+        : Promise.resolve({ list: [], total: 0 }),
     {
       manual: false,
       refreshDeps: [currentTab, appType]
     }
   );
+  const templateList = templateData?.list || [];
 
   const groupList = useMemo<
     {

@@ -83,13 +83,14 @@ const CreateAppsPage = () => {
     }
   };
 
-  const { data: templateList = [] } = useRequest2(
+  const { data: templateData } = useRequest2(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type: selectedAppType }),
     {
       manual: false,
       refreshDeps: [selectedAppType]
     }
   );
+  const templateList = templateData?.list || [];
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {

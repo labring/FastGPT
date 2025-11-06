@@ -10,33 +10,54 @@ export type ListParams = {
   isQuickTemplate?: boolean;
   isRandom?: boolean;
   type?: AppTypeEnum | 'all';
+  excludeIds?: string[];
+};
+
+export type ListResponse = {
+  list: AppTemplateSchemaType[];
+  total: number;
 };
 
 async function handler(
   req: ApiRequestProps<ListParams>,
   res: NextApiResponse<any>
-): Promise<AppTemplateSchemaType[]> {
+): Promise<ListResponse> {
   await authCert({ req, authToken: true });
 
-  const { isQuickTemplate = false, isRandom = false, type = 'all' } = req.query;
+  const { isQuickTemplate = false, isRandom = false, type = 'all', excludeIds = [] } = req.query;
 
   const templateMarketItems = await getAppTemplatesAndLoadThem();
 
   let filteredItems = templateMarketItems.filter((item) => {
-    // if (!item.isActive) return false;
-    // if (type === 'all') return true;
-    return true;
+    if (!item.isActive) return false;
+    if (type === 'all' || item.type === type) return true;
+    return false;
   });
+  const total = filteredItems.length;
 
-  if (isQuickTemplate) {
-    // if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
-    //   filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
-    // } else {
-    filteredItems = filteredItems.slice(0, 4);
-    // }
+  if (excludeIds && excludeIds.length > 0) {
+    filteredItems = filteredItems.filter((item) => !excludeIds.includes(item.templateId));
   }
 
-  return filteredItems.map((item) => {
+  if (isQuickTemplate) {
+    if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
+      filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
+    } else {
+      filteredItems = filteredItems.slice(0, 4);
+    }
+  }
+
+  if (isRandom && filteredItems.length > 0) {
+    // Fisher-Yates shuffle algorithm
+    const shuffled = [...filteredItems];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    filteredItems = shuffled.slice(0, 4);
+  }
+
+  const list = filteredItems.map((item) => {
     return {
       templateId: item.templateId,
       name: item.name,
@@ -49,6 +70,11 @@ async function handler(
       workflow: {}
     };
   });
+
+  return {
+    list,
+    total
+  };
 }
 
 export default NextAPI(handler);

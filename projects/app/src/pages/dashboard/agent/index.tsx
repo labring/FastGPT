@@ -27,7 +27,6 @@ import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/agent/List';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
-import TeamSelector from '@/pageComponents/account/TeamSelector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -117,24 +116,14 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           h={'100%'}
           pr={folderDetail ? [3, 2] : [3, 6]}
           pl={6}
+          pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Box mt={6}>
-            <TemplateCreatePanel />
-          </Box>
-          <Box w={'full'} borderBottom={'1px solid'} borderColor={'myGray.200'} my={5} />
+          <TemplateCreatePanel type={appType} />
           <Flex>
-            <Box>
-              <TeamSelector
-                height={'36px'}
-                fontSize={'20px'}
-                border={'none'}
-                showAvatar={false}
-                bg={'none'}
-                pl={0}
-                rightIcon={<MyIcon name={'core/chat/chevronDown'} w={6} color={'myGray.500'} />}
-              />
+            <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+              Agent
             </Box>
             <Flex flex={1} />
             <Flex alignItems={'center'} gap={3}>

@@ -24,8 +24,6 @@ const Bot = () => {
   const { feConfigs, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
-  console.log(i18n.language);
-
   useEffect(() => {
     if (showChat) {
       setIsLoading(true);
