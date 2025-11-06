@@ -224,6 +224,7 @@ const InputRender = (props: InputRenderProps) => {
         customFileExtensionList={props.customFileExtensionList}
         canLocalUpload={props.canLocalUpload}
         canUrlUpload={props.canUrlUpload}
+        isDisabled={isDisabled}
       />
     );
   }
