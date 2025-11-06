@@ -21,13 +21,18 @@ export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
   intro?: string;
+  type: AppTypeEnum.folder | AppTypeEnum.toolFolder;
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId } = req.body;
+  const { name, intro, parentId, type } = req.body;
 
-  if (!name) {
-    Promise.reject(CommonErrEnum.missingParams);
+  if (!name || !type) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  if (type !== AppTypeEnum.folder && type !== AppTypeEnum.toolFolder) {
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // 凭证校验
@@ -44,7 +49,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       intro,
       teamId,
       tmbId,
-      type: AppTypeEnum.folder
+      type
     });
 
     await createResourceDefaultCollaborators({
