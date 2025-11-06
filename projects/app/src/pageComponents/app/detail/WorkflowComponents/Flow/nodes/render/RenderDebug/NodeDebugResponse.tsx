@@ -115,8 +115,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
               type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
+                entryNodeIds: workflowDebugData.entryNodeIds || [],
                 memoryEdges: interactive.memoryEdges || [],
-                entryNodeIds: interactive.entryNodeIds || [],
                 nodeOutputs: interactive.nodeOutputs || []
               }
             }
