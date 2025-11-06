@@ -71,7 +71,10 @@ const FileSelector = ({
   const chatItemChatId = useContextSelector(ChatItemContext, (v) => v?.chatBoxData?.chatId);
 
   const outLinkAuthData = useMemo(
-    () => chatBoxOutLinkAuthData || pluginOutLinkAuthData || {},
+    () => ({
+      ...(chatBoxOutLinkAuthData || {}),
+      ...(pluginOutLinkAuthData || {})
+    }),
     [chatBoxOutLinkAuthData, pluginOutLinkAuthData]
   );
   const appId = useMemo(
