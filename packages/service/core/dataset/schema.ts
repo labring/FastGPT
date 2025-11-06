@@ -35,8 +35,22 @@ export const ChunkSettings = {
   autoIndexes: Boolean,
   indexPrefixTitle: Boolean,
   hypeIndexes: Boolean,
+  small2bigIndexes: Boolean,
+  hypeIndexPrompt: String,
+  imageIndexPrompt: String,
+  small2bigConfigType: {
+    type: {
+      maxChildChunks: Number,
+      chunkSize: Number,
 
-  hypePrompt: String,
+      paragraphChunkDeep: Number,
+      paragraphChunkMinSize: Number,
+
+      maxSize: Number,
+      overlapRatio: Number,
+      customReg: Array<String>
+    }
+  },
   autoIndexesPrompt: String,
 
   chunkSettingMode: {

@@ -103,7 +103,7 @@ export type CollectionChunkFormType = {
   hypeIndexes: boolean;
   indexPrefixTitle: boolean;
   autoIndexesPrompt?: string;
-  hypePrompt?: string;
+  hypeIndexPrompt?: string;
   imageIndexPrompt?: string;
 
   // Chunk setting
@@ -241,7 +241,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     if (currentPromptType === 'autoIndexes') {
       setValue('autoIndexesPrompt', content);
     } else if (currentPromptType === 'hypeIndexes') {
-      setValue('hypePrompt', content);
+      setValue('hypeIndexPrompt', content);
     } else if (currentPromptType === 'imageIndex') {
       setValue('imageIndexPrompt', content);
     }
@@ -252,7 +252,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     async () => {
       const prompts = await getDatasetEnhanceDefaultPrompts();
       setValue('autoIndexesPrompt', prompts.autoIndexesPrompt);
-      setValue('hypePrompt', prompts.hypePrompt);
+      setValue('hypeIndexPrompt', prompts.hypeIndexPrompt);
       setValue('imageIndexPrompt', prompts.imageIndexPrompt || '');
     },
     {
@@ -712,7 +712,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
             currentPromptType === 'autoIndexes'
               ? getValues('autoIndexesPrompt')
               : currentPromptType === 'hypeIndexes'
-                ? getValues('hypePrompt')
+                ? getValues('hypeIndexPrompt')
                 : currentPromptType === 'imageIndex'
                   ? getValues('imageIndexPrompt')
                   : ''

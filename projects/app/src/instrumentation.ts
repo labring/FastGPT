@@ -11,7 +11,13 @@ export async function register() {
         { connectMongo },
         { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
         { systemStartCb },
-        { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
+        {
+          initGlobalVariables,
+          getInitConfig,
+          initSystemPluginGroups,
+          initAppTemplateTypes,
+          initProPromptLoader: initRemotePromptLoader
+        },
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
@@ -54,7 +60,8 @@ export async function register() {
         initVectorStore(),
         initRootUser(),
         loadSystemModels(),
-        loadSystemBuiltinMetrics()
+        loadSystemBuiltinMetrics(),
+        initRemotePromptLoader() // Initialize remote prompt loader
       ]);
 
       try {

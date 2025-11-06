@@ -21,6 +21,11 @@ import {
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from './constants';
+import {
+  setPromptLoader,
+  DefaultPromptLoader,
+  ProPromptLoader
+} from '@fastgpt/service/core/ai/config/utils';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -76,9 +81,36 @@ export function initGlobalVariables() {
   global.parseQueueLen = global.parseQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
-  global.hypeQueueLen = global.hypeQueueLen ?? 0;
+  global.small2bigQueueLen = global.small2bigQueueLen ?? 0;
   initHttpAgent();
   initPlusRequest();
+}
+
+/* Init remote prompt loader */
+export async function initProPromptLoader() {
+  const { setPromptLoader } = await import('@fastgpt/service/core/ai/config/utils');
+
+  // Get Pro service URL from environment variable
+  const proBaseUrl = process.env.PRO_URL || 'http://localhost:3000';
+
+  const loader = new ProPromptLoader(proBaseUrl);
+
+  // Set timeout for preloading (10 seconds)
+  const timeoutPromise = new Promise<void>((_, reject) => {
+    setTimeout(() => reject(new Error('Preload timeout')), 10000);
+  });
+
+  try {
+    await Promise.race([loader.preloadAllTemplates(), timeoutPromise]);
+    global.promptLoader = loader;
+  } catch (preloadError) {
+    console.error('[initProPromptLoader] Failed to preload templates:', preloadError);
+    // Fallback to default loader
+    const DefaultPromptLoader = await import('@fastgpt/service/core/ai/config/utils').then(
+      (m) => m.DefaultPromptLoader
+    );
+    setPromptLoader(new DefaultPromptLoader());
+  }
 }
 
 /* Init system data(Need to connected db). It only needs to run once */

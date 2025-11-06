@@ -53,7 +53,7 @@ const TemplateImportModal = ({
     hypeIndexes: false,
     small2bigIndexes: false,
     autoIndexesPrompt: '',
-    hypePrompt: ''
+    hypeIndexPrompt: ''
   });
 
   // Config prompt modal
@@ -71,7 +71,7 @@ const TemplateImportModal = ({
       setEnhanceConfig((prev) => ({
         ...prev,
         autoIndexesPrompt: prompts.autoIndexesPrompt,
-        hypePrompt: prompts.hypePrompt
+        hypeIndexPrompt: prompts.hypeIndexPrompt
       }));
     },
     {
@@ -91,7 +91,7 @@ const TemplateImportModal = ({
   const handleSavePrompt = async (content: string) => {
     setEnhanceConfig((prev) => ({
       ...prev,
-      [currentPromptType === 'autoIndexes' ? 'autoIndexesPrompt' : 'hypePrompt']: content
+      [currentPromptType === 'autoIndexes' ? 'autoIndexesPrompt' : 'hypeIndexPrompt']: content
     }));
   };
 
@@ -312,7 +312,7 @@ const TemplateImportModal = ({
           defaultValue={
             currentPromptType === 'autoIndexes'
               ? enhanceConfig.autoIndexesPrompt
-              : enhanceConfig.hypePrompt
+              : enhanceConfig.hypeIndexPrompt
           }
           onSuccess={handleSavePrompt}
         />

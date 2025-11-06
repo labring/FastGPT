@@ -82,7 +82,8 @@ export const createCollectionAndInsertData = async ({
   const trainingMode = getTrainingModeByCollection({
     trainingType: trainingType,
     autoIndexes: formatCreateCollectionParams.autoIndexes,
-    imageIndex: formatCreateCollectionParams.imageIndex
+    imageIndex: formatCreateCollectionParams.imageIndex,
+    small2bigIndexes: formatCreateCollectionParams.small2bigIndexes
   });
 
   if (
@@ -94,21 +95,31 @@ export const createCollectionAndInsertData = async ({
     delete formatCreateCollectionParams.chunkTriggerMinSize;
     delete formatCreateCollectionParams.dataEnhanceCollectionName;
     delete formatCreateCollectionParams.imageIndex;
-    delete formatCreateCollectionParams.autoIndexes;
+  }
 
-    if (
-      trainingType === DatasetCollectionDataProcessModeEnum.backup ||
-      trainingType === DatasetCollectionDataProcessModeEnum.template
-    ) {
-      delete formatCreateCollectionParams.paragraphChunkAIMode;
-      delete formatCreateCollectionParams.paragraphChunkDeep;
-      delete formatCreateCollectionParams.paragraphChunkMinSize;
-      delete formatCreateCollectionParams.chunkSplitMode;
-      delete formatCreateCollectionParams.chunkSize;
-      delete formatCreateCollectionParams.chunkSplitter;
-      delete formatCreateCollectionParams.indexSize;
-      delete formatCreateCollectionParams.indexPrefixTitle;
-    }
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.qa ||
+    trainingType === DatasetCollectionDataProcessModeEnum.backup
+  ) {
+    delete formatCreateCollectionParams.autoIndexes;
+    delete formatCreateCollectionParams.hypeIndexes;
+    delete formatCreateCollectionParams.hypeIndexPrompt;
+  }
+
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+    trainingType === DatasetCollectionDataProcessModeEnum.template
+  ) {
+    delete formatCreateCollectionParams.paragraphChunkAIMode;
+    delete formatCreateCollectionParams.paragraphChunkDeep;
+    delete formatCreateCollectionParams.paragraphChunkMinSize;
+    delete formatCreateCollectionParams.chunkSplitMode;
+    delete formatCreateCollectionParams.chunkSize;
+    delete formatCreateCollectionParams.chunkSplitter;
+  }
+
+  if (trainingType === DatasetCollectionDataProcessModeEnum.backup) {
+    delete formatCreateCollectionParams.indexSize;
   }
   if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
     delete formatCreateCollectionParams.qaPrompt;

@@ -208,18 +208,21 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   return DatasetCollectionSyncResultEnum.sameRaw;
 };
 
-/* 
+/*
   QA: 独立进程
   Chunk: Image Index -> Auto index -> chunk index
+  Template: Small2Big -> Auto -> chunk
 */
 export const getTrainingModeByCollection = ({
   trainingType,
   autoIndexes,
-  imageIndex
+  imageIndex,
+  small2bigIndexes
 }: {
   trainingType: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
+  small2bigIndexes?: boolean;
 }) => {
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
@@ -234,6 +237,20 @@ export const getTrainingModeByCollection = ({
   if (trainingType === DatasetCollectionDataProcessModeEnum.databaseSchema) {
     return TrainingModeEnum.databaseSchema;
   }
+
+  // Template：small2big -> auto -> chunk
+  if (trainingType === DatasetCollectionDataProcessModeEnum.template) {
+    if (small2bigIndexes) {
+      return TrainingModeEnum.small2Big;
+    }
+    if (autoIndexes && global.feConfigs?.isPlus) {
+      return TrainingModeEnum.auto;
+    }
+
+    return TrainingModeEnum.chunk;
+  }
+
+  // Chunk 模式的处理链：image -> auto -> chunk
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
     imageIndex &&
