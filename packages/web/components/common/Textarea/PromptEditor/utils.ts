@@ -20,6 +20,7 @@ import type {
   ListItemInfo,
   ChildEditorNode
 } from './type';
+import { TabStr } from './constants';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
   editor: LexicalEditor,
@@ -186,7 +187,8 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
 // text to editor state
 const parseTextLine = (line: string) => {
   const trimmed = line.trimStart();
-  const indentLevel = Math.floor((line.length - trimmed.length) / 2);
+  const leadingSpaces = line.length - trimmed.length;
+  const indentLevel = Math.floor(leadingSpaces / TabStr.length);
 
   const bulletMatch = trimmed.match(/^- (.*)$/);
   if (bulletMatch) {
@@ -203,7 +205,8 @@ const parseTextLine = (line: string) => {
     };
   }
 
-  return { type: 'paragraph', text: trimmed, indent: indentLevel };
+  // For paragraphs, preserve original leading spaces in text (don't use indent)
+  return { type: 'paragraph', text: line, indent: 0 };
 };
 
 const buildListStructure = (items: ListItemInfo[]) => {
@@ -326,7 +329,7 @@ export const textToEditorState = (text = '', isRichText = false) => {
         ],
         direction: 'ltr',
         format: '',
-        indent: parsed.indent,
+        indent: 0, // Always use 0 for paragraphs, spaces are in text content
         type: 'paragraph',
         version: 1
       });
@@ -426,7 +429,7 @@ const processListItem = ({
     } else if (child.type === 'text') {
       itemText.push(child.text);
     } else if (child.type === 'tab') {
-      itemText.push('  ');
+      itemText.push(TabStr);
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
     } else if (child.type === 'list') {
@@ -434,9 +437,9 @@ const processListItem = ({
     }
   });
 
-  // Add prefix and indent
-  const itemTextString = itemText.join('').trim();
-  const indent = '    '.repeat(indentLevel);
+  // Add prefix and indent (using TabStr for consistency)
+  const itemTextString = itemText.join('');
+  const indent = TabStr.repeat(indentLevel);
   const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
   results.push(indent + prefix + itemTextString);
 
@@ -483,7 +486,7 @@ export const editorStateToText = (editor: LexicalEditor) => {
 
     // Handle tab nodes
     if (node.type === 'tab') {
-      return '  ';
+      return TabStr;
     }
 
     // Handle text nodes
@@ -549,15 +552,14 @@ export const editorStateToText = (editor: LexicalEditor) => {
       const children = paragraph.children;
       const paragraphText: string[] = [];
 
-      const indentSpaces = '  '.repeat(paragraph.indent || 0);
-
+      // Don't add indent prefix for paragraphs, spaces are already in text content
       children.forEach((child) => {
         const val = extractText(child);
         paragraphText.push(val);
       });
 
       const finalText = paragraphText.join('');
-      editorStateTextString.push(indentSpaces + finalText);
+      editorStateTextString.push(finalText);
     } else {
       const text = extractText(paragraph);
       editorStateTextString.push(text);

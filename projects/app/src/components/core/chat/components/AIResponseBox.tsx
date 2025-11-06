@@ -218,7 +218,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
-        acc[`field_${index}`] = !!item.value ? item.value : item.defaultValue;
+        acc[item.key] = !!item.value ? item.value : item.defaultValue;
         return acc;
       }, {});
     }
@@ -229,9 +229,8 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     (data: Record<string, any>) => {
       const finalData: Record<string, any> = {};
       interactive.params.inputForm?.forEach((item, index) => {
-        const fieldName = `field_${index}`;
-        if (fieldName in data) {
-          finalData[item.label] = data[fieldName];
+        if (item.key in data) {
+          finalData[item.key] = data[item.key];
         }
       });
 

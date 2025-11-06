@@ -30,7 +30,7 @@ const HttpInput = ({
   const [currentValue, setCurrentValue] = React.useState(value);
 
   const onChangeInput = useCallback(
-    (editorState: EditorState, editor: LexicalEditor) => {
+    (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
       setCurrentValue(text);
       onChange?.(text);

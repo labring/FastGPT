@@ -89,6 +89,8 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+
+  mcpClientMemory: Record<string, MCPClient>; // key: url
 };
 
 export type SystemVariablesType = {
