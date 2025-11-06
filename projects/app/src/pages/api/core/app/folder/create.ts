@@ -21,17 +21,17 @@ export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
   intro?: string;
-  type: AppTypeEnum.folder | AppTypeEnum.resourceFolder;
+  type: AppTypeEnum.folder | AppTypeEnum.toolFolder;
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId, type = 'folder' } = req.body;
+  const { name, intro, parentId, type } = req.body;
 
-  if (!name) {
+  if (!name || !type) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  if (type !== AppTypeEnum.folder && type !== AppTypeEnum.resourceFolder) {
+  if (type !== AppTypeEnum.folder && type !== AppTypeEnum.toolFolder) {
     return Promise.reject(CommonErrEnum.invalidParams);
   }
 

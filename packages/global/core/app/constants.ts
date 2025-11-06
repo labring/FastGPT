@@ -8,7 +8,7 @@ import {
 
 export enum AppTypeEnum {
   folder = 'folder',
-  resourceFolder = 'resourceFolder',
+  toolFolder = 'toolFolder',
   simple = 'simple',
   workflow = 'advanced',
   plugin = 'plugin',
@@ -23,7 +23,7 @@ export enum AppTypeEnum {
 
 export const AppFolderTypeList = [
   AppTypeEnum.folder,
-  AppTypeEnum.resourceFolder,
+  AppTypeEnum.toolFolder,
   AppTypeEnum.httpPlugin
 ];
 

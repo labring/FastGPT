@@ -1,142 +1,170 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 
-async function appSplitMigration() {
-  const allTeamIds = await MongoTeam.find({}, '_id').lean();
-  for await (const teamId of allTeamIds) {
-    const allApps = await MongoApp.find({ teamId }).lean();
-    // 1. judge if migration:
-    // do not mirgation:
-    //     a. do not have folder type apps
-    //     b. have any resourceFolder type app
-    if (
-      allApps.every((app) => app.type !== AppTypeEnum.folder) &&
-      allApps.some((app) => app.type === AppTypeEnum.resourceFolder)
-    ) {
-      continue; // skip this team
+async function appSplitMigration(teamId: string) {
+  const allApps = await MongoApp.find(
+    { teamId },
+    {
+      _id: 1,
+      avatar: 1,
+      inheritPermission: 1,
+      intro: 1,
+      name: 1,
+      tmbId: 1,
+      teamId: 1,
+      parentId: 1,
+      type: 1
+    }
+  ).lean();
+
+  if (allApps.some((app) => app.type === AppTypeEnum.toolFolder)) {
+    return;
+  }
+
+  const allFolders = allApps.filter((item) => item.type === AppTypeEnum.folder);
+
+  if (allFolders.length === 0) {
+    return;
+  }
+
+  const rps = await MongoResourcePermission.find({
+    teamId,
+    resourceType: PerResourceTypeEnum.app,
+    resourceId: { $in: allFolders.map((app) => app._id) }
+  }).lean();
+
+  const appMap = new Map<string, { parentId?: ParentIdType; newId?: string }>(
+    allApps.map((app) => [app._id, { parentId: app.parentId, newId: undefined }])
+  );
+
+  const RPMap = new Map<string, ResourcePermissionType>(rps.map((rp) => [rp.resourceId, rp]));
+
+  const allToolTypeApps = allApps.filter((item) =>
+    [
+      AppTypeEnum.httpPlugin,
+      AppTypeEnum.httpToolSet,
+      AppTypeEnum.plugin,
+      AppTypeEnum.tool,
+      AppTypeEnum.toolSet
+    ].includes(item.type)
+  );
+
+  await mongoSessionRun(async (session) => {
+    // 2. create new folders
+    const newFolders = await MongoApp.create(
+      allFolders.map((folder) => ({
+        ...folder,
+        teamId,
+        type: AppTypeEnum.toolFolder,
+        _id: undefined
+      })),
+      {
+        session,
+        ordered: true
+      }
+    );
+
+    for (let index = 0; index < newFolders.length; index++) {
+      appMap.set(allFolders[index]._id, {
+        ...appMap.get(allFolders[index]._id),
+        newId: newFolders[index]._id
+      });
     }
 
-    const rps = await MongoResourcePermission.find({
-      teamId,
-      resourceType: PerResourceTypeEnum.app
-    }).lean();
+    // update parentIds
+    // update rps
+    {
+      const ops: AnyBulkWriteOperation<AppSchema>[] = [];
+      const rpOps: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
 
-    const appMap = new Map<string, { parentId?: ParentIdType; newId?: string }>(
-      allApps.map((app) => [app._id, { parentId: app.parentId, newId: undefined }])
-    );
+      for (const folder of allFolders) {
+        const obj = appMap.get(folder._id)!;
 
-    const RPMap = new Map<string, ResourcePermissionType>(rps.map((rp) => [rp.resourceId, rp]));
+        const oldRp = RPMap.get(folder._id)!;
+        rpOps.push({
+          insertOne: {
+            document: {
+              ...oldRp,
+              resourceId: obj.newId!,
+              _id: undefined
+            }
+          }
+        });
 
-    const allFolders = allApps.filter((item) => item.type === AppTypeEnum.folder);
-    const allResources = allApps.filter((item) =>
-      [
-        AppTypeEnum.httpPlugin,
-        AppTypeEnum.httpToolSet,
-        AppTypeEnum.plugin,
-        AppTypeEnum.tool,
-        AppTypeEnum.toolSet
-      ].includes(item.type)
-    );
-
-    await mongoSessionRun(async (session) => {
-      // 2. create new folders
-      const newFolders = await MongoApp.create(
-        allFolders.map((folder) => ({
-          ...folder,
-          teamId,
-          type: AppTypeEnum.resourceFolder,
-          _id: undefined
-        })),
-        {
-          session,
-          ordered: true
-        }
-      );
-
-      for (let index = 0; index < newFolders.length; index++) {
-        appMap.set(allFolders[index]._id, {
-          ...appMap.get(allFolders[index]._id),
-          newId: newFolders[index]._id
+        if (!obj.parentId) continue;
+        ops.push({
+          updateOne: {
+            filter: {
+              _id: obj.newId,
+              teamId
+            },
+            update: {
+              parentId: obj.parentId
+            }
+          }
         });
       }
 
-      // update parentIds
-      // update rps
-      {
-        const ops: AnyBulkWriteOperation<AppSchema>[] = [];
-        const rpOps: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
-
-        for (const folder of allFolders) {
-          const obj = appMap.get(folder._id)!;
-
-          const oldRp = RPMap.get(folder._id)!;
-          rpOps.push({
-            insertOne: {
-              document: {
-                ...oldRp,
-                resourceId: obj.newId!,
-                _id: undefined
-              }
-            }
-          });
-
-          if (!obj.parentId) continue;
-          ops.push({
-            updateOne: {
-              filter: {
-                _id: obj.newId,
-                teamId
-              },
-              update: {
-                parentId: obj.parentId
-              }
-            }
-          });
+      for (const app of allToolTypeApps) {
+        const obj = appMap.get(app._id);
+        const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
+        if (!newParentId) {
+          continue;
         }
 
-        for (const app of allResources) {
-          const obj = appMap.get(app._id);
-          const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
-          if (!newParentId) {
-            continue;
+        ops.push({
+          updateOne: {
+            filter: {
+              _id: app._id
+              // teamId
+            },
+            update: {
+              parentId: newParentId
+            }
           }
-
-          ops.push({
-            updateOne: {
-              filter: {
-                _id: app._id
-                // teamId
-              },
-              update: {
-                parentId: newParentId
-              }
-            }
-          });
-        }
-
-        console.log(JSON.stringify(ops, null, 2));
-        console.log(JSON.stringify(rpOps, null, 2));
-        await MongoApp.bulkWrite(ops, { session });
-        await MongoResourcePermission.bulkWrite(rpOps, { session });
+        });
       }
-    });
-  }
+
+      await MongoApp.bulkWrite(ops, { session });
+      await MongoResourcePermission.bulkWrite(rpOps, { session });
+    }
+  });
 }
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
-  await appSplitMigration();
+  const allTeamIds = await MongoTeam.find({}, '_id').lean();
+  addLog.info(`Starting app split migration, teamIds: ${allTeamIds.length}`);
+  const failed = [];
+  for await (const { _id: teamId } of allTeamIds) {
+    try {
+      await appSplitMigration(teamId);
+    } catch (e) {
+      addLog.error('App split script error: ', e);
+      failed.push(teamId);
+      continue;
+    }
+  }
+  addLog.info(`App split migration completed, failed teams: ${failed.length}, ${failed}`);
+
+  return {
+    total: allTeamIds.length,
+    failed: failed.length,
+    failedTeams: failed
+  };
 }
 
 export default NextAPI(handler);
