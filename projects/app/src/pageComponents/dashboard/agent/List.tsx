@@ -24,10 +24,6 @@ import {
 } from '@/web/core/app/api/collaborator';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
-
-const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
-const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
-
 import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -38,6 +34,9 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+
+const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
+const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
@@ -134,7 +133,13 @@ const ListItem = () => {
   return (
     <>
       {myApps.length === 0 ? (
-        <CreateButton appType={appType} />
+        isPc ? (
+          <CreateButton appType={appType} />
+        ) : (
+          <Box pt={4}>
+            <ListCreateButton appType={appType} />
+          </Box>
+        )
       ) : (
         <Grid
           py={4}
@@ -463,16 +468,20 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
   const router = useRouter();
+  const parentId = router.query.parentId;
 
   return (
     <Box
       position="relative"
       width="100%"
+      minH={'150px'}
       overflow="hidden"
       rounded={'sm'}
       cursor={'pointer'}
       onClick={() => {
-        router.push(`/dashboard/create?appType=${appType}`);
+        router.push(
+          `/dashboard/create?appType=${appType}${parentId ? `&parentId=${parentId}` : ''}`
+        );
       }}
       onMouseEnter={() => setIsHoverCreateButton(true)}
       onMouseLeave={() => setIsHoverCreateButton(false)}
@@ -492,7 +501,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         maxW="100%"
         display="block"
         transition="transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
-        transform={isHoverCreateButton ? 'scale(1.2) translateY(-16px)' : 'scale(1) translateY(0)'}
+        transform={isHoverCreateButton ? 'scale(1.2) translateY(-12px)' : 'scale(1) translateY(0)'}
       />
       <VStack
         position="absolute"
@@ -527,6 +536,8 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
 const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const parentId = router.query.parentId;
+
   return (
     <MyBox
       py={4}
@@ -544,7 +555,9 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         }
       }}
       onClick={() => {
-        router.push(`/dashboard/create?appType=${appType}`);
+        router.push(
+          `/dashboard/create?appType=${appType}${parentId ? `&parentId=${parentId}` : ''}`
+        );
       }}
     >
       <Box color={'myGray.900'} fontWeight={'medium'}>
@@ -559,6 +572,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         alignItems={'center'}
         justifyContent={'center'}
         position={'relative'}
+        flex={'1 0 56px'}
       >
         <Box
           className="create-box"

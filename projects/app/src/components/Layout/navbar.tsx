@@ -53,8 +53,9 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: [
           '/dashboard/agent',
           '/app/detail',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
           '/dashboard/templateMarket',
-          '/dashboard/[pluginGroupId]',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
           '/dashboard/evaluation/create'
@@ -67,13 +68,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
-      // {
-      //   label: t('common:navbar.plugin'),
-      //   icon: 'core/app/pluginLight',
-      //   activeIcon: 'core/app/pluginFill',
-      //   link: '/plugin/tool',
-      //   activeLink: ['/plugin/tool']
-      // },
       {
         label: t('common:navbar.Chat'),
         icon: 'navbar/chatLight',

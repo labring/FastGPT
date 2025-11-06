@@ -31,8 +31,9 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         activeLink: [
           '/dashboard/agent',
           '/app/detail',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
           '/dashboard/templateMarket',
-          '/dashboard/[pluginGroupId]',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
           '/dashboard/evaluation/create'
@@ -46,13 +47,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail'],
         unread: 0
-      },
-      {
-        label: t('common:navbar.plugin'),
-        icon: 'core/app/pluginLight',
-        activeIcon: 'core/app/pluginFill',
-        link: '/plugin/tool',
-        activeLink: ['/plugin/tool']
       },
       {
         label: t('common:navbar.Account'),

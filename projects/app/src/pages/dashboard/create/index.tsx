@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Flex,
@@ -43,6 +43,7 @@ import { getMCPTools, postCreateHttpTools, postCreateMCPTools } from '@/web/core
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import AppTypeCard from '@/pageComponents/app/create/AppTypeCard';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type FormType = {
   avatar: string;
@@ -68,17 +69,11 @@ const CreateAppsPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { feConfigs } = useSystemStore();
-  const { query, replace, pathname } = router;
+  const { isPc } = useSystem();
+  const { query } = router;
   const { parentId, appType } = query;
   const initialAppType =
     (createAppTypeMap[appType as CreateAppType]?.type as CreateAppType) || AppTypeEnum.simple;
-
-  useEffect(() => {
-    const newQuery = { ...query };
-    delete newQuery.parentId;
-    delete newQuery.appType;
-    replace({ pathname, query: newQuery }, undefined, { shallow: true });
-  }, []);
 
   const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(initialAppType);
   const [showToolCreate, setShowToolCreate] = useState(ToolTypeList.includes(selectedAppType));
@@ -542,43 +537,45 @@ const CreateAppsPage = () => {
             </>
           )}
         </Flex>
-        <Box flex={1} position={'relative'}>
-          <Box
-            position={'absolute'}
-            zIndex={10}
-            top={'60px'}
-            left={'50%'}
-            transform={'translateX(-50%)'}
-            w={'full'}
-          >
-            <Flex alignItems={'center'} justifyContent={'center'}>
-              <Box color={'myGray.900'} fontSize={'32px'} fontWeight={'medium'}>
-                {t(createAppTypeMap[selectedAppType].title)}
-              </Box>
-            </Flex>
-            <Flex
-              color={'myGray.500'}
-              fontSize={'md'}
-              letterSpacing={'0.5px'}
-              px={16}
-              mt={2.5}
-              textAlign={'center'}
-              justifyContent={'center'}
+        {isPc && (
+          <Box flex={1} position={'relative'}>
+            <Box
+              position={'absolute'}
+              zIndex={10}
+              top={'60px'}
+              left={'50%'}
+              transform={'translateX(-50%)'}
+              w={'full'}
             >
-              {t(createAppTypeMap[selectedAppType].description)}
-            </Flex>
+              <Flex alignItems={'center'} justifyContent={'center'}>
+                <Box color={'myGray.900'} fontSize={'32px'} fontWeight={'medium'}>
+                  {t(createAppTypeMap[selectedAppType].title)}
+                </Box>
+              </Flex>
+              <Flex
+                color={'myGray.500'}
+                fontSize={'md'}
+                letterSpacing={'0.5px'}
+                px={16}
+                mt={2.5}
+                textAlign={'center'}
+                justifyContent={'center'}
+              >
+                {t(createAppTypeMap[selectedAppType].description)}
+              </Flex>
+            </Box>
+            <MyImage
+              src={createAppTypeMap[selectedAppType].imgUrl}
+              w={'full'}
+              position={'absolute'}
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              style={{ pointerEvents: 'none' }}
+            />
           </Box>
-          <MyImage
-            src={createAppTypeMap[selectedAppType].imgUrl}
-            w={'full'}
-            position={'absolute'}
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            style={{ pointerEvents: 'none' }}
-          />
-        </Box>
+        )}
       </Flex>
       <AvatarUploader />
     </Box>

@@ -92,23 +92,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      {paths.length > 0 && (
-        <Box pt={[4, 6]} pl={5}>
-          <FolderPath
-            paths={paths}
-            hoverStyle={{ bg: 'myGray.200' }}
-            forbidLastClick
-            onClick={(parentId) => {
-              router.push({
-                query: {
-                  ...router.query,
-                  parentId
-                }
-              });
-            }}
-          />
-        </Box>
-      )}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -120,11 +103,31 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <TemplateCreatePanel type={appType} />
+          {!folderDetail && isPc && <TemplateCreatePanel type={appType} />}
           <Flex alignItems={'center'}>
-            <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-              Agent
-            </Box>
+            {!isPc ? (
+              MenuIcon
+            ) : paths.length > 0 ? (
+              <Box>
+                <FolderPath
+                  paths={paths}
+                  hoverStyle={{ bg: 'myGray.200' }}
+                  forbidLastClick
+                  onClick={(parentId) => {
+                    router.push({
+                      query: {
+                        ...router.query,
+                        parentId
+                      }
+                    });
+                  }}
+                />
+              </Box>
+            ) : (
+              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+                Agent
+              </Box>
+            )}
             <Flex flex={1} />
             <Flex alignItems={'center'} gap={3}>
               {isPc && (
@@ -162,21 +165,20 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-
-            {!isPc && (
-              <Box mt={2}>
-                {
-                  <SearchInput
-                    maxW={['auto', '250px']}
-                    value={searchKey}
-                    onChange={(e) => setSearchKey(e.target.value)}
-                    placeholder={t('app:search_app')}
-                    maxLength={30}
-                  />
-                }
-              </Box>
-            )}
           </Flex>
+          {!isPc && (
+            <Box mt={2}>
+              {
+                <SearchInput
+                  maxW={['auto', '250px']}
+                  value={searchKey}
+                  onChange={(e) => setSearchKey(e.target.value)}
+                  placeholder={t('app:search_app')}
+                  maxLength={30}
+                />
+              }
+            </Box>
+          )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
             <List />

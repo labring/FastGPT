@@ -1,32 +1,35 @@
 import { getOperationalAd } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  standardSubLevelMap
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Progress } from '@chakra-ui/react';
+import { useRouter } from 'next/router';
 
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
+  const router = useRouter();
+  if (!teamPlanStatus?.standardConstants) return null;
 
   const { data: operationalAd } = useRequest2(() => getOperationalAd(), {
     manual: false
   });
 
-  const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
-    'team-plan-banner-hidden-until',
-    {
-      defaultValue: undefined
-    }
-  );
+  const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>('hidden-until', {
+    defaultValue: undefined
+  });
 
   const planName = useMemo(() => {
-    if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    if (!teamPlanStatus.standard?.currentSubLevel) return '';
+    return standardSubLevelMap[teamPlanStatus.standard?.currentSubLevel].label;
+  }, [teamPlanStatus.standard?.currentSubLevel]);
 
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
@@ -114,7 +117,7 @@ const TeamPlanStatusCard = () => {
 
       <Flex flexDirection={'column'} gap={1}>
         <Flex color={'myGray.500'}>
-          <Box>剩余积分：</Box>
+          <Box>{t('app:remaining_points')}</Box>
           <Flex gap={0.5}>
             <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}>
               {aiPointsUsageMap.value}
@@ -134,7 +137,15 @@ const TeamPlanStatusCard = () => {
         />
         <Flex>
           <Box color={'myGray.500'}> {t('user:current_package')}</Box>
-          <Box color={'primary.400'}>{t(planName as any)}</Box>
+          <Box
+            color={'primary.400'}
+            cursor={'pointer'}
+            onClick={() => {
+              router.push('/price');
+            }}
+          >
+            {t(planName as any)}
+          </Box>
         </Flex>
         <Button
           borderRadius={'6px'}
@@ -142,8 +153,13 @@ const TeamPlanStatusCard = () => {
           color={'white'}
           w={'full'}
           leftIcon={<MyIcon name={'common/rocket'} w={4} />}
+          onClick={() => {
+            router.push('/price');
+          }}
         >
-          去升级
+          {teamPlanStatus.standard?.currentSubLevel === StandardSubLevelEnum.free
+            ? t('app:upgrade')
+            : t('app:recharge')}
         </Button>
       </Flex>
     </Box>

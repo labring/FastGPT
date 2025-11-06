@@ -11,7 +11,13 @@ import { useTranslation } from 'next-i18next';
 
 const BotShowRouter: { [key: string]: boolean } = {
   '/dashboard/agent': true,
-  '/dataset/': true
+  '/dashboard/tool': true,
+  '/dashboard/systemTool': true,
+  '/dashboard/templateMarket': true,
+  '/dashboard/mcpServer': true,
+  '/dashboard/evaluation': true,
+  '/dataset/list': true,
+  '/account/info': true
 };
 
 const Bot = () => {
@@ -23,15 +29,6 @@ const Bot = () => {
 
   const { feConfigs, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
-
-  useEffect(() => {
-    if (showChat) {
-      setIsLoading(true);
-    }
-  }, [showChat]);
-
-  const showBot = BotShowRouter[router.pathname];
-
   const isPlanUser = useMemo(() => {
     if (!teamPlanStatus) return false;
     if (teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free) return true;
@@ -45,6 +42,17 @@ const Bot = () => {
   ]);
 
   const showWorkorder = feConfigs?.show_workorder && isPlanUser;
+  const botIframeUrl = feConfigs?.botIframeUrl;
+
+  useEffect(() => {
+    if (showChat) {
+      setIsLoading(true);
+    }
+  }, [showChat]);
+
+  if (!botIframeUrl || !BotShowRouter[router.pathname]) {
+    return null;
+  }
 
   return (
     <>
@@ -76,7 +84,6 @@ const Bot = () => {
               </Flex>
             </Center>
           )}
-          {/* 关闭聊天窗口按钮 */}
           <Box
             position={'absolute'}
             right={2}
@@ -95,7 +102,7 @@ const Bot = () => {
           {/* iframe */}
           <Box
             as="iframe"
-            src={`http://localhost:3000/chat/share?shareId=lGm8acViGhnTLpmXmmIMX41c&showWorkorder=${showWorkorder ? '1' : '0'}`}
+            src={`${botIframeUrl}&showWorkorder=${showWorkorder ? '1' : '0'}`}
             w={'100%'}
             h={'100%'}
             border={'none'}
@@ -104,76 +111,73 @@ const Bot = () => {
         </Box>
       )}
 
-      {/* 机器人按钮 */}
-      {showBot && (
-        <Flex
-          position={'fixed'}
-          right={3}
-          bottom={'10%'}
-          zIndex={100}
-          transform={open ? 'none' : 'translateX(32px)'}
-          transition={'transform 0.2s ease-in-out'}
-        >
-          {open && (
-            <>
+      <Flex
+        position={'fixed'}
+        right={3}
+        bottom={'10%'}
+        zIndex={100}
+        transform={open ? 'none' : 'translateX(32px)'}
+        transition={'transform 0.2s ease-in-out'}
+      >
+        {open && (
+          <>
+            <Box
+              zIndex={10}
+              position={'absolute'}
+              right={-2}
+              top={-2}
+              w={4}
+              h={4}
+              borderRadius={'full'}
+              _hover={{
+                cursor: 'pointer',
+                bgColor: 'myGray.200'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen.set(false);
+                setShowChat.set(false);
+              }}
+            >
+              <MyIcon name="close" />
+            </Box>
+            {!showChat && (
               <Box
-                zIndex={10}
                 position={'absolute'}
-                right={-2}
-                top={-2}
-                w={4}
-                h={4}
-                borderRadius={'full'}
-                _hover={{
-                  cursor: 'pointer',
-                  bgColor: 'myGray.200'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen.set(false);
-                  setShowChat.set(false);
-                }}
+                left={'-40px'}
+                top={'-30px'}
+                w={'80px'}
+                h={'80px'}
+                zIndex={-10}
               >
-                <MyIcon name="close" />
+                {i18n.language === 'zh-CN' ? (
+                  <Box bgImage={getWebReqUrl('/imgs/botText.svg')} w={'100%'} h={'100%'} />
+                ) : (
+                  <Box bgImage={getWebReqUrl('/imgs/botTextEn.svg')} w={'100%'} h={'100%'} />
+                )}
               </Box>
-              {!showChat && (
-                <Box
-                  position={'absolute'}
-                  left={'-40px'}
-                  top={'-30px'}
-                  w={'80px'}
-                  h={'80px'}
-                  zIndex={-10}
-                >
-                  {i18n.language === 'zh-CN' ? (
-                    <Box bgImage={getWebReqUrl('/imgs/botText.svg')} w={'100%'} h={'100%'} />
-                  ) : (
-                    <Box bgImage={getWebReqUrl('/imgs/botTextEn.svg')} w={'100%'} h={'100%'} />
-                  )}
-                </Box>
-              )}
-            </>
-          )}
+            )}
+          </>
+        )}
 
-          <Box
-            bgImage={getWebReqUrl(open ? '/imgs/bot.svg' : '/imgs/botClosed.svg')}
-            w={'60px'}
-            h={'60px'}
-            rounded={'full'}
-            boxShadow={'3px 25px 9.7px 0 rgba(62, 81, 177, 0.05)'}
-            _hover={{
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              if (open) {
-                setShowChat.toggle();
-              } else {
-                setOpen.set(true);
-              }
-            }}
-          />
-        </Flex>
-      )}
+        <Box
+          bgImage={getWebReqUrl(open ? '/imgs/bot.svg' : '/imgs/botClosed.svg')}
+          w={'60px'}
+          h={'60px'}
+          rounded={'full'}
+          boxShadow={'3px 25px 9.7px 0 rgba(62, 81, 177, 0.05)'}
+          _hover={{
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            if (open) {
+              setShowChat.toggle();
+            } else {
+              setOpen.set(true);
+            }
+          }}
+        />
+      </Flex>
     </>
   );
 };
