@@ -94,7 +94,8 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
-    username: tmb?.user?.username
+    username: tmb?.user?.username,
+    templateId
   });
 
   pushTrack.createApp({

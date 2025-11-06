@@ -11,14 +11,9 @@ import {
   SelectOptionsComponent
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import {
-  getLastInteractiveValue,
-  storeEdges2RuntimeEdges
-} from '@fastgpt/global/core/workflow/runtime/utils';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
 
@@ -27,7 +22,7 @@ type NodeDebugResponseProps = {
   debugResult: FlowNodeItemType['debugResult'];
 };
 
-const RenderUserFormInteractive = React.memo(function RenderFormInput({
+const RenderUserFormInteractive = function RenderFormInput({
   interactive,
   onNext
 }: {
@@ -38,13 +33,13 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
-      acc[item.label] = !!item.value ? item.value : item.defaultValue;
+      acc[item.key] = item.value !== undefined ? item.value : item.defaultValue;
       return acc;
     }, {});
   }, [interactive.params.inputForm]);
 
   return (
-    <Box px={4} py={4} bg="white" borderRadius="md">
+    <Box className="nodrag" px={4} py={4} bg="white" borderRadius="md">
       <FormInputComponent
         defaultValues={defaultValues}
         interactiveParams={interactive.params}
@@ -63,7 +58,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       />
     </Box>
   );
-});
+};
 
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
@@ -120,8 +115,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
               type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
+                entryNodeIds: workflowDebugData.entryNodeIds || [],
                 memoryEdges: interactive.memoryEdges || [],
-                entryNodeIds: interactive.entryNodeIds || [],
                 nodeOutputs: interactive.nodeOutputs || []
               }
             }

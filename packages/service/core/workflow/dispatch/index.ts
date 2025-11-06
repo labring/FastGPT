@@ -54,6 +54,7 @@ import { createChatUsageRecord, pushChatItemUsage } from '../../../support/walle
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
+import type { MCPClient } from '../../app/mcp';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -152,6 +153,8 @@ export async function dispatchWorkFlow({
     }))
   };
 
+  let mcpClientMemory = {} as Record<string, MCPClient>;
+
   // Init some props
   return runWorkflow({
     ...data,
@@ -163,17 +166,24 @@ export async function dispatchWorkFlow({
     variables: defaultVariables,
     workflowDispatchDeep: 0,
     usageId: newUsageId,
-    concatUsage
+    concatUsage,
+    mcpClientMemory
   }).finally(() => {
     if (streamCheckTimer) {
       clearInterval(streamCheckTimer);
     }
+
+    // Close mcpClient connections
+    Object.values(mcpClientMemory).forEach((client) => {
+      client.closeConnection();
+    });
   });
 }
 
 type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+  mcpClientMemory: Record<string, MCPClient>;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
 };
@@ -192,7 +202,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     responseAllData = true,
     usageId,
     concatUsage,
-    runningUserInfo: { teamId }
+    runningUserInfo: { teamId },
+    mcpClientMemory
   } = data;
 
   // Over max depth
@@ -458,7 +469,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
-        lastInteractive: data.lastInteractive?.entryNodeIds.includes(node.nodeId)
+        mcpClientMemory,
+        lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
           : undefined,
         variables,

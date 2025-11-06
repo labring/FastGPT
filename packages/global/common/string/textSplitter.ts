@@ -97,7 +97,7 @@ ${mdSplitString}
       if (chunkLength > maxSize) {
         const newChunks = commonSplit({
           ...props,
-          text: chunk
+          text: chunk.replace(defaultChunk, '').trim()
         }).chunks;
         chunks.push(...newChunks);
       } else {

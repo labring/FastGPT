@@ -22,7 +22,6 @@ import { getNodeErrResponse } from '../utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
-import { i18nT } from '../../../../../web/i18n/utils';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -50,6 +49,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
+
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
@@ -201,14 +201,19 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
-      const mcpClient = new MCPClient({
-        url,
-        headers: getSecretValue({
-          storeSecret: headerSecret
-        })
-      });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      // Buffer mcpClient in this workflow
+      const mcpClient =
+        props.mcpClientMemory?.[url] ??
+        new MCPClient({
+          url,
+          headers: getSecretValue({
+            storeSecret: headerSecret
+          })
+        });
+      props.mcpClientMemory[url] = mcpClient;
+
+      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -285,7 +290,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           storeSecret: headerSecret
         })
       });
-      const result = await mcpClient.toolCall(toolName, restParams);
+      const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {
         data: {
