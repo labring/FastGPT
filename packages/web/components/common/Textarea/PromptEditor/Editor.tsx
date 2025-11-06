@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -132,7 +132,7 @@ export default function Editor({
     ],
     editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
-      throw error;
+      console.error('Lexical errror', error);
     }
   };
 

@@ -63,7 +63,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
 });
 
 export const FormInputComponent = React.memo(function FormInputComponent({
-  interactiveParams,
+  interactiveParams: { description, inputForm, submitted },
   defaultValues = {},
   SubmitButton
 }: {
@@ -71,8 +71,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   defaultValues?: Record<string, any>;
   SubmitButton: (e: { onSubmit: UseFormHandleSubmit<Record<string, any>> }) => React.JSX.Element;
 }) {
-  const { description, inputForm, submitted } = interactiveParams;
-
   const { handleSubmit, control } = useForm({
     defaultValues
   });
@@ -81,20 +79,20 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     <Box>
       <DescriptionBox description={description} />
       <Flex flexDirection={'column'} gap={3}>
-        {inputForm.map((input, index) => {
+        {inputForm.map((input) => {
           const inputType = nodeInputTypeToInputType([input.type]);
 
           return (
-            <Box key={input.label}>
+            <Box key={input.key}>
               <Flex alignItems={'center'} mb={1}>
                 {input.required && <Box color={'red.500'}>*</Box>}
                 <FormLabel>{input.label}</FormLabel>
                 {input.description && <QuestionTip ml={1} label={input.description} />}
               </Flex>
               <Controller
-                key={input.label} // 添加 key
+                key={input.key} // 添加 key
                 control={control}
-                name={`field_${index}`}
+                name={input.key}
                 rules={{ required: input.required }}
                 render={({ field: { onChange, value }, fieldState: { error } }) => {
                   return (

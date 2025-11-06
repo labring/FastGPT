@@ -32,14 +32,14 @@ const RenderUserFormInteractive = function RenderFormInput({
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
-    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
-      acc[`field_${index}`] = !!item.value ? item.value : item.defaultValue;
+    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
+      acc[item.key] = item.value !== undefined ? item.value : item.defaultValue;
       return acc;
     }, {});
   }, [interactive.params.inputForm]);
 
   return (
-    <Box px={4} py={4} bg="white" borderRadius="md">
+    <Box className="nodrag" px={4} py={4} bg="white" borderRadius="md">
       <FormInputComponent
         defaultValues={defaultValues}
         interactiveParams={interactive.params}
