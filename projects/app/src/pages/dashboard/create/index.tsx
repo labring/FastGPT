@@ -191,7 +191,20 @@ const CreateAppsPage = () => {
           h={'full'}
           overflow={'auto'}
           sx={{
-            scrollbarColor: 'rgba(0,0,0,0.2) transparent'
+            scrollbarWidth: 'thin',
+            '&::-webkit-scrollbar': {
+              width: '6px'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'transparent',
+              borderRadius: '3px'
+            },
+            '&:hover::-webkit-scrollbar-thumb': {
+              background: 'rgba(0, 0, 0, 0.2)'
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: 'rgba(0, 0, 0, 0.3)'
+            }
           }}
         >
           <Box mb={5} borderBottom={'1px solid'} borderColor={'myGray.200'}>
@@ -268,48 +281,58 @@ const CreateAppsPage = () => {
             </Box>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
-                <Box
-                  p={1}
-                  mr={2.5}
-                  borderRadius={'6px'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                >
+                <Box borderRadius={'6px'} border={'1px solid'} borderColor={'myGray.200'} mr={2.5}>
                   <Avatar
                     src={avatar}
                     w={7}
                     borderRadius={'4.667px'}
                     cursor={'pointer'}
                     onClick={handleAvatarSelectorOpen}
+                    p={1}
                   />
                 </Box>
               </MyTooltip>
               <Input
                 flex={1}
                 h={8}
-                mr={5}
+                mr={selectedAppType !== AppTypeEnum.toolSet ? 5 : 0}
                 placeholder={t('app:app_name_placeholder')}
                 {...register('name', {
                   required: t('common:core.app.error.App name can not be empty')
                 })}
               />
-              <Button
-                isLoading={isCreating}
-                isDisabled={
-                  selectedAppType === AppTypeEnum.toolSet &&
-                  (!mcpToolList || mcpToolList.length === 0)
-                }
-                onClick={handleSubmit((data) => onClickCreate(data))}
-              >
-                {t('common:Create')}
-              </Button>
+              {selectedAppType !== AppTypeEnum.toolSet && (
+                <Button
+                  isLoading={isCreating}
+                  onClick={handleSubmit((data) => onClickCreate(data))}
+                >
+                  {t('common:Create')}
+                </Button>
+              )}
             </Flex>
           </Box>
           {templateData?.list && templateData.list.length > 0 && (
             <Box>
-              <Box color={'myGray.900'} fontWeight={'medium'} mb={2.5}>
-                {t('app:create_by_template')}
-              </Box>
+              <Flex justifyContent={'space-between'} mb={2.5}>
+                <Box color={'myGray.900'} fontWeight={'medium'}>
+                  {t('app:create_by_template')}
+                </Box>
+                <Flex
+                  alignItems={'center'}
+                  cursor={'pointer'}
+                  onClick={() => router.push('/dashboard/templateMarket')}
+                >
+                  <Box fontSize={'mini'} fontWeight={'medium'}>
+                    {t('common:template_market')}
+                  </Box>
+                  <MyIcon
+                    name={'core/chat/chevronRight'}
+                    w={'14px'}
+                    h={'14px'}
+                    color={'myGray.500'}
+                  />
+                </Flex>
+              </Flex>
               <SimpleGrid columns={[1, 3]} gridGap={2.5}>
                 {templateData.list.map((item) => (
                   <Card
@@ -492,6 +515,16 @@ const CreateAppsPage = () => {
                   )}
                 </Box>
               </Box>
+              <Flex justifyContent={'end'}>
+                <Button
+                  isLoading={isCreating}
+                  isDisabled={!mcpToolList || mcpToolList.length === 0}
+                  onClick={handleSubmit((data) => onClickCreate(data))}
+                  w={20}
+                >
+                  {t('common:Create')}
+                </Button>
+              </Flex>
             </>
           )}
           {/* http */}

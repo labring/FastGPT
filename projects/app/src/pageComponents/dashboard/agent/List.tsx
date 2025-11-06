@@ -226,7 +226,7 @@ const ListItem = () => {
                     fontSize={'xs'}
                     color={'myGray.500'}
                   >
-                    <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
+                    <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
                       {app.intro || t('common:no_intro')}
                     </Box>
                   </Box>

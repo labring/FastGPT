@@ -9,7 +9,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
 
   const map = useRef({
     [AppTypeEnum.simple]: {
-      label: t('app:type.Simple bot'),
+      label: t('app:type.Chat_Agent'),
       icon: 'core/app/type/simple'
     },
     [AppTypeEnum.workflow]: {
@@ -17,7 +17,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       icon: 'core/app/type/workflow'
     },
     [AppTypeEnum.plugin]: {
-      label: t('app:type.Plugin'),
+      label: t('app:toolType_workflow'),
       icon: 'core/app/type/plugin'
     },
     [AppTypeEnum.httpPlugin]: {
@@ -25,11 +25,11 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       icon: 'core/app/type/httpPlugin'
     },
     [AppTypeEnum.httpToolSet]: {
-      label: t('app:type.Http tool set'),
+      label: t('app:toolType_http'),
       icon: 'core/app/type/httpPlugin'
     },
     [AppTypeEnum.toolSet]: {
-      label: t('app:type.MCP tools'),
+      label: t('app:toolType_mcp'),
       icon: 'core/app/type/mcpTools'
     },
     [AppTypeEnum.tool]: undefined,
@@ -38,7 +38,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     [AppTypeEnum.agent]: undefined
   });
 
-  const data = map.current[type];
+  const data = map.current[type as keyof typeof map.current];
 
   return data ? (
     <Flex

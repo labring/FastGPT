@@ -130,8 +130,6 @@ const TeamPlanStatusCard = () => {
           value={aiPointsUsageMap.rate}
           colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
           borderRadius={'md'}
-          isAnimated
-          hasStripe
           borderWidth={'1px'}
           borderColor={'borderColor.low'}
         />

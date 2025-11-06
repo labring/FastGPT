@@ -924,7 +924,7 @@
   "name_is_empty": "Name Cannot Be Empty",
   "navbar.Account": "Account",
   "navbar.Chat": "portal",
-  "navbar.Config": "administrator",
+  "navbar.Config": "admini",
   "navbar.Datasets": "Dataset",
   "navbar.Studio": "Studio",
   "navbar.Toolkit": "Toolkit",

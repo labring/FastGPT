@@ -22,8 +22,7 @@ const AppTypeCard = ({
       border={'1px solid'}
       {...(selectedAppType === option.type
         ? {
-            borderColor: 'primary.300',
-            boxShadow: '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)'
+            borderColor: 'primary.300'
           }
         : {
             borderColor: 'myGray.200'
@@ -31,6 +30,7 @@ const AppTypeCard = ({
       cursor={'pointer'}
       userSelect={'none'}
       onClick={onClick}
+      boxShadow={'none'}
       _hover={{
         boxShadow: '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)'
       }}
