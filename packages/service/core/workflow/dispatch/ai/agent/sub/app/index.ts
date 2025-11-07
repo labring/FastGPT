@@ -16,10 +16,10 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { getChildAppRuntimeById } from '../../../../../../app/plugin/controller';
+import { getChildAppRuntimeById } from '../../../../../../app/tool/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { serverGetWorkflowToolRunUserQuery } from '../../../../../../app/tool/workflowTool/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 type Props = ModuleDispatchProps<{}> & {
   callParams: {
@@ -176,8 +176,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         isChildApp: true
       },
       variables: runtimeVariables,
-      query: getPluginRunUserQuery({
-        pluginInputs: getPluginInputsFromStoreNodes(plugin.nodes),
+      query: serverGetWorkflowToolRunUserQuery({
+        pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
         variables: runtimeVariables
       }).value,
       chatConfig: {},
