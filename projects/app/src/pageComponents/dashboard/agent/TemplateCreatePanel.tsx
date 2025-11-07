@@ -12,11 +12,14 @@ import { useRouter } from 'next/router';
 import { postCreateApp } from '@/web/core/app/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useLocalStorageState } from 'ahooks';
+import { useState } from 'react';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
 
+  const [isHoverMoreButton, setIsHoverMoreButton] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorageState<boolean>(
     'template-create-panel-collapsed',
     {
@@ -172,14 +175,10 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
               ))}
 
           <Box
-            bgImage={'url(/imgs/app/moreTemplateBg.svg)'}
-            bgSize={'cover'}
-            bgPosition={'center'}
-            bgRepeat={'no-repeat'}
             borderRadius={'10px'}
-            p={4}
+            overflow={'hidden'}
             cursor={'pointer'}
-            display={'flex'}
+            position={'relative'}
             border={'1px solid'}
             borderColor={'myGray.200'}
             _hover={{
@@ -189,8 +188,28 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
             onClick={() => {
               router.push('/dashboard/templateMarket');
             }}
+            p={0}
+            onMouseEnter={() => setIsHoverMoreButton(true)}
+            onMouseLeave={() => setIsHoverMoreButton(false)}
           >
-            <Box fontSize={'16px'} color={'myGray.600'} fontWeight={'medium'} ml={1}>
+            <Box
+              as="img"
+              src={getWebReqUrl('/imgs/app/moreTemplateBg.svg')}
+              w={'100%'}
+              h={'100%'}
+              position={'absolute'}
+              transition="transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+              transform={isHoverMoreButton ? 'scale(1.2)' : 'scale(1.1)'}
+            />
+            <Box
+              position={'relative'}
+              left={3}
+              top={3}
+              fontSize={'16px'}
+              color={'myGray.600'}
+              fontWeight={'medium'}
+              ml={1}
+            >
               {t('common:More')}
             </Box>
           </Box>
