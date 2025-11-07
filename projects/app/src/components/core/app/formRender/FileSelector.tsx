@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UserInputFileItemType } from '../../chat/ChatContainer/ChatBox/type';
 import {
   Box,
@@ -31,8 +31,9 @@ import { ChatBoxContext } from '../../chat/ChatContainer/ChatBox/Provider';
 import { POST } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useDebounceEffect } from 'ahooks';
 import { formatFileSize, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { PluginRunContext } from '../../chat/ChatContainer/PluginRunBox/context';
 
 const FileSelector = ({
   fileUrls,
@@ -45,49 +46,86 @@ const FileSelector = ({
   canSelectCustomFileExtension,
   customFileExtensionList,
   canLocalUpload,
-  canUrlUpload
+  canUrlUpload,
+  isDisabled = false
 }: AppFileSelectConfigType & {
-  fileUrls: string[];
-  onChange: (e: string[]) => void;
+  fileUrls: string[] | any[]; // Can be string[] or file object[]
+  onChange: (e: any[]) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
+  isDisabled?: boolean;
 }) => {
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const chatBoxOutLinkAuthData = useContextSelector(ChatBoxContext, (v) => v?.outLinkAuthData);
+  const chatBoxAppId = useContextSelector(ChatBoxContext, (v) => v?.appId);
+  const chatBoxChatId = useContextSelector(ChatBoxContext, (v) => v?.chatId);
 
-  const [cloneFiles, setCloneFiles] = useState<UserInputFileItemType[]>(
-    fileUrls
-      .map((url) => {
+  const pluginOutLinkAuthData = useContextSelector(PluginRunContext, (v) => v?.outLinkAuthData);
+  const pluginAppId = useContextSelector(PluginRunContext, (v) => v?.appId);
+  const pluginChatId = useContextSelector(PluginRunContext, (v) => v?.chatId);
+
+  const chatItemAppId = useContextSelector(ChatItemContext, (v) => v?.chatBoxData?.appId);
+  const chatItemChatId = useContextSelector(ChatItemContext, (v) => v?.chatBoxData?.chatId);
+
+  const outLinkAuthData = useMemo(
+    () => ({
+      ...(chatBoxOutLinkAuthData || {}),
+      ...(pluginOutLinkAuthData || {})
+    }),
+    [chatBoxOutLinkAuthData, pluginOutLinkAuthData]
+  );
+  const appId = useMemo(
+    () => chatBoxAppId || pluginAppId || chatItemAppId || '',
+    [chatBoxAppId, pluginAppId, chatItemAppId]
+  );
+  const chatId = useMemo(
+    () => chatBoxChatId || pluginChatId || chatItemChatId || '',
+    [chatBoxChatId, pluginChatId, chatItemChatId]
+  );
+
+  const [cloneFiles, setCloneFiles] = useState<UserInputFileItemType[]>(() => {
+    return fileUrls
+      .map((item) => {
+        const url = typeof item === 'string' ? item : item?.url || item?.key;
+        const key = typeof item === 'string' ? undefined : item?.key;
+        const name = typeof item === 'string' ? undefined : item?.name;
+        const type = typeof item === 'string' ? undefined : item?.type;
+
+        if (!url) return null as unknown as UserInputFileItemType;
+
         const fileType = parseUrlToFileType(url);
-        if (!fileType) return null as unknown as UserInputFileItemType;
+        if (!fileType && !type) return null as unknown as UserInputFileItemType;
 
         return {
           id: getNanoid(6),
-          name: fileType.name || url,
-          type: fileType.type,
-          icon: getFileIcon(fileType.name || url),
-          url: fileType.url,
+          name: name || fileType?.name || url,
+          type: type || fileType?.type || ChatFileTypeEnum.file,
+          icon: getFileIcon(name || fileType?.name || url),
+          url: typeof item === 'string' ? fileType?.url : item?.url,
           status: 1,
-          key: url.startsWith('chat/') ? url : undefined
+          key: key || (typeof item === 'string' && url.startsWith('chat/') ? url : undefined)
         };
       })
-      .filter(Boolean) as UserInputFileItemType[]
-  );
-  // 采用异步更新顶层的方式
-  useDebounceEffect(
-    () => {
-      onChange(cloneFiles.map((file) => file.key || file.url || '').filter(Boolean));
-    },
-    [cloneFiles],
-    {
-      wait: 1000
-    }
-  );
+      .filter(Boolean) as UserInputFileItemType[];
+  });
+
+  useEffect(() => {
+    const fileObjects = cloneFiles
+      .filter((file) => file.url || file.key)
+      .map((file) => {
+        const fileObj = {
+          type: file.type,
+          name: file.name,
+          key: file.key,
+          url: file.url || file.key || ''
+        };
+        return fileObj;
+      });
+    onChange(fileObjects as any);
+  }, [cloneFiles, onChange]);
 
   const fileType = useMemo(() => {
     return getUploadFileType({
@@ -378,9 +416,10 @@ const FileSelector = ({
             borderColor={'myGray.250'}
             borderRadius={'md'}
             userSelect={'none'}
-            {...(isMaxSelected
+            {...(isMaxSelected || isDisabled
               ? {
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  opacity: isDisabled ? 0.6 : 1
                 }
               : {
                   cursor: 'pointer',
@@ -397,10 +436,10 @@ const FileSelector = ({
                 })}
           >
             <MyIcon name={'common/uploadFileFill'} w={'32px'} />
-            {isMaxSelected ? (
+            {isMaxSelected || isDisabled ? (
               <>
                 <Box fontWeight={'500'} fontSize={'sm'}>
-                  {t('file:reached_max_file_count')}
+                  {isDisabled ? t('common:Running') : t('file:reached_max_file_count')}
                 </Box>
               </>
             ) : (
@@ -427,7 +466,7 @@ const FileSelector = ({
                 zIndex={10}
               />
               <Input
-                isDisabled={isMaxSelected}
+                isDisabled={isMaxSelected || isDisabled}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onBlur={(e) => handleAddUrl(e.target.value)}
@@ -437,7 +476,11 @@ const FileSelector = ({
                 pl={8}
                 py={1.5}
                 placeholder={
-                  isMaxSelected ? t('file:reached_max_file_count') : t('chat:click_to_add_url')
+                  isDisabled
+                    ? t('common:Running')
+                    : isMaxSelected
+                      ? t('file:reached_max_file_count')
+                      : t('chat:click_to_add_url')
                 }
               />
             </InputGroup>
@@ -476,6 +519,7 @@ const FileSelector = ({
                         aria-label={'Delete file'}
                         icon={<MyIcon name={'close'} w={'1rem'} />}
                         onClick={() => handleDeleteFile(file.id)}
+                        isDisabled={isDisabled}
                       />
                     ) : (
                       <HStack w={'24px'} h={'24px'} justifyContent={'center'}>

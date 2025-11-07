@@ -25,7 +25,9 @@ export const defaultInput: FlowNodeInputItemType = {
   list: [{ label: '', value: '' }],
   maxFiles: 5,
   canSelectFile: true,
-  canSelectImg: true
+  canSelectImg: true,
+  canLocalUpload: true,
+  canUrlUpload: false
 };
 
 const FieldEditModal = ({
@@ -153,6 +155,7 @@ const FieldEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
+      console.log('data', data);
       data.label = data?.label?.trim();
 
       if (!data.label) {

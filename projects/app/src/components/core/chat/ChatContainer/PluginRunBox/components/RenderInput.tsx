@@ -282,6 +282,7 @@ const RenderInput = () => {
                       fieldName={inputKey}
                       modelList={llmModelList}
                       isRichText={false}
+                      canLocalUpload={input.canLocalUpload ?? true}
                     />
                   );
                 }}
