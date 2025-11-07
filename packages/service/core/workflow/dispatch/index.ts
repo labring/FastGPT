@@ -162,7 +162,6 @@ export async function dispatchWorkFlow({
     histories,
     timezone,
     externalProvider,
-    defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue,
     variables: defaultVariables,
     workflowDispatchDeep: 0,
     usageId: newUsageId,
@@ -192,7 +191,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     res,
     runtimeNodes = [],
     runtimeEdges = [],
-    defaultSkipNodeQueue,
     histories = [],
     variables = {},
     externalProvider,
@@ -791,6 +789,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         node,
         runtimeEdges
       });
+
       const nodeRunResult = await (() => {
         if (status === 'run') {
           // All source edges status to waiting
@@ -972,7 +971,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
     const workflowQueue = new WorkflowQueue({
       resolve,
-      defaultSkipNodeQueue
+      defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue
     });
 
     entryNodes.forEach((node) => {
