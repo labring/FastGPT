@@ -185,7 +185,7 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
     return AppTypeEnum.workflow;
   }
   if (config.nodes.some((node) => node.flowNodeType === 'pluginInput')) {
-    return AppTypeEnum.plugin;
+    return AppTypeEnum.workflowTool;
   }
   return '';
 };

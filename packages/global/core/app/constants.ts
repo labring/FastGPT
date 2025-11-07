@@ -12,13 +12,13 @@ export enum AppTypeEnum {
   simple = 'simple',
   agent = 'agent',
   workflow = 'advanced',
-  plugin = 'plugin',
-  toolSet = 'toolSet', // 'mcp'
+  workflowTool = 'plugin',
+  mcpToolSet = 'toolSet', // 'mcp'
   httpToolSet = 'httpToolSet',
-  tool = 'tool',
   hidden = 'hidden',
 
   // deprecated
+  tool = 'tool',
   httpPlugin = 'httpPlugin'
 }
 

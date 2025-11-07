@@ -33,7 +33,7 @@ async function handler(
       : {};
 
     return {
-      ...{ type: AppTypeEnum.plugin },
+      ...{ type: AppTypeEnum.workflowTool },
       ...searchMatch
     };
   })();

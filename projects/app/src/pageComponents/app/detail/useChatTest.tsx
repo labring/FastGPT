@@ -144,7 +144,7 @@ export const useChatTest = ({
 
   const CustomChatContainer = useCallback(
     () =>
-      appDetail.type === AppTypeEnum.plugin ? (
+      appDetail.type === AppTypeEnum.workflowTool ? (
         <Box p={5} pb={16}>
           <PluginRunBox
             appId={appId}

@@ -29,7 +29,7 @@ const RouteTab = () => {
         ? [
             {
               label:
-                appDetail.type === AppTypeEnum.plugin
+                appDetail.type === AppTypeEnum.workflowTool
                   ? t('app:setting_plugin')
                   : t('app:setting_app'),
               id: TabEnum.appEdit

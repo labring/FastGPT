@@ -20,7 +20,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#E4E1FC',
       color: '#6F5DD7'
     },
-    [AppTypeEnum.plugin]: {
+    [AppTypeEnum.workflowTool]: {
       label: t('app:toolType_workflow'),
       icon: 'core/app/type/plugin',
       bg: '#D0F5EE',
@@ -38,7 +38,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#FFE4EE',
       color: '#E82F72'
     },
-    [AppTypeEnum.toolSet]: {
+    [AppTypeEnum.mcpToolSet]: {
       label: t('app:toolType_mcp'),
       icon: 'core/app/type/mcpTools',
       bg: '',

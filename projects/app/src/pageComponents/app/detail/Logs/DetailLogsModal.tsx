@@ -69,7 +69,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
-  const isPlugin = chat?.app.type === AppTypeEnum.plugin;
+  const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   return (
     <>

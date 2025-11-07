@@ -62,7 +62,7 @@ const ChatHeader = ({
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
-  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
+  const isPlugin = chatData.app.type === AppTypeEnum.workflowTool;
   const isShare = source === 'share';
   const chatType = isShare ? ChatTypeEnum.share : ChatTypeEnum.chat;
 
