@@ -11,7 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
 export type SkillLabelItemType = FlowNodeTemplateType & {
-  status: 'active' | 'invalid' | 'waitingForConfig';
+  configStatus: 'active' | 'invalid' | 'waitingForConfig';
   tooltip?: string;
 };
 
@@ -64,7 +64,7 @@ function SkillLabelPlugin({
           name: tool.name,
           icon: tool.avatar,
           skillType: tool.flowNodeType,
-          status: tool.status,
+          status: tool.configStatus,
           onClick: onClickSkill
         });
       }
@@ -105,7 +105,7 @@ function SkillLabelPlugin({
             writableNode.__name = tool.name;
             writableNode.__icon = tool.avatar;
             writableNode.__skillType = tool.flowNodeType;
-            writableNode.__status = tool.status;
+            writableNode.__status = tool.configStatus;
             writableNode.__onClick = onClickSkill;
           }
         }

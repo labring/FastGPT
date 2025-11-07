@@ -1,4 +1,3 @@
-import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   SkillOptionItemType,
@@ -20,6 +19,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import { getAppToolTemplates, getToolPreviewNode } from '@/web/core/app/api/tool';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -52,7 +52,7 @@ export const useSkillManager = ({
   /* ===== System tool ===== */
   const { data: systemTools = [] } = useRequest2(
     async () => {
-      const data = await getSystemPlugTemplates({ getAll: true }).catch((err) => {
+      const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
         return [];
       });
       return data.map<SkillItemType>((item) => ({
@@ -80,7 +80,7 @@ export const useSkillManager = ({
 
   const { runAsync: onAddAppOrTool } = useRequest2(
     async (appId: string) => {
-      const toolTemplate = await getPreviewPluginNode({ appId });
+      const toolTemplate = await getToolPreviewNode({ appId });
       const checkRes = validateToolConfiguration({
         toolTemplate,
         canSelectFile,
@@ -114,7 +114,7 @@ export const useSkillManager = ({
         ...selectedTools,
         {
           ...tool,
-          status: hasFormInput ? 'waitingForConfig' : 'active'
+          configStatus: hasFormInput ? 'waitingForConfig' : 'active'
         }
       ]);
 
@@ -166,17 +166,17 @@ export const useSkillManager = ({
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
     return selectedTools.map((tool) => {
-      const status: SkillLabelItemType['status'] = (() => {
+      const configStatus: SkillLabelItemType['configStatus'] = (() => {
         if (isSubApp(tool.flowNodeType)) {
           if (tool.pluginData?.error) {
             return 'invalid';
           }
         }
-        return tool.status || 'active';
+        return tool.configStatus || 'active';
       })();
       return {
         ...tool,
-        status
+        configStatus
       };
     });
   }, [selectedTools]);
@@ -218,7 +218,7 @@ export const useSkillManager = ({
                   t.id === tool.id
                     ? {
                         ...tool,
-                        status: 'active'
+                        configStatus: 'active'
                       }
                     : t
                 )

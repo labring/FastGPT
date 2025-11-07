@@ -19,7 +19,7 @@ export type SkillLabelNodeBasicType = {
   name: string;
   icon?: string;
   skillType: FlowNodeTypeEnum;
-  status: SkillLabelItemType['status'];
+  status: SkillLabelItemType['configStatus'];
   onClick: (id: string) => void;
 };
 export type SerializedSkillNode = Spread<
@@ -39,7 +39,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   __name: string;
   __icon?: string;
   __skillType: FlowNodeTypeEnum;
-  __status: SkillLabelItemType['status'];
+  __status: SkillLabelItemType['configStatus'];
   __onClick: (id: string) => void;
 
   constructor({ id, name, icon, skillType, status, onClick }: SkillLabelNodeBasicType) {

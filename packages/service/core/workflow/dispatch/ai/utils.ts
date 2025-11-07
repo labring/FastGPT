@@ -8,10 +8,9 @@ import type {
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ToolNodeItemType } from './tool/type';
 import json5 from 'json5';
