@@ -35,7 +35,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetEnhanceDefaultPrompts, type EnhanceConfigType } from '@/web/core/dataset/api';
+import { getDatasetEnhanceDefaultPrompts } from '@/web/core/dataset/api';
 import {
   chunkAutoChunkSize,
   getIndexSizeSelectList,
@@ -237,7 +237,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     onOpenConfigPrompt();
   };
 
-  const handleSavePrompt = async (content: string) => {
+  const handleSavePrompt = (content: string) => {
     if (currentPromptType === 'autoIndexes') {
       setValue('autoIndexesPrompt', content);
     } else if (currentPromptType === 'hypeIndexes') {
@@ -365,10 +365,10 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     <MyIcon
                       name={'common/settingLight'}
                       w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('autoIndexes')}
+                      cursor={feConfigs?.isPlus ? 'pointer' : 'not-allowed'}
+                      color={feConfigs?.isPlus ? 'myGray.500' : 'myGray.300'}
+                      _hover={{ color: feConfigs?.isPlus ? 'primary.500' : 'myGray.300' }}
+                      onClick={() => feConfigs?.isPlus && handleOpenConfigPrompt('autoIndexes')}
                     />
                   </MyTooltip>
                 </HStack>
@@ -387,10 +387,10 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     <MyIcon
                       name={'common/settingLight'}
                       w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('hypeIndexes')}
+                      cursor={feConfigs?.isPlus ? 'pointer' : 'not-allowed'}
+                      color={feConfigs?.isPlus ? 'myGray.500' : 'myGray.300'}
+                      _hover={{ color: feConfigs?.isPlus ? 'primary.500' : 'myGray.300' }}
+                      onClick={() => feConfigs?.isPlus && handleOpenConfigPrompt('hypeIndexes')}
                     />
                   </MyTooltip>
                 </HStack>
@@ -417,10 +417,23 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     <MyIcon
                       name={'common/settingLight'}
                       w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('imageIndex')}
+                      cursor={
+                        feConfigs?.isPlus && datasetDetail?.vlmModel ? 'pointer' : 'not-allowed'
+                      }
+                      color={
+                        feConfigs?.isPlus && datasetDetail?.vlmModel ? 'myGray.500' : 'myGray.300'
+                      }
+                      _hover={{
+                        color:
+                          feConfigs?.isPlus && datasetDetail?.vlmModel
+                            ? 'primary.500'
+                            : 'myGray.300'
+                      }}
+                      onClick={() =>
+                        feConfigs?.isPlus &&
+                        datasetDetail?.vlmModel &&
+                        handleOpenConfigPrompt('imageIndex')
+                      }
                     />
                   </MyTooltip>
                 </HStack>
@@ -717,7 +730,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                   ? getValues('imageIndexPrompt')
                   : ''
           }
-          onSuccess={handleSavePrompt}
+          onConfirm={handleSavePrompt}
         />
       )}
     </>

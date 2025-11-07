@@ -3,7 +3,8 @@ import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui
 import {
   getDatasetDataList,
   delOneDatasetDataById,
-  getDatasetCollectionById
+  getDatasetCollectionById,
+  postReTrainingDatasetFileCollection
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -134,6 +135,35 @@ const DataCard = () => {
         status: 'error'
       });
     }
+  });
+
+  // Re-training request hook
+  const { runAsync: runReTrainingCollection, loading: isReTraining } = useRequest2(
+    (params: any) =>
+      postReTrainingDatasetFileCollection({
+        datasetId,
+        collectionId: collection?._id || '',
+        // 传递训练参数
+        autoIndexes: params.autoIndexes,
+        hypeIndexes: params.hypeIndexes,
+        small2bigIndexes: params.small2bigIndexes,
+        hypeIndexPrompt: params.hypeIndexPrompt,
+        autoIndexesPrompt: params.autoIndexesPrompt
+      }),
+    {
+      manual: true,
+      successToast: t('dataset:retrain_task_submitted'),
+      onSuccess: () => {
+        // 刷新数据
+        reloadCollection();
+        refreshList();
+      }
+    }
+  );
+
+  const handleReTrainingCollection = useMemoizedFn(async (params: any) => {
+    if (!collection) return;
+    await runReTrainingCollection(params);
   });
 
   return (
@@ -467,14 +497,16 @@ const DataCard = () => {
           isOpen={isTrainingParamsModalOpen}
           onClose={closeTrainingParamsModal}
           onConfirm={(params) => {
-            // TODO: 后续联调补充处理逻辑
-            console.log('Training params:', params);
+            // 调用重新训练接口
+            handleReTrainingCollection(params);
           }}
+          isLoading={isReTraining}
           defaultValues={{
             autoIndexes: collection.autoIndexes ?? false,
             hypeIndexes: collection.hypeIndexes ?? false,
-            // small2bigIndexes: collection.small2bigIndexes ?? false
-            small2bigIndexes: false
+            small2bigIndexes: collection.small2bigIndexes ?? false,
+            hypeIndexPrompt: collection.hypeIndexPrompt ?? '',
+            autoIndexesPrompt: collection.autoIndexesPrompt ?? ''
           }}
         />
       )}

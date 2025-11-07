@@ -15,8 +15,8 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
 
-export type templateImportQuery = {};
-type enhanceConfig = {
+export type TemplateImportQuery = {};
+export type EnhanceConfig = {
   autoIndexes?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
@@ -24,12 +24,12 @@ type enhanceConfig = {
   smll2bigConfig?: small2bigConfigType;
   autoIndexesPrompt?: string;
 };
-export type templateImportBody = { datasetId: string; enhanceConfig: enhanceConfig };
+export type TemplateImportBody = { datasetId: string; enhanceConfig: EnhanceConfig };
 
-export type templateImportResponse = {};
+export type TemplateImportResponse = {};
 
 async function handler(
-  req: ApiRequestProps<templateImportBody, templateImportQuery>,
+  req: ApiRequestProps<TemplateImportBody, TemplateImportQuery>,
   res: ApiResponseType<any>
 ) {
   const filePaths: string[] = [];
@@ -38,7 +38,7 @@ async function handler(
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.getUploadFile<templateImportBody>(req, res);
+    const { file, data } = await upload.getUploadFile<TemplateImportBody>(req, res);
     filePaths.push(file.path);
 
     if (file.mimetype !== 'text/csv') {
