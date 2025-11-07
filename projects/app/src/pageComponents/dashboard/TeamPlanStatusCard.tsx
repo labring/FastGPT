@@ -1,26 +1,28 @@
-import { getOperationalAd } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   StandardSubLevelEnum,
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Button, Flex, Progress } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
+  const { operationalAd, loadOperationalAd } = useSystemStore();
   const router = useRouter();
   if (!teamPlanStatus?.standardConstants) return null;
 
-  const { data: operationalAd } = useRequest2(() => getOperationalAd(), {
-    manual: false
-  });
+  useEffect(() => {
+    if (!operationalAd) {
+      loadOperationalAd();
+    }
+  }, [operationalAd, loadOperationalAd]);
 
   const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>('hidden-until', {
     defaultValue: undefined
@@ -43,16 +45,14 @@ const TeamPlanStatusCard = () => {
     return {
       value: Math.round(teamPlanStatus.usedPoints),
       max: teamPlanStatus.totalPoints,
-      rate:
-        ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) / teamPlanStatus.totalPoints) *
-        100
+      rate: (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
     };
   }, [t, teamPlanStatus]);
 
   const valueColorSchema = useCallback((val: number) => {
-    if (val < 50) return 'red';
+    if (val < 50) return 'green';
     if (val < 80) return 'yellow';
-    return 'green';
+    return 'red';
   }, []);
 
   const shouldHide = useMemo(() => {
@@ -77,19 +77,32 @@ const TeamPlanStatusCard = () => {
       {!shouldHide && operationalAd?.operationalAdImage && (
         <Flex mb={2} position={'relative'}>
           <Box
-            as="img"
-            rounded={'sm'}
-            src={operationalAd.operationalAdImage}
-            alt="operational advertisement"
+            position="relative"
             width="100%"
-            objectFit="cover"
-            cursor={'pointer'}
+            aspectRatio="2 / 1"
+            overflow="hidden"
+            rounded="sm"
+            cursor="pointer"
             onClick={() => {
               if (operationalAd?.operationalAdLink) {
                 window.open(operationalAd.operationalAdLink, '_blank');
               }
             }}
-          />
+          >
+            <Box
+              as="img"
+              src={operationalAd.operationalAdImage}
+              alt="operational advertisement"
+              width="100%"
+              height="100%"
+              objectFit="cover"
+              style={{
+                display: 'block',
+                width: '100%',
+                height: '100%'
+              }}
+            />
+          </Box>
           <Box
             bg={'rgba(23, 23, 23, 0.05)'}
             rounded={'full'}
@@ -117,7 +130,7 @@ const TeamPlanStatusCard = () => {
 
       <Flex flexDirection={'column'} gap={1}>
         <Flex color={'myGray.500'}>
-          <Box>{t('app:remaining_points')}</Box>
+          <Box>{t('app:used_points')}</Box>
           <Flex gap={0.5}>
             <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}>
               {aiPointsUsageMap.value}
@@ -125,16 +138,16 @@ const TeamPlanStatusCard = () => {
             /<Box>{aiPointsUsageMap.max}</Box>
           </Flex>
         </Flex>
-        <Progress
-          size={'sm'}
-          value={aiPointsUsageMap.rate}
-          colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
-          borderRadius={'md'}
-          borderWidth={'1px'}
-          borderColor={'borderColor.low'}
-        />
+        <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+          <Box
+            borderRadius={'sm'}
+            transition="width 0.3s"
+            w={`${aiPointsUsageMap.rate}%`}
+            bg={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}
+          />
+        </Flex>
         <Flex>
-          <Box color={'myGray.500'}> {t('user:current_package')}</Box>
+          <Box color={'myGray.500'}> {t('app:current_package')}</Box>
           <Box
             color={'primary.400'}
             cursor={'pointer'}

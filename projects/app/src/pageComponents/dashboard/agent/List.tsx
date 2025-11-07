@@ -53,8 +53,16 @@ const List = () => {
     content: t('app:move.hint')
   });
 
-  const { myApps, appType, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
-    useContextSelector(AppListContext, (v) => v);
+  const {
+    myApps,
+    appType,
+    loadMyApps,
+    isFetchingApps,
+    onUpdateApp,
+    setMoveAppId,
+    folderDetail,
+    setSearchKey
+  } = useContextSelector(AppListContext, (v) => v);
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
@@ -131,6 +139,7 @@ const List = () => {
       }
     }
   );
+  if (myApps.length === 0 && isFetchingApps) return null;
 
   return (
     <>
@@ -206,7 +215,7 @@ const List = () => {
                   }}
                   {...getBoxProps({
                     dataId: app._id,
-                    isFolder: app.type === AppTypeEnum.folder
+                    isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
                   })}
                 >
                   <HStack>
@@ -259,7 +268,6 @@ const List = () => {
                         : app.permission.hasWritePer || app.permission.hasReadChatLogPer) && (
                         <Box className="more" display={['', 'none']}>
                           <MyMenu
-                            size={'xs'}
                             Button={
                               <IconButton
                                 size={'xsSquare'}
@@ -473,8 +481,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.workflowTool);
-  console.log(createAppType);
+    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -546,7 +553,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.workflowTool);
+    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
 
   return (
     <MyBox

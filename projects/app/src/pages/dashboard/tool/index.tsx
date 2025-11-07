@@ -49,11 +49,12 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     setMoveAppId,
     isFetchingApps,
     folderDetail,
-    refetchFolderDetail
+    refetchFolderDetail,
+    searchKey,
+    setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
-  const [searchKey, setSearchKey] = useState('');
 
   const {
     isOpen: isOpenJsonImportModal,
@@ -89,7 +90,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pt={6}>
+    <Flex flexDirection={'column'} h={'100%'} pt={5}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -125,7 +126,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </Box>
             )}
             <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
+            <Flex alignItems={'center'} gap={3} pt={1}>
               {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}

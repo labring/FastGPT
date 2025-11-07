@@ -77,7 +77,9 @@ const CreateAppsPage = () => {
   const { query } = router;
   const { parentId, appType } = query;
 
-  const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(appType as CreateAppType);
+  const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(
+    (appType as CreateAppType) || AppTypeEnum.workflow
+  );
   const [showToolCreate, setShowToolCreate] = useState(ToolTypeList.includes(selectedAppType));
 
   const { data: templateData } = useRequest2(
@@ -130,7 +132,7 @@ const CreateAppsPage = () => {
       const baseParams = {
         parentId: parentId as string,
         avatar: avatar,
-        name: name
+        name: name?.trim() || t('app:unnamed_app')
       };
       if (appType === AppTypeEnum.mcpToolSet) {
         return postCreateMCPTools({
@@ -179,10 +181,16 @@ const CreateAppsPage = () => {
         <Button
           variant={'transparentBase'}
           leftIcon={<MyIcon name={'common/backLight'} w={4} color={'myGray.600'} />}
-          onClick={() => router.back()}
+          onClick={() =>
+            router.replace(
+              ToolTypeList.includes(appType as CreateAppType)
+                ? '/dashboard/tool'
+                : '/dashboard/agent'
+            )
+          }
           fontSize={'20px'}
         >
-          {t('common:create_app')}
+          {t('common:Create')}
         </Button>
       </Flex>
       <Flex bg={'white'} flex={1} gap={7} p={6} h={'calc(100vh - 60px)'}>
@@ -196,18 +204,19 @@ const CreateAppsPage = () => {
           overflow={'auto'}
           sx={{
             scrollbarWidth: 'thin',
+            scrollbarColor: 'var(--chakra-colors-myGray-300) transparent',
             '&::-webkit-scrollbar': {
               width: '6px'
             },
             '&::-webkit-scrollbar-thumb': {
-              background: 'transparent',
+              background: 'rgba(0, 0, 0, 0.06)',
               borderRadius: '3px'
             },
             '&:hover::-webkit-scrollbar-thumb': {
-              background: 'rgba(0, 0, 0, 0.2)'
+              background: 'rgba(0, 0, 0, 0.10)'
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              background: 'rgba(0, 0, 0, 0.3)'
+              background: 'rgba(0, 0, 0, 0.15)'
             }
           }}
         >
@@ -217,7 +226,12 @@ const CreateAppsPage = () => {
             </Box>
             <SimpleGrid columns={3} gap={2.5}>
               {Object.values(createAppTypeMap)
-                .filter((option) => !ToolTypeList.includes(option.type as CreateAppType))
+                .filter(
+                  (option) =>
+                    ![AppTypeEnum.mcpToolSet, AppTypeEnum.httpToolSet].includes(
+                      option.type as CreateAppType
+                    )
+                )
                 .map((option) => (
                   <AppTypeCard
                     key={option.type}
@@ -240,7 +254,11 @@ const CreateAppsPage = () => {
             >
               <SimpleGrid columns={3} gap={2.5} mt={2.5} pb={2.5}>
                 {Object.values(createAppTypeMap)
-                  .filter((option) => ToolTypeList.includes(option.type as CreateAppType))
+                  .filter((option) =>
+                    [AppTypeEnum.mcpToolSet, AppTypeEnum.httpToolSet].includes(
+                      option.type as CreateAppType
+                    )
+                  )
                   .map((option) => (
                     <AppTypeCard
                       key={option.type}
@@ -285,25 +303,30 @@ const CreateAppsPage = () => {
             </Box>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
-                <Box borderRadius={'6px'} border={'1px solid'} borderColor={'myGray.200'} mr={2.5}>
+                <Flex
+                  borderRadius={'6px'}
+                  w={10}
+                  h={10}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  justifyContent={'center'}
+                  alignItems={'center'}
+                  mr={2.5}
+                >
                   <Avatar
                     src={avatar}
-                    w={7}
                     borderRadius={'4.667px'}
                     cursor={'pointer'}
                     onClick={handleAvatarSelectorOpen}
-                    p={1}
                   />
-                </Box>
+                </Flex>
               </MyTooltip>
               <Input
                 flex={1}
                 h={8}
                 mr={selectedAppType !== AppTypeEnum.mcpToolSet ? 5 : 0}
-                placeholder={t('app:app_name_placeholder')}
-                {...register('name', {
-                  required: t('common:core.app.error.App name can not be empty')
-                })}
+                placeholder={t('app:unnamed_app')}
+                {...register('name')}
               />
               {selectedAppType !== AppTypeEnum.mcpToolSet && (
                 <Button
@@ -410,12 +433,13 @@ const CreateAppsPage = () => {
           {/* mcp */}
           {selectedAppType === AppTypeEnum.mcpToolSet && (
             <>
-              <Box mb={5} maxW={200}>
+              <Box mb={5}>
                 <HeaderAuthForm
                   headerSecretValue={mcpHeaderSecret || {}}
                   onChange={(data) => {
                     setValue('mcpHeaderSecret', data);
                   }}
+                  bg={'white'}
                 />
               </Box>
 
@@ -563,7 +587,7 @@ const CreateAppsPage = () => {
                   fontSize={'xs'}
                   onChange={(e) => setValue('createType', e as 'batch' | 'manual')}
                   defaultBg={'white'}
-                  activeBg={'myGray.50'}
+                  activeBg={'white'}
                   py={2}
                   px={3}
                   gridGap={2.5}
