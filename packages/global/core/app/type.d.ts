@@ -115,7 +115,9 @@ export type AppFormEditFormType = {
   dataset: {
     datasets: SelectedDatasetType;
   } & AppDatasetSearchParamsType;
-  selectedTools: (FlowNodeTemplateType & { status?: 'active' | 'waitingForConfig' })[];
+  selectedTools: (FlowNodeTemplateType & {
+    configStatus?: 'active' | 'waitingForConfig' | 'invalid';
+  })[];
   chatConfig: AppChatConfigType;
 };
 

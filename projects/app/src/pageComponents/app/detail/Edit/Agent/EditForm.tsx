@@ -32,9 +32,7 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { useToolManager, type ExtendedToolType } from './hooks/useToolManager';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { useAppManager } from './hooks/useAppManager';
 import { useSkillManager } from './hooks/useSkillManager';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
