@@ -103,6 +103,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
+          {/* Only shown on pc root page */}
           {!folderDetail && isPc && <TemplateCreatePanel type={appType} />}
           <Flex alignItems={'center'}>
             {!isPc ? (

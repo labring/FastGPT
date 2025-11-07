@@ -12,6 +12,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -125,7 +126,7 @@ const Navbar = ({ unread }: { unread: number }) => {
     >
       {/* logo */}
       <Box flex={'0 0 auto'} mb={3}>
-        <MyImage w={9} h={9} src={feConfigs?.favicon || process.env.SYSTEM_FAVICON} />
+        <MyImage w={9} h={9} src={LOGO_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>

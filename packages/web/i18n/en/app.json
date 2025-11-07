@@ -89,6 +89,7 @@
   "create_from_template": "Create from template",
   "create_http_toolset": "Create HTTP Toolset",
   "create_your_first_agent": "Create your first Agent",
+  "create_your_first_tool": "Create your first tool",
   "cron.every_day": "Run Daily",
   "cron.every_month": "Run Monthly",
   "cron.every_week": "Run Weekly",

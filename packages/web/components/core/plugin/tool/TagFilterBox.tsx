@@ -91,7 +91,7 @@ const ToolTagFilterBox = ({
       >
         {t('common:All')}
       </Box>
-      <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} />
+      <Box mx={2} h={'20px'} w={'1px'} bg={'myGray.200'} flexShrink={0} />
       <Box flex={1}>
         <Flex gap={2} flexWrap="nowrap">
           {tags.map((tag) => {

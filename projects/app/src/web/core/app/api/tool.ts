@@ -36,6 +36,7 @@ import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/
 export const getTeamAppTemplates = async (data?: {
   parentId?: ParentIdType;
   searchKey?: string;
+  type?: AppTypeEnum[];
 }) => {
   if (data?.parentId) {
     // handle get mcptools
@@ -69,6 +70,7 @@ export const getTeamAppTemplates = async (data?: {
       pluginId: app._id,
       isFolder:
         app.type === AppTypeEnum.folder ||
+        app.type === AppTypeEnum.toolFolder ||
         app.type === AppTypeEnum.httpToolSet ||
         app.type === AppTypeEnum.httpPlugin ||
         app.type === AppTypeEnum.toolSet,

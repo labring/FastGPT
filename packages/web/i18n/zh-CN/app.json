@@ -91,6 +91,7 @@
   "create_from_template": "从模板新建",
   "create_http_toolset": "创建 HTTP 工具集",
   "create_your_first_agent": "创建你的第一个 Agent",
+  "create_your_first_tool": "创建你的第一个工具",
   "cron.every_day": "每天执行",
   "cron.every_month": "每月执行",
   "cron.every_week": "每周执行",

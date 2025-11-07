@@ -63,7 +63,7 @@ export type CreateAppType =
   | AppTypeEnum.toolSet
   | AppTypeEnum.httpToolSet;
 
-const ToolTypeList = [AppTypeEnum.toolSet, AppTypeEnum.httpToolSet, AppTypeEnum.plugin];
+export const ToolTypeList = [AppTypeEnum.toolSet, AppTypeEnum.httpToolSet, AppTypeEnum.plugin];
 
 const CreateAppsPage = () => {
   const { t } = useTranslation();

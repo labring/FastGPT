@@ -35,12 +35,12 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import type { CreateAppType } from '@/pages/dashboard/create';
+import { ToolTypeList, type CreateAppType } from '@/pages/dashboard/create';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
-const ListItem = () => {
+const List = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
@@ -134,7 +134,7 @@ const ListItem = () => {
 
   return (
     <>
-      {myApps.length === 0 ? (
+      {myApps.length === 0 && !folderDetail ? (
         isPc ? (
           <CreateButton appType={appType} />
         ) : (
@@ -472,9 +472,10 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type || router.pathname.includes('/agent')
-      ? AppTypeEnum.simple
-      : AppTypeEnum.plugin;
+    createAppTypeMap[appType as CreateAppType]?.type ||
+    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.plugin);
+  console.log(createAppType);
+  const isToolType = ToolTypeList.includes(createAppType);
 
   return (
     <Box
@@ -520,7 +521,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
       >
         <Flex gap={2.5} alignItems={'center'}>
           <MyIcon name={'core/app/create'} w={8} />
-          {t('app:create_your_first_agent')}
+          {isToolType ? t('app:create_your_first_tool') : t('app:create_your_first_agent')}
         </Flex>
         <Box
           mt={4}
@@ -544,9 +545,8 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type || router.pathname.includes('/agent')
-      ? AppTypeEnum.simple
-      : AppTypeEnum.plugin;
+    createAppTypeMap[appType as CreateAppType]?.type ||
+    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.plugin);
 
   return (
     <MyBox
@@ -613,4 +613,4 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   );
 };
 
-export default ListItem;
+export default List;

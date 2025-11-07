@@ -27,7 +27,6 @@ import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/agent/List';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
-import TeamSelector from '@/pageComponents/account/TeamSelector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';

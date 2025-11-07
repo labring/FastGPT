@@ -20,7 +20,7 @@ const BotShowRouter: { [key: string]: boolean } = {
   '/account/info': true
 };
 
-const Bot = () => {
+const HelperBot = () => {
   const router = useRouter();
   const { i18n } = useTranslation();
   const [open, setOpen] = useToggle(true);
@@ -151,7 +151,7 @@ const Bot = () => {
                 zIndex={-10}
               >
                 {i18n.language === 'zh-CN' ? (
-                  <Box bgImage={getWebReqUrl('/imgs/botText.svg')} w={'100%'} h={'100%'} />
+                  <Box bgImage={getWebReqUrl('/imgs/botTextCN.svg')} w={'100%'} h={'100%'} />
                 ) : (
                   <Box bgImage={getWebReqUrl('/imgs/botTextEn.svg')} w={'100%'} h={'100%'} />
                 )}
@@ -182,4 +182,4 @@ const Bot = () => {
   );
 };
 
-export default Bot;
+export default HelperBot;
