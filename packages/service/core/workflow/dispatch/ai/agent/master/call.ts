@@ -98,8 +98,16 @@ export const stepCall = async ({
     step
   });
   step.depends_on = depends;
-  addLog.debug(`Step call depends_on (LLM): ${step.id}`, depends);
-  addLog.debug(`Step information`, steps);
+
+  // addLog.debug(`Step information`, steps);
+  const systemPromptContent = await getMasterAgentSystemPrompt({
+    steps,
+    step,
+    userInput: userChatInput,
+    model
+    // background: systemPrompt
+  });
+
   const requestMessages = chats2GPTMessages({
     messages: [
       {
@@ -107,12 +115,7 @@ export const stepCall = async ({
         value: [
           {
             text: {
-              content: getMasterAgentSystemPrompt({
-                steps,
-                step,
-                userInput: userChatInput
-                // background: systemPrompt
-              })
+              content: systemPromptContent
             }
           }
         ]
@@ -134,6 +137,7 @@ export const stepCall = async ({
   const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,
+      currentStep: step,
       // interactiveEntryToolParams: lastInteractive?.toolParams,
       body: {
         messages: requestMessages,
