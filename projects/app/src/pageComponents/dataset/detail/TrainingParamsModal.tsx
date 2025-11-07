@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import {
@@ -18,61 +18,147 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ConfigPromptModal from '@/pageComponents/dataset/detail/ConfigPromptModal';
 
+// 常量定义
+const PROMPT_TYPES = {
+  AUTO_INDEXES: 'autoIndexes',
+  HYPE_INDEXES: 'hypeIndexes'
+} as const;
+
+type PromptType = (typeof PROMPT_TYPES)[keyof typeof PROMPT_TYPES];
+
+interface TrainingParams {
+  autoIndexes: boolean;
+  hypeIndexes: boolean;
+  small2bigIndexes: boolean;
+  hypeIndexPrompt?: string;
+  autoIndexesPrompt?: string;
+}
+
 interface AdjustTrainingParamsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params: {
-    autoIndexes: boolean;
-    hypeIndexes: boolean;
-    small2bigIndexes: boolean;
-  }) => void;
-  defaultValues?: {
-    autoIndexes?: boolean;
-    hypeIndexes?: boolean;
-    small2bigIndexes?: boolean;
-  };
+  onConfirm: (params: TrainingParams) => void;
+  defaultValues?: Partial<TrainingParams>;
+  isLoading?: boolean;
 }
 
 const AdjustTrainingParamsModal = ({
   isOpen,
   onClose,
   onConfirm,
-  defaultValues = {}
+  defaultValues = {},
+  isLoading = false
 }: AdjustTrainingParamsModalProps) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  // Index enhance states
-  const [autoIndexes, setAutoIndexes] = useState(defaultValues.autoIndexes ?? false);
-  const [hypeIndexes, setHypeIndexes] = useState(defaultValues.hypeIndexes ?? false);
-  const [small2bigIndexes, setSmall2bigIndexes] = useState(defaultValues.small2bigIndexes ?? false);
+  // 索引状态管理
+  const [indexes, setIndexes] = useState({
+    autoIndexes: defaultValues.autoIndexes ?? false,
+    hypeIndexes: defaultValues.hypeIndexes ?? false,
+    small2bigIndexes: defaultValues.small2bigIndexes ?? false
+  });
 
-  // Config prompt modal
+  // Prompt 状态管理
+  const [prompts, setPrompts] = useState({
+    hypeIndexPrompt: defaultValues.hypeIndexPrompt ?? '',
+    autoIndexesPrompt: defaultValues.autoIndexesPrompt ?? ''
+  });
+
+  // Config prompt modal 状态
   const {
     isOpen: isOpenConfigPrompt,
     onOpen: onOpenConfigPrompt,
     onClose: onCloseConfigPrompt
   } = useDisclosure();
-  const [currentPromptType, setCurrentPromptType] = useState<string>('');
 
-  const handleOpenConfigPrompt = (type: string) => {
+  const [currentPromptType, setCurrentPromptType] = useState<PromptType | ''>('');
+  const [currentPromptValue, setCurrentPromptValue] = useState<string>('');
+
+  // 获取当前 prompt 值的映射
+  const getPromptValue = (type: PromptType): string => {
+    switch (type) {
+      case PROMPT_TYPES.AUTO_INDEXES:
+        return prompts.autoIndexesPrompt;
+      case PROMPT_TYPES.HYPE_INDEXES:
+        return prompts.hypeIndexPrompt;
+      default:
+        return '';
+    }
+  };
+
+  // 保存 prompt 值的映射
+  const savePromptValue = (type: PromptType, content: string): void => {
+    switch (type) {
+      case PROMPT_TYPES.AUTO_INDEXES:
+        setPrompts((prev) => ({ ...prev, autoIndexesPrompt: content }));
+        break;
+      case PROMPT_TYPES.HYPE_INDEXES:
+        setPrompts((prev) => ({ ...prev, hypeIndexPrompt: content }));
+        break;
+    }
+  };
+
+  // 打开配置 prompt 弹窗
+  const handleOpenConfigPrompt = (type: PromptType) => {
     setCurrentPromptType(type);
+    setCurrentPromptValue(getPromptValue(type));
     onOpenConfigPrompt();
   };
 
-  const handleSavePrompt = async (content: string) => {
-    // TODO: 后续联调补充保存逻辑
-    console.log('Save prompt:', currentPromptType, content);
+  // 保存 prompt
+  const handleSavePrompt = (content: string) => {
+    if (currentPromptType) {
+      savePromptValue(currentPromptType, content);
+    }
   };
 
+  // 处理索引状态变更
+  const handleIndexChange = (indexType: keyof typeof indexes, checked: boolean) => {
+    setIndexes((prev) => ({ ...prev, [indexType]: checked }));
+  };
+
+  // 确认提交
   const handleConfirm = () => {
     onConfirm({
-      autoIndexes,
-      hypeIndexes,
-      small2bigIndexes
+      ...indexes,
+      ...prompts
     });
     onClose();
   };
+
+  // 渲染索引选项
+  const renderIndexOption = (
+    type: keyof typeof indexes,
+    labelKey: string,
+    tipKey: string,
+    promptType?: PromptType
+  ) => (
+    <HStack flex={'1'} spacing={1}>
+      <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
+        <Checkbox
+          isDisabled={!feConfigs?.isPlus}
+          isChecked={indexes[type]}
+          onChange={(e) => handleIndexChange(type, e.target.checked)}
+        >
+          <FormLabel>{t(labelKey)}</FormLabel>
+        </Checkbox>
+      </MyTooltip>
+      <QuestionTip label={t(tipKey)} />
+      {promptType && (
+        <MyTooltip label={t('dataset:config_prompt')}>
+          <MyIcon
+            name={'common/settingLight'}
+            w={'16px'}
+            cursor={feConfigs?.isPlus ? 'pointer' : 'not-allowed'}
+            color={feConfigs?.isPlus ? 'myGray.500' : 'myGray.300'}
+            _hover={{ color: feConfigs?.isPlus ? 'primary.500' : 'myGray.300' }}
+            onClick={() => feConfigs?.isPlus && handleOpenConfigPrompt(promptType)}
+          />
+        </MyTooltip>
+      )}
+    </HStack>
+  );
 
   return (
     <>
@@ -93,72 +179,23 @@ const AdjustTrainingParamsModal = ({
               rowGap={[1, 4]}
               columnGap={[3, 7]}
             >
-              <HStack flex={'1'} spacing={1}>
-                <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                  <Checkbox
-                    isDisabled={!feConfigs?.isPlus}
-                    isChecked={autoIndexes}
-                    onChange={(e) => setAutoIndexes(e.target.checked)}
-                  >
-                    <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                  </Checkbox>
-                </MyTooltip>
-                <QuestionTip label={t('dataset:auto_indexes_tips')} />
-                <MyTooltip label={t('dataset:config_prompt')}>
-                  <MyIcon
-                    name={'common/settingLight'}
-                    w={'16px'}
-                    cursor={'pointer'}
-                    color={'myGray.500'}
-                    _hover={{ color: 'primary.500' }}
-                    onClick={() => handleOpenConfigPrompt('autoIndexes')}
-                  />
-                </MyTooltip>
-              </HStack>
-              <HStack flex={'1'} spacing={1}>
-                <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                  <Checkbox
-                    isDisabled={!feConfigs?.isPlus}
-                    isChecked={hypeIndexes}
-                    onChange={(e) => setHypeIndexes(e.target.checked)}
-                  >
-                    <FormLabel>{t('dataset:hype_enhanced_index')}</FormLabel>
-                  </Checkbox>
-                </MyTooltip>
-                <QuestionTip label={t('dataset:hype_enhanced_index_tips')} />
-                <MyTooltip label={t('dataset:config_prompt')}>
-                  <MyIcon
-                    name={'common/settingLight'}
-                    w={'16px'}
-                    cursor={'pointer'}
-                    color={'myGray.500'}
-                    _hover={{ color: 'primary.500' }}
-                    onClick={() => handleOpenConfigPrompt('hypeIndexes')}
-                  />
-                </MyTooltip>
-              </HStack>
-              <HStack flex={'1'} spacing={1}>
-                <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                  <Checkbox
-                    isDisabled={!feConfigs?.isPlus}
-                    isChecked={small2bigIndexes}
-                    onChange={(e) => setSmall2bigIndexes(e.target.checked)}
-                  >
-                    <FormLabel>{t('dataset:small2big_enhanced_index')}</FormLabel>
-                  </Checkbox>
-                </MyTooltip>
-                <QuestionTip label={t('dataset:small2big_enhanced_index_tips')} />
-                <MyTooltip label={t('dataset:config_prompt')}>
-                  <MyIcon
-                    name={'common/settingLight'}
-                    w={'16px'}
-                    cursor={'pointer'}
-                    color={'myGray.500'}
-                    _hover={{ color: 'primary.500' }}
-                    onClick={() => handleOpenConfigPrompt('small2bigIndexes')}
-                  />
-                </MyTooltip>
-              </HStack>
+              {renderIndexOption(
+                'autoIndexes',
+                'dataset:auto_indexes',
+                'dataset:auto_indexes_tips',
+                PROMPT_TYPES.AUTO_INDEXES
+              )}
+              {renderIndexOption(
+                'hypeIndexes',
+                'dataset:hype_enhanced_index',
+                'dataset:hype_enhanced_index_tips',
+                PROMPT_TYPES.HYPE_INDEXES
+              )}
+              {renderIndexOption(
+                'small2bigIndexes',
+                'dataset:segment_enhanced_index',
+                'dataset:segment_enhanced_index_tips'
+              )}
             </Grid>
           </Box>
         </ModalBody>
@@ -166,7 +203,9 @@ const AdjustTrainingParamsModal = ({
           <Button variant="whiteBase" mr={2} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button onClick={handleConfirm}>{t('common:Confirm')}</Button>
+          <Button onClick={handleConfirm} isLoading={isLoading}>
+            {t('common:Confirm')}
+          </Button>
         </ModalFooter>
       </MyModal>
 
@@ -175,8 +214,8 @@ const AdjustTrainingParamsModal = ({
         <ConfigPromptModal
           isOpen={isOpenConfigPrompt}
           onClose={onCloseConfigPrompt}
-          defaultValue=""
-          onSuccess={handleSavePrompt}
+          defaultValue={currentPromptValue}
+          onConfirm={handleSavePrompt}
         />
       )}
     </>

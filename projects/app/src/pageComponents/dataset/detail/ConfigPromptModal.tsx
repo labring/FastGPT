@@ -2,40 +2,31 @@ import React, { useRef } from 'react';
 import { ModalFooter, ModalBody, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 interface ConfigPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultValue?: string;
-  onSuccess: (content: string) => void | Promise<void>;
-  onError?: (err: any) => void;
+  onConfirm: (content: string) => void | Promise<void>;
 }
 
 const ConfigPromptModal = ({
   isOpen,
   onClose,
   defaultValue = '',
-  onSuccess,
-  onError
+  onConfirm
 }: ConfigPromptModalProps) => {
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const onClickConfirm = async () => {
+  const onClickConfirm = () => {
     if (!textareaRef.current) return;
     const val = textareaRef.current.value;
 
-    try {
-      await onSuccess(val);
-      onClose();
-    } catch (err) {
-      onError?.(err);
-    }
+    onConfirm(val);
+    onClose();
   };
-
-  const { runAsync, loading } = useRequest2(onClickConfirm);
 
   return (
     <MyModal
@@ -53,9 +44,7 @@ const ConfigPromptModal = ({
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button onClick={runAsync} isLoading={loading}>
-          {t('common:Confirm')}
-        </Button>
+        <Button onClick={onClickConfirm}>{t('common:Confirm')}</Button>
       </ModalFooter>
     </MyModal>
   );

@@ -19,8 +19,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import {
   postTemplateDatasetCollection,
-  getDatasetEnhanceDefaultPrompts,
-  type EnhanceConfigType
+  getDatasetEnhanceDefaultPrompts
 } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -32,6 +31,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ConfigPromptModal from '@/pageComponents/dataset/detail/ConfigPromptModal';
+import type { EnhanceConfig } from '@/pages/api/core/dataset/collection/create/template';
 
 const TemplateImportModal = ({
   onFinish,
@@ -48,7 +48,7 @@ const TemplateImportModal = ({
   const [percent, setPercent] = useState(0);
 
   // Index enhance states
-  const [enhanceConfig, setEnhanceConfig] = useState<EnhanceConfigType>({
+  const [enhanceConfig, setEnhanceConfig] = useState<EnhanceConfig>({
     autoIndexes: false,
     hypeIndexes: false,
     small2bigIndexes: false,
@@ -88,7 +88,7 @@ const TemplateImportModal = ({
     onOpenConfigPrompt();
   };
 
-  const handleSavePrompt = async (content: string) => {
+  const handleSavePrompt = (content: string) => {
     setEnhanceConfig((prev) => ({
       ...prev,
       [currentPromptType === 'autoIndexes' ? 'autoIndexesPrompt' : 'hypeIndexPrompt']: content
@@ -245,10 +245,10 @@ const TemplateImportModal = ({
                     <MyIcon
                       name={'common/settingLight'}
                       w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('autoIndexes')}
+                      cursor={feConfigs?.isPlus ? 'pointer' : 'not-allowed'}
+                      color={feConfigs?.isPlus ? 'myGray.500' : 'myGray.300'}
+                      _hover={{ color: feConfigs?.isPlus ? 'primary.500' : 'myGray.300' }}
+                      onClick={() => feConfigs?.isPlus && handleOpenConfigPrompt('autoIndexes')}
                     />
                   </MyTooltip>
                 </HStack>
@@ -267,10 +267,10 @@ const TemplateImportModal = ({
                     <MyIcon
                       name={'common/settingLight'}
                       w={'16px'}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.500' }}
-                      onClick={() => handleOpenConfigPrompt('hypeIndexes')}
+                      cursor={feConfigs?.isPlus ? 'pointer' : 'not-allowed'}
+                      color={feConfigs?.isPlus ? 'myGray.500' : 'myGray.300'}
+                      _hover={{ color: feConfigs?.isPlus ? 'primary.500' : 'myGray.300' }}
+                      onClick={() => feConfigs?.isPlus && handleOpenConfigPrompt('hypeIndexes')}
                     />
                   </MyTooltip>
                 </HStack>
@@ -314,7 +314,7 @@ const TemplateImportModal = ({
               ? enhanceConfig.autoIndexesPrompt
               : enhanceConfig.hypeIndexPrompt
           }
-          onSuccess={handleSavePrompt}
+          onConfirm={handleSavePrompt}
         />
       )}
     </MyModal>

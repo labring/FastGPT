@@ -130,15 +130,14 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      // TODO: 分段增强索引
-      // ...(collection.small2bigIndexes !== undefined
-      //   ? [
-      //     {
-      //       label: t('dataset:segment_enhanced_index'),
-      //       value: collection.small2bigIndexes ? 'Enabled' : 'Disabled'
-      //     }
-      //   ]
-      //   : []),
+      ...(collection.small2bigIndexes !== undefined
+        ? [
+            {
+              label: t('dataset:segment_enhanced_index'),
+              value: collection.small2bigIndexes ? 'Enabled' : 'Disabled'
+            }
+          ]
+        : []),
       ...(collection.chunkSize !== undefined
         ? [
             {
