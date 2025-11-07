@@ -20,7 +20,7 @@ import {
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
-import { getMyModels } from './api';
+import { getMyModels, getOperationalAd } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -70,15 +70,12 @@ type State = {
     modelSet: Set<string>;
     versionKey: string;
   };
+  operationalAd?: { operationalAdImage: string; operationalAdLink: string };
+  loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
-
-  operationalAd?: {
-    operationalAdImage: string;
-    operationalAdLink: string;
-  };
 
   initStaticData: (e: InitDateResponse) => void;
 
@@ -170,10 +167,20 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
-        operationalAd: undefined,
         myModelList: {
           modelSet: new Set(),
           versionKey: ''
+        },
+        operationalAd: undefined,
+        loadOperationalAd: async () => {
+          try {
+            const res = await getOperationalAd();
+            set((state) => {
+              state.operationalAd = res;
+            });
+          } catch (error) {
+            console.log('Get operational ad error', error);
+          }
         },
         getMyModelList: async () => {
           try {
@@ -242,8 +249,6 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
-
-            state.operationalAd = res.operationalAd ?? state.operationalAd;
           });
         }
       })),
@@ -265,8 +270,7 @@ export const useSystemStore = create<State>()(
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList,
-          operationalAd: state.operationalAd
+          sttModelList: state.sttModelList
         })
       }
     )

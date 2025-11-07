@@ -21,11 +21,6 @@ export type InitDateResponse = {
   defaultModels?: SystemDefaultModelType;
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
   aiproxyIdMap?: AiproxyMapProviderType;
-
-  operationalAd?: {
-    operationalAdImage: string;
-    operationalAdLink: string;
-  };
 };
 
 async function handler(
@@ -52,8 +47,7 @@ async function handler(
       activeModelList: global.systemActiveDesensitizedModels,
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache,
-      operationalAd: global.operationalAd
+      aiproxyIdMap: global.aiproxyIdMapCache
     };
   } catch (error) {
     const referer = req.headers.referer;

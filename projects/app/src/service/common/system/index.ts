@@ -130,12 +130,11 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [{ fastgptConfig, licenseData, operationalAd }, fileConfig] = await Promise.all([
+  const [{ fastgptConfig, licenseData }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
   global.licenseData = licenseData;
-  global.operationalAd = operationalAd;
 
   const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 

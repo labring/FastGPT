@@ -5,7 +5,7 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { useLocalStorageState } from 'ahooks';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -14,9 +14,15 @@ import { useRouter } from 'next/router';
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
-  const { operationalAd } = useSystemStore();
+  const { operationalAd, loadOperationalAd } = useSystemStore();
   const router = useRouter();
   if (!teamPlanStatus?.standardConstants) return null;
+
+  useEffect(() => {
+    if (!operationalAd) {
+      loadOperationalAd();
+    }
+  }, [operationalAd, loadOperationalAd]);
 
   const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>('hidden-until', {
     defaultValue: undefined

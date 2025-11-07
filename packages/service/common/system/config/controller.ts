@@ -7,10 +7,6 @@ import { type LicenseDataType } from '@fastgpt/global/common/system/types';
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;
   licenseData?: LicenseDataType;
-  operationalAd?: {
-    operationalAdImage: string;
-    operationalAdLink: string;
-  };
 }> => {
   if (!FastGPTProUrl) {
     return {
@@ -18,7 +14,7 @@ export const getFastGPTConfigFromDB = async (): Promise<{
     };
   }
 
-  const [fastgptConfig, licenseConfig, operationalAdConfig] = await Promise.all([
+  const [fastgptConfig, licenseConfig] = await Promise.all([
     MongoSystemConfigs.findOne({
       type: SystemConfigsTypeEnum.fastgpt
     }).sort({
@@ -28,35 +24,22 @@ export const getFastGPTConfigFromDB = async (): Promise<{
       type: SystemConfigsTypeEnum.license
     }).sort({
       createTime: -1
-    }),
-    MongoSystemConfigs.findOne({
-      type: SystemConfigsTypeEnum.operationalAd
-    }).sort({
-      createTime: -1
     })
   ]);
 
   const config = fastgptConfig?.value || {};
   const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
-  const operationalAd = operationalAdConfig?.value as
-    | {
-        operationalAdImage: string;
-        operationalAdLink: string;
-      }
-    | undefined;
 
   const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
   const licenseConfigTime = licenseConfig?.createTime.getTime().toString();
-  const operationalAdConfigTime = operationalAdConfig?.createTime.getTime().toString();
   // 利用配置文件的创建时间（更新时间）来做缓存，如果前端命中缓存，则不需要再返回配置文件
   global.systemInitBufferId = fastgptConfigTime
-    ? `${fastgptConfigTime}-${licenseConfigTime}-${operationalAdConfigTime || ''}`
+    ? `${fastgptConfigTime}-${licenseConfigTime}`
     : undefined;
 
   return {
     fastgptConfig: config as FastGPTConfigFileType,
-    licenseData,
-    operationalAd
+    licenseData
   };
 };
 
