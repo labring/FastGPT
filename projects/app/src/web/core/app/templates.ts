@@ -354,7 +354,7 @@ export const emptyTemplates = {
     edges: [],
     chatConfig: {}
   },
-  [AppTypeEnum.plugin]: {
+  [AppTypeEnum.workflowTool]: {
     avatar: 'core/app/type/pluginFill',
     name: i18nT('common:core.module.template.empty_plugin'),
     nodes: [

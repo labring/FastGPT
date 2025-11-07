@@ -49,8 +49,8 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
         $in: [
           AppTypeEnum.simple,
           AppTypeEnum.workflow,
-          AppTypeEnum.plugin,
-          AppTypeEnum.toolSet,
+          AppTypeEnum.workflowTool,
+          AppTypeEnum.mcpToolSet,
           AppTypeEnum.httpToolSet
         ]
       }
@@ -65,7 +65,12 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
     const totalApps = await MongoApp.countDocuments({
       type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+        $in: [
+          AppTypeEnum.simple,
+          AppTypeEnum.workflow,
+          AppTypeEnum.workflowTool,
+          AppTypeEnum.mcpToolSet
+        ]
       }
     });
     if (totalApps >= global.licenseData.maxApps) {

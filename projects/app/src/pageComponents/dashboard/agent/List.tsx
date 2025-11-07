@@ -288,7 +288,7 @@ const List = () => {
                                     }
                                   ]
                                 : []),
-                              ...([AppTypeEnum.plugin].includes(app.type)
+                              ...([AppTypeEnum.workflowTool].includes(app.type)
                                 ? [
                                     {
                                       children: [
@@ -357,7 +357,7 @@ const List = () => {
                                   ]
                                 : []),
                               ...(!app.permission?.hasWritePer ||
-                              app.type === AppTypeEnum.toolSet ||
+                              app.type === AppTypeEnum.mcpToolSet ||
                               app.type === AppTypeEnum.folder ||
                               app.type === AppTypeEnum.httpToolSet ||
                               app.type === AppTypeEnum.httpPlugin
@@ -473,7 +473,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.plugin);
+    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.workflowTool);
   console.log(createAppType);
   const isToolType = ToolTypeList.includes(createAppType);
 
@@ -546,7 +546,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.plugin);
+    (router.pathname.includes('/agent') ? AppTypeEnum.simple : AppTypeEnum.workflowTool);
 
   return (
     <MyBox

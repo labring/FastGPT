@@ -48,7 +48,7 @@ async function handler(
       parentId,
       teamId,
       tmbId,
-      type: AppTypeEnum.toolSet,
+      type: AppTypeEnum.mcpToolSet,
       modules: [
         getMCPToolSetRuntimeNode({
           url,
@@ -66,7 +66,7 @@ async function handler(
   });
 
   pushTrack.createApp({
-    type: AppTypeEnum.toolSet,
+    type: AppTypeEnum.mcpToolSet,
     appId: mcpToolsId,
     uid: userId,
     teamId,

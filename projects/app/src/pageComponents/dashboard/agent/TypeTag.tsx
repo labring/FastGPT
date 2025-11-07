@@ -16,7 +16,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       label: t('app:type.Workflow bot'),
       icon: 'core/app/type/workflow'
     },
-    [AppTypeEnum.plugin]: {
+    [AppTypeEnum.workflowTool]: {
       label: t('app:toolType_workflow'),
       icon: 'core/app/type/plugin'
     },
@@ -28,7 +28,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       label: t('app:toolType_http'),
       icon: 'core/app/type/httpPlugin'
     },
-    [AppTypeEnum.toolSet]: {
+    [AppTypeEnum.mcpToolSet]: {
       label: t('app:toolType_mcp'),
       icon: 'core/app/type/mcpTools'
     },

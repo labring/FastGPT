@@ -80,8 +80,8 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         : !type || type === 'all'
           ? [
               AppTypeEnum.toolFolder,
-              AppTypeEnum.plugin,
-              AppTypeEnum.toolSet,
+              AppTypeEnum.workflowTool,
+              AppTypeEnum.mcpToolSet,
               AppTypeEnum.httpToolSet
             ]
           : [AppTypeEnum.toolFolder, type];

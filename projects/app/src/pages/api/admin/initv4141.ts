@@ -56,9 +56,9 @@ async function appSplitMigration(teamId: string) {
     [
       AppTypeEnum.httpPlugin,
       AppTypeEnum.httpToolSet,
-      AppTypeEnum.plugin,
+      AppTypeEnum.workflowTool,
       AppTypeEnum.tool,
-      AppTypeEnum.toolSet
+      AppTypeEnum.mcpToolSet
     ].includes(item.type)
   );
 

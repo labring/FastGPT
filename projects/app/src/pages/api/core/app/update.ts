@@ -111,7 +111,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       nodes
     });
 
-    if (app.type === AppTypeEnum.toolSet && avatar) {
+    if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }
 

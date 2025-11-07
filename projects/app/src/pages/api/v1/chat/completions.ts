@@ -186,7 +186,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     })();
     retainDatasetCite = retainDatasetCite && !!responseDetail;
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
     if (isPlugin) {

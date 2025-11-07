@@ -92,8 +92,8 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           searchKey: searchVal,
           type: [
             AppTypeEnum.toolFolder,
-            AppTypeEnum.plugin,
-            AppTypeEnum.toolSet,
+            AppTypeEnum.workflowTool,
+            AppTypeEnum.mcpToolSet,
             AppTypeEnum.httpToolSet
           ]
         }).then((res) => res.filter((app) => app.id !== appDetail._id));

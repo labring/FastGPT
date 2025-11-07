@@ -242,7 +242,7 @@ const TemplateMarket = ({
                 label: t('app:type.Workflow bot')
               },
               {
-                value: AppTypeEnum.plugin,
+                value: AppTypeEnum.workflowTool,
                 label: t('app:type.Plugin')
               }
             ]}

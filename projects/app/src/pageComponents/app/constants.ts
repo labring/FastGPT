@@ -18,16 +18,16 @@ export const createAppTypeMap = {
     description: i18nT('app:type_workflow_description'),
     imgUrl: '/imgs/app/workflowPreview.svg'
   },
-  [AppTypeEnum.plugin]: {
-    type: AppTypeEnum.plugin,
+  [AppTypeEnum.workflowTool]: {
+    type: AppTypeEnum.workflowTool,
     icon: 'core/app/type/pluginFill',
     title: i18nT('app:toolType_workflow'),
     intro: i18nT('app:type_plugin_intro'),
     description: i18nT('app:type_plugin_description'),
     imgUrl: '/imgs/app/pluginPreview.svg'
   },
-  [AppTypeEnum.toolSet]: {
-    type: AppTypeEnum.toolSet,
+  [AppTypeEnum.mcpToolSet]: {
+    type: AppTypeEnum.mcpToolSet,
     icon: 'core/app/type/mcpToolsFill',
     title: i18nT('app:toolType_mcp'),
     intro: i18nT('app:type_mcp_intro'),

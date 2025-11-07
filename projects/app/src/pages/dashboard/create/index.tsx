@@ -59,11 +59,15 @@ type FormType = {
 export type CreateAppType =
   | AppTypeEnum.simple
   | AppTypeEnum.workflow
-  | AppTypeEnum.plugin
-  | AppTypeEnum.toolSet
+  | AppTypeEnum.workflowTool
+  | AppTypeEnum.mcpToolSet
   | AppTypeEnum.httpToolSet;
 
-export const ToolTypeList = [AppTypeEnum.toolSet, AppTypeEnum.httpToolSet, AppTypeEnum.plugin];
+export const ToolTypeList = [
+  AppTypeEnum.mcpToolSet,
+  AppTypeEnum.httpToolSet,
+  AppTypeEnum.workflowTool
+];
 
 const CreateAppsPage = () => {
   const { t } = useTranslation();
@@ -128,7 +132,7 @@ const CreateAppsPage = () => {
         avatar: avatar,
         name: name
       };
-      if (appType === AppTypeEnum.toolSet) {
+      if (appType === AppTypeEnum.mcpToolSet) {
         return postCreateMCPTools({
           ...baseParams,
           url: mcpUrl || '',
@@ -295,13 +299,13 @@ const CreateAppsPage = () => {
               <Input
                 flex={1}
                 h={8}
-                mr={selectedAppType !== AppTypeEnum.toolSet ? 5 : 0}
+                mr={selectedAppType !== AppTypeEnum.mcpToolSet ? 5 : 0}
                 placeholder={t('app:app_name_placeholder')}
                 {...register('name', {
                   required: t('common:core.app.error.App name can not be empty')
                 })}
               />
-              {selectedAppType !== AppTypeEnum.toolSet && (
+              {selectedAppType !== AppTypeEnum.mcpToolSet && (
                 <Button
                   isLoading={isCreating}
                   onClick={handleSubmit((data) => onClickCreate(data))}
@@ -404,7 +408,7 @@ const CreateAppsPage = () => {
           )}
 
           {/* mcp */}
-          {selectedAppType === AppTypeEnum.toolSet && (
+          {selectedAppType === AppTypeEnum.mcpToolSet && (
             <>
               <Box mb={5} maxW={200}>
                 <HeaderAuthForm

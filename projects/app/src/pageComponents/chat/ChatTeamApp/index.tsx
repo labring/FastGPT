@@ -38,11 +38,11 @@ const MyApps = () => {
       all: t('common:core.module.template.all_team_app'),
       [AppTypeEnum.simple]: t('app:type.Chat_Agent'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
-      [AppTypeEnum.plugin]: t('app:toolType_workflow'),
+      [AppTypeEnum.workflowTool]: t('app:toolType_workflow'),
       [AppTypeEnum.httpPlugin]: t('app:toolType_http'),
       [AppTypeEnum.httpToolSet]: t('app:toolType_http'),
       [AppTypeEnum.folder]: t('common:Folder'),
-      [AppTypeEnum.toolSet]: t('app:toolType_mcp'),
+      [AppTypeEnum.mcpToolSet]: t('app:toolType_mcp'),
       [AppTypeEnum.tool]: t('app:toolType_mcp'),
       [AppTypeEnum.hidden]: t('app:type.hidden')
     }),
@@ -50,7 +50,7 @@ const MyApps = () => {
   );
 
   const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
+  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool];
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

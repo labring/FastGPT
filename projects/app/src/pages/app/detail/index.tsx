@@ -58,8 +58,8 @@ const AppDetail = () => {
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
-            {appDetail.type === AppTypeEnum.plugin && <Plugin />}
-            {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
+            {appDetail.type === AppTypeEnum.workflowTool && <Plugin />}
+            {appDetail.type === AppTypeEnum.mcpToolSet && <MCPTools />}
             {appDetail.type === AppTypeEnum.httpToolSet && <HTTPTools />}
           </>
         )}
