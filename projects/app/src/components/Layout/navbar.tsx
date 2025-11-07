@@ -70,13 +70,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('common:navbar.Chat'),
-        icon: 'navbar/chatLight',
-        activeIcon: 'navbar/chatFill',
-        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
-        activeLink: ['/chat']
-      },
-      {
         label: t('common:navbar.Account'),
         icon: 'navbar/userLight',
         activeIcon: 'navbar/userFill',
@@ -93,6 +86,13 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/promotion',
           '/account/model'
         ]
+      },
+      {
+        label: t('common:navbar.Chat'),
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
+        activeLink: ['/chat']
       },
       ...(userInfo?.username === 'root'
         ? [

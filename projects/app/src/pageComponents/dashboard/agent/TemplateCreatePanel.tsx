@@ -2,7 +2,15 @@ import {
   getTemplateMarketItemList,
   getTemplateMarketItemDetail
 } from '@/web/core/app/api/template';
-import { Box, Flex, Button, Collapse, Skeleton, SkeletonCircle } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Button,
+  Collapse,
+  Skeleton,
+  SkeletonCircle,
+  useBreakpointValue
+} from '@chakra-ui/react';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -18,6 +26,9 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
+
+  const randomNumber =
+    useBreakpointValue({ base: 3, sm: 3, md: 4, lg: 4, xl: 5 }, { ssr: false }) || 4;
 
   const [isHoverMoreButton, setIsHoverMoreButton] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorageState<boolean>(
@@ -35,12 +46,12 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     (excludeIds?: string[]) =>
       getTemplateMarketItemList({
         type,
-        isRandom: true,
+        randomNumber,
         excludeIds
       }),
     {
       manual: false,
-      refreshDeps: [type]
+      refreshDeps: [type, randomNumber]
     }
   );
 
@@ -89,7 +100,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
           {t('app:create_from_template')}
         </Box>
         <Flex gap={4} alignItems={'center'}>
-          {!isCollapsed && templateData?.total && templateData.total > 12 && (
+          {!isCollapsed && !!templateData?.total && templateData.total > 12 && (
             <Button
               size={'sm'}
               variant={'transparentBase'}
@@ -124,9 +135,19 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         animateOpacity
         transition={{ enter: { duration: 0.2 }, exit: { duration: 0.2 } }}
       >
-        <Box display={'grid'} gridTemplateColumns={'repeat(4, 1fr) 160px'} gap={4}>
+        <Box
+          display={'grid'}
+          gridTemplateColumns={[
+            'repeat(3, 1fr) 160px',
+            'repeat(3, 1fr) 160px',
+            'repeat(4, 1fr) 160px',
+            'repeat(4, 1fr) 160px',
+            'repeat(5, 1fr) 160px'
+          ]}
+          gap={4}
+        >
           {isFetchingTemplates && !templateData?.list?.length
-            ? Array.from({ length: 4 }).map((_, index) => (
+            ? Array.from({ length: randomNumber }).map((_, index) => (
                 <Box
                   key={`skeleton-${index}`}
                   bg={'white'}

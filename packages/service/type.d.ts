@@ -23,5 +23,12 @@ declare global {
   var subPlans: SubPlanType | undefined;
   var licenseData: LicenseDataType | undefined;
 
+  var operationalAd:
+    | {
+        operationalAdImage: string;
+        operationalAdLink: string;
+      }
+    | undefined;
+
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
 }

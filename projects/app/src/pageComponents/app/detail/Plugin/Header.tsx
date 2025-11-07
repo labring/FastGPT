@@ -116,7 +116,7 @@ const Header = () => {
   const onBack = useCallback(async () => {
     leaveSaveSign.current = false;
     router.push({
-      pathname: '/dashboard/agent',
+      pathname: '/dashboard/tool',
       query: {
         parentId: appDetail.parentId,
         type: lastAppListRouteType

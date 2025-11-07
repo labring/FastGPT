@@ -5,10 +5,11 @@ import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { ToolTypeList } from '@/pages/dashboard/create';
 
 export type ListParams = {
   isQuickTemplate?: boolean;
-  isRandom?: boolean;
+  randomNumber?: number;
   type?: AppTypeEnum | 'all';
   excludeIds?: string[];
 };
@@ -24,13 +25,14 @@ async function handler(
 ): Promise<ListResponse> {
   await authCert({ req, authToken: true });
 
-  const { isQuickTemplate = false, isRandom = false, type = 'all', excludeIds = [] } = req.query;
+  const { isQuickTemplate = false, randomNumber = 0, type = 'all', excludeIds = [] } = req.query;
 
   const templateMarketItems = await getAppTemplatesAndLoadThem();
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
-    if (type === 'all' || item.type === type) return true;
+    if (type === 'all' && !ToolTypeList.includes(item.type as AppTypeEnum)) return true;
+    if (item.type === type) return true;
     return false;
   });
   const total = filteredItems.length;
@@ -47,14 +49,14 @@ async function handler(
     }
   }
 
-  if (isRandom && filteredItems.length > 0) {
+  if (randomNumber > 0 && filteredItems.length > 0) {
     // Fisher-Yates shuffle algorithm
     const shuffled = [...filteredItems];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    filteredItems = shuffled.slice(0, 4);
+    filteredItems = shuffled.slice(0, randomNumber);
   }
 
   const list = filteredItems.map((item) => {

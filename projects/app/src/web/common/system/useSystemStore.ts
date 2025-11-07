@@ -75,6 +75,11 @@ type State = {
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
 
+  operationalAd?: {
+    operationalAdImage: string;
+    operationalAdLink: string;
+  };
+
   initStaticData: (e: InitDateResponse) => void;
 
   appType?: string;
@@ -165,6 +170,7 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        operationalAd: undefined,
         myModelList: {
           modelSet: new Set(),
           versionKey: ''
@@ -236,6 +242,8 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
+
+            state.operationalAd = res.operationalAd ?? state.operationalAd;
           });
         }
       })),
@@ -257,7 +265,8 @@ export const useSystemStore = create<State>()(
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
+          sttModelList: state.sttModelList,
+          operationalAd: state.operationalAd
         })
       }
     )

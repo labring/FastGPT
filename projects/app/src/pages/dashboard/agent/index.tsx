@@ -51,11 +51,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     setMoveAppId,
     isFetchingApps,
     folderDetail,
-    refetchFolderDetail
+    refetchFolderDetail,
+    searchKey,
+    setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
-  const [searchKey, setSearchKey] = useState('');
 
   const {
     isOpen: isOpenJsonImportModal,

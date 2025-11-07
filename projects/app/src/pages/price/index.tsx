@@ -1,6 +1,6 @@
 import React from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { Box, Flex, HStack, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
 
@@ -43,6 +43,19 @@ const PriceBox = () => {
       backgroundSize={'cover'}
       backgroundRepeat={'no-repeat'}
     >
+      {userInfo && (
+        <Button
+          variant={'transparentBase'}
+          color={'primary.700'}
+          leftIcon={<MyIcon name={'core/workflow/undo'} w={4} />}
+          onClick={() => router.back()}
+          alignSelf={'flex-start'}
+          mt={-8}
+        >
+          {t('common:back')}
+        </Button>
+      )}
+
       {/* standard sub */}
       <VStack>
         <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>

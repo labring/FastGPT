@@ -61,8 +61,9 @@ const HelperBot = () => {
           position={'fixed'}
           right={3}
           bottom={'calc(10% + 80px)'}
+          top={'50px'}
           w={'400px'}
-          h={'600px'}
+          maxH={'790px'}
           bg={'white'}
           borderRadius={'lg'}
           boxShadow={'0px 4px 20px rgba(0, 0, 0, 0.15)'}
