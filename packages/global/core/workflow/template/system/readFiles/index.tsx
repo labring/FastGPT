@@ -45,6 +45,14 @@ export const ReadFilesNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     },
+    {
+      id: NodeOutputKeyEnum.rawResponse,
+      key: NodeOutputKeyEnum.rawResponse,
+      label: i18nT('workflow:raw_response'),
+      description: i18nT('workflow:tool_raw_response_description'),
+      valueType: WorkflowIOValueTypeEnum.arrayObject,
+      type: FlowNodeOutputTypeEnum.static
+    },
     Output_Template_Error_Message
   ]
 };
