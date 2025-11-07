@@ -5,10 +5,11 @@ import { countPromptTokens } from '../../../../../common/string/tiktoken/index';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { addLog } from '../../../../../common/system/log';
+import { calculateCompressionThresholds } from '../../../../ai/llm/compressionConstants';
 
 /**
- * 压缩步骤提示词
- * 当 stepPrompt 的 token 长度超过模型最大长度的 0.7 时，调用 LLM 进行压缩
+ * 压缩步骤提示词（Depends on）
+ * 当 stepPrompt 的 token 长度超过模型最大长度的 15% 时，调用 LLM 压缩到 12%
  */
 const compressStepPrompt = async (
   stepPrompt: string,
@@ -21,13 +22,14 @@ const compressStepPrompt = async (
   if (!modelData) return stepPrompt;
 
   const tokenCount = await countPromptTokens(stepPrompt);
-  const maxTokenThreshold = modelData.maxContext * 0.7;
+  const thresholds = calculateCompressionThresholds(modelData.maxContext);
+  const maxTokenThreshold = thresholds.dependsOn.threshold;
 
   if (tokenCount <= maxTokenThreshold) {
     return stepPrompt;
   }
 
-  const compressionRatio = 0.6;
+  const targetTokens = thresholds.dependsOn.target;
 
   const compressionSystemPrompt = `<role>
 你是工作流步骤历史压缩专家，擅长从多个已执行步骤的结果中提取关键信息。
@@ -94,7 +96,9 @@ const compressStepPrompt = async (
 **需要压缩的步骤历史**：
 ${stepPrompt}
 
-**目标压缩比例**：${Math.round(compressionRatio * 100)}%（目标长度为原文的${Math.round(compressionRatio * 100)}%）
+**压缩要求**：
+- 原始长度：${tokenCount} tokens
+- 目标长度：约 ${targetTokens} tokens（压缩到原长度的 ${Math.round((targetTokens / tokenCount) * 100)}%）
 
 **输出格式要求**：
 1. 保留步骤结构：每个步骤使用"# 步骤ID: [id]\\n\\t - 步骤标题: [title]\\n\\t - 执行结果: [精简后的结果]"的格式

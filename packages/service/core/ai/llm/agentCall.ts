@@ -14,9 +14,10 @@ import type { CreateLLMResponseProps, ResponseEvents } from './request';
 import { createLLMResponse } from './request';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
+import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { addLog } from '../../../common/system/log';
 import type { AgentPlanStepType } from '../../workflow/dispatch/ai/agent/sub/plan/type';
+import { calculateCompressionThresholds } from './compressionConstants';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
@@ -61,8 +62,201 @@ type RunAgentResponse = {
 };
 
 /**
+ * Compress a single oversized tool response
+ * Integrates character reduction + chunk compression logic
+ */
+const compressSingleToolResponse = async (
+  response: string,
+  model: LLMModelItemType,
+  toolName: string,
+  currentDescription: string,
+  maxTargetTokens: number = 4000
+): Promise<string> => {
+  const originalTokens = await countPromptTokens(response);
+
+  console.log(
+    `Start single tool compression ${toolName}: ${originalTokens} tokens → target ${maxTargetTokens} tokens`
+  );
+  console.log('Response content preview:\n', response.slice(0, 1000));
+
+  // ============ Phase 1: Smart character reduction ============
+  let reduced = response;
+
+  // delete URL
+  reduced = reduced.replace(/https?:\/\/[^\s]+/g, '');
+
+  // delete base64 code
+  reduced = reduced.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
+  reduced = reduced.replace(/base64,[A-Za-z0-9+/=]{50,}/g, '');
+
+  // delete HTML/XML tag
+  reduced = reduced.replace(/<[^>]+>/g, '');
+
+  // delete Markdown images
+  reduced = reduced.replace(/!\[([^\]]*)\]\([^\)]+\)/g, '');
+
+  reduced = reduced.replace(
+    /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+    ''
+  );
+
+  // Compress whitespace
+  reduced = reduced.replace(/\n{3,}/g, '\n\n');
+  reduced = reduced.replace(/ {2,}/g, ' ');
+  reduced = reduced.replace(/\t+/g, ' ');
+
+  // Remove duplicate separators
+  reduced = reduced.replace(/[-=_*#]{5,}/g, '---');
+
+  // Deduplicate consecutive identical lines
+  const allLines = reduced.split('\n');
+  const deduplicatedLines: string[] = [];
+  let lastLine = '';
+  for (const line of allLines) {
+    const trimmed = line.trim();
+    if (trimmed !== lastLine || trimmed === '') {
+      deduplicatedLines.push(line);
+      lastLine = trimmed;
+    }
+  }
+  reduced = deduplicatedLines.join('\n').trim();
+
+  let currentTokens = await countPromptTokens(reduced);
+  addLog.info(`After character reduction`, {
+    tool: toolName,
+    before: originalTokens,
+    after: currentTokens,
+    saved: originalTokens - currentTokens
+  });
+  console.log('After character reduction - content preview:\n', reduced.slice(0, 1000));
+  // 2. If reduction meets the requirement, return directly
+  if (currentTokens <= maxTargetTokens) {
+    return reduced;
+  }
+
+  // ============ Phase 2: Chunk compression ============
+  const thresholds = calculateCompressionThresholds(model.maxContext);
+  const chunkMaxTokens = thresholds.chunkSize;
+
+  if (currentTokens <= chunkMaxTokens) {
+    const systemPrompt = `你是内容压缩专家。将以下内容压缩到约 ${maxTargetTokens} tokens。
+      任务: ${currentDescription}
+      工具: ${toolName}
+      要求：
+      - 保留关键数据、结论、错误信息
+      - 删除冗余描述、重复内容
+      - 格式简洁
+      直接输出压缩文本。
+      ${reduced}`;
+
+    try {
+      const { answerText } = await createLLMResponse({
+        body: {
+          model,
+          messages: [
+            { role: ChatCompletionRequestMessageRoleEnum.System, content: systemPrompt },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: '请按照目标的 token 数量进行压缩'
+            }
+          ],
+          temperature: 0.1,
+          stream: false
+        }
+      });
+
+      if (answerText) {
+        reduced = answerText;
+        currentTokens = await countPromptTokens(reduced);
+      }
+    } catch (error) {
+      addLog.error(`LLM 压缩失败: ${toolName}`, error);
+    }
+
+    addLog.info(`压缩完成`, {
+      tool: toolName,
+      final: currentTokens,
+      ratio: `${((currentTokens / originalTokens) * 100).toFixed(1)}%`
+    });
+    console.log('LLM 压缩后-内容预览:\n', reduced);
+    return reduced;
+  }
+
+  const targetChunkCount = Math.ceil(currentTokens / chunkMaxTokens);
+  const chunkSize = Math.ceil(reduced.length / targetChunkCount);
+  const chunks: string[] = [];
+
+  for (let i = 0; i < targetChunkCount; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, reduced.length);
+    chunks.push(reduced.substring(start, end));
+  }
+
+  addLog.info(`分块压缩信息：`, {
+    currentTokens: currentTokens,
+    tool: toolName,
+    chunkslength: chunks.length,
+    chunks: chunks
+  });
+
+  const targetPerChunk = Math.floor(maxTargetTokens / chunks.length);
+
+  const compressPromises = chunks.map(async (chunk, idx) => {
+    const systemPrompt = `你是内容压缩专家。将以下内容压缩到约 ${targetPerChunk} tokens。
+
+      任务: ${currentDescription}
+      处理: ${toolName}-块${idx + 1}/${chunks.length}
+      
+      要求：
+      - 保留关键数据、结论、错误
+      - 删除冗余、重复内容
+      - 格式简洁
+      
+      直接输出压缩文本。
+
+      ${chunk}`;
+
+    try {
+      const { answerText } = await createLLMResponse({
+        body: {
+          model,
+          messages: [
+            { role: ChatCompletionRequestMessageRoleEnum.System, content: systemPrompt },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: '请按照目标的 token 数量进行压缩'
+            }
+          ],
+          temperature: 0.1,
+          stream: false
+        }
+      });
+
+      return answerText || chunk;
+    } catch (error) {
+      addLog.error(`块${idx + 1}压缩失败`, error);
+      return chunk;
+    }
+  });
+
+  const compressedChunks = await Promise.all(compressPromises);
+  reduced = compressedChunks.join('\n\n');
+
+  currentTokens = await countPromptTokens(reduced);
+  addLog.info(`分块压缩完成`, {
+    tool: toolName,
+    step1: originalTokens,
+    final: currentTokens,
+    ratio: `${((currentTokens / originalTokens) * 100).toFixed(1)}%`,
+    reduced: reduced
+  });
+
+  return reduced;
+};
+
+/**
  * 压缩 Agent 对话历史
- * 当 messages 的 token 长度超过模型最大长度的 0.7 时，调用 LLM 进行压缩
+ * 当 messages 的 token 长度超过阈值时，调用 LLM 进行压缩
  */
 const compressAgentMessages = async (
   messages: ChatCompletionMessageParam[],
@@ -72,9 +266,8 @@ const compressAgentMessages = async (
   if (!messages || messages.length === 0) return messages;
 
   const tokenCount = await countGptMessagesTokens(messages);
-  const maxTokenThreshold = model.maxContext * 0.7;
-  // Test
-  // const maxTokenThreshold = 10000;
+  const thresholds = calculateCompressionThresholds(model.maxContext);
+  const maxTokenThreshold = thresholds.agentMessages.threshold;
 
   addLog.debug('Agent messages token check', {
     tokenCount,
@@ -86,21 +279,15 @@ const compressAgentMessages = async (
 
   if (tokenCount <= maxTokenThreshold) {
     console.log('messages 无需压缩，共', messages.length, '条消息');
-    // console.log('messagesJson', messagesJson);
-    // messages.forEach((msg, idx) => {
-    //   console.log(`\n=== Message ${idx} (${msg.role}) ===`);
-    //   console.log(JSON.stringify(msg, null, 2));
-    // });
     return messages;
   }
 
-  const compressionRatio = 0.6;
-  const targetTokens = Math.round(tokenCount * compressionRatio);
+  const targetTokens = Math.round(tokenCount * thresholds.agentMessages.targetRatio);
 
   addLog.info('Start compressing agent messages', {
     originalTokens: tokenCount,
     targetTokens,
-    compressionRatio
+    compressionRatio: thresholds.agentMessages.targetRatio
   });
 
   const systemPrompt = `你是 Agent 对话历史压缩专家。你的任务是将对话历史压缩到目标 token 数，同时确保工具调用的 ID 映射关系完全正确。
@@ -110,7 +297,7 @@ const compressAgentMessages = async (
     
     ## 压缩目标（最高优先级）
     - **原始 token 数**: ${tokenCount} tokens
-    - **目标 token 数**: ${targetTokens} tokens (压缩比例: ${Math.round(compressionRatio * 100)}%)
+    - **目标 token 数**: ${targetTokens} tokens (压缩比例: ${Math.round(thresholds.agentMessages.targetRatio * 100)}%)
     - **约束**: 输出的 JSON 内容必须接近 ${targetTokens} tokens
     
     ---
@@ -301,8 +488,6 @@ const compressAgentMessages = async (
       summary: parsed.compression_summary
     });
 
-    // console.log("------------- \n压缩完成 \n压缩前的 message：", messagesJson);
-    // console.log('压缩后的 message：', JSON.stringify(parsed.compressed_messages, null, 2));
     return parsed.compressed_messages as ChatCompletionMessageParam[];
   } catch (error) {
     addLog.error('Compression failed', error);
@@ -378,49 +563,44 @@ export const runAgentCall = async ({
     const requestMessagesLength = requestMessages.length;
     requestMessages = completeMessages.slice();
 
-    let isFirstTool = true;
-    console.log('toolCalls', toolCalls);
     for await (const tool of toolCalls) {
-      console.log('tool', tool);
-      if (isFirstTool) {
-        const lastMessage = requestMessages[requestMessages.length - 1];
-        if (lastMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          requestMessages[requestMessages.length - 1] = {
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: lastMessage.content || '',
-            tool_calls: [tool]
-          };
-        }
-        isFirstTool = false;
-      } else {
-        requestMessages.push({
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: '',
-          tool_calls: [tool]
-        });
-      }
       // TODO: 加入交互节点处理
       const { response, usages, interactive } = await handleToolResponse({
         call: tool,
-        messages: requestMessages.slice(0, requestMessagesLength) // 取原来 request 的上下文
+        messages: requestMessages.slice(0, requestMessagesLength)
       });
+
+      let finalResponse = response;
+      const thresholds = calculateCompressionThresholds(model.maxContext);
+      const toolTokenCount = await countPromptTokens(response);
+      if (toolTokenCount > thresholds.singleTool.threshold && currentStep) {
+        const taskDescription = currentStep.description || currentStep.title;
+        finalResponse = await compressSingleToolResponse(
+          response,
+          model,
+          tool.function.name,
+          taskDescription,
+          thresholds.singleTool.target
+        );
+      }
 
       requestMessages.push({
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: response
+        content: finalResponse
       });
-      if (currentStep) {
-        const taskDescription = currentStep.description || currentStep.title;
-        if (taskDescription) {
-          requestMessages = await compressAgentMessages(requestMessages, model, taskDescription);
-        }
-      }
 
       subAppUsages.push(...usages);
 
       if (interactive) {
         interactiveResponse = interactive;
+      }
+    }
+
+    if (toolCalls.length > 0 && currentStep) {
+      const taskDescription = currentStep.description || currentStep.title;
+      if (taskDescription) {
+        requestMessages = await compressAgentMessages(requestMessages, model, taskDescription);
       }
     }
     // TODO: 移动到工作流里 assistantResponses concat
