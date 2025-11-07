@@ -1,10 +1,10 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
-import { getSystemToolById } from '../../../../../../app/plugin/controller';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getSystemToolById } from '../../../../../../app/tool/controller';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
-import { MongoSystemPlugin } from '../../../../../../app/plugin/systemPluginSchema';
+import { MongoSystemTool } from '../../../../../../plugin/tool/systemToolSchema';
 import { APIRunSystemTool } from '../../../../../../app/tool/api';
 import type {
   ChatDispatchProps,
@@ -18,10 +18,10 @@ import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 
 type SystemInputConfigType = {
-  type: SystemToolInputTypeEnum;
+  type: SystemToolSecretInputTypeEnum;
   value: StoreSecretValueType;
 };
 type Props = {
@@ -50,16 +50,16 @@ export const dispatchTool = async ({
       const tool = await getSystemToolById(toolConfig?.systemTool.toolId);
       const inputConfigParams = await (async () => {
         switch (system_input_config?.type) {
-          case SystemToolInputTypeEnum.team:
+          case SystemToolSecretInputTypeEnum.team:
             return Promise.reject(new Error('This is not supported yet'));
-          case SystemToolInputTypeEnum.manual:
+          case SystemToolSecretInputTypeEnum.manual:
             return getSecretValue({
               storeSecret: system_input_config.value || {}
             });
-          case SystemToolInputTypeEnum.system:
+          case SystemToolSecretInputTypeEnum.system:
           default:
             // read from mongo
-            const dbPlugin = await MongoSystemPlugin.findOne({
+            const dbPlugin = await MongoSystemTool.findOne({
               pluginId: tool.id
             }).lean();
             return dbPlugin?.inputListVal || {};
@@ -122,7 +122,7 @@ export const dispatchTool = async ({
       }
 
       const usagePoints = (() => {
-        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
+        if (params.system_input_config?.type !== SystemToolSecretInputTypeEnum.system) {
           return 0;
         }
         return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
@@ -147,7 +147,7 @@ export const dispatchTool = async ({
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
-      const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
+      const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
       const [parentId, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
@@ -163,7 +163,10 @@ export const dispatchTool = async ({
         })
       });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      const result = await mcpClient.toolCall({
+        toolName,
+        params
+      });
       return {
         response: JSON.stringify(result),
         usages: []
