@@ -72,13 +72,19 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingApps
   } = useRequest2(
     () => {
-      const formatType = (() => {
-        if (!type || type === 'all') return undefined;
-        if (type === AppTypeEnum.plugin)
-          return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
-
-        return [AppTypeEnum.folder, type];
-      })();
+      const isAgent = router.pathname.includes('/agent');
+      const formatType = isAgent
+        ? !type || type === 'all'
+          ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          : [AppTypeEnum.folder, type]
+        : !type || type === 'all'
+          ? [
+              AppTypeEnum.toolFolder,
+              AppTypeEnum.plugin,
+              AppTypeEnum.toolSet,
+              AppTypeEnum.httpToolSet
+            ]
+          : [AppTypeEnum.toolFolder, type];
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {

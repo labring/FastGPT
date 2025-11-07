@@ -74,6 +74,7 @@ const VariableInputForm = dynamic(() => import('./components/VariableInputForm')
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
+const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -89,6 +90,7 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     active?: boolean; // can use
+    showWorkorder?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -104,6 +106,7 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
+  showWorkorder,
   onStartChat,
   chatType
 }: Props) => {
@@ -1180,6 +1183,8 @@ const ChatBox = ({
               w={'100%'}
               maxW={['auto', 'min(820px, 100%)']}
             >
+              {showWorkorder && <WorkorderEntrance />}
+
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => chatController.current?.abort('stop')}

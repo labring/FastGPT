@@ -10,7 +10,13 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRouter } from 'next/router';
 
-const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
+const ToolMenu = ({
+  history,
+  reserveSpace
+}: {
+  history: ChatItemType[];
+  reserveSpace?: boolean;
+}) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
 
@@ -25,6 +31,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
           aria-label={''}
           size={'sm'}
           variant={'whitePrimary'}
+          {...(reserveSpace && { border: 'none', boxShadow: 'none', bg: 'transparent' })}
         />
       }
       menuList={[

@@ -18,7 +18,7 @@ import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
 import { postCreateApp } from '@/web/core/app/api';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import AppTypeTag from '@/pageComponents/dashboard/apps/TypeTag';
+import AppTypeTag from '@/pageComponents/dashboard/agent/TypeTag';
 
 import dynamic from 'next/dynamic';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';

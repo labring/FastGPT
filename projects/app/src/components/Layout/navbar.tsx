@@ -11,6 +11,8 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -45,22 +47,16 @@ const Navbar = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
-        label: t('common:navbar.Chat'),
-        icon: 'navbar/chatLight',
-        activeIcon: 'navbar/chatFill',
-        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
-        activeLink: ['/chat']
-      },
-      {
         label: t('common:navbar.Studio'),
         icon: 'navbar/dashboardLight',
         activeIcon: 'navbar/dashboardFill',
-        link: `/dashboard/apps`,
+        link: `/dashboard/agent`,
         activeLink: [
-          '/dashboard/apps',
+          '/dashboard/agent',
           '/app/detail',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
           '/dashboard/templateMarket',
-          '/dashboard/[pluginGroupId]',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',
           '/dashboard/evaluation/create'
@@ -74,11 +70,11 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('common:navbar.plugin'),
-        icon: 'core/app/pluginLight',
-        activeIcon: 'core/app/pluginFill',
-        link: '/plugin/tool',
-        activeLink: ['/plugin/tool']
+        label: t('common:navbar.Chat'),
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
+        activeLink: ['/chat']
       },
       {
         label: t('common:navbar.Account'),
@@ -129,16 +125,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       bg={isSecondNavbarPage ? 'myGray.50' : 'transparent'}
     >
       {/* logo */}
-      <Box
-        flex={'0 0 auto'}
-        mb={3}
-        border={'2px solid #fff'}
-        borderRadius={'50%'}
-        overflow={'hidden'}
-        cursor={'pointer'}
-        onClick={() => router.push('/account/info')}
-      >
-        <Avatar w={'2rem'} h={'2rem'} src={userInfo?.avatar} borderRadius={'50%'} />
+      <Box flex={'0 0 auto'} mb={3}>
+        <MyImage w={9} h={9} src={LOGO_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
@@ -254,6 +242,10 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </MyTooltip>
       )}
+
+      <Box flex={'0 0 auto'} mb={4} cursor={'pointer'} onClick={() => router.push('/account/info')}>
+        <Avatar w={9} src={userInfo?.avatar} borderRadius={'50%'} />
+      </Box>
     </Flex>
   );
 };

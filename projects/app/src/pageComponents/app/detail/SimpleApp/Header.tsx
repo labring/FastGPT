@@ -71,7 +71,7 @@ const Header = ({
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/dashboard/apps',
+        pathname: '/dashboard/agent',
         query: {
           parentId,
           type: lastAppListRouteType

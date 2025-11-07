@@ -28,7 +28,7 @@ const Login = () => {
           if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
             const id = decodeLastRoute.split('invitelinkid=')[1];
             await postAcceptInvitationLink(id);
-            return '/dashboard/apps';
+            return '/dashboard/agent';
           } else {
             toast({
               status: 'warning',
@@ -37,14 +37,14 @@ const Login = () => {
           }
         }
         if (decodeLastRoute.startsWith(`${subRoute}/config`)) {
-          return '/dashboard/apps';
+          return '/dashboard/agent';
         }
 
         return decodeLastRoute &&
           !decodeLastRoute.includes('/login') &&
           decodeLastRoute.startsWith('/')
           ? lastRoute
-          : '/dashboard/apps';
+          : '/dashboard/agent';
       })();
 
       navigateTo && router.replace(navigateTo);
@@ -54,7 +54,7 @@ const Login = () => {
 
   useMount(() => {
     clearToken();
-    router.prefetch('/dashboard/apps');
+    router.prefetch('/dashboard/agent');
   });
 
   return <LoginModal onSuccess={loginSuccess} />;
