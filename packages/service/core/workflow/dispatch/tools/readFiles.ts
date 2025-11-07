@@ -22,6 +22,7 @@ type Props = ModuleDispatchProps<{
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
+  [NodeOutputKeyEnum.rawResponse]: ReturnType<typeof formatResponseObject>[];
 }>;
 
 const formatResponseObject = ({
@@ -75,7 +76,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
 
     return {
       data: {
-        [NodeOutputKeyEnum.text]: text
+        [NodeOutputKeyEnum.text]: text,
+        [NodeOutputKeyEnum.rawResponse]: readFilesResult
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         readFiles: readFilesResult.map((item) => ({
