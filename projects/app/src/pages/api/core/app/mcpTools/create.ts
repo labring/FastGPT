@@ -73,7 +73,7 @@ async function handler(
     tmbId
   });
 
-  return {};
+  return mcpToolsId;
 }
 
 export default NextAPI(handler);

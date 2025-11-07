@@ -135,7 +135,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       refreshDeps: [appId],
       errorToast: t('common:core.app.error.Get app failed'),
       onError(err: any) {
-        router.replace('/dashboard/apps');
+        router.replace('/dashboard/agent');
       },
       onSuccess(res) {
         setAppDetail(res);
@@ -199,7 +199,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem(`app_log_keys_${appId}`);
         });
 
-        router.replace(`/dashboard/apps`);
+        router.replace(`/dashboard/agent`);
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')

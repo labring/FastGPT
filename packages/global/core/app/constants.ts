@@ -10,6 +10,7 @@ export enum AppTypeEnum {
   folder = 'folder',
   toolFolder = 'toolFolder',
   simple = 'simple',
+  agent = 'agent',
   workflow = 'advanced',
   plugin = 'plugin',
   toolSet = 'toolSet', // 'mcp'

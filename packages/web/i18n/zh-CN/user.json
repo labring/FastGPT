@@ -17,6 +17,8 @@
   "bill.valid_time": "生效时间",
   "bill.you_can_convert": "您可兑换",
   "bill.yuan": "元",
+  "common.current_package": "当前套餐",
+  "current_package": "当前套餐：",
   "delete.admin_failed": "删除管理员失败",
   "delete.admin_success": "删除管理员成功",
   "delete.failed": "删除失败",

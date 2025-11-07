@@ -21,7 +21,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/tool';
 import { useForm } from 'react-hook-form';
-import type { HttpToolsType } from '@/pageComponents/dashboard/apps/HttpToolsCreateModal';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
@@ -34,6 +33,18 @@ import {
   storeHeader2HeaderValue
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+
+export type HttpToolsType = {
+  id?: string;
+  avatar: string;
+  name: string;
+  intro?: string;
+  baseUrl?: string;
+  apiSchemaStr?: string;
+  customHeaders?: string;
+  headerSecret?: StoreSecretValueType;
+};
 
 const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
