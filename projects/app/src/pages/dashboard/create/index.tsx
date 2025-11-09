@@ -134,6 +134,7 @@ const CreateAppsPage = () => {
         avatar: avatar,
         name: name?.trim() || t('app:unnamed_app')
       };
+
       if (appType === AppTypeEnum.mcpToolSet) {
         return postCreateMCPTools({
           ...baseParams,
@@ -142,20 +143,25 @@ const CreateAppsPage = () => {
           toolList: (mcpToolList || []) as McpToolConfigType[]
         });
       }
+
       if (appType === AppTypeEnum.httpToolSet) {
         return postCreateHttpTools({
           ...baseParams,
           createType: createType || 'batch'
         });
       }
+
       if (templateId) {
         const templateDetail = await getTemplateMarketItemDetail(templateId);
         return postCreateApp({
           ...baseParams,
+          avatar: templateDetail.avatar,
+          name: templateDetail.name,
           type: appType,
           modules: templateDetail.workflow.nodes || [],
           edges: templateDetail.workflow.edges || [],
-          chatConfig: templateDetail.workflow.chatConfig || {}
+          chatConfig: templateDetail.workflow.chatConfig || {},
+          templateId: templateDetail.templateId
         });
       }
       return postCreateApp({

@@ -8,6 +8,10 @@ import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { S3Sources } from '../../s3/type';
+import { getS3AvatarSource } from '../../s3/sources/avatar';
+import path from 'path';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -56,60 +60,67 @@ export async function uploadMongoImg({
 
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
-export const copyImage = async ({
+
+export const copyAvatarImage = async ({
   teamId,
   imageUrl,
+  ttl,
   session
 }: {
   teamId: string;
   imageUrl: string;
+  ttl: boolean;
   session?: ClientSession;
 }) => {
-  const imageId = getIdFromPath(imageUrl);
-  if (!imageId) return imageUrl;
+  if (!imageUrl) return;
 
-  const image = await MongoImage.findOne(
-    {
-      _id: imageId,
-      teamId
-    },
-    undefined,
-    {
-      session
-    }
-  );
-  if (!image) return imageUrl;
+  // S3
+  if (imageUrl.startsWith(`${imageBaseUrl}/${S3Sources.avatar}`)) {
+    const extendName = path.extname(imageUrl);
+    const key = await getS3AvatarSource().copyAvatar({
+      sourceKey: imageUrl.slice(imageBaseUrl.length),
+      targetKey: `${S3Sources.avatar}/${teamId}/${getNanoid(6)}${extendName}`,
+      ttl
+    });
+    return key;
+  }
 
-  const [newImage] = await MongoImage.create(
-    [
-      {
-        teamId,
-        binary: image.binary,
-        metadata: image.metadata
-      }
-    ],
-    {
-      session,
-      ordered: true
-    }
-  );
-
-  return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
-};
-
-const getIdFromPath = (path?: string) => {
-  if (!path) return;
-
-  const paths = path.split('/');
+  const paths = imageUrl.split('/');
   const name = paths[paths.length - 1];
-
-  if (!name) return;
-
   const id = name.split('.')[0];
-  if (!id || !Types.ObjectId.isValid(id)) return;
 
-  return id;
+  // Mongo
+  if (id && Types.ObjectId.isValid(id)) {
+    const image = await MongoImage.findOne(
+      {
+        _id: id,
+        teamId
+      },
+      undefined,
+      {
+        session
+      }
+    );
+    if (!image) return imageUrl;
+    const [newImage] = await MongoImage.create(
+      [
+        {
+          teamId,
+          binary: image.binary,
+          metadata: image.metadata
+        }
+      ],
+      {
+        session,
+        ordered: true
+      }
+    );
+    return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+  }
+
+  return imageUrl;
 };
+
 export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!path) return;
 

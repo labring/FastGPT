@@ -217,6 +217,7 @@ export const onDelOneApp = async ({
       { session }
     );
 
+    // Delete avatar
     await removeImageByPath(app.avatar, session);
   };
 

@@ -45,7 +45,7 @@ export type CreateAppBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
+  let { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
@@ -196,6 +196,8 @@ export const onCreateApp = async ({
       resourceType: PerResourceTypeEnum.app
     });
 
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+
     (async () => {
       addAuditLog({
         tmbId,
@@ -207,8 +209,6 @@ export const onCreateApp = async ({
         }
       });
     })();
-
-    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
     return appId;
   };

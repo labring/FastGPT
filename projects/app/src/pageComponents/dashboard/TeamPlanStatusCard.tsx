@@ -50,7 +50,7 @@ const TeamPlanStatusCard = () => {
   }, [t, teamPlanStatus]);
 
   const valueColorSchema = useCallback((val: number) => {
-    if (val < 50) return 'green';
+    if (val < 50) return 'primary';
     if (val < 80) return 'yellow';
     return 'red';
   }, []);
@@ -132,7 +132,7 @@ const TeamPlanStatusCard = () => {
         <Flex color={'myGray.500'}>
           <Box>{t('app:used_points')}</Box>
           <Flex gap={0.5}>
-            <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}>
+            <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.500`}>
               {aiPointsUsageMap.value}
             </Box>
             /<Box>{aiPointsUsageMap.max}</Box>
@@ -143,7 +143,7 @@ const TeamPlanStatusCard = () => {
             borderRadius={'sm'}
             transition="width 0.3s"
             w={`${aiPointsUsageMap.rate}%`}
-            bg={`${valueColorSchema(aiPointsUsageMap.rate)}.400`}
+            bg={`${valueColorSchema(aiPointsUsageMap.rate)}.500`}
           />
         </Flex>
         <Flex>

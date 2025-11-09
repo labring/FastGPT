@@ -66,6 +66,23 @@ class S3AvatarSource {
       await this.deleteAvatar(oldAvatar, session);
     }
   }
+
+  async copyAvatar({
+    sourceKey,
+    targetKey,
+    ttl
+  }: {
+    sourceKey: string;
+    targetKey: string;
+    ttl: boolean;
+  }) {
+    await this.bucket.copy({
+      src: sourceKey,
+      dst: targetKey,
+      ttl
+    });
+    return targetKey;
+  }
 }
 
 export function getS3AvatarSource() {

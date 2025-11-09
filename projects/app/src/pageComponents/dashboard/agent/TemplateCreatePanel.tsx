@@ -65,7 +65,8 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         type: templateDetail.type as AppTypeEnum,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
-        chatConfig: templateDetail.workflow.chatConfig || {}
+        chatConfig: templateDetail.workflow.chatConfig || {},
+        templateId: templateDetail.templateId
       });
     },
     {
