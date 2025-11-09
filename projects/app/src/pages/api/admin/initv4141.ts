@@ -92,6 +92,10 @@ async function appSplitMigration(teamId: string) {
 
       for (const folder of allFolders) {
         const obj = appMap.get(folder._id)!;
+        const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
+        if (!newParentId) {
+          continue;
+        }
 
         const oldRp = RPMap.get(folder._id)!;
         rpOps.push({
@@ -112,7 +116,7 @@ async function appSplitMigration(teamId: string) {
               teamId
             },
             update: {
-              parentId: obj.parentId
+              parentId: newParentId
             }
           }
         });
