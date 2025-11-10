@@ -38,7 +38,7 @@ const options = {
     horizontalScrollbarSize: 8,
     alwaysConsumeMouseWheel: false
   },
-  lineNumbersMinChars: 0,
+  lineNumbersMinChars: 4,
   fontSize: 14,
   scrollBeyondLastLine: false,
   folding: true,
@@ -129,7 +129,6 @@ const MyEditor = ({
       py={1}
       height={height}
       position={'relative'}
-      pl={2}
       {...props}
     >
       <Editor

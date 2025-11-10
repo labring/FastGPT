@@ -2,8 +2,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import {
@@ -56,6 +56,17 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   const { teamId, tmbId, userId, isRoot } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  if (parentId) {
+    const parentApp = await MongoApp.findById(parentId, 'type').lean();
+
+    if (ToolTypeList.includes(type) && parentApp?.type !== AppTypeEnum.toolFolder) {
+      return Promise.reject('tool type can only be created in tool folder');
+    }
+    if (AppTypeList.includes(type) && parentApp?.type !== AppTypeEnum.folder) {
+      return Promise.reject('agent type can only be created in agent folder');
+    }
+  }
 
   // 上限校验
   await checkTeamAppLimit(teamId);

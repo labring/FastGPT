@@ -150,6 +150,7 @@
   "find_more_tools": "Explore more",
   "go_to_chat": "Go to Conversation",
   "go_to_run": "Go to Execution",
+  "has_no_create_per": "You do not have permission to create in the current directory.",
   "hide_templates": "Collapse",
   "http_toolset_add_tips": "Click the \"Add\" button to add tools",
   "http_toolset_config_tips": "Click \"Start Configuration\" to add tools",

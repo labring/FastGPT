@@ -28,6 +28,13 @@ export const AppFolderTypeList = [
   AppTypeEnum.httpPlugin
 ];
 
+export const ToolTypeList = [
+  AppTypeEnum.mcpToolSet,
+  AppTypeEnum.httpToolSet,
+  AppTypeEnum.workflowTool
+];
+export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.agent, AppTypeEnum.workflow];
+
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
 export const defaultAutoExecuteConfig: AppAutoExecuteConfigType = {

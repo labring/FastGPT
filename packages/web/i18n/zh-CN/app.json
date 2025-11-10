@@ -154,6 +154,7 @@
   "find_more_tools": "探索更多",
   "go_to_chat": "去对话",
   "go_to_run": "去运行",
+  "has_no_create_per": "当前目录您无新建权限",
   "hide_templates": "隐藏模板",
   "http_toolset_add_tips": "点击添加按钮来添加工具",
   "http_toolset_config_tips": "点击开始配置来添加工具",

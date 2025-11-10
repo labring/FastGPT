@@ -53,6 +53,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: `/dashboard/agent`,
         activeLink: [
           '/dashboard/agent',
+          '/dashboard/create',
           '/app/detail',
           '/dashboard/tool',
           '/dashboard/systemTool',
