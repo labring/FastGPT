@@ -24,19 +24,15 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { z } from 'zod';
-import { clone } from 'lodash';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../../chat/ChatContainer/ChatBox/Provider';
 import { POST } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { formatFileSize, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { PluginRunContext } from '../../chat/ChatContainer/PluginRunBox/context';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
 
 const FileSelector = ({
-  fileUrls,
+  value,
   onChange,
   maxFiles,
   canSelectFile,
@@ -47,10 +43,12 @@ const FileSelector = ({
   customFileExtensionList,
   canLocalUpload,
   canUrlUpload,
-  isDisabled = false
+  isDisabled = false,
+  onUploading
 }: AppFileSelectConfigType & {
-  fileUrls: string[] | any[]; // Can be string[] or file object[]
+  value: UserInputFileItemType[];
   onChange: (e: any[]) => void;
+  onUploading?: (e: boolean) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -59,73 +57,16 @@ const FileSelector = ({
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const chatBoxOutLinkAuthData = useContextSelector(ChatBoxContext, (v) => v?.outLinkAuthData);
-  const chatBoxAppId = useContextSelector(ChatBoxContext, (v) => v?.appId);
-  const chatBoxChatId = useContextSelector(ChatBoxContext, (v) => v?.chatId);
+  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
 
-  const pluginOutLinkAuthData = useContextSelector(PluginRunContext, (v) => v?.outLinkAuthData);
-  const pluginAppId = useContextSelector(PluginRunContext, (v) => v?.appId);
-  const pluginChatId = useContextSelector(PluginRunContext, (v) => v?.chatId);
-
-  const chatItemAppId = useContextSelector(ChatItemContext, (v) => v?.chatBoxData?.appId);
-  const chatItemChatId = useContextSelector(ChatItemContext, (v) => v?.chatBoxData?.chatId);
-
-  const outLinkAuthData = useMemo(
-    () => ({
-      ...(chatBoxOutLinkAuthData || {}),
-      ...(pluginOutLinkAuthData || {})
-    }),
-    [chatBoxOutLinkAuthData, pluginOutLinkAuthData]
+  const handleChangeFiles = useCallback(
+    (files: UserInputFileItemType[]) => {
+      onChange([...files]);
+    },
+    [onChange]
   );
-  const appId = useMemo(
-    () => chatBoxAppId || pluginAppId || chatItemAppId || '',
-    [chatBoxAppId, pluginAppId, chatItemAppId]
-  );
-  const chatId = useMemo(
-    () => chatBoxChatId || pluginChatId || chatItemChatId || '',
-    [chatBoxChatId, pluginChatId, chatItemChatId]
-  );
-
-  const [cloneFiles, setCloneFiles] = useState<UserInputFileItemType[]>(() => {
-    return fileUrls
-      .map((item) => {
-        const url = typeof item === 'string' ? item : item?.url || item?.key;
-        const key = typeof item === 'string' ? undefined : item?.key;
-        const name = typeof item === 'string' ? undefined : item?.name;
-        const type = typeof item === 'string' ? undefined : item?.type;
-
-        if (!url) return null as unknown as UserInputFileItemType;
-
-        const fileType = parseUrlToFileType(url);
-        if (!fileType && !type) return null as unknown as UserInputFileItemType;
-
-        return {
-          id: getNanoid(6),
-          name: name || fileType?.name || url,
-          type: type || fileType?.type || ChatFileTypeEnum.file,
-          icon: getFileIcon(name || fileType?.name || url),
-          url: typeof item === 'string' ? fileType?.url : item?.url,
-          status: 1,
-          key: key || (typeof item === 'string' && url.startsWith('chat/') ? url : undefined)
-        };
-      })
-      .filter(Boolean) as UserInputFileItemType[];
-  });
-
-  useEffect(() => {
-    const fileObjects = cloneFiles
-      .filter((file) => file.url || file.key)
-      .map((file) => {
-        const fileObj = {
-          type: file.type,
-          name: file.name,
-          key: file.key,
-          url: file.url || file.key || ''
-        };
-        return fileObj;
-      });
-    onChange(fileObjects as any);
-  }, [cloneFiles, onChange]);
 
   const fileType = useMemo(() => {
     return getUploadFileType({
@@ -146,8 +87,79 @@ const FileSelector = ({
   ]);
   const maxSelectFiles = maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
-  const canSelectFileAmount = maxSelectFiles - cloneFiles.length;
+  const canSelectFileAmount = maxSelectFiles - value.length;
   const isMaxSelected = canSelectFileAmount <= 0;
+
+  const uploadFiles = useCallback(
+    async (files: UserInputFileItemType[]) => {
+      const filterFiles = files.filter((item) => item.status === 0);
+      if (filterFiles.length === 0) return;
+
+      files.forEach((file) => {
+        file.status = 1;
+      });
+      handleChangeFiles(files);
+
+      await Promise.allSettled(
+        filterFiles.map(async (file) => {
+          if (!file.rawFile) return;
+
+          try {
+            // Get Upload Post Presigned URL
+            const { url, fields } = await getUploadChatFilePresignedUrl({
+              filename: file.rawFile.name,
+              appId,
+              chatId,
+              outLinkAuthData
+            });
+
+            // Upload File to S3
+            const formData = new FormData();
+            Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
+            formData.set('file', file.rawFile);
+            await POST(url, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data; charset=utf-8'
+              },
+              onUploadProgress: (e) => {
+                if (!e.total) return;
+                const percent = Math.round((e.loaded / e.total) * 100);
+                files.forEach((item) => {
+                  if (item.id === file.id) {
+                    item.process = percent;
+                  }
+                });
+                handleChangeFiles(files);
+              }
+            });
+            const previewUrl = await getPresignedChatFileGetUrl({
+              key: fields.key,
+              appId,
+              outLinkAuthData
+            });
+
+            // Update file url and key
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.url = previewUrl;
+                item.key = fields.key;
+                item.process = 100;
+              }
+            });
+            handleChangeFiles(files);
+          } catch (error) {
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.error = getErrText(error);
+              }
+            });
+            handleChangeFiles(files);
+          }
+        })
+      );
+    },
+    [handleChangeFiles, appId, chatId, outLinkAuthData]
+  );
 
   // Selector props
   const [isDragging, setIsDragging] = useState(false);
@@ -180,7 +192,7 @@ const FileSelector = ({
                     id: getNanoid(6),
                     rawFile: file,
                     type: ChatFileTypeEnum.image,
-                    name: file.name,
+                    name: file?.name,
                     icon: reader.result as string,
                     status: 0
                   };
@@ -194,17 +206,19 @@ const FileSelector = ({
                   id: getNanoid(6),
                   rawFile: file,
                   type: ChatFileTypeEnum.file,
-                  name: file.name,
-                  icon: getFileIcon(file.name),
+                  name: file?.name,
+                  icon: getFileIcon(file?.name),
                   status: 0
                 });
               }
             })
         )
       );
-      setCloneFiles((state) => [...loadFiles, ...state]);
+      const newFiles = [...loadFiles, ...value];
+      handleChangeFiles(newFiles);
+      uploadFiles(newFiles);
     },
-    [maxSelectFiles, maxSize, t, toast]
+    [maxSelectFiles, value, handleChangeFiles, uploadFiles, toast, t, maxSize]
   );
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -234,7 +248,7 @@ const FileSelector = ({
         const readFile = (entry: any) => {
           return new Promise((resolve) => {
             entry.file((file: File) => {
-              if (filterTypeReg.test(file.name)) {
+              if (filterTypeReg.test(file?.name)) {
                 onSelectFile([file]);
               }
               resolve(file);
@@ -286,78 +300,11 @@ const FileSelector = ({
       });
     }
   };
+
   const { File, onOpen } = useSelectFile({
     fileType,
     multiple: canSelectFileAmount > 1,
     maxCount: canSelectFileAmount
-  });
-  const uploadFiles = useCallback(async () => {
-    const filterFiles = cloneFiles.filter((item) => item.status === 0);
-    if (filterFiles.length === 0) return;
-
-    setCloneFiles((state) => state.map((item) => ({ ...item, status: 1 })));
-
-    await Promise.allSettled(
-      filterFiles.map(async (file) => {
-        const copyFile = clone(file);
-        if (!copyFile.rawFile) return;
-        copyFile.status = 1;
-
-        try {
-          // Get Upload Post Presigned URL
-          const { url, fields } = await getUploadChatFilePresignedUrl({
-            filename: copyFile.rawFile.name,
-            appId,
-            chatId,
-            outLinkAuthData
-          });
-
-          // Upload File to S3
-          const formData = new FormData();
-          Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-          formData.set('file', copyFile.rawFile);
-          await POST(url, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data; charset=utf-8'
-            },
-            onUploadProgress: (e) => {
-              if (!e.total) return;
-              const percent = Math.round((e.loaded / e.total) * 100);
-              copyFile.process = percent;
-              setCloneFiles((state) =>
-                state.map((item) => (item.id === file.id ? { ...item, process: percent } : item))
-              );
-            }
-          });
-          const previewUrl = await getPresignedChatFileGetUrl({
-            key: fields.key,
-            appId,
-            outLinkAuthData
-          });
-
-          // Update file url and key
-          copyFile.url = previewUrl;
-          copyFile.key = fields.key;
-          console.log(previewUrl, 232);
-          setCloneFiles((state) =>
-            state.map((item) =>
-              item.id === file.id ? { ...item, url: previewUrl, key: fields.key } : item
-            )
-          );
-        } catch (error) {
-          setCloneFiles((state) =>
-            state.map((item) =>
-              item.id === file.id ? { ...item, error: getErrText(error) } : item
-            )
-          );
-        }
-      })
-    );
-  }, [appId, chatId, cloneFiles, outLinkAuthData]);
-  // Watch newfiles,and upload
-  useRequest2(uploadFiles, {
-    refreshDeps: [cloneFiles],
-    manual: false
   });
 
   // Url upload props
@@ -377,12 +324,12 @@ const FileSelector = ({
 
       const trimmedUrl = url.trim();
       if (trimmedUrl) {
-        setCloneFiles((state) => [
-          ...state,
+        handleChangeFiles([
+          ...value,
           {
             id: getNanoid(6),
             status: 1,
-            type: 'file',
+            type: ChatFileTypeEnum.file,
             url: trimmedUrl,
             name: trimmedUrl,
             icon: 'common/link'
@@ -392,12 +339,22 @@ const FileSelector = ({
 
       setUrlInput('');
     },
-    [t, toast]
+    [t, toast, handleChangeFiles, value]
   );
 
-  const handleDeleteFile = useCallback((id: string) => {
-    setCloneFiles((state) => state.filter((file) => file.id !== id));
-  }, []);
+  const handleDeleteFile = useCallback(
+    (id: string) => {
+      handleChangeFiles(value.filter((file) => file.id !== id));
+    },
+    [handleChangeFiles, value]
+  );
+
+  const isUploading = value.some((file) => !file.url && !file.error);
+  const disabled = isDisabled || isUploading;
+
+  useEffect(() => {
+    onUploading?.(isUploading);
+  }, [isUploading]);
 
   return (
     <>
@@ -416,10 +373,10 @@ const FileSelector = ({
             borderColor={'myGray.250'}
             borderRadius={'md'}
             userSelect={'none'}
-            {...(isMaxSelected || isDisabled
+            {...(isMaxSelected || disabled
               ? {
                   cursor: 'not-allowed',
-                  opacity: isDisabled ? 0.6 : 1
+                  opacity: disabled ? 0.6 : 1
                 }
               : {
                   cursor: 'pointer',
@@ -436,10 +393,10 @@ const FileSelector = ({
                 })}
           >
             <MyIcon name={'common/uploadFileFill'} w={'32px'} />
-            {isMaxSelected || isDisabled ? (
+            {isMaxSelected ? (
               <>
                 <Box fontWeight={'500'} fontSize={'sm'}>
-                  {isDisabled ? t('common:Running') : t('file:reached_max_file_count')}
+                  {t('file:reached_max_file_count')}
                 </Box>
               </>
             ) : (
@@ -476,11 +433,7 @@ const FileSelector = ({
                 pl={8}
                 py={1.5}
                 placeholder={
-                  isDisabled
-                    ? t('common:Running')
-                    : isMaxSelected
-                      ? t('file:reached_max_file_count')
-                      : t('chat:click_to_add_url')
+                  isMaxSelected ? t('file:reached_max_file_count') : t('chat:click_to_add_url')
                 }
               />
             </InputGroup>
@@ -489,52 +442,56 @@ const FileSelector = ({
       </VStack>
 
       {/* Preview */}
-      {cloneFiles.length > 0 && (
+      {value.length > 0 && (
         <>
           <MyDivider />
           <VStack>
-            {cloneFiles.map((file) => {
+            {value.map((file) => {
+              const fileIcon =
+                file.type === ChatFileTypeEnum.image ? file.url : getFileIcon(file?.name);
               return (
-                <Box key={file.id} w={'full'}>
+                <Box key={file?.id} w={'full'}>
                   <HStack py={1} px={3} bg={'white'} borderRadius={'md'} border={'sm'}>
-                    <MyAvatar src={file.icon} w={'1.2rem'} />
+                    <MyAvatar src={fileIcon} w={'1.2rem'} />
                     <Box
                       fontSize={'sm'}
                       flex={'1 0 0'}
                       className="textEllipsis"
-                      title={file.name}
-                      {...(file.error && {
+                      title={file?.name}
+                      {...(file?.error && {
                         color: 'red.600'
                       })}
                     >
-                      {file.name}
+                      {file?.name}
                     </Box>
 
                     {/* Status icon */}
-                    {!!file.url || !!file.error ? (
-                      <IconButton
-                        size={'xsSquare'}
-                        borderRadius={'xs'}
-                        variant={'transparentDanger'}
-                        aria-label={'Delete file'}
-                        icon={<MyIcon name={'close'} w={'1rem'} />}
-                        onClick={() => handleDeleteFile(file.id)}
-                        isDisabled={isDisabled}
-                      />
-                    ) : (
-                      <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
-                        <CircularProgress
-                          value={file.process}
-                          color="primary.600"
-                          bg={'white'}
-                          size={'1.2rem'}
+                    <>
+                      {!!file?.url || !!file?.error ? (
+                        <IconButton
+                          size={'xsSquare'}
+                          borderRadius={'xs'}
+                          variant={'transparentDanger'}
+                          aria-label={'Delete file'}
+                          icon={<MyIcon name={'close'} w={'1rem'} />}
+                          onClick={() => handleDeleteFile(file?.id)}
+                          isDisabled={disabled}
                         />
-                      </HStack>
-                    )}
+                      ) : (
+                        <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
+                          <CircularProgress
+                            value={file?.process}
+                            color="primary.600"
+                            bg={'white'}
+                            size={'1.2rem'}
+                          />
+                        </HStack>
+                      )}
+                    </>
                   </HStack>
-                  {file.error && (
+                  {file?.error && (
                     <Box mt={1} fontSize={'xs'} color={'red.600'}>
-                      {file.error}
+                      {file?.error}
                     </Box>
                   )}
                 </Box>

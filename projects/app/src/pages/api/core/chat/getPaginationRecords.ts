@@ -73,7 +73,7 @@ async function handler(
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(histories);
+  await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.workflowTool) {

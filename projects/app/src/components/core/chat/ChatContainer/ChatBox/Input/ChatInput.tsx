@@ -11,6 +11,7 @@ import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowAuthContext } from '../../context/workflowAuthContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
@@ -56,9 +57,9 @@ const ChatInput = ({
 
   const InputLeftComponent = useContextSelector(ChatBoxContext, (v) => v.InputLeftComponent);
 
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);

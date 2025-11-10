@@ -211,10 +211,13 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.fileSelect) {
+    const files = Array.isArray(value) ? value : [];
     return (
       <FileSelector
-        fileUrls={Array.isArray(value) ? value : []}
+        value={files}
         onChange={onChange}
+        isDisabled={isDisabled}
+        onUploading={props.setUploading}
         maxFiles={props.maxFiles}
         canSelectFile={props.canSelectFile}
         canSelectImg={props.canSelectImg}
@@ -224,7 +227,6 @@ const InputRender = (props: InputRenderProps) => {
         customFileExtensionList={props.customFileExtensionList}
         canLocalUpload={props.canLocalUpload}
         canUrlUpload={props.canUrlUpload}
-        isDisabled={isDisabled}
       />
     );
   }
