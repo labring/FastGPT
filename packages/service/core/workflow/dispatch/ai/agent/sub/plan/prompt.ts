@@ -241,6 +241,22 @@ export const getPlanAgentSystemPrompt = ({
 </examples>`;
 };
 
+export const getUserContent = ({
+  userInput,
+  systemPrompt,
+  getSubAppInfo
+}: {
+  userInput: string;
+  systemPrompt?: string;
+  getSubAppInfo: GetSubAppInfoFnType;
+}) => {
+  let userContent = `任务描述：${userInput}`;
+  if (systemPrompt) {
+    userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。`;
+  }
+  return userContent;
+};
+
 export const getReplanAgentSystemPrompt = ({
   getSubAppInfo,
   subAppList

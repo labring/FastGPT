@@ -6,7 +6,8 @@ import { createLLMResponse } from '../../../../../../ai/llm/request';
 import {
   getPlanAgentSystemPrompt,
   getReplanAgentSystemPrompt,
-  getReplanAgentUserPrompt
+  getReplanAgentUserPrompt,
+  getUserContent
 } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
@@ -80,6 +81,8 @@ export const dispatchPlanAgent = async ({
   // 分类：query/user select/user form
   const lastMessages = requestMessages[requestMessages.length - 1];
   console.log('user input:', userInput);
+
+  // 上一轮是 Ask 模式，进行工具调用拼接
   if (
     (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
     lastMessages.role === 'assistant' &&
@@ -90,20 +93,15 @@ export const dispatchPlanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
+    // TODO: 是否合理
     requestMessages.push({
       role: 'assistant',
       content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
     });
   } else {
-    let userContent = `任务描述：${userInput}`;
-
-    if (systemPrompt) {
-      userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。`;
-    }
-    console.log('userContent:', userInput);
     requestMessages.push({
       role: 'user',
-      content: userContent
+      content: getUserContent({ userInput, systemPrompt, getSubAppInfo })
     });
   }
 

@@ -5,33 +5,46 @@ import { countPromptTokens } from '../../../../../common/string/tiktoken/index';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { addLog } from '../../../../../common/system/log';
-import { calculateCompressionThresholds } from '../../../../ai/llm/compressionConstants';
+import { calculateCompressionThresholds } from '../../../../ai/llm/compress/constants';
 
-/**
- * 压缩步骤提示词（Depends on）
- * 当 stepPrompt 的 token 长度超过模型最大长度的 15% 时，调用 LLM 压缩到 12%
- */
-const compressStepPrompt = async (
-  stepPrompt: string,
-  model: string,
-  currentDescription: string
-): Promise<string> => {
-  if (!stepPrompt) return stepPrompt;
+export const getMasterAgentSystemPrompt = async ({
+  steps,
+  step,
+  userInput,
+  background = '',
+  model
+}: {
+  steps: AgentPlanStepType[];
+  step: AgentPlanStepType;
+  userInput: string;
+  background?: string;
+  model: string;
+}) => {
+  /**
+   * 压缩步骤提示词（Depends on）
+   * 当 stepPrompt 的 token 长度超过模型最大长度的 15% 时，调用 LLM 压缩到 12%
+   */
+  const compressStepPrompt = async (
+    stepPrompt: string,
+    model: string,
+    currentDescription: string
+  ): Promise<string> => {
+    if (!stepPrompt) return stepPrompt;
 
-  const modelData = getLLMModel(model);
-  if (!modelData) return stepPrompt;
+    const modelData = getLLMModel(model);
+    if (!modelData) return stepPrompt;
 
-  const tokenCount = await countPromptTokens(stepPrompt);
-  const thresholds = calculateCompressionThresholds(modelData.maxContext);
-  const maxTokenThreshold = thresholds.dependsOn.threshold;
+    const tokenCount = await countPromptTokens(stepPrompt);
+    const thresholds = calculateCompressionThresholds(modelData.maxContext);
+    const maxTokenThreshold = thresholds.dependsOn.threshold;
 
-  if (tokenCount <= maxTokenThreshold) {
-    return stepPrompt;
-  }
+    if (tokenCount <= maxTokenThreshold) {
+      return stepPrompt;
+    }
 
-  const targetTokens = thresholds.dependsOn.target;
+    const targetTokens = thresholds.dependsOn.target;
 
-  const compressionSystemPrompt = `<role>
+    const compressionSystemPrompt = `<role>
 你是工作流步骤历史压缩专家，擅长从多个已执行步骤的结果中提取关键信息。
 你的任务是对工作流的执行历史进行智能压缩，在保留关键信息的同时，大幅降低 token 消耗。
 </role>
@@ -89,7 +102,7 @@ const compressStepPrompt = async (
       4. 步骤的时序关系是否清晰？
       </quality_check>`;
 
-  const userPrompt = `请对以下工作流步骤的执行历史进行压缩，保留与当前任务最相关的信息。
+    const userPrompt = `请对以下工作流步骤的执行历史进行压缩，保留与当前任务最相关的信息。
 
 **当前任务目标**：${currentDescription}
 
@@ -116,46 +129,33 @@ ${stepPrompt}
 
 请直接输出压缩后的步骤历史：`;
 
-  try {
-    const { answerText } = await createLLMResponse({
-      body: {
-        model: modelData,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.System,
-            content: compressionSystemPrompt
-          },
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: userPrompt
-          }
-        ],
-        temperature: 0.1,
-        stream: false
-      }
-    });
+    try {
+      const { answerText } = await createLLMResponse({
+        body: {
+          model: modelData,
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.System,
+              content: compressionSystemPrompt
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: userPrompt
+            }
+          ],
+          temperature: 0.1,
+          stream: false
+        }
+      });
 
-    return answerText || stepPrompt;
-  } catch (error) {
-    console.error('压缩 stepPrompt 失败:', error);
-    // 压缩失败时返回原始内容
-    return stepPrompt;
-  }
-};
+      return answerText || stepPrompt;
+    } catch (error) {
+      console.error('压缩 stepPrompt 失败:', error);
+      // 压缩失败时返回原始内容
+      return stepPrompt;
+    }
+  };
 
-export const getMasterAgentSystemPrompt = async ({
-  steps,
-  step,
-  userInput,
-  background = '',
-  model
-}: {
-  steps: AgentPlanStepType[];
-  step: AgentPlanStepType;
-  userInput: string;
-  background?: string;
-  model: string;
-}) => {
   let stepPrompt = steps
     .filter((item) => step.depends_on && step.depends_on.includes(item.id))
     .map(

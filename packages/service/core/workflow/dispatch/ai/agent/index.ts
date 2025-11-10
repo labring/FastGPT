@@ -32,6 +32,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../../../common/system/log';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { parseToolArgs } from '../utils';
+import { checkTaskComplexity } from './master/taskComplexity';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -86,7 +87,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } = props;
   const agentModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
-  console.log('userChatInput', userChatInput);
+
   const planMessagesKey = `planMessages-${nodeId}`;
   const replanMessagesKey = `replanMessages-${nodeId}`;
   const agentPlanKey = `agentPlan-${nodeId}`;
@@ -114,9 +115,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   })();
 
   // Plan step: 需要生成 plan，且还没有完整的 plan
-  const isPlanStep = isPlanAgent && (planHistoryMessages || !agentPlan);
+  const isPlanStep = isPlanAgent && planHistoryMessages;
   // Replan step: 已有 plan，且有 replan 历史消息
   const isReplanStep = isPlanAgent && agentPlan && replanMessages;
+  // Check task complexity: 第一次进入任务时候进行判断。（有 plan了，说明已经开始执行任务了）
+  const isCheckTaskComplexityStep = !agentPlan && !isPlanStep;
 
   try {
     // Get files
@@ -138,14 +141,96 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       filesMap
     });
 
-    const planCallFn = async () => {
-      // Confirm 操作
-      console.log(lastInteractive, interactiveInput, '\n Plan step');
-      if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
-        planHistoryMessages = undefined;
-      } else {
+    /* ===== Check task complexity ===== */
+    const {
+      complex: taskIsComplexity,
+      inputTokens: taskComplexInputTokens,
+      outputTokens: taskComplexOutputTokens
+    } = await (async () => {
+      if (isCheckTaskComplexityStep) {
+        return await checkTaskComplexity({
+          model,
+          userChatInput
+        });
+      }
+
+      // 对轮运行时候，代表都是进入复杂流程
+      return {
+        complex: true,
+        inputTokens: 0,
+        outputTokens: 0
+      };
+    })();
+
+    if (taskIsComplexity) {
+      /* ===== Plan Agent ===== */
+      const planCallFn = async () => {
+        // Confirm 操作
+        console.log(lastInteractive, interactiveInput, '\n Plan step');
+        // 点了确认。此时肯定有 agentPlans
+        if (
+          lastInteractive?.type === 'agentPlanCheck' &&
+          interactiveInput === ConfirmPlanAgentText &&
+          agentPlan
+        ) {
+          planHistoryMessages = undefined;
+        } else {
+          // 临时代码
+          const tmpText = '正在进行规划生成...\n';
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: tmpText
+            })
+          });
+
+          const { answerText, plan, completeMessages, usages, interactiveResponse } =
+            await dispatchPlanAgent({
+              historyMessages: planHistoryMessages || [],
+              userInput: lastInteractive ? interactiveInput : userChatInput,
+              interactive: lastInteractive,
+              subAppList,
+              getSubAppInfo,
+              systemPrompt,
+              model,
+              temperature,
+              top_p: aiChatTopP,
+              stream,
+              isTopPlanAgent: workflowDispatchDeep === 1
+            });
+
+          const text = `${answerText}${plan ? `\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\`` : ''}`;
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text
+            })
+          });
+
+          agentPlan = plan;
+
+          // TODO: usage 合并
+          // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
+          if (interactiveResponse) {
+            return {
+              [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
+              [DispatchNodeResponseKeyEnum.memories]: {
+                [planMessagesKey]: filterMemoryMessages(completeMessages),
+                [agentPlanKey]: agentPlan
+              },
+              [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+            };
+          } else {
+            planHistoryMessages = undefined;
+          }
+        }
+      };
+      const replanCallFn = async ({ plan }: { plan: AgentPlanType }) => {
+        if (!agentPlan) return;
+
+        addLog.debug(`Replan step`);
         // 临时代码
-        const tmpText = '正在进行规划生成...\n';
+        const tmpText = '\n # 正在重新进行规划生成...\n';
         workflowStreamResponse?.({
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
@@ -153,22 +238,33 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })
         });
 
-        const { answerText, plan, completeMessages, usages, interactiveResponse } =
-          await dispatchPlanAgent({
-            historyMessages: planHistoryMessages || [],
-            userInput: lastInteractive ? interactiveInput : userChatInput,
-            interactive: lastInteractive,
-            subAppList,
-            getSubAppInfo,
-            systemPrompt,
-            model,
-            temperature,
-            top_p: aiChatTopP,
-            stream,
-            isTopPlanAgent: workflowDispatchDeep === 1
-          });
+        const {
+          answerText,
+          plan: rePlan,
+          completeMessages,
+          usages,
+          interactiveResponse
+        } = await dispatchReplanAgent({
+          historyMessages: replanMessages || [],
+          userInput: lastInteractive ? interactiveInput : userChatInput,
+          plan,
+          interactive: lastInteractive,
+          subAppList,
+          getSubAppInfo,
+          systemPrompt,
+          model,
+          temperature,
+          top_p: aiChatTopP,
+          stream,
+          isTopPlanAgent: workflowDispatchDeep === 1
+        });
 
-        const text = `${answerText}${plan ? `\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\`` : ''}`;
+        if (rePlan) {
+          agentPlan.steps.push(...rePlan.steps);
+          agentPlan.replan = rePlan.replan;
+        }
+
+        const text = `${answerText}${agentPlan ? `\n\`\`\`json\n${JSON.stringify(agentPlan, null, 2)}\n\`\`\`\n` : ''}`;
         workflowStreamResponse?.({
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
@@ -176,209 +272,41 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })
         });
 
-        agentPlan = plan;
-
         // TODO: usage 合并
         // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
         if (interactiveResponse) {
           return {
             [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
             [DispatchNodeResponseKeyEnum.memories]: {
-              [planMessagesKey]: filterMemoryMessages(completeMessages),
+              [replanMessagesKey]: filterMemoryMessages(completeMessages),
               [agentPlanKey]: agentPlan
             },
             [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
           };
         } else {
-          planHistoryMessages = undefined;
+          replanMessages = undefined;
         }
-      }
-    };
-    const replanCallFn = async ({ plan }: { plan: AgentPlanType }) => {
-      if (!agentPlan) return;
+      };
 
-      addLog.debug(`Replan step`);
-      // 临时代码
-      const tmpText = '\n # 正在重新进行规划生成...\n';
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: tmpText
-        })
-      });
-
-      const {
-        answerText,
-        plan: rePlan,
-        completeMessages,
-        usages,
-        interactiveResponse
-      } = await dispatchReplanAgent({
-        historyMessages: replanMessages || [],
-        userInput: lastInteractive ? interactiveInput : userChatInput,
-        plan,
-        interactive: lastInteractive,
-        subAppList,
-        getSubAppInfo,
-        systemPrompt,
-        model,
-        temperature,
-        top_p: aiChatTopP,
-        stream,
-        isTopPlanAgent: workflowDispatchDeep === 1
-      });
-
-      if (rePlan) {
-        agentPlan.steps.push(...rePlan.steps);
-        agentPlan.replan = rePlan.replan;
-      }
-
-      const text = `${answerText}${agentPlan ? `\n\`\`\`json\n${JSON.stringify(agentPlan, null, 2)}\n\`\`\`\n` : ''}`;
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text
-        })
-      });
-
-      // TODO: usage 合并
-      // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
-      if (interactiveResponse) {
-        return {
-          [DispatchNodeResponseKeyEnum.answerText]: `${tmpText}${text}`,
-          [DispatchNodeResponseKeyEnum.memories]: {
-            [planMessagesKey]: filterMemoryMessages(completeMessages),
-            [agentPlanKey]: agentPlan
-          },
-          [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
-        };
-      } else {
-        replanMessages = undefined;
-      }
-    };
-
-    /**
-     * 检测问题复杂度
-     * @returns true: 复杂问题，需要正常规划流程; false: 简单问题，已构造简单 plan
-     */
-    const checkQuestionComplexity = async (): Promise<boolean> => {
-      addLog.debug('Checking if question is simple...');
-
-      const simpleCheckPrompt = `你是一位资深的认知复杂度评估专家 (Cognitive Complexity Assessment Specialist)。 您的职责是对用户提出的任务请求进行深度解析，精准判断其内在的认知复杂度层级，并据此决定是否需要启动多步骤规划流程。
-      
-用户显式意图 (User Explicit Intent):
-用户可能会在问题中明确表达其期望的回答方式或处理深度。 常见的意图类型包括：
-*   **快速回答 / 简单回答 (Quick/Simple Answer)**：用户期望得到简洁、直接的答案，无需深入分析或详细解释。 例如：“请简单回答...”、“快速告诉我...”
-*   **深度思考 / 详细分析 (Deep Thinking/Detailed Analysis)**：用户期望得到深入、全面的分析，包括多角度的思考、证据支持和详细的解释。 例如：“请深入分析...”、“详细解释...”
-*   **创造性方案 / 创新性建议 (Creative Solution/Innovative Suggestion)**：用户期望得到具有创新性的解决方案或建议，可能需要进行发散性思维和方案设计。 例如：“请提出一个创新的方案...”、“提供一些有创意的建议...”
-*   **无明确意图 (No Explicit Intent)**：用户没有明确表达其期望的回答方式或处理深度。
-
-评估框架 (Assessment Framework):
-*   **低复杂度任务 (Low Complexity - \`complex: false\`)**: 此类任务具备高度的直接性和明确性，通常仅需调用单一工具或执行简单的操作即可完成。 其特征包括：
-    *   **直接工具可解性 (Direct Tool Solvability)**：任务目标明确，可直接映射到特定的工具功能。
-    *   **信息可得性 (Information Accessibility)**：所需信息易于获取，无需复杂的搜索或推理。
-    *   **操作单一性 (Operational Singularity)**：任务执行路径清晰，无需多步骤协同。
-    *   **典型示例 (Typical Examples)**：信息检索 (Information Retrieval)、简单算术计算 (Simple Arithmetic Calculation)、事实性问题解答 (Factual Question Answering)、目标明确的单一指令执行 (Single, Well-Defined Instruction Execution)。
-*   **高复杂度任务 (High Complexity - \'complex: true\')**: 此类任务涉及复杂的认知过程，需要进行多步骤规划、工具组合、深入分析和创造性思考才能完成。 其特征包括：
-    *   **意图模糊性 (Intent Ambiguity)**：用户意图不明确，需要进行意图消歧 (Intent Disambiguation) 或目标细化 (Goal Refinement)。
-    *   **信息聚合需求 (Information Aggregation Requirement)**：需要整合来自多个信息源的数据，进行综合分析。
-    *   **推理与判断 (Reasoning and Judgement)**：需要进行逻辑推理、情境分析、价值判断等认知操作。
-    *   **创造性与探索性 (Creativity and Exploration)**：需要进行发散性思维、方案设计、假设验证等探索性活动。
-    *   **
-    *   **典型示例 (Typical Examples)**：意图不明确的请求 (Ambiguous Requests)、需要综合多个信息源的任务 (Tasks Requiring Information Synthesis from Multiple Sources)、需要复杂推理或创造性思考的问题 (Problems Requiring Complex Reasoning or Creative Thinking)。
-待评估用户问题 (User Query): ${userChatInput}
-
-输出规范 (Output Specification):
-请严格遵循以下 JSON 格式输出您的评估结果：
-\`\`\`json
-{
-  "complex": true/false,
-  "reason": "对任务认知复杂度的详细解释，说明判断的理由，并引用上述评估框架中的相关概念。"
-}
-\`\`\`
-
-`;
-
-      try {
-        const { answerText: checkResult } = await createLLMResponse({
-          body: {
-            model: agentModel.model,
-            temperature: 0.1,
-            messages: [
-              {
-                role: 'system',
-                content: simpleCheckPrompt
-              },
-              {
-                role: 'user',
-                content: userChatInput
-              }
-            ]
-          }
-        });
-
-        const checkResponse = parseToolArgs<{ complex: boolean; reason: string }>(checkResult);
-
-        if (checkResponse && !checkResponse.complex) {
-          // 构造一个简单的 plan，包含一个直接回答的 step
-          agentPlan = {
-            task: userChatInput,
-            steps: [
-              {
-                id: 'Simple-Answer',
-                title: '回答问题',
-                description: `直接回答用户问题：${userChatInput}`,
-                response: undefined
-              }
-            ],
-            replan: false
-          };
-
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: `检测到简单问题，直接回答中...\n`
-            })
-          });
-
-          return false; // 简单问题
-        } else {
-          return true; // 复杂问题
-        }
-      } catch (error) {
-        addLog.error('Simple question check failed, proceeding with normal plan flow', error);
-        return true; // 出错时默认走复杂流程
-      }
-    };
-
-    /* ===== Plan Agent ===== */
-    if (isPlanStep) {
-      // 如果是用户确认 plan 的交互，直接调用 planCallFn，不需要再检测复杂度
-      if (lastInteractive?.type === 'agentPlanCheck' && interactiveInput === ConfirmPlanAgentText) {
+      // 执行 Plan/replan
+      if (isPlanStep) {
         const result = await planCallFn();
+        // 有 result 代表 plan 有交互响应（check/ask）
         if (result) return result;
-      } else {
-        // 非交互确认的情况下，先检测问题复杂度
-        const isComplex = await checkQuestionComplexity();
-
-        if (isComplex) {
-          const result = await planCallFn();
-          if (result) return result;
-        }
+      } else if (isReplanStep) {
+        const result = await replanCallFn({
+          plan: agentPlan!
+        });
+        if (result) return result;
       }
-    } else if (isReplanStep) {
-      const result = await replanCallFn({
-        plan: agentPlan!
+
+      addLog.debug(`Start master agent`, {
+        agentPlan: JSON.stringify(agentPlan, null, 2)
       });
-      if (result) return result;
-    }
 
-    addLog.debug(`Start master agent`, {
-      agentPlan: JSON.stringify(agentPlan, null, 2)
-    });
+      /* ===== Master agent, 逐步执行 plan ===== */
+      if (!agentPlan) return Promise.reject('没有 plan');
 
-    /* ===== Master agent, 逐步执行 plan ===== */
-    if (agentPlan) {
       let [inputTokens, outputTokens, subAppUsages, assistantResponses]: [
         number,
         number,
@@ -386,7 +314,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         AIChatItemValueItemType[]
       ] = [0, 0, [], []];
 
-      while (agentPlan?.steps!.filter((item) => !item.response)!.length) {
+      while (agentPlan.steps!.filter((item) => !item.response)!.length) {
         const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
 
         for await (const step of pendingSteps) {
@@ -468,21 +396,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           ...subAppUsages
         ]
       };
-    } else {
-      // TODO: 没有 plan
-      console.log('没有 plan');
-
-      return {
-        // 目前 Master 不会触发交互
-        // [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse,
-        // TODO: 需要对 memoryMessages 单独建表存储
-        [DispatchNodeResponseKeyEnum.memories]: {
-          [agentPlanKey]: agentPlan
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {},
-        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: []
-      };
     }
+
+    // 简单 tool call 模式（一轮对话就结束了，不会多轮，所以不会受到连续对话的 taskIsComplexity 影响）
+    return Promise.reject('目前未支持简单模式');
   } catch (error) {
     return getNodeErrResponse({ error });
   }

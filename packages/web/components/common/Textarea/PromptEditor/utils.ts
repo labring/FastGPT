@@ -506,6 +506,11 @@ export const editorStateToText = (editor: LexicalEditor) => {
       return node.variableKey || '';
     }
 
+    // Handle skill nodes
+    if (node.type === 'skill') {
+      return `{{@${node.id}@}}`;
+    }
+
     // Handle paragraph nodes - recursively process children
     if (node.type === 'paragraph') {
       if (!node.children || node.children.length === 0) {
@@ -563,17 +568,6 @@ export const editorStateToText = (editor: LexicalEditor) => {
       children.forEach((child) => {
         const val = extractText(child);
         paragraphText.push(val);
-        if (child.type === 'linebreak') {
-          paragraphText.push('\n');
-        } else if (child.type === 'text') {
-          paragraphText.push(child.text);
-        } else if (child.type === 'tab') {
-          paragraphText.push('  ');
-        } else if (child.type === 'variableLabel' || child.type === 'Variable') {
-          paragraphText.push(child.variableKey);
-        } else if (child.type === 'skill') {
-          paragraphText.push(`{{@${child.id}@}}`);
-        }
       });
 
       const finalText = paragraphText.join('');
