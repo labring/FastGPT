@@ -121,7 +121,7 @@ export const streamFetch = ({
     try {
       // auto complete variables
       const variables = data?.variables || {};
-      variables.cTime = formatTime2YMDHMW();
+      variables.cTime = formatTime2YMDHMW(new Date());
 
       const requestData = {
         method: 'POST',
