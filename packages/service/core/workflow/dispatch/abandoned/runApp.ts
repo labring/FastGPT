@@ -61,8 +61,10 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
     ...props,
+    usageId: undefined,
     runningAppInfo: {
       id: String(appData._id),
+      name: appData.name,
       teamId: String(appData.teamId),
       tmbId: String(appData.tmbId)
     },

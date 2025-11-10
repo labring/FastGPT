@@ -12,7 +12,6 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -23,6 +22,7 @@ import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
@@ -33,7 +33,7 @@ const customOutputConfig = {
 const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
@@ -104,7 +104,7 @@ function Reference({
 }) {
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 

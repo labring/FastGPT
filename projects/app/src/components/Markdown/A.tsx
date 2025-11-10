@@ -21,9 +21,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { Types } from 'mongoose';
+import { isObjectId } from '@fastgpt/global/common/string/utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { useCreation } from 'ahooks';
 
 export type AProps = {
   chatAuthData?: {
@@ -67,7 +66,7 @@ const CiteLink = React.memo(function CiteLink({
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  if (!Types.ObjectId.isValid(id)) {
+  if (!isObjectId(id)) {
     return <></>;
   }
 

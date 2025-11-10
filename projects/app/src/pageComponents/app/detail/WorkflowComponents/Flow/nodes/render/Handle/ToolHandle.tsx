@@ -5,9 +5,9 @@ import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../../context/workflowEventContext';
+import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
 const handleSize = '16px';
 const activeHandleSize = '20px';
@@ -19,10 +19,10 @@ type ToolHandleProps = BoxProps & {
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const toolConnecting = useContextSelector(
-    WorkflowContext,
+    WorkflowActionsContext,
     (ctx) => ctx.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
-  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
   );
 
@@ -71,12 +71,12 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
   const connectingEdge = useContextSelector(
-    WorkflowContext,
+    WorkflowActionsContext,
     (ctx) => ctx.connectingEdge?.nodeId === nodeId
   );
-  const nodeIsHover = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId === nodeId);
+  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
 
   const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
 

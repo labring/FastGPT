@@ -48,6 +48,7 @@ export type ChatDispatchProps = {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
     teamId: string;
     tmbId: string; // App tmbId
+    name: string;
     isChildApp?: boolean;
   };
   runningUserInfo: {
@@ -78,6 +79,7 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+  usageId?: string;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
@@ -106,6 +108,7 @@ export type RuntimeNodeItemType = {
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
+  isStart?: boolean;
   version?: string;
 
   inputs: FlowNodeInputItemType[];

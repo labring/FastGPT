@@ -402,6 +402,7 @@ const RenderList = React.memo(function RenderList({
   }, [type]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+    const isSystemTool = type === TemplateTypeEnum.systemPlugin;
     return (
       <>
         {list.map((item, i) => {
@@ -426,7 +427,6 @@ const RenderList = React.memo(function RenderList({
                   return (
                     <MyTooltip
                       key={template.id}
-                      placement={'right'}
                       label={
                         <Box py={2} minW={['auto', '250px']}>
                           <Flex alignItems={'center'}>
@@ -439,19 +439,21 @@ const RenderList = React.memo(function RenderList({
                             <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
                               {t(template.name as any)}
                             </Box>
-                            <Box color={'myGray.500'}>
-                              By {template.author || feConfigs?.systemTitle}
-                            </Box>
+                            {isSystemTool && (
+                              <Box color={'myGray.500'}>
+                                By {template.author || feConfigs?.systemTitle}
+                              </Box>
+                            )}
                           </Flex>
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                             {t(template.intro as any) || t('common:core.workflow.Not intro')}
                           </Box>
-                          {/* {type === TemplateTypeEnum.systemPlugin && (
+                          {isSystemTool && (
                             <CostTooltip
                               cost={template.currentCost}
                               hasTokenFee={template.hasTokenFee}
                             />
-                          )} */}
+                          )}
                         </Box>
                       }
                     >

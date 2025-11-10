@@ -18,11 +18,11 @@ import {
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import VariableTable from './VariableTable';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -36,7 +36,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 

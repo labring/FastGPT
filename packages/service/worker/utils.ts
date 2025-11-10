@@ -22,7 +22,7 @@ export const getSafeEnv = () => {
 };
 
 export const getWorker = (name: `${WorkerNameEnum}`) => {
-  const workerPath = path.join(process.cwd(), '.next', 'server', 'worker', `${name}.js`);
+  const workerPath = path.join(process.cwd(), 'worker', `${name}.js`);
   return new Worker(workerPath, {
     env: getSafeEnv()
   });

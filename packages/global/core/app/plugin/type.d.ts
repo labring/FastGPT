@@ -56,6 +56,9 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   inputList?: FlowNodeInputItemType['inputList'];
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
+
+  // Plugin source type
+  toolSource?: 'uploaded' | 'built-in';
 };
 
 export type SystemPluginTemplateListItemType = Omit<

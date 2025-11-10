@@ -123,12 +123,19 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
-    try {
-      model.syncIndexes({ background: true });
-    } catch (error) {
-      addLog.error('Create index error', error);
-    }
+  if (
+    process.env.NODE_ENV === 'test' ||
+    process.env.SYNC_INDEX === '0' ||
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    !MONGO_URL
+  ) {
+    return;
+  }
+
+  try {
+    await model.syncIndexes({ background: true });
+  } catch (error) {
+    addLog.error('Create index error', error);
   }
 };
 

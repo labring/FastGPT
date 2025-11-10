@@ -19,8 +19,8 @@ import { Alert } from '@/components/docs/Alert';
 <Alert icon="🤖" context="success">
 
 - MongoDB：用于存储除了向量外的各类数据
-- PostgreSQL/Milvus：存储向量数据
-- OneAPI: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
+- PostgreSQL/Milvus/Oceanbase：存储向量数据
+- AIProxy: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
 
 </Alert>
 
@@ -99,12 +99,91 @@ brew install orbstack
 
 ## 开始部署
 
-### 1. 下载 docker-compose.yml
+### 1. 获取 `docker-compose.yml` 和 `config.json` 配置文件
 
-非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载配置文件和对应版本的`docker-compose.yml`，在这个文件夹中依据下载的配置文件运行docker，若作为本地开发使用推荐`docker-compose-pgvector`版本，并且自行拉取并运行`sandbox`和`fastgpt`，并在docker配置文件中注释掉`sandbox`和`fastgpt`的部分
+#### 方法一：使用脚本部署
 
-- [config.json](https://raw.githubusercontent.com/labring/FastGPT/refs/heads/main/projects/app/data/config.json)
-- [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker) (注意，不同向量库版本的文件不一样)
+<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本']}>
+  <Tab value="PgVector版本">
+国内镜像(阿里云)
+
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=pg
+```
+
+非国内镜像(dockhub, ghcr)
+
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=pg
+```
+需要在 Linux/MacOS/Windows WSL 环境下执行
+    </Tab>
+
+  <Tab value="Oceanbase版本">
+      国内镜像(阿里云)
+
+      ```bash
+      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=oceanbase
+      ```
+
+      非国内镜像(dockhub, ghcr)
+
+      ```bash
+      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=oceanbase
+      ```
+      需要在 Linux/MacOS/Windows WSL 环境下执行
+  </Tab>
+  <Tab value="Milvus版本">
+  国内镜像(阿里云)
+
+  ```bash
+  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=milvus
+  ```
+
+  非国内镜像(dockhub, ghcr)
+
+  ```bash
+  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=milvus
+  ```
+  需要在 Linux/MacOS/Windows WSL 环境下执行
+  </Tab>
+  <Tab value="Zilliz版本">
+  国内镜像(阿里云)
+
+  ```bash
+  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=zilliz
+  ```
+
+  非国内镜像(dockhub, ghcr)
+
+  ```bash
+  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=zilliz
+  ```
+  需要在 Linux/MacOS/Windows WSL 环境下执行
+
+  zilliz 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
+  </Tab>
+</Tabs>
+
+#### 方法二：手动下载部署
+如果部署环境为非 *nix 环境或无法访问外网，需要手动下载 `docker-compose.yml` 进行部署
+
+选择并下载您的 `docker-compose.yml` 文件
+- Pgvector
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
+- Oceanbase
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.ob.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.ob.yml)
+- Milvus
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.milvus.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.milvus.yml)
+- Zilliz
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+
+下载 config.json 文件
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
 
 <Alert icon="🤖" context="success">
 
@@ -112,50 +191,9 @@ brew install orbstack
 
 </Alert>
 
-**Linux 快速脚本**
-
-```bash
-mkdir fastgpt
-cd fastgpt
-curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
-
-# pgvector 版本(测试推荐，简单快捷)
-curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml
-# oceanbase 版本（需要将init.sql和docker-compose.yml放在同一个文件夹，方便挂载）
-# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-oceanbase/docker-compose.yml
-# curl -o init.sql https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-oceanbase/init.sql
-# milvus 版本
-# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-milvus.yml
-# zilliz 版本
-# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-zilliz.yml
-```
-
 ### 2. 修改环境变量
-
-找到 yml 文件中，fastgpt 容器的环境变量进行下面操作：
-
-<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本']}>
-  <Tab value="PgVector版本">
-无需操作
-  </Tab>
-  <Tab value="Oceanbase版本">
-无需操作
-  </Tab>
-  <Tab value="Milvus版本">
-无需操作
-  </Tab>
-  <Tab value="Zilliz版本">
-打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
-
-![zilliz_key](/imgs/zilliz_key.png)
-
-<Alert icon="🤖" context="success">
-
-1. 修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
-
-</Alert>
-  </Tab>
-</Tabs>
+按照您的需求自行修改环境变量，建议在生产环境修改账号密码等。
+对于 Zilliz 版本 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
 
 ### 3. 修改 config.json 配置文件
 
@@ -360,3 +398,14 @@ mongo连接失败，查看mongo的运行状态**对应日志**。
 ### 如何修改密码
 
 修改`docker-compose.yml`文件中`DEFAULT_ROOT_PSW`并重启即可，密码会自动更新。
+
+### 部署 Zilliz 版本，获取账号和密钥
+打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
+
+![zilliz_key](/imgs/zilliz_key.png)
+
+<Alert icon="🤖" context="success">
+
+1. 修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
+
+</Alert>

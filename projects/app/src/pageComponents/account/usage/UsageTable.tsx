@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
-import { type UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
@@ -73,7 +73,7 @@ const UsageTableList = ({
     refreshDeps: [requestParams]
   });
 
-  const [usageDetail, setUsageDetail] = useState<UsageItemType>();
+  const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
 
   const { runAsync: exportUsage } = useRequest2(
     async () => {

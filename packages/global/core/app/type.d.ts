@@ -2,6 +2,7 @@ import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/n
 import type { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import type {
+  ContentTypes,
   NodeInputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -15,7 +16,7 @@ import type { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import type { SourceMemberType } from '../../support/user/type';
-import type { JSONSchemaInputType } from './jsonschema';
+import type { JSONSchemaInputType, JSONSchemaOutputType } from './jsonschema';
 
 export type AppSchema = {
   _id: string;
@@ -118,6 +119,25 @@ export type McpToolConfigType = {
   name: string;
   description: string;
   inputSchema: JSONSchemaInputType;
+};
+
+export type HttpToolConfigType = {
+  name: string;
+  description: string;
+  inputSchema: JSONSchemaInputType;
+  outputSchema: JSONSchemaOutputType;
+  path: string;
+  method: string;
+
+  // manual
+  staticParams?: Array<{ key: string; value: string }>;
+  staticHeaders?: Array<{ key: string; value: string }>;
+  staticBody?: {
+    type: ContentTypes;
+    content?: string;
+    formData?: Array<{ key: string; value: string }>;
+  };
+  headerSecret?: StoreSecretValueType;
 };
 
 /* app chat config type */

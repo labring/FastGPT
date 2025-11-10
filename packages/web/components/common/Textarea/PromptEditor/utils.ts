@@ -17,7 +17,8 @@ import type {
   ListEditorNode,
   ParagraphEditorNode,
   EditorState,
-  ListItemInfo
+  ListItemInfo,
+  ChildEditorNode
 } from './type';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
@@ -270,9 +271,41 @@ const buildListStructure = (items: ListItemInfo[]) => {
   return result;
 };
 
-export const textToEditorState = (text = '') => {
+export const textToEditorState = (text = '', isRichText = false) => {
   const lines = text.split('\n');
   const children: Array<ParagraphEditorNode | ListEditorNode> = [];
+
+  if (!isRichText) {
+    return JSON.stringify({
+      root: {
+        children: lines.map((p) => {
+          return {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: 'normal',
+                style: '',
+                text: p,
+                type: 'text',
+                version: 1
+              }
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1
+          };
+        }),
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1
+      }
+    });
+  }
 
   let i = 0;
   while (i < lines.length) {
@@ -440,6 +473,74 @@ export const editorStateToText = (editor: LexicalEditor) => {
   const editorState = editor.getEditorState().toJSON() as EditorState;
   const paragraphs = editorState.root.children;
 
+  const extractText = (node: ChildEditorNode): string => {
+    if (!node) return '';
+
+    // Handle line break nodes
+    if (node.type === 'linebreak') {
+      return '\n';
+    }
+
+    // Handle tab nodes
+    if (node.type === 'tab') {
+      return '  ';
+    }
+
+    // Handle text nodes
+    if (node.type === 'text') {
+      return node.text || '';
+    }
+
+    // Handle custom variable nodes
+    if (node.type === 'variableLabel' || node.type === 'Variable') {
+      return node.variableKey || '';
+    }
+
+    // Handle paragraph nodes - recursively process children
+    if (node.type === 'paragraph') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Handle list item nodes - recursively process children (excluding nested lists)
+    if (node.type === 'listitem') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      // Filter out nested list nodes as they are handled separately
+      return node.children
+        .filter((child) => child.type !== 'list')
+        .map(extractText)
+        .join('');
+    }
+
+    // Handle list nodes - recursively process children
+    if (node.type === 'list') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Unknown node type - return the raw text content if available
+    console.warn('Unknown node type in extractText:', (node as any).type, node);
+
+    // Try to extract text content from unknown node types
+    if ('text' in node && typeof (node as any).text === 'string') {
+      return (node as any).text;
+    }
+
+    // Try to recursively extract from children if present
+    if ('children' in node && Array.isArray((node as any).children)) {
+      return (node as any).children.map(extractText).join('');
+    }
+
+    // Fallback to stringifying the node content
+    return JSON.stringify(node);
+  };
+
   paragraphs.forEach((paragraph) => {
     if (paragraph.type === 'list') {
       const listResults = processList({ list: paragraph });
@@ -451,19 +552,15 @@ export const editorStateToText = (editor: LexicalEditor) => {
       const indentSpaces = '  '.repeat(paragraph.indent || 0);
 
       children.forEach((child) => {
-        if (child.type === 'linebreak') {
-          paragraphText.push('\n');
-        } else if (child.type === 'text') {
-          paragraphText.push(child.text);
-        } else if (child.type === 'tab') {
-          paragraphText.push('  ');
-        } else if (child.type === 'variableLabel' || child.type === 'Variable') {
-          paragraphText.push(child.variableKey);
-        }
+        const val = extractText(child);
+        paragraphText.push(val);
       });
 
       const finalText = paragraphText.join('');
       editorStateTextString.push(indentSpaces + finalText);
+    } else {
+      const text = extractText(paragraph);
+      editorStateTextString.push(text);
     }
   });
   return editorStateTextString.join('\n');

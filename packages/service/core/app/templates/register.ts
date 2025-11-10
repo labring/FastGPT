@@ -35,7 +35,7 @@ const getAppTemplates = async () => {
 
   const res = [
     ...communityTemplateConfig,
-    ...dbTemplates.filter((t) => !isCommunityTemplate(t.templateId))
+    ...dbTemplates.filter((t) => isCommercialTemaplte(t.templateId))
   ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return res;
@@ -60,8 +60,8 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
   }
 };
 
-export const isCommunityTemplate = (templateId: string) => {
-  return templateId.startsWith(PluginSourceEnum.community);
+export const isCommercialTemaplte = (templateId: string) => {
+  return templateId.startsWith(PluginSourceEnum.commercial);
 };
 
 declare global {

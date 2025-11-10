@@ -76,7 +76,7 @@ async function handler(
     // 2. Insert images to training queue
     await mongoSessionRun(async (session) => {
       const traingBillId = await (async () => {
-        const { billId } = await createTrainingUsage({
+        const { usageId } = await createTrainingUsage({
           teamId,
           tmbId,
           appName: collection.name,
@@ -86,7 +86,7 @@ async function handler(
           vllmModel: getVlmModel(dataset.vlmModel)?.name,
           session
         });
-        return billId;
+        return usageId;
       })();
 
       await pushDataListToTrainingQueue({

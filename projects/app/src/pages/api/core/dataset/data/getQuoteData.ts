@@ -46,7 +46,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
         teamToken
       });
 
-      const datasetData = await MongoDatasetData.findById(dataId);
+      const datasetData = await MongoDatasetData.findById(dataId).lean();
       if (!datasetData) {
         return Promise.reject(i18nT('common:data_not_found'));
       }
@@ -67,7 +67,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
           appId,
           chatId,
           chatItemDataId,
-          collectionIds: [String(datasetData.collectionId)]
+          collectionIds: [datasetData.collectionId]
         })
       ]);
       if (!collection) {

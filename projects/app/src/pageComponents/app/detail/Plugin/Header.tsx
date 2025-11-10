@@ -13,7 +13,6 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, type WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -26,9 +25,14 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
-import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
-import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
 import SaveButton from '../Workflow/components/SaveButton';
+import {
+  WorkflowSnapshotContext,
+  type WorkflowSnapshotsType
+} from '../WorkflowComponents/context/workflowSnapshotContext';
+import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import { WorkflowModalContext } from '../WorkflowComponents/context/workflowModalContext';
+import { WorkflowPersistenceContext } from '../WorkflowComponents/context/workflowPersistenceContext';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -48,25 +52,26 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
-  const flowData2StoreDataAndCheck = useContextSelector(
-    WorkflowContext,
-    (v) => v.flowData2StoreDataAndCheck
-  );
-  const setWorkflowTestData = useContextSelector(WorkflowContext, (v) => v.setWorkflowTestData);
-  const past = useContextSelector(WorkflowContext, (v) => v.past);
-  const setPast = useContextSelector(WorkflowContext, (v) => v.setPast);
-  const onSwitchTmpVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchTmpVersion);
-  const onSwitchCloudVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchCloudVersion);
-
-  const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
-  const setShowHistoryModal = useContextSelector(
-    WorkflowEventContext,
-    (v) => v.setShowHistoryModal
+  const { flowData2StoreData, flowData2StoreDataAndCheck } = useContextSelector(
+    WorkflowUtilsContext,
+    (v) => v
   );
 
-  const isSaved = useContextSelector(WorkflowStatusContext, (v) => v.isSaved);
-  const leaveSaveSign = useContextSelector(WorkflowStatusContext, (v) => v.leaveSaveSign);
+  const setWorkflowTestData = useContextSelector(
+    WorkflowModalContext,
+    (v) => v.setWorkflowTestData
+  );
+  const { past, setPast, onSwitchTmpVersion, onSwitchCloudVersion } = useContextSelector(
+    WorkflowSnapshotContext,
+    (v) => v
+  );
+
+  const { showHistoryModal, setShowHistoryModal } = useContextSelector(
+    WorkflowModalContext,
+    (v) => v
+  );
+
+  const { isSaved, leaveSaveSign } = useContextSelector(WorkflowPersistenceContext, (v) => v);
 
   const { lastAppListRouteType } = useSystemStore();
 

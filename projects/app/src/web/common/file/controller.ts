@@ -1,8 +1,5 @@
-import { postUploadImg, postUploadFiles } from '@/web/common/file/api';
-import type { UploadImgProps } from '@fastgpt/global/common/file/api';
+import { postUploadFiles } from '@/web/common/file/api';
 import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import type { preUploadImgProps } from '@fastgpt/global/common/file/api';
-import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
 import type { UploadChatFileProps, UploadDatasetFileProps } from '@/pages/api/common/file/upload';
 
 /**
@@ -36,53 +33,4 @@ export const uploadFile2DB = async ({
     percentListen?.(percent);
   });
   return res;
-};
-
-/**
- * compress image. response base64
- * @param maxSize The max size of the compressed image
- */
-const compressBase64ImgAndUpload = async ({
-  base64Img,
-  maxW,
-  maxH,
-  maxSize,
-  ...props
-}: UploadImgProps & CompressImgProps) => {
-  const compressUrl = await compressBase64Img({
-    base64Img,
-    maxW,
-    maxH,
-    maxSize
-  });
-
-  return postUploadImg({
-    ...props,
-    base64Img: compressUrl
-  });
-};
-
-export const compressImgFileAndUpload = async ({
-  file,
-  ...props
-}: preUploadImgProps &
-  CompressImgProps & {
-    file: File;
-  }) => {
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-
-  const base64Img = await new Promise<string>((resolve, reject) => {
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = (err) => {
-      reject('Load image error');
-    };
-  });
-
-  return compressBase64ImgAndUpload({
-    base64Img,
-    ...props
-  });
 };

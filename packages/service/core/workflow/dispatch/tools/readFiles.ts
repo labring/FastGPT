@@ -52,7 +52,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     histories,
     chatConfig,
     node: { version },
-    params: { fileUrlList = [] }
+    params: { fileUrlList = [] },
+    usageId
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
   const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
@@ -68,7 +69,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       maxFiles,
       teamId,
       tmbId,
-      customPdfParse
+      customPdfParse,
+      usageId
     });
 
     return {
@@ -119,7 +121,8 @@ export const getFileContentFromLinks = async ({
   maxFiles,
   teamId,
   tmbId,
-  customPdfParse
+  customPdfParse,
+  usageId
 }: {
   urls: string[];
   requestOrigin?: string;
@@ -127,6 +130,7 @@ export const getFileContentFromLinks = async ({
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  usageId?: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -225,7 +229,8 @@ export const getFileContentFromLinks = async ({
             buffer,
             encoding,
             customPdfParse,
-            getFormatText: true
+            getFormatText: true,
+            usageId
           });
 
           // Add to buffer

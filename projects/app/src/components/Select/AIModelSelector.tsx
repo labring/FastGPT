@@ -1,14 +1,14 @@
-import React, { useCallback, useMemo, useState } from 'react';
-
-import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ResponsiveValue } from '@chakra-ui/system';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
+import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo, useState } from 'react';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -23,8 +23,20 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     ttsModelList,
     sttModelList,
     reRankModelList,
-    getModelProvider
+    getModelProvider,
+    getMyModelList
   } = useSystemStore();
+
+  const { data: myModels } = useRequest2(
+    async () => {
+      const set = await getMyModelList();
+      set.add(props.value);
+      return set;
+    },
+    {
+      manual: false
+    }
+  );
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -50,7 +62,9 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
         if (!modelData) return;
 
         const avatar = getModelProvider(modelData.provider)?.avatar;
-
+        if (!myModels?.has(modelData.model)) {
+          return;
+        }
         return {
           value: item.value,
           label: (
@@ -81,7 +95,8 @@ const OneRowSelector = ({ list, onChange, disableTip, noOfLines, ...props }: Pro
     list,
     getModelProvider,
     avatarSize,
-    noOfLines
+    noOfLines,
+    myModels
   ]);
 
   return (
@@ -125,8 +140,14 @@ const MultipleRowSelector = ({
     sttModelList,
     reRankModelList,
     getModelProvider,
-    getModelProviders
+    getModelProviders,
+    getMyModelList
   } = useSystemStore();
+
+  const { data: myModels } = useRequest2(getMyModelList, {
+    manual: false
+  });
+
   const modelList = useMemo(() => {
     const allModels = [
       ...llmModelList,
@@ -138,8 +159,16 @@ const MultipleRowSelector = ({
 
     return list
       .map((item) => allModels.find((model) => model.model === item.value))
-      .filter(Boolean);
-  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
+      .filter((item) => !!item && !!myModels?.has(item.model));
+  }, [
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    list,
+    myModels
+  ]);
 
   const [value, setValue] = useState<string[]>([]);
 

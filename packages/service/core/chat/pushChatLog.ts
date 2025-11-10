@@ -2,11 +2,7 @@ import { addLog } from '../../common/system/log';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import axios from 'axios';
-import {
-  type AIChatItemType,
-  type ChatItemType,
-  type UserChatItemType
-} from '@fastgpt/global/core/chat/type';
+import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type Metadata = {
@@ -41,18 +37,6 @@ export const pushChatLog = ({
       pushChatLogInternal({ chatId, chatItemIdHuman, chatItemIdAi, appId, url, metadata });
     }, interval);
   }
-};
-
-type ChatItem = ChatItemType & {
-  userGoodFeedback?: string;
-  userBadFeedback?: string;
-  chatId: string;
-  responseData: {
-    moduleType: string;
-    runningTime: number; //s
-    historyPreview: { obj: string; value: string }[];
-  }[];
-  time: Date;
 };
 
 type ChatLog = {

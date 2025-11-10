@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -30,7 +30,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
-import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -40,7 +39,12 @@ const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/Create
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
-const HttpEditModal = dynamic(() => import('@/pageComponents/dashboard/apps/HttpPluginEditModal'));
+const HttpToolsCreateModal = dynamic(
+  () => import('@/pageComponents/dashboard/apps/HttpToolsCreateModal')
+);
+const MCPToolsEditModal = dynamic(
+  () => import('@/pageComponents/dashboard/apps/MCPToolsEditModal')
+);
 
 const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { t } = useTranslation();
@@ -61,21 +65,19 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     searchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
-
   const [createAppType, setCreateAppType] = useState<CreateAppType>();
+  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+
   const {
-    isOpen: isOpenCreateHttpPlugin,
-    onOpen: onOpenCreateHttpPlugin,
-    onClose: onCloseCreateHttpPlugin
+    isOpen: isOpenCreateHttpTools,
+    onOpen: onOpenCreateHttpTools,
+    onClose: onCloseCreateHttpTools
   } = useDisclosure();
   const {
     isOpen: isOpenCreateMCPTools,
     onOpen: onOpenCreateMCPTools,
     onClose: onCloseCreateMCPTools
   } = useDisclosure();
-
-  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
-
   const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
@@ -115,11 +117,14 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.simple]: t('app:type.Simple bot'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
-      [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
+      [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
       [AppTypeEnum.folder]: t('common:Folder'),
       [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
       [AppTypeEnum.tool]: t('app:type.MCP tools'),
-      [AppTypeEnum.hidden]: t('app:type.hidden')
+      [AppTypeEnum.hidden]: t('app:type.hidden'),
+
+      // deprecated
+      [AppTypeEnum.httpPlugin]: t('app:type.Http plugin')
     };
     return map[appType] || map['all'];
   }, [appType, t]);
@@ -206,9 +211,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       },
                       {
                         icon: 'core/app/type/httpPluginFill',
-                        label: t('app:type.Http plugin'),
-                        description: t('app:type.Create http plugin tip'),
-                        onClick: onOpenCreateHttpPlugin
+                        label: t('app:type.Http tool set'),
+                        description: t('app:type.Create http toolset tip'),
+                        onClick: onOpenCreateHttpTools
                       },
                       {
                         icon: 'core/app/type/mcpToolsFill',
@@ -315,7 +320,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       {!!createAppType && (
         <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
-      {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
+      {isOpenCreateHttpTools && <HttpToolsCreateModal onClose={onCloseCreateHttpTools} />}
       {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>

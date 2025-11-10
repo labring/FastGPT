@@ -75,7 +75,9 @@ const Team = () => {
           { label: t('account_team:org'), value: TeamTabEnum.org },
           { label: t('account_team:group'), value: TeamTabEnum.group },
           { label: t('account_team:permission'), value: TeamTabEnum.permission },
-          { label: t('account_team:audit_log'), value: TeamTabEnum.audit }
+          ...(userInfo?.team.permission.hasManagePer
+            ? [{ label: t('account_team:audit_log'), value: TeamTabEnum.audit }]
+            : [])
         ]}
         px={'1rem'}
         value={teamTab}

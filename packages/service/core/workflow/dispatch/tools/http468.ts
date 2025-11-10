@@ -1,5 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  contentTypeMap,
   ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -27,6 +28,7 @@ import { addLog } from '../../../../common/system/log';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 
 type PropsArrType = {
   key: string;
@@ -57,15 +59,6 @@ type HttpResponse = DispatchNodeResultType<
 >;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
-
-const contentTypeMap = {
-  [ContentTypes.none]: '',
-  [ContentTypes.formData]: '',
-  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
-  [ContentTypes.json]: 'application/json',
-  [ContentTypes.xml]: 'application/xml',
-  [ContentTypes.raw]: 'text/plain'
-};
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
@@ -505,6 +498,7 @@ async function fetchData({
 
   const { data: response } = await axios({
     method,
+    maxContentLength: serviceRequestMaxContentLength,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {

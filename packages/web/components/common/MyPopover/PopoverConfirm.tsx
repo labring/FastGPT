@@ -73,7 +73,7 @@ const PopoverConfirm = ({
       openDelay={100}
       closeDelay={100}
       isLazy
-      lazyBehavior="keepMounted"
+      lazyBehavior="unmount"
       arrowSize={10}
       strategy={'fixed'}
       computePositionOnMount={true}

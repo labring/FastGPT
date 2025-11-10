@@ -21,5 +21,5 @@ ifeq ($(proxy), taobao)
 else ifeq ($(proxy), clash)
 	docker build -f $(filePath) -t $(image) . --network host --build-arg HTTP_PROXY=http://127.0.0.1:7890 --build-arg HTTPS_PROXY=http://127.0.0.1:7890
 else
-	docker build -f $(filePath) -t $(image) .
+	docker build --progress=plain -f $(filePath) -t $(image) .
 endif

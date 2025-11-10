@@ -7,11 +7,11 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 type Props = {
   nodeId: string;
@@ -22,7 +22,7 @@ type Props = {
 const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { description, required, label, selectedTypeIndex, renderTypeList, valueType, valueDesc } =
     input;

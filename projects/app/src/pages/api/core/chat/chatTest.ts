@@ -5,12 +5,10 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
@@ -43,7 +41,6 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import {
   ChatItemValueTypeEnum,
   ChatRoleEnum,
@@ -51,6 +48,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -125,17 +123,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     const limit = getMaxHistoryLimitFromNodes(nodes);
-    const [{ histories }, chatDetail, { timezone, externalProvider }] = await Promise.all([
+    const [{ histories }, chatDetail] = await Promise.all([
       getChatItems({
         appId,
         chatId,
         offset: 0,
         limit,
-        field: `dataId obj value memories`
+        field: `obj value memories`
       }),
-      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables'),
+      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
       // auth balance
-      getUserChatInfoAndAuthTeamPoints(tmbId)
     ]);
 
     if (chatDetail?.variables) {
@@ -164,44 +161,39 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const {
-      flowResponses,
-      assistantResponses,
-      system_memories,
-      newVariables,
-      flowUsages,
-      durationSeconds
-    } = await dispatchWorkFlow({
-      res,
-      lang: getLocale(req),
-      requestOrigin: req.headers.origin,
-      mode: 'test',
-      timezone,
-      externalProvider,
-      uid: tmbId,
+    const { flowResponses, assistantResponses, system_memories, newVariables, durationSeconds } =
+      await dispatchWorkFlow({
+        res,
+        lang: getLocale(req),
+        requestOrigin: req.headers.origin,
+        mode: 'test',
+        usageSource: UsageSourceEnum.fastgpt,
 
-      runningAppInfo: {
-        id: appId,
-        teamId: app.teamId,
-        tmbId: app.tmbId
-      },
-      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+        uid: tmbId,
 
-      chatId,
-      responseChatItemId,
-      runtimeNodes,
-      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-      variables,
-      query: removeEmptyUserInput(userQuestion.value),
-      lastInteractive: interactive,
-      chatConfig,
-      histories: newHistories,
-      stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      workflowStreamResponse: workflowResponseWrite,
-      version: 'v2',
-      responseDetail: true
-    });
+        runningAppInfo: {
+          id: appId,
+          name: appName,
+          teamId: app.teamId,
+          tmbId: app.tmbId
+        },
+        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+
+        chatId,
+        responseChatItemId,
+        runtimeNodes,
+        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+        variables,
+        query: removeEmptyUserInput(userQuestion.value),
+        lastInteractive: interactive,
+        chatConfig,
+        histories: newHistories,
+        stream: true,
+        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+        workflowStreamResponse: workflowResponseWrite,
+        version: 'v2',
+        responseDetail: true
+      });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -221,7 +213,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
     const newTitle = isPlugin
-      ? variables.cTime ?? getSystemTime(timezone)
+      ? variables.cTime ?? formatTime2YMDHM()
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
@@ -231,41 +223,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
+    const params = {
+      chatId,
+      appId: app._id,
+      teamId,
+      tmbId: tmbId,
+      nodes,
+      appChatConfig: chatConfig,
+      variables: newVariables,
+      isUpdateUseTime: false, // owner update use time
+      newTitle,
+      source: ChatSourceEnum.test,
+      userContent: userQuestion,
+      aiContent: aiResponse,
+      durationSeconds
+    };
 
     if (isInteractiveRequest) {
-      await updateInteractiveChat({
-        chatId,
-        appId: app._id,
-        userInteractiveVal,
-        aiResponse,
-        newVariables,
-        durationSeconds
-      });
+      await updateInteractiveChat(params);
     } else {
-      await saveChat({
-        chatId,
-        appId: app._id,
-        teamId,
-        tmbId: tmbId,
-        nodes,
-        appChatConfig: chatConfig,
-        variables: newVariables,
-        isUpdateUseTime: false, // owner update use time
-        newTitle,
-        source: ChatSourceEnum.test,
-        content: [userQuestion, aiResponse],
-        durationSeconds
-      });
+      await saveChat(params);
     }
-
-    createChatUsage({
-      appName,
-      appId,
-      teamId,
-      tmbId,
-      source: UsageSourceEnum.fastgpt,
-      flowUsages
-    });
   } catch (err: any) {
     res.status(500);
     sseErrRes(res, err);

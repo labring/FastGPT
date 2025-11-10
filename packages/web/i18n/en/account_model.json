@@ -89,5 +89,6 @@
   "vlm_model": "Vlm",
   "vlm_model_tip": "Used to generate additional indexing of images in a document in the knowledge base",
   "volunme_of_failed_calls": "Error amount",
-  "waiting_test": "Waiting for testing"
+  "waiting_test": "Waiting for testing",
+  "model_permission_config_hint": "If no collaborators are added, all members are available by default"
 }

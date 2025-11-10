@@ -10,8 +10,7 @@ import {
 import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
-export const ChatItemCollectionName = 'chatitems';
+import { ChatItemCollectionName } from './constants';
 
 const ChatItemSchema = new Schema({
   teamId: {
@@ -35,7 +34,7 @@ const ChatItemSchema = new Schema({
   dataId: {
     type: String,
     require: true,
-    default: () => getNanoid(22)
+    default: () => getNanoid(24)
   },
   appId: {
     type: Schema.Types.ObjectId,
@@ -61,6 +60,8 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
+
+  // Field memory
   memories: Object,
   errorMsg: String,
   userGoodFeedback: String,
@@ -75,29 +76,25 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-    type: Array,
-    default: []
-  },
-  durationSeconds: Number
+  durationSeconds: Number,
+  citeCollectionIds: [String],
+
+  // @deprecated
+  [DispatchNodeResponseKeyEnum.nodeResponse]: Array
 });
 
-try {
-  ChatItemSchema.index({ dataId: 1 });
-  /* delete by app; 
-     delete by chat id;
-     get chat list; 
-     get chat logs; 
-     close custom feedback; 
-  */
-  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-  // timer, clear history
-  ChatItemSchema.index({ teamId: 1, time: -1 });
+/* 
+  delete by app; 
+  delete by chat id;
+  get chat list; 
+  get chat logs; 
+  close custom feedback; 
+*/
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+// timer, clear history
+ChatItemSchema.index({ teamId: 1, time: -1 });
 
-  // Admin charts
-  ChatItemSchema.index({ obj: 1, time: -1 }, { partialFilterExpression: { obj: 'Human' } });
-} catch (error) {
-  console.log(error);
-}
+// Admin charts
+ChatItemSchema.index({ obj: 1, time: -1 }, { partialFilterExpression: { obj: 'Human' } });
 
 export const MongoChatItem = getMongoModel<ChatItemType>(ChatItemCollectionName, ChatItemSchema);

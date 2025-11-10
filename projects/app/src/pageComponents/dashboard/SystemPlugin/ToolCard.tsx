@@ -2,28 +2,61 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type SystemToolGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { pluginClient } from '@/web/core/app/api/plugin';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const PluginCard = ({
   item,
-  groups
+  groups,
+  refreshTools
 }: {
   item: NodeTemplateListItemType;
   groups: SystemToolGroupSchemaType[];
+  refreshTools: () => any;
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const [isHovered, setIsHovered] = useState(false);
+
+  const { userInfo } = useUserStore();
+  const isRoot = userInfo?.username === 'root';
+
+  const { openConfirm, ConfirmModal } = useConfirm({
+    type: 'delete',
+    content: t('common:sure_delete_tool_cannot_undo')
+  });
 
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
     return foundType ? parseI18nString(foundType.typeName, i18n.language) : acc;
   }, undefined);
+
+  const isUploadedPlugin = item.toolSource === 'uploaded';
+
+  const { runAsync: handleDelete } = useRequest2(
+    (toolId: string) =>
+      pluginClient.tool.upload.delete({
+        query: {
+          toolId
+        }
+      }),
+    {
+      successToast: t('common:delete_success'),
+      onSuccess() {
+        refreshTools();
+      }
+    }
+  );
 
   return (
     <MyBox
@@ -40,11 +73,31 @@ const PluginCard = ({
       position={'relative'}
       display={'flex'}
       flexDirection={'column'}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       _hover={{
         borderColor: 'primary.300',
         boxShadow: '1.5'
       }}
     >
+      {/* Delete button with centered confirmation modal */}
+      {isUploadedPlugin && isRoot && isHovered && (
+        <MyIconButton
+          icon="delete"
+          position="absolute"
+          bottom={3}
+          right={4}
+          color="red.500"
+          hoverColor="red.500"
+          aria-label={t('common:Delete')}
+          zIndex={1}
+          pointerEvents={'auto'}
+          onClick={openConfirm(() => handleDelete(item.id))}
+        />
+      )}
+
+      <ConfirmModal />
+
       <HStack>
         <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
         <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={500}>
@@ -103,7 +156,10 @@ const PluginCard = ({
             </UseGuideModal>
           )}
         </Flex>
-        <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
+        {/* Hide author info when showing delete button but maintain space */}
+        <Box color={'myGray.500'} visibility={isUploadedPlugin && isHovered ? 'hidden' : 'visible'}>
+          {`by ${item.author || feConfigs.systemTitle}`}
+        </Box>
       </Flex>
     </MyBox>
   );

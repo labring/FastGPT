@@ -19,6 +19,8 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
+import { refreshVersionKey } from '../../../common/cache';
+import { SystemCacheKeyEnum } from '../../../common/cache/type';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
@@ -78,7 +80,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
   if (!init && global.systemModelList) return;
 
-  await preloadModelProviders();
+  try {
+    await preloadModelProviders();
+  } catch (error) {
+    console.log('Load systen model error, please check fastgpt-plugin', error);
+    return Promise.reject(error);
+  }
 
   global.systemModelList = [];
   global.systemActiveModelList = [];
@@ -234,7 +241,7 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async () => {
       try {
@@ -253,6 +260,7 @@ export const updatedReloadSystemModel = async () => {
   await loadSystemModels(true);
   // 2. 更新缓存（仅主节点触发）
   await updateFastGPTConfigBuffer();
+  await refreshVersionKey(SystemCacheKeyEnum.modelPermission, '*');
   // 3. 延迟1秒，等待其他节点刷新
   await delay(1000);
 };

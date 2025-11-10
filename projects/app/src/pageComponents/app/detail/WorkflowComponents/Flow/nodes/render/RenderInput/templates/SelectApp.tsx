@@ -6,14 +6,15 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById } from '@/web/core/app/api';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const filterAppIds = useContextSelector(WorkflowContext, (ctx) => ctx.filterAppIds);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const currentAppId = useContextSelector(AppContext, (ctx) => ctx.appDetail._id);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const {
     isOpen: isOpenSelectApp,
@@ -69,7 +70,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
         {isOpenSelectApp && (
           <SelectAppModal
             value={item.value}
-            filterAppIds={filterAppIds}
+            filterAppIds={[currentAppId]}
             onClose={onCloseSelectApp}
             onSuccess={(e) => {
               onChangeNode({
@@ -89,7 +90,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   }, [
     appDetail?.avatar,
     appDetail?.name,
-    filterAppIds,
+    currentAppId,
     isOpenSelectApp,
     item,
     loading,

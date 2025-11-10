@@ -29,10 +29,10 @@ import { deleteFavouriteApp, getFavouriteApps, updateFavouriteAppOrder } from '@
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Box, Wrap } from '@chakra-ui/react';
-import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
+import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -86,7 +86,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     )
   );
 
-  const [localFavourites, setLocalFavourites] = useState<ChatFavouriteApp[]>([]);
+  const [localFavourites, setLocalFavourites] = useState<ChatFavouriteAppType[]>([]);
 
   // search favourite apps by apps' name and tag
   const { loading: isSearching, runAsync: getApps } = useRequest2(
@@ -107,13 +107,8 @@ const FavouriteAppSetting = ({ Header }: Props) => {
 
   // update app order
   const { runAsync: orderApp } = useRequest2(
-    async (list: ChatFavouriteApp[]) => {
-      await updateFavouriteAppOrder(
-        list.map((item, idx) => ({
-          id: item._id,
-          order: idx
-        }))
-      );
+    async (list: ChatFavouriteAppType[]) => {
+      await updateFavouriteAppOrder(list.map((item, idx) => ({ id: item._id, order: idx })));
       getApps();
     },
     { manual: true }
@@ -122,7 +117,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
   // delete app
   const { runAsync: deleteApp } = useRequest2(
     async (id: string) => {
-      await deleteFavouriteApp(id);
+      await deleteFavouriteApp({ id });
       getApps();
     },
     { manual: true }
@@ -252,7 +247,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
         {/* 表格内容 */}
         <Box overflow={'auto'} flex="1 0 0" h={0} px={[2, 0]}>
           {localFavourites.length > 0 ? (
-            <DndDrag<ChatFavouriteApp>
+            <DndDrag<ChatFavouriteAppType>
               dataList={localFavourites}
               renderInnerPlaceholder={false}
               onDragEndCb={(list) => {

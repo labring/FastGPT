@@ -9,8 +9,26 @@ import {
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 
+// Mock all required dependencies
 vi.mock('@fastgpt/web/common/system/utils', () => ({
-  getWebReqUrl: vi.fn().mockReturnValue('http://test.com')
+  getWebReqUrl: vi.fn().mockReturnValue('http://test.com'),
+  subRoute: '/test-route' // Add subRoute mock
+}));
+
+vi.mock('@/web/support/user/auth', () => ({
+  clearToken: vi.fn()
+}));
+
+vi.mock('../system/useSystemStore', () => ({
+  useSystemStore: {
+    getState: vi.fn().mockReturnValue({
+      setNotSufficientModalType: vi.fn()
+    })
+  }
+}));
+
+vi.mock('@fastgpt/web/i18n/utils', () => ({
+  i18nT: vi.fn().mockReturnValue('Unauthorized token')
 }));
 
 // Mock window.location
@@ -99,7 +117,7 @@ describe('request utils', () => {
     });
 
     it('should handle token error for outlink page', async () => {
-      mockLocation.pathname = '/chat/share';
+      mockLocation.pathname = '/test-route/chat/share';
       const err = {
         response: {
           data: {

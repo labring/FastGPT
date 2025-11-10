@@ -74,6 +74,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     runningUserInfo,
     workflowStreamResponse,
     chatConfig,
+    usageId,
     params: {
       model,
       temperature,
@@ -131,6 +132,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         requestOrigin,
         maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+        usageId,
         runningUserInfo
       })
     ]);
@@ -313,6 +315,7 @@ async function getMultiInput({
   requestOrigin,
   maxFiles,
   customPdfParse,
+  usageId,
   runningUserInfo
 }: {
   histories: ChatItemType[];
@@ -322,6 +325,7 @@ async function getMultiInput({
   requestOrigin?: string;
   maxFiles: number;
   customPdfParse?: boolean;
+  usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
@@ -359,9 +363,10 @@ async function getMultiInput({
     urls,
     requestOrigin,
     maxFiles,
-    customPdfParse,
     teamId: runningUserInfo.teamId,
-    tmbId: runningUserInfo.tmbId
+    tmbId: runningUserInfo.tmbId,
+    customPdfParse,
+    usageId
   });
 
   return {

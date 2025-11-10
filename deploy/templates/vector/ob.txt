@@ -1,0 +1,36 @@
+  vectorDB:
+    image:  ${{oceanbase.image}}:${{oceanbase.tag}}
+    container_name: ob
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 2881:2881
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - OB_SYS_PASSWORD=obsyspassword
+      # 不同于传统数据库，OceanBase 数据库的账号包含更多字段，包括用户名、租户名和集群名。经典格式为"用户名@租户名#集群名"
+      # 比如用mysql客户端连接时，根据本文件的默认配置，应该指定 "-uroot@tenantname"
+      - OB_TENANT_NAME=tenantname
+      - OB_TENANT_PASSWORD=tenantpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+      - OB_SERVER_IP=127.0.0.1
+      # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
+    volumes:
+      - ../ob/data:/root/ob
+      - ../ob/config:/root/.obd/cluster
+    configs:
+      - source: init_sql
+        target: /root/boot/init.d/init.sql
+    healthcheck:
+      # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
+      test:
+        [
+          "CMD-SHELL",
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 10s

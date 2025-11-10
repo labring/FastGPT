@@ -9,6 +9,8 @@
   "app_amount": "应用数量",
   "avatar": "头像",
   "avatar_selection_exception": "头像选择异常",
+  "avatar_can_only_select_one": "头像只能选择一张图片",
+  "avatar_can_only_select_jpg_png": "头像只能选择 jpg 或 png 格式",
   "balance": "余额",
   "billing_standard": "计费标准",
   "cancel": "取消",

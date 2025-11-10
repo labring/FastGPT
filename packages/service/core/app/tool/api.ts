@@ -1,7 +1,7 @@
 import type { I18nStringStrictType, ToolTypeEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { RunToolWithStream } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { pluginClient, BASE_URL, TOKEN } from '../../../thirdProvider/fastgptPlugin';
+import { pluginClient, PLUGIN_BASE_URL, PLUGIN_TOKEN } from '../../../thirdProvider/fastgptPlugin';
 import { addLog } from '../../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
@@ -26,8 +26,8 @@ export async function APIGetSystemToolList() {
 }
 
 const runToolInstance = new RunToolWithStream({
-  baseUrl: BASE_URL,
-  token: TOKEN
+  baseUrl: PLUGIN_BASE_URL,
+  token: PLUGIN_TOKEN
 });
 export const APIRunSystemTool = runToolInstance.run.bind(runToolInstance);
 

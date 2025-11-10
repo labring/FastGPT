@@ -4,9 +4,6 @@ export type preUploadImgProps = OutLinkChatAuthProps & {
   // expiredTime?: Date;
   metadata?: Record<string, any>;
 };
-export type UploadImgProps = preUploadImgProps & {
-  base64Img: string;
-};
 
 export type UrlFetchParams = {
   urlList: string[];

@@ -156,6 +156,25 @@ const SelectAppModal = ({
                 const selected = selectedList.some((app) => app.appId === item._id);
                 const isFolder = AppFolderTypeList.includes(item.type);
 
+                const handleItemClick = () => {
+                  if (isFolder) {
+                    setParentId(item._id);
+                  } else if (selected) {
+                    setSelectedList((state) => state.filter((app) => app.appId !== item._id));
+                  } else {
+                    setSelectedList((state) => [
+                      ...state,
+                      {
+                        appId: item._id,
+                        toolName: item.name,
+                        appName: item.name,
+                        avatar: item.avatar,
+                        description: item.intro
+                      }
+                    ]);
+                  }
+                };
+
                 return (
                   <HStack
                     key={item._id}
@@ -166,27 +185,10 @@ const SelectAppModal = ({
                     _hover={{
                       bg: 'myGray.100'
                     }}
-                    onClick={() => {
-                      if (isFolder) {
-                        setParentId(item._id);
-                      } else if (selected) {
-                        setSelectedList((state) => state.filter((app) => app.appId !== item._id));
-                      } else {
-                        setSelectedList((state) => [
-                          ...state,
-                          {
-                            appId: item._id,
-                            toolName: item.name,
-                            appName: item.name,
-                            avatar: item.avatar,
-                            description: item.intro
-                          }
-                        ]);
-                      }
-                    }}
+                    onClick={handleItemClick}
                   >
-                    <Flex alignItems={'center'} w={'1.25rem'}>
-                      {!isFolder && <Checkbox isChecked={selected} />}
+                    <Flex alignItems={'center'} w={'1.25rem'} onClick={(e) => e.stopPropagation()}>
+                      {!isFolder && <Checkbox isChecked={selected} onChange={handleItemClick} />}
                     </Flex>
                     <Avatar src={item.avatar} w="1.5rem" borderRadius={'sm'} />
                     <Box>{item.name}</Box>

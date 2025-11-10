@@ -19,6 +19,7 @@ import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { delay } from '@fastgpt/service/common/bullmq';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -161,12 +162,11 @@ export async function generateQA(): Promise<any> {
         // Push usage
         pushLLMTrainingUsage({
           teamId: data.teamId,
-          tmbId: data.tmbId,
           inputTokens,
           outputTokens,
-          billId: data.billId,
+          usageId: data.billId,
           model: modelData.model,
-          mode: 'qa'
+          type: UsageItemTypeEnum.training_qa
         });
 
         addLog.info(`[QA Queue] Finish`, {

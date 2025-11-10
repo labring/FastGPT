@@ -41,6 +41,8 @@
   "points": "Points",
   "project_name": "Project name",
   "qa": "QA",
+  "rerank": "Rerank",
+  "search_test": "Search test",
   "select_member_and_source_first": "Please select members and types first",
   "share": "Share Link",
   "source": "source",

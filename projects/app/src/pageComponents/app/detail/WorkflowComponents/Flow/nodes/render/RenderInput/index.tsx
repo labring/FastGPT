@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -8,6 +8,7 @@ import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import CommonInputForm from './templates/CommonInputForm';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -100,14 +101,14 @@ type Props = {
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
 
-  const filterProInputs = useMemo(() => {
+  const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
       if (input.isPro && !feConfigs?.isPlus) return false;
       return true;
     });
   }, [feConfigs?.isPlus, flowInputList]);
 
-  const filterInputs = useMemo(() => {
+  const filterInputs = useMemoEnhance(() => {
     return filterProInputs.filter((input) => {
       const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
       const isDynamic = !!input.canEdit;

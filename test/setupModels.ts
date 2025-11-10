@@ -61,4 +61,5 @@ export default async function setupModels() {
       weight: 1
     }
   };
+  global.systemModelList = [global.systemDefaultModel.llm!, global.systemDefaultModel.embedding!];
 }

@@ -27,7 +27,8 @@ import type {
   ChatInputGuideConfigType,
   AppChatConfigType,
   AppAutoExecuteConfigType,
-  AppQGConfigType
+  AppQGConfigType,
+  AppSchema
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -68,8 +69,8 @@ export const checkInputIsReference = (input: FlowNodeInputItemType) => {
 };
 
 /* node  */
-export const getGuideModule = (modules: StoreNodeItemType[]) =>
-  modules.find(
+export const getGuideModule = (nodes: StoreNodeItemType[]) =>
+  nodes.find(
     (item) =>
       item.flowNodeType === FlowNodeTypeEnum.systemConfig ||
       // @ts-ignore (adapt v1)
@@ -275,7 +276,7 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: WorkflowIOValueTypeEnum.any,
           required: item.required,
-          list: item.enums?.map((enumItem) => ({
+          list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
           }))
@@ -440,4 +441,25 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
+};
+
+export const removeUnauthModels = async ({
+  modules,
+  allowedModels = new Set()
+}: {
+  modules: AppSchema['modules'];
+  allowedModels?: Set<string>;
+}) => {
+  if (modules) {
+    modules.forEach((module) => {
+      module.inputs.forEach((input) => {
+        if (input.key === 'model') {
+          if (!allowedModels.has(input.value)) {
+            input.value = undefined;
+          }
+        }
+      });
+    });
+  }
+  return modules;
 };

@@ -116,3 +116,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
 }
 
 export default NextAPI(handler);
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb'
+    }
+  }
+};

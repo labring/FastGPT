@@ -44,9 +44,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const interactiveData =
+  let interactiveData =
     lastInteractive?.type === 'loopInteractive' ? lastInteractive?.params : undefined;
-  const lastIndex = interactiveData?.currentIndex;
+  let lastIndex = interactiveData?.currentIndex;
 
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
   const loopResponseDetail: ChatHistoryItemResType[] = [];
@@ -95,6 +95,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     const response = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
@@ -126,6 +127,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       interactiveResponse = response.workflowInteractiveResponse;
       break;
     }
+
+    // Clear last interactive data, avoid being influenced by the previous round of interaction
+    interactiveData = undefined;
+    lastIndex = undefined;
   }
 
   return {
@@ -150,12 +155,14 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        totalPoints,
-        moduleName: name
-      }
-    ],
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
+      ? [
+          {
+            totalPoints,
+            moduleName: name
+          }
+        ]
+      : [],
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables
   };
 };

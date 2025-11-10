@@ -1,0 +1,52 @@
+{
+  "tags": {
+    "fastgpt": "v4.13.2",
+    "fastgpt-sandbox": "v4.13.2",
+    "fastgpt-mcp_server": "v4.13.2",
+    "fastgpt-plugin": "v0.2.4",
+    "aiproxy": "v0.3.2",
+    "aiproxy-pg": "0.8.0-pg15",
+    "mongo": "5.0.18",
+    "redis": "7.2-alpine",
+    "minio": "RELEASE.2025-09-07T16-13-09Z",
+    "pg": "0.8.0-pg15",
+    "milvus-minio": "RELEASE.2023-03-20T20-16-18Z",
+    "milvus-etcd": "v3.5.5",
+    "milvus-standalone": "v2.4.3",
+    "oceanbase": "4.3.5-lts"
+  },
+  "images": {
+    "cn": {
+      "fastgpt": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt",
+      "fastgpt-plugin": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin",
+      "fastgpt-sandbox": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox",
+      "fastgpt-mcp_server": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server",
+      "aiproxy": "registry.cn-hangzhou.aliyuncs.com/labring/aiproxy",
+      "aiproxy-pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
+      "mongo": "registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo",
+      "redis": "registry.cn-hangzhou.aliyuncs.com/fastgpt/redis",
+      "minio": "registry.cn-hangzhou.aliyuncs.com/fastgpt/minio",
+      "pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
+      "milvus-minio": "minio/minio",
+      "milvus-etcd": "quay.io/coreos/etcd",
+      "milvus-standalone": "milvusdb/milvus",
+      "oceanbase": "oceanbase/oceanbase-ce"
+    },
+    "global": {
+      "fastgpt": "ghcr.io/labring/fastgpt",
+      "fastgpt-plugin": "ghcr.io/labring/fastgpt-plugin",
+      "fastgpt-sandbox": "ghcr.io/labring/fastgpt-sandbox",
+      "fastgpt-mcp_server": "ghcr.io/labring/fastgpt-mcp_server",
+      "aiproxy": "ghcr.io/labring/aiproxy",
+      "aiproxy-pg": "pgvector/pgvector",
+      "mongo": "mongo",
+      "redis": "redis",
+      "minio": "minio/minio",
+      "pg": "pgvector/pgvector",
+      "milvus-minio": "minio/minio",
+      "milvus-etcd": "quay.io/coreos/etcd",
+      "milvus-standalone": "milvusdb/milvus",
+      "oceanbase": "oceanbase/oceanbase-ce"
+    }
+  }
+}

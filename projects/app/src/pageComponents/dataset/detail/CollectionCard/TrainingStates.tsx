@@ -102,11 +102,10 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
     }[] = [
       {
         label: t(TrainingProcess.parsing.label),
-        status: (() => {
-          if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
-          if (isContentParsing) return TrainingStatus.Running;
-          return TrainingStatus.Ready;
-        })(),
+        statusText: getStatusText(TrainingModeEnum.parse),
+        status: getTrainingStatus({
+          errorCount: trainingDetail.errorCounts.parse
+        }),
         errorCount: trainingDetail.errorCounts.parse
       },
       ...(isImageParse
@@ -556,7 +555,7 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={2}>
+        <Flex align="center" justify="space-between" mb={4}>
           <FillRowTabs
             py={1}
             value={tab}

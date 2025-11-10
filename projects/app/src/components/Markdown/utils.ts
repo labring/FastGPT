@@ -14,6 +14,11 @@ export enum CodeClassNameEnum {
 }
 
 export const mdTextFormat = (text: string) => {
+  // 处理 Windows 文件路径中的反斜杠，防止被 Markdown 转义：C:\path\file 或 c:\path\file
+  text = text.replace(/([A-Za-z]:\\[^\s`\[\]()]*)/g, (match) => {
+    return match.replace(/\\/g, '\\\\');
+  });
+
   // NextChat function - Format latex to $$
   const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g;
   text = text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {

@@ -3,9 +3,12 @@ import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../context';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -18,9 +21,14 @@ type Props = {
 const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
-  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
+  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
+  const { getMyModelList } = useSystemStore();
+
+  const { data: myModels } = useRequest2(getMyModelList, {
+    manual: false
+  });
 
   return (
     <MyModal
@@ -44,6 +52,7 @@ const ImportSettings = ({ onClose }: Props) => {
             }
             try {
               const data = JSON.parse(value);
+              removeUnauthModels({ modules: data.nodes, allowedModels: myModels });
               await initData(data);
               toast({
                 title: t('app:import_configs_success'),

@@ -1,5 +1,5 @@
-import type { UsageSourceEnum } from './constants';
-import type { UsageListItemCountType, UsageListItemType } from './type';
+import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
+import type { UsageItemCountType, UsageItemType, UsageListItemType, UsageSchemaType } from './type';
 
 export type CreateTrainingUsageProps = {
   name: string;
@@ -22,21 +22,15 @@ export type GetUsageDashboardResponseItem = {
   totalPoints: number;
 };
 
-export type ConcatUsageProps = UsageListItemCountType & {
+export type CreateUsageProps = Omit<UsageSchemaType, '_id' | 'time'>;
+export type ConcatUsageProps = {
   teamId: string;
-  tmbId: string;
-  billId?: string;
+  usageId: string;
   totalPoints: number;
-  listIndex?: number;
-};
-
-export type CreateUsageProps = {
+  itemType: UsageItemTypeEnum;
+} & UsageItemCountType;
+export type PushUsageItemsProps = {
   teamId: string;
-  tmbId: string;
-  appName: string;
-  appId?: string;
-  pluginId?: string;
-  totalPoints: number;
-  source: `${UsageSourceEnum}`;
-  list: UsageListItemType[];
+  usageId: string;
+  list: UsageItemType[];
 };

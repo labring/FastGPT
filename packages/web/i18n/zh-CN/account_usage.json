@@ -43,6 +43,8 @@
   "points": "积分",
   "project_name": "项目名",
   "qa": "问答对提取",
+  "rerank": "结果重排",
+  "search_test": "搜索测试",
   "select_member_and_source_first": "请先选中成员和类型",
   "share": "分享链接",
   "source": "来源",

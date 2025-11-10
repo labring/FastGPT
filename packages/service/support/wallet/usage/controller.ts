@@ -1,19 +1,21 @@
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoUsage } from './schema';
 import { type ClientSession } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import {
-  type ConcatUsageProps,
-  type CreateUsageProps
+import type {
+  PushUsageItemsProps,
+  ConcatUsageProps,
+  CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '../../../../web/i18n/utils';
 import { formatModelChars2Points } from './utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { MongoUsageItem } from './usageItemSchema';
 
 export async function createUsage(data: CreateUsageProps) {
   try {
-    await global.createUsageHandler(data);
+    return await global.createUsageHandler(data);
   } catch (error) {
     addLog.error('createUsage error', error);
   }
@@ -25,15 +27,94 @@ export async function concatUsage(data: ConcatUsageProps) {
     addLog.error('concatUsage error', error);
   }
 }
+export async function pushUsageItems(data: PushUsageItemsProps) {
+  try {
+    await global.pushUsageItemsHandler(data);
+  } catch (error) {
+    addLog.error('pushUsageItems error', error);
+  }
+}
 
-export const createChatUsage = ({
+export const createPdfParseUsage = async ({
+  teamId,
+  tmbId,
+  pages,
+  usageId
+}: {
+  teamId: string;
+  tmbId: string;
+  pages: number;
+  usageId?: string;
+}) => {
+  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const totalPoints = pages * unitPrice;
+
+  if (usageId) {
+    pushUsageItems({
+      teamId,
+      usageId,
+      list: [{ moduleName: i18nT('account_usage:pdf_enhanced_parse'), amount: totalPoints, pages }]
+    });
+  } else {
+    createUsage({
+      teamId,
+      tmbId,
+      appName: i18nT('account_usage:pdf_enhanced_parse'),
+      totalPoints,
+      source: UsageSourceEnum.pdfParse,
+      list: [
+        {
+          moduleName: i18nT('account_usage:pdf_enhanced_parse'),
+          amount: totalPoints,
+          pages
+        }
+      ]
+    });
+  }
+};
+export const pushLLMTrainingUsage = async ({
+  teamId,
+  model,
+  inputTokens,
+  outputTokens,
+  usageId,
+  type
+}: {
+  teamId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  usageId: string;
+  type: UsageItemTypeEnum;
+}) => {
+  // Compute points
+  const { totalPoints } = formatModelChars2Points({
+    model,
+    inputTokens,
+    outputTokens
+  });
+
+  concatUsage({
+    usageId,
+    teamId,
+    itemType: type,
+    totalPoints,
+    inputTokens,
+    outputTokens
+  });
+
+  return { totalPoints };
+};
+
+/* Create usage, and return usageId */
+// Chat
+export const createChatUsageRecord = async ({
   appName,
   appId,
   pluginId,
   teamId,
   tmbId,
-  source,
-  flowUsages
+  source
 }: {
   appName: string;
   appId?: string;
@@ -41,42 +122,46 @@ export const createChatUsage = ({
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
-  flowUsages: ChatNodeUsageType[];
 }) => {
-  const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  createUsage({
+  const [{ _id: usageId }] = await MongoUsage.create(
+    [
+      {
+        teamId,
+        tmbId,
+        appId,
+        pluginId,
+        appName,
+        source,
+        totalPoints: 0
+      }
+    ],
+    { ordered: true }
+  );
+  return String(usageId);
+};
+export const pushChatItemUsage = ({
+  teamId,
+  usageId,
+  nodeUsages
+}: {
+  teamId: string;
+  usageId: string;
+  nodeUsages: ChatNodeUsageType[];
+}) => {
+  pushUsageItems({
     teamId,
-    tmbId,
-    appName,
-    appId,
-    pluginId,
-    totalPoints,
-    source,
-    list: flowUsages.map((item) => ({
+    usageId,
+    list: nodeUsages.map((item) => ({
       moduleName: item.moduleName,
-      amount: item.totalPoints || 0,
+      amount: item.totalPoints,
       model: item.model,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens
     }))
   });
-  addLog.debug(`Create chat usage`, {
-    source,
-    teamId,
-    totalPoints
-  });
-  return { totalPoints };
 };
 
-export type DatasetTrainingMode = 'paragraph' | 'qa' | 'autoIndex' | 'imageIndex' | 'imageParse';
-export const datasetTrainingUsageIndexMap: Record<DatasetTrainingMode, number> = {
-  paragraph: 1,
-  qa: 2,
-  autoIndex: 3,
-  imageIndex: 4,
-  imageParse: 5
-};
+// Dataset training
 export const createTrainingUsage = async ({
   teamId,
   tmbId,
@@ -91,189 +176,161 @@ export const createTrainingUsage = async ({
   tmbId: string;
   appName: string;
   billSource: UsageSourceEnum;
-  vectorModel?: string;
+
+  vectorModel: string;
   agentModel?: string;
   vllmModel?: string;
   session?: ClientSession;
 }) => {
-  const [{ _id }] = await MongoUsage.create(
-    [
+  const create = async (session: ClientSession) => {
+    const [result] = await MongoUsage.create(
+      [
+        {
+          teamId,
+          tmbId,
+          source: billSource,
+          appName,
+          totalPoints: 0
+        }
+      ],
+      { session, ordered: true }
+    );
+    await MongoUsageItem.create(
+      [
+        {
+          teamId,
+          usageId: result._id,
+          itemType: UsageItemTypeEnum.training_vector,
+          name: i18nT('account_usage:embedding_index'),
+          model: vectorModel,
+          amount: 0,
+          inputTokens: 0
+        },
+        ...(agentModel
+          ? [
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_paragraph,
+                name: i18nT('account_usage:llm_paragraph'),
+                model: agentModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              },
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_qa,
+                name: i18nT('account_usage:qa'),
+                model: agentModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              },
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_autoIndex,
+                name: i18nT('account_usage:auto_index'),
+                model: agentModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              }
+            ]
+          : []),
+        ...(vllmModel
+          ? [
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_imageIndex,
+                name: i18nT('account_usage:image_index'),
+                model: vllmModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              },
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_imageParse,
+                name: i18nT('account_usage:image_parse'),
+                model: vllmModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              }
+            ]
+          : [])
+      ],
       {
-        teamId,
-        tmbId,
-        appName,
-        source: billSource,
-        totalPoints: 0,
-        list: [
-          ...(vectorModel
-            ? [
-                {
-                  moduleName: i18nT('account_usage:embedding_index'),
-                  model: vectorModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                }
-              ]
-            : []),
-          ...(agentModel
-            ? [
-                {
-                  moduleName: i18nT('account_usage:llm_paragraph'),
-                  model: agentModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                },
-                {
-                  moduleName: i18nT('account_usage:qa'),
-                  model: agentModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                },
-                {
-                  moduleName: i18nT('account_usage:auto_index'),
-                  model: agentModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                }
-              ]
-            : []),
-          ...(vllmModel
-            ? [
-                {
-                  moduleName: i18nT('account_usage:image_index'),
-                  model: vllmModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                },
-                {
-                  moduleName: i18nT('account_usage:image_parse'),
-                  model: vllmModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                }
-              ]
-            : [])
-        ]
+        session,
+        ordered: true
       }
-    ],
-    { session, ordered: true }
-  );
+    );
 
-  return { billId: String(_id) };
+    return { usageId: String(result._id) };
+  };
+  if (session) return create(session);
+  return mongoSessionRun(create);
 };
 
-export const createPdfParseUsage = async ({
-  teamId,
-  tmbId,
-  pages
-}: {
-  teamId: string;
-  tmbId: string;
-  pages: number;
-}) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
-  const totalPoints = pages * unitPrice;
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName: i18nT('account_usage:pdf_enhanced_parse'),
-    totalPoints,
-    source: UsageSourceEnum.pdfParse,
-    list: [
-      {
-        moduleName: i18nT('account_usage:pdf_enhanced_parse'),
-        amount: totalPoints,
-        pages
-      }
-    ]
-  });
-};
-
-export const pushLLMTrainingUsage = async ({
-  teamId,
-  tmbId,
-  model,
-  inputTokens,
-  outputTokens,
-  billId,
-  mode
-}: {
-  teamId: string;
-  tmbId: string;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  billId: string;
-  mode: DatasetTrainingMode;
-}) => {
-  const index = datasetTrainingUsageIndexMap[mode];
-
-  // Compute points
-  const { totalPoints } = formatModelChars2Points({
-    model,
-    inputTokens,
-    outputTokens
-  });
-
-  concatUsage({
-    billId,
-    teamId,
-    tmbId,
-    totalPoints,
-    inputTokens,
-    outputTokens,
-    listIndex: index
-  });
-
-  return { totalPoints };
-};
-
+// Evaluation
 export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
-  model,
-  session
+  model
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
   model: string;
-  session?: ClientSession;
 }) => {
-  const [{ _id: usageId }] = await MongoUsage.create(
-    [
+  const { usageId } = await mongoSessionRun(async (session) => {
+    const [{ _id: usageId }] = await MongoUsage.create(
+      [
+        {
+          teamId,
+          tmbId,
+          appName,
+          source: UsageSourceEnum.evaluation,
+          totalPoints: 0
+        }
+      ],
+      { session, ordered: true }
+    );
+    await MongoUsageItem.create(
+      [
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.evaluation_generateAnswer,
+          name: i18nT('account_usage:generate_answer'),
+          amount: 0,
+          count: 0
+        },
+        {
+          teamId,
+          usageId,
+          itemType: UsageItemTypeEnum.evaluation_answerAccuracy,
+          name: i18nT('account_usage:answer_accuracy'),
+          amount: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          model
+        }
+      ],
       {
-        teamId,
-        tmbId,
-        appName,
-        source: UsageSourceEnum.evaluation,
-        totalPoints: 0,
-        list: [
-          {
-            moduleName: i18nT('account_usage:generate_answer'),
-            amount: 0,
-            count: 0
-          },
-          {
-            moduleName: i18nT('account_usage:answer_accuracy'),
-            amount: 0,
-            inputTokens: 0,
-            outputTokens: 0,
-            model
-          }
-        ]
+        session,
+        ordered: true
       }
-    ],
-    { session, ordered: true }
-  );
+    );
+
+    return { usageId: String(usageId) };
+  });
 
   return { usageId };
 };

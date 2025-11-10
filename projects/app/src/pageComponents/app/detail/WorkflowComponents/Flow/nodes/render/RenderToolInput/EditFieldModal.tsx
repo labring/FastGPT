@@ -18,10 +18,10 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 const EditFieldModal = ({
   defaultValue = defaultEditFormData,
@@ -30,7 +30,7 @@ const EditFieldModal = ({
 }: EditFieldModalProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
     defaultValues: defaultValue

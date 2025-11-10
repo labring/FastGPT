@@ -8,14 +8,21 @@ import { useContextSelector } from 'use-context-selector';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const mouseInCanvas = useContextSelector(WorkflowEventContext, (v) => v.mouseInCanvas);
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+  const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
+
+  const { getMyModelList } = useSystemStore();
+  const { data: myModels } = useRequest2(getMyModelList, {
+    manual: false
+  });
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
@@ -46,7 +53,7 @@ export const useKeyboard = () => {
     copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
   }, [copyData, getNodes, hasInputtingElement, t]);
 
-  const onParse = useCallback(async () => {
+  const onPaste = useCallback(async () => {
     if (hasInputtingElement()) return;
     const copyResult = await navigator.clipboard.readText();
     try {
@@ -60,6 +67,11 @@ export const useKeyboard = () => {
         )
         .map((item) => {
           const nodeId = getNanoid();
+          item.data.inputs.forEach((input) => {
+            if (input.key === 'model') {
+              if (!myModels?.has(input.value)) input.value = undefined;
+            }
+          });
           return {
             // reset id
             ...item,
@@ -92,7 +104,7 @@ export const useKeyboard = () => {
           .concat(newNodes)
       );
     } catch (error) {}
-  }, [computedNewNodeName, hasInputtingElement, setNodes]);
+  }, [computedNewNodeName, hasInputtingElement, myModels, setNodes]);
 
   useKeyPressEffect(['ctrl.c', 'meta.c'], (e) => {
     if (!mouseInCanvas) return;
@@ -100,7 +112,7 @@ export const useKeyboard = () => {
   });
   useKeyPressEffect(['ctrl.v', 'meta.v'], (e) => {
     if (!mouseInCanvas) return;
-    onParse();
+    onPaste();
   });
   useKeyPressEffect(['ctrl.s', 'meta.s'], (e) => {
     e.preventDefault();

@@ -48,6 +48,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     lastInteractive,
     runningUserInfo,
     externalProvider,
+    usageId,
     params: {
       model,
       systemPrompt,
@@ -117,7 +118,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       fileLinks,
       inputFiles: globalFiles,
-      hasReadFilesTool
+      hasReadFilesTool,
+      usageId
     });
 
     const concatenateSystemPrompt = [
@@ -273,7 +275,8 @@ const getMultiInput = async ({
   maxFiles,
   customPdfParse,
   inputFiles,
-  hasReadFilesTool
+  hasReadFilesTool,
+  usageId
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   histories: ChatItemType[];
@@ -283,6 +286,7 @@ const getMultiInput = async ({
   customPdfParse?: boolean;
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
+  usageId?: string;
 }) => {
   // Not file quote
   if (!fileLinks || hasReadFilesTool) {
@@ -309,6 +313,7 @@ const getMultiInput = async ({
     requestOrigin,
     maxFiles,
     customPdfParse,
+    usageId,
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId
   });

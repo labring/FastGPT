@@ -225,7 +225,7 @@ const MyMenu = ({
       autoSelect={false}
       direction={'ltr'}
       isLazy
-      lazyBehavior={'keepMounted'}
+      lazyBehavior={'unmount'}
       placement={placement}
       computePositionOnMount
     >

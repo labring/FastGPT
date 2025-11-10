@@ -5,13 +5,13 @@ import { AppContext } from '../context';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowContext } from './context';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowUtilsContext } from './context/workflowUtilsContext';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 const ExportConfigPopover = dynamic(
@@ -26,7 +26,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onOpenTeamTagModal = useContextSelector(AppContext, (v) => v.onOpenTeamTagModal);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
-  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
+  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 

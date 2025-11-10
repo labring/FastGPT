@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Accordion,
   AccordionButton,
@@ -31,7 +31,7 @@ import {
   AppNodeFlowNodeTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -43,11 +43,11 @@ import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -59,6 +59,7 @@ export type TemplateListProps = {
 
 const NodeTemplateListItem = ({
   template,
+  templateType,
   handleAddNode,
   isPopover,
   onUpdateParentId
@@ -76,8 +77,9 @@ const NodeTemplateListItem = ({
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
+  const isSystemTool = templateType === TemplateTypeEnum.systemPlugin;
 
   return (
     <MyTooltip
@@ -94,16 +96,20 @@ const NodeTemplateListItem = ({
             <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
               {template.name}
             </Box>
-            <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
+            {isSystemTool && (
+              <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
+            )}
           </Flex>
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
             {template.intro || t('common:core.workflow.Not intro')}
           </Box>
-          <CostTooltip
-            cost={template.currentCost}
-            hasTokenFee={template.hasTokenFee}
-            isFolder={template.isFolder}
-          />
+          {isSystemTool && (
+            <CostTooltip
+              cost={template.currentCost}
+              hasTokenFee={template.hasTokenFee}
+              isFolder={template.isFolder}
+            />
+          )}
         </Box>
       }
       shouldWrapChildren={false}
@@ -192,7 +198,7 @@ const NodeTemplateListItem = ({
           </Box>
         )}
         {/* Author */}
-        {!isPopover && template.authorAvatar && template.author && (
+        {!isPopover && template.authorAvatar && template.author && isSystemTool && (
           <HStack spacing={1} maxW={'120px'} flexShrink={0}>
             <MyAvatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
             <Box fontSize={'xs'} className="textEllipsis">
@@ -215,14 +221,14 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
   });
 
-  const handleAddNode = useMemoizedFn(
+  const handleAddNode = useCallback(
     async ({
       template,
       position
@@ -256,7 +262,7 @@ const NodeTemplateList = ({
           [NodeInputKeyEnum.fileUrlList]: undefined
         };
 
-        nodeList.forEach((node) => {
+        getNodeList().forEach((node) => {
           if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
             defaultValueMap[NodeInputKeyEnum.userChatInput] = [
               node.nodeId,
@@ -268,7 +274,14 @@ const NodeTemplateList = ({
           }
         });
 
-        const currentNode = nodeList.find((node) => node.nodeId === handleParams?.nodeId);
+        const currentNode = getNodeById(handleParams?.nodeId);
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
+          toast({
+            status: 'warning',
+            title: t('workflow:can_not_loop')
+          });
+          return;
+        }
 
         const newNode = nodeTemplate2FlowNode({
           template: {
@@ -333,17 +346,57 @@ const NodeTemplateList = ({
       } catch (error) {
         console.error('Failed to create node template:', error);
       }
-    }
+    },
+    [computedNewNodeName, getNodeById, handleParams?.nodeId, getNodeList, onAddNode, t, toast]
   );
 
-  const formatTemplatesArray = useMemoizedFn(
-    (
-      type: TemplateTypeEnum,
-      templates: NodeTemplateListItemType[]
-    ): { list: NodeTemplateListType; label: string }[] => {
-      const data = (() => {
-        if (type === TemplateTypeEnum.basic) {
-          const map = workflowSystemNodeTemplateList.reduce<
+  const formatTemplatesArrayData = useMemo(() => {
+    const data = (() => {
+      if (templateType === TemplateTypeEnum.basic) {
+        const map = workflowSystemNodeTemplateList.reduce<
+          Record<
+            string,
+            {
+              list: NodeTemplateListItemType[];
+              label: string;
+            }
+          >
+        >((acc, item) => {
+          acc[item.type] = {
+            list: [],
+            label: t(item.label)
+          };
+          return acc;
+        }, {});
+
+        templates.forEach((item) => {
+          if (map[item.templateType]) {
+            map[item.templateType].list.push({
+              ...item,
+              name: t(item.name as any),
+              intro: t(item.intro as any)
+            });
+          }
+        });
+
+        return [
+          {
+            label: '',
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
+          }
+        ];
+      }
+
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        console.log(pluginGroups, 222);
+        return pluginGroups.map((group) => {
+          const map = group.groupTypes.reduce<
             Record<
               string,
               {
@@ -352,9 +405,9 @@ const NodeTemplateList = ({
               }
             >
           >((acc, item) => {
-            acc[item.type] = {
+            acc[item.typeId] = {
               list: [],
-              label: t(item.label)
+              label: t(parseI18nString(item.typeName, i18n.language))
             };
             return acc;
           }, {});
@@ -363,88 +416,40 @@ const NodeTemplateList = ({
             if (map[item.templateType]) {
               map[item.templateType].list.push({
                 ...item,
-                name: t(item.name as any),
-                intro: t(item.intro as any)
+                name: t(parseI18nString(item.name, i18n.language)),
+                intro: t(parseI18nString(item.intro, i18n.language))
               });
             }
           });
+          return {
+            label: group.groupName,
+            list: Object.entries(map)
+              .map(([type, { list, label }]) => ({
+                type,
+                label,
+                list
+              }))
+              .filter((item) => item.list.length > 0)
+          };
+        });
+      }
 
-          return [
+      // Team apps
+      return [
+        {
+          label: '',
+          list: [
             {
+              type: '',
               label: '',
-              list: Object.entries(map)
-                .map(([type, { list, label }]) => ({
-                  type,
-                  label,
-                  list
-                }))
-                .filter((item) => item.list.length > 0)
+              list: templates
             }
-          ];
+          ]
         }
-
-        if (type === TemplateTypeEnum.systemPlugin) {
-          return pluginGroups.map((group) => {
-            const map = group.groupTypes.reduce<
-              Record<
-                string,
-                {
-                  list: NodeTemplateListItemType[];
-                  label: string;
-                }
-              >
-            >((acc, item) => {
-              acc[item.typeId] = {
-                list: [],
-                label: t(parseI18nString(item.typeName, i18n.language))
-              };
-              return acc;
-            }, {});
-
-            templates.forEach((item) => {
-              if (map[item.templateType]) {
-                map[item.templateType].list.push({
-                  ...item,
-                  name: t(parseI18nString(item.name, i18n.language)),
-                  intro: t(parseI18nString(item.intro, i18n.language))
-                });
-              }
-            });
-            return {
-              label: group.groupName,
-              list: Object.entries(map)
-                .map(([type, { list, label }]) => ({
-                  type,
-                  label,
-                  list
-                }))
-                .filter((item) => item.list.length > 0)
-            };
-          });
-        }
-
-        // Team apps
-        return [
-          {
-            label: '',
-            list: [
-              {
-                type: '',
-                label: '',
-                list: templates
-              }
-            ]
-          }
-        ];
-      })();
-      return data.filter(({ list }) => list.length > 0);
-    }
-  );
-
-  const formatTemplatesArrayData = useMemo(
-    () => formatTemplatesArray(templateType, templates),
-    [templateType, templates, formatTemplatesArray]
-  );
+      ];
+    })();
+    return data.filter(({ list }) => list.length > 0);
+  }, [templateType, templates, t, pluginGroups, i18n.language]);
 
   const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (

@@ -18,11 +18,13 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -197,7 +199,8 @@ export const rewriteRuntimeWorkFlow = async ({
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
     const pushEdges = (nodeId: string) => {
@@ -241,6 +244,22 @@ export const rewriteRuntimeWorkFlow = async ({
           ...newToolNode,
           name: `${toolSetNode.name}/${tool.name}`
         });
+        pushEdges(newToolNode.nodeId);
+      });
+    } else if (httpToolsetVal) {
+      const parentId = toolSetNode.pluginId || '';
+      httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
+        const newToolNode = getHTTPToolRuntimeNode({
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
+          },
+          nodeId: `${parentId}${index}`,
+          avatar: toolSetNode.avatar,
+          parentId
+        });
+
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     }

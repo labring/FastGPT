@@ -32,10 +32,13 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
+import { pushTrack } from '../../../common/middle/tracks/utils';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
   teamId: string;
+  uid?: string;
+  tmbId?: string;
   model: string;
   datasetIds: string[];
   reRankQuery: string;
@@ -899,6 +902,8 @@ export async function searchDatasetData(
 
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
+
+  pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
     searchRes: filterMaxTokensResult,

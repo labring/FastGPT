@@ -1,4 +1,4 @@
-import { type UploadImgProps } from '@fastgpt/global/common/file/api';
+import { type preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
 import { type ClientSession, Types } from '../../../common/mongo';
@@ -18,7 +18,8 @@ export async function uploadMongoImg({
   metadata,
   shareId,
   forever = false
-}: UploadImgProps & {
+}: preUploadImgProps & {
+  base64Img: string;
   teamId: string;
   forever?: Boolean;
 }) {
@@ -55,6 +56,46 @@ export async function uploadMongoImg({
 
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
+export const copyImage = async ({
+  teamId,
+  imageUrl,
+  session
+}: {
+  teamId: string;
+  imageUrl: string;
+  session?: ClientSession;
+}) => {
+  const imageId = getIdFromPath(imageUrl);
+  if (!imageId) return imageUrl;
+
+  const image = await MongoImage.findOne(
+    {
+      _id: imageId,
+      teamId
+    },
+    undefined,
+    {
+      session
+    }
+  );
+  if (!image) return imageUrl;
+
+  const [newImage] = await MongoImage.create(
+    [
+      {
+        teamId,
+        binary: image.binary,
+        metadata: image.metadata
+      }
+    ],
+    {
+      session,
+      ordered: true
+    }
+  );
+
+  return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+};
 
 const getIdFromPath = (path?: string) => {
   if (!path) return;
@@ -68,23 +109,6 @@ const getIdFromPath = (path?: string) => {
   if (!id || !Types.ObjectId.isValid(id)) return;
 
   return id;
-};
-// 删除旧的头像，新的头像去除过期时间
-export const refreshSourceAvatar = async (
-  path?: string,
-  oldPath?: string,
-  session?: ClientSession
-) => {
-  const newId = getIdFromPath(path);
-  const oldId = getIdFromPath(oldPath);
-
-  if (!newId || newId === oldId) return;
-
-  await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
-
-  if (oldId) {
-    await MongoImage.deleteOne({ _id: oldId }, { session });
-  }
 };
 export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!path) return;

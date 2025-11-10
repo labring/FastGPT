@@ -10,18 +10,18 @@ import type {
   RoleListType,
   RoleValueType
 } from '@fastgpt/global/support/permission/type';
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
 import MemberListCard, { type MemberListCardProps } from './MemberListCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
 import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 
@@ -31,7 +31,7 @@ export type MemberManagerInputPropsType = {
   onGetCollaboratorList: () => Promise<CollaboratorListType>;
   roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
-  onDelOneCollaborator: (
+  onDelOneCollaborator?: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => Promise<any>;
   refreshDeps?: any[];
@@ -88,13 +88,15 @@ const CollaboratorContextProvider = ({
   refetchResource,
   refreshDeps = [],
   defaultRole,
-  isInheritPermission
+  isInheritPermission,
+  selectedHint
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
   isInheritPermission?: boolean;
   hasParent?: boolean;
   addPermissionOnly?: boolean;
+  selectedHint?: string;
 }) => {
   const { t } = useTranslation();
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
@@ -104,8 +106,10 @@ const CollaboratorContextProvider = ({
   const onDelOneCollaboratorThen = async (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => {
-    await onDelOneCollaborator(props);
-    refetchCollaboratorList();
+    if (onDelOneCollaborator) {
+      await onDelOneCollaborator(props);
+      refetchCollaboratorList();
+    }
   };
 
   const { feConfigs } = useSystemStore();
@@ -218,6 +222,7 @@ const CollaboratorContextProvider = ({
             onCloseManageModal();
             refetchResource?.();
           }}
+          SelectedTip={selectedHint ? <LightTip text={selectedHint} /> : undefined}
         />
       )}
     </CollaboratorContext.Provider>
@@ -225,3 +230,35 @@ const CollaboratorContextProvider = ({
 };
 
 export default CollaboratorContextProvider;
+
+export const LazyCollaboratorProvider = ({
+  children,
+  ...props
+}: {
+  children: (params: { onOpenManageModal: () => void }) => React.ReactNode;
+} & React.ComponentProps<typeof CollaboratorContextProvider>) => {
+  const [isProviderMounted, setIsProviderMounted] = useState(false);
+
+  const handleOpen = useCallback(() => {
+    setIsProviderMounted(true);
+  }, []);
+
+  // 如果还未挂载 Provider，只渲染触发按钮
+  if (!isProviderMounted) {
+    return <>{children({ onOpenManageModal: handleOpen })}</>;
+  }
+
+  // Provider 已挂载，渲染完整的协作者管理功能
+  return (
+    <CollaboratorContextProvider {...props}>
+      {({ onOpenManageModal }) => {
+        // 组件挂载后自动打开模态框
+        useEffect(() => {
+          onOpenManageModal();
+        }, [onOpenManageModal]);
+
+        return <>{children({ onOpenManageModal })}</>;
+      }}
+    </CollaboratorContextProvider>
+  );
+};

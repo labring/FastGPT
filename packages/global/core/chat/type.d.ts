@@ -20,6 +20,7 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 
+/* --------- chat ---------- */
 export type ChatSchemaType = {
   _id: string;
   chatId: string;
@@ -49,6 +50,7 @@ export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
   appId: AppSchema;
 };
 
+/* --------- chat item ---------- */
 export type UserChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
@@ -65,6 +67,7 @@ export type UserChatItemType = {
   value: UserChatItemValueItemType[];
   hideInUI?: boolean;
 };
+
 export type SystemChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text;
   text?: {
@@ -92,7 +95,6 @@ export type AIChatItemValueItemType = {
   tools?: ToolModuleResponseItemType[];
   interactive?: WorkflowInteractiveResponseType;
 };
-
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
@@ -101,14 +103,22 @@ export type AIChatItemType = {
   userBadFeedback?: string;
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
+
+  durationSeconds?: number;
+  errorMsg?: string;
+  citeCollectionIds?: string[];
+
+  // @deprecated 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
 };
+
 export type ChatItemValueItemType =
   | UserChatItemValueItemType
   | SystemChatItemValueItemType
   | AIChatItemValueItemType;
+export type ChatItemMergeType = UserChatItemType | SystemChatItemType | AIChatItemType;
 
-export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatItemSchema = ChatItemMergeType & {
   dataId: string;
   chatId: string;
   userId: string;
@@ -116,8 +126,6 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   tmbId: string;
   appId: string;
   time: Date;
-  durationSeconds?: number;
-  errorMsg?: string;
 };
 
 export type AdminFbkType = {
@@ -128,7 +136,6 @@ export type AdminFbkType = {
   a?: string;
 };
 
-/* --------- chat item ---------- */
 export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
@@ -136,12 +143,12 @@ export type ResponseTagItemType = {
   toolCiteLinks?: ToolCiteLinksType[];
 };
 
-export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatItemType = ChatItemMergeType & {
   dataId?: string;
 } & ResponseTagItemType;
 
 // Frontend type
-export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
@@ -153,6 +160,16 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
+
+/* --------- chat item response ---------- */
+export type ChatItemResponseSchemaType = {
+  teamId: string;
+  appId: string;
+  chatId: string;
+  chatItemDataId: string;
+  data: ChatHistoryItemResType;
+};
+
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
   apps: AppType[];

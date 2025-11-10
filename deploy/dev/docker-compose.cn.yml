@@ -1,0 +1,229 @@
+# 用于开发的 docker-compose 文件:
+# - 只包含 FastGPT 的最小化运行条件
+# - 没有 FastGPT 本体
+# - 所有端口都映射到外层
+#   - pg: 5432
+#   - mongo: 27017
+#   - redis: 6379
+#   - fastgpt-sandbox: 3002
+#   - fastgpt-plugin: 3003
+#   - aiproxy: 3010
+# - 使用 pgvector 作为默认的向量库
+
+services:
+  # Vector DB
+  pg:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15
+    container_name: pg
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 5432:5432
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # DB
+  mongo:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # cpu 不支持 AVX 时候使用 4.4.29
+    container_name: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$!
+  redis:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
+    container_name: redis
+    ports:
+      - 6379:6379
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'mypassword', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - ./redis/data:/data
+  fastgpt-minio:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - fastgpt
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  sandbox:
+    container_name: sandbox
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.13.2
+    ports:
+      - 3002:3000
+    networks:
+      - fastgpt
+    restart: always
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.13.2
+    ports:
+      - 3005:3000
+    networks:
+      - fastgpt
+    restart: always
+    environment:
+      - FASTGPT_ENDPOINT=http://fastgpt:3000
+  fastgpt-plugin:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.2.4
+    container_name: fastgpt-plugin
+    restart: always
+    ports:
+      - 3003:3000
+    networks:
+      - fastgpt
+    environment:
+      - AUTH_TOKEN=token
+      - S3_ENDPOINT=fastgpt-minio
+      - S3_PORT=9000
+      - S3_USE_SSL=false
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_BUCKET=fastgpt-plugins
+      - S3_PUBLIC_BUCKET=fastgpt-public # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
+      - S3_PRIVATE_BUCKET=fastgpt-private # 系统插件热安装文件的桶，私有读写。
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true
+      - REDIS_URL=redis://default:mypassword@redis:6379
+    depends_on:
+      fastgpt-minio:
+        condition: service_healthy
+  # AI Proxy
+  aiproxy:
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.2
+    container_name: aiproxy
+    restart: unless-stopped
+    ports:
+      - 3010:3000
+    depends_on:
+      aiproxy_pg:
+        condition: service_healthy
+    networks:
+      - fastgpt
+      - aiproxy
+    environment:
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      - ADMIN_KEY=aiproxy
+      # 错误日志详情保存时间（小时）
+      - LOG_DETAIL_STORAGE_HOURS=1
+      # 数据库连接地址
+      - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # 最大重试次数
+      - RETRY_TIMES=3
+      # 不需要计费
+      - BILLING_ENABLED=false
+      # 不需要严格检测模型
+      - DISABLE_MODEL_CONFIG=true
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  aiproxy_pg:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
+    restart: unless-stopped
+    container_name: aiproxy_pg
+    volumes:
+      - ./aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - aiproxy
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+networks:
+  fastgpt:
+  aiproxy:

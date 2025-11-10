@@ -88,7 +88,7 @@ export const filterGPTMessageByMaxContext = async ({
 */
 export const loadRequestMessages = async ({
   messages,
-  useVision = true,
+  useVision = false,
   origin
 }: {
   messages: ChatCompletionMessageParam[];

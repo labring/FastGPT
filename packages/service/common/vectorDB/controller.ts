@@ -26,12 +26,36 @@ const getVectorObj = () => {
   return new PgVectorCtrl();
 };
 
-const getChcheKey = (teamId: string) => `${CacheKeyEnum.team_vector_count}:${teamId}`;
-const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId)), 30000, {
-  leading: true,
-  trailing: true
-});
-const onIncrCache = (teamId: string) => incrValueToCache(getChcheKey(teamId), 1);
+const teamVectorCache = {
+  getKey: function (teamId: string) {
+    return `${CacheKeyEnum.team_vector_count}:${teamId}`;
+  },
+  get: async function (teamId: string) {
+    const countStr = await getRedisCache(teamVectorCache.getKey(teamId));
+    if (countStr) {
+      return Number(countStr);
+    }
+    return undefined;
+  },
+  set: function ({ teamId, count }: { teamId: string; count: number }) {
+    retryFn(() =>
+      setRedisCache(teamVectorCache.getKey(teamId), count, CacheKeyEnumTime.team_vector_count)
+    ).catch();
+  },
+  delete: throttle(
+    function (teamId: string) {
+      return retryFn(() => delRedisCache(teamVectorCache.getKey(teamId))).catch();
+    },
+    30000,
+    {
+      leading: true,
+      trailing: true
+    }
+  ),
+  incr: function (teamId: string, count: number) {
+    retryFn(() => incrValueToCache(teamVectorCache.getKey(teamId), count)).catch();
+  }
+};
 
 const Vector = getVectorObj();
 
@@ -41,16 +65,17 @@ export const recallFromVectorStore = (props: EmbeddingRecallCtrlProps) =>
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const key = getChcheKey(teamId);
-
-  const countStr = await getRedisCache(key);
-  if (countStr) {
-    return Number(countStr);
+  const cacheCount = await teamVectorCache.get(teamId);
+  if (cacheCount !== undefined) {
+    return cacheCount;
   }
 
   const count = await Vector.getVectorCountByTeamId(teamId);
 
-  await setRedisCache(key, count, CacheKeyEnumTime.team_vector_count);
+  teamVectorCache.set({
+    teamId,
+    count
+  });
 
   return count;
 };
@@ -78,7 +103,7 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  onIncrCache(props.teamId);
+  teamVectorCache.incr(props.teamId, insertIds.length);
 
   return {
     tokens,
@@ -88,6 +113,6 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
   const result = await retryFn(() => Vector.delete(props));
-  onDelCache(props.teamId);
+  teamVectorCache.delete(props.teamId);
   return result;
 };

@@ -1,4 +1,3 @@
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -23,6 +22,8 @@ import {
   removeUtmParams,
   removeUtmWorkflow
 } from '@/web/support/marketing/utils';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 type FormType = {
   avatar: string;
@@ -66,14 +67,14 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   const avatar = watch('avatar');
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
+
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess(avatar) {
+        setValue('avatar', avatar);
+      }
+    });
+
   // If the user does not select an avatar, it will follow the type to change
   const selectedAvatar = useMemo(() => {
     if (avatar) return avatar;
@@ -162,7 +163,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
                 h={['1.75rem', '2.25rem']}
                 cursor={'pointer'}
                 borderRadius={'md'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
@@ -190,15 +191,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
         </ModalFooter>
       </MyModal>
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </>
   );
 };
