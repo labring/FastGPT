@@ -47,6 +47,13 @@ const Navbar = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
+        label: t('common:navbar.Chat'),
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
+        activeLink: ['/chat']
+      },
+      {
         label: t('common:navbar.Studio'),
         icon: 'navbar/dashboardLight',
         activeIcon: 'navbar/dashboardFill',
@@ -87,13 +94,6 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/promotion',
           '/account/model'
         ]
-      },
-      {
-        label: t('common:navbar.Chat'),
-        icon: 'navbar/chatLight',
-        activeIcon: 'navbar/chatFill',
-        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
-        activeLink: ['/chat']
       },
       ...(userInfo?.username === 'root'
         ? [
