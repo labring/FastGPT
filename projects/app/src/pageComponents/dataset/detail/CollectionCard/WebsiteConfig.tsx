@@ -80,6 +80,11 @@ const WebsiteConfigModal = ({
 
       imageIndex: chunkSettings?.imageIndex || defaultFormData.imageIndex,
       autoIndexes: chunkSettings?.autoIndexes || defaultFormData.autoIndexes,
+      hypeIndexes: chunkSettings?.hypeIndexes || defaultFormData.hypeIndexes,
+
+      autoIndexesPrompt: chunkSettings?.autoIndexesPrompt || defaultFormData.autoIndexesPrompt,
+      hypeIndexPrompt: chunkSettings?.hypeIndexPrompt || defaultFormData.hypeIndexPrompt,
+      imageIndexPrompt: chunkSettings?.imageIndexPrompt || defaultFormData.imageIndexPrompt,
 
       chunkSettingMode: chunkSettings?.chunkSettingMode || defaultFormData.chunkSettingMode,
       chunkSplitMode: chunkSettings?.chunkSplitMode || defaultFormData.chunkSplitMode,
