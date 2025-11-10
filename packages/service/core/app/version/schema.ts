@@ -34,6 +34,7 @@ const AppVersionSchema = new Schema(
       type: chatConfigType
     },
     isPublish: Boolean,
+    isAutoSave: Boolean,
     versionName: String
   },
   {
@@ -41,7 +42,7 @@ const AppVersionSchema = new Schema(
   }
 );
 
-AppVersionSchema.index({ appId: 1, _id: -1 });
+AppVersionSchema.index({ appId: 1, time: -1 });
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
   AppVersionCollectionName,

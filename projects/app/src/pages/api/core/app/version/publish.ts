@@ -13,7 +13,6 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -32,19 +31,22 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
 
   if (autoSave) {
     await mongoSessionRun(async (session) => {
-      await MongoAppVersion.create(
-        [
-          {
-            appId,
-            nodes: nodes,
-            edges,
-            chatConfig,
-            isPublish: false,
-            versionName: `${formatTime2YMDHMS(new Date())} (Auto saved)`,
-            tmbId
-          }
-        ],
-        { session, ordered: true }
+      await MongoAppVersion.updateOne(
+        {
+          appId,
+          isAutoSave: true
+        },
+        {
+          tmbId,
+          appId,
+          nodes,
+          edges,
+          chatConfig,
+          versionName: i18nT('app:auto_save'),
+          time: new Date()
+        },
+
+        { session, upsert: true }
       );
 
       await MongoApp.updateOne(

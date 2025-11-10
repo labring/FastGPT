@@ -57,17 +57,6 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  if (parentId) {
-    const parentApp = await MongoApp.findById(parentId, 'type').lean();
-
-    if (ToolTypeList.includes(type) && parentApp?.type !== AppTypeEnum.toolFolder) {
-      return Promise.reject('tool type can only be created in tool folder');
-    }
-    if (AppTypeList.includes(type) && parentApp?.type !== AppTypeEnum.folder) {
-      return Promise.reject('agent type can only be created in agent folder');
-    }
-  }
-
   // 上限校验
   await checkTeamAppLimit(teamId);
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
@@ -143,7 +132,7 @@ export const onCreateApp = async ({
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
-  type?: AppTypeEnum;
+  type: AppTypeEnum;
   modules?: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
@@ -156,6 +145,17 @@ export const onCreateApp = async ({
   templateId?: string;
   session?: ClientSession;
 }) => {
+  if (parentId) {
+    const parentApp = await MongoApp.findById(parentId, 'type').lean();
+
+    if (ToolTypeList.includes(type) && parentApp?.type !== AppTypeEnum.toolFolder) {
+      return Promise.reject('tool type can only be created in tool folder');
+    }
+    if (AppTypeList.includes(type) && parentApp?.type !== AppTypeEnum.folder) {
+      return Promise.reject('agent type can only be created in agent folder');
+    }
+  }
+
   const create = async (session: ClientSession) => {
     const [app] = await MongoApp.create(
       [
