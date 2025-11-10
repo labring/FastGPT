@@ -20,6 +20,8 @@ export type getTrainingDetailResponse = {
     customPdfParse: boolean;
     imageIndex: boolean;
     autoIndexes: boolean;
+    hypeIndexes: boolean;
+    small2bigIndexes: boolean;
   };
   queuedCounts: Record<TrainingModeEnum, number>;
   trainingCounts: Record<TrainingModeEnum, number>;
@@ -163,7 +165,9 @@ async function handler(
     advancedTraining: {
       customPdfParse: !!collection.customPdfParse,
       imageIndex: !!collection.imageIndex,
-      autoIndexes: !!collection.autoIndexes
+      autoIndexes: !!collection.autoIndexes,
+      hypeIndexes: !!collection.hypeIndexes,
+      small2bigIndexes: !!collection.small2bigIndexes
     },
 
     queuedCounts,
