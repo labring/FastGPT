@@ -20,6 +20,8 @@ import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { addLog } from '../../../common/system/log';
+import { FastGPTProUrl } from '../../../common/system/constants';
+import { GET } from '../../../common/api/plusRequest';
 
 export const loadSystemModels = async (init = false) => {
   const pushModel = (model: SystemModelItemType) => {
@@ -288,13 +290,7 @@ export const setPromptLoader = (loader: PromptLoader) => {
 };
 
 export class ProPromptLoader implements PromptLoader {
-  private baseUrl: string;
   private cache: Map<string, string> = new Map();
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, '');
-    addLog.info(`[ProPromptLoader] Initialized with baseUrl: ${this.baseUrl}`);
-  }
 
   loadTemplate(filename: string, locale: localeType, key: string): string {
     const cacheKey = `${filename}_${key}_${locale}`;
@@ -312,56 +308,14 @@ export class ProPromptLoader implements PromptLoader {
    * Preload a single template
    */
   async preloadTemplate(filename: string, locale: localeType, key: string): Promise<void> {
-    try {
-      const url = `${this.baseUrl}/api/core/dataset/template/load?filename=${filename}&locale=${locale}&key=${key}`;
-
-      // Set timeout for individual request (5 seconds)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const content = await response.text();
-        const template = this.extractTemplate(content);
-
-        const cacheKey = `${filename}_${key}_${locale}`;
-        this.cache.set(cacheKey, template);
-
-        addLog.info(`[ProPromptLoader] Preloaded template: ${cacheKey}`);
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
-          throw new Error(`Request timeout after 5 seconds`);
-        }
-        throw fetchError;
-      }
-    } catch (error) {
-      addLog.error(`[ProPromptLoader] Failed to preload template:`, error);
-      throw error;
-    }
-  }
-
-  /*
-   * Extract template payload from the remote response.
-   * The remote service wraps templates in a JSON envelope: { code, data, ... }.
-   */
-  private extractTemplate(content: string): string {
-    try {
-      const parsed = JSON.parse(content);
-      const template = parsed?.data ?? parsed?.result ?? parsed?.template;
-      if (typeof template === 'string') {
-        return template;
-      }
-    } catch (error) {
-      addLog.debug(`[ProPromptLoader] Response is not JSON: ${(error as Error).message}`);
-    }
-    return content;
+    if (!FastGPTProUrl) throw new Error('FastGPTProUrl is not Configured');
+    const template = await GET<string>(
+      '/core/dataset/load',
+      { filename, locale, key },
+      { timeout: 5000 }
+    );
+    const cacheKey = `${filename}_${key}_${locale}`;
+    this.cache.set(cacheKey, template);
   }
 
   /**
@@ -420,14 +374,7 @@ export class ProPromptLoader implements PromptLoader {
       templates.map((t) => this.preloadTemplate(t.filename, t.locale, t.key))
     );
 
-    const failed = results.filter((r) => r.status === 'rejected');
     const succeeded = results.filter((r) => r.status === 'fulfilled');
-
-    if (failed.length > 0) {
-      throw new Error(
-        `Failed to preload majority of templates: ${failed.length}/${templates.length} failed`
-      );
-    }
 
     if (succeeded.length === 0) {
       throw new Error('Failed to preload any templates');

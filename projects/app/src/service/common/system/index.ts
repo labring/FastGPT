@@ -90,10 +90,7 @@ export function initGlobalVariables() {
 export async function initProPromptLoader() {
   const { setPromptLoader } = await import('@fastgpt/service/core/ai/config/utils');
 
-  // Get Pro service URL from environment variable
-  const proBaseUrl = process.env.PRO_URL || 'http://localhost:3000';
-
-  const loader = new ProPromptLoader(proBaseUrl);
+  const loader = new ProPromptLoader();
 
   // Set timeout for preloading (10 seconds)
   const timeoutPromise = new Promise<void>((_, reject) => {

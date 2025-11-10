@@ -16,7 +16,7 @@ export async function register() {
           getInitConfig,
           initSystemPluginGroups,
           initAppTemplateTypes,
-          initProPromptLoader: initRemotePromptLoader
+          initProPromptLoader
         },
         { initVectorStore },
         { initRootUser },
@@ -61,7 +61,7 @@ export async function register() {
         initRootUser(),
         loadSystemModels(),
         loadSystemBuiltinMetrics(),
-        initRemotePromptLoader() // Initialize remote prompt loader
+        initProPromptLoader() // Initialize remote prompt loader
       ]);
 
       try {
