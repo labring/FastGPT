@@ -4,7 +4,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
@@ -153,7 +153,7 @@ export const onDelOneApp = async ({
   });
 
   const deletedAppIds = apps
-    .filter((app) => app.type !== AppTypeEnum.folder)
+    .filter((app) => !AppFolderTypeList.includes(app.type))
     .map((app) => String(app._id));
 
   // Remove eval job
