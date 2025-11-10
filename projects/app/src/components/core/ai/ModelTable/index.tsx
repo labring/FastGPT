@@ -33,7 +33,7 @@ import { LazyCollaboratorProvider } from '@/components/support/permission/Member
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
-const ModelTable = () => {
+const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {
   const { t, i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useSystemStore();
   const { userInfo } = useUserStore();
@@ -276,7 +276,7 @@ const ModelTable = () => {
             <Tr color={'myGray.600'}>
               <Th fontSize={'xs'}>
                 <HStack>
-                  {userInfo?.team.permission.hasManagePer && (
+                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
                     <Checkbox
                       mr={1}
                       isChecked={isSelecteAll}
@@ -288,7 +288,7 @@ const ModelTable = () => {
               </Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-              {userInfo?.team.permission.hasManagePer && (
+              {permissionConfig && userInfo?.team.permission.hasManagePer && (
                 <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
               )}
             </Tr>
@@ -298,7 +298,7 @@ const ModelTable = () => {
               <Tr key={index} _hover={{ bg: 'myGray.50' }}>
                 <Td fontSize={'sm'}>
                   <HStack>
-                    {userInfo?.team.permission.hasManagePer && (
+                    {permissionConfig && userInfo?.team.permission.hasManagePer && (
                       <Checkbox
                         mr={1}
                         isChecked={isSelected(item)}
@@ -315,7 +315,7 @@ const ModelTable = () => {
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                {userInfo?.team.permission.hasManagePer && (
+                {permissionConfig && userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
                     <LazyCollaboratorProvider
                       selectedHint={t('account_model:model_permission_config_hint')}

@@ -75,7 +75,7 @@ const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     <>
       {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
       <Box flex={'1 0 0'}>
-        <ModelTable />
+        <ModelTable permissionConfig={true} />
       </Box>
     </>
   );
