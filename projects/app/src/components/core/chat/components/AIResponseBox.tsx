@@ -21,6 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
+  PaymentPauseInteractive,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -254,6 +255,32 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     </Flex>
   );
 });
+const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInteractive({
+  interactive
+}: {
+  interactive: InteractiveBasicType & PaymentPauseInteractive;
+}) {
+  const { t } = useTranslation();
+
+  return interactive.params.continue ? (
+    <Box>{t('chat:task_has_continued')}</Box>
+  ) : (
+    <>
+      <Box color={'myGray.500'}>{t(interactive.params.description)}</Box>
+      <Button
+        maxW={'250px'}
+        onClick={() => {
+          onSendPrompt({
+            text: 'Continue',
+            isInteractivePrompt: true
+          });
+        }}
+      >
+        {t('chat:continue_run')}
+      </Button>
+    </>
+  );
+});
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -297,6 +324,9 @@ const AIResponseBox = ({
     }
     if (finalInteractive.type === 'userInput') {
       return <RenderUserFormInteractive interactive={finalInteractive} />;
+    }
+    if (finalInteractive.type === 'paymentPause') {
+      return <RenderPaymentPauseInteractive interactive={finalInteractive} />;
     }
   }
   return null;
