@@ -41,9 +41,9 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
-  checkIsInteractiveByHistories,
+  getInteractiveByHistories,
   formatChatValue2InputType,
-  setUserSelectResultToHistories
+  setInteractiveResultToHistories
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -64,6 +64,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -113,7 +114,7 @@ const ChatBox = ({
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -156,7 +157,7 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
+  const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -540,7 +541,7 @@ const ChatBox = ({
           setChatRecords(
             isInteractivePrompt
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+                setInteractiveResultToHistories(newChatList.slice(0, -2), text)
               : newChatList
           );
 
@@ -601,11 +602,18 @@ const ChatBox = ({
                   responseData
                 };
               });
+
+              const lastInteractive = getInteractiveByHistories(state);
+              if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
+                setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+              }
+
               return newChatHistories;
             });
 
             setTimeout(() => {
-              if (!checkIsInteractiveByHistories(newChatHistories)) {
+              // If there is no interactive mode, create a question guide
+              if (!getInteractiveByHistories(newChatHistories)) {
                 createQuestionGuide();
               }
 
@@ -890,7 +898,7 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
 
   // Add listener
   useEffect(() => {
@@ -992,6 +1000,7 @@ const ChatBox = ({
     }
   }, [ScrollContainerRef, setIsVariableVisible]);
 
+  // Home chat, and no chat records
   const isHomeRender = useMemo(() => {
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
@@ -1099,6 +1108,8 @@ const ChatBox = ({
     showMarkIcon,
     onCloseCustomFeedback
   ]);
+
+  // Child box
   const AppChatRenderBox = useMemo(() => {
     return (
       <ScrollData
