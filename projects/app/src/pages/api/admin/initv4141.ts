@@ -30,16 +30,19 @@ async function appSplitMigration(teamId: string) {
     }
   ).lean();
 
+  // if there is one/or more toolFolder(s), skip this team (because the team is migrated.)
   if (allApps.some((app) => app.type === AppTypeEnum.toolFolder)) {
-    return;
+    return 'migrated';
   }
 
   const allFolders = allApps.filter((item) => item.type === AppTypeEnum.folder);
 
+  // if there is no folders, no need to migrate.
   if (allFolders.length === 0) {
-    return;
+    return 'no folder';
   }
 
+  // get all clbs
   const rps = await MongoResourcePermission.find({
     teamId,
     resourceType: PerResourceTypeEnum.app,
@@ -50,7 +53,18 @@ async function appSplitMigration(teamId: string) {
     allApps.map((app) => [app._id, { parentId: app.parentId, newId: undefined }])
   );
 
-  const RPMap = new Map<string, ResourcePermissionType>(rps.map((rp) => [rp.resourceId, rp]));
+  const RPMap = (() => {
+    const map = new Map<string, ResourcePermissionType[]>();
+    for (const rp of rps) {
+      const rps = map.get(rp.resourceId);
+      if (rps) {
+        rps.push(rp);
+      } else {
+        map.set(rp.resourceId, [rp]);
+      }
+    }
+    return map;
+  })();
 
   const allToolTypeApps = allApps.filter((item) =>
     [
@@ -93,22 +107,24 @@ async function appSplitMigration(teamId: string) {
       for (const folder of allFolders) {
         const obj = appMap.get(folder._id)!;
         const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
+
+        const oldRps = RPMap.get(folder._id)!;
+        rpOps.push(
+          ...oldRps.map((oldRp) => ({
+            insertOne: {
+              document: {
+                ...oldRp,
+                resourceId: obj.newId!,
+                _id: undefined
+              }
+            }
+          }))
+        );
+
         if (!newParentId) {
           continue;
         }
 
-        const oldRp = RPMap.get(folder._id)!;
-        rpOps.push({
-          insertOne: {
-            document: {
-              ...oldRp,
-              resourceId: obj.newId!,
-              _id: undefined
-            }
-          }
-        });
-
-        if (!obj.parentId) continue;
         ops.push({
           updateOne: {
             filter: {
@@ -146,6 +162,8 @@ async function appSplitMigration(teamId: string) {
       await MongoResourcePermission.bulkWrite(rpOps, { session });
     }
   });
+
+  return 'success';
 }
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
@@ -153,19 +171,38 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   const allTeamIds = await MongoTeam.find({}, '_id').lean();
   addLog.info(`Starting app split migration, teamIds: ${allTeamIds.length}`);
   const failed = [];
+  const skipedMigrated = [];
+  const skipedNoFolder = [];
+  const success = [];
+
   for await (const { _id: teamId } of allTeamIds) {
     try {
-      await appSplitMigration(teamId);
+      const res = await appSplitMigration(teamId);
+      if (res === 'migrated') {
+        skipedMigrated.push(teamId);
+      } else if (res === 'no folder') {
+        skipedNoFolder.push(teamId);
+      } else {
+        success.push(teamId);
+      }
     } catch (e) {
       addLog.error('App split script error: ', e);
       failed.push(teamId);
       continue;
     }
   }
-  addLog.info(`App split migration completed, failed teams: ${failed.length}, ${failed}`);
+  addLog.info(
+    `\
+App split migration completed!
+success teams: ${success.length}, skipedMigrated: ${skipedMigrated.length}, skipedNoFolder: ${skipedNoFolder.length}
+failed teams: ${failed.length}, ${failed}`
+  );
 
   return {
     total: allTeamIds.length,
+    skipedMigrated: skipedMigrated.length,
+    skipedNoFolder: skipedNoFolder.length,
+    success: success.length,
     failed: failed.length,
     failedTeams: failed
   };
