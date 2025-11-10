@@ -22,7 +22,7 @@ class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
-  isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
+  static isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
     return key?.startsWith(`${S3Sources.chat}/`) ?? false;
   }
 

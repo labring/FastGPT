@@ -61,7 +61,7 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     // Get filename from URL
     const filename = (() => {
       // Here is a S3 Object Key
-      if (url.startsWith('chat/')) return url.split('-').pop();
+      if (url.startsWith('chat/')) return url.split('/').pop()?.split('-')[1];
       return parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
     })();
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
