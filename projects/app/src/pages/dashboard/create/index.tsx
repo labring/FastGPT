@@ -27,7 +27,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getTemplateMarketItemDetail,
@@ -63,12 +63,6 @@ export type CreateAppType =
   | AppTypeEnum.mcpToolSet
   | AppTypeEnum.httpToolSet;
 
-export const ToolTypeList = [
-  AppTypeEnum.mcpToolSet,
-  AppTypeEnum.httpToolSet,
-  AppTypeEnum.workflowTool
-];
-
 const CreateAppsPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -80,7 +74,7 @@ const CreateAppsPage = () => {
   const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(
     (appType as CreateAppType) || AppTypeEnum.workflow
   );
-  const [showToolCreate, setShowToolCreate] = useState(ToolTypeList.includes(selectedAppType));
+  const isToolType = ToolTypeList.includes(selectedAppType);
 
   const { data: templateData } = useRequest2(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type: selectedAppType }),
@@ -196,7 +190,7 @@ const CreateAppsPage = () => {
           }
           fontSize={'20px'}
         >
-          {t('common:Create')}
+          {t('common:Create') + (isToolType ? t('app:type.Tool') : ' Agent')}
         </Button>
       </Flex>
       <Flex bg={'white'} flex={1} gap={7} p={6} h={'calc(100vh - 60px)'}>
@@ -228,15 +222,14 @@ const CreateAppsPage = () => {
         >
           <Box mb={5} borderBottom={'1px solid'} borderColor={'myGray.200'}>
             <Box color={'myGray.900'} fontWeight={'medium'} mb={2.5}>
-              {t('common:app_type')}
+              {(isToolType ? t('app:type.Tool') : 'Agent ') + t('common:support.standard.type')}
             </Box>
-            <SimpleGrid columns={3} gap={2.5}>
+            <SimpleGrid columns={3} gap={2.5} pb={5}>
               {Object.values(createAppTypeMap)
-                .filter(
-                  (option) =>
-                    ![AppTypeEnum.mcpToolSet, AppTypeEnum.httpToolSet].includes(
-                      option.type as CreateAppType
-                    )
+                .filter((option) =>
+                  isToolType
+                    ? ToolTypeList.includes(option.type as CreateAppType)
+                    : !ToolTypeList.includes(option.type as CreateAppType)
                 )
                 .map((option) => (
                   <AppTypeCard
@@ -253,55 +246,6 @@ const CreateAppsPage = () => {
                   />
                 ))}
             </SimpleGrid>
-            <Collapse
-              in={showToolCreate}
-              animateOpacity
-              transition={{ enter: { duration: 0.2 }, exit: { duration: 0.2 } }}
-            >
-              <SimpleGrid columns={3} gap={2.5} mt={2.5} pb={2.5}>
-                {Object.values(createAppTypeMap)
-                  .filter((option) =>
-                    [AppTypeEnum.mcpToolSet, AppTypeEnum.httpToolSet].includes(
-                      option.type as CreateAppType
-                    )
-                  )
-                  .map((option) => (
-                    <AppTypeCard
-                      key={option.type}
-                      selectedAppType={selectedAppType}
-                      onClick={() => {
-                        setSelectedAppType(option.type as CreateAppType);
-                        setValue(
-                          'avatar',
-                          createAppTypeMap[option.type as CreateAppType]?.icon || ''
-                        );
-                      }}
-                      option={option}
-                    />
-                  ))}
-              </SimpleGrid>
-            </Collapse>
-
-            <Flex
-              justifyContent={'end'}
-              mb={2.5}
-              mt={showToolCreate ? 0 : 2.5}
-              transition={'all 0.2s ease-in-out'}
-            >
-              <Button
-                variant={'transparentBase'}
-                color={'primary.700'}
-                onClick={() => {
-                  if (showToolCreate && ToolTypeList.includes(selectedAppType)) {
-                    setSelectedAppType(AppTypeEnum.simple);
-                    setValue('avatar', createAppTypeMap[AppTypeEnum.simple]?.icon || '');
-                  }
-                  setShowToolCreate(!showToolCreate);
-                }}
-              >
-                {showToolCreate ? t('app:collapse_tool_create') : t('app:expand_tool_create')}
-              </Button>
-            </Flex>
           </Box>
           <Box mb={5}>
             <Box color={'myGray.900'} fontWeight={'medium'} mb={2.5} letterSpacing={'0.15px'}>

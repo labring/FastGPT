@@ -3,9 +3,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { ToolTypeList } from '@/pages/dashboard/create';
 
 export type ListParams = {
   isQuickTemplate?: boolean;

@@ -16,7 +16,6 @@ const TeamPlanStatusCard = () => {
   const { teamPlanStatus } = useUserStore();
   const { operationalAd, loadOperationalAd } = useSystemStore();
   const router = useRouter();
-  if (!teamPlanStatus?.standardConstants) return null;
 
   useEffect(() => {
     if (!operationalAd) {
@@ -29,9 +28,9 @@ const TeamPlanStatusCard = () => {
   });
 
   const planName = useMemo(() => {
-    if (!teamPlanStatus.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard?.currentSubLevel].label;
-  }, [teamPlanStatus.standard?.currentSubLevel]);
+    if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
+  }, [teamPlanStatus?.standard?.currentSubLevel]);
 
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
@@ -64,6 +63,8 @@ const TeamPlanStatusCard = () => {
     const hideUntilTime = Date.now() + 24 * 60 * 60 * 1000;
     setHiddenUntil(hideUntilTime);
   }, [setHiddenUntil]);
+
+  if (!teamPlanStatus?.standardConstants) return null;
 
   return (
     <Box

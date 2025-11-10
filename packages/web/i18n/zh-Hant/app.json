@@ -149,6 +149,7 @@
   "find_more_tools": "探索更多",
   "go_to_chat": "前往對話",
   "go_to_run": "前往執行",
+  "has_no_create_per": "當前目錄您無新建權限",
   "hide_templates": "隱藏模板",
   "http_toolset_add_tips": "點擊添加按鈕來添加工具",
   "http_toolset_config_tips": "點擊開始配置來添加工具",

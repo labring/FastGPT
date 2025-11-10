@@ -11,7 +11,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -35,7 +35,8 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { ToolTypeList, type CreateAppType } from '@/pages/dashboard/create';
+import { type CreateAppType } from '@/pages/dashboard/create';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -46,6 +47,7 @@ const List = () => {
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const { userInfo } = useUserStore();
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
@@ -63,6 +65,10 @@ const List = () => {
     folderDetail,
     setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
+
+  const hasCreatePer = folderDetail
+    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+    : userInfo?.team.permission.hasAppCreatePer;
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
@@ -144,12 +150,21 @@ const List = () => {
   return (
     <>
       {myApps.length === 0 && !folderDetail ? (
-        isPc ? (
+        isPc && hasCreatePer ? (
           <CreateButton appType={appType} />
         ) : (
-          <Box pt={4}>
-            <ListCreateButton appType={appType} />
-          </Box>
+          <Grid
+            py={4}
+            gridTemplateColumns={
+              folderDetail
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+          </Grid>
         )
       ) : (
         <Grid
@@ -162,7 +177,7 @@ const List = () => {
           gridGap={5}
           alignItems={'stretch'}
         >
-          <ListCreateButton appType={appType} />
+          {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
           {myApps.map((app, index) => {
             return (
               <MyTooltip
@@ -614,6 +629,64 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
           }}
         >
           <MyIcon name={'common/addLight'} w={8} color={'#7895FE'} zIndex={1} />
+        </Box>
+      </Box>
+    </MyBox>
+  );
+};
+const ForbiddenCreateButton = () => {
+  const { t } = useTranslation();
+  return (
+    <MyBox
+      py={4}
+      px={5}
+      cursor={'not-allowed'}
+      border={'base'}
+      bg={'white'}
+      borderRadius={'10px'}
+      position={'relative'}
+      display={'flex'}
+      flexDirection={'column'}
+    >
+      <Box color={'myGray.900'} fontWeight={'medium'}>
+        {t('common:new_create')}
+      </Box>
+      <Box
+        mt={4}
+        mb={2}
+        h={'100%'}
+        w={'100%'}
+        display={'flex'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        position={'relative'}
+        flex={'1 0 56px'}
+      >
+        <Box
+          position={'absolute'}
+          top={'1px'}
+          left={'1px'}
+          right={'1px'}
+          bottom={'1px'}
+          bg={'myGray.50'}
+          borderRadius={'14px'}
+        />
+        <Box
+          w={'100%'}
+          h={'100%'}
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          sx={{
+            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%23D7D7D7' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`,
+            backgroundSize: '100% 100%'
+          }}
+        >
+          <MyIcon name={'common/disable'} w={'34px'} color={'#DFE2EA'} zIndex={1} />
+          <Box color={'myGray.500'} fontSize={'11px'} fontWeight={'medium'} zIndex={1}>
+            {t('app:has_no_create_per')}
+          </Box>
         </Box>
       </Box>
     </MyBox>
