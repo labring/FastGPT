@@ -21,6 +21,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -36,9 +37,9 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
-  const appId = useContextSelector(PluginRunContext, (v) => v.appId);
-  const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
 
   const { llmModelList } = useSystemStore();
 
@@ -77,10 +78,10 @@ const RenderInput = () => {
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
-      setRestartData(e);
+      setRestartData(undefined);
       onNewChat?.();
     },
-    [onNewChat, setRestartData]
+    [onNewChat]
   );
 
   // Get plugin input components
@@ -165,7 +166,8 @@ const RenderInput = () => {
   const [uploading, setUploading] = useState(false);
 
   const fileUploading = uploading || hasFileUploading;
-  const isDisabledInput = fileUploading || histories.length > 0;
+  const hasHistory = histories.length > 0;
+  const isDisabledInput = fileUploading || hasHistory;
 
   return (
     <Box>
@@ -196,6 +198,7 @@ const RenderInput = () => {
               <Button
                 leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
                 variant={'whiteBase'}
+                isDisabled={isChatting || fileUploading}
                 onClick={() => {
                   onOpenSelectFile();
                 }}
@@ -298,7 +301,8 @@ const RenderInput = () => {
             isDisabled={fileUploading}
             onClick={() => {
               handleSubmit((e) => {
-                if (isDisabledInput) {
+                // 只有在有消息历史记录的时候才是展示"重新开始", 而不是禁用的时候就展示"重新开始"
+                if (hasHistory) {
                   onClickNewChat(e);
                 } else {
                   onSubmit(e);
@@ -306,7 +310,7 @@ const RenderInput = () => {
               })();
             }}
           >
-            {isDisabledInput ? t('common:Restart') : t('common:Run')}
+            {hasHistory ? t('common:Restart') : t('common:Run')}
           </Button>
         </Flex>
       )}

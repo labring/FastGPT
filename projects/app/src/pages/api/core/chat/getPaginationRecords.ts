@@ -18,6 +18,9 @@ import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/comm
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type getPaginationRecordsQuery = {};
 
@@ -98,8 +101,51 @@ async function handler(
     });
   }
 
+  async function addPreviewUrlForPluginInput(histories: ChatItemType[]): Promise<ChatItemType[]> {
+    for (let i = 0; i < histories.length; i++) {
+      const item = histories[i];
+      if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) continue;
+
+      for (let j = 0; j < item.value.length; j++) {
+        const value = item.value[j];
+        if (value.type !== ChatItemValueTypeEnum.text) continue;
+        const inputValueString = value.text?.content || '';
+        const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
+
+        for (let k = 0; k < parsedInputValue.length; k++) {
+          const input = parsedInputValue[k];
+          if (
+            input.renderTypeList[0] !== FlowNodeInputTypeEnum.fileSelect ||
+            !Array.isArray(input.value)
+          )
+            continue;
+          for (let l = 0; l < input.value.length; l++) {
+            const file = input.value[l];
+            if (!file.key) continue;
+            const url = await getS3ChatSource().createGetChatFileURL({
+              key: file.key,
+              external: true
+            });
+            input.value[l].icon = url;
+          }
+        }
+
+        item.value[j].text = {
+          ...value.text,
+          content: JSON.stringify(parsedInputValue)
+        };
+      }
+    }
+    return histories;
+  }
+
+  const list = await (async () => {
+    if (isPlugin) return await addPreviewUrlForPluginInput(histories);
+    return transformPreviewHistories(histories, responseDetail);
+  })();
+
   return {
-    list: isPlugin ? histories : transformPreviewHistories(histories, responseDetail),
+    list,
     total
   };
 }

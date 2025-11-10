@@ -1,4 +1,5 @@
 import React from 'react';
+import { Box } from '@chakra-ui/react';
 import { PluginRunBoxTabEnum } from './constants';
 import { type PluginRunBoxProps } from './type';
 import RenderInput from './components/RenderInput';
@@ -14,9 +15,15 @@ const PluginRunBox = (props: PluginRunBoxProps) => {
 
   return (
     <PluginRunContextProvider {...props}>
-      {formatTab === PluginRunBoxTabEnum.input && <RenderInput />}
-      {formatTab === PluginRunBoxTabEnum.output && <RenderOutput />}
-      {formatTab === PluginRunBoxTabEnum.detail && <RenderResponseDetail />}
+      <Box display={formatTab === PluginRunBoxTabEnum.input ? 'block' : 'none'}>
+        <RenderInput />
+      </Box>
+      <Box display={formatTab === PluginRunBoxTabEnum.output ? 'block' : 'none'}>
+        <RenderOutput />
+      </Box>
+      <Box display={formatTab === PluginRunBoxTabEnum.detail ? 'block' : 'none'}>
+        <RenderResponseDetail />
+      </Box>
     </PluginRunContextProvider>
   );
 };
