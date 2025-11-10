@@ -251,12 +251,19 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const { runAsync: fetchDefaultPrompts } = useRequest2(
     async () => {
       const prompts = await getDatasetEnhanceDefaultPrompts();
-      setValue('autoIndexesPrompt', prompts.autoIndexesPrompt);
-      setValue('hypeIndexPrompt', prompts.hypeIndexPrompt);
-      setValue('imageIndexPrompt', prompts.imageIndexPrompt || '');
+      // 只在值为空或未定义时才设置默认值
+      if (!getValues('autoIndexesPrompt')) {
+        setValue('autoIndexesPrompt', prompts.autoIndexesPrompt);
+      }
+      if (!getValues('hypeIndexPrompt')) {
+        setValue('hypeIndexPrompt', prompts.hypeIndexPrompt);
+      }
+      if (!getValues('imageIndexPrompt')) {
+        setValue('imageIndexPrompt', prompts.imageIndexPrompt);
+      }
     },
     {
-      manual: false
+      manual: true
     }
   );
 
@@ -270,7 +277,15 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
 
   // 在组件挂载时获取默认提示词
   useEffect(() => {
-    fetchDefaultPrompts();
+    // 检查是否需要获取默认提示词
+    const needsDefaultPrompts =
+      !getValues('autoIndexesPrompt') ||
+      !getValues('hypeIndexPrompt') ||
+      !getValues('imageIndexPrompt');
+
+    if (needsDefaultPrompts) {
+      fetchDefaultPrompts();
+    }
   }, []);
 
   return (

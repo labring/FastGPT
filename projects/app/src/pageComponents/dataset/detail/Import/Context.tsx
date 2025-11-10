@@ -57,6 +57,10 @@ export const defaultFormData: ImportFormType = {
   hypeIndexes: false,
   indexPrefixTitle: false,
 
+  autoIndexesPrompt: '',
+  hypeIndexPrompt: '',
+  imageIndexPrompt: '',
+
   chunkSettingMode: ChunkSettingModeEnum.auto,
   chunkSplitMode: DataChunkSplitModeEnum.paragraph,
   paragraphChunkAIMode: ParagraphChunkAIModeEnum.forbid,

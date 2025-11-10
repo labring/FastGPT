@@ -58,6 +58,11 @@ const ReTraining = () => {
         imageIndex: collection.imageIndex ?? defaultFormData.imageIndex,
         autoIndexes: collection.autoIndexes ?? defaultFormData.autoIndexes,
         indexPrefixTitle: collection.indexPrefixTitle ?? defaultFormData.indexPrefixTitle,
+        hypeIndexes: collection?.hypeIndexes || defaultFormData.hypeIndexes,
+
+        autoIndexesPrompt: collection?.autoIndexesPrompt || defaultFormData.autoIndexesPrompt,
+        hypeIndexPrompt: collection?.hypeIndexPrompt || defaultFormData.hypeIndexPrompt,
+        imageIndexPrompt: collection?.imageIndexPrompt || defaultFormData.imageIndexPrompt,
 
         chunkSettingMode: collection.chunkSettingMode || defaultFormData.chunkSettingMode,
         chunkSplitMode: collection.chunkSplitMode || defaultFormData.chunkSplitMode,
