@@ -229,28 +229,13 @@ const PluginRunContextProvider = ({
       });
 
       try {
-        // only keep variable item's key
-        const formatVariables = cloneDeep(variables);
-        for (const key in formatVariables) {
-          if (!Array.isArray(formatVariables[key])) continue;
-
-          for (let i = 0; i < formatVariables[key].length; i++) {
-            const item = formatVariables[key][i];
-            formatVariables[key][i] = {
-              key: item.key,
-              name: item.name,
-              type: item.type
-            };
-          }
-        }
-
         await onStartChat({
           messages,
           controller: chatController.current,
           generatingMessage,
           variables: {
             files,
-            ...formatVariables
+            ...variables
           }
         });
 

@@ -22,6 +22,9 @@ import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useDeepCompareEffect } from 'ahooks';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -75,17 +78,8 @@ const RenderInput = () => {
   });
   /* Global files(abandon) <=== */
 
-  const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
-  const onClickNewChat = useCallback(
-    (e: ChatBoxInputFormType) => {
-      setRestartData(undefined);
-      onNewChat?.();
-    },
-    [onNewChat]
-  );
-
   // Get plugin input components
-  const formatPluginInputs = useMemo(() => {
+  const formatPluginInputs = useMemoEnhance(() => {
     if (histories.length === 0) return pluginInputs;
     try {
       const historyValue = histories[0]?.value as UserChatItemValueItemType[];
@@ -99,8 +93,30 @@ const RenderInput = () => {
     }
   }, [histories, pluginInputs]);
 
+  const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
+  const onClickNewChat = useCallback(
+    (e: ChatBoxInputFormType) => {
+      setRestartData(e);
+      onNewChat?.();
+    },
+    [onNewChat]
+  );
+
+  const onResetDefault = useCallback(() => {
+    reset({
+      files: [],
+      variables: formatPluginInputs.reduce(
+        (acc, input) => {
+          acc[input.key] = input.defaultValue;
+          return acc;
+        },
+        {} as Record<string, any>
+      )
+    });
+  }, [reset, formatPluginInputs]);
+
   // Reset input value
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     // Set config default value
     if (histories.length === 0) {
       if (restartData) {
@@ -109,16 +125,7 @@ const RenderInput = () => {
         return;
       }
 
-      reset({
-        files: [],
-        variables: formatPluginInputs.reduce(
-          (acc, input) => {
-            acc[input.key] = input.defaultValue;
-            return acc;
-          },
-          {} as Record<string, any>
-        )
-      });
+      onResetDefault();
       return;
     }
 
@@ -160,14 +167,13 @@ const RenderInput = () => {
       variables: historyVariables,
       files: historyFileList
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [histories, formatPluginInputs]);
 
   const [uploading, setUploading] = useState(false);
 
   const fileUploading = uploading || hasFileUploading;
   const hasHistory = histories.length > 0;
-  const isDisabledInput = fileUploading || hasHistory;
+  const isDisabledInput = !!hasHistory;
 
   return (
     <Box>
@@ -295,14 +301,20 @@ const RenderInput = () => {
         })}
       {/* Run Button */}
       {onStartChat && onNewChat && (
-        <Flex justifyContent={'end'} mt={8}>
+        <Flex justifyContent={'end'} mt={8} gap={4}>
+          <PopoverConfirm
+            content={t('chat:confirm_clear_input_value')}
+            onConfirm={onResetDefault}
+            Trigger={<Button variant={'whiteBase'}>{t('chat:clear_input_value')}</Button>}
+          />
+
           <Button
             isLoading={isChatting}
             isDisabled={fileUploading}
             onClick={() => {
               handleSubmit((e) => {
-                // 只有在有消息历史记录的时候才是展示"重新开始", 而不是禁用的时候就展示"重新开始"
                 if (hasHistory) {
+                  console.log(e);
                   onClickNewChat(e);
                 } else {
                   onSubmit(e);

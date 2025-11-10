@@ -198,15 +198,7 @@ const DashboardContainer = ({
           ]
         : [])
     ];
-  }, [
-    currentType,
-    feConfigs.appTemplateCourse,
-    feConfigs?.isPlus,
-    i18n.language,
-    t,
-    templateList,
-    templateTags
-  ]);
+  }, [currentType, feConfigs.appTemplateCourse, feConfigs?.isPlus, t, templateList, templateTags]);
 
   const MenuIcon = useMemo(
     () => (

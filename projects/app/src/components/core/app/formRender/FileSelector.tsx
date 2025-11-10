@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UserInputFileItemType } from '../../chat/ChatContainer/ChatBox/type';
 import {
   Box,
@@ -24,7 +24,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { z } from 'zod';
-import { clone } from 'lodash';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
 import { POST } from '@/web/common/api/request';
@@ -62,13 +61,9 @@ const FileSelector = ({
   const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
 
-  const [isUploading, setIsUploading] = useState(false);
-
-  const filesRef = useRef<UserInputFileItemType[]>([]);
   const handleChangeFiles = useCallback(
     (files: UserInputFileItemType[]) => {
       onChange([...files]);
-      filesRef.current = [...files];
     },
     [onChange]
   );
@@ -95,27 +90,24 @@ const FileSelector = ({
   const canSelectFileAmount = maxSelectFiles - value.length;
   const isMaxSelected = canSelectFileAmount <= 0;
 
-  const uploadFiles = useCallback(async () => {
-    const filterFiles = filesRef.current.filter((item) => item.status === 0);
-    if (filterFiles.length === 0) return;
+  const uploadFiles = useCallback(
+    async (files: UserInputFileItemType[]) => {
+      const filterFiles = files.filter((item) => item.status === 0);
+      if (filterFiles.length === 0) return;
 
-    handleChangeFiles(filesRef.current.map((item) => ({ ...item, status: 1 })));
+      files.forEach((file) => {
+        file.status = 1;
+      });
+      handleChangeFiles(files);
 
-    // Set uploading state once before starting all uploads
-    setIsUploading(true);
-    onUploading?.(true);
-
-    try {
       await Promise.allSettled(
         filterFiles.map(async (file) => {
-          const copyFile = clone(file);
-          if (!copyFile.rawFile) return;
-          copyFile.status = 1;
+          if (!file.rawFile) return;
 
           try {
             // Get Upload Post Presigned URL
             const { url, fields } = await getUploadChatFilePresignedUrl({
-              filename: copyFile.rawFile.name,
+              filename: file.rawFile.name,
               appId,
               chatId,
               outLinkAuthData
@@ -124,7 +116,7 @@ const FileSelector = ({
             // Upload File to S3
             const formData = new FormData();
             Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-            formData.set('file', copyFile.rawFile);
+            formData.set('file', file.rawFile);
             await POST(url, formData, {
               headers: {
                 'Content-Type': 'multipart/form-data; charset=utf-8'
@@ -132,12 +124,12 @@ const FileSelector = ({
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
-                copyFile.process = percent;
-                handleChangeFiles(
-                  filesRef.current.map((item) =>
-                    item?.id === file?.id ? { ...item, process: percent } : item
-                  )
-                );
+                files.forEach((item) => {
+                  if (item.id === file.id) {
+                    item.process = percent;
+                  }
+                });
+                handleChangeFiles(files);
               }
             });
             const previewUrl = await getPresignedChatFileGetUrl({
@@ -147,28 +139,27 @@ const FileSelector = ({
             });
 
             // Update file url and key
-            copyFile.url = previewUrl;
-            copyFile.key = fields.key;
-            handleChangeFiles(
-              filesRef.current.map((item) =>
-                item?.id === file?.id ? { ...item, url: previewUrl, key: fields.key } : item
-              )
-            );
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.url = previewUrl;
+                item.key = fields.key;
+                item.process = 100;
+              }
+            });
+            handleChangeFiles(files);
           } catch (error) {
-            handleChangeFiles(
-              filesRef.current.map((item) =>
-                item?.id === file?.id ? { ...item, error: getErrText(error) } : item
-              )
-            );
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.error = getErrText(error);
+              }
+            });
+            handleChangeFiles(files);
           }
         })
       );
-    } finally {
-      // Clear uploading state once after all uploads complete
-      setIsUploading(false);
-      onUploading?.(false);
-    }
-  }, [appId, chatId, outLinkAuthData, handleChangeFiles, onUploading]);
+    },
+    [handleChangeFiles, appId, chatId, outLinkAuthData]
+  );
 
   // Selector props
   const [isDragging, setIsDragging] = useState(false);
@@ -223,11 +214,11 @@ const FileSelector = ({
             })
         )
       );
-      const newFiles = [...loadFiles, ...filesRef.current];
+      const newFiles = [...loadFiles, ...value];
       handleChangeFiles(newFiles);
-      uploadFiles();
+      uploadFiles(newFiles);
     },
-    [maxSelectFiles, maxSize, t, toast, handleChangeFiles, uploadFiles]
+    [maxSelectFiles, value, handleChangeFiles, uploadFiles, toast, t, maxSize]
   );
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -358,6 +349,13 @@ const FileSelector = ({
     [handleChangeFiles, value]
   );
 
+  const isUploading = value.some((file) => !file.url && !file.error);
+  const disabled = isDisabled || isUploading;
+
+  useEffect(() => {
+    onUploading?.(isUploading);
+  }, [isUploading]);
+
   return (
     <>
       {/* Selector */}
@@ -375,10 +373,10 @@ const FileSelector = ({
             borderColor={'myGray.250'}
             borderRadius={'md'}
             userSelect={'none'}
-            {...(isMaxSelected || isDisabled || isUploading
+            {...(isMaxSelected || disabled
               ? {
                   cursor: 'not-allowed',
-                  opacity: isDisabled || isUploading ? 0.6 : 1
+                  opacity: disabled ? 0.6 : 1
                 }
               : {
                   cursor: 'pointer',
@@ -395,10 +393,10 @@ const FileSelector = ({
                 })}
           >
             <MyIcon name={'common/uploadFileFill'} w={'32px'} />
-            {isMaxSelected || isDisabled || isUploading ? (
+            {isMaxSelected ? (
               <>
                 <Box fontWeight={'500'} fontSize={'sm'}>
-                  {isDisabled || isUploading ? null : t('file:reached_max_file_count')}
+                  {t('file:reached_max_file_count')}
                 </Box>
               </>
             ) : (
@@ -425,7 +423,7 @@ const FileSelector = ({
                 zIndex={10}
               />
               <Input
-                isDisabled={isMaxSelected || isDisabled || isUploading}
+                isDisabled={isMaxSelected || isDisabled}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onBlur={(e) => handleAddUrl(e.target.value)}
@@ -435,11 +433,7 @@ const FileSelector = ({
                 pl={8}
                 py={1.5}
                 placeholder={
-                  isDisabled || isUploading
-                    ? undefined
-                    : isMaxSelected
-                      ? t('file:reached_max_file_count')
-                      : t('chat:click_to_add_url')
+                  isMaxSelected ? t('file:reached_max_file_count') : t('chat:click_to_add_url')
                 }
               />
             </InputGroup>
@@ -453,10 +447,12 @@ const FileSelector = ({
           <MyDivider />
           <VStack>
             {value.map((file) => {
+              const fileIcon =
+                file.type === ChatFileTypeEnum.image ? file.url : getFileIcon(file?.name);
               return (
                 <Box key={file?.id} w={'full'}>
                   <HStack py={1} px={3} bg={'white'} borderRadius={'md'} border={'sm'}>
-                    <MyAvatar src={file?.icon} w={'1.2rem'} />
+                    <MyAvatar src={fileIcon} w={'1.2rem'} />
                     <Box
                       fontSize={'sm'}
                       flex={'1 0 0'}
@@ -470,26 +466,28 @@ const FileSelector = ({
                     </Box>
 
                     {/* Status icon */}
-                    {!!file?.key || !!file?.error ? (
-                      <IconButton
-                        size={'xsSquare'}
-                        borderRadius={'xs'}
-                        variant={'transparentDanger'}
-                        aria-label={'Delete file'}
-                        icon={<MyIcon name={'close'} w={'1rem'} />}
-                        onClick={() => handleDeleteFile(file?.id)}
-                        isDisabled={isDisabled || isUploading}
-                      />
-                    ) : (
-                      <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
-                        <CircularProgress
-                          value={file?.process}
-                          color="primary.600"
-                          bg={'white'}
-                          size={'1.2rem'}
+                    <>
+                      {!!file?.url || !!file?.error ? (
+                        <IconButton
+                          size={'xsSquare'}
+                          borderRadius={'xs'}
+                          variant={'transparentDanger'}
+                          aria-label={'Delete file'}
+                          icon={<MyIcon name={'close'} w={'1rem'} />}
+                          onClick={() => handleDeleteFile(file?.id)}
+                          isDisabled={disabled}
                         />
-                      </HStack>
-                    )}
+                      ) : (
+                        <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
+                          <CircularProgress
+                            value={file?.process}
+                            color="primary.600"
+                            bg={'white'}
+                            size={'1.2rem'}
+                          />
+                        </HStack>
+                      )}
+                    </>
                   </HStack>
                   {file?.error && (
                     <Box mt={1} fontSize={'xs'} color={'red.600'}>

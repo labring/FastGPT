@@ -71,6 +71,19 @@ export const serverGetWorkflowToolRunUserQuery = ({
 
       if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
         value = encryptSecretValue(value);
+      } else if (
+        input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+        Array.isArray(value)
+      ) {
+        value = value.map((item) => {
+          return {
+            id: item.id,
+            key: item.key,
+            name: item.name,
+            type: item.type,
+            url: item.key ? undefined : item.url
+          };
+        });
       }
 
       return {

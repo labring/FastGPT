@@ -784,8 +784,7 @@ const InputTypeConfig = ({
           </>
         )}
         {/* TODO: 适配新的文件上传 */}
-        {(inputType === VariableInputEnum.file ||
-          inputType === FlowNodeInputTypeEnum.fileSelect) && (
+        {inputType === FlowNodeInputTypeEnum.fileSelect && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
