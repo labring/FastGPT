@@ -9,22 +9,22 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
-import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemToolById } from '../../../app/plugin/controller';
+import { getSystemToolById } from '../../../app/tool/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 
 type SystemInputConfigType = {
-  type: SystemToolInputTypeEnum;
+  type: SystemToolSecretInputTypeEnum;
   value: StoreSecretValueType;
 };
 
@@ -49,6 +49,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
+
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
@@ -61,17 +62,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
-          case SystemToolInputTypeEnum.team:
+          case SystemToolSecretInputTypeEnum.team:
             return Promise.reject(new Error('This is not supported yet'));
-          case SystemToolInputTypeEnum.manual:
+          case SystemToolSecretInputTypeEnum.manual:
             const val = params.system_input_config.value || {};
             return getSecretValue({
               storeSecret: val
             });
-          case SystemToolInputTypeEnum.system:
+          case SystemToolSecretInputTypeEnum.system:
           default:
             // read from mongo
-            const dbPlugin = await MongoSystemPlugin.findOne({
+            const dbPlugin = await MongoSystemTool.findOne({
               pluginId: toolConfig.systemTool?.toolId
             }).lean();
             return dbPlugin?.inputListVal || {};
@@ -156,8 +157,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const usagePoints = (() => {
         if (
-          params.system_input_config?.type === SystemToolInputTypeEnum.team ||
-          params.system_input_config?.type === SystemToolInputTypeEnum.manual
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
         ) {
           return 0;
         }
@@ -191,7 +192,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
-      const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
+      const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
       const [parentId, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
@@ -200,14 +201,19 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
-      const mcpClient = new MCPClient({
-        url,
-        headers: getSecretValue({
-          storeSecret: headerSecret
-        })
-      });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      // Buffer mcpClient in this workflow
+      const mcpClient =
+        props.mcpClientMemory?.[url] ??
+        new MCPClient({
+          url,
+          headers: getSecretValue({
+            storeSecret: headerSecret
+          })
+        });
+      props.mcpClientMemory[url] = mcpClient;
+
+      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -217,7 +223,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     } else if (toolConfig?.httpTool?.toolId) {
-      const { pluginId } = splitCombinePluginId(toolConfig.httpTool.toolId);
+      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
       const [parentId, toolSetName, toolName] = pluginId.split('/');
       const toolset = await getAppVersionById({
         appId: parentId,
@@ -284,7 +290,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           storeSecret: headerSecret
         })
       });
-      const result = await mcpClient.toolCall(toolName, restParams);
+      const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {
         data: {

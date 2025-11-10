@@ -253,10 +253,17 @@ const RenderInput = () => {
                 name={inputKey}
                 rules={{
                   validate: (value) => {
-                    if (!input.required) return true;
-                    if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                      return value !== undefined;
+                    if (isDisabledInput) return true;
+                    if (
+                      input.renderTypeList.includes(FlowNodeInputTypeEnum.password) &&
+                      input.minLength
+                    ) {
+                      if (!value || typeof value !== 'object' || !value.value) return false;
+                      return value.value.length >= input.minLength;
                     }
+                    if (typeof value === 'number' || typeof value === 'boolean') return true;
+                    if (!input.required) return true;
+
                     return !!value;
                   }
                 }}
@@ -274,6 +281,7 @@ const RenderInput = () => {
                       form={variablesForm}
                       fieldName={inputKey}
                       modelList={llmModelList}
+                      isRichText={false}
                     />
                   );
                 }}

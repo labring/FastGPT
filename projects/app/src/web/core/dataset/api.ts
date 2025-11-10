@@ -2,7 +2,7 @@ import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
   ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type.d';
+} from '@fastgpt/global/common/parentFolder/type';
 import type {
   DatasetItemType,
   DatasetListItemType,

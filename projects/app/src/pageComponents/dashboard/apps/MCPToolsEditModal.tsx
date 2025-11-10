@@ -1,4 +1,4 @@
-import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
+import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/tool';
 import {
   Box,
   Button,
@@ -23,7 +23,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';

@@ -15,7 +15,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { useTranslation } from 'next-i18next';
 import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { cloneDeep } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -193,7 +193,7 @@ const PluginRunContextProvider = ({
 
       setChatRecords([
         {
-          ...getPluginRunUserQuery({
+          ...clientGetWorkflowToolRunUserQuery({
             pluginInputs,
             variables,
             files: files as RuntimeUserPromptType['files']

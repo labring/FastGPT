@@ -5,6 +5,7 @@ import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 import { isSecretValue } from '../../../global/common/secret/utils';
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
+  if (typeof value !== 'object' || value === null) return value;
   if (!value.value) {
     return value;
   }
@@ -51,7 +52,19 @@ export const getSecretValue = ({
 };
 
 export const anyValueDecrypt = (value: any) => {
-  if (!isSecretValue(value)) return value;
+  const val = (() => {
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return value;
+    }
+  })();
 
-  return decryptSecret(value.secret);
+  if (typeof val === 'object' && val !== null && val.value) {
+    return val.value;
+  }
+
+  if (!isSecretValue(val)) return val;
+
+  return decryptSecret(val.secret);
 };

@@ -5,7 +5,7 @@ import Edit from './Edit';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const MCPTools = () => {

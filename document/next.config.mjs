@@ -1,14 +1,6 @@
 import { createMDX } from 'fumadocs-mdx/next';
 
-const withMDX = createMDX({
-  mdxOptions: {
-    remarkPlugins: {
-      image: {
-        checkImageSize: false
-      }
-    }
-  }
-});
+const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {

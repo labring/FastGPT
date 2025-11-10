@@ -41,7 +41,10 @@
     "react-photo-view": "^1.2.6",
     "recharts": "^2.15.0",
     "use-context-selector": "^1.4.4",
-    "zustand": "^4.3.5"
+    "zustand": "^4.3.5",
+    "react-markdown": "^9.0.1",
+    "rehype-external-links": "^3.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.5",

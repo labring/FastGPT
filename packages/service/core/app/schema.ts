@@ -60,18 +60,14 @@ const AppSchema = new Schema(
       type: String,
       default: ''
     },
+    templateId: String,
 
     updateTime: {
       type: Date,
       default: () => new Date()
     },
 
-    // role and auth
-    teamTags: {
-      type: [String]
-    },
-
-    // save app(Not publish)
+    // Workflow data
     modules: {
       type: Array,
       default: []
@@ -83,7 +79,8 @@ const AppSchema = new Schema(
     chatConfig: {
       type: chatConfigType
     },
-    // plugin config
+
+    // Tool config
     pluginData: {
       type: {
         nodeVersion: String,
@@ -108,19 +105,21 @@ const AppSchema = new Schema(
       type: Date
     },
 
-    inited: {
-      type: Boolean
-    },
     inheritPermission: {
       type: Boolean,
       default: true
     },
 
+    // Chat setting
     favourite: Boolean,
     quick: Boolean,
 
-    // abandoned
-    defaultPermission: Number
+    /** @deprecated */
+    defaultPermission: Number,
+    inited: Boolean,
+    teamTags: {
+      type: [String]
+    }
   },
   {
     minimize: false

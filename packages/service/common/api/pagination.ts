@@ -1,7 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '../../type/next';
 
-export function parsePaginationRequest(req: ApiRequestProps) {
+export const parsePaginationRequest = (req: ApiRequestProps) => {
   const {
     pageSize = 10,
     pageNum = 1,
@@ -18,4 +18,4 @@ export function parsePaginationRequest(req: ApiRequestProps) {
     pageSize: Number(pageSize),
     offset: offset ? Number(offset) : (Number(pageNum) - 1) * Number(pageSize)
   };
-}
+};

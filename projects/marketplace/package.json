@@ -1,0 +1,40 @@
+{
+  "name": "marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@chakra-ui/anatomy": "2.2.1",
+    "@chakra-ui/icons": "2.1.1",
+    "@chakra-ui/next-js": "2.4.2",
+    "@chakra-ui/react": "2.10.7",
+    "@chakra-ui/styled-system": "2.9.1",
+    "@chakra-ui/system": "2.6.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "next": "14.2.33",
+    "@fastgpt/service": "workspace:*",
+    "@fastgpt/web": "workspace:*",
+    "@fastgpt/global": "workspace:*",
+    "next-i18next": "15.4.2",
+    "react-i18next": "14.1.2",
+    "i18next": "23.16.8",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@svgr/webpack": "^6.5.1",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.33"
+  }
+}

@@ -13,7 +13,6 @@
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
-    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "vitest run",

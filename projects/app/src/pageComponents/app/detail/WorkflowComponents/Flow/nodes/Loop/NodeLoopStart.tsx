@@ -85,50 +85,56 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
-  return (
-    <NodeCard
-      selected={selected}
-      {...data}
-      menuForbid={{
-        copy: true,
-        delete: true,
-        debug: true
-      }}
-    >
-      <Box px={4} pt={2} w={'420px'}>
-        <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-          <TableContainer>
-            <Table bg={'white'}>
-              <Thead>
-                <Tr>
-                  <Th borderBottomLeftRadius={'none !important'}>{t('workflow:Variable_name')}</Th>
-                  <Th>{t('common:core.workflow.Value type')}</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {outputs.map((output) => (
-                  <Tr key={output.id}>
-                    <Td>
-                      <Flex alignItems={'center'}>
-                        <MyIcon
-                          name={'core/workflow/inputType/array'}
-                          w={'14px'}
-                          mr={1}
-                          color={'primary.600'}
-                        />
-                        {t(output.label as any)}
-                      </Flex>
-                    </Td>
-                    {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        {...data}
+        menuForbid={{
+          copy: true,
+          delete: true,
+          debug: true
+        }}
+      >
+        <Box px={4} pt={2} w={'420px'}>
+          <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th borderBottomLeftRadius={'none !important'}>
+                      {t('workflow:Variable_name')}
+                    </Th>
+                    <Th>{t('common:core.workflow.Value type')}</Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                </Thead>
+                <Tbody>
+                  {outputs.map((output) => (
+                    <Tr key={output.id}>
+                      <Td>
+                        <Flex alignItems={'center'}>
+                          <MyIcon
+                            name={'core/workflow/inputType/array'}
+                            w={'14px'}
+                            mr={1}
+                            color={'primary.600'}
+                          />
+                          {t(output.label as any)}
+                        </Flex>
+                      </Td>
+                      {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
         </Box>
-      </Box>
-    </NodeCard>
-  );
+      </NodeCard>
+    );
+  }, [data, outputs, selected, t]);
+
+  return Render;
 };
 
 export default React.memo(NodeLoopStart);

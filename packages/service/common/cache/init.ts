@@ -1,5 +1,5 @@
 import { SystemCacheKeyEnum } from './type';
-import { refreshSystemTools } from '../../core/app/plugin/controller';
+import { refreshSystemTools } from '../../core/app/tool/controller';
 
 export const initCache = () => {
   global.systemCache = {

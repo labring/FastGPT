@@ -123,7 +123,7 @@ export const getEditorVariables = ({
     nodeId,
     systemConfigNode,
     getNodeById,
-    edges: edges,
+    edges,
     chatConfig: appDetail.chatConfig,
     t
   });

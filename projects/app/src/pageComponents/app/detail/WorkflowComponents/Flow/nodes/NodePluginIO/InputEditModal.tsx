@@ -61,9 +61,9 @@ const FieldEditModal = ({
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
-            icon: 'core/workflow/inputType/jsonEditor',
-            label: t('common:core.workflow.inputType.JSON Editor'),
-            value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+            icon: 'core/workflow/inputType/password',
+            label: t('common:core.workflow.inputType.password'),
+            value: [FlowNodeInputTypeEnum.password],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
@@ -212,6 +212,13 @@ const FieldEditModal = ({
 
       data.key = data.label;
 
+      // Remove undefined keys
+      Object.keys(data).forEach((key) => {
+        if (data[key as keyof FlowNodeInputItemType] === undefined) {
+          delete data[key as keyof FlowNodeInputItemType];
+        }
+      });
+
       if (action === 'confirm') {
         onSubmit(data);
         onClose();
@@ -224,7 +231,7 @@ const FieldEditModal = ({
         reset(defaultInput);
       }
     },
-    [defaultValue.key, defaultValueType, isEdit, keys, onSubmit, t, toast, onClose, reset]
+    [defaultValue.key, keys, toast, t, defaultValueType, isEdit, onSubmit, onClose, reset]
   );
   const onSubmitError = useCallback(
     (e: Object) => {

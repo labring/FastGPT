@@ -11,6 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import dayjs from 'dayjs';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -109,11 +110,12 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  const pathname = window.location.pathname;
   const isOutlinkPage = {
     [`${subRoute}/chat/share`]: true,
-    [`${subRoute}/chat`]: true,
+    [`${subRoute}/price`]: true,
     [`${subRoute}/login`]: true
-  }[window.location.pathname];
+  }[pathname];
 
   const data = err?.response?.data || err;
 
@@ -127,9 +129,9 @@ function responseError(err: any) {
     return Promise.reject(data);
   }
 
-  // 有报错响应
+  // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!isOutlinkPage) {
+    if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -138,6 +140,7 @@ function responseError(err: any) {
 
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
+  // Blance error
   if (
     data?.statusText &&
     [
@@ -178,8 +181,11 @@ function request(
 ): any {
   /* 去空 */
   for (const key in data) {
+    const val = data[key];
     if (data[key] === undefined) {
       delete data[key];
+    } else if (val instanceof Date) {
+      data[key] = dayjs(val).format();
     }
   }
 

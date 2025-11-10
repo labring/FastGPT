@@ -98,21 +98,22 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeText: e.target.value
+        }
+      }));
+    },
+    [setAppDetail]
+  );
+
   return (
     <Box className="nodrag">
-      <WelcomeTextConfig
-        resize={'both'}
-        value={welcomeText}
-        onChange={(e) => {
-          setAppDetail((state) => ({
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              welcomeText: e.target.value
-            }
-          }));
-        }}
-      />
+      <WelcomeTextConfig resize={'both'} value={welcomeText} onChange={handleChange} />
     </Box>
   );
 }

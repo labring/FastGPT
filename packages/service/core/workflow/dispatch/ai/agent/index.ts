@@ -29,7 +29,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 type Response = DispatchNodeResultType<{

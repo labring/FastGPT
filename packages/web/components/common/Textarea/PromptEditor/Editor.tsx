@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -72,7 +72,7 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
-  value?: string;
+  value: string;
   showOpenModal?: boolean;
   minH?: number;
   maxH?: number;
@@ -100,7 +100,7 @@ export default function Editor({
   onChange,
   onChangeText,
   onBlur,
-  value,
+  value = '',
   placeholder = '',
   placeholderPadding = '12px 14px',
   bg = 'white',
@@ -111,7 +111,7 @@ export default function Editor({
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
-    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+    onChange: (editor: LexicalEditor) => void;
     onChangeText?: ((text: string) => void) | undefined;
     onBlur?: (editor: LexicalEditor) => void;
   }) {
@@ -125,16 +125,14 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
-      HeadingNode,
-      ListNode,
-      ListItemNode,
-      QuoteNode,
-      CodeNode,
-      CodeHighlightNode
+      // Only register rich text nodes when in rich text mode
+      ...(isRichText
+        ? [HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode]
+        : [])
     ],
     editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
-      throw error;
+      console.error('Lexical errror', error);
     }
   };
 
@@ -187,8 +185,6 @@ export default function Editor({
                   maxHeight: `${maxH}px`,
                   ...boxStyle
                 }}
-                onFocus={() => setFocus(true)}
-                onBlur={() => setFocus(false)}
               />
             }
             placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
@@ -218,21 +214,25 @@ export default function Editor({
           <FocusPlugin focus={focus} setFocus={setFocus} />
           <KeyDownPlugin onKeyDown={onKeyDown} />
 
-          <VariablePlugin variables={variables} />
           {variableLabels.length > 0 && (
             <>
               <VariableLabelPlugin variables={variableLabels} />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
-          {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
+          {variables.length > 0 && (
+            <>
+              <VariablePlugin variables={variables} />
+              {/* <VariablePickerPlugin variables={variables} /> */}
+            </>
+          )}
           <OnBlurPlugin onBlur={onBlur} />
           <OnChangePlugin
             onChange={(editorState, editor) => {
               const rootElement = editor.getRootElement();
               setScrollHeight(rootElement?.scrollHeight || 0);
               startSts(() => {
-                onChange?.(editorState, editor);
+                onChange?.(editor);
               });
             }}
           />

@@ -12,6 +12,8 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { i18nT } from '../../../../web/i18n/utils';
 import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { isInternalAddress } from '../../../common/system/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -80,7 +82,7 @@ export const filterGPTMessageByMaxContext = async ({
   return [...systemPrompts, ...chats];
 };
 
-/* 
+/*
   Format requested messages
   1. If not useVision, only retain text.
   2. Remove file_url
@@ -150,12 +152,7 @@ export const loadRequestMessages = async ({
         content.map(async (item) => {
           if (item.type === 'image_url') {
             // Remove url origin
-            const imgUrl = (() => {
-              if (origin && item.image_url.url.startsWith(origin)) {
-                return item.image_url.url.replace(origin, '');
-              }
-              return item.image_url.url;
-            })();
+            const imgUrl = item.image_url.url;
 
             // base64 image
             if (imgUrl.startsWith('data:image/')) {
@@ -164,8 +161,23 @@ export const loadRequestMessages = async ({
 
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
-              if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
-                const { completeBase64: base64 } = await getImageBase64(imgUrl);
+              if (
+                imgUrl.startsWith('/') ||
+                process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
+                isInternalAddress(imgUrl)
+              ) {
+                const url = await (async () => {
+                  if (item.key) {
+                    try {
+                      return await getS3ChatSource().createGetChatFileURL({
+                        key: item.key,
+                        external: false
+                      });
+                    } catch (error) {}
+                  }
+                  return imgUrl;
+                })();
+                const { completeBase64: base64 } = await getImageBase64(url);
 
                 return {
                   ...item,
@@ -185,7 +197,7 @@ export const loadRequestMessages = async ({
                 return;
               }
             } catch (error: any) {
-              if (error?.response?.status === 405) {
+              if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
               addLog.warn(`Filter invalid image: ${imgUrl}`, { error });

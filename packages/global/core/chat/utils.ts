@@ -171,7 +171,8 @@ export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
       if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
         return false;
       }
-      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+      // type 为 'file' 时 key 和 url 不能同时为空
+      if (item.type === ChatItemValueTypeEnum.file && !item.file?.key && !item.file?.url) {
         return false;
       }
       return true;
@@ -204,7 +205,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
-/* 
+/*
   Merge chat responseData
   1. Same tool mergeSignId (Interactive tool node)
   2. Recursively merge plugin details with same mergeSignId

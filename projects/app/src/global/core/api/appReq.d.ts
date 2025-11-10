@@ -4,8 +4,8 @@ import type { PaginationProps } from '@fastgpt/web/common/fetch/type';
 
 export type GetAppChatLogsProps = {
   appId: string;
-  dateStart: Date;
-  dateEnd: Date;
+  dateStart: string | Date;
+  dateEnd: string | Date;
   sources?: ChatSourceEnum[];
   tmbIds?: string[];
   chatSearch?: string;

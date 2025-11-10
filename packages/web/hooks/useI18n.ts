@@ -37,7 +37,17 @@ export const useI18nLng = () => {
   };
 
   const onChangeLng = async (lng: string) => {
-    const lang = languageMap[lng] || 'en';
+    let lang = languageMap[lng];
+
+    // 如果没有直接映射，尝试智能回退
+    if (!lang) {
+      const langPrefix = lng.split('-')[0];
+      // 中文相关语言优先回退到简体中文
+      if (langPrefix === 'zh') {
+        lang = LangEnum.zh_CN;
+      }
+    }
+
     const prevLang = getLang();
 
     setLang(lang);
@@ -54,7 +64,17 @@ export const useI18nLng = () => {
 
     if (getLang() && !forceGetDefaultLng) return onChangeLng(getLang() as string);
 
-    const lang = languageMap[navigator.language] || 'en';
+    // 尝试精确匹配浏览器语言
+    let lang = languageMap[navigator.language];
+
+    // 如果没有精确匹配，尝试匹配语言前缀
+    if (!lang) {
+      const browserLangPrefix = navigator.language.split('-')[0];
+      // 中文语言环境下优先回退到简体中文
+      if (browserLangPrefix === 'zh') {
+        lang = LangEnum.zh_CN;
+      }
+    }
 
     // currentLng not in userLang
     return onChangeLng(lang);

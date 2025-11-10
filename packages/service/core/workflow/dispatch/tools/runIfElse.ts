@@ -58,8 +58,8 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
 
-    [VariableConditionEnum.equalTo]: () => String(inputValue).trim() === value.trim(),
-    [VariableConditionEnum.notEqual]: () => String(inputValue).trim() !== value.trim(),
+    [VariableConditionEnum.equalTo]: () => String(inputValue).trim() === String(value).trim(),
+    [VariableConditionEnum.notEqual]: () => String(inputValue).trim() !== String(value).trim(),
 
     // number
     [VariableConditionEnum.greaterThan]: () => Number(inputValue) > Number(value),

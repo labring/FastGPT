@@ -4,7 +4,7 @@ import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../workflow/
 import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
-import type { OpenApiJsonSchema } from './httpTools/type';
+import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../../web/i18n/utils';
 
 type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';

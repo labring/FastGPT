@@ -328,7 +328,7 @@ export enum VariableInputEnum {
   password = 'password',
   file = 'file',
 
-  modelSelect = 'modelSelect',
+  llmSelect = 'llmSelect',
   datasetSelect = 'datasetSelect',
 
   custom = 'custom',
@@ -386,19 +386,25 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.switch'),
       value: VariableInputEnum.switch,
       defaultValueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
+      icon: 'core/workflow/inputType/timePointSelect',
+      label: i18nT('common:core.workflow.inputType.timePointSelect'),
+      value: VariableInputEnum.timePointSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/timeRangeSelect',
+      label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
+      value: VariableInputEnum.timeRangeSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    },
+    {
+      icon: 'core/workflow/inputType/model',
+      label: i18nT('common:core.workflow.inputType.modelSelect'),
+      value: VariableInputEnum.llmSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
     }
-    // {
-    //   icon: 'core/workflow/inputType/timePointSelect',
-    //   label: i18nT('common:core.workflow.inputType.timePointSelect'),
-    //   value: VariableInputEnum.timePointSelect,
-    //   defaultValueType: WorkflowIOValueTypeEnum.string
-    // },
-    // {
-    //   icon: 'core/workflow/inputType/timeRangeSelect',
-    //   label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
-    //   value: VariableInputEnum.timeRangeSelect,
-    //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    // }
     // {
     //   icon: 'core/workflow/inputType/file',
     //   label: i18nT('common:core.workflow.inputType.file'),
@@ -410,14 +416,14 @@ export const variableConfigs: VariableConfigType[][] = [
   //   {
   //     icon: 'core/workflow/inputType/model',
   //     label: i18nT('common:core.workflow.inputType.modelSelect'),
-  //     value: VariableInputEnum.modelSelect,
+  //     value: VariableInputEnum.llmSelect,
   //     defaultValueType: WorkflowIOValueTypeEnum.string
   //   },
   //   {
   //     icon: 'core/workflow/inputType/dataset',
   //     label: i18nT('common:core.workflow.inputType.datasetSelect'),
   //     value: VariableInputEnum.datasetSelect,
-  //     defaultValueType: WorkflowIOValueTypeEnum.arrayString
+  //     defaultValueType: WorkflowIOValueTypeEnum.selectDataset
   //   }
   // ],
   [

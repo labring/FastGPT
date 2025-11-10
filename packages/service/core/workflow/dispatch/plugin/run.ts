@@ -1,10 +1,11 @@
-import {
-  getPluginInputsFromStoreNodes,
-  splitCombinePluginId
-} from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -15,15 +16,16 @@ import {
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { computedPluginUsage } from '../../../app/plugin/utils';
+import { computedAppToolUsage } from '../../../app/tool/runtime/utils';
 import { filterSystemVariables, getNodeErrResponse } from '../utils';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById } from '../../../app/tool/controller';
 import { runWorkflow } from '../index';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
-import type { PluginRuntimeType } from '@fastgpt/global/core/app/plugin/type';
+import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
+import { anyValueDecrypt } from '../../../../common/secret/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -49,12 +51,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return getNodeErrResponse({ error: 'pluginId can not find' });
   }
 
-  let plugin: PluginRuntimeType | undefined;
+  let plugin: AppToolRuntimeType | undefined;
 
   try {
     // Adapt <= 4.10 system tool
-    const { source, pluginId: formatPluginId } = splitCombinePluginId(pluginId);
-    if (source === PluginSourceEnum.systemTool) {
+    const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
+    if (source === AppToolSourceEnum.systemTool) {
       return await dispatchRunTool({
         ...props,
         node: {
@@ -99,10 +101,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         return {
           ...node,
           showStatus: false,
-          inputs: node.inputs.map((input) => ({
-            ...input,
-            value: data[input.key] ?? input.value
-          }))
+          inputs: node.inputs.map((input) => {
+            let val = data[input.key] ?? input.value;
+            if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+              val = anyValueDecrypt(val);
+            }
+
+            return {
+              ...input,
+              value: val
+            };
+          })
         };
       }
       return {
@@ -137,8 +146,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           isChildApp: true
         },
         variables: runtimeVariables,
-        query: getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(plugin.nodes),
+        query: serverGetWorkflowToolRunUserQuery({
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
           variables: runtimeVariables,
           files
         }).value,
@@ -148,7 +157,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       });
     const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
 
-    const usagePoints = await computedPluginUsage({
+    const usagePoints = await computedAppToolUsage({
       plugin,
       childrenUsage: flowUsages,
       error: !!output?.pluginOutput?.error

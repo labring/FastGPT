@@ -75,7 +75,7 @@ export const delClearChatHistories = (data: ClearHistoriesProps) =>
  * delete one chat record
  */
 export const delChatRecordById = (data: DeleteChatItemProps) =>
-  DELETE(`/core/chat/item/delete`, data);
+  POST(`/core/chat/item/delete`, data);
 
 /**
  * 修改历史记录: 标题/置顶

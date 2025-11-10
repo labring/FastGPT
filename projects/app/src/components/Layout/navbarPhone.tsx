@@ -5,9 +5,11 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
+  const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const { lastChatAppId, lastPane } = useChatStore();
 
@@ -46,6 +48,13 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
+        label: t('common:navbar.plugin'),
+        icon: 'core/app/pluginLight',
+        activeIcon: 'core/app/pluginFill',
+        link: '/plugin/tool',
+        activeLink: ['/plugin/tool']
+      },
+      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
@@ -62,9 +71,20 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/account/model'
         ],
         unread
-      }
+      },
+      ...(userInfo?.username === 'root'
+        ? [
+            {
+              label: t('common:navbar.Config'),
+              icon: 'support/config/configLight',
+              activeIcon: 'support/config/configFill',
+              link: '/config/tool',
+              activeLink: ['/config/tool', '/config/tool/marketplace']
+            }
+          ]
+        : [])
     ],
-    [t, lastChatAppId, lastPane, unread]
+    [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
   return (

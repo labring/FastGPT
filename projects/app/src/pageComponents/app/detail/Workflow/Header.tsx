@@ -84,7 +84,6 @@ const Header = () => {
       versionName?: string;
     }) => {
       const data = flowData2StoreData();
-
       if (data) {
         await onSaveApp({
           ...data,
@@ -106,6 +105,10 @@ const Header = () => {
           )
         );
       }
+    },
+    {
+      manual: true,
+      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
     }
   );
 

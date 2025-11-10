@@ -68,6 +68,7 @@ export function usePagination<DataT, ResT = {}>(
   const { t } = useTranslation();
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const [pageNum, setPageNum] = useState(numPage);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -88,6 +89,7 @@ export function usePagination<DataT, ResT = {}>(
       if (noMore && num !== 1) return;
 
       setTrue();
+      setError(null);
 
       try {
         const res = await api({
@@ -139,6 +141,7 @@ export function usePagination<DataT, ResT = {}>(
 
         onChange?.(num);
       } catch (error: any) {
+        setError(error);
         if (error.code !== 'ERR_CANCELED') {
           toast({
             title: getErrText(error, t('common:core.chat.error.data_error')),
@@ -372,6 +375,7 @@ export function usePagination<DataT, ResT = {}>(
     data,
     setData,
     isLoading,
+    error,
     Pagination,
     ScrollData,
     getData: fetchData,

@@ -782,7 +782,6 @@ const HeaderControl = ({
     [t]
   );
 
-  console.log(showSourceSelector);
   return (
     <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
       {showSourceSelector && (

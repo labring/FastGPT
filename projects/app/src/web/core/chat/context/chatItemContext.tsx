@@ -149,7 +149,6 @@ const ChatItemContextProvider = ({
           variables[item.key] = item.defaultValue;
         }
       });
-
       const values = variablesForm.getValues();
       variablesForm.reset({
         ...values,

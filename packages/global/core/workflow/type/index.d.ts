@@ -34,7 +34,7 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  avatar: string;
+  avatar?: string;
   name: I18nStringType | string;
   intro?: I18nStringType | string;
   toolDescription?: string;

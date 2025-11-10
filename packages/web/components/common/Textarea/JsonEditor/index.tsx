@@ -51,7 +51,6 @@ const options = {
 };
 
 const JSONEditor = ({
-  defaultValue,
   value,
   onChange,
   resize,
@@ -70,6 +69,7 @@ const JSONEditor = ({
   const completionRegisterRef = useRef<any>();
   const monaco = useMonaco();
   const triggerChar = useRef<string>();
+  const monarchProviderRegistered = useRef<boolean>(false);
 
   useEffect(() => {
     if (!monaco) return;
@@ -130,22 +130,6 @@ const JSONEditor = ({
       }
     });
 
-    // 自定义语法高亮
-    monaco.languages.setMonarchTokensProvider('json', {
-      tokenizer: {
-        root: [
-          // 匹配variables里的变量
-          [new RegExp(`{{(${variables.map((item) => item.key).join('|')})}}`), 'variable'],
-          [/".*?"/, 'string'], // 匹配字符串
-          [/[{}\[\]]/, '@brackets'], // 匹配括号
-          [/[0-9]+/, 'number'], // 匹配数字
-          [/true|false/, 'keyword'], // 匹配布尔值
-          [/:/, 'delimiter'], // 匹配冒号
-          [/,/, 'delimiter.comma'] // 匹配逗号
-        ]
-      }
-    });
-
     return () => {
       completionRegisterRef.current?.dispose();
     };
@@ -199,34 +183,62 @@ const JSONEditor = ({
     }
   }, [formatedValue, toast, t]);
 
-  const beforeMount = useCallback((monaco: Monaco) => {
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-      validate: false,
-      allowComments: false,
-      schemas: [
-        {
-          uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-          fileMatch: ['*'], // 匹配所有文件
-          schema: {} // 空的 Schema
-        }
-      ]
-    });
+  const beforeMount = useCallback(
+    (monaco: Monaco) => {
+      // 配置 JSON 语言诊断选项
+      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        validate: false,
+        allowComments: false,
+        schemas: [
+          {
+            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
+            fileMatch: ['*'], // 匹配所有文件
+            schema: {} // 空的 Schema
+          }
+        ]
+      });
 
-    monaco.editor.defineTheme('JSONEditorTheme', {
-      base: 'vs', // 可以基于已有的主题进行定制
-      inherit: true, // 继承基础主题的设置
-      rules: [{ token: 'variable', foreground: '2B5FD9' }],
-      colors: {
-        'editor.background': '#ffffff00',
-        'editorLineNumber.foreground': '#aaa',
-        'editorOverviewRuler.border': '#ffffff00',
-        'editor.lineHighlightBackground': '#F7F8FA',
-        'scrollbarSlider.background': '#E8EAEC',
-        'editorIndentGuide.activeBackground': '#ddd',
-        'editorIndentGuide.background': '#eee'
+      // 定义自定义主题
+      monaco.editor.defineTheme('JSONEditorTheme', {
+        base: 'vs', // 可以基于已有的主题进行定制
+        inherit: true, // 继承基础主题的设置
+        rules: [{ token: 'variable', foreground: '2B5FD9' }],
+        colors: {
+          'editor.background': '#ffffff00',
+          'editorLineNumber.foreground': '#aaa',
+          'editorOverviewRuler.border': '#ffffff00',
+          'editor.lineHighlightBackground': '#F7F8FA',
+          'scrollbarSlider.background': '#E8EAEC',
+          'editorIndentGuide.activeBackground': '#ddd',
+          'editorIndentGuide.background': '#eee'
+        }
+      });
+
+      // 注册自定义语法高亮（仅注册一次）
+      if (!monarchProviderRegistered.current) {
+        try {
+          monaco.languages.setMonarchTokensProvider('json', {
+            tokenizer: {
+              root: [
+                // 匹配variables里的变量
+                [new RegExp(`{{(${variables.map((item) => item.key).join('|')})}}`), 'variable'],
+                [/".*?"/, 'string'], // 匹配字符串
+                [/[{}\[\]]/, '@brackets'], // 匹配括号
+                [/[0-9]+/, 'number'], // 匹配数字
+                [/true|false/, 'keyword'], // 匹配布尔值
+                [/:/, 'delimiter'], // 匹配冒号
+                [/,/, 'delimiter.comma'] // 匹配逗号
+              ]
+            }
+          });
+          monarchProviderRegistered.current = true;
+        } catch (error) {
+          console.warn('Failed to register Monaco Monarch token provider:', error);
+        }
       }
-    });
-  }, []);
+    },
+    [variables]
+  );
 
   return (
     <Box
@@ -269,7 +281,6 @@ const JSONEditor = ({
         options={options as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
-        defaultValue={defaultValue}
         value={formatedValue}
         onChange={(e) => {
           onChange?.(e || '');

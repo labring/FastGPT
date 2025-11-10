@@ -10,9 +10,9 @@ x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
-  DB_MAX_LINK: 30
+  DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  S3_EXTERNAL_BASE_URL:
+  S3_EXTERNAL_BASE_URL: https://minio.com # S3 的公网访问地址
   S3_ENDPOINT: fastgpt-minio
   S3_PORT: 9000
   S3_USE_SSL: false
@@ -99,6 +99,9 @@ services:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fastgpt-minio
     restart: always
+    ports:
+      - 9000:9000
+      - 9001:9001
     networks:
       - fastgpt
     environment:
@@ -115,7 +118,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.13.2 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.0 # git
     ports:
       - 3000:3000
     networks:
@@ -165,13 +168,13 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.13.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.0
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.13.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.0
     networks:
       - fastgpt
     ports:
@@ -180,7 +183,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.2.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.3.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -188,7 +191,6 @@ services:
     environment:
       <<: *x-share-db-config
       AUTH_TOKEN: *x-plugin-auth-token
-      S3_BUCKET: fastgpt-plugins
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小

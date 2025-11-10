@@ -3,7 +3,6 @@ import { Box, type BoxProps, Flex, Link, type LinkProps } from '@chakra-ui/react
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -47,15 +46,15 @@ const Navbar = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('common:navbar.Chat'),
-        icon: 'core/chat/chatLight',
-        activeIcon: 'core/chat/chatFill',
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
         link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
         activeLink: ['/chat']
       },
       {
         label: t('common:navbar.Studio'),
-        icon: 'core/app/aiLight',
-        activeIcon: 'core/app/aiFill',
+        icon: 'navbar/dashboardLight',
+        activeIcon: 'navbar/dashboardFill',
         link: `/dashboard/apps`,
         activeLink: [
           '/dashboard/apps',
@@ -69,15 +68,22 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: t('common:navbar.Datasets'),
-        icon: 'core/dataset/datasetLight',
-        activeIcon: 'core/dataset/datasetFill',
+        icon: 'navbar/datasetLight',
+        activeIcon: 'navbar/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
+        label: t('common:navbar.plugin'),
+        icon: 'core/app/pluginLight',
+        activeIcon: 'core/app/pluginFill',
+        link: '/plugin/tool',
+        activeLink: ['/plugin/tool']
+      },
+      {
         label: t('common:navbar.Account'),
-        icon: 'support/user/userLight',
-        activeIcon: 'support/user/userFill',
+        icon: 'navbar/userLight',
+        activeIcon: 'navbar/userFill',
         link: '/account/info',
         activeLink: [
           '/account/bill',
@@ -91,13 +97,24 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/promotion',
           '/account/model'
         ]
-      }
+      },
+      ...(userInfo?.username === 'root'
+        ? [
+            {
+              label: t('common:navbar.Config'),
+              icon: 'support/config/configLight',
+              activeIcon: 'support/config/configFill',
+              link: '/config/tool',
+              activeLink: ['/config/tool', '/config/tool/marketplace']
+            }
+          ]
+        : [])
     ],
-    [lastChatAppId, lastPane, t]
+    [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
   const isSecondNavbarPage = useMemo(() => {
-    return ['/toolkit'].includes(router.pathname);
+    return ['/plugin'].includes(router.pathname);
   }, [router.pathname]);
 
   return (
@@ -166,8 +183,8 @@ const Navbar = ({ unread }: { unread: number }) => {
                       name: item.icon as any,
                       color: 'myGray.400'
                     })}
-                width={'20px'}
-                height={'20px'}
+                width={'24px'}
+                height={'24px'}
               />
               <Box
                 fontSize={'12px'}

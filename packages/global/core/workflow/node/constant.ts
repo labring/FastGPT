@@ -13,11 +13,9 @@ export enum FlowNodeInputTypeEnum { // render ui
   JSONEditor = 'JSONEditor',
 
   addInputParam = 'addInputParam', // params input
+  customVariable = 'customVariable', // 外部变量
 
-  // special input
   selectApp = 'selectApp',
-  customVariable = 'customVariable',
-
   // ai model select
   selectLLMModel = 'selectLLMModel',
   settingLLMModel = 'settingLLMModel',
@@ -28,7 +26,7 @@ export enum FlowNodeInputTypeEnum { // render ui
   settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
   hidden = 'hidden',
-  custom = 'custom',
+  custom = 'custom', // 自定义渲染
 
   fileSelect = 'fileSelect',
   timePointSelect = 'timePointSelect',

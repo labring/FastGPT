@@ -45,7 +45,7 @@ export const authSystemAdmin = async ({ req }: { req: ApiRequestProps }) => {
       _id: result.userId
     });
 
-    if (user && user.username !== 'root') {
+    if (!user || user.username !== 'root') {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
     return result;

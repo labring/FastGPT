@@ -74,7 +74,8 @@ const TemplateMarket = ({
         type: template.type as AppTypeEnum,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
-        chatConfig: templateDetail.workflow.chatConfig
+        chatConfig: templateDetail.workflow.chatConfig,
+        templateId: templateDetail.templateId
       }).then((res) => {
         webPushTrack.useAppTemplate({
           id: res,

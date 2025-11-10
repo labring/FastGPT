@@ -6,7 +6,14 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
-import React, { type Dispatch, type SetStateAction, type ReactNode, useMemo, useRef } from 'react';
+import React, {
+  type Dispatch,
+  type SetStateAction,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useCallback
+} from 'react';
 import {
   type Edge,
   type EdgeChange,
@@ -125,6 +132,7 @@ const WorkflowInitContextProvider = ({
     const nodesMap: Record<string, FlowNodeItemType> = {};
     const selectedNodesMap: Record<string, boolean> = {};
     const foldedNodesMap: Record<string, boolean> = {};
+    const compareNodeList: any[] = [];
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
     let systemConfigNode: StoreNodeItemType | undefined = undefined;
     let allNodeFolded = true;
@@ -137,6 +145,26 @@ const WorkflowInitContextProvider = ({
       nodeIds.push(node.data.nodeId);
       nodeList.push(node.data);
       nodesMap[node.data.nodeId] = node.data;
+      compareNodeList.push({
+        nodeId: node.data.nodeId,
+        name: node.data.name,
+        parentNodeId: node.data.parentNodeId,
+        flowNodeType: node.data.flowNodeType,
+        inputs: node.data.inputs.map((input) => {
+          return {
+            key: input.key,
+            label: input.label,
+            valueType: input.valueType
+          };
+        }),
+        outputs: node.data.outputs.map((output) => {
+          return {
+            key: output.key,
+            label: output.label,
+            valueType: output.valueType
+          };
+        })
+      });
 
       if (node.selected) {
         selectedNodesMap[node.data.nodeId] = true;
@@ -182,27 +210,44 @@ const WorkflowInitContextProvider = ({
       allNodeFolded,
       hasToolNode,
       llmMaxQuoteContext,
-      foldedNodesMap
+      foldedNodesMap,
+      compareNodeList
     };
   }, [nodes]);
 
   // 拆解出常用的数据，避免重复计算
-  const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat]);
-  const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat]);
-  const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat]);
-  const selectedNodesMap = useMemoEnhance(() => nodeFormat.selectedNodesMap, [nodeFormat]);
-  const workflowStartNode = useMemoEnhance(() => nodeFormat.workflowStartNode, [nodeFormat]);
-  const systemConfigNode = useMemoEnhance(() => nodeFormat.systemConfigNode, [nodeFormat]);
-  const foldedNodesMap = useMemoEnhance(() => nodeFormat.foldedNodesMap, [nodeFormat]);
+  const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat.nodeIds]);
+  const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat.nodeList]);
+  const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat.nodesMap]);
+  const compareNodeList = useMemoEnhance(
+    () => nodeFormat.compareNodeList,
+    [nodeFormat.compareNodeList]
+  );
+  const selectedNodesMap = useMemoEnhance(
+    () => nodeFormat.selectedNodesMap,
+    [nodeFormat.selectedNodesMap]
+  );
+  const workflowStartNode = useMemoEnhance(
+    () => nodeFormat.workflowStartNode,
+    [nodeFormat.workflowStartNode]
+  );
+  const systemConfigNode = useMemoEnhance(
+    () => nodeFormat.systemConfigNode,
+    [nodeFormat.systemConfigNode]
+  );
+  const foldedNodesMap = useMemoEnhance(
+    () => nodeFormat.foldedNodesMap,
+    [nodeFormat.foldedNodesMap]
+  );
   const allNodeFolded = nodeFormat.allNodeFolded;
   const hasToolNode = nodeFormat.hasToolNode;
   const llmMaxQuoteContext = nodeFormat.llmMaxQuoteContext;
 
   const getNodeList = useMemoizedFn(() => nodeList);
-  const getNodeById = useMemoizedFn(
+
+  const getNodeById = useCallback(
     (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
       if (!nodeId) return undefined;
-
       const node = nodesMap[nodeId];
       if (node) {
         if (condition) {
@@ -212,15 +257,14 @@ const WorkflowInitContextProvider = ({
       }
 
       return undefined;
-    }
+    },
+    [compareNodeList]
   );
 
   const rawNodeFormat = useMemo(() => {
     const rawNodesMap: Record<string, Node<FlowNodeItemType, string | undefined>> = {};
 
     nodes.forEach((node) => {
-      const flowNodeType = node.data.flowNodeType;
-
       rawNodesMap[node.id] = node;
     });
 
