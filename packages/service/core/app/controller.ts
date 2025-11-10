@@ -240,10 +240,10 @@ export const onDelOneApp = async ({
   for await (const app of apps) {
     if (session) {
       await del(app, session);
-      return deletedAppIds;
     }
 
     await mongoSessionRun((session) => del(app, session));
-    return deletedAppIds;
   }
+
+  return deletedAppIds;
 };
