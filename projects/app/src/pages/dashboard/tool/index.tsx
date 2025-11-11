@@ -133,7 +133,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   value={searchKey}
                   bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
+                  placeholder={t('app:search_tool')}
                   maxLength={30}
                 />
               )}

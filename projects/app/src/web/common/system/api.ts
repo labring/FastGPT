@@ -25,6 +25,6 @@ export const getMyModels = (props: GetMyModelsQuery) =>
   GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);
 
 export const getOperationalAd = () =>
-  GET<{ operationalAdImage: string; operationalAdLink: string }>(
+  GET<{ id: string; operationalAdImage: string; operationalAdLink: string }>(
     '/proApi/support/user/inform/getOperationalAd'
   );

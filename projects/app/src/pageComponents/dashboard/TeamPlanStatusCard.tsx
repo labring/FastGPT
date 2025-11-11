@@ -21,11 +21,22 @@ const TeamPlanStatusCard = () => {
     if (!operationalAd) {
       loadOperationalAd();
     }
+    if (operationalAd?.id) {
+      const currentKey = `hidden-until-${operationalAd.id}`;
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('hidden-until-') && key !== currentKey) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
   }, [operationalAd, loadOperationalAd]);
 
-  const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>('hidden-until', {
-    defaultValue: undefined
-  });
+  const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
+    `hidden-until-${operationalAd?.id}`,
+    {
+      defaultValue: undefined
+    }
+  );
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
@@ -130,9 +141,9 @@ const TeamPlanStatusCard = () => {
       )}
 
       <Flex flexDirection={'column'} gap={1}>
-        <Flex color={'myGray.500'}>
-          <Box>{t('app:used_points')}</Box>
-          <Flex gap={0.5}>
+        <Flex color={'myGray.500'} flexWrap={'wrap'} gap={1}>
+          <Box whiteSpace={'noWrap'}>{t('app:used_points')}</Box>
+          <Flex gap={'1px'} alignItems={'center'} flexShrink={0}>
             <Box color={`${valueColorSchema(aiPointsUsageMap.rate)}.500`}>
               {aiPointsUsageMap.value}
             </Box>

@@ -108,8 +108,6 @@ const ChatHeader = ({
 
         {/* control */}
         {!isPlugin && <ToolMenu history={history} reserveSpace={reserveSpace} />}
-
-        {reserveSpace && <Box w={6} />}
       </Flex>
     </Flex>
   );

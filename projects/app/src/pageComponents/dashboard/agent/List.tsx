@@ -37,6 +37,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { type CreateAppType } from '@/pages/dashboard/create';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -63,6 +64,7 @@ const List = () => {
     onUpdateApp,
     setMoveAppId,
     folderDetail,
+    searchKey,
     setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
 
@@ -150,7 +152,9 @@ const List = () => {
   return (
     <>
       {myApps.length === 0 && !folderDetail ? (
-        isPc && hasCreatePer ? (
+        searchKey ? (
+          <EmptyTip />
+        ) : isPc && hasCreatePer ? (
           <CreateButton appType={appType} />
         ) : (
           <Grid

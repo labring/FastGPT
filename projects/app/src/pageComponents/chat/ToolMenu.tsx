@@ -31,7 +31,12 @@ const ToolMenu = ({
           aria-label={''}
           size={'sm'}
           variant={'whitePrimary'}
-          {...(reserveSpace && { border: 'none', boxShadow: 'none', bg: 'transparent' })}
+          {...(reserveSpace && {
+            border: 'none',
+            boxShadow: 'none',
+            bg: 'transparent',
+            transform: 'translateX(-32px)'
+          })}
         />
       }
       menuList={[

@@ -234,16 +234,16 @@ const TemplateMarket = ({
                 label: t('app:type.All')
               },
               {
-                value: AppTypeEnum.simple,
-                label: t('app:type.Simple bot')
-              },
-              {
                 value: AppTypeEnum.workflow,
                 label: t('app:type.Workflow bot')
               },
               {
+                value: AppTypeEnum.simple,
+                label: t('app:type.Chat_Agent')
+              },
+              {
                 value: AppTypeEnum.workflowTool,
-                label: t('app:type.Plugin')
+                label: t('app:toolType_workflow')
               }
             ]}
             onChange={(e) => {

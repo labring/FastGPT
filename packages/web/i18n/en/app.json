@@ -293,6 +293,7 @@
   "response_format": "Response format",
   "save_team_app_log_keys": "Save as team configuration",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
+  "search_agent": "Search Agent",
   "search_app": "Search apps",
   "search_tool": "Search Tools",
   "secret_get_course": "Course",

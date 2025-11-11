@@ -292,6 +292,7 @@
   "response_format": "回覆格式",
   "save_team_app_log_keys": "保存為團隊配置",
   "saved_success": "儲存成功！\n如需在外部使用該版本，請點選“儲存並發布”",
+  "search_agent": "搜索 Agent",
   "search_app": "搜尋應用程式",
   "search_tool": "搜索工具",
   "secret_get_course": "教程",

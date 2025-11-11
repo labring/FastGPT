@@ -261,7 +261,7 @@ const Provider = ({
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
     >
-      <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
+      <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>
   );
 };

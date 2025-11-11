@@ -8,6 +8,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useTranslation } from 'next-i18next';
+import { getWorkorderURL } from '@/web/common/workorder/api';
 
 const BotShowRouter: { [key: string]: boolean } = {
   '/dashboard/agent': true,
@@ -49,6 +50,24 @@ const HelperBot = () => {
       setIsLoading(true);
     }
   }, [showChat]);
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'workorderRequest') {
+        try {
+          const data = await getWorkorderURL();
+          if (data?.redirectUrl) {
+            window.open(data.redirectUrl);
+          }
+        } catch (error) {
+          console.error('Failed to create workorder:', error);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   if (!botIframeUrl || !BotShowRouter[router.pathname]) {
     return null;

@@ -5,18 +5,17 @@ import { useTranslation } from 'next-i18next';
 
 function WorkorderEntrance() {
   const { t } = useTranslation();
-
-  const { runAsync: onFeedback } = useRequest2(getWorkorderURL, {
-    manual: true,
-    onSuccess(data) {
-      if (data) {
-        window.open(data.redirectUrl);
-      }
-    }
-  });
+  const handleClick = () => {
+    window.top?.postMessage(
+      {
+        type: 'workorderRequest'
+      },
+      '*'
+    );
+  };
 
   return (
-    <Button variant={'primaryOutline'} w={'100%'} mb={2} onClick={onFeedback}>
+    <Button variant={'primaryOutline'} w={'100%'} mb={2} onClick={handleClick}>
       {t('common:question_feedback')}
     </Button>
   );
