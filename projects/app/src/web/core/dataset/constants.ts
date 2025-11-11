@@ -97,5 +97,13 @@ export const TrainingProcess = {
   isReady: {
     label: i18nT('dataset:process.Is_Ready'),
     value: 'isReady'
+  },
+  small2bigIndex: {
+    label: i18nT('dataset:process.segment_enhanced_index'),
+    value: 'small2bigIndex'
+  },
+  hypeIndex: {
+    label: i18nT('dataset:process.Hype_Index'),
+    value: 'hypeIndex'
   }
 };
