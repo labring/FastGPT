@@ -59,7 +59,11 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     const parseUrl = new URL(url, 'http://localhost:3000');
 
     // Get filename from URL
-    const filename = parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
+    const filename = (() => {
+      // Here is a S3 Object Key
+      if (url.startsWith('chat/')) return url.split('/').pop()?.split('-')[1];
+      return parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
+    })();
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
 
     // If it's a document type, return as file, otherwise treat as image

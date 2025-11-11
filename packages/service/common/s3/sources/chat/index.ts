@@ -22,6 +22,10 @@ class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
+  static isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
+    return key?.startsWith(`${S3Sources.chat}/`) ?? false;
+  }
+
   async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
     const { key, expiredHours = 1, external = false } = params; // 默认一个小时
 

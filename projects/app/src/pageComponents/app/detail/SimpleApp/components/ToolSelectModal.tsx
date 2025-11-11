@@ -38,6 +38,7 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { types } from 'util';
 import { useRouter } from 'next/router';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -55,15 +56,16 @@ export const childAppSystemKey: string[] = [
 ];
 
 enum TemplateTypeEnum {
-  'appTool' = 'appTool',
-  'teamApp' = 'teamApp'
+  'systemTools' = 'systemTools',
+  'myTools' = 'myTools',
+  'agent' = 'agent'
 }
 
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const [templateType, setTemplateType] = useState(TemplateTypeEnum.appTool);
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemTools);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -82,12 +84,24 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentId?: ParentIdType;
       searchVal?: string;
     }) => {
-      if (type === TemplateTypeEnum.appTool) {
+      if (type === TemplateTypeEnum.systemTools) {
         return getAppToolTemplates({ parentId, searchKey: searchVal });
-      } else if (type === TemplateTypeEnum.teamApp) {
+      } else if (type === TemplateTypeEnum.myTools) {
         return getTeamAppTemplates({
           parentId,
-          searchKey: searchVal
+          searchKey: searchVal,
+          type: [
+            AppTypeEnum.toolFolder,
+            AppTypeEnum.workflowTool,
+            AppTypeEnum.mcpToolSet,
+            AppTypeEnum.httpToolSet
+          ]
+        }).then((res) => res.filter((app) => app.id !== appDetail._id));
+      } else if (type === TemplateTypeEnum.agent) {
+        return getTeamAppTemplates({
+          parentId,
+          searchKey: searchVal,
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
         }).then((res) => res.filter((app) => app.id !== appDetail._id));
       }
     },
@@ -102,7 +116,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   );
 
   const templates = useMemo(() => {
-    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.appTool) {
+    if (selectedTagIds.length === 0 || templateType !== TemplateTypeEnum.systemTools) {
       return rawTemplates;
     }
     return rawTemplates.filter((template) => {
@@ -113,9 +127,9 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamApp)
-        return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getAppToolPaths({ sourceId: parentId, type: 'current' });
+      if (templateType === TemplateTypeEnum.systemTools)
+        return getAppToolPaths({ sourceId: parentId, type: 'current' });
+      return getAppFolderPath({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -157,14 +171,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         <FillRowTabs
           list={[
             {
-              icon: 'phoneTabbar/tool',
-              label: t('common:navbar.Toolkit'),
-              value: TemplateTypeEnum.appTool
+              icon: 'common/app',
+              label: t('app:core.module.template.System Tools'),
+              value: TemplateTypeEnum.systemTools
             },
             {
-              icon: 'support/user/userLightSmall',
-              label: t('common:core.module.template.Team app'),
-              value: TemplateTypeEnum.teamApp
+              icon: 'core/app/type/plugin',
+              label: t('common:navbar.Tools'),
+              value: TemplateTypeEnum.myTools
+            },
+            {
+              icon: 'core/chat/sidebar/star',
+              label: 'Agent',
+              value: TemplateTypeEnum.agent
             }
           ]}
           py={'5px'}
@@ -177,19 +196,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             })
           }
         />
-        <Box w={300}>
+        <Box w={200}>
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={
-              templateType === TemplateTypeEnum.appTool
+              templateType === TemplateTypeEnum.systemTools
                 ? t('common:search_tool')
                 : t('app:search_app')
             }
           />
         </Box>
       </Box>
-      {templateType === TemplateTypeEnum.appTool && allTags.length > 0 && (
+      {templateType === TemplateTypeEnum.systemTools && allTags.length > 0 && (
         <Box mt={3} px={[3, 6]}>
           <ToolTagFilterBox
             tags={allTags}
@@ -333,7 +352,7 @@ const RenderList = React.memo(function RenderList({
   );
 
   const PluginListRender = useMemoizedFn(() => {
-    const isSystemTool = type === TemplateTypeEnum.appTool;
+    const isSystemTool = type === TemplateTypeEnum.systemTools;
     return (
       <>
         {templates.length > 0 ? (
@@ -477,7 +496,7 @@ const RenderList = React.memo(function RenderList({
       <Box overflowY="auto" mb={8} w={'full'}>
         <PluginListRender />
       </Box>
-      {type === TemplateTypeEnum.appTool && (
+      {type === TemplateTypeEnum.systemTools && (
         <Flex
           alignItems="center"
           cursor="pointer"

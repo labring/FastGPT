@@ -41,13 +41,14 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
-  checkIsInteractiveByHistories,
+  getInteractiveByHistories,
   formatChatValue2InputType,
-  setUserSelectResultToHistories
+  setInteractiveResultToHistories
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
+import { WorkflowAuthContext } from '../context/workflowAuthContext';
 import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
@@ -64,6 +65,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -74,6 +76,7 @@ const VariableInputForm = dynamic(() => import('./components/VariableInputForm')
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
+const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -89,6 +92,7 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     active?: boolean; // can use
+    showWorkorder?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -104,13 +108,14 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
+  showWorkorder,
   onStartChat,
   chatType
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -140,9 +145,9 @@ const ChatBox = ({
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
@@ -153,7 +158,7 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
+  const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -537,7 +542,7 @@ const ChatBox = ({
           setChatRecords(
             isInteractivePrompt
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+                setInteractiveResultToHistories(newChatList.slice(0, -2), text)
               : newChatList
           );
 
@@ -598,11 +603,18 @@ const ChatBox = ({
                   responseData
                 };
               });
+
+              const lastInteractive = getInteractiveByHistories(state);
+              if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
+                setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+              }
+
               return newChatHistories;
             });
 
             setTimeout(() => {
-              if (!checkIsInteractiveByHistories(newChatHistories)) {
+              // If there is no interactive mode, create a question guide
+              if (!getInteractiveByHistories(newChatHistories)) {
                 createQuestionGuide();
               }
 
@@ -887,7 +899,7 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
 
   // Add listener
   useEffect(() => {
@@ -989,6 +1001,7 @@ const ChatBox = ({
     }
   }, [ScrollContainerRef, setIsVariableVisible]);
 
+  // Home chat, and no chat records
   const isHomeRender = useMemo(() => {
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
@@ -1096,6 +1109,8 @@ const ChatBox = ({
     showMarkIcon,
     onCloseCustomFeedback
   ]);
+
+  // Child box
   const AppChatRenderBox = useMemo(() => {
     return (
       <ScrollData
@@ -1180,6 +1195,8 @@ const ChatBox = ({
               w={'100%'}
               maxW={['auto', 'min(820px, 100%)']}
             >
+              {showWorkorder && <WorkorderEntrance />}
+
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => chatController.current?.abort('stop')}

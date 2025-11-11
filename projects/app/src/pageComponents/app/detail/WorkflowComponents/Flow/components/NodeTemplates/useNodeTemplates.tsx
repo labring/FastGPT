@@ -11,6 +11,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export const useNodeTemplates = () => {
   const { feConfigs } = useSystemStore();
@@ -93,14 +94,27 @@ export const useNodeTemplates = () => {
       searchVal?: string;
       tags?: string[];
     }) => {
-      if (type === TemplateTypeEnum.teamApp) {
+      if (type === TemplateTypeEnum.myTools) {
         // app, workflow-plugin, mcp
         return getTeamAppTemplates({
           parentId,
-          searchKey: searchVal
+          searchKey: searchVal,
+          type: [
+            AppTypeEnum.toolFolder,
+            AppTypeEnum.workflowTool,
+            AppTypeEnum.mcpToolSet,
+            AppTypeEnum.httpToolSet
+          ]
         }).then((res) => res.filter((app) => app.id !== appId));
       }
-      if (type === TemplateTypeEnum.appTool) {
+      if (type === TemplateTypeEnum.agent) {
+        return getTeamAppTemplates({
+          parentId,
+          searchKey: searchVal,
+          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+        }).then((res) => res.filter((app) => app.id !== appId));
+      }
+      if (type === TemplateTypeEnum.systemTools) {
         // systemTool
         return getAppToolTemplates({
           searchKey: searchVal,

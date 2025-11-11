@@ -53,6 +53,7 @@ export type FastGPTFeConfigsType = {
   googleClientVerKey?: string;
   mcpServerProxyEndpoint?: string;
   chineseRedirectUrl?: string;
+  botIframeUrl?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;

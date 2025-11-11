@@ -27,7 +27,7 @@ async function handler(
 
   if (!app) return Promise.reject(new UserError('No Mcp Toolset found'));
 
-  if (app.type !== AppTypeEnum.toolSet)
+  if (app.type !== AppTypeEnum.mcpToolSet)
     return Promise.reject(new UserError('the parent is not a mcp toolset'));
 
   return (await getMCPChildren(app)).filter((item) => {

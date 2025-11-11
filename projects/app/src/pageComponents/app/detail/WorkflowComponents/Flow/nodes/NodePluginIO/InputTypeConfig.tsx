@@ -315,6 +315,7 @@ const InputTypeConfig = ({
             bg={'myGray.50'}
             placeholder={t('workflow:field_description_placeholder')}
             rows={3}
+            minH={10}
             {...register('description', {
               required: showIsToolInput && isToolInput ? true : false
             })}
@@ -498,9 +499,11 @@ const InputTypeConfig = ({
                   inputType === VariableInputEnum.internal) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
-                  {...register('defaultValue')}
+                  value={defaultValue}
+                  onChange={(e) => setValue('defaultValue', e.target.value)}
                   bg={'myGray.50'}
                   autoHeight
+                  title={t('common:core.module.Default Value')}
                   minH={40}
                   maxH={100}
                 />
@@ -781,7 +784,7 @@ const InputTypeConfig = ({
           </>
         )}
         {/* TODO: 适配新的文件上传 */}
-        {inputType === VariableInputEnum.file && (
+        {inputType === FlowNodeInputTypeEnum.fileSelect && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>

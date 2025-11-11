@@ -238,7 +238,7 @@ export async function getChildAppPreviewNode({
             })
           : true;
 
-      if (item.type === AppTypeEnum.toolSet) {
+      if (item.type === AppTypeEnum.mcpToolSet) {
         const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
           mcpToolSet: {

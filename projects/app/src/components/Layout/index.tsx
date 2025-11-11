@@ -14,8 +14,8 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import WorkorderButton from './WorkorderButton';
 import { useCheckCoupon } from './hooks/checkCoupon';
+import HelperBot from './HelperBot';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -176,7 +176,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
           <ResetExpiredPswModal />
-          <WorkorderButton />
+          <HelperBot />
         </>
       )}
 

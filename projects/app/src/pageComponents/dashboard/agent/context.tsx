@@ -72,13 +72,19 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingApps
   } = useRequest2(
     () => {
-      const formatType = (() => {
-        if (!type || type === 'all') return undefined;
-        if (type === AppTypeEnum.plugin)
-          return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
-
-        return [AppTypeEnum.folder, type];
-      })();
+      const isAgent = router.pathname.includes('/agent');
+      const formatType = isAgent
+        ? !type || type === 'all'
+          ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          : [AppTypeEnum.folder, type]
+        : !type || type === 'all'
+          ? [
+              AppTypeEnum.toolFolder,
+              AppTypeEnum.workflowTool,
+              AppTypeEnum.mcpToolSet,
+              AppTypeEnum.httpToolSet
+            ]
+          : [AppTypeEnum.toolFolder, type];
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
@@ -124,19 +130,25 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     [moveAppId, onUpdateApp]
   );
 
-  const getAppFolderList = useCallback(({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({
-      parentId,
-      type: AppTypeEnum.folder
-    }).then((res) =>
-      res
-        .filter((item) => item.permission.hasWritePer)
-        .map((item) => ({
-          id: item._id,
-          name: item.name
-        }))
-    );
-  }, []);
+  const getAppFolderList = useCallback(
+    ({ parentId }: GetResourceFolderListProps) => {
+      const isAgent = router.pathname.includes('/agent');
+      const folderType = isAgent ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
+
+      return getMyApps({
+        parentId,
+        type: folderType
+      }).then((res) =>
+        res
+          .filter((item) => item.permission.hasWritePer)
+          .map((item) => ({
+            id: item._id,
+            name: item.name
+          }))
+      );
+    },
+    [router.pathname]
+  );
 
   const { setLastAppListRouteType } = useSystemStore();
   useEffect(() => {

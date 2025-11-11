@@ -17,6 +17,7 @@
   "bill.valid_time": "Effective Time",
   "bill.you_can_convert": "You can convert",
   "bill.yuan": "Yuan",
+  "current_package": "Current package: ",
   "delete.admin_failed": "Failed to Delete Admin",
   "delete.admin_success": "Admin Deleted Successfully",
   "delete.failed": "Delete failed",
@@ -87,6 +88,7 @@
   "team.add_writer": "Add writable members",
   "team.avatar_and_name": "avatar",
   "team.belong_to_group": "Member group",
+  "team.collaborator.added": "Added",
   "team.group.avatar": "Group avatar",
   "team.group.create": "Create group",
   "team.group.create_failed": "Failed to create group",
@@ -110,6 +112,5 @@
   "team.manage_collaborators": "Manage Collaborators",
   "team.no_collaborators": "No Collaborators",
   "team.org.org": "Organization",
-  "team.write_role_member": "Write Permission",
-  "team.collaborator.added": "Added"
+  "team.write_role_member": "Write Permission"
 }

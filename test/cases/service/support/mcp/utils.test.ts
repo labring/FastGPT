@@ -166,7 +166,7 @@ describe('getMcpServerTools', () => {
         {
           _id: 'test-app',
           name: 'Test App',
-          type: AppTypeEnum.plugin
+          type: AppTypeEnum.workflowTool
         }
       ]
     });

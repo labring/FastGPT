@@ -38,7 +38,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { setLoginStore, feConfigs } = useSystemStore();
   const { isPc } = useSystem();
 
-  const { lastRoute = '/dashboard/apps' } = router.query as { lastRoute: string };
+  const { lastRoute = '/dashboard/agent' } = router.query as { lastRoute: string };
   const computedLastRoute = useMemo(() => {
     return router.pathname === '/chat' ? router.asPath : lastRoute;
   }, [lastRoute, router.pathname, router.asPath]);

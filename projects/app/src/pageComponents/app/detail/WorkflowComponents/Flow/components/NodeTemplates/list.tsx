@@ -76,7 +76,7 @@ const NodeTemplateListItem = ({
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
-  const isSystemTool = templateType === TemplateTypeEnum.appTool;
+  const isSystemTool = templateType === TemplateTypeEnum.systemTools;
 
   return (
     <MyTooltip
@@ -433,7 +433,10 @@ const NodeTemplateList = ({
 
               <Grid
                 gridTemplateColumns={
-                  templateType === TemplateTypeEnum.teamApp ? ['1fr'] : ['1fr', '1fr 1fr']
+                  templateType === TemplateTypeEnum.myTools ||
+                  templateType === TemplateTypeEnum.agent
+                    ? ['1fr']
+                    : ['1fr', '1fr 1fr']
                 }
                 rowGap={2}
               >

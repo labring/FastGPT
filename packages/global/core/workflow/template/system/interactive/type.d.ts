@@ -31,6 +31,7 @@ type ChildrenInteractive = InteractiveNodeType & {
   };
 };
 
+// Loop bode
 type LoopInteractive = InteractiveNodeType & {
   type: 'loopInteractive';
   params: {
@@ -80,10 +81,20 @@ type UserInputInteractive = InteractiveNodeType & {
   };
 };
 
+// 欠费暂停交互
+export type PaymentPauseInteractive = InteractiveNodeType & {
+  type: 'paymentPause';
+  params: {
+    description?: string;
+    continue?: boolean;
+  };
+};
+
 export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
   | ChildrenInteractive
-  | LoopInteractive;
+  | LoopInteractive
+  | PaymentPauseInteractive;
 
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;

@@ -92,7 +92,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       per: ReadPermissionVal
     });
 
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
     const isTool = app.type === AppTypeEnum.tool;
 
     const userQuestion: UserChatItemType = await (async () => {
@@ -212,7 +212,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
 
     const newTitle = isPlugin
-      ? variables.cTime ?? formatTime2YMDHM()
+      ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {

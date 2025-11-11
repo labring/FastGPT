@@ -186,7 +186,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     })();
     retainDatasetCite = retainDatasetCite && !!responseDetail;
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
     if (isPlugin) {
@@ -322,7 +322,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
 
     const newTitle = isPlugin
-      ? variables.cTime ?? formatTime2YMDHM()
+      ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {

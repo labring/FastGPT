@@ -148,7 +148,10 @@ export const runHTTPTool = async ({
 
     const { data } = await axios({
       method: method.toUpperCase(),
-      baseURL: baseUrl.startsWith('https://') ? baseUrl : `https://${baseUrl}`,
+      baseURL:
+        baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+          ? baseUrl
+          : `https://${baseUrl}`,
       url: toolPath,
       headers,
       data: body,

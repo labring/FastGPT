@@ -55,6 +55,8 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import type { MCPClient } from '../../app/mcp';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '../../../../web/i18n/utils';
 
 type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
   runtimeNodes: RuntimeNodeItemType[];
@@ -132,7 +134,7 @@ export async function dispatchWorkFlow({
   }
 
   // Add preview url to chat items
-  await addPreviewUrlToChatItems(histories);
+  await addPreviewUrlToChatItems(histories, 'chatFlow');
   for (const item of query) {
     if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
     item.file.url = await getS3ChatSource().createGetChatFileURL({
@@ -620,6 +622,23 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
       };
     }
+    private async checkTeamBlance(): Promise<NodeResponseCompleteType | undefined> {
+      try {
+        await checkTeamAIPoints(data.runningUserInfo.teamId);
+      } catch (error) {
+        // Next time you enter the system, you will still start from the current node(Current check team blance node).
+        if (error === TeamErrEnum.aiPointsNotEnough) {
+          return {
+            [DispatchNodeResponseKeyEnum.interactive]: {
+              type: 'paymentPause',
+              params: {
+                description: i18nT('chat:balance_not_enough_pause')
+              }
+            }
+          };
+        }
+      }
+    }
     /* Check node run/skip or wait */
     private async checkNodeCanRun(
       node: RuntimeNodeItemType,
@@ -652,6 +671,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.chatResponses.push(responseData);
         }
 
+        // Push usage in real time. Avoid a workflow usage a large number of points
         if (nodeDispatchUsages) {
           if (usageId) {
             pushChatItemUsage({
@@ -763,6 +783,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         };
       };
 
+      // Check queue status
       if (data.maxRunTimes <= 0) {
         addLog.error('Max run times is 0', {
           appId: data.runningAppInfo.id
@@ -790,8 +811,17 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         runtimeEdges
       });
 
-      const nodeRunResult = await (() => {
+      const nodeRunResult = await (async () => {
         if (status === 'run') {
+          const blanceCheckResult = await this.checkTeamBlance();
+          if (blanceCheckResult) {
+            return {
+              node,
+              runStatus: 'pause' as const,
+              result: blanceCheckResult
+            };
+          }
+
           // All source edges status to waiting
           runtimeEdges.forEach((item) => {
             if (item.target === node.nodeId) {
@@ -870,10 +900,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.debugNextStepRunNodes = this.debugNextStepRunNodes.concat([nodeRunResult.node]);
         }
 
-        this.nodeInteractiveResponse = {
-          entryNodeIds: [nodeRunResult.node.nodeId],
-          interactiveResponse
-        };
+        // For the pause interactive response, there may be multiple nodes triggered at the same time, so multiple entry nodes need to be recorded.
+        // For other interactive nodes, only one will be triggered at the same time.
+        if (interactiveResponse.type === 'paymentPause') {
+          this.nodeInteractiveResponse = {
+            entryNodeIds: this.nodeInteractiveResponse?.entryNodeIds
+              ? this.nodeInteractiveResponse.entryNodeIds.concat(nodeRunResult.node.nodeId)
+              : [nodeRunResult.node.nodeId],
+            interactiveResponse
+          };
+        } else {
+          this.nodeInteractiveResponse = {
+            entryNodeIds: [nodeRunResult.node.nodeId],
+            interactiveResponse
+          };
+        }
         return;
       } else if (isDebugMode) {
         // Debug 模式下一步时候，会自己增加 activeNode

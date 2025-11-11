@@ -12,6 +12,7 @@ export type AppVersionSchemaType = {
   edges: AppSchema['edges'];
   chatConfig: AppSchema['chatConfig'];
   isPublish?: boolean;
+  isAutoSave?: boolean;
   versionName: string;
   tmbId: string;
 };

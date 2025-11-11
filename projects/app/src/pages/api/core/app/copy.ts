@@ -8,8 +8,9 @@ import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { copyImage } from '@fastgpt/service/common/file/image/controller';
+import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type copyAppQuery = {};
 
@@ -36,9 +37,10 @@ async function handler(
 
   // Copy avatar
   const { appId } = await mongoSessionRun(async (session) => {
-    const avatar = await copyImage({
+    const avatar = await copyAvatarImage({
       teamId,
       imageUrl: app.avatar,
+      ttl: true,
       session
     });
 
@@ -56,6 +58,8 @@ async function handler(
       pluginData: app.pluginData,
       session
     });
+
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
     return { appId };
   });

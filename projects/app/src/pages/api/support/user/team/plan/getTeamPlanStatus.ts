@@ -33,7 +33,12 @@ async function handler(
         MongoApp.countDocuments({
           teamId,
           type: {
-            $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+            $in: [
+              AppTypeEnum.simple,
+              AppTypeEnum.workflow,
+              AppTypeEnum.workflowTool,
+              AppTypeEnum.mcpToolSet
+            ]
           }
         }),
         MongoDataset.countDocuments({
