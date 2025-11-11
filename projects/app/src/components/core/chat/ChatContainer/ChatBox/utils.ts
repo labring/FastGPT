@@ -6,7 +6,10 @@ import {
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  extractDeepestInteractive,
+  getLastInteractiveValue
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 
@@ -46,53 +49,49 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   };
 };
 
+// 用于判断当前对话框状态。所以，如果是 child 的 interactive，需要递归去找到最后一个。
 export const getInteractiveByHistories = (
   chatHistories: ChatSiteItemType[]
 ): {
   interactive: WorkflowInteractiveResponseType | undefined;
   canSendQuery: boolean;
 } => {
-  const lastAIHistory = chatHistories[chatHistories.length - 1];
-  if (!lastAIHistory) {
+  const lastInreactive = getLastInteractiveValue(chatHistories);
+  if (!lastInreactive) {
     return {
       interactive: undefined,
       canSendQuery: true
     };
   }
 
-  const lastMessageValue = lastAIHistory.value[
-    lastAIHistory.value.length - 1
-  ] as AIChatItemValueItemType;
+  const finalInteractive = extractDeepestInteractive(lastInreactive);
 
-  if (
-    lastMessageValue &&
-    'interactive' in lastMessageValue &&
-    !!lastMessageValue?.interactive?.params
-  ) {
-    const finalInteractive = extractDeepestInteractive(lastMessageValue.interactive);
-
-    // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
-    if (finalInteractive.type === 'userSelect' && !finalInteractive.params.userSelectedVal) {
-      return {
-        interactive: finalInteractive,
-        canSendQuery: false
-      };
-    } else if (finalInteractive.type === 'userInput' && !finalInteractive.params.submitted) {
-      return {
-        interactive: finalInteractive,
-        canSendQuery: false
-      };
-    } else if (finalInteractive.type === 'paymentPause' && !finalInteractive.params.continue) {
-      return {
-        interactive: finalInteractive,
-        canSendQuery: false
-      };
-    } else if (finalInteractive.type === 'agentPlanCheck' && !finalInteractive.params.confirmed) {
-      return {
-        interactive: finalInteractive,
-        canSendQuery: true
-      };
-    }
+  // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
+  if (finalInteractive.type === 'userSelect' && !finalInteractive.params.userSelectedVal) {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: false
+    };
+  } else if (finalInteractive.type === 'userInput' && !finalInteractive.params.submitted) {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: false
+    };
+  } else if (finalInteractive.type === 'paymentPause' && !finalInteractive.params.continue) {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: false
+    };
+  } else if (finalInteractive.type === 'agentPlanCheck' && !finalInteractive.params.confirmed) {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: true
+    };
+  } else if (finalInteractive.type === 'agentPlanAskQuery') {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: true
+    };
   }
 
   return {

@@ -202,6 +202,10 @@ export const getLastInteractiveValue = (
       return lastValue.interactive;
     }
 
+    if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
+      return lastValue.interactive;
+    }
+
     // Agent plan check
     if (
       lastValue.interactive.type === 'agentPlanCheck' &&
@@ -212,10 +216,6 @@ export const getLastInteractiveValue = (
 
     // Agent plan ask query
     if (lastValue.interactive.type === 'agentPlanAskQuery') {
-      return lastValue.interactive;
-    }
-
-    if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
       return lastValue.interactive;
     }
   }
