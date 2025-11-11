@@ -6,5 +6,9 @@ export enum TrackEnum {
   createDataset = 'createDataset',
   appNodes = 'appNodes',
   runSystemTool = 'runSystemTool',
-  datasetSearch = 'datasetSearch'
+  datasetSearch = 'datasetSearch',
+  readSystemAnnouncement = 'readSystemAnnouncement',
+  viewOperationalAd = 'viewOperationalAd',
+  clickOperationalAd = 'clickOperationalAd',
+  closeOperationalAd = 'closeOperationalAd'
 }

@@ -5,17 +5,19 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { useLocalStorageState } from 'ahooks';
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
   const { operationalAd, loadOperationalAd } = useSystemStore();
   const router = useRouter();
+  const hasTrackedView = useRef(false);
 
   useEffect(() => {
     if (!operationalAd) {
@@ -30,6 +32,16 @@ const TeamPlanStatusCard = () => {
       });
     }
   }, [operationalAd, loadOperationalAd]);
+
+  useEffect(() => {
+    if (operationalAd?.id && operationalAd?.operationalAdImage && !hasTrackedView.current) {
+      hasTrackedView.current = true;
+      webPushTrack.viewOperationalAd({
+        adId: operationalAd.id,
+        adImage: operationalAd.operationalAdImage
+      });
+    }
+  }, [operationalAd]);
 
   const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
     `hidden-until-${operationalAd?.id}`,
@@ -71,9 +83,15 @@ const TeamPlanStatusCard = () => {
   }, [hiddenUntil]);
 
   const handleClose = useCallback(() => {
+    if (operationalAd?.id) {
+      webPushTrack.closeOperationalAd({
+        adId: operationalAd.id
+      });
+    }
+
     const hideUntilTime = Date.now() + 24 * 60 * 60 * 1000;
     setHiddenUntil(hideUntilTime);
-  }, [setHiddenUntil]);
+  }, [setHiddenUntil, operationalAd]);
 
   if (!teamPlanStatus?.standardConstants) return null;
 
@@ -97,6 +115,10 @@ const TeamPlanStatusCard = () => {
             cursor="pointer"
             onClick={() => {
               if (operationalAd?.operationalAdLink) {
+                webPushTrack.clickOperationalAd({
+                  adId: operationalAd.id,
+                  adLink: operationalAd.operationalAdLink
+                });
                 window.open(operationalAd.operationalAdLink, '_blank');
               }
             }}
