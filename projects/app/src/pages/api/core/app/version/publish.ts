@@ -30,11 +30,37 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   });
 
   if (autoSave) {
-    await MongoApp.findByIdAndUpdate(appId, {
-      modules: nodes,
-      edges,
-      chatConfig,
-      updateTime: new Date()
+    await mongoSessionRun(async (session) => {
+      await MongoAppVersion.updateOne(
+        {
+          appId,
+          isAutoSave: true
+        },
+        {
+          tmbId,
+          appId,
+          nodes,
+          edges,
+          chatConfig,
+          versionName: i18nT('app:auto_save'),
+          time: new Date()
+        },
+
+        { session, upsert: true }
+      );
+
+      await MongoApp.updateOne(
+        { _id: appId },
+        {
+          modules: nodes,
+          edges,
+          chatConfig,
+          updateTime: new Date()
+        },
+        {
+          session
+        }
+      );
     });
 
     addAuditLog({

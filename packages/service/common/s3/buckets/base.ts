@@ -79,7 +79,24 @@ export class S3BaseBucket {
     return this.delete(src);
   }
 
-  copy(src: string, dst: string, options?: CopyConditions): ReturnType<Client['copyObject']> {
+  async copy({
+    src,
+    dst,
+    ttl,
+    options
+  }: {
+    src: string;
+    dst: string;
+    ttl: boolean;
+    options?: CopyConditions;
+  }): ReturnType<Client['copyObject']> {
+    if (ttl) {
+      await MongoS3TTL.create({
+        minioKey: dst,
+        bucketName: this.name,
+        expiredTime: addHours(new Date(), 24)
+      });
+    }
     return this.client.copyObject(this.name, src, dst, options);
   }
 

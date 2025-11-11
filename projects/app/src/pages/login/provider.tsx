@@ -34,7 +34,7 @@ const provider = () => {
 
   const lastRoute = loginStore?.lastRoute
     ? decodeURIComponent(loginStore.lastRoute)
-    : '/dashboard/apps';
+    : '/dashboard/agent';
   const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
 
   const loginSuccess = useCallback(
@@ -47,7 +47,7 @@ const provider = () => {
           if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
             const id = decodeLastRoute.split('invitelinkid=')[1];
             await postAcceptInvitationLink(id);
-            return '/dashboard/apps';
+            return '/dashboard/agent';
           } else {
             toast({
               status: 'warning',
@@ -60,7 +60,7 @@ const provider = () => {
           !decodeLastRoute.includes('/login') &&
           decodeLastRoute.startsWith('/')
           ? lastRoute
-          : '/dashboard/apps';
+          : '/dashboard/agent';
       })();
 
       navigateTo && router.replace(navigateTo);
@@ -126,7 +126,7 @@ const provider = () => {
 
     (async () => {
       await retryFn(async () => clearToken());
-      router.prefetch('/dashboard/apps');
+      router.prefetch('/dashboard/agent');
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({

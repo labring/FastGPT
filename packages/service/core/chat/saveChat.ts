@@ -389,6 +389,8 @@ export const updateInteractiveChat = async (props: Props) => {
         : item;
     });
     finalInteractive.params.submitted = true;
+  } else if (finalInteractive.type === 'paymentPause') {
+    chatItem.value.pop();
   }
 
   if (aiResponse.customFeedbacks) {

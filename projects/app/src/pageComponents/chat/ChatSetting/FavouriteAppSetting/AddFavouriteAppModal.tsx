@@ -38,7 +38,12 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
         getMyApps({
           parentId,
           searchKey: searchAppNameValue,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.workflowTool
+          ]
         }),
         searchAppNameValue.trim()
           ? Promise.resolve([])

@@ -144,7 +144,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
           skipNodeQueue: debugData.skipNodeQueue,
           variables: {
             appId,
-            cTime: formatTime2YMDHMW(),
+            cTime: formatTime2YMDHMW(new Date()),
             ...debugData.variables
           },
           query: debugData.query, // 添加 query 参数

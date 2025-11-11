@@ -12,6 +12,7 @@
   "custom_model": "自訂模型",
   "default_model": "預設模型",
   "default_model_config": "預設模型設定",
+  "language": "語言與時區",
   "logout": "登出",
   "model.active": "啟用",
   "model.alias": "別名",

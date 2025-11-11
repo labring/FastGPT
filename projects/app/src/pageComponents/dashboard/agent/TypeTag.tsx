@@ -9,59 +9,49 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
 
   const map = useRef({
     [AppTypeEnum.simple]: {
-      label: t('app:type.Simple bot'),
-      icon: 'core/app/type/simple',
-      bg: '#DBF3FF',
-      color: '#0884DD'
+      label: t('app:type.Chat_Agent'),
+      icon: 'core/app/type/simple'
     },
     [AppTypeEnum.workflow]: {
       label: t('app:type.Workflow bot'),
-      icon: 'core/app/type/workflow',
-      bg: '#E4E1FC',
-      color: '#6F5DD7'
+      icon: 'core/app/type/workflow'
     },
-    [AppTypeEnum.plugin]: {
-      label: t('app:type.Plugin'),
-      icon: 'core/app/type/plugin',
-      bg: '#D0F5EE',
-      color: '#007E7C'
+    [AppTypeEnum.workflowTool]: {
+      label: t('app:toolType_workflow'),
+      icon: 'core/app/type/plugin'
     },
     [AppTypeEnum.httpPlugin]: {
       label: t('app:type.Http plugin'),
-      icon: 'core/app/type/httpPlugin',
-      bg: '#FFE4EE',
-      color: '#E82F72'
+      icon: 'core/app/type/httpPlugin'
     },
     [AppTypeEnum.httpToolSet]: {
-      label: t('app:type.Http tool set'),
-      icon: 'core/app/type/httpPlugin',
-      bg: '#FFE4EE',
-      color: '#E82F72'
+      label: t('app:toolType_http'),
+      icon: 'core/app/type/httpPlugin'
     },
-    [AppTypeEnum.toolSet]: {
-      label: t('app:type.MCP tools'),
-      icon: 'core/app/type/mcpTools',
-      bg: '',
-      color: ''
+    [AppTypeEnum.mcpToolSet]: {
+      label: t('app:toolType_mcp'),
+      icon: 'core/app/type/mcpTools'
     },
     [AppTypeEnum.tool]: undefined,
     [AppTypeEnum.folder]: undefined,
-    [AppTypeEnum.hidden]: undefined
+    [AppTypeEnum.hidden]: undefined,
+    [AppTypeEnum.agent]: undefined
   });
 
-  const data = map.current[type];
+  const data = map.current[type as keyof typeof map.current];
 
   return data ? (
     <Flex
       bg={'myGray.100'}
       color={'myGray.600'}
-      py={0.5}
+      py={1}
       pl={2}
       pr={3}
-      borderLeftRadius={'sm'}
+      borderLeftRadius={'6px'}
       whiteSpace={'nowrap'}
+      alignItems={'center'}
     >
-      <MyIcon name={data.icon as any} w={'0.8rem'} color={'myGray.500'} />
+      <MyIcon name={data.icon as any} w={'14px'} color={'myGray.500'} />
       <Box ml={1} fontSize={'mini'}>
         {data.label}
       </Box>

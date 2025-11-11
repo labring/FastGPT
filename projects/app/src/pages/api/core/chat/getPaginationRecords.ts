@@ -53,7 +53,7 @@ async function handler(
   if (!app) {
     return Promise.reject(AppErrEnum.unExist);
   }
-  const isPlugin = app.type === AppTypeEnum.plugin;
+  const isPlugin = app.type === AppTypeEnum.workflowTool;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
   const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
@@ -73,10 +73,10 @@ async function handler(
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(histories);
+  await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
   // Remove important information
-  if (isOutLink && app.type !== AppTypeEnum.plugin) {
+  if (isOutLink && app.type !== AppTypeEnum.workflowTool) {
     histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({

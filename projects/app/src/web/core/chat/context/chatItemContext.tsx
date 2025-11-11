@@ -135,7 +135,7 @@ const ChatItemContextProvider = ({
     ...defaultChatData
   });
 
-  const isPlugin = chatBoxData.app.type === AppTypeEnum.plugin;
+  const isPlugin = chatBoxData.app.type === AppTypeEnum.workflowTool;
 
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);

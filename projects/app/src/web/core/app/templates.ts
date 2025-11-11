@@ -13,18 +13,9 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
-export const emptyTemplates: Record<
-  AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow,
-  {
-    name: string;
-    avatar: string;
-    nodes: AppSchema['modules'];
-    edges: AppSchema['edges'];
-    chatConfig: AppSchema['chatConfig'];
-  }
-> = {
+export const emptyTemplates = {
   [AppTypeEnum.simple]: {
-    avatar: 'core/workflow/template/aiChat',
+    avatar: 'core/app/type/simpleFill',
     name: i18nT('app:template.simple_robot'),
     nodes: [
       {
@@ -363,7 +354,7 @@ export const emptyTemplates: Record<
     edges: [],
     chatConfig: {}
   },
-  [AppTypeEnum.plugin]: {
+  [AppTypeEnum.workflowTool]: {
     avatar: 'core/app/type/pluginFill',
     name: i18nT('common:core.module.template.empty_plugin'),
     nodes: [

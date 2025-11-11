@@ -124,7 +124,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
     {
       _id: { $in: mcp.apps.map((app) => app.appId) },
       type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
       }
     },
     { name: 1, intro: 1 }
@@ -171,7 +171,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
 // Call tool
 export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps) => {
   const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Get app latest version
     const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
@@ -299,7 +299,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
   const appList = await MongoApp.find({
     _id: { $in: mcp.apps.map((app) => app.appId) },
     type: {
-      $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+      $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
     }
   }).lean();
 

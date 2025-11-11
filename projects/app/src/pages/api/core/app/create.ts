@@ -2,8 +2,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import {
@@ -45,7 +45,7 @@ export type CreateAppBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
+  let { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
@@ -132,7 +132,7 @@ export const onCreateApp = async ({
   parentId?: ParentIdType;
   name?: string;
   avatar?: string;
-  type?: AppTypeEnum;
+  type: AppTypeEnum;
   modules?: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
@@ -145,6 +145,17 @@ export const onCreateApp = async ({
   templateId?: string;
   session?: ClientSession;
 }) => {
+  if (parentId) {
+    const parentApp = await MongoApp.findById(parentId, 'type').lean();
+
+    if (ToolTypeList.includes(type) && parentApp?.type !== AppTypeEnum.toolFolder) {
+      return Promise.reject('tool type can only be created in tool folder');
+    }
+    if (AppTypeList.includes(type) && parentApp?.type !== AppTypeEnum.folder) {
+      return Promise.reject('agent type can only be created in agent folder');
+    }
+  }
+
   const create = async (session: ClientSession) => {
     const [app] = await MongoApp.create(
       [
@@ -196,6 +207,8 @@ export const onCreateApp = async ({
       resourceType: PerResourceTypeEnum.app
     });
 
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+
     (async () => {
       addAuditLog({
         tmbId,
@@ -207,8 +220,6 @@ export const onCreateApp = async ({
         }
       });
     })();
-
-    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
     return appId;
   };

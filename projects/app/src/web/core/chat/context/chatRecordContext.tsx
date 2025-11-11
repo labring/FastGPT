@@ -9,6 +9,7 @@ import { getChatRecords } from '../api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type BoxProps } from '@chakra-ui/react';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -46,7 +47,7 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
 });
 
 /* 
-    具体对话记录的上下文
+  具体对话记录的上下文
 */
 const ChatRecordContextProvider = ({
   children,
@@ -101,7 +102,7 @@ const ChatRecordContextProvider = ({
     }
   );
 
-  const contextValue = useMemo(() => {
+  const contextValue = useMemoEnhance(() => {
     return {
       isLoadingRecords: isLoading,
       chatRecords,

@@ -16,8 +16,9 @@ import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
-  'appTool' = 'appTool',
-  'teamApp' = 'teamApp'
+  'systemTools' = 'systemTools',
+  'myTools' = 'myTools',
+  'agent' = 'agent'
 }
 
 export type NodeTemplateListHeaderProps = {
@@ -55,9 +56,9 @@ const NodeTemplateListHeader = ({
   // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamApp)
-        return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getAppToolPaths({ sourceId: parentId, type: 'current' });
+      if (templateType === TemplateTypeEnum.systemTools)
+        return getAppToolPaths({ sourceId: parentId, type: 'current' });
+      return getAppFolderPath({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -66,7 +67,9 @@ const NodeTemplateListHeader = ({
   );
 
   const showToolTag =
-    templateType === TemplateTypeEnum.appTool && selectedTagIds !== undefined && setSelectedTagIds;
+    templateType === TemplateTypeEnum.systemTools &&
+    selectedTagIds !== undefined &&
+    setSelectedTagIds;
 
   return (
     <Box px={'5'} mb={showToolTag ? 0.5 : 2} whiteSpace={'nowrap'} overflow={'hidden'}>
@@ -81,23 +84,29 @@ const NodeTemplateListHeader = ({
                 value: TemplateTypeEnum.basic
               },
               {
-                icon: 'phoneTabbar/tool',
-                label: t('common:navbar.Toolkit'),
-                value: TemplateTypeEnum.appTool
+                icon: 'common/app',
+                label: t('app:core.module.template.System Tools'),
+                value: TemplateTypeEnum.systemTools
               },
               {
-                icon: 'support/user/userLightSmall',
-                label: t('common:core.module.template.Team app'),
-                value: TemplateTypeEnum.teamApp
+                icon: 'core/app/type/plugin',
+                label: t('common:navbar.Tools'),
+                value: TemplateTypeEnum.myTools
+              },
+              {
+                icon: 'core/chat/sidebar/star',
+                label: 'Agent',
+                value: TemplateTypeEnum.agent
               }
             ]}
             width={'100%'}
+            px={1}
             py={isPopover ? '3px' : '5px'}
+            iconGap={1}
             {...(isPopover
               ? {
                   iconSize: '14px',
-                  labelSize: '12.8px',
-                  iconGap: 1
+                  labelSize: '12.8px'
                 }
               : {})}
             value={templateType}
@@ -125,7 +134,7 @@ const NodeTemplateListHeader = ({
         )}
       </Flex>
       {/* Search */}
-      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) && (
+      {templateType !== TemplateTypeEnum.basic && (
         <Flex mt={2} alignItems={'center'} h={isPopover ? 8 : 10}>
           <InputGroup h={'full'}>
             <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -135,32 +144,40 @@ const NodeTemplateListHeader = ({
               h={'full'}
               bg={'myGray.50'}
               placeholder={
-                templateType === TemplateTypeEnum.teamApp
-                  ? t('common:plugin.Search_app')
-                  : t('common:search_tool')
+                templateType === TemplateTypeEnum.systemTools
+                  ? t('common:search_tool')
+                  : t('common:plugin.Search_app')
               }
               value={searchKey}
               onChange={(e) => setSearchKey(e.target.value)}
             />
           </InputGroup>
           <Box flex={1} />
-          {!isPopover && templateType === TemplateTypeEnum.teamApp && (
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              _hover={{
-                color: 'primary.600'
-              }}
-              fontSize={'sm'}
-              onClick={() => router.push('/dashboard/apps')}
-              gap={1}
-              ml={4}
-            >
-              <Box>{t('common:create')}</Box>
-              <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
-            </Flex>
-          )}
-          {templateType === TemplateTypeEnum.appTool && (
+          {!isPopover &&
+            (templateType === TemplateTypeEnum.myTools ||
+              templateType === TemplateTypeEnum.agent) && (
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                _hover={{
+                  color: 'primary.600'
+                }}
+                fontSize={'sm'}
+                onClick={() => {
+                  if (templateType === TemplateTypeEnum.myTools) {
+                    router.push('/dashboard/tool');
+                  } else {
+                    router.push('/dashboard/agent');
+                  }
+                }}
+                gap={1}
+                ml={4}
+              >
+                <Box>{t('common:create')}</Box>
+                <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+              </Flex>
+            )}
+          {templateType === TemplateTypeEnum.systemTools && (
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
@@ -178,7 +195,7 @@ const NodeTemplateListHeader = ({
         </Flex>
       )}
       {/* Tag filter */}
-      {templateType === TemplateTypeEnum.appTool &&
+      {templateType === TemplateTypeEnum.systemTools &&
         selectedTagIds !== undefined &&
         setSelectedTagIds && (
           <Box mt={2}>
@@ -191,13 +208,11 @@ const NodeTemplateListHeader = ({
           </Box>
         )}
       {/* paths */}
-      {(templateType === TemplateTypeEnum.teamApp || templateType === TemplateTypeEnum.appTool) &&
-        !searchKey &&
-        parentId && (
-          <Flex alignItems={'center'} mt={2}>
-            <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
-          </Flex>
-        )}
+      {templateType !== TemplateTypeEnum.basic && !searchKey && parentId && (
+        <Flex alignItems={'center'} mt={2}>
+          <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
+        </Flex>
+      )}
     </Box>
   );
 };

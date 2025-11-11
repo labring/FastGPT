@@ -25,6 +25,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
 
 export type ChatProviderProps = {
   appId: string;
@@ -43,7 +44,7 @@ export type ChatProviderProps = {
   onSwitchQuickApp?: (appId: string) => Promise<void>;
 };
 
-type useChatStoreType = ChatProviderProps & {
+type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAuthData'> & {
   welcomeText: string;
   variableList: VariableItemType[];
   questionGuide: AppQGConfigType;
@@ -72,10 +73,6 @@ type useChatStoreType = ChatProviderProps & {
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
-
-  appId: string;
-  chatId: string;
-  outLinkAuthData: OutLinkChatAuthProps;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -131,7 +128,6 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
-  outLinkAuthData: {},
   // @ts-ignore
   variablesForm: undefined
 });
@@ -255,14 +251,19 @@ const Provider = ({
     setAudioPlayingChatId,
     isChatting,
     chatInputGuide,
-    appId,
-    chatId,
-    outLinkAuthData: formatOutLinkAuth,
     getHistoryResponseData,
     chatType
   };
 
-  return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
+  return (
+    <WorkflowRuntimeContextProvider
+      appId={appId}
+      chatId={chatId}
+      outLinkAuthData={formatOutLinkAuth}
+    >
+      <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
+    </WorkflowRuntimeContextProvider>
+  );
 };
 
 export default React.memo(Provider);

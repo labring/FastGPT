@@ -68,12 +68,14 @@ const OutLink = (props: Props) => {
     showHead = '1',
     authToken,
     customUid,
+    showWorkorder,
     ...customVariables
   } = router.query as {
     shareId: string;
     showHistory: '0' | '1';
     showHead: '0' | '1';
     authToken: string;
+    showWorkorder: '0' | '1';
     [key: string]: string;
   };
   const { isPc } = useSystem();
@@ -270,6 +272,7 @@ const OutLink = (props: Props) => {
                     history={chatRecords}
                     totalRecordsCount={totalRecordsCount}
                     showHistory={showHistory === '1'}
+                    reserveSpace={showWorkorder !== undefined}
                   />
                 ) : null}
                 {/* chat box */}
@@ -291,6 +294,7 @@ const OutLink = (props: Props) => {
                       feedbackType={'user'}
                       onStartChat={startChat}
                       chatType={ChatTypeEnum.share}
+                      showWorkorder={showWorkorder === '1'}
                     />
                   )}
                 </Box>

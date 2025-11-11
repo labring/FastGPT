@@ -5,7 +5,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { updateChatUserFeedback } from '@/web/core/chat/api';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../Provider';
+import { WorkflowAuthContext } from '../../context/workflowAuthContext';
 
 const FeedbackModal = ({
   appId,
@@ -22,7 +22,7 @@ const FeedbackModal = ({
 }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
 
   const { mutate, isLoading } = useRequest({
     mutationFn: async () => {

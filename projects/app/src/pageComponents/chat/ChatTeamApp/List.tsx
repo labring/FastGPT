@@ -7,7 +7,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { AppListContext } from '@/pageComponents/dashboard/apps/context';
+import { AppListContext } from '@/pageComponents/dashboard/agent/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from '@/pageComponents/chat/ChatTeamApp/TypeTag';
@@ -33,7 +33,7 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
             AppTypeEnum.folder,
             AppTypeEnum.simple,
             AppTypeEnum.workflow,
-            AppTypeEnum.plugin
+            AppTypeEnum.workflowTool
           ].includes(app.type))
     )
   );

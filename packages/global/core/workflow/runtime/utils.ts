@@ -200,6 +200,10 @@ export const getLastInteractiveValue = (
     if (lastValue.interactive.type === 'userInput' && !lastValue.interactive.params.submitted) {
       return lastValue.interactive;
     }
+
+    if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
+      return lastValue.interactive;
+    }
   }
 
   return;

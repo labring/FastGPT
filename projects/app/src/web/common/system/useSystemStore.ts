@@ -20,7 +20,7 @@ import {
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
-import { getMyModels } from './api';
+import { getMyModels, getOperationalAd } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -70,6 +70,8 @@ type State = {
     modelSet: Set<string>;
     versionKey: string;
   };
+  operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
+  loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
@@ -97,7 +99,7 @@ export const useSystemStore = create<State>()(
             state.initd = true;
           });
         },
-        lastRoute: '/dashboard/apps',
+        lastRoute: '/dashboard/agent',
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;
@@ -168,6 +170,17 @@ export const useSystemStore = create<State>()(
         myModelList: {
           modelSet: new Set(),
           versionKey: ''
+        },
+        operationalAd: undefined,
+        loadOperationalAd: async () => {
+          try {
+            const res = await getOperationalAd();
+            set((state) => {
+              state.operationalAd = res;
+            });
+          } catch (error) {
+            console.log('Get operational ad error', error);
+          }
         },
         getMyModelList: async () => {
           try {

@@ -77,7 +77,7 @@ export async function getServerSideProps(content: any) {
     props: {
       code: content?.query?.code || '',
       token: content?.query?.token || '',
-      callbackUrl: content?.query?.callbackUrl || '/dashboard/apps',
+      callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
       ...(await serviceSideProps(content))
     }
   };

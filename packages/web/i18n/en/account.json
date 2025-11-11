@@ -12,6 +12,7 @@
   "custom_model": "custom model",
   "default_model": "Default model",
   "default_model_config": "Default model configuration",
+  "language": "Language and time zone",
   "logout": "Sign out",
   "model.active": "Active",
   "model.alias": "Alias",

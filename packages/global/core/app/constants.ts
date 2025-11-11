@@ -8,19 +8,32 @@ import {
 
 export enum AppTypeEnum {
   folder = 'folder',
+  toolFolder = 'toolFolder',
   simple = 'simple',
+  agent = 'agent',
   workflow = 'advanced',
-  plugin = 'plugin',
-  toolSet = 'toolSet', // 'mcp'
+  workflowTool = 'plugin',
+  mcpToolSet = 'toolSet', // 'mcp'
   httpToolSet = 'httpToolSet',
-  tool = 'tool',
   hidden = 'hidden',
 
   // deprecated
+  tool = 'tool',
   httpPlugin = 'httpPlugin'
 }
 
-export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
+export const AppFolderTypeList = [
+  AppTypeEnum.folder,
+  AppTypeEnum.toolFolder,
+  AppTypeEnum.httpPlugin
+];
+
+export const ToolTypeList = [
+  AppTypeEnum.mcpToolSet,
+  AppTypeEnum.httpToolSet,
+  AppTypeEnum.workflowTool
+];
+export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.agent, AppTypeEnum.workflow];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

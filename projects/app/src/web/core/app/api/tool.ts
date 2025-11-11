@@ -36,11 +36,12 @@ import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/
 export const getTeamAppTemplates = async (data?: {
   parentId?: ParentIdType;
   searchKey?: string;
+  type?: AppTypeEnum[];
 }) => {
   if (data?.parentId) {
     // handle get mcptools
     const app = await getAppDetailById(data.parentId);
-    if (app.type === AppTypeEnum.toolSet) {
+    if (app.type === AppTypeEnum.mcpToolSet) {
       const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
       return children.map((item) => ({
         ...item,
@@ -69,14 +70,15 @@ export const getTeamAppTemplates = async (data?: {
       pluginId: app._id,
       isFolder:
         app.type === AppTypeEnum.folder ||
+        app.type === AppTypeEnum.toolFolder ||
         app.type === AppTypeEnum.httpToolSet ||
         app.type === AppTypeEnum.httpPlugin ||
-        app.type === AppTypeEnum.toolSet,
+        app.type === AppTypeEnum.mcpToolSet,
       templateType: FlowNodeTemplateTypeEnum.teamApp,
       flowNodeType:
         app.type === AppTypeEnum.workflow
           ? FlowNodeTypeEnum.appModule
-          : app.type === AppTypeEnum.toolSet || app.type === AppTypeEnum.httpToolSet
+          : app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
             ? FlowNodeTypeEnum.toolSet
             : FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
@@ -107,7 +109,7 @@ export const getToolVersionList = (data: getToolVersionListProps) =>
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
-  POST('/core/app/mcpTools/create', data);
+  POST<string>('/core/app/mcpTools/create', data);
 
 export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);

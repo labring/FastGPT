@@ -123,42 +123,45 @@ const Editor = React.memo(function Editor({
   }, []);
 
   return (
-    <Box h={'100%'} w={'100%'} position={'relative'}>
-      <Textarea
-        ref={textareaRef}
-        maxW={'100%'}
-        as={autoHeight ? ResizeTextarea : undefined}
-        sx={
-          !showResize
-            ? {
-                '::-webkit-resizer': {
-                  display: 'none'
+    <Box h={'100%'} w={'100%'}>
+      <Box position={'relative'}>
+        <Textarea
+          ref={textareaRef}
+          maxW={'100%'}
+          as={autoHeight ? ResizeTextarea : undefined}
+          resize={showResize ? 'vertical' : 'none'}
+          sx={
+            !showResize
+              ? {
+                  '::-webkit-resizer': {
+                    display: 'none !important'
+                  }
                 }
-              }
-            : {}
-        }
-        {...props}
-        maxH={`${maxH}px`}
-        minH={`${minH}px`}
-        onChange={handleChange}
-      />
-      {onOpenModal &&
-        maxH &&
-        textareaRef.current &&
-        textareaRef.current.scrollHeight > Number(maxH) && (
-          <Box
-            zIndex={1}
-            position={'absolute'}
-            bottom={1}
-            right={2}
-            cursor={'pointer'}
-            onClick={onOpenModal}
-          >
-            <MyTooltip label={t('common:ui.textarea.Magnifying')}>
-              <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
-            </MyTooltip>
-          </Box>
-        )}
+              : {}
+          }
+          {...props}
+          maxH={`${maxH}px`}
+          minH={`${minH}px`}
+          onChange={handleChange}
+        />
+        {onOpenModal &&
+          maxH &&
+          textareaRef.current &&
+          textareaRef.current.scrollHeight > Number(maxH) && (
+            <Box
+              zIndex={1}
+              position={'absolute'}
+              bottom={1}
+              right={2}
+              cursor={'pointer'}
+              onClick={onOpenModal}
+            >
+              <MyTooltip label={t('common:ui.textarea.Magnifying')}>
+                <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
+              </MyTooltip>
+            </Box>
+          )}
+      </Box>
     </Box>
   );
 });
