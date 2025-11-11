@@ -24,12 +24,6 @@ export const webPushTrack = {
       data
     });
   },
-  viewOperationalAd: (data: { adId: string; adImage?: string }) => {
-    return createTrack({
-      event: TrackEnum.viewOperationalAd,
-      data
-    });
-  },
   clickOperationalAd: (data: { adId: string; adLink: string }) => {
     return createTrack({
       event: TrackEnum.clickOperationalAd,

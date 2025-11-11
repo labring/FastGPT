@@ -8,7 +8,6 @@ export enum TrackEnum {
   runSystemTool = 'runSystemTool',
   datasetSearch = 'datasetSearch',
   readSystemAnnouncement = 'readSystemAnnouncement',
-  viewOperationalAd = 'viewOperationalAd',
   clickOperationalAd = 'clickOperationalAd',
   closeOperationalAd = 'closeOperationalAd'
 }

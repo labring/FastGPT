@@ -17,8 +17,8 @@ const TeamPlanStatusCard = () => {
   const { teamPlanStatus } = useUserStore();
   const { operationalAd, loadOperationalAd } = useSystemStore();
   const router = useRouter();
-  const hasTrackedView = useRef(false);
 
+  // Load data
   useEffect(() => {
     if (!operationalAd) {
       loadOperationalAd();
@@ -32,16 +32,6 @@ const TeamPlanStatusCard = () => {
       });
     }
   }, [operationalAd, loadOperationalAd]);
-
-  useEffect(() => {
-    if (operationalAd?.id && operationalAd?.operationalAdImage && !hasTrackedView.current) {
-      hasTrackedView.current = true;
-      webPushTrack.viewOperationalAd({
-        adId: operationalAd.id,
-        adImage: operationalAd.operationalAdImage
-      });
-    }
-  }, [operationalAd]);
 
   const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
     `hidden-until-${operationalAd?.id}`,
