@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, IconButton, VStack } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
 
@@ -20,10 +20,35 @@ const PriceBox = () => {
   const { feConfigs } = useSystemStore();
   const router = useRouter();
 
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const [isButtonInView, setIsButtonInView] = useState(true);
+
   const { data: teamSubPlan } = useRequest2(getTeamPlanStatus, {
     manual: false,
     refreshDeps: [userInfo]
   });
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsButtonInView(entry.isIntersecting);
+      },
+      {
+        threshold: 0,
+        rootMargin: '0px'
+      }
+    );
+
+    if (backButtonRef.current) {
+      observer.observe(backButtonRef.current);
+    }
+
+    return () => {
+      if (backButtonRef.current) {
+        observer.unobserve(backButtonRef.current);
+      }
+    };
+  }, []);
 
   const onPaySuccess = () => {
     setTimeout(() => {
@@ -45,6 +70,7 @@ const PriceBox = () => {
     >
       {userInfo && (
         <Button
+          ref={backButtonRef}
           variant={'transparentBase'}
           color={'primary.700'}
           leftIcon={<MyIcon name={'core/workflow/undo'} w={4} />}
@@ -54,6 +80,19 @@ const PriceBox = () => {
         >
           {t('common:back')}
         </Button>
+      )}
+      {!isButtonInView && userInfo && (
+        <IconButton
+          aria-label={t('common:back')}
+          position={'fixed'}
+          variant={'whiteBase'}
+          top={10}
+          left={'1.5vw'}
+          w={9}
+          h={9}
+          icon={<MyIcon name={'core/workflow/undo'} w={4} />}
+          onClick={() => router.back()}
+        />
       )}
 
       {/* standard sub */}

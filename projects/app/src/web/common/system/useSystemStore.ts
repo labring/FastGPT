@@ -70,7 +70,7 @@ type State = {
     modelSet: Set<string>;
     versionKey: string;
   };
-  operationalAd?: { operationalAdImage: string; operationalAdLink: string };
+  operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];

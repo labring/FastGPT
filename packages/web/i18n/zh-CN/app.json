@@ -306,6 +306,7 @@
   "response_format": "回复格式",
   "save_team_app_log_keys": "保存为团队配置",
   "saved_success": "保存成功！如需在外部使用该版本，请点击“保存并发布”",
+  "search_agent": "搜索 Agent",
   "search_app": "搜索应用",
   "search_tool": "搜索工具",
   "secret_get_course": "教程",

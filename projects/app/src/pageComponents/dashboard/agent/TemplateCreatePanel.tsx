@@ -55,8 +55,11 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     }
   );
 
-  const { runAsync: handleCreateFromTemplate, loading: isCreating } = useRequest2(
+  const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
+
+  const { runAsync: handleCreateFromTemplate } = useRequest2(
     async (templateId: string) => {
+      setCreatingTemplateId(templateId);
       const templateDetail = await getTemplateMarketItemDetail(templateId);
 
       return postCreateApp({
@@ -72,6 +75,9 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     {
       onSuccess: (appId: string) => {
         router.push(`/app/detail?appId=${appId}`);
+      },
+      onFinally: () => {
+        setCreatingTemplateId(null);
       },
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed')
@@ -177,9 +183,9 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     borderColor: 'primary.500',
                     boxShadow: 'md'
                   }}
-                  isLoading={isCreating}
+                  isLoading={creatingTemplateId === item.templateId}
                   onClick={() => {
-                    if (!isCreating) {
+                    if (!creatingTemplateId) {
                       handleCreateFromTemplate(item.templateId);
                     }
                   }}
@@ -195,7 +201,6 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                   </Box>
                 </MyBox>
               ))}
-
           <Box
             borderRadius={'10px'}
             overflow={'hidden'}
