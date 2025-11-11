@@ -98,7 +98,10 @@ export const runAgentCall = async ({
     // 对请求的 requestMessages 进行压缩
     const taskDescription = currentStep.description || currentStep.title;
     if (taskDescription) {
-      requestMessages = await compressRequestMessages(requestMessages, model, taskDescription);
+      const result = await compressRequestMessages(requestMessages, model, taskDescription);
+      requestMessages = result.messages;
+      inputTokens += result.usage?.inputTokens || 0;
+      outputTokens += result.usage?.outputTokens || 0;
     }
 
     // Request LLM

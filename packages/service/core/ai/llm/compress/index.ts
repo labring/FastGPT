@@ -6,6 +6,8 @@ import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { getCompressRequestMessagesPrompt } from './prompt';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 
 /**
  * Compress a single oversized tool response
@@ -210,8 +212,14 @@ export const compressRequestMessages = async (
   messages: ChatCompletionMessageParam[],
   model: LLMModelItemType,
   currentDescription: string
-): Promise<ChatCompletionMessageParam[]> => {
-  if (!messages || messages.length === 0) return messages;
+): Promise<{
+  messages: ChatCompletionMessageParam[];
+  usage?: ChatNodeUsageType;
+}> => {
+  if (!messages || messages.length === 0)
+    return {
+      messages
+    };
 
   const tokenCount = await countGptMessagesTokens(messages);
   const thresholds = calculateCompressionThresholds(model.maxContext);
@@ -225,7 +233,9 @@ export const compressRequestMessages = async (
 
   if (tokenCount <= maxTokenThreshold) {
     console.log('messages 无需压缩，共', messages.length, '条消息');
-    return messages;
+    return {
+      messages
+    };
   }
 
   addLog.info('Start compressing agent messages', {
@@ -243,7 +253,7 @@ export const compressRequestMessages = async (
   const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
 
   try {
-    const { answerText } = await createLLMResponse({
+    const { answerText, usage } = await createLLMResponse({
       body: {
         model,
         messages: [
@@ -263,22 +273,38 @@ export const compressRequestMessages = async (
 
     if (!answerText) {
       addLog.warn('Compression failed: empty response, return original messages');
-      return messages;
+      return { messages };
     }
+
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: model.model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    });
+    const compressedUsage = {
+      moduleName: 'Agent 对话历史压缩',
+      model: modelName,
+      totalPoints,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    };
 
     const jsonMatch =
       answerText.match(/```json\s*([\s\S]*?)\s*```/) || answerText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       addLog.warn('Compression failed: cannot parse JSON, return original messages');
-      return messages;
+      return { messages, usage: compressedUsage };
     }
 
     const jsonText = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonText);
+    const parsed = JSON.parse(jsonText) as {
+      compressed_messages: ChatCompletionMessageParam[];
+      compression_summary: string;
+    };
 
     if (!parsed.compressed_messages || !Array.isArray(parsed.compressed_messages)) {
       addLog.warn('Compression failed: invalid format, return original messages');
-      return messages;
+      return { messages, usage: compressedUsage };
     }
 
     const compressedTokens = await countGptMessagesTokens(parsed.compressed_messages);
@@ -289,9 +315,12 @@ export const compressRequestMessages = async (
       summary: parsed.compression_summary
     });
 
-    return parsed.compressed_messages as ChatCompletionMessageParam[];
+    return {
+      messages: parsed.compressed_messages,
+      usage: compressedUsage
+    };
   } catch (error) {
     addLog.error('Compression failed', error);
-    return messages;
+    return { messages };
   }
 };

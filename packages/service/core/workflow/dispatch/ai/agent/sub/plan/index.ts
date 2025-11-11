@@ -230,17 +230,6 @@ export const dispatchReplanAgent = async ({
 }): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
 
-  // 获取依赖的步骤
-  const { depends, usage: dependsUsage } = await getStepDependon({
-    model,
-    steps: plan.steps,
-    step: {
-      id: '',
-      title: '重新规划决策依据：需要依赖哪些步骤的判断',
-      description: '本步骤分析先前的执行结果，以确定重新规划时需要依赖哪些特定步骤。'
-    }
-  });
-  const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
@@ -265,11 +254,25 @@ export const dispatchReplanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
+    // TODO: 确认这里是否有问题
     requestMessages.push({
       role: 'assistant',
       content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
     });
   } else {
+    // 获取依赖的步骤
+    const { depends, usage: dependsUsage } = await getStepDependon({
+      model,
+      steps: plan.steps,
+      step: {
+        id: '',
+        title: '重新规划决策依据：需要依赖哪些步骤的判断',
+        description: '本步骤分析先前的执行结果，以确定重新规划时需要依赖哪些特定步骤。'
+      }
+    });
+    // TODO: 推送
+    const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
+
     requestMessages.push({
       role: 'user',
       // 根据需要 replanSteps 生成用户输入
@@ -306,15 +309,13 @@ export const dispatchReplanAgent = async ({
   if (!answerText && !toolCalls.length) {
     return Promise.reject(getEmptyResponseTip());
   }
-  console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Replan response');
+
   /* 
     正常输出情况：
     1. text: 正常生成plan
     2. toolCall: 调用ask工具
     3. text + toolCall: 可能生成 plan + 调用ask工具
   */
-
-  // 获取生成的 plan
   const rePlan = (() => {
     if (!answerText) {
       return;
@@ -345,6 +346,7 @@ export const dispatchReplanAgent = async ({
           }
         };
       } else {
+        console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Replan response');
         return {
           type: 'agentPlanAskQuery',
           params: {
@@ -353,6 +355,9 @@ export const dispatchReplanAgent = async ({
         };
       }
     }
+
+    // RePlan 没有主动交互，则强制触发 check
+    return PlanCheckInteractive;
   })();
 
   const { totalPoints, modelName } = formatModelChars2Points({

@@ -62,15 +62,17 @@ export const stepCall = async ({
   } = props;
 
   // Get depends on step ids
-  const { depends, usage: dependsUsage } = await getStepDependon({
-    model,
-    steps,
-    step
-  });
-  if (dependsUsage) {
-    usagePush([dependsUsage]);
+  if (!step.depends_on) {
+    const { depends, usage: dependsUsage } = await getStepDependon({
+      model,
+      steps,
+      step
+    });
+    if (dependsUsage) {
+      usagePush([dependsUsage]);
+    }
+    step.depends_on = depends;
   }
-  step.depends_on = depends;
 
   // addLog.debug(`Step information`, steps);
   const systemPromptContent = await getMasterAgentSystemPrompt({

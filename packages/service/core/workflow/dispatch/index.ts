@@ -484,7 +484,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
         mcpClientMemory,
-        usagePush: this.usagePush,
+        usagePush: this.usagePush.bind(this),
         lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
           : undefined,

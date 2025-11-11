@@ -142,16 +142,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     /* ===== Check task complexity ===== */
     const taskIsComplexity = await (async () => {
-      if (isCheckTaskComplexityStep) {
-        const res = await checkTaskComplexity({
-          model,
-          userChatInput
-        });
-        if (res.usage) {
-          usagePush([res.usage]);
-        }
-        return res.complex;
-      }
+      // if (isCheckTaskComplexityStep) {
+      //   const res = await checkTaskComplexity({
+      //     model,
+      //     userChatInput
+      //   });
+      //   if (res.usage) {
+      //     usagePush([res.usage]);
+      //   }
+      //   return res.complex;
+      // }
 
       // 对轮运行时候，代表都是进入复杂流程
       return true;
