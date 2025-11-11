@@ -1,14 +1,13 @@
 import React from 'react';
 import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { IconButton } from '@chakra-ui/react';
+import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRouter } from 'next/router';
 
 const ToolMenu = ({
   history,
@@ -26,18 +25,14 @@ const ToolMenu = ({
   return (
     <MyMenu
       Button={
-        <IconButton
-          icon={<MyIcon name={'more'} w={'14px'} p={2} />}
-          aria-label={''}
-          size={'sm'}
-          variant={'whitePrimary'}
-          {...(reserveSpace && {
-            border: 'none',
-            boxShadow: 'none',
-            bg: 'transparent',
-            transform: 'translateX(-32px)'
-          })}
-        />
+        <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>
+          <IconButton
+            icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+            aria-label={''}
+            size={'sm'}
+            variant={reserveSpace ? 'transparentBase' : 'whitePrimary'}
+          />
+        </Box>
       }
       menuList={[
         {
