@@ -11,13 +11,13 @@ async function handler(
   req: ApiRequestProps<AdminRefreshBody, AdminRefreshQuery>,
   res: ApiResponseType<any>
 ): Promise<AdminRefreshResponse> {
-  if (req.headers['authorization'] === AUTH_TOKEN) {
-    await refreshToolList();
-    return {
-      message: 'ok'
-    };
+  if (!!AUTH_TOKEN && req.headers['authorization'] !== AUTH_TOKEN) {
+    res.status(401);
+    return Promise.reject('Unauthorized');
   }
-  res.status(401);
-  return Promise.reject('Unauthorized');
+  await refreshToolList();
+  return {
+    message: 'ok'
+  };
 }
 export default NextAPI(handler);
