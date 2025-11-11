@@ -388,6 +388,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
     }
 
+    private usagePush(usages: ChatNodeUsageType[]) {
+      if (usageId) {
+        pushChatItemUsage({
+          teamId,
+          usageId,
+          nodeUsages: usages
+        });
+      }
+      if (concatUsage) {
+        concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
+
+      this.chatNodeUsages = this.chatNodeUsages.concat(usages);
+    }
+
     async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
       node: RuntimeNodeItemType;
       runStatus: 'run';
@@ -469,6 +484,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
         mcpClientMemory,
+        usagePush: this.usagePush,
         lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
           : undefined,
@@ -672,18 +688,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         // Push usage in real time. Avoid a workflow usage a large number of points
         if (nodeDispatchUsages) {
-          if (usageId) {
-            pushChatItemUsage({
-              teamId,
-              usageId,
-              nodeUsages: nodeDispatchUsages
-            });
-          }
-          if (concatUsage) {
-            concatUsage(nodeDispatchUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
-          }
-
-          this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
+          this.usagePush(nodeDispatchUsages);
         }
 
         if (

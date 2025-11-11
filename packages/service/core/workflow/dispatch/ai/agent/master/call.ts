@@ -27,39 +27,8 @@ import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { addLog } from '../../../../../../common/system/log';
-import { getStepDependon } from '../common/dependon';
-
-const getResponseSummary = async ({ response, model }: { response: string; model: string }) => {
-  addLog.debug('GetResponseSummary start');
-
-  const modelData = getLLMModel(model);
-  const { answerText, usage } = await createLLMResponse({
-    body: {
-      model: modelData.model,
-      messages: [
-        {
-          role: 'user',
-          content: `请对以下步骤执行结果进行概括，要求：
-1. 提取核心信息和关键结论
-2. 保留重要的数据、链接、引用
-3. 长度控制在 200-300 字
-4. 结构清晰，便于其他步骤引用
-
-执行结果：
-${response}
-
-请生成概括：`
-        }
-      ],
-      stream: false
-    }
-  });
-
-  return {
-    answerText,
-    usage
-  };
-};
+import { getStepDependon } from './dependon';
+import { getResponseSummary } from './responseSummary';
 
 export const stepCall = async ({
   getSubAppInfo,
@@ -88,6 +57,7 @@ export const stepCall = async ({
     stream,
     res,
     workflowStreamResponse,
+    usagePush,
     params: { userChatInput, systemPrompt, model, temperature, aiChatTopP }
   } = props;
 
@@ -97,6 +67,9 @@ export const stepCall = async ({
     steps,
     step
   });
+  if (dependsUsage) {
+    usagePush([dependsUsage]);
+  }
   step.depends_on = depends;
 
   // addLog.debug(`Step information`, steps);
@@ -134,6 +107,7 @@ export const stepCall = async ({
   //   'Step call requestMessages',
   //   JSON.stringify({ requestMessages, subAppList }, null, 2)
   // );
+  // TODO: 阶段性推送账单
   const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,
@@ -372,13 +346,13 @@ export const stepCall = async ({
     response: answerText,
     model
   });
+  if (summaryUsage) {
+    usagePush([summaryUsage]);
+  }
 
   return {
     rawResponse: answerText,
     summary,
-    assistantResponses,
-    inputTokens: inputTokens + summaryUsage.inputTokens,
-    outputTokens: outputTokens + summaryUsage.outputTokens,
-    subAppUsages
+    assistantResponses
   };
 };

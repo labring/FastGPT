@@ -1,6 +1,6 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
-import { addLog } from 'common/system/log';
+import { addLog } from '../../../../common/system/log';
 import { calculateCompressionThresholds } from './constants';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';

@@ -81,6 +81,8 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+
+  // TOOD: 移除
   usageId?: string;
 };
 
@@ -91,6 +93,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   params: T;
 
   mcpClientMemory: Record<string, MCPClient>; // key: url
+  usagePush: (usages: ChatNodeUsageType[]) => void;
 };
 
 export type SystemVariablesType = {

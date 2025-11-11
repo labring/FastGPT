@@ -140,13 +140,14 @@ export const chats2GPTMessages = ({
               content: value.text.content
             });
           }
-        } else if (value.interactive) {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            interactive: value.interactive
-          });
         }
+        // else if (value.interactive) {
+        //   aiResults.push({
+        //     dataId,
+        //     role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        //     interactive: value.interactive
+        //   });
+        // }
       });
 
       // Auto add empty assistant message

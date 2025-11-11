@@ -1,6 +1,8 @@
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { parseToolArgs } from '../../utils';
 import { addLog } from '../../../../../../common/system/log';
+import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 const getPrompt = ({
   userChatInput
@@ -47,7 +49,10 @@ export const checkTaskComplexity = async ({
 }: {
   model: string;
   userChatInput: string;
-}) => {
+}): Promise<{
+  complex: boolean;
+  usage?: ChatNodeUsageType;
+}> => {
   try {
     const { answerText: checkResult, usage } = await createLLMResponse({
       body: {
@@ -68,17 +73,26 @@ export const checkTaskComplexity = async ({
 
     const checkResponse = parseToolArgs<{ complex: boolean; reason: string }>(checkResult);
 
-    return {
-      complex: !!checkResponse?.complex,
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
+    });
+
+    return {
+      complex: !!checkResponse?.complex,
+      usage: {
+        moduleName: `问题复杂度分析`,
+        model: modelName,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
     };
   } catch (error) {
     addLog.error('Simple question check failed, proceeding with normal plan flow', error);
     return {
-      complex: true,
-      inputTokens: 0,
-      outputTokens: 0
+      complex: true
     };
   }
 };

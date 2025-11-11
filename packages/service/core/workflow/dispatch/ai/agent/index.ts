@@ -14,7 +14,7 @@ import { getLLMModel } from '../../../../ai/model';
 import { getNodeErrResponse, getHistories } from '../../utils';
 import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { filterMemoryMessages } from '../utils';
 import { systemSubInfo } from './sub/constants';
@@ -30,8 +30,6 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { stepCall } from './master/call';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../../../common/system/log';
-import { createLLMResponse } from '../../../../ai/llm/request';
-import { parseToolArgs } from '../utils';
 import { checkTaskComplexity } from './master/taskComplexity';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -65,13 +63,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lastInteractive,
     runningUserInfo,
     runningAppInfo,
-    variables,
     externalProvider,
-    usageId,
     stream,
-    res,
     workflowDispatchDeep,
     workflowStreamResponse,
+    usagePush,
     params: {
       model,
       systemPrompt,
@@ -87,6 +83,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } = props;
   const agentModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
+  const historiesMessages = chats2GPTMessages({
+    messages: chatHistories,
+    reserveId: false,
+    reserveTool: false
+  });
 
   const planMessagesKey = `planMessages-${nodeId}`;
   const replanMessagesKey = `replanMessages-${nodeId}`;
@@ -114,12 +115,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   })();
 
-  // Plan step: 需要生成 plan，且还没有完整的 plan
-  const isPlanStep = isPlanAgent && planHistoryMessages;
-  // Replan step: 已有 plan，且有 replan 历史消息
-  const isReplanStep = isPlanAgent && agentPlan && replanMessages;
   // Check task complexity: 第一次进入任务时候进行判断。（有 plan了，说明已经开始执行任务了）
-  const isCheckTaskComplexityStep = !agentPlan && !isPlanStep;
+  const isCheckTaskComplexityStep = isPlanAgent && !agentPlan && !planHistoryMessages;
 
   try {
     // Get files
@@ -141,32 +138,28 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       filesMap
     });
 
+    /* ===== AI Start ===== */
+
     /* ===== Check task complexity ===== */
-    const {
-      complex: taskIsComplexity,
-      inputTokens: taskComplexInputTokens,
-      outputTokens: taskComplexOutputTokens
-    } = await (async () => {
+    const taskIsComplexity = await (async () => {
       if (isCheckTaskComplexityStep) {
-        return await checkTaskComplexity({
+        const res = await checkTaskComplexity({
           model,
           userChatInput
         });
+        if (res.usage) {
+          usagePush([res.usage]);
+        }
+        return res.complex;
       }
 
       // 对轮运行时候，代表都是进入复杂流程
-      return {
-        complex: true,
-        inputTokens: 0,
-        outputTokens: 0
-      };
+      return true;
     })();
 
     if (taskIsComplexity) {
       /* ===== Plan Agent ===== */
       const planCallFn = async () => {
-        // Confirm 操作
-        console.log(lastInteractive, interactiveInput, '\n Plan step');
         // 点了确认。此时肯定有 agentPlans
         if (
           lastInteractive?.type === 'agentPlanCheck' &&
@@ -186,7 +179,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           const { answerText, plan, completeMessages, usages, interactiveResponse } =
             await dispatchPlanAgent({
-              historyMessages: planHistoryMessages || [],
+              historyMessages: planHistoryMessages || historiesMessages,
               userInput: lastInteractive ? interactiveInput : userChatInput,
               interactive: lastInteractive,
               subAppList,
@@ -209,7 +202,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           agentPlan = plan;
 
-          // TODO: usage 合并
+          usagePush(usages);
           // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
           if (interactiveResponse) {
             return {
@@ -245,7 +238,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           usages,
           interactiveResponse
         } = await dispatchReplanAgent({
-          historyMessages: replanMessages || [],
+          historyMessages: replanMessages || historiesMessages,
           userInput: lastInteractive ? interactiveInput : userChatInput,
           plan,
           interactive: lastInteractive,
@@ -272,7 +265,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           })
         });
 
-        // TODO: usage 合并
+        usagePush(usages);
         // Sub agent plan 不会有交互响应。Top agent plan 肯定会有。
         if (interactiveResponse) {
           return {
@@ -287,6 +280,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           replanMessages = undefined;
         }
       };
+
+      // Plan step: 需要生成 plan，且还没有完整的 plan
+      const isPlanStep = isPlanAgent && (!agentPlan || planHistoryMessages);
+      // Replan step: 已有 plan，且有 replan 历史消息
+      const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
       // 执行 Plan/replan
       if (isPlanStep) {
@@ -307,12 +305,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       /* ===== Master agent, 逐步执行 plan ===== */
       if (!agentPlan) return Promise.reject('没有 plan');
 
-      let [inputTokens, outputTokens, subAppUsages, assistantResponses]: [
-        number,
-        number,
-        ChatNodeUsageType[],
-        AIChatItemValueItemType[]
-      ] = [0, 0, [], []];
+      let assistantResponses: AIChatItemValueItemType[] = [];
 
       while (agentPlan.steps!.filter((item) => !item.response)!.length) {
         const pendingSteps = agentPlan?.steps!.filter((item) => !item.response)!;
@@ -339,9 +332,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           step.response = result.rawResponse;
           step.summary = result.summary;
-          inputTokens += result.inputTokens;
-          outputTokens += result.outputTokens;
-          subAppUsages.push(...result.subAppUsages);
           assistantResponses.push(...result.assistantResponses);
         }
 
@@ -352,49 +342,28 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           if (replanResult) return replanResult;
         }
       }
-      console.log(agentPlan, 'agentPlan');
-      // Usage count
-      const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
-        model,
-        inputTokens,
-        outputTokens
-      });
-      const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
-      const toolTotalPoints = subAppUsages.reduce((sum, item) => sum + item.totalPoints, 0);
-      // concat tool usage
-      const totalPointsUsage = modelUsage + toolTotalPoints;
 
       return {
         // 目前 Master 不会触发交互
         // [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse,
         // TODO: 需要对 memoryMessages 单独建表存储
         [DispatchNodeResponseKeyEnum.memories]: {
-          [agentPlanKey]: agentPlan
+          [agentPlanKey]: agentPlan,
+          [planMessagesKey]: undefined,
+          [replanMessagesKey]: undefined
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           // 展示的积分消耗
-          totalPoints: totalPointsUsage,
-          toolCallInputTokens: inputTokens,
-          toolCallOutputTokens: outputTokens,
-          childTotalPoints: toolTotalPoints,
-          model: modelName,
+          // totalPoints: totalPointsUsage,
+          // toolCallInputTokens: inputTokens,
+          // toolCallOutputTokens: outputTokens,
+          // childTotalPoints: toolTotalPoints,
+          // model: modelName,
           query: userChatInput,
           // toolDetail: dispatchFlowResponse,
           mergeSignId: nodeId
-        },
-        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-          // Model usage
-          {
-            moduleName: name,
-            model: modelName,
-            totalPoints: modelUsage,
-            inputTokens: inputTokens,
-            outputTokens: outputTokens
-          },
-          // Tool usage
-          ...subAppUsages
-        ]
+        }
       };
     }
 

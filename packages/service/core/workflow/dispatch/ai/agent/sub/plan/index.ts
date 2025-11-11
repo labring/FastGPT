@@ -21,7 +21,7 @@ import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
 import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
 import type { GetSubAppInfoFnType } from '../../type';
-import { getStepDependon } from '../../common/dependon';
+import { getStepDependon } from '../../master/dependon';
 import { parseSystemPrompt } from '../../utils';
 
 type PlanAgentConfig = {
@@ -99,6 +99,7 @@ export const dispatchPlanAgent = async ({
       content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
     });
   } else {
+    // TODO: 这里拼接的话，对于多轮对话不是很友好。
     requestMessages.push({
       role: 'user',
       content: getUserContent({ userInput, systemPrompt, getSubAppInfo })
@@ -133,7 +134,7 @@ export const dispatchPlanAgent = async ({
   if (!answerText && !toolCalls.length) {
     return Promise.reject(getEmptyResponseTip());
   }
-  console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Plan response');
+
   /* 
     正常输出情况：
     1. text: 正常生成plan
@@ -172,6 +173,7 @@ export const dispatchPlanAgent = async ({
           }
         };
       } else {
+        console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Plan response');
         return {
           type: 'agentPlanAskQuery',
           params: {
@@ -197,8 +199,8 @@ export const dispatchPlanAgent = async ({
     completeMessages,
     usages: [
       {
-        moduleName: modelName,
-        model: modelData.model,
+        moduleName: '任务规划',
+        model: modelName,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
@@ -365,8 +367,8 @@ export const dispatchReplanAgent = async ({
     completeMessages,
     usages: [
       {
-        moduleName: modelName,
-        model: modelData.model,
+        moduleName: '重新规划',
+        model: modelName,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens

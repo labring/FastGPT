@@ -3,6 +3,8 @@ import type { AgentPlanStepType } from '../sub/plan/type';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { parseToolArgs } from '../../utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 
 export const getStepDependon = async ({
   model,
@@ -12,7 +14,10 @@ export const getStepDependon = async ({
   model: string;
   steps: AgentPlanStepType[];
   step: AgentPlanStepType;
-}) => {
+}): Promise<{
+  depends: string[];
+  usage?: ChatNodeUsageType;
+}> => {
   const modelData = getLLMModel(model);
   addLog.debug('GetStepResponse start', { model, step });
   const historySummary = steps
@@ -22,11 +27,7 @@ export const getStepDependon = async ({
 
   if (!historySummary) {
     return {
-      depends: [],
-      usage: {
-        inputTokens: 0,
-        outputTokens: 0
-      }
+      depends: []
     };
   }
   // console.log("GetStepDependon historySummary:", step.id, historySummary);
@@ -72,14 +73,24 @@ export const getStepDependon = async ({
     reason: string;
   }>(answerText);
   if (!params) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelData.model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    });
     return {
       depends: [],
-      usage
+      usage: {
+        moduleName: '步骤依赖分析',
+        model: modelName,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
     };
   }
 
   return {
-    depends: params.needed_step_ids,
-    usage
+    depends: params.needed_step_ids
   };
 };
