@@ -28,6 +28,7 @@ const PriceBox = () => {
     refreshDeps: [userInfo]
   });
 
+  // TODO: 封装成一个 hook 来判断滚动态
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
