@@ -24,3 +24,8 @@ export const getToolList = async () => {
   }
   return global.toolListData;
 };
+
+export const refreshToolList = async () => {
+  global.toolListData = [];
+  global.expire = new Date(0);
+};
