@@ -112,7 +112,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionLogMongo.models[name]) return connectionLogMongo.models[name] as Model<T>;
   console.log('Load model======', name);
-  addCommonMiddleware(schema);
+  // addCommonMiddleware(schema); 
 
   const model = connectionLogMongo.model<T>(name, schema);
 
