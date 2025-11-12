@@ -148,6 +148,10 @@ async function handler(
         {
           imageIndex: dataset.chunkSettings.imageIndex,
           autoIndexes: dataset.chunkSettings.autoIndexes,
+          hypeIndexes: dataset.chunkSettings.hypeIndexes,
+          hypeIndexPrompt: dataset.chunkSettings.hypeIndexPrompt,
+          autoIndexesPrompt: dataset.chunkSettings.autoIndexesPrompt,
+          imageIndexPrompt: dataset.chunkSettings.imageIndexPrompt,
           trainingType: dataset.chunkSettings.trainingType,
           chunkSettingMode: dataset.chunkSettings.chunkSettingMode,
           chunkSplitMode: dataset.chunkSettings.chunkSplitMode,
@@ -159,6 +163,10 @@ async function handler(
         {
           imageIndex: chunkSettings.imageIndex,
           autoIndexes: chunkSettings.autoIndexes,
+          hypeIndexes: dataset.chunkSettings.hypeIndexes,
+          hypeIndexPrompt: dataset.chunkSettings.hypeIndexPrompt,
+          autoIndexesPrompt: dataset.chunkSettings.autoIndexesPrompt,
+          imageIndexPrompt: dataset.chunkSettings.imageIndexPrompt,
           trainingType: chunkSettings.trainingType,
           chunkSettingMode: chunkSettings.chunkSettingMode,
           chunkSplitMode: chunkSettings.chunkSplitMode,

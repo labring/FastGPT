@@ -26,9 +26,10 @@ import type { ParentIdType } from 'common/parentFolder/type';
 import type { CollectionStatusEnum } from 'core/dataset/collection/schema';
 import type { SplitProps } from '@fastgpt/global/common/string/textSplitter';
 
-export type small2bigConfigType =  Omit<SplitProps,'text'> & {
+export type small2bigConfigType = Omit<SplitProps, 'text'> & {
   maxChildChunks?: number;
-}
+};
+
 export type ChunkSettingsType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;
 
@@ -108,6 +109,7 @@ export type ForeignKeySchemaType = ConstraintSchemaType & {
   referredTable: string;
   referredColumns: string;
 };
+
 export type TableSchemaType = {
   tableName: string;
   description: string;
@@ -216,6 +218,7 @@ export type DatasetDataFieldType = {
   a?: string; // answer or custom content
   imageId?: string;
 };
+
 export type DatasetDataSchemaType = DatasetDataFieldType & {
   _id: string;
   userId: string;
