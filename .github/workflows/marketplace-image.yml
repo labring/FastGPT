@@ -67,15 +67,15 @@ jobs:
 
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests/marketplace
+          mkdir -p ${{ runner.temp }}/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/marketplace/${digest#sha256:}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
           name: digests-marketplace-${{ github.sha }}-${{ matrix.archs.arch }}
-          path: ${{ runner.temp }}/digests/marketplace/*
+          path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
@@ -121,8 +121,8 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          echo "Git_IMAGE=ghcr.io/${{ github.repository_owner }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
-          echo "Ali_IMAGE=${{ secrets.ALI_IMAGE_NAME }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -130,10 +130,18 @@ jobs:
           echo "Pushing image with tag: ${{ env.RANDOM_TAG }}"
           TAGS="$(echo -e "${Git_Tag}\n${Ali_Tag}")"
           for TAG in $TAGS; do
+            echo "Creating and pushing manifest for: $TAG"
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/marketplace@sha256:%s ' *)
+            if [ $? -eq 0 ]; then
+              echo "✅ Successfully pushed: $TAG"
+            else
+              echo "❌ Failed to push: $TAG"
+              exit 1
+            fi
             sleep 5
           done
-          echo "✅ Successfully pushed images:"
-          echo "  - ${{ env.Git_IMAGE }}"
-          echo "  - ${{ env.Ali_IMAGE }}"
+          echo ""
+          echo "✅ All images pushed successfully:"
+          echo "  - ${{ env.Git_Tag }}"
+          echo "  - ${{ env.Ali_Tag }}"
