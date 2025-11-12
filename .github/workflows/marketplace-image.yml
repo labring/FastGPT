@@ -1,10 +1,8 @@
-name: Build Marketplace images
-
+name: Build fastgpt-marketplace images
 on:
   workflow_dispatch:
-
 jobs:
-  build-marketplace-images:
+  build-fastgpt-marketplace-images:
     permissions:
       packages: write
       contents: read
@@ -12,30 +10,28 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        archs:
+        include:
           - arch: amd64
           - arch: arm64
             runs-on: ubuntu-24.04-arm
-    runs-on: ${{ matrix.archs.runs-on || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     steps:
       # install env
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 1
-
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
-
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.archs.arch }}-marketplace-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-marketplace-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.archs.arch }}-marketplace-buildx-
+            ${{ runner.os }}-marketplace-buildx-
 
       # login docker
       - name: Login to GitHub Container Registry
@@ -51,13 +47,13 @@ jobs:
           username: ${{ secrets.ALI_HUB_USERNAME }}
           password: ${{ secrets.ALI_HUB_PASSWORD }}
 
-      - name: Build for ${{ matrix.archs.arch }}
+      - name: Build for ${{ matrix.arch }}
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: projects/marketplace/Dockerfile
-          platforms: linux/${{ matrix.archs.arch }}
+          platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=fastgpt-marketplace image
@@ -74,18 +70,18 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-marketplace-${{ github.sha }}-${{ matrix.archs.arch }}
+          name: digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  release-marketplace-images:
+  release-fastgpt-marketplace-images:
     permissions:
       packages: write
       contents: read
       attestations: write
       id-token: write
-    needs: build-marketplace-images
+    needs: build-fastgpt-marketplace-images
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GitHub Container Registry
@@ -105,7 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-marketplace-${{ github.sha }}-*
+          pattern: digests-fastgpt-marketplace-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
