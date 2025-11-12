@@ -60,8 +60,8 @@ jobs:
           platforms: linux/${{ matrix.archs.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=marketplace image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/marketplace,${{ secrets.ALI_IMAGE_NAME }}/marketplace",push-by-digest=true,push=true
+            org.opencontainers.image.description=fastgpt-marketplace image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace,${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -121,26 +121,30 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
-          echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
           echo "Pushing image with tag: ${{ env.RANDOM_TAG }}"
-          TAGS="$(echo -e "${Git_Tag}\n${Ali_Tag}")"
-          for TAG in $TAGS; do
-            echo "Creating and pushing manifest for: $TAG"
-            docker buildx imagetools create -t $TAG \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/marketplace@sha256:%s ' *)
-            if [ $? -eq 0 ]; then
-              echo "✅ Successfully pushed: $TAG"
-            else
-              echo "❌ Failed to push: $TAG"
-              exit 1
-            fi
-            sleep 5
-          done
+          echo "Available digests:"
+          ls -la
+          echo ""
+
+          # Create manifest for GitHub Container Registry
+          echo "Creating manifest for GitHub: ${Git_Tag}"
+          docker buildx imagetools create -t ${Git_Tag} \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s ' *)
+          echo "✅ GitHub manifest created"
+          sleep 5
+
+          # Create manifest for Ali Cloud
+          echo "Creating manifest for Ali Cloud: ${Ali_Tag}"
+          docker buildx imagetools create -t ${Ali_Tag} \
+            $(printf '${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace@sha256:%s ' *)
+          echo "✅ Ali Cloud manifest created"
+
           echo ""
           echo "✅ All images pushed successfully:"
           echo "  - ${{ env.Git_Tag }}"
