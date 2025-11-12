@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 为了方便地接入**外部成员系统**，FastGPT 提供一套接入外部系统的**标准接口**，以及一个 FastGPT-SSO-Service 镜像作为**适配器**。
 
-通过这套标注接口，你可以可以实现：
+通过这套标准接口，你可以可以实现：
 
 1. SSO 登录。从外部系统回调后，在  FastGPT 中创建一个用户。
 2. 成员和组织架构同步（下面都简称成员同步）。
@@ -125,9 +125,9 @@ env:
 
 设置 fastgpt-pro 环境变量则可开启自动成员同步
 
-```bash
+```yaml
 env:
-   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron 表达式，每天 0 点执行
+   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron 表达式，每天 0 点执行，注意需要以 UTC （0时区）为准，例如如果设置北京时间 12:00 进行同步，则此处需要配置为 "0 4 * * *" (UTC 4:00执行)
 ```
 
 ## 内置的通用协议/IM 配置示例
@@ -148,23 +148,37 @@ env:
 
    ![](/imgs/sso4.png)
 
-   对于开通用户SSO登录而言，开启用户身份权限的以下内容
+   可以使用**批量导入/导出权限** 功能，导入如下权限配置:
 
-   1. ***获取通讯录基本信息***
-   2. ***获取用户基本信息***
-   3. ***获取用户邮箱信息***
-   4. ***获取用户 user ID***
+```json
+{
+  "scopes": {
+    "tenant": [
+      "contact:user.phone:readonly",
+      "contact:contact.base:readonly",
+      "contact:department.base:readonly",
+      "contact:department.organize:readonly",
+      "contact:user.base:readonly",
+      "contact:user.department:readonly",
+      "contact:user.email:readonly",
+      "contact:user.employee_id:readonly"
+    ],
+    "user": []
+  }
+}
+```
 
-   对于开启企业同步相关内容而言，开启身份权限的内容与上面一致，但要注意是开启应用权限
+注意：可访问的数据范围需要开启全员可见
 
 #### 3. 重定向URL
 
-   进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向URL
+   进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向URL，
+   重定向 URL 形如 `https://www.fastgpt.cn/login/provider` 前面的域名修改为部署后公开可访问的 fastgpt 的域名
    ![](/imgs/sso5.png)
 
 #### 4. yml 配置示例
 
-```bash
+```yaml
 fastgpt-sso:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
     container_name: fastgpt-sso
@@ -172,21 +186,19 @@ fastgpt-sso:
     networks:
       - fastgpt
     environment:
-      - SSO_PROVIDER=example
-      - AUTH_TOKEN=xxxxx
-      # 飞书 - feishu -如果是私有化部署，这里的配置前缀可能会有变化
       - SSO_PROVIDER=feishu
-      # oauth 接口（公开的飞书不用改）
+      - AUTH_TOKEN=xxxxx
+      # oauth 接口（私有化部署的飞书改为私有化的地址, 下同）
       - SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
-      # 获取token 接口（公开的飞书不用改）
+      # 获取token 接口
       - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
-      # 获取用户信息接口（公开的飞书不用改）
+      # 获取用户信息接口
       - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-      # 重定向地址，因为飞书获取用户信息要校验所以需要填
-      - FEISHU_REDIRECT_URI=xxx
-      #飞书APP的应用ID，一般以cli开头
+      # 重定向地址，设置为上面第三部中一模一样的地址
+      - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
+      # 飞书APP的应用ID，一般以cli开头
       - FEISHU_APP_ID=xxx
-      #飞书APP的应用密钥
+      # 飞书APP的应用密钥
       - FEISHU_APP_SECRET=xxx
 ```
 
@@ -217,7 +229,7 @@ fastgpt-sso:
 
 #### 4. yml 配置示例
 
-```bash
+```yaml
 fastgpt-sso:
    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
    container_name: fastgpt-sso
@@ -296,7 +308,7 @@ fastgpt-sso:
 
 #### 2. yml 配置示例
 
-```bash
+```yaml
 fastgpt-sso:
    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
    container_name: fastgpt-sso
@@ -375,7 +387,7 @@ fastgpt-sso:
 
 #### 配置示例
 
-```bash
+```yaml
 fastgpt-sso:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
     container_name: fastgpt-sso
@@ -384,6 +396,7 @@ fastgpt-sso:
         - fastgpt
     environment:
         - SSO_PROVIDER=oauth2
+        - AUTH_TOKEN=xxxxx
         # OAuth2.0
         # === 请求地址 ===
         # 1. OAuth2 登陆鉴权地址 (必填)
