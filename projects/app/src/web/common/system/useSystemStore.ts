@@ -174,10 +174,10 @@ export const useSystemStore = create<State>()(
         operationalAd: undefined,
         loadOperationalAd: async () => {
           try {
-            // const res = await getOperationalAd();
-            // set((state) => {
-            //   state.operationalAd = res;
-            // });
+            const res = await getOperationalAd();
+            set((state) => {
+              state.operationalAd = res;
+            });
           } catch (error) {
             console.log('Get operational ad error', error);
           }
