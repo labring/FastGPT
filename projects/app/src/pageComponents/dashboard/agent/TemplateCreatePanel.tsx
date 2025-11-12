@@ -11,7 +11,7 @@ import {
   SkeletonCircle,
   useBreakpointValue
 } from '@chakra-ui/react';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,6 +22,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useLocalStorageState } from 'ahooks';
 import { useState } from 'react';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
@@ -62,6 +64,11 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
       setCreatingTemplateId(templateId);
       const templateDetail = await getTemplateMarketItemDetail(templateId);
 
+      if (templateDetail.type === AppTypeEnum.simple) {
+        const completeWorkflow = form2AppWorkflow(templateDetail.workflow, t);
+        templateDetail.workflow = completeWorkflow;
+      }
+
       return postCreateApp({
         avatar: templateDetail.avatar,
         name: templateDetail.name,
@@ -70,6 +77,13 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig || {},
         templateId: templateDetail.templateId
+      }).then((res) => {
+        webPushTrack.useAppTemplate({
+          id: res,
+          name: templateDetail.name
+        });
+
+        return res;
       });
     },
     {

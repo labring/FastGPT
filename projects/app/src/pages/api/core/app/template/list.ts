@@ -30,7 +30,8 @@ async function handler(
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
-    if (type === 'all' && !ToolTypeList.includes(item.type as AppTypeEnum)) return true;
+    if (type === 'all' && !(ToolTypeList.includes(item.type as AppTypeEnum) && randomNumber > 0))
+      return true;
     if (item.type === type) return true;
     return false;
   });

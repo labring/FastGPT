@@ -12,6 +12,8 @@ import {
   type AppTemplateSchemaType,
   type TemplateTypeSchemaType
 } from '@fastgpt/global/core/app/type';
+import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
@@ -66,6 +68,11 @@ const TemplateMarket = ({
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
     async (template: AppTemplateSchemaType) => {
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
+
+      if (template.type === AppTypeEnum.simple) {
+        const completeWorkflow = form2AppWorkflow(templateDetail.workflow, t);
+        templateDetail.workflow = completeWorkflow;
+      }
 
       return postCreateApp({
         parentId,
