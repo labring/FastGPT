@@ -25,6 +25,7 @@ import MyBox from '../../../../MyBox';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useTranslation } from 'next-i18next';
 
 export type SkillOptionItemType = {
   description?: string;
@@ -32,7 +33,7 @@ export type SkillOptionItemType = {
 
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
   onClick?: (id: string) => Promise<string | undefined>;
-  onFolderLoad?: (id: string) => Promise<SkillOptionItemType | undefined>;
+  onFolderLoad?: (id: string) => Promise<SkillItemType[] | undefined>;
 };
 
 export type SkillItemType = {
@@ -41,7 +42,8 @@ export type SkillItemType = {
   label: string;
   icon?: string;
   showArrow?: boolean;
-  isFolder?: boolean;
+  canOpen?: boolean;
+  canUse?: boolean;
   open?: boolean;
   children?: SkillOptionItemType;
   folderChildren?: SkillItemType[];
@@ -54,6 +56,7 @@ export default function SkillPickerPlugin({
   skillOption: SkillOptionItemType;
   isFocus: boolean;
 }) {
+  const { t } = useTranslation();
   const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -71,6 +74,8 @@ export default function SkillPickerPlugin({
   });
   const [currentColumnIndex, setCurrentColumnIndex] = useState<number>(0);
   const [currentRowIndex, setCurrentRowIndex] = useState<number>(0);
+  const [interactionMode, setInteractionMode] = useState<'mouse' | 'keyboard'>('mouse');
+  const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
 
   // Refs for scroll management
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -80,11 +85,18 @@ export default function SkillPickerPlugin({
     const itemKey = `${columnIndex}-${rowIndex}`;
     const itemElement = itemRefs.current.get(itemKey);
     if (itemElement) {
-      itemElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'nearest'
-      });
+      if (rowIndex === 0) {
+        const container = itemElement.parentElement;
+        if (container) {
+          container.scrollTop = 0;
+        }
+      } else {
+        itemElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      }
     } else if (retryCount < 5) {
       // Retry if element not found yet (DOM not ready)
       setTimeout(() => {
@@ -96,6 +108,28 @@ export default function SkillPickerPlugin({
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
   });
+
+  // Recursively collects all visible items including expanded folder children for keyboard navigation
+  const getFlattenedVisibleItems = useCallback(
+    (columnIndex: number): SkillItemType[] => {
+      const column = skillOptions[columnIndex];
+
+      const flatten = (items: SkillItemType[]): SkillItemType[] => {
+        const result: SkillItemType[] = [];
+        items.forEach((item) => {
+          result.push(item);
+          // Include folder children only if folder is expanded
+          if (item.canOpen && item.open && item.folderChildren) {
+            result.push(...flatten(item.folderChildren));
+          }
+        });
+        return result;
+      };
+
+      return flatten(column.list);
+    },
+    [skillOptions]
+  );
 
   // Handle item selection (hover/keyboard navigation)
   const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest2(
@@ -179,9 +213,87 @@ export default function SkillPickerPlugin({
   );
 
   // Handle folder toggle
-  const handleFolderToggle = useCallback(
-    (folderId: string, columnIndex: number, item?: SkillItemType) => {},
-    []
+  const { runAsync: handleFolderToggle, loading: isFolderLoading } = useRequest2(
+    async ({
+      currentColumnIndex,
+      item,
+      option
+    }: {
+      currentColumnIndex: number;
+      item?: SkillItemType;
+      option?: SkillOptionItemType;
+    }) => {
+      if (!item || !item.canOpen) return;
+      const currentFolder = item;
+
+      // Step 1: Toggle folder open/closed state
+      setSkillOptions((prev) => {
+        const newOptions = [...prev];
+        const columnData = { ...newOptions[currentColumnIndex] };
+
+        // Recursively find and toggle the target folder
+        const toggleFolderOpen = (items: SkillItemType[]): SkillItemType[] => {
+          return items.map((item) => {
+            // Found the target folder, toggle its open state
+            if (item.id === currentFolder.id) {
+              return { ...item, open: !currentFolder.open };
+            }
+            // Recursively search in nested folders
+            if (item.folderChildren) {
+              return { ...item, folderChildren: toggleFolderOpen(item.folderChildren) };
+            }
+            return item;
+          });
+        };
+
+        columnData.list = toggleFolderOpen(columnData.list);
+        newOptions[currentColumnIndex] = columnData;
+        return newOptions;
+      });
+
+      // Step 2: Load folder children only if folder has no data
+      if (!currentFolder.open && currentFolder?.folderChildren === undefined) {
+        setLoadingFolderIds((prev) => {
+          const next = new Set(prev);
+          next.add(currentFolder.id);
+          return next;
+        });
+
+        try {
+          const result = await option?.onFolderLoad?.(currentFolder.id);
+
+          setSkillOptions((prev) => {
+            const newOptions = [...prev];
+            const columnData = { ...newOptions[currentColumnIndex] };
+
+            const addFolderChildren = (items: SkillItemType[]): SkillItemType[] => {
+              return items.map((item) => {
+                if (item.id === currentFolder.id) {
+                  return {
+                    ...item,
+                    folderChildren: result || []
+                  };
+                }
+                if (item.folderChildren) {
+                  return { ...item, folderChildren: addFolderChildren(item.folderChildren) };
+                }
+                return item;
+              });
+            };
+
+            columnData.list = addFolderChildren(columnData.list);
+            newOptions[currentColumnIndex] = columnData;
+            return newOptions;
+          });
+        } finally {
+          setLoadingFolderIds((prev) => {
+            const next = new Set(prev);
+            next.delete(currentFolder.id);
+            return next;
+          });
+        }
+      }
+    }
   );
 
   // First init
@@ -210,8 +322,10 @@ export default function SkillPickerPlugin({
         e.preventDefault();
         e.stopPropagation();
 
+        setInteractionMode('keyboard');
+
         if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
-          const columnItems = skillOptions[currentColumnIndex]?.list;
+          const columnItems = getFlattenedVisibleItems(currentColumnIndex);
           if (!columnItems || columnItems.length === 0) return true;
 
           // Use functional update to get the latest row index
@@ -246,8 +360,10 @@ export default function SkillPickerPlugin({
         e.preventDefault();
         e.stopPropagation();
 
+        setInteractionMode('keyboard');
+
         if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
-          const columnItems = skillOptions[currentColumnIndex]?.list;
+          const columnItems = getFlattenedVisibleItems(currentColumnIndex);
           if (!columnItems || columnItems.length === 0) return true;
 
           // Use functional update to get the latest row index
@@ -281,6 +397,8 @@ export default function SkillPickerPlugin({
 
         e.preventDefault();
         e.stopPropagation();
+
+        setInteractionMode('keyboard');
 
         // Use functional updates to get the latest state
         setCurrentColumnIndex((prevColumnIndex) => {
@@ -327,6 +445,8 @@ export default function SkillPickerPlugin({
         e.preventDefault();
         e.stopPropagation();
 
+        setInteractionMode('keyboard');
+
         // Use functional updates to get the latest state
         setCurrentColumnIndex((prevColumnIndex) => {
           if (prevColumnIndex <= 0) return prevColumnIndex;
@@ -364,14 +484,20 @@ export default function SkillPickerPlugin({
       (e: KeyboardEvent) => {
         if (!isMenuOpen) return true;
 
-        // Use the latest values from closure to avoid stale state
-        const latestOption = skillOptions[currentColumnIndex];
-        const latestItem = latestOption?.list[currentRowIndex];
+        setInteractionMode('keyboard');
 
-        if (latestItem?.isFolder) {
+        const flattenedItems = getFlattenedVisibleItems(currentColumnIndex);
+        const latestItem = flattenedItems[currentRowIndex];
+        const latestOption = skillOptions[currentColumnIndex];
+
+        if (latestItem?.canOpen && !(latestItem.open && latestItem.folderChildren?.length === 0)) {
           e.preventDefault();
           e.stopPropagation();
-          handleFolderToggle(latestItem.id, currentColumnIndex, latestItem);
+          handleFolderToggle({
+            currentColumnIndex,
+            item: latestItem,
+            option: latestOption
+          });
           return true;
         }
 
@@ -385,11 +511,13 @@ export default function SkillPickerPlugin({
       (e: KeyboardEvent) => {
         if (!isMenuOpen) return true;
 
-        // Use the latest values from closure to avoid stale state
-        const latestOption = skillOptions[currentColumnIndex];
-        const latestItem = latestOption?.list[currentRowIndex];
+        setInteractionMode('keyboard');
 
-        if (latestItem && latestOption) {
+        const flattenedItems = getFlattenedVisibleItems(currentColumnIndex);
+        const latestItem = flattenedItems[currentRowIndex];
+        const latestOption = skillOptions[currentColumnIndex];
+
+        if (latestItem?.canUse && latestOption) {
           e.preventDefault();
           e.stopPropagation();
           handleItemClick({ item: latestItem, option: latestOption });
@@ -421,13 +549,164 @@ export default function SkillPickerPlugin({
     handleFolderToggle,
     handleItemClick,
     selectedRowIndex,
-    scrollIntoView
+    scrollIntoView,
+    getFlattenedVisibleItems
   ]);
+
+  // Recursively render item list
+  const renderItemList = useCallback(
+    (
+      items: SkillItemType[],
+      columnData: SkillOptionItemType,
+      columnIndex: number,
+      depth: number = 0,
+      startFlatIndex: number = 0
+    ): { elements: JSX.Element[]; nextFlatIndex: number } => {
+      const result: JSX.Element[] = [];
+      const activeRowIndex = selectedRowIndex[columnIndex];
+      let currentFlatIndex = startFlatIndex;
+      console.log('items', { selectedRowIndex, columnIndex, activeRowIndex });
+
+      items.forEach((item) => {
+        const flatIndex = currentFlatIndex;
+        currentFlatIndex++;
+
+        // 前面的列，才有激活态
+        const isActive = columnIndex < currentColumnIndex && flatIndex === activeRowIndex;
+        // 当前选中的东西
+        const isSelected = columnIndex === currentColumnIndex && flatIndex === currentRowIndex;
+
+        result.push(
+          <MyBox
+            key={item.id}
+            ref={(el) => {
+              if (el) {
+                itemRefs.current.set(`${columnIndex}-${flatIndex}`, el as HTMLDivElement);
+              } else {
+                itemRefs.current.delete(`${columnIndex}-${flatIndex}`);
+              }
+            }}
+            px={2}
+            py={1.5}
+            gap={2}
+            pl={1 + depth * 4}
+            borderRadius={'4px'}
+            cursor={'pointer'}
+            bg={isActive || isSelected ? 'myGray.100' : ''}
+            color={isSelected ? 'primary.700' : 'myGray.600'}
+            display={'flex'}
+            alignItems={'center'}
+            isLoading={loadingFolderIds.has(item.id)}
+            size={'sm'}
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
+            onMouseMove={(e) => {
+              if (interactionMode === 'keyboard') {
+                setInteractionMode('mouse');
+              }
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (item.canOpen) {
+                handleFolderToggle({
+                  currentColumnIndex: columnIndex,
+                  item,
+                  option: columnData
+                });
+              } else if (item.canUse) {
+                handleItemClick({
+                  item,
+                  option: columnData
+                });
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.preventDefault();
+
+              // Ignore mouse hover in keyboard mode
+              if (interactionMode === 'keyboard') {
+                return;
+              }
+
+              if (columnIndex !== currentColumnIndex) {
+                setSelectedRowIndex((state) => ({
+                  ...state,
+                  [currentColumnIndex]: currentRowIndex
+                }));
+              }
+
+              setCurrentRowIndex(flatIndex);
+              setCurrentColumnIndex(columnIndex);
+              if (item.canUse) {
+                handleItemSelect({
+                  currentColumnIndex: columnIndex,
+                  item,
+                  option: columnData
+                });
+              }
+            }}
+          >
+            {item.canOpen && !(item.open && item.folderChildren?.length === 0) ? (
+              <MyIcon
+                name={'core/chat/chevronRight'}
+                w={4}
+                color={'myGray.500'}
+                transform={item.open ? 'rotate(90deg)' : 'none'}
+                transition={'transform 0.2s'}
+                mr={-1}
+              />
+            ) : columnData.onFolderLoad ? (
+              <Box w={3} flexShrink={0} />
+            ) : null}
+            {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
+            <Box fontSize={'sm'} fontWeight={'medium'} flex={1}>
+              {item.label}
+              {item.canOpen && item.open && item.folderChildren?.length === 0 && (
+                <Box as="span" color={'myGray.400'} fontSize={'xs'} ml={2}>
+                  {t('app:empty_folder')}
+                </Box>
+              )}
+            </Box>
+            {item.showArrow && (
+              <MyIcon name={'core/chat/chevronRight'} w={'0.8rem'} color={'myGray.400'} />
+            )}
+          </MyBox>
+        );
+
+        // render folderChildren
+        if (item.canOpen && item.open && !!item.folderChildren && item.folderChildren.length > 0) {
+          const { elements, nextFlatIndex } = renderItemList(
+            item.folderChildren,
+            columnData,
+            columnIndex,
+            depth + 1,
+            currentFlatIndex
+          );
+          result.push(...elements);
+          currentFlatIndex = nextFlatIndex;
+        }
+      });
+
+      return { elements: result, nextFlatIndex: currentFlatIndex };
+    },
+    [
+      selectedRowIndex,
+      currentColumnIndex,
+      currentRowIndex,
+      handleFolderToggle,
+      handleItemClick,
+      handleItemSelect,
+      interactionMode,
+      loadingFolderIds
+    ]
+  );
 
   // Render single column
   const renderColumn = useCallback(
     (columnData: SkillOptionItemType, columnIndex: number) => {
-      const activeRowIndex = selectedRowIndex[columnIndex]; // Active item in this column
+      const columnWidth = columnData.onFolderLoad ? '280px' : '200px';
 
       return (
         <MyBox
@@ -436,7 +715,7 @@ export default function SkillPickerPlugin({
           ml={columnIndex > 0 ? 2 : 0}
           p={1.5}
           borderRadius={'sm'}
-          w={'200px'}
+          w={columnWidth}
           boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
           bg={'white'}
           flexShrink={0}
@@ -448,89 +727,11 @@ export default function SkillPickerPlugin({
               {columnData.description}
             </Box>
           )}
-          {columnData.list.map((item, index) => {
-            // 前面的列，才有激活态
-            const isActive = columnIndex < currentColumnIndex && index === activeRowIndex;
-            // 当前选中的东西
-            const isSelected = columnIndex === currentColumnIndex && index === currentRowIndex;
-
-            return (
-              <Flex
-                key={item.id}
-                ref={(el) => {
-                  if (el) {
-                    itemRefs.current.set(`${columnIndex}-${index}`, el);
-                  } else {
-                    itemRefs.current.delete(`${columnIndex}-${index}`);
-                  }
-                }}
-                px={2}
-                py={1.5}
-                gap={2}
-                pl={2}
-                borderRadius={'4px'}
-                cursor={'pointer'}
-                bg={isActive || isSelected ? 'myGray.100' : ''}
-                color={isSelected ? 'primary.700' : 'myGray.600'}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (item.isFolder) {
-                    handleFolderToggle(item.id, columnIndex, item);
-                  } else {
-                    handleItemClick({
-                      item,
-                      option: columnData
-                    });
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  e.preventDefault();
-                  setCurrentRowIndex(index);
-                  setCurrentColumnIndex(columnIndex);
-                  if (!item.isFolder) {
-                    handleItemSelect({
-                      currentColumnIndex: columnIndex,
-                      item,
-                      option: columnData
-                    });
-                  }
-                }}
-              >
-                {/* Folder expand/collapse icon */}
-                {item.isFolder && (
-                  <MyIcon
-                    name={'core/chat/chevronRight'}
-                    w={'12px'}
-                    color={'myGray.400'}
-                    // transform={foldedIds.has(item.id) ? 'rotate(90deg)' : 'none'}
-                  />
-                )}
-                {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
-                <Box fontSize={'sm'} fontWeight={'medium'} flex={1}>
-                  {item.label}
-                </Box>
-                {item.showArrow && (
-                  <MyIcon name={'core/chat/chevronRight'} w={'0.8rem'} color={'myGray.400'} />
-                )}
-              </Flex>
-            );
-          })}
+          {renderItemList(columnData.list, columnData, columnIndex).elements}
         </MyBox>
       );
     },
-    [
-      selectedRowIndex,
-      currentColumnIndex,
-      isItemClickLoading,
-      currentRowIndex,
-      handleFolderToggle,
-      handleItemClick,
-      handleItemSelect
-    ]
+    [currentColumnIndex, isItemClickLoading, renderItemList]
   );
 
   // For LexicalTypeaheadMenuPlugin compatibility

@@ -10,9 +10,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const map = useRef({
     [AppTypeEnum.agent]: {
       label: 'Agent',
-      icon: 'core/app/type/simple',
-      bg: '#DBF3FF',
-      color: '#0884DD'
+      icon: 'core/app/type/simple'
     },
     [AppTypeEnum.simple]: {
       label: t('app:type.Chat_Agent'),
@@ -40,8 +38,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     },
     [AppTypeEnum.tool]: undefined,
     [AppTypeEnum.folder]: undefined,
-    [AppTypeEnum.hidden]: undefined,
-    [AppTypeEnum.agent]: undefined
+    [AppTypeEnum.hidden]: undefined
   });
 
   const data = map.current[type as keyof typeof map.current];

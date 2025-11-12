@@ -75,7 +75,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       const isAgent = router.pathname.includes('/agent');
       const formatType = isAgent
         ? !type || type === 'all'
-          ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.agent]
           : [AppTypeEnum.folder, type]
         : !type || type === 'all'
           ? [

@@ -19,7 +19,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
-import { getAppToolTemplates, getToolPreviewNode } from '@/web/core/app/api/tool';
+import {
+  getAppToolTemplates,
+  getToolPreviewNode,
+  getTeamAppTemplates
+} from '@/web/core/app/api/tool';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -55,13 +60,15 @@ export const useSkillManager = ({
       const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
         return [];
       });
-      return data.map<SkillItemType>((item) => ({
-        id: item.id,
-        parentId: item.parentId,
-        label: item.name,
-        icon: item.avatar,
-        showArrow: item.isFolder
-      }));
+      return data.map<SkillItemType>((item) => {
+        return {
+          id: item.id,
+          parentId: item.parentId,
+          label: item.name,
+          icon: item.avatar,
+          showArrow: item.isFolder
+        };
+      });
     },
     {
       manual: false
@@ -76,8 +83,62 @@ export const useSkillManager = ({
     [systemTools]
   );
 
-  /* ===== Workflow tool ===== */
+  /* ===== Team Apps ===== */
+  const { data: allTeamApps = [] } = useRequest2(
+    async () => {
+      return await getTeamAppTemplates({ parentId: null });
+    },
+    {
+      manual: false
+    }
+  );
+  const myTools = useMemo(
+    () =>
+      allTeamApps
+        .filter((item) => [AppTypeEnum.toolFolder, ...ToolTypeList].includes(item.appType))
+        .map((item) => ({
+          id: item.id,
+          label: item.name,
+          icon: item.avatar,
+          canOpen: item.isFolder ?? false,
+          canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+        })),
+    [allTeamApps]
+  );
+  const agentApps = useMemo(
+    () =>
+      allTeamApps
+        .filter((item) => [AppTypeEnum.folder, ...AppTypeList].includes(item.appType))
+        .map((item) => ({
+          id: item.id,
+          label: item.name,
+          icon: item.avatar,
+          canOpen: item.isFolder ?? false,
+          canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+        })),
+    [allTeamApps]
+  );
 
+  const onFolderLoadTeamApps = useCallback(async (folderId: string, types: AppTypeEnum[]) => {
+    const children = await getTeamAppTemplates({ parentId: folderId, type: types });
+
+    if (!children || children.length === 0) {
+      return [];
+    }
+
+    return children.map<SkillItemType>((item) => {
+      return {
+        parentId: folderId,
+        id: item.id,
+        label: item.name,
+        icon: item.avatar,
+        canOpen: item.isFolder ?? false,
+        canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+      };
+    });
+  }, []);
+
+  /* ===== Workflow tool ===== */
   const { runAsync: onAddAppOrTool } = useRequest2(
     async (appId: string) => {
       const toolTemplate = await getToolPreviewNode({ appId });
@@ -144,7 +205,20 @@ export const useSkillManager = ({
             },
             onClick: onAddAppOrTool
           };
-        } else if (id === 'app') {
+        } else if (id === 'myTools') {
+          return {
+            description: t('app:space_to_expand_folder'),
+            list: myTools,
+            onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, ToolTypeList),
+            onClick: onAddAppOrTool
+          };
+        } else if (id === 'agent') {
+          return {
+            description: t('app:space_to_expand_folder'),
+            list: agentApps,
+            onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, AppTypeList),
+            onClick: onAddAppOrTool
+          };
         }
         return undefined;
       },
@@ -152,16 +226,21 @@ export const useSkillManager = ({
         {
           id: 'systemTool',
           label: t('app:core.module.template.System Tools'),
+          icon: 'core/workflow/template/toolCall'
+        },
+        {
+          id: 'myTools',
+          label: t('common:navbar.Tools'),
           icon: 'core/app/type/pluginFill'
         },
         {
-          id: 'app',
-          label: t('common:core.module.template.Team app'),
-          icon: 'core/app/type/simpleFill'
+          id: 'agent',
+          label: 'Agent',
+          icon: 'core/workflow/template/runApp'
         }
       ]
     };
-  }, [onAddAppOrTool, onLoadSystemTool, t]);
+  }, [onAddAppOrTool, onLoadSystemTool, myTools, agentApps, onFolderLoadTeamApps, t]);
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
