@@ -1,5 +1,5 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken';
 import { addLog } from '../../../../common/system/log';
 import { calculateCompressionThresholds } from './constants';
 import { createLLMResponse } from '../request';
@@ -31,7 +31,20 @@ export const compressRequestMessages = async ({
     };
   }
 
-  const messageTokens = await countGptMessagesTokens(messages);
+  // Save the system messages
+  const [systemMessages, otherMessages]: [
+    ChatCompletionMessageParam[],
+    ChatCompletionMessageParam[]
+  ] = [[], []];
+  messages.forEach((message) => {
+    if (message.role === ChatCompletionRequestMessageRoleEnum.System) {
+      systemMessages.push(message);
+    } else {
+      otherMessages.push(message);
+    }
+  });
+
+  const messageTokens = await countGptMessagesTokens(otherMessages);
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
 
   if (messageTokens < thresholds.threshold) {
@@ -40,22 +53,12 @@ export const compressRequestMessages = async ({
     };
   }
 
-  // 提取第一条 system 消息(如果存在)
-  let systemMessage: ChatCompletionMessageParam | undefined;
-  let messagesToCompress = messages;
-
-  if (messages[0]?.role === ChatCompletionRequestMessageRoleEnum.System) {
-    systemMessage = messages[0];
-    messagesToCompress = messages.slice(1);
-    addLog.info('[Compression messages] Extracted system message, will restore after compression');
-  }
-
   addLog.info('[Compression messages] Start', {
     tokens: messageTokens
   });
 
   const compressPrompt = await getCompressRequestMessagesPrompt({
-    messages: messagesToCompress,
+    messages: otherMessages,
     rawTokens: messageTokens,
     model
   });
@@ -104,8 +107,14 @@ export const compressRequestMessages = async ({
       compression_summary: string;
     }>(answerText);
 
-    if (!compressResult) {
-      addLog.warn('[Compression messages] failed: cannot parse JSON, return original messages');
+    if (
+      !compressResult ||
+      !Array.isArray(compressResult) ||
+      compressResult.compressed_messages.length === 0
+    ) {
+      addLog.warn('[Compression messages] failed: cannot parse JSON, return original messages', {
+        messages: compressResult?.compressed_messages
+      });
       return { messages, usage: compressedUsage };
     }
 
@@ -118,9 +127,7 @@ export const compressRequestMessages = async ({
     });
 
     // 如果之前提取了 system 消息，现在插回去
-    const finalMessages = systemMessage
-      ? [systemMessage, ...compressResult.compressed_messages]
-      : compressResult.compressed_messages;
+    const finalMessages = [...systemMessages, ...compressResult.compressed_messages];
 
     return {
       messages: finalMessages,
