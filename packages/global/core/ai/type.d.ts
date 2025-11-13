@@ -80,7 +80,8 @@ export type CompletionFinishReason =
   | 'tool_calls'
   | 'content_filter'
   | 'function_call'
-  | null;
+  | null
+  | undefined;
 
 export default openai;
 export * from 'openai';

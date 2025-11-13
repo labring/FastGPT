@@ -15,7 +15,7 @@ import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptToolCall';
+import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptCall';
 import { getLLMModel } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
@@ -26,14 +26,14 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 
-type ResponseEvents = {
+export type ResponseEvents = {
   onStreaming?: ({ text }: { text: string }) => void;
   onReasoning?: ({ text }: { text: string }) => void;
   onToolCall?: ({ call }: { call: ChatCompletionMessageToolCall }) => void;
   onToolParam?: ({ tool, params }: { tool: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
-type CreateLLMResponseProps<T extends CompletionsBodyType> = {
+export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
   isAborted?: () => boolean | undefined;
@@ -86,7 +86,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     messages: rewriteMessages
   });
 
-  // console.log(JSON.stringify(requestBody, null, 2));
+  // console.dir(requestBody, { depth: null });
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
     body: requestBody,
     userKey,
