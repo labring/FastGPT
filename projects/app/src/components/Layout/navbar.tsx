@@ -123,7 +123,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
-      bg={isSecondNavbarPage ? 'myGray.50' : 'transparent'}
+      bg={'white'}
     >
       {/* logo */}
       <Box flex={'0 0 auto'} mb={3}>
