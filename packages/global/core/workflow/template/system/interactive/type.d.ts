@@ -23,6 +23,12 @@ type ChildrenInteractive = InteractiveNodeType & {
   type: 'childrenInteractive';
   params: {
     childrenResponse: WorkflowInteractiveResponseType;
+  };
+};
+type ToolCallChildrenInteractive = InteractiveNodeType & {
+  type: 'toolChildrenInteractive';
+  params: {
+    childrenResponse: WorkflowInteractiveResponseType;
     toolParams: {
       memoryRequestMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
       toolCallId: string; // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
@@ -93,6 +99,7 @@ export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
   | ChildrenInteractive
+  | ToolCallChildrenInteractive
   | LoopInteractive
   | PaymentPauseInteractive;
 
