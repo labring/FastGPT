@@ -4,6 +4,7 @@
   "app_name": "應用程式名",
   "auto_index": "索引增強",
   "billing_module": "扣費模組",
+  "compress_llm_messages": "AI 歷史記錄壓縮",
   "confirm_export": "共篩選出 {{total}} 條資料，是否確認匯出？",
   "count": "運行次數",
   "current_filter_conditions": "目前篩選條件：",

@@ -178,12 +178,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      dispatchFlowResponse, // tool flow response
+      toolDispatchFlowResponses, // tool flow response
       toolCallInputTokens,
       toolCallOutputTokens,
       completeMessages = [], // The actual message sent to AI(just save text)
       assistantResponses = [], // FastGPT system store assistant.value response
-      runTimes,
       finish_reason
     } = await (async () => {
       const adaptMessages = chats2GPTMessages({
@@ -191,22 +190,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         reserveId: false
         // reserveTool: !!toolModel.toolChoice
       });
-      const requestParams = {
+
+      return runToolCall({
+        ...props,
         runtimeNodes,
         runtimeEdges,
         toolNodes,
         toolModel,
         messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
-      };
-
-      return runToolCall({
-        ...props,
-        ...requestParams,
-        maxRunToolTimes: 100
+        childrenInteractiveParams:
+          lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
       });
     })();
 
+    // Usage computed
     const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
       model,
       inputTokens: toolCallInputTokens,
@@ -214,12 +211,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
     const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
 
-    const toolUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
+    const toolUsages = toolDispatchFlowResponses.map((item) => item.flowUsages).flat();
     const toolTotalPoints = toolUsages.reduce((sum, item) => sum + item.totalPoints, 0);
 
     // concat tool usage
     const totalPointsUsage = modelUsage + toolTotalPoints;
 
+    // Preview assistant responses
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
 
     return {
@@ -229,7 +227,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           .map((item) => item.text?.content || '')
           .join('')
       },
-      [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+      [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
+        (sum, item) => sum + item.runTimes,
+        0
+      ),
       [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗
@@ -244,7 +245,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           10000,
           useVision
         ),
-        toolDetail: dispatchFlowResponse.map((item) => item.flowResponses).flat(),
+        toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
         mergeSignId: nodeId,
         finishReason: finish_reason
       },
