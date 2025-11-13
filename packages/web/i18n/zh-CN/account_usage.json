@@ -5,6 +5,7 @@
   "app_name": "应用名",
   "auto_index": "索引增强",
   "billing_module": "扣费模块",
+  "compress_llm_messages": "AI 历史记录压缩",
   "confirm_export": "共筛选出 {{total}} 条数据，是否确认导出？",
   "count": "运行次数",
   "current_filter_conditions": "当前筛选条件：",
