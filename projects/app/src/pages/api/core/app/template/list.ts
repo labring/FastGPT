@@ -64,6 +64,8 @@ async function handler(
       templateId: item.templateId,
       name: item.name,
       intro: item.intro,
+      recommendText: item.recommendText,
+      isPromoted: item.isPromoted,
       avatar: item.avatar,
       tags: item.tags,
       type: item.type,

@@ -11,9 +11,15 @@ const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
 };
 
 const getAppTemplates = async () => {
-  const communityTemplates = await getFileTemplates();
+  const originCommunityTemplates = await getFileTemplates();
+  const communityTemplates = originCommunityTemplates.map((template) => {
+    return {
+      ...template,
+      templateId: `${AppToolSourceEnum.community}-${template.templateId.split('.')[0]}`
+    };
+  });
 
-  const dbTemplates = await MongoAppTemplate.find();
+  const dbTemplates = await MongoAppTemplate.find().lean();
 
   // Merge db data to community templates
   const communityTemplateConfig = communityTemplates.map((template) => {
@@ -22,17 +28,12 @@ const getAppTemplates = async () => {
     if (config) {
       return {
         ...template,
-        isActive: config.isActive ?? template.isActive,
-        tags: config.tags ?? template.tags,
-        userGuide: config.userGuide ?? template.userGuide,
-        isQuickTemplate: config.isQuickTemplate ?? template.isQuickTemplate,
-        order: config.order ?? template.order
+        ...config
       };
     }
 
     return template;
   });
-
   const res = [
     ...communityTemplateConfig,
     ...dbTemplates.filter((t) => isCommercialTemaplte(t.templateId))

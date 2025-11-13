@@ -230,6 +230,8 @@ export type AppTemplateSchemaType = {
   type: string;
   author?: string;
   isActive?: boolean;
+  isPromoted?: boolean;
+  recommendText?: string;
   userGuide?: {
     type: 'markdown' | 'link';
     content?: string;
