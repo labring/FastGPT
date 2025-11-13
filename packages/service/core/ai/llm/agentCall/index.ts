@@ -68,6 +68,8 @@ type RunAgentResponse = {
 };
 
 /* 
+  一个循环进行工具调用的 LLM 请求封装。
+
   AssistantMessages 组成：
   1. 调用 AI 时生成的 messages
   2. tool 内部调用产生的 messages
@@ -82,7 +84,6 @@ type RunAgentResponse = {
 */
 export const runAgentCall = async ({
   maxRunAgentTimes,
-  compressTaskDescription,
   body: { model, messages, max_tokens, tools, ...body },
   userKey,
   isAborted,
@@ -101,13 +102,14 @@ export const runAgentCall = async ({
   let runTimes = 0;
   let interactiveResponse: ToolCallChildrenInteractive | undefined;
 
-  //   Init messages
+  // Init messages
   const maxTokens = computedMaxToken({
     model: modelData,
     maxToken: max_tokens || 8000,
     min: 100
   });
 
+  // 本轮产生的 assistantMessages，包括 tool 内产生的
   const assistantMessages: ChatCompletionMessageParam[] = [];
   // 多轮运行时候的请求 messages
   let requestMessages = (
@@ -133,8 +135,6 @@ export const runAgentCall = async ({
   let outputTokens: number = 0;
   let finish_reason: CompletionFinishReason | undefined;
   const subAppUsages: ChatNodeUsageType[] = [];
-
-  // TODO: 费用检测
 
   // 处理 tool 里的交互
   if (childrenInteractiveParams) {
@@ -192,6 +192,8 @@ export const runAgentCall = async ({
 
   // 自循环运行
   while (runTimes < maxRunAgentTimes) {
+    // TODO: 费用检测
+
     runTimes++;
 
     // 1. Compress request messages
@@ -214,13 +216,13 @@ export const runAgentCall = async ({
       finish_reason: finishReason
     } = await createLLMResponse({
       body: {
+        ...body,
         model,
         messages: requestMessages,
         tool_choice: 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         tools,
-        parallel_tool_calls: true,
-        ...body
+        parallel_tool_calls: true
       },
       userKey,
       isAborted,
@@ -236,8 +238,8 @@ export const runAgentCall = async ({
       return Promise.reject(getEmptyResponseTip());
     }
 
-    // 3. 更新最新 messages
-    const currentRequestMessagesLength = requestMessages.length;
+    // 3. 更新 messages
+    const cloneRequestMessages = requestMessages.slice();
     // 推送 AI 生成后的 assistantMessages
     assistantMessages.push(...llmAssistantMessage);
     requestMessages.push(...llmAssistantMessage);
@@ -253,7 +255,7 @@ export const runAgentCall = async ({
         stop
       } = await handleToolResponse({
         call: tool,
-        messages: requestMessages.slice(0, currentRequestMessagesLength)
+        messages: cloneRequestMessages
       });
 
       const toolMessage: ChatCompletionMessageParam = {
