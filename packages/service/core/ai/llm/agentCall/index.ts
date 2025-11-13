@@ -70,9 +70,15 @@ type RunAgentResponse = {
 /* 
   AssistantMessages 组成：
   1. 调用 AI 时生成的 messages
-  2. tool 调用产生的 messages
+  2. tool 内部调用产生的 messages
+  3. tool 响应的值，role=tool，content=tool response
 
-  交互模式下，会携带上一轮的 assistantsMessages 作为初始 assistantMessages.
+  RequestMessages 为模型请求的消息，组成:
+  1. 历史对话记录
+  2. 调用 AI 时生成的 messages
+  3. tool 响应的值，role=tool，content=tool response
+
+  memoryRequestMessages 为上一轮中断时，requestMessages 的内容
 */
 export const runAgentCall = async ({
   maxRunAgentTimes,
@@ -91,9 +97,8 @@ export const runAgentCall = async ({
   onToolParam
 }: RunAgentCallProps): Promise<RunAgentResponse> => {
   const modelData = getLLMModel(model);
-  let runTimes = 0;
 
-  const assistantMessages: ChatCompletionMessageParam[] = [];
+  let runTimes = 0;
   let interactiveResponse: ChildrenInteractive | undefined;
 
   //   Init messages
@@ -103,6 +108,7 @@ export const runAgentCall = async ({
     min: 100
   });
 
+  const assistantMessages: ChatCompletionMessageParam[] = [];
   // 多轮运行时候的请求 messages
   let requestMessages = (
     await filterGPTMessageByMaxContext({
@@ -140,26 +146,23 @@ export const runAgentCall = async ({
       stop
     } = await handleInteractiveTool(childrenInteractiveParams);
 
-    // 初始的 assistantMessages 中，并且替换掉 tool 的 response
-    const formatAssistantMessages = childrenInteractiveParams.toolParams.memoryRequestMessages.map(
-      (item) =>
-        item.role === 'tool' &&
-        item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
-          ? {
-              ...item,
-              content: response
-            }
-          : item
+    // 将 requestMessages 复原成上一轮中断时的内容，并附上 tool response
+    requestMessages = childrenInteractiveParams.toolParams.memoryRequestMessages.map((item) =>
+      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
+        ? {
+            ...item,
+            content: response
+          }
+        : item
     );
-    // 模型请求只关注 tool 的结果
-    requestMessages = formatAssistantMessages;
 
-    // 只需要推送本轮产生的 assistantMessages，上一轮的已经存储过了
+    // 只需要推送本轮产生的 assistantMessages
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     subAppUsages.push(...usages);
 
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
+      // console.dir(interactive, { depth: null });
       interactiveResponse = {
         type: 'childrenInteractive',
         params: {
@@ -208,7 +211,6 @@ export const runAgentCall = async ({
       toolCalls = [],
       usage,
       getEmptyResponseTip,
-      completeMessages,
       assistantMessage: llmAssistantMessage,
       finish_reason: finishReason
     } = await createLLMResponse({

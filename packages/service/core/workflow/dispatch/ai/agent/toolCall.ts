@@ -197,6 +197,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       // Init tool params and run
       const startParams = parseToolArgs(call.function.arguments);
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
+      initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
+
       const toolRunResponse = await runWorkflow({
         ...workflowProps,
         runtimeNodes,
@@ -240,7 +242,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
         stop: toolRunResponse.flowResponses?.some((item) => item.toolStop)
       };
     },
-
     childrenInteractiveParams,
     handleInteractiveTool: async ({ childrenResponse, toolParams }) => {
       initToolNodes(runtimeNodes, childrenResponse.entryNodeIds);
@@ -254,7 +255,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
         usageId: undefined,
         isToolCall: true
       });
-
+      // console.dir(runtimeEdges, { depth: null });
       const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
       workflowStreamResponse?.({

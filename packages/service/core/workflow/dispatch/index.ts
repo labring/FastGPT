@@ -747,6 +747,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         // Get next source edges and update status
         const skipHandleId = result[DispatchNodeResponseKeyEnum.skipHandleId] || [];
+
         const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
           (item) => item.source === node.nodeId
         );
@@ -957,6 +958,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         entryNodeIds,
         memoryEdges: runtimeEdges.map((edge) => ({
           ...edge,
+          // 入口前面的边全部激活，保证下次进来一定能执行。
           status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
         })),
         nodeOutputs,

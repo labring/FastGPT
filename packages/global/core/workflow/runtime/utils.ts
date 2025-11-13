@@ -297,7 +297,6 @@ export const checkNodeRunStatus = ({
   node: RuntimeNodeItemType;
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
-  const filterRuntimeEdges = filterWorkflowEdges(runtimeEdges);
   const isStartNode = (nodeType: string) => {
     const map: Record<any, boolean> = {
       [FlowNodeTypeEnum.workflowStart]: true,
@@ -310,7 +309,7 @@ export const checkNodeRunStatus = ({
     const commonEdges: RuntimeEdgeItemType[] = [];
     const recursiveEdgeGroupsMap = new Map<string, RuntimeEdgeItemType[]>();
 
-    const sourceEdges = filterRuntimeEdges.filter((item) => item.target === targetNode.nodeId);
+    const sourceEdges = runtimeEdges.filter((item) => item.target === targetNode.nodeId);
 
     sourceEdges.forEach((sourceEdge) => {
       const stack: Array<{
@@ -333,7 +332,7 @@ export const checkNodeRunStatus = ({
         const sourceNode = nodesMap.get(edge.source);
         if (!sourceNode) continue;
 
-        if (isStartNode(sourceNode.flowNodeType) || sourceNode.isStart) {
+        if (isStartNode(sourceNode.flowNodeType) || sourceEdge.sourceHandle === 'selectedTools') {
           commonEdges.push(sourceEdge);
           continue;
         }
@@ -355,7 +354,7 @@ export const checkNodeRunStatus = ({
         newVisited.add(edge.source);
 
         // 查找目标节点的 source edges 并加入栈中
-        const nextEdges = filterRuntimeEdges.filter((item) => item.target === edge.source);
+        const nextEdges = runtimeEdges.filter((item) => item.target === edge.source);
 
         for (const nextEdge of nextEdges) {
           stack.push({
