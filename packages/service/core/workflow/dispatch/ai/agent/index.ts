@@ -199,7 +199,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolModel,
         messages: adaptMessages,
         childrenInteractiveParams:
-          lastInteractive?.type === 'childrenInteractive' ? lastInteractive.params : undefined
+          lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
       });
     })();
 

@@ -20,6 +20,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
+import { isChildInteractive } from '../template/system/interactive/constants';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
@@ -28,11 +29,7 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (
-    depth < MAX_DEPTH &&
-    (current?.type === 'childrenInteractive' || current?.type === 'loopInteractive') &&
-    current.params?.childrenResponse
-  ) {
+  while (depth < MAX_DEPTH && 'childrenResponse' in current.params) {
     current = current.params.childrenResponse;
     depth++;
   }
@@ -181,10 +178,7 @@ export const getLastInteractiveValue = (
       return;
     }
 
-    if (
-      lastValue.interactive.type === 'childrenInteractive' ||
-      lastValue.interactive.type === 'loopInteractive'
-    ) {
+    if (isChildInteractive(lastValue.interactive.type)) {
       return lastValue.interactive;
     }
 

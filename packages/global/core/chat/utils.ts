@@ -213,21 +213,10 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
-  // Merge children reponse data(Children has interactive response)
-  const responseWithMergedPlugins = responseDataList.map((item) => {
-    if (item.pluginDetail && item.pluginDetail.length > 1) {
-      return {
-        ...item,
-        pluginDetail: mergeChatResponseData(item.pluginDetail)
-      };
-    }
-    return item;
-  });
-
   const result: ChatHistoryItemResType[] = [];
   const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  for (const item of responseWithMergedPlugins) {
+  for (const item of responseDataList) {
     if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
       // Merge with existing item
       const existingIndex = mergeMap.get(item.mergeSignId)!;
@@ -238,9 +227,18 @@ export const mergeChatResponseData = (
         runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
         totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
         childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
-        toolDetail: [...(existing.toolDetail || []), ...(item.toolDetail || [])],
-        loopDetail: [...(existing.loopDetail || []), ...(item.loopDetail || [])],
-        pluginDetail: [...(existing.pluginDetail || []), ...(item.pluginDetail || [])]
+        toolDetail: mergeChatResponseData([
+          ...(existing.toolDetail || []),
+          ...(item.toolDetail || [])
+        ]),
+        loopDetail: mergeChatResponseData([
+          ...(existing.loopDetail || []),
+          ...(item.loopDetail || [])
+        ]),
+        pluginDetail: mergeChatResponseData([
+          ...(existing.pluginDetail || []),
+          ...(item.pluginDetail || [])
+        ])
       };
     } else {
       // Add new item

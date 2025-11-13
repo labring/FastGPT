@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  ChildrenInteractive,
+  ToolCallChildrenInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { CreateLLMResponseProps, ResponseEvents } from '../request';
@@ -33,8 +33,8 @@ type RunAgentCallProps = {
   userKey?: CreateLLMResponseProps['userKey'];
   isAborted?: CreateLLMResponseProps['isAborted'];
 
-  childrenInteractiveParams?: ChildrenInteractive['params'];
-  handleInteractiveTool: (e: ChildrenInteractive['params']) => Promise<{
+  childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  handleInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
     response: string;
     assistantMessages: ChatCompletionMessageParam[];
     usages: ChatNodeUsageType[];
@@ -57,7 +57,7 @@ type RunAgentCallProps = {
 type RunAgentResponse = {
   completeMessages: ChatCompletionMessageParam[]; // Step request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Step assistant response messages
-  interactiveResponse?: ChildrenInteractive;
+  interactiveResponse?: ToolCallChildrenInteractive;
 
   // Usage
   inputTokens: number;
@@ -99,7 +99,7 @@ export const runAgentCall = async ({
   const modelData = getLLMModel(model);
 
   let runTimes = 0;
-  let interactiveResponse: ChildrenInteractive | undefined;
+  let interactiveResponse: ToolCallChildrenInteractive | undefined;
 
   //   Init messages
   const maxTokens = computedMaxToken({
@@ -164,7 +164,7 @@ export const runAgentCall = async ({
     if (interactive) {
       // console.dir(interactive, { depth: null });
       interactiveResponse = {
-        type: 'childrenInteractive',
+        type: 'toolChildrenInteractive',
         params: {
           childrenResponse: interactive,
           toolParams: {
@@ -272,7 +272,7 @@ export const runAgentCall = async ({
 
       if (interactive) {
         interactiveResponse = {
-          type: 'childrenInteractive',
+          type: 'toolChildrenInteractive',
           params: {
             childrenResponse: interactive,
             toolParams: {
