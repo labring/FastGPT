@@ -197,8 +197,7 @@ export const runAgentCall = async ({
     // 1. Compress request messages
     const result = await compressRequestMessages({
       messages: requestMessages,
-      model: modelData,
-      taskDescription: compressTaskDescription
+      model: modelData
     });
     requestMessages = result.messages;
     inputTokens += result.usage?.inputTokens || 0;

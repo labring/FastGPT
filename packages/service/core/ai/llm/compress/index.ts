@@ -17,12 +17,10 @@ import { parseToolArgs } from '../../utils';
  */
 export const compressRequestMessages = async ({
   messages,
-  model,
-  taskDescription
+  model
 }: {
   messages: ChatCompletionMessageParam[];
   model: LLMModelItemType;
-  taskDescription?: string;
 }): Promise<{
   messages: ChatCompletionMessageParam[];
   usage?: ChatNodeUsageType;
@@ -42,13 +40,22 @@ export const compressRequestMessages = async ({
     };
   }
 
+  // 提取第一条 system 消息(如果存在)
+  let systemMessage: ChatCompletionMessageParam | undefined;
+  let messagesToCompress = messages;
+
+  if (messages[0]?.role === ChatCompletionRequestMessageRoleEnum.System) {
+    systemMessage = messages[0];
+    messagesToCompress = messages.slice(1);
+    addLog.info('[Compression messages] Extracted system message, will restore after compression');
+  }
+
   addLog.info('[Compression messages] Start', {
     tokens: messageTokens
   });
 
   const compressPrompt = await getCompressRequestMessagesPrompt({
-    taskDescription,
-    messages,
+    messages: messagesToCompress,
     rawTokens: messageTokens,
     model
   });
@@ -110,8 +117,13 @@ export const compressRequestMessages = async ({
       summary: compressResult.compression_summary
     });
 
+    // 如果之前提取了 system 消息，现在插回去
+    const finalMessages = systemMessage
+      ? [systemMessage, ...compressResult.compressed_messages]
+      : compressResult.compressed_messages;
+
     return {
-      messages: compressResult.compressed_messages,
+      messages: finalMessages,
       usage: compressedUsage
     };
   } catch (error) {
