@@ -239,7 +239,6 @@ const DashboardContainer = ({
           borderRight={'1px solid'}
           borderColor={'myGray.200'}
           pt={4}
-          px={2.5}
           pb={2.5}
           zIndex={100}
           userSelect={'none'}
@@ -247,7 +246,12 @@ const DashboardContainer = ({
           flexDirection={'column'}
           justifyContent={'space-between'}
         >
-          <Box flex={1} overflowY={'auto'} sx={{ '&::-webkit-scrollbar': { display: 'none' } }}>
+          <Box
+            flex={1}
+            overflowY={'auto'}
+            px={2.5}
+            sx={{ '&::-webkit-scrollbar': { width: '4px' } }}
+          >
             {groupList.map((group) => {
               const selected = currentTab === group.groupId;
 
