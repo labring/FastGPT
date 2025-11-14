@@ -46,12 +46,20 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     data: templateData,
     loading: isFetchingTemplates
   } = useRequest2(
-    (excludeIds?: string[]) =>
-      getTemplateMarketItemList({
+    (ids?: string[]) => {
+      const excludeIds = (() => {
+        try {
+          return JSON.stringify(ids);
+        } catch (error) {
+          return '';
+        }
+      })();
+      return getTemplateMarketItemList({
         type,
         randomNumber,
         excludeIds
-      }),
+      });
+    },
     {
       manual: false,
       refreshDeps: [type, randomNumber]

@@ -258,7 +258,7 @@ const TemplateMarket = ({
           <Box mr={2}>
             <SearchInput
               h={9}
-              w={230}
+              w={240}
               bg={'white'}
               placeholder={t('app:templateMarket.Search_template')}
               value={searchKey}
@@ -267,7 +267,7 @@ const TemplateMarket = ({
           </Box>
           <MySelect
             h={9}
-            w={104}
+            w={124}
             bg={'white'}
             value={appType}
             list={[
