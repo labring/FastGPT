@@ -1,11 +1,10 @@
-import { IconProps } from '@chakra-ui/react';
+import { type IconProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 
 function IconButton({
   name,
   w = '1rem',
-  h = '1rem',
   ...props
 }: {
   name: IconNameType;
@@ -14,7 +13,7 @@ function IconButton({
     <MyIcon
       name={name}
       w={w}
-      h={h}
+      h={w}
       transition={'background 0.1s'}
       cursor={'pointer'}
       p="1"

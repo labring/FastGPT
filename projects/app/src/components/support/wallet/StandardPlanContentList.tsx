@@ -1,5 +1,6 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { Box, Flex, Grid } from '@chakra-ui/react';
@@ -7,6 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
+import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -14,10 +16,12 @@ const ModelPriceModal = dynamic(() =>
 
 const StandardPlanContentList = ({
   level,
-  mode
+  mode,
+  standplan
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
+  standplan?: TeamSubSchema;
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
@@ -30,19 +34,26 @@ const StandardPlanContentList = ({
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-      maxTeamMember: plan.maxTeamMember,
-      maxAppAmount: plan.maxAppAmount,
-      maxDatasetAmount: plan.maxDatasetAmount,
+      maxTeamMember: standplan?.maxTeamMember || plan.maxTeamMember,
+      maxAppAmount: standplan?.maxApp || plan.maxAppAmount,
+      maxDatasetAmount: standplan?.maxDataset || plan.maxDatasetAmount,
       chatHistoryStoreDuration: plan.chatHistoryStoreDuration,
       maxDatasetSize: plan.maxDatasetSize,
       permissionCustomApiKey: plan.permissionCustomApiKey,
       permissionCustomCopyright: plan.permissionCustomCopyright,
       trainingWeight: plan.trainingWeight,
-      permissionReRank: plan.permissionReRank,
       totalPoints: plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
-      permissionWebsiteSync: plan.permissionWebsiteSync
+      permissionWebsiteSync: plan.permissionWebsiteSync,
+      permissionTeamOperationLog: plan.permissionTeamOperationLog
     };
-  }, [subPlans?.standard, level, mode]);
+  }, [
+    subPlans?.standard,
+    level,
+    mode,
+    standplan?.maxTeamMember,
+    standplan?.maxApp,
+    standplan?.maxDataset
+  ]);
 
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
@@ -113,16 +124,18 @@ const StandardPlanContentList = ({
           })}
         </Box>
       </Flex>
-      {!!planContent.permissionReRank && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>{t('common:support.wallet.subscription.rerank')}</Box>
-        </Flex>
-      )}
       {!!planContent.permissionWebsiteSync && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
+        </Flex>
+      )}
+      {!!planContent.permissionTeamOperationLog && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.team_operation_log')}
+          </Box>
         </Flex>
       )}
     </Grid>

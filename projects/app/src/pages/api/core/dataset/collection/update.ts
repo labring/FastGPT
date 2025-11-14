@@ -7,12 +7,14 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ClientSession } from '@fastgpt/service/common/mongo';
-import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;
@@ -88,7 +90,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
   }
 
   // 凭证校验
-  const { collection, teamId } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -131,6 +133,19 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
       });
     }
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_COLLECTION,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);

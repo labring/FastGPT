@@ -1,6 +1,6 @@
-import { AIChatItemType, ChatHistoryItemResType, ChatSchema } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType, type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
@@ -8,6 +8,9 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 /* 
   检查chat的权限：
@@ -20,7 +23,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
-const defaultResponseShow = {
+export const defaultResponseShow = {
   responseDetail: true,
   showNodeStatus: true,
   showRawSource: true
@@ -50,7 +53,7 @@ export async function authChatCrud({
   teamId: string;
   tmbId: string;
   uid: string;
-  chat?: ChatSchema;
+  chat?: ChatSchemaType;
   responseDetail: boolean;
   showNodeStatus: boolean;
   showRawSource: boolean;
@@ -148,7 +151,7 @@ export async function authChatCrud({
     per: ReadPermissionVal
   });
 
-  if (!chatId)
+  if (!chatId) {
     return {
       teamId,
       tmbId,
@@ -157,9 +160,10 @@ export async function authChatCrud({
 
       authType
     };
+  }
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
-  if (!chat)
+  if (!chat) {
     return {
       teamId,
       tmbId,
@@ -167,9 +171,10 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
-  if (permission.hasManagePer)
+  if (permission.hasReadChatLogPer) {
     return {
       teamId,
       tmbId,
@@ -178,7 +183,9 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
-  if (String(tmbId) === String(chat.tmbId))
+  }
+
+  if (String(tmbId) === String(chat.tmbId)) {
     return {
       teamId,
       tmbId,
@@ -187,6 +194,7 @@ export async function authChatCrud({
       ...defaultResponseShow,
       authType
     };
+  }
 
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
@@ -201,45 +209,57 @@ export const authCollectionInChat = async ({
   appId: string;
   chatId: string;
   chatItemDataId: string;
-}): Promise<{
-  chatItem: { time: Date; responseData?: ChatHistoryItemResType[] };
-}> => {
+}) => {
   try {
+    // 1. 使用 citeCollectionIds 字段来判断
+    const chatItems = await MongoChatItem.find(
+      {
+        appId,
+        chatId,
+        obj: ChatRoleEnum.AI
+      },
+      'citeCollectionIds'
+    )
+      .sort({ _id: -1 })
+      .limit(50)
+      .lean();
+    const citeCollectionIds = new Set(
+      chatItems.map((item) => ('citeCollectionIds' in item ? item.citeCollectionIds : [])).flat()
+    );
+    if (collectionIds.every((id) => citeCollectionIds.has(id))) {
+      return;
+    }
+
+    // Adapt <=4.13.0
     const chatItem = (await MongoChatItem.findOne(
       {
         appId,
         chatId,
         dataId: chatItemDataId
       },
-      'responseData time'
+      'responseData'
     ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
 
-    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+
+    // Concat response data
+    if (!chatItem.responseData || chatItem.responseData.length === 0) {
+      const chatItemResponses = await MongoChatItemResponse.find(
+        { appId, chatId, chatItemDataId },
+        { data: 1 }
+      ).lean();
+      chatItem.responseData = chatItemResponses.map((item) => item.data);
+    }
 
     // 找 responseData 里，是否有该文档 id
-    const responseData = chatItem.responseData || [];
-    const flatResData: ChatHistoryItemResType[] =
-      responseData
-        ?.map((item) => {
-          return [
-            item,
-            ...(item.pluginDetail || []),
-            ...(item.toolDetail || []),
-            ...(item.loopDetail || [])
-          ];
-        })
-        .flat() || [];
+    const flatResData = getFlatAppResponses(chatItem.responseData || []);
 
     const quoteListSet = new Set(
-      flatResData
-        .map((item) => item.quoteList?.map((quote) => String(quote.collectionId)) || [])
-        .flat()
+      flatResData.map((item) => item.quoteList?.map((quote) => quote.collectionId) || []).flat()
     );
 
     if (collectionIds.every((id) => quoteListSet.has(id))) {
-      return {
-        chatItem
-      };
+      return;
     }
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

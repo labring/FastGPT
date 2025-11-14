@@ -10,7 +10,6 @@ import {
   Th,
   Td,
   TableContainer,
-  Flex,
   HStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -18,10 +17,12 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import { defaultEditFormData } from './EditFieldModal';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
 const RenderToolInput = ({
@@ -32,9 +33,12 @@ const RenderToolInput = ({
   inputs: FlowNodeInputItemType[];
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { toolInputs } = splitToolInputs(inputs, nodeId);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const { toolInputs } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
 
   const dynamicInput = useMemo(() => {
     return inputs.find((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);

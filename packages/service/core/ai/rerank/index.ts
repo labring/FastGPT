@@ -2,7 +2,8 @@ import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
-import { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { countPromptTokens } from '../../../common/string/tiktoken';
 
 type PostReRankResponse = {
   id: string;
@@ -10,8 +11,17 @@ type PostReRankResponse = {
     index: number;
     relevance_score: number;
   }[];
+  meta?: {
+    tokens: {
+      input_tokens: number;
+      output_tokens: number;
+    };
+  };
 };
-type ReRankCallResult = { id: string; score?: number }[];
+type ReRankCallResult = {
+  results: { id: string; score?: number }[];
+  inputTokens: number;
+};
 
 export function reRankRecall({
   model = getDefaultRerankModel(),
@@ -28,18 +38,22 @@ export function reRankRecall({
     return Promise.reject('no rerank model');
   }
   if (documents.length === 0) {
-    return Promise.resolve([]);
+    return Promise.resolve({
+      results: [],
+      inputTokens: 0
+    });
   }
 
   const { baseUrl, authorization } = getAxiosConfig();
 
   let start = Date.now();
+  const documentsTextArray = documents.map((doc) => doc.text);
   return POST<PostReRankResponse>(
     model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`,
     {
       model: model.model,
       query,
-      documents: documents.map((doc) => doc.text)
+      documents: documentsTextArray
     },
     {
       headers: {
@@ -49,17 +63,22 @@ export function reRankRecall({
       timeout: 30000
     }
   )
-    .then((data) => {
+    .then(async (data) => {
       addLog.info('ReRank finish:', { time: Date.now() - start });
 
       if (!data?.results || data?.results?.length === 0) {
         addLog.error('ReRank error, empty result', data);
       }
 
-      return data?.results?.map((item) => ({
-        id: documents[item.index].id,
-        score: item.relevance_score
-      }));
+      return {
+        results: data?.results?.map((item) => ({
+          id: documents[item.index].id,
+          score: item.relevance_score
+        })),
+        inputTokens:
+          data?.meta?.tokens?.input_tokens ||
+          (await countPromptTokens(documentsTextArray.join('\n') + query, ''))
+      };
     })
     .catch((err) => {
       addLog.error('rerank error', err);

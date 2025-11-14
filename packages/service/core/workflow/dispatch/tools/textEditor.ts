@@ -1,7 +1,8 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
@@ -39,7 +40,9 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
   });
 
   return {
-    [NodeOutputKeyEnum.text]: textResult,
+    data: {
+      [NodeOutputKeyEnum.text]: textResult
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: textResult
     }

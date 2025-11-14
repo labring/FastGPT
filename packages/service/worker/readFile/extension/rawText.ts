@@ -1,5 +1,6 @@
 import iconv from 'iconv-lite';
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 
 const rawEncodingList = [
   'ascii',
@@ -17,7 +18,10 @@ const rawEncodingList = [
 ];
 
 // 加载源文件内容
-export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): ReadFileResponse => {
+export const readFileRawText = async ({
+  buffer,
+  encoding
+}: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const content = (() => {
     try {
       if (rawEncodingList.includes(encoding)) {
@@ -34,7 +38,10 @@ export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): Read
     }
   })();
 
+  const { text, imageList } = matchMdImg(content);
+
   return {
-    rawText: content
+    rawText: text,
+    imageList
   };
 };

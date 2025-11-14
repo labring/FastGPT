@@ -2,10 +2,10 @@
 import { Tiktoken } from 'tiktoken/lite';
 import cl100k_base from './cl100k_base.json';
 import {
-  ChatCompletionMessageParam,
-  ChatCompletionContentPart,
-  ChatCompletionCreateParams,
-  ChatCompletionTool
+  type ChatCompletionMessageParam,
+  type ChatCompletionContentPart,
+  type ChatCompletionCreateParams,
+  type ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { parentPort } from 'worker_threads';

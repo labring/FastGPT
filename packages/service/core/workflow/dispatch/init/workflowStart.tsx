@@ -17,19 +17,26 @@ type Response = DispatchNodeResultType<{
 export const dispatchWorkflowStart = (props: Record<string, any>): Response => {
   const {
     query,
+    variables,
     params: { userChatInput }
   } = props as UserChatInputProps;
 
   const { text, files } = chatValue2RuntimePrompt(query);
 
+  const queryFiles = files
+    .map((item) => {
+      return item?.url ?? '';
+    })
+    .filter(Boolean);
+  const variablesFiles: string[] = Array.isArray(variables?.fileUrlList)
+    ? variables.fileUrlList
+    : [];
+
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {},
-    [NodeInputKeyEnum.userChatInput]: text || userChatInput,
-    [NodeOutputKeyEnum.userFiles]: files
-      .map((item) => {
-        return item?.url ?? '';
-      })
-      .filter(Boolean)
-    // [NodeInputKeyEnum.inputFiles]: files
+    data: {
+      [NodeInputKeyEnum.userChatInput]: text || userChatInput,
+      [NodeOutputKeyEnum.userFiles]: [...queryFiles, ...variablesFiles]
+    }
   };
 };

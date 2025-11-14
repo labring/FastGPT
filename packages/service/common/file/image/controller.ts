@@ -1,33 +1,40 @@
-import { UploadImgProps } from '@fastgpt/global/common/file/api';
+import { type preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
-import { ClientSession, Types } from '../../../common/mongo';
+import { type ClientSession, Types } from '../../../common/mongo';
 import { guessBase64ImageType } from '../utils';
 import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { S3Sources } from '../../s3/type';
+import { getS3AvatarSource } from '../../s3/sources/avatar';
+import path from 'path';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
+
 export async function uploadMongoImg({
   base64Img,
   teamId,
   metadata,
   shareId,
   forever = false
-}: UploadImgProps & {
+}: preUploadImgProps & {
+  base64Img: string;
   teamId: string;
   forever?: Boolean;
 }) {
   if (base64Img.length > maxImgSize) {
-    return Promise.reject('Image too large');
+    return Promise.reject(new UserError('Image too large'));
   }
 
   const [base64Mime, base64Data] = base64Img.split(',');
   // Check if mime type is valid
   if (!base64MimeRegex.test(base64Mime)) {
-    return Promise.reject('Invalid image base64');
+    return Promise.reject(new UserError('Invalid image base64'));
   }
 
   const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'image/jpeg'}`;
@@ -38,7 +45,7 @@ export async function uploadMongoImg({
   }
 
   if (!extension || !imageFileType.includes(`.${extension}`)) {
-    return Promise.reject(`Invalid image file type: ${mime}`);
+    return Promise.reject(new UserError(`Invalid image file type: ${mime}`));
   }
 
   const { _id } = await retryFn(() =>
@@ -54,36 +61,66 @@ export async function uploadMongoImg({
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
-const getIdFromPath = (path?: string) => {
-  if (!path) return;
+export const copyAvatarImage = async ({
+  teamId,
+  imageUrl,
+  ttl,
+  session
+}: {
+  teamId: string;
+  imageUrl: string;
+  ttl: boolean;
+  session?: ClientSession;
+}) => {
+  if (!imageUrl) return;
 
-  const paths = path.split('/');
-  const name = paths[paths.length - 1];
-
-  if (!name) return;
-
-  const id = name.split('.')[0];
-  if (!id || !Types.ObjectId.isValid(id)) return;
-
-  return id;
-};
-// 删除旧的头像，新的头像去除过期时间
-export const refreshSourceAvatar = async (
-  path?: string,
-  oldPath?: string,
-  session?: ClientSession
-) => {
-  const newId = getIdFromPath(path);
-  const oldId = getIdFromPath(oldPath);
-
-  if (!newId || newId === oldId) return;
-
-  await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
-
-  if (oldId) {
-    await MongoImage.deleteOne({ _id: oldId }, { session });
+  // S3
+  if (imageUrl.startsWith(`${imageBaseUrl}/${S3Sources.avatar}`)) {
+    const extendName = path.extname(imageUrl);
+    const key = await getS3AvatarSource().copyAvatar({
+      sourceKey: imageUrl.slice(imageBaseUrl.length),
+      targetKey: `${S3Sources.avatar}/${teamId}/${getNanoid(6)}${extendName}`,
+      ttl
+    });
+    return key;
   }
+
+  const paths = imageUrl.split('/');
+  const name = paths[paths.length - 1];
+  const id = name.split('.')[0];
+
+  // Mongo
+  if (id && Types.ObjectId.isValid(id)) {
+    const image = await MongoImage.findOne(
+      {
+        _id: id,
+        teamId
+      },
+      undefined,
+      {
+        session
+      }
+    );
+    if (!image) return imageUrl;
+    const [newImage] = await MongoImage.create(
+      [
+        {
+          teamId,
+          binary: image.binary,
+          metadata: image.metadata
+        }
+      ],
+      {
+        session,
+        ordered: true
+      }
+    );
+    return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+  }
+
+  return imageUrl;
 };
+
 export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!path) return;
 
@@ -105,7 +142,7 @@ export async function readMongoImg({ id }: { id: string }) {
     ...readFromSecondary
   });
   if (!data) {
-    return Promise.reject('Image not found');
+    return Promise.reject(new UserError('Image not found'));
   }
 
   return {

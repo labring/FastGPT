@@ -1,189 +1,72 @@
-import { i18nT } from '../../../web/i18n/utils';
+import type { I18nStringStrictType } from '../../sdk/fastgpt-plugin';
 
-export type ModelProviderIdType =
-  | 'OpenAI'
-  | 'Claude'
-  | 'Gemini'
-  | 'Meta'
-  | 'MistralAI'
-  | 'Groq'
-  | 'Grok'
-  | 'AliCloud'
-  | 'Qwen'
-  | 'Doubao'
-  | 'DeepSeek'
-  | 'ChatGLM'
-  | 'Ernie'
-  | 'Moonshot'
-  | 'MiniMax'
-  | 'SparkDesk'
-  | 'Hunyuan'
-  | 'Baichuan'
-  | 'StepFun'
-  | 'Yi'
-  | 'Siliconflow'
-  | 'PPIO'
-  | 'Ollama'
-  | 'BAAI'
-  | 'FishAudio'
-  | 'Intern'
-  | 'Moka'
-  | 'Other';
-
-export type ModelProviderType = {
-  id: ModelProviderIdType;
-  name: any;
+export type ModelProviderItemType = {
+  id: string;
+  name: string;
   avatar: string;
+  order: number;
 };
 
-export const ModelProviderList: ModelProviderType[] = [
-  {
-    id: 'OpenAI',
-    name: 'OpenAI',
-    avatar: 'model/openai'
-  },
-  {
-    id: 'Claude',
-    name: 'Claude',
-    avatar: 'model/claude'
-  },
-  {
-    id: 'Gemini',
-    name: 'Gemini',
-    avatar: 'model/gemini'
-  },
-  {
-    id: 'Meta',
-    name: 'Meta',
-    avatar: 'model/meta'
-  },
-  {
-    id: 'MistralAI',
-    name: 'MistralAI',
-    avatar: 'model/mistral'
-  },
-  {
-    id: 'Grok',
-    name: 'Grok',
-    avatar: 'model/grok'
-  },
-  {
-    id: 'Groq',
-    name: 'Groq',
-    avatar: 'model/groq'
-  },
-  {
-    id: 'Qwen',
-    name: i18nT('common:model_qwen'),
-    avatar: 'model/qwen'
-  },
-  {
-    id: 'Doubao',
-    name: i18nT('common:model_doubao'),
-    avatar: 'model/doubao'
-  },
-  {
-    id: 'DeepSeek',
-    name: 'DeepSeek',
-    avatar: 'model/deepseek'
-  },
-  {
-    id: 'ChatGLM',
-    name: i18nT('common:model_chatglm'),
-    avatar: 'model/chatglm'
-  },
-  {
-    id: 'Ernie',
-    name: i18nT('common:model_ernie'),
-    avatar: 'model/ernie'
-  },
-  {
-    id: 'Moonshot',
-    name: i18nT('common:model_moonshot'),
-    avatar: 'model/moonshot'
-  },
-  {
-    id: 'MiniMax',
-    name: 'MiniMax',
-    avatar: 'model/minimax'
-  },
-  {
-    id: 'SparkDesk',
-    name: i18nT('common:model_sparkdesk'),
-    avatar: 'model/sparkDesk'
-  },
-  {
-    id: 'Hunyuan',
-    name: i18nT('common:model_hunyuan'),
-    avatar: 'model/hunyuan'
-  },
-  {
-    id: 'Baichuan',
-    name: i18nT('common:model_baichuan'),
-    avatar: 'model/baichuan'
-  },
-  {
-    id: 'StepFun',
-    name: i18nT('common:model_stepfun'),
-    avatar: 'model/stepfun'
-  },
-  {
-    id: 'Yi',
-    name: i18nT('common:model_yi'),
-    avatar: 'model/yi'
-  },
+export type ModelProviderListType = {
+  id: string;
+  name: I18nStringStrictType | string;
+  avatar: string;
+  provider: string;
+};
 
-  {
-    id: 'Ollama',
-    name: 'Ollama',
-    avatar: 'model/ollama'
-  },
-  {
-    id: 'BAAI',
-    name: i18nT('common:model_baai'),
-    avatar: 'model/BAAI'
-  },
-  {
-    id: 'FishAudio',
-    name: 'FishAudio',
-    avatar: 'model/fishaudio'
-  },
-  {
-    id: 'Intern',
-    name: i18nT('common:model_intern'),
-    avatar: 'model/intern'
-  },
-  {
-    id: 'Moka',
-    name: i18nT('common:model_moka'),
-    avatar: 'model/moka'
-  },
-  {
-    id: 'AliCloud',
-    name: i18nT('common:model_alicloud'),
-    avatar: 'model/alicloud'
-  },
-  {
-    id: 'Siliconflow',
-    name: i18nT('common:model_siliconflow'),
-    avatar: 'model/siliconflow'
-  },
-  {
-    id: 'PPIO',
-    name: i18nT('common:model_ppio'),
-    avatar: 'model/ppio'
-  },
-  {
-    id: 'Other',
-    name: i18nT('common:model_other'),
-    avatar: 'model/huggingface'
-  }
-];
-export const ModelProviderMap = Object.fromEntries(
-  ModelProviderList.map((item, index) => [item.id, { ...item, order: index }])
-);
+export type langType = keyof I18nStringStrictType;
 
-export const getModelProvider = (provider?: ModelProviderIdType) => {
-  if (!provider) return ModelProviderMap.Other;
-  return ModelProviderMap[provider] ?? ModelProviderMap.Other;
+export const defaultProvider: ModelProviderItemType = {
+  id: 'Other',
+  name: 'Other',
+  avatar: 'model/huggingface',
+  order: 999
+};
+
+export const formatModelProviders = (
+  data: { provider: string; value: I18nStringStrictType; avatar: string }[]
+) => {
+  const getLocalizedName = (translations: I18nStringStrictType, language = 'en'): string => {
+    return translations[language as langType] || translations.en;
+  };
+
+  const formatModelProviderList = (language?: string): ModelProviderItemType[] => {
+    return data.map(({ provider, value, avatar }, index) => ({
+      id: provider,
+      name: getLocalizedName(value, language),
+      avatar,
+      order: index
+    }));
+  };
+
+  const formatModelProviderMap = (language?: string) => {
+    const provider = {} as Record<string, ModelProviderItemType>;
+
+    data.forEach(({ provider: id, value, avatar }, index) => {
+      provider[id] = {
+        id,
+        name: getLocalizedName(value, language),
+        avatar,
+        order: index
+      };
+    });
+
+    return provider;
+  };
+
+  const ModelProviderListCache = {
+    en: formatModelProviderList('en'),
+    'zh-CN': formatModelProviderList('zh-CN'),
+    'zh-Hant': formatModelProviderList('zh-Hant')
+  };
+  const ModelProviderMapCache = {
+    en: formatModelProviderMap('en'),
+    'zh-CN': formatModelProviderMap('zh-CN'),
+    'zh-Hant': formatModelProviderMap('zh-Hant')
+  };
+
+  return {
+    ModelProviderListCache,
+    ModelProviderMapCache
+  };
 };

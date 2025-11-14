@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+'use client';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -9,16 +10,14 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps
+  type BoxProps
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { UserUpdateParams } from '@/types/user';
+import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
-import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -45,7 +44,13 @@ import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
+const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
+  ssr: false
+});
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
@@ -76,7 +81,7 @@ const Info = () => {
           <Flex justifyContent={'center'} maxW={'1080px'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box mt={9}>
+              <Box mt={6}>
                 <Other onOpenContact={onOpenContact} />
               </Box>
             </Box>
@@ -136,16 +141,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdateContact,
     onOpen: onOpenUpdateContact
   } = useDisclosure();
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
 
-  const onclickSave = useCallback(
+  const onClickSave = useCallback(
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
@@ -160,10 +157,39 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     [reset, t, toast, updateUserInfo]
   );
 
+  const afterUploadAvatar = useCallback(
+    (avatar: string) => {
+      if (!userInfo) return;
+      onClickSave({ ...userInfo, avatar });
+    },
+    [onClickSave, userInfo]
+  );
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
+    getUploadAvatarPresignedUrl,
+    {
+      onSuccess: afterUploadAvatar
+    }
+  );
+
   const labelStyles: BoxProps = {
     flex: '0 0 80px',
-    fontSize: 'sm',
-    color: 'myGray.900'
+    color: 'var(--light-general-on-surface-lowest, var(--Gray-Modern-500, #667085))',
+    fontFamily: '"PingFang SC"',
+    fontSize: '14px',
+    fontStyle: 'normal',
+    fontWeight: 400,
+    lineHeight: '20px',
+    letterSpacing: '0.25px'
+  };
+
+  const titleStyles: BoxProps = {
+    color: 'var(--light-general-on-surface, var(--Gray-Modern-900, #111824))',
+    fontFamily: '"PingFang SC"',
+    fontSize: '16px',
+    fontStyle: 'normal',
+    fontWeight: 500,
+    lineHeight: '24px',
+    letterSpacing: '0.15px'
   };
 
   const isSyncMember = feConfigs.register_method?.includes('sync');
@@ -171,28 +197,71 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     <Box>
       {/* user info */}
       {isPc && (
-        <Flex alignItems={'center'} fontSize={'md'} h={'30px'}>
-          <MyIcon mr={2} name={'support/user/userLight'} w={'1.25rem'} />
-          {t('account_info:personal_information')}
+        <Flex alignItems={'center'} h={'30px'} {...titleStyles}>
+          <MyIcon mr={2} name={'core/dataset/fileCollection'} w={'1.25rem'} />
+          {t('account_info:general_info')}
         </Flex>
       )}
 
       <Box mt={[0, 6]} fontSize={'sm'}>
+        <Flex alignItems={'center'}>
+          <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
+          <Box flex={1}>{userInfo?.username}</Box>
+        </Flex>
+        {feConfigs?.isPlus && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
+            <Box flex={1}>*****</Box>
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+              {t('account_info:change')}
+            </Button>
+          </Flex>
+        )}
+        {feConfigs?.isPlus && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...labelStyles}>{t('common:contact_way')}&nbsp;</Box>
+            <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
+              {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
+            </Box>
+
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
+              {t('account_info:change')}
+            </Button>
+          </Flex>
+        )}
+
+        <MyDivider my={6} />
+
+        {isPc && (
+          <Flex alignItems={'center'} h={'30px'} {...titleStyles} mt={6}>
+            <MyIcon mr={2} name={'support/team/group'} w={'1.25rem'} />
+            {t('account_info:team_info')}
+          </Flex>
+        )}
+
+        {feConfigs.isPlus && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
+            <Flex flex={'1 0 0'} w={0} align={'center'}>
+              <TeamSelector height={'28px'} w={'100%'} showManage />
+            </Flex>
+          </Flex>
+        )}
+
+        <AvatarUploader />
         {isPc ? (
-          <Flex alignItems={'center'} cursor={'pointer'}>
-            <Box {...labelStyles}>{t('account_info:avatar')}:&nbsp;</Box>
+          <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
+            <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
 
             <MyTooltip label={t('account_info:select_avatar')}>
               <Box
-                w={['44px', '56px']}
-                h={['44px', '56px']}
+                w={['22px', '32px']}
+                h={['22px', '32px']}
                 borderRadius={'50%'}
                 border={theme.borders.base}
                 overflow={'hidden'}
-                p={'2px'}
                 boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                mb={2}
-                onClick={onOpenSelectFile}
+                onClick={handleFileSelectorOpen}
               >
                 <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
               </Box>
@@ -203,7 +272,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             flexDirection={'column'}
             alignItems={'center'}
             cursor={'pointer'}
-            onClick={onOpenSelectFile}
+            onClick={handleFileSelectorOpen}
           >
             <MyTooltip label={t('account_info:choose_avatar')}>
               <Box
@@ -226,9 +295,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Flex>
         )}
+
         {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:member_name')}:&nbsp;</Box>
+            <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
             <Input
               flex={'1 0 0'}
               disabled={isSyncMember}
@@ -236,7 +306,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
               transform={'translateX(-11px)'}
-              maxLength={20}
+              maxLength={100}
               onBlur={async (e) => {
                 const val = e.target.value;
                 if (val === userInfo?.team?.memberName) return;
@@ -248,43 +318,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             />
           </Flex>
         )}
-        <Flex alignItems={'center'} mt={6}>
-          <Box {...labelStyles}>{t('account_info:user_account')}:&nbsp;</Box>
-          <Box flex={1}>{userInfo?.username}</Box>
-        </Flex>
-        {feConfigs?.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:password')}:&nbsp;</Box>
-            <Box flex={1}>*****</Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
-            </Button>
-          </Flex>
-        )}
-        {feConfigs?.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('common:contact_way')}:&nbsp;</Box>
-            <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
-              {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
-            </Box>
-
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
-              {t('account_info:change')}
-            </Button>
-          </Flex>
-        )}
-        {feConfigs.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
-            <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
-            </Flex>
-          </Flex>
-        )}
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
-          <Box mt={6} whiteSpace={'nowrap'}>
+          <Box mt={4} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
-              <Box {...labelStyles}>{t('account_info:team_balance')}:&nbsp;</Box>
+              <Box {...labelStyles}>{t('account_info:team_balance')}&nbsp;</Box>
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong>{' '}
                 {t('account_info:yuan')}
@@ -298,27 +335,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Box>
         )}
+
+        <MyDivider my={6} />
       </Box>
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxW: 300,
-            maxH: 300,
-            callback: (src) => {
-              if (!userInfo) return;
-              onclickSave({
-                ...userInfo,
-                avatar: src
-              });
-            }
-          })
-        }
-      />
     </Box>
   );
 };
@@ -326,16 +350,18 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { userInfo, initUserInfo, teamPlanStatus } = useUserStore();
-  const { subPlans } = useSystemStore();
-  const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo as UserType
-  });
-
+  const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { subPlans, feConfigs } = useSystemStore();
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
+  } = useDisclosure();
+
+  const {
+    isOpen: isOpenRedeemCouponModal,
+    onClose: onCloseRedeemCouponModal,
+    onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
   const planName = useMemo(() => {
@@ -343,6 +369,7 @@ const PlanUsage = () => {
     return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
   }, [teamPlanStatus?.standard?.currentSubLevel]);
   const standardPlan = teamPlanStatus?.standard;
+
   const isFreeTeam = useMemo(() => {
     if (!teamPlanStatus || !teamPlanStatus?.standardConstants) return false;
     const hasExtraDatasetSize =
@@ -359,79 +386,109 @@ const PlanUsage = () => {
     return false;
   }, [teamPlanStatus]);
 
-  useQuery(['init'], initUserInfo, {
-    onSuccess(res) {
-      reset(res);
-    }
-  });
+  const valueColorSchema = useCallback((val: number) => {
+    if (val < 50) return 'green';
+    if (val < 80) return 'yellow';
+    return 'red';
+  }, []);
 
-  const datasetUsageMap = useMemo(() => {
+  const datasetIndexUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        colorScheme: 'green',
         value: 0,
-        maxSize: t('account_info:unlimited'),
-        usedSize: 0
+        max: t('account_info:unlimited'),
+        rate: 0
       };
     }
-    const rate = teamPlanStatus.usedDatasetSize / teamPlanStatus.datasetMaxSize;
-
-    const colorScheme = (() => {
-      if (rate < 0.5) return 'green';
-      if (rate < 0.8) return 'yellow';
-      return 'red';
-    })();
+    const rate = teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize;
 
     return {
-      colorScheme,
-      value: rate * 100,
-      maxSize: teamPlanStatus.datasetMaxSize || t('account_info:unlimited'),
-      usedSize: teamPlanStatus.usedDatasetSize
+      value: teamPlanStatus.usedDatasetIndexSize,
+      rate: rate * 100,
+      max: teamPlanStatus.datasetMaxSize || 1
     };
-  }, [teamPlanStatus, t]);
+  }, [t, teamPlanStatus]);
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        colorScheme: 'green',
         value: 0,
-        maxSize: t('account_info:unlimited'),
-        usedSize: 0
+        max: t('account_info:unlimited'),
+        rate: 0
       };
     }
 
-    const rate = teamPlanStatus.usedPoints / teamPlanStatus.totalPoints;
-
-    const colorScheme = (() => {
-      if (rate < 0.5) return 'green';
-      if (rate < 0.8) return 'yellow';
-      return 'red';
-    })();
-
     return {
-      colorScheme,
-      value: rate * 100,
-      max: teamPlanStatus.totalPoints ? teamPlanStatus.totalPoints : t('account_info:unlimited'),
-      used: teamPlanStatus.usedPoints ? Math.round(teamPlanStatus.usedPoints) : 0
+      value: Math.round(teamPlanStatus.usedPoints),
+      max: teamPlanStatus.totalPoints,
+      rate: (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
     };
-  }, [teamPlanStatus, t]);
+  }, [t, teamPlanStatus]);
+
+  const limitData = useMemo(() => {
+    if (!teamPlanStatus) {
+      return [];
+    }
+
+    return [
+      {
+        label: t('account_info:member_amount'),
+        value: teamPlanStatus.usedMember,
+        max: teamPlanStatus?.standardConstants?.maxTeamMember || t('account_info:unlimited'),
+        rate:
+          (teamPlanStatus.usedMember / (teamPlanStatus?.standardConstants?.maxTeamMember || 1)) *
+          100
+      },
+      {
+        label: t('account_info:app_amount'),
+        value: teamPlanStatus.usedAppAmount,
+        max: teamPlanStatus?.standardConstants?.maxAppAmount || t('account_info:unlimited'),
+        rate:
+          (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standardConstants?.maxAppAmount || 1)) *
+          100
+      },
+      {
+        label: t('account_info:dataset_amount'),
+        value: teamPlanStatus.usedDatasetSize,
+        max: teamPlanStatus?.standardConstants?.maxDatasetAmount || t('account_info:unlimited'),
+        rate:
+          (teamPlanStatus.usedDatasetSize /
+            (teamPlanStatus?.standardConstants?.maxDatasetAmount || 1)) *
+          100
+      }
+    ];
+  }, [t, teamPlanStatus]);
 
   return standardPlan ? (
     <Box mt={[6, 0]}>
       <Flex fontSize={['md', 'lg']} h={'30px'}>
-        <Flex alignItems={'center'}>
+        <Flex
+          alignItems={'center'}
+          color="var(--light-general-on-surface, var(--Gray-Modern-900, #111824))"
+          fontFamily='"PingFang SC"'
+          fontSize="16px"
+          fontStyle="normal"
+          fontWeight={500}
+          lineHeight="24px"
+          letterSpacing="0.15px"
+        >
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('account_info:package_and_usage')}
         </Flex>
         <ModelPriceModal>
           {({ onOpen }) => (
-            <Button ml={4} size={'sm'} onClick={onOpen}>
+            <Button ml={3} size={'sm'} onClick={onOpen}>
               {t('account_info:billing_standard')}
             </Button>
           )}
         </ModelPriceModal>
-        <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
+        <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
+        {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
+          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
+            {t('account_info:redeem_coupon')}
+          </Button>
+        )}
       </Flex>
       <Box
         mt={[3, 6]}
@@ -480,6 +537,7 @@ const PlanUsage = () => {
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
               mode={standardPlan.currentMode}
+              standplan={standardPlan}
             />
           </Box>
         </Box>
@@ -523,15 +581,15 @@ const PlanUsage = () => {
                 {t('account_info:knowledge_base_capacity')}
               </Box>
               <Box color={'myGray.600'} ml={2}>
-                {datasetUsageMap.usedSize}/{datasetUsageMap.maxSize}
+                {datasetIndexUsageMap.value}/{datasetIndexUsageMap.max}
               </Box>
             </Flex>
           </Flex>
-          <Box mt={3}>
+          <Box mt={1}>
             <Progress
               size={'sm'}
-              value={datasetUsageMap.value}
-              colorScheme={datasetUsageMap.colorScheme}
+              value={datasetIndexUsageMap.rate}
+              colorScheme={valueColorSchema(datasetIndexUsageMap.rate)}
               borderRadius={'md'}
               isAnimated
               hasStripe
@@ -540,7 +598,7 @@ const PlanUsage = () => {
             />
           </Box>
         </Box>
-        <Box mt="9" width={'100%'} fontSize={'sm'}>
+        <Box mt="6" width={'100%'} fontSize={'sm'}>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'}>
               <Box fontWeight={'bold'} color={'myGray.900'}>
@@ -548,15 +606,15 @@ const PlanUsage = () => {
               </Box>
               <QuestionTip ml={1} label={t('account_info:ai_points_usage_tip')}></QuestionTip>
               <Box color={'myGray.600'} ml={2}>
-                {aiPointsUsageMap.used}/{aiPointsUsageMap.max}
+                {aiPointsUsageMap.value}/{aiPointsUsageMap.max}
               </Box>
             </Flex>
           </Flex>
-          <Box mt={3}>
+          <Box mt={1}>
             <Progress
               size={'sm'}
-              value={aiPointsUsageMap.value}
-              colorScheme={aiPointsUsageMap.colorScheme}
+              value={aiPointsUsageMap.rate}
+              colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
               borderRadius={'md'}
               isAnimated
               hasStripe
@@ -565,8 +623,50 @@ const PlanUsage = () => {
             />
           </Box>
         </Box>
+
+        <MyDivider />
+
+        {limitData.map((item) => {
+          return (
+            <Box
+              key={item.label}
+              _notFirst={{
+                mt: 4
+              }}
+              width={'100%'}
+              fontSize={'sm'}
+            >
+              <Flex alignItems={'center'}>
+                <Box fontWeight={'bold'} color={'myGray.900'}>
+                  {item.label}
+                </Box>
+                <Box color={'myGray.600'} ml={2}>
+                  {item.value}/{item.max}
+                </Box>
+              </Flex>
+              <Box mt={1}>
+                <Progress
+                  size={'sm'}
+                  value={item.rate}
+                  colorScheme={valueColorSchema(item.rate)}
+                  borderRadius={'md'}
+                  isAnimated
+                  hasStripe
+                  borderWidth={'1px'}
+                  borderColor={'borderColor.low'}
+                />
+              </Box>
+            </Box>
+          );
+        })}
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
+      {isOpenRedeemCouponModal && (
+        <RedeemCouponModal
+          onClose={onCloseRedeemCouponModal}
+          onSuccess={() => initTeamPlanStatus()}
+        />
+      )}
     </Box>
   ) : null;
 };
@@ -601,10 +701,10 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   return (
     <Box>
-      <Grid gridGap={4} mt={3}>
+      <Grid gridGap={4}>
         {feConfigs?.docUrl && (
           <Link
-            href={getDocPath('/docs/intro')}
+            href={getDocPath('/docs/introduction')}
             target="_blank"
             textDecoration={'none !important'}
             {...ButtonStyles}

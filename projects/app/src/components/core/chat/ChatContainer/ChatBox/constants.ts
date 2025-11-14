@@ -1,4 +1,4 @@
-import { BoxProps } from '@chakra-ui/react';
+import { type BoxProps } from '@chakra-ui/react';
 
 export const textareaMinH = '22px';
 
@@ -16,4 +16,13 @@ export enum FeedbackTypeEnum {
   user = 'user',
   admin = 'admin',
   hidden = 'hidden'
+}
+
+export enum ChatTypeEnum {
+  test = 'test',
+  chat = 'chat',
+  log = 'log',
+  share = 'share',
+  team = 'team',
+  home = 'home'
 }

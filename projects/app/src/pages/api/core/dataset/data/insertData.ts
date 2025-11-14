@@ -4,32 +4,35 @@
 */
 import type { NextApiRequest } from 'next';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (!collectionId) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authDatasetCollection({
+  const { teamId, tmbId, collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -37,19 +40,19 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
-  await checkDatasetLimit({
+  await checkDatasetIndexLimit({
     teamId,
-    insertLen: 1
+    insertLen: 1 + (indexes?.length || 0)
   });
 
-  // auth collection and get dataset
   const [
     {
-      dataset: { _id: datasetId, vectorModel }
+      dataset: { _id: datasetId, vectorModel, agentModel },
+      indexPrefixTitle,
+      name
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
-  // format data
   const formatQ = simpleText(q);
   const formatA = simpleText(a);
   const formatIndexes = indexes?.map((item) => ({
@@ -57,15 +60,10 @@ async function handler(req: NextApiRequest) {
     text: simpleText(item.text)
   }));
 
-  // token check
   const token = await countPromptTokens(formatQ + formatA, '');
   const vectorModelData = getEmbeddingModel(vectorModel);
+  const llmModelData = getLLMModel(agentModel);
 
-  if (token > vectorModelData.maxToken) {
-    return Promise.reject('Q Over Tokens');
-  }
-
-  // Duplicate data check
   await hasSameValue({
     teamId,
     datasetId,
@@ -82,7 +80,8 @@ async function handler(req: NextApiRequest) {
     q: formatQ,
     a: formatA,
     chunkIndex: 0,
-    model: vectorModelData.model,
+    indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
+    embeddingModel: vectorModelData.model,
     indexes: formatIndexes
   });
 
@@ -93,6 +92,18 @@ async function handler(req: NextApiRequest) {
     model: vectorModelData.model
   });
 
+  (() => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_DATA,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
   return insertId;
 }
 

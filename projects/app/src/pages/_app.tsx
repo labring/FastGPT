@@ -1,3 +1,5 @@
+import '@scalar/api-reference-react/style.css';
+
 import type { AppProps } from 'next/app';
 import Script from 'next/script';
 
@@ -6,13 +8,12 @@ import { appWithTranslation } from 'next-i18next';
 
 import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
-import I18nContextProvider from '@/web/context/I18n';
 import { useInitApp } from '@/web/context/useInitApp';
 import { useTranslation } from 'next-i18next';
 import '@/web/styles/reset.scss';
 import NextHead from '@/components/common/NextHead';
-import { ReactElement, useEffect } from 'react';
-import { NextPage } from 'next';
+import { type ReactElement, useEffect } from 'react';
+import { type NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
@@ -25,13 +26,9 @@ type AppPropsWithLayout = AppProps & {
 };
 
 // 哪些路由有自定义 Head
-const routesWithCustomHead = [
-  '/chat',
-  '/chat/share',
-  'chat/team',
-  '/app/detail/',
-  '/dataset/detail'
-];
+const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail/', '/dataset/detail'];
+// 哪些路由不需要 Layout
+const routesWithoutLayout = ['/openapi'];
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -54,17 +51,29 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
   const router = useRouter();
   const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
+  const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
+
+  if (router.pathname === '/openapi') {
+    return (
+      <>
+        {showHead && (
+          <NextHead
+            title={title}
+            desc={process.env.SYSTEM_DESCRIPTION || t('common:system_intro', { title })}
+            icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
+          />
+        )}
+        {setLayout(<Component {...pageProps} />)}
+      </>
+    );
+  }
 
   return (
     <>
       {showHead && (
         <NextHead
           title={title}
-          desc={
-            feConfigs?.systemDescription ||
-            process.env.SYSTEM_DESCRIPTION ||
-            `${title}${t('app:intro')}`
-          }
+          desc={process.env.SYSTEM_DESCRIPTION || t('common:system_intro', { title })}
           icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
         />
       )}
@@ -73,15 +82,18 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
       <QueryClientContext>
         <SystemStoreContextProvider device={pageProps.deviceSize}>
-          <I18nContextProvider>
-            <ChakraUIContext>
+          <ChakraUIContext>
+            {shouldUseLayout ? (
               <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
-            </ChakraUIContext>
-          </I18nContextProvider>
+            ) : (
+              setLayout(<Component {...pageProps} />)
+            )}
+          </ChakraUIContext>
         </SystemStoreContextProvider>
       </QueryClientContext>
     </>
   );
 }
 
+// @ts-ignore
 export default appWithTranslation(App);

@@ -1,7 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useI18n } from '@/web/context/I18n';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { queryChatInputGuideList } from '@/web/core/chat/inputGuide/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -9,6 +8,7 @@ import { useTranslation } from 'next-i18next';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowAuthContext } from '../../context/workflowAuthContext';
 
 export default function InputGuideBox({
   appId,
@@ -23,7 +23,7 @@ export default function InputGuideBox({
 }) {
   const { t } = useTranslation();
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
 
   const { data = [] } = useRequest2(
     async () => {

@@ -1,20 +1,30 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
-  WorkflowIOValueTypeEnum,
-  NodeOutputKeyEnum
-} from '@fastgpt/global/core/workflow/constants';
-import {
-  RuntimeEdgeItemType,
-  SystemVariablesType
+  type RuntimeEdgeItemType,
+  type RuntimeNodeItemType,
+  type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
-import { NextApiResponse } from 'next';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { type NextApiResponse } from 'next';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import json5 from 'json5';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { MongoApp } from '../../../core/app/schema';
+import { getMCPChildren } from '../../../core/app/mcp';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -32,30 +42,22 @@ export const getWorkflowResponseWrite = ({
   return ({
     write,
     event,
-    data,
-    stream
+    data
   }: {
     write?: (text: string) => void;
     event: SseResponseEventEnum;
     data: Record<string, any>;
-    stream?: boolean; // Focus set stream response
   }) => {
-    const useStreamResponse = stream ?? streamResponse;
+    const useStreamResponse = streamResponse;
 
     if (!res || res.closed || !useStreamResponse) return;
 
     // Forbid show detail
-    const detailEvent: Record<string, 1> = {
-      [SseResponseEventEnum.error]: 1,
-      [SseResponseEventEnum.flowNodeStatus]: 1,
-      [SseResponseEventEnum.flowResponses]: 1,
-      [SseResponseEventEnum.interactive]: 1,
-      [SseResponseEventEnum.toolCall]: 1,
-      [SseResponseEventEnum.toolParams]: 1,
-      [SseResponseEventEnum.toolResponse]: 1,
-      [SseResponseEventEnum.updateVariables]: 1
+    const notDetailEvent: Record<string, 1> = {
+      [SseResponseEventEnum.answer]: 1,
+      [SseResponseEventEnum.fastAnswer]: 1
     };
-    if (!detail && detailEvent[event]) return;
+    if (!detail && !notDetailEvent[event]) return;
 
     // Forbid show running status
     const statusEvent: Record<string, 1> = {
@@ -91,50 +93,16 @@ export const filterToolNodeIdByEdges = ({
 
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
+  // Select reference history
+  if (Array.isArray(history)) return history;
 
-  const systemHistories = histories.filter((item) => item.obj === ChatRoleEnum.System);
-
-  const filterHistories = (() => {
-    if (typeof history === 'number') return histories.slice(-(history * 2));
-    if (Array.isArray(history)) return history;
-    return [];
-  })();
+  // history is number
+  const systemHistoryIndex = histories.findIndex((item) => item.obj !== ChatRoleEnum.System);
+  const systemHistories = histories.slice(0, systemHistoryIndex);
+  const chatHistories = histories.slice(systemHistoryIndex);
+  const filterHistories = chatHistories.slice(-(history * 2));
 
   return [...systemHistories, ...filterHistories];
-};
-
-/* value type format */
-export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
-  if (value === undefined) return;
-
-  if (type === 'string') {
-    if (typeof value !== 'object') return String(value);
-    return JSON.stringify(value);
-  }
-  if (type === 'number') return Number(value);
-  if (type === 'boolean') {
-    if (typeof value === 'string') return value === 'true';
-    return Boolean(value);
-  }
-  try {
-    if (
-      type &&
-      [
-        WorkflowIOValueTypeEnum.object,
-        WorkflowIOValueTypeEnum.chatHistory,
-        WorkflowIOValueTypeEnum.datasetQuote,
-        WorkflowIOValueTypeEnum.selectApp,
-        WorkflowIOValueTypeEnum.selectDataset
-      ].includes(type) &&
-      typeof value !== 'object'
-    ) {
-      return json5.parse(value);
-    }
-  } catch (error) {
-    return value;
-  }
-
-  return value;
 };
 
 export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
@@ -149,11 +117,18 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (
-  variables: Record<string, any>,
-  removeObj: Record<string, string> = {}
-) => {
+export const runtimeSystemVar2StoreType = ({
+  variables,
+  removeObj = {},
+  userVariablesConfigs = []
+}: {
+  variables: Record<string, any>;
+  removeObj?: Record<string, string>;
+  userVariablesConfigs?: VariableItemType[];
+}) => {
   const copyVariables = { ...variables };
+
+  // Delete system variables
   delete copyVariables.userId;
   delete copyVariables.appId;
   delete copyVariables.chatId;
@@ -161,13 +136,27 @@ export const removeSystemVariable = (
   delete copyVariables.histories;
   delete copyVariables.cTime;
 
-  // delete external provider workflow variables
+  // Delete special variables
   Object.keys(removeObj).forEach((key) => {
     delete copyVariables[key];
   });
 
+  // Encrypt password variables
+  userVariablesConfigs.forEach((item) => {
+    const val = copyVariables[item.key];
+    if (item.type === VariableInputEnum.password) {
+      if (typeof val === 'string') {
+        copyVariables[item.key] = {
+          value: '',
+          secret: encryptSecret(val)
+        };
+      }
+    }
+  });
+
   return copyVariables;
 };
+
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
     userId: variables.userId,
@@ -187,5 +176,137 @@ export const formatHttpError = (error: any) => {
     method: error?.config?.method,
     code: error?.code,
     status: error?.status
+  };
+};
+
+/**
+ * ToolSet node will be replaced by Children Tool Nodes.
+ * @param nodes
+ * @param edges
+ * @returns
+ */
+export const rewriteRuntimeWorkFlow = async ({
+  nodes,
+  edges,
+  lang
+}: {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+  lang?: localeType;
+}) => {
+  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+
+  if (toolSetNodes.length === 0) {
+    return;
+  }
+
+  const nodeIdsToRemove = new Set<string>();
+
+  for (const toolSetNode of toolSetNodes) {
+    nodeIdsToRemove.add(toolSetNode.nodeId);
+    const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
+
+    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+    const pushEdges = (nodeId: string) => {
+      for (const inEdge of incomingEdges) {
+        edges.push({
+          source: inEdge.source,
+          target: nodeId,
+          sourceHandle: inEdge.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: inEdge.status
+        });
+      }
+    };
+
+    // systemTool
+    if (systemToolId) {
+      const children = await getSystemToolRunTimeNodeFromSystemToolset({
+        toolSetNode,
+        lang
+      });
+      children.forEach((node) => {
+        nodes.push(node);
+        pushEdges(node.nodeId);
+      });
+    } else if (mcpToolsetVal) {
+      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+      if (!app) continue;
+      const toolList = await getMCPChildren(app);
+
+      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      toolList.forEach((tool, index) => {
+        const newToolNode = getMCPToolRuntimeNode({
+          avatar: toolSetNode.avatar,
+          tool,
+          // New ?? Old
+          parentId
+        });
+        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
+
+        nodes.push({
+          ...newToolNode,
+          name: `${toolSetNode.name}/${tool.name}`
+        });
+        pushEdges(newToolNode.nodeId);
+      });
+    } else if (httpToolsetVal) {
+      const parentId = toolSetNode.pluginId || '';
+      httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
+        const newToolNode = getHTTPToolRuntimeNode({
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
+          },
+          nodeId: `${parentId}${index}`,
+          avatar: toolSetNode.avatar,
+          parentId
+        });
+
+        nodes.push(newToolNode);
+        pushEdges(newToolNode.nodeId);
+      });
+    }
+  }
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(nodes[i].nodeId)) {
+      nodes.splice(i, 1);
+    }
+  }
+
+  for (let i = edges.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(edges[i].target)) {
+      edges.splice(i, 1);
+    }
+  }
+};
+
+export const getNodeErrResponse = ({
+  error,
+  customErr,
+  customNodeResponse
+}: {
+  error: any;
+  customErr?: Record<string, any>;
+  customNodeResponse?: Record<string, any>;
+}) => {
+  const errorText = getErrText(error);
+
+  return {
+    error: {
+      [NodeOutputKeyEnum.errorText]: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      errorText,
+      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      error: errorText,
+      ...(typeof customErr === 'object' ? customErr : {})
+    }
   };
 };

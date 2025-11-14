@@ -5,14 +5,13 @@ import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, {
-  MemberManagerInputPropsType
+  type MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -47,17 +46,19 @@ const FolderSlideCard = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: deleteTip
-  });
-
   return (
     <Box w={'13rem'}>
       <Box>
         <HStack>
           <MyIcon name={FolderIcon} w={'1.5rem'} />
-          <Box color={'myGray.900'}>{name}</Box>
+          <Box
+            color={'myGray.900'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+          >
+            {name}
+          </Box>
           <MyIcon
             name={'edit'}
             _hover={{ color: 'primary.600' }}
@@ -90,25 +91,29 @@ const FolderSlideCard = ({
               mt={4}
               onClick={onMove}
             >
-              {t('common:common.Move')}
+              {t('common:Move')}
             </Button>
             {managePer.permission.isOwner && (
-              <Button
-                variant={'transparentDanger'}
-                pl={1}
-                leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
-                transform={'none !important'}
-                w={'100%'}
-                justifyContent={'flex-start'}
-                size={'sm'}
-                fontSize={'mini'}
-                mt={3}
-                onClick={() => {
-                  openConfirm(onDelete)();
-                }}
-              >
-                {t('common:common.Delete folder')}
-              </Button>
+              <PopoverConfirm
+                Trigger={
+                  <Button
+                    variant={'transparentDanger'}
+                    pl={1}
+                    leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
+                    transform={'none !important'}
+                    w={'100%'}
+                    justifyContent={'flex-start'}
+                    size={'sm'}
+                    fontSize={'mini'}
+                    mt={3}
+                  >
+                    {t('common:delete_folder')}
+                  </Button>
+                }
+                type="delete"
+                content={deleteTip}
+                onConfirm={onDelete}
+              />
             )}
           </Box>
         </>
@@ -132,7 +137,7 @@ const FolderSlideCard = ({
                 isInheritPermission={isInheritPermission}
                 hasParent={hasParent}
               >
-                {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+                {({ MemberListCard, onOpenManageModal }) => {
                   return (
                     <>
                       <Flex alignItems="center" justifyContent="space-between">
@@ -140,26 +145,15 @@ const FolderSlideCard = ({
                           {t('common:permission.Collaborator')}
                         </Box>
                         {managePer.permission.hasManagePer && (
-                          <HStack spacing={3}>
-                            <MyTooltip label={t('common:permission.Manage')}>
-                              <MyIcon
-                                w="1rem"
-                                name="common/settingLight"
-                                cursor={'pointer'}
-                                _hover={{ color: 'primary.600' }}
-                                onClick={onOpenManageModal}
-                              />
-                            </MyTooltip>
-                            <MyTooltip label={t('common:common.Add')}>
-                              <MyIcon
-                                w="1rem"
-                                name="support/permission/collaborator"
-                                cursor={'pointer'}
-                                _hover={{ color: 'primary.600' }}
-                                onClick={onOpenAddMember}
-                              />
-                            </MyTooltip>
-                          </HStack>
+                          <MyTooltip label={t('common:permission.Manage')}>
+                            <MyIcon
+                              w="1rem"
+                              name="common/settingLight"
+                              cursor={'pointer'}
+                              _hover={{ color: 'primary.600' }}
+                              onClick={onOpenManageModal}
+                            />
+                          </MyTooltip>
                         )}
                       </Flex>
                       <MemberListCard
@@ -177,8 +171,6 @@ const FolderSlideCard = ({
           </Box>
         </>
       )}
-
-      <ConfirmModal />
     </Box>
   );
 };

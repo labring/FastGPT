@@ -30,11 +30,11 @@ export async function text2Speech({
       response_format: 'mp3',
       speed
     },
-    modelData.requestUrl && modelData.requestAuth
+    modelData.requestUrl
       ? {
           path: modelData.requestUrl,
           headers: {
-            Authorization: `Bearer ${modelData.requestAuth}`
+            ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
           }
         }
       : {}

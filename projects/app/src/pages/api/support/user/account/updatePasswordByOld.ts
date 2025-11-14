@@ -1,49 +1,57 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { connectToDatabase } from '@/service/mongo';
+
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { NextAPI } from '@/service/middleware/entry';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { delUserAllSession } from '@fastgpt/service/support/user/session';
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
-    const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
-
-    if (!oldPsw || !newPsw) {
-      throw new Error('Params is missing');
-    }
-
-    const { tmbId } = await authCert({ req, authToken: true });
-    const tmb = await MongoTeamMember.findById(tmbId);
-    if (!tmb) {
-      throw new Error('can not find it');
-    }
-    const userId = tmb.userId;
-    // auth old password
-    const user = await MongoUser.findOne({
-      _id: userId,
-      password: oldPsw
-    });
-
-    if (!user) {
-      throw new Error('user.Old password is error');
-    }
-
-    // 更新对应的记录
-    await MongoUser.findByIdAndUpdate(userId, {
-      password: newPsw
-    });
-
-    jsonRes(res, {
-      data: {
-        user
-      }
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!oldPsw || !newPsw) {
+    return Promise.reject('Params is missing');
   }
+
+  const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
+  const tmb = await MongoTeamMember.findById(tmbId);
+  if (!tmb) {
+    return Promise.reject('can not find it');
+  }
+  const userId = tmb.userId;
+  // auth old password
+  const user = await MongoUser.findOne({
+    _id: userId,
+    password: oldPsw
+  });
+
+  if (!user) {
+    return Promise.reject(i18nT('common:user.Old password is error'));
+  }
+
+  if (oldPsw === newPsw) {
+    return Promise.reject(i18nT('common:user.Password has no change'));
+  }
+
+  // 更新对应的记录
+  await MongoUser.findByIdAndUpdate(userId, {
+    password: newPsw,
+    passwordUpdateTime: new Date()
+  });
+
+  await delUserAllSession(userId, [sessionId]);
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CHANGE_PASSWORD,
+      params: {}
+    });
+  })();
+  return user;
 }
+
+export default NextAPI(handler);

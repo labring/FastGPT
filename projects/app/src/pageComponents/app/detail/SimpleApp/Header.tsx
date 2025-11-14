@@ -8,7 +8,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import RouteTab from '../RouteTab';
 import { useTranslation } from 'next-i18next';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { TabEnum } from '../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,17 +22,17 @@ import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import {
   compareSimpleAppSnapshot,
-  onSaveSnapshotFnType,
-  SimpleAppSnapshotType
+  type onSaveSnapshotFnType,
+  type SimpleAppSnapshotType
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
-import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowNodeAndConnection,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 
@@ -71,7 +71,7 @@ const Header = ({
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/app/list',
+        pathname: '/dashboard/agent',
         query: {
           parentId,
           type: lastAppListRouteType
@@ -181,7 +181,7 @@ const Header = ({
     };
   }, []);
   useBeforeunload({
-    tip: t('common:core.common.tip.leave page'),
+    tip: t('common:core.tip.leave page'),
     callback: onLeaveAutoSave
   });
 
@@ -195,7 +195,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('app:all_apps')}
+            rootName={t('common:All')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
@@ -246,7 +246,7 @@ const Header = ({
                     const { nodes: storeNodes, edges: storeEdges } = form2AppWorkflow(appForm, t);
 
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
-                    const edges = storeEdges.map((item) => storeEdgesRenderEdge({ edge: item }));
+                    const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
                     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 

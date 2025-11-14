@@ -1,4 +1,4 @@
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, HStack, useDisclosure } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -32,82 +32,90 @@ const SaveButton = ({
   } = useDisclosure();
 
   return (
-    <MyPopover
-      placement={'bottom-end'}
-      hasArrow={false}
-      offset={[2, 4]}
-      w={'116px'}
-      onOpenFunc={() => setIsSave(true)}
-      onCloseFunc={() => setIsSave(false)}
-      trigger={'hover'}
-      Trigger={
-        <Button
-          size={'sm'}
-          rightIcon={
-            <MyIcon
-              name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-              w={['14px', '16px']}
-            />
-          }
-        >
-          <Box>{t('common:common.Save')}</Box>
-        </Button>
-      }
+    <Box
+      flexShrink={0}
+      sx={{
+        section: {
+          width: 'auto'
+        }
+      }}
     >
-      {({ onClose }) => (
-        <Box p={1.5}>
-          <MyBox
-            display={'flex'}
-            size={'md'}
-            px={1}
-            py={1.5}
-            rounded={'4px'}
-            _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-            cursor={'pointer'}
-            isLoading={isLoading}
-            onClick={async () => {
-              await onClickSave({});
-              toast({
-                status: 'success',
-                title: t('app:saved_success'),
-                position: 'top-right',
-                isClosable: true
-              });
-              onClose();
-              setIsSave(false);
-            }}
-          >
-            <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
-            <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
-          </MyBox>
-          <Flex
-            px={1}
-            py={1.5}
-            rounded={'4px'}
-            _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-            cursor={'pointer'}
-            onClick={() => {
-              const canOpen = !checkData || checkData();
-              if (canOpen) {
-                onSaveAndPublishModalOpen();
-              }
-              onClose();
-              setIsSave(false);
-            }}
-          >
-            <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
-            <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
-            {isSaveAndPublishModalOpen && (
-              <SaveAndPublishModal
-                isLoading={isLoading}
-                onClose={onSaveAndPublishModalClose}
-                onClickSave={onClickSave}
+      <MyPopover
+        placement={'bottom-end'}
+        hasArrow={false}
+        offset={[2, 4]}
+        w={'124px'}
+        onOpenFunc={() => setIsSave(true)}
+        onCloseFunc={() => setIsSave(false)}
+        trigger={'hover'}
+        Trigger={
+          <Button
+            size={'sm'}
+            rightIcon={
+              <MyIcon
+                name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                w={['14px', '16px']}
               />
-            )}
-          </Flex>
-        </Box>
+            }
+          >
+            <Box>{t('common:Save')}</Box>
+          </Button>
+        }
+      >
+        {({ onClose }) => (
+          <Box p={1.5}>
+            <MyBox
+              display={'flex'}
+              alignItems={'center'}
+              gap={2}
+              p={1.5}
+              rounded={'4px'}
+              _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+              cursor={'pointer'}
+              isLoading={isLoading}
+              onClick={async () => {
+                await onClickSave({});
+                toast({
+                  status: 'success',
+                  title: t('app:saved_success'),
+                  position: 'top-right',
+                  isClosable: true
+                });
+                onClose();
+                setIsSave(false);
+              }}
+            >
+              <MyIcon name={'core/workflow/upload'} w={'1rem'} />
+              <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
+            </MyBox>
+            <HStack
+              p={1.5}
+              rounded={'4px'}
+              _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+              cursor={'pointer'}
+              onClick={() => {
+                const canOpen = !checkData || checkData();
+                if (canOpen) {
+                  onSaveAndPublishModalOpen();
+                }
+                onClose();
+                setIsSave(false);
+              }}
+            >
+              <MyIcon name={'core/workflow/publish'} w={'1rem'} />
+              <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
+            </HStack>
+          </Box>
+        )}
+      </MyPopover>
+      {isSaveAndPublishModalOpen && (
+        <SaveAndPublishModal
+          isLoading={isLoading}
+          onClose={onSaveAndPublishModalClose}
+          onClickSave={onClickSave}
+        />
       )}
-    </MyPopover>
+    </Box>
   );
 };
 

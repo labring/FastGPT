@@ -1,21 +1,21 @@
 /* Abandoned */
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
-import { dispatchWorkFlow } from '../index';
+import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
+import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -59,10 +59,12 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
 
-  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
+  const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
     ...props,
+    usageId: undefined,
     runningAppInfo: {
       id: String(appData._id),
+      name: appData.name,
       teamId: String(appData.teamId),
       tmbId: String(appData.tmbId)
     },
@@ -70,7 +72,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       appData.modules,
       getWorkflowEntryNodeIds(appData.modules)
     ),
-    runtimeEdges: initWorkflowEdgeStatus(appData.edges),
+    runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
     histories: chatHistories,
     query: runtimePrompt2ChatsValue({
       files,
@@ -93,7 +95,13 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
+    data: {
+      answerText: text,
+      history: completeMessages
+    },
+    [DispatchNodeResponseKeyEnum.answerText]: text,
     assistantResponses,
+    system_memories,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
@@ -105,8 +113,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
         moduleName: appData.name,
         totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
-    ],
-    answerText: text,
-    history: completeMessages
+    ]
   };
 };

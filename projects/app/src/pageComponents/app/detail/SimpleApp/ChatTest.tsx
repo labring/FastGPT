@@ -5,7 +5,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
@@ -16,6 +16,8 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type Props = {
   appForm: AppSimpleEditFormType;
@@ -25,8 +27,10 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   const { t } = useTranslation();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  // form2AppWorkflow dependent allDatasets
+  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -39,10 +43,10 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   }, [appForm, setWorkflowData, t]);
 
   useEffect(() => {
-    setRenderEdit(!quoteData);
-  }, [quoteData, setRenderEdit]);
+    setRenderEdit(!datasetCiteData);
+  }, [datasetCiteData, setRenderEdit]);
 
-  const { ChatContainer, restartChat, loading } = useChatTest({
+  const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
     isReady: true
@@ -53,7 +57,6 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
       <MyBox
         flex={'1 0 0'}
         w={0}
-        isLoading={loading}
         display={'flex'}
         position={'relative'}
         flexDirection={'column'}
@@ -62,10 +65,12 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
         {...cardStyles}
         boxShadow={'3'}
       >
-        <Flex px={[2, 5]}>
-          <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
+        <Flex px={[2, 5]} pb={2}>
+          <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
             {t('app:chat_debug')}
           </Box>
+          {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
+          <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -85,12 +90,12 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
           <ChatContainer />
         </Box>
       </MyBox>
-      {quoteData && (
+      {datasetCiteData && (
         <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
           <ChatQuoteList
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
+            rawSearch={datasetCiteData.rawSearch}
+            metadata={datasetCiteData.metadata}
+            onClose={() => setCiteModalData(undefined)}
           />
         </Box>
       )}
@@ -112,9 +117,9 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

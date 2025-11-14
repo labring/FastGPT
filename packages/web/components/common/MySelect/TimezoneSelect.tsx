@@ -1,9 +1,9 @@
 import React, { useRef } from 'react';
-import { timezoneList } from '@fastgpt/global/common/time/timezone';
+import { getTimeZoneList } from '@fastgpt/global/common/time/timezone';
 import { Select } from '@chakra-ui/react';
 
 const TimezoneSelect = ({ value, onChange }: { value?: string; onChange: (e: string) => void }) => {
-  const timezones = useRef(timezoneList());
+  const timezones = useRef(getTimeZoneList());
 
   return (
     <Select

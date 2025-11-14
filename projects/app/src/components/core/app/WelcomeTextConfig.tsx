@@ -1,4 +1,4 @@
-import { Box, Flex, TextareaProps } from '@chakra-ui/react';
+import { Box, Flex, type TextareaProps } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatFunctionTip from './Tip';
@@ -26,7 +26,7 @@ const WelcomeTextConfig = (props: TextareaProps) => {
         rows={6}
         fontSize={'sm'}
         bg={'myGray.50'}
-        minW={'384px'}
+        minW={['auto', '384px']}
         placeholder={t('common:core.app.tip.welcomeTextTip')}
         autoHeight
         minH={100}

@@ -1,6 +1,6 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import ParentPaths from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
@@ -66,7 +66,7 @@ const SelectCollections = ({
   const formatCollections = useMemo(
     () =>
       data?.list.map((collection) => {
-        const icon = getCollectionIcon(collection.type, collection.name);
+        const icon = getCollectionIcon({ type: collection.type, name: collection.name });
 
         return {
           ...collection,
@@ -100,7 +100,7 @@ const SelectCollections = ({
 
       return null;
     },
-    errorToast: t('common:common.Request Error')
+    errorToast: t('common:request_error')
   });
 
   return (
@@ -114,7 +114,7 @@ const SelectCollections = ({
       iconSrc="/imgs/modal/move.svg"
       title={
         <Box>
-          <ParentPaths
+          <FolderPath
             paths={paths.map((path) => ({
               parentId: path.parentId,
               parentName: path.parentName
@@ -125,7 +125,7 @@ const SelectCollections = ({
                   {title
                     ? title
                     : type === 'folder'
-                      ? t('common:common.Root folder')
+                      ? t('common:root_folder')
                       : t('common:dataset.collections.Select Collection')}
                 </Box>
                 {!!tip && (
@@ -197,7 +197,7 @@ const SelectCollections = ({
           )}
         </Grid>
         {collections.length === 0 && (
-          <EmptyTip pt={'20vh'} text={t('common:common.folder.No Folder')}></EmptyTip>
+          <EmptyTip pt={'20vh'} text={t('common:no_child_folder')}></EmptyTip>
         )}
         <Loading loading={isLoading} fixed={false} />
       </ModalBody>
@@ -210,7 +210,7 @@ const SelectCollections = ({
             isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
             onClick={mutate}
           >
-            {type === 'folder' ? t('common:common.Confirm Move') : t('common:common.Confirm')}
+            {type === 'folder' ? t('common:confirm_move') : t('common:Confirm')}
           </Button>
         </ModalFooter>
       )}

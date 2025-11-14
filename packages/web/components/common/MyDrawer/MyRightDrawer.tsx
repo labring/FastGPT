@@ -7,7 +7,7 @@ import {
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
-  DrawerContentProps,
+  type DrawerContentProps,
   Flex,
   Image,
   Box
@@ -37,9 +37,9 @@ const MyRightDrawer = ({
       <DrawerOverlay />
       <DrawerContent
         maxW={maxW}
-        {...props}
         h={'94%'}
         mt={'2%'}
+        {...props}
         borderLeftRadius={'lg'}
         overflow={'hidden'}
       >

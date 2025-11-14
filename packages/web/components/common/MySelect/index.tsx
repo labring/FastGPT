@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useEffect,
   useImperativeHandle,
-  ForwardedRef,
+  type ForwardedRef,
   useState
 } from 'react';
 import {
@@ -15,7 +15,6 @@ import {
   useDisclosure,
   MenuButton,
   Box,
-  css,
   Flex,
   Input
 } from '@chakra-ui/react';
@@ -23,8 +22,9 @@ import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
-import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
+import EmptyTip from '../EmptyTip';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -32,13 +32,16 @@ import Avatar from '../Avatar';
  * list: 列表数据
  * isLoading: 是否加载中
  * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
+ * customOnOpen: 自定义打开回调
+ * customOnClose: 自定义关闭回调
  * */
 export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   value?: T;
+  valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
   list: {
-    alias?: string;
+    alias?: string | React.ReactNode;
     icon?: string;
     iconSize?: string;
     label: string | React.ReactNode;
@@ -49,18 +52,42 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  customOnOpen?: () => void;
+  customOnClose?: () => void;
+
+  isInvalid?: boolean;
+  isDisabled?: boolean;
+};
+
+export const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 1
+  }
 };
 
 const MySelect = <T = any,>(
   {
+    bg = '#fff',
     placeholder,
     value,
+    valueLabel,
     isSearch = false,
     width = '100%',
     list = [],
     onChange,
     isLoading = false,
     ScrollData,
+    customOnOpen,
+    customOnClose,
+    isInvalid,
+    isDisabled,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -72,20 +99,18 @@ const MySelect = <T = any,>(
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
 
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 1
-    }
-  };
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
+
+  const onOpen = () => {
+    defaultOnOpen();
+    customOnOpen?.();
+  };
+
+  const onClose = () => {
+    defaultOnClose();
+    customOnClose?.();
+  };
 
   const [search, setSearch] = useState('');
   const filterList = useMemo(() => {
@@ -105,6 +130,7 @@ const MySelect = <T = any,>(
     }
   }));
 
+  // Auto scroll
   useEffect(() => {
     if (isOpen && MenuListRef.current && SelectedItemRef.current) {
       const menu = MenuListRef.current;
@@ -117,69 +143,69 @@ const MySelect = <T = any,>(
     }
   }, [isSearch, isOpen]);
 
-  const { runAsync: onclickChange, loading } = useRequest2((val: T) => onChange?.(val));
+  const { runAsync: onClickChange, loading } = useRequest2((val: T) => onChange?.(val));
 
   const ListRender = useMemo(() => {
     return (
       <>
-        {filterList.map((item, i) => (
-          <Box key={i}>
-            <MenuItem
-              {...menuItemStyles}
-              {...(value === item.value
-                ? {
-                    ref: SelectedItemRef,
-                    color: 'primary.700',
-                    bg: 'myGray.100',
-                    fontWeight: '600'
+        {filterList.length > 0 ? (
+          filterList.map((item, i) => (
+            <Box key={i}>
+              <MenuItem
+                {...menuItemStyles}
+                {...(value === item.value
+                  ? {
+                      ref: SelectedItemRef,
+                      color: 'primary.700',
+                      bg: 'myGray.100'
+                    }
+                  : {
+                      color: 'myGray.900'
+                    })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (value !== item.value) {
+                    onClickChange(item.value);
                   }
-                : {
-                    color: 'myGray.900'
-                  })}
-              onClick={() => {
-                if (value !== item.value) {
-                  onclickChange(item.value);
-                }
-              }}
-              whiteSpace={'pre-wrap'}
-              fontSize={'sm'}
-              display={'block'}
-              mb={0.5}
-            >
-              <Flex alignItems={'center'}>
-                {item.icon && <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />}
-                {item.label}
-              </Flex>
-              {item.description && (
-                <Box color={'myGray.500'} fontSize={'xs'}>
-                  {item.description}
-                </Box>
-              )}
-            </MenuItem>
-            {item.showBorder && <MyDivider my={2} />}
-          </Box>
-        ))}
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                display={'block'}
+                mb={0.5}
+              >
+                <Flex alignItems={'center'}>
+                  {item.icon && (
+                    <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
+                  )}
+                  {item.label}
+                </Flex>
+                {item.description && (
+                  <Box color={'myGray.500'} fontSize={'xs'}>
+                    {item.description}
+                  </Box>
+                )}
+              </MenuItem>
+              {item.showBorder && <MyDivider my={2} />}
+            </Box>
+          ))
+        ) : (
+          <EmptyTip py={0} />
+        )}
       </>
     );
-  }, [filterList, value]);
+  }, [filterList, onClickChange, value]);
 
   const isSelecting = loading || isLoading;
 
   return (
-    <Box
-      css={css({
-        '& div': {
-          width: 'auto !important'
-        }
-      })}
-    >
+    <Box>
       <Menu
         autoSelect={false}
         isOpen={isOpen && !isSelecting}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
-        matchWidth
+        // matchWidth
       >
         <MenuButton
           as={Button}
@@ -191,55 +217,80 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
+          h={'auto'}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-word'}
+          transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+          isDisabled={isDisabled}
           _active={{
             transform: 'none'
           }}
-          {...(isOpen
-            ? {
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                borderColor: 'primary.600',
-                color: 'primary.700'
-              }
-            : {})}
+          bg={bg ? (isOpen ? '#fff' : bg) : '#fff'}
+          color={isOpen ? 'primary.700' : 'myGray.700'}
+          borderColor={isInvalid ? 'red.500' : isOpen ? 'primary.300' : 'myGray.200'}
+          boxShadow={
+            isOpen
+              ? isInvalid
+                ? '0px 0px 0px 2.4px rgba(255, 0, 0, 0.15)'
+                : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              : 'none'
+          }
+          _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
         >
-          <Flex alignItems={'center'}>
-            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
-            {isSearch && isOpen ? (
-              <Input
-                ref={SearchInputRef}
-                autoFocus
-                variant={'unstyled'}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  selectItem?.alias ||
-                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
-                }
-                size={'sm'}
-                w={'100%'}
-                color={'myGray.700'}
-                onBlur={() => {
-                  setTimeout(() => {
-                    SearchInputRef?.current?.focus();
-                  }, 0);
-                }}
-              />
-            ) : (
-              <>
-                {selectItem?.icon && (
-                  <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
-                )}
-                {selectItem?.alias || selectItem?.label || placeholder}
-              </>
-            )}
+          <Flex alignItems={'center'} justifyContent="space-between" w="100%">
+            <Flex alignItems={'center'}>
+              {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
+              {valueLabel ? (
+                <>{valueLabel}</>
+              ) : (
+                <>
+                  {isSearch && isOpen ? (
+                    <Input
+                      ref={SearchInputRef}
+                      autoFocus
+                      variant={'unstyled'}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={
+                        (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
+                        (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                      }
+                      size={'sm'}
+                      w={'100%'}
+                      color={'myGray.700'}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          SearchInputRef?.current?.focus();
+                        }, 0);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {selectItem?.icon && (
+                        <Avatar
+                          mr={2}
+                          src={selectItem.icon as any}
+                          w={selectItem.iconSize ?? '1rem'}
+                        />
+                      )}
+                      {
+                        <Box noOfLines={1}>
+                          {selectItem?.alias || selectItem?.label || placeholder}
+                        </Box>
+                      }
+                    </>
+                  )}
+                </>
+              )}
+            </Flex>
           </Flex>
         </MenuButton>
 
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          minW={(() => {
+          w={(() => {
             const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
@@ -248,7 +299,6 @@ const MySelect = <T = any,>(
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
-          w={'auto'}
           px={'6px'}
           py={'6px'}
           border={'1px solid #fff'}
@@ -256,8 +306,11 @@ const MySelect = <T = any,>(
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
           zIndex={99}
-          maxH={'40vh'}
+          maxH={'45vh'}
           overflowY={'auto'}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
         >
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>

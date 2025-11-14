@@ -9,8 +9,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
 import { JS_TEMPLATE } from './constants';
@@ -20,14 +19,14 @@ export const CodeNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.code,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.code,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/codeRun',
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
-  courseUrl: '/docs/guide/workbench/workflow/sandbox/',
-  version: '482',
+  catchError: false,
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/sandbox/',
   inputs: [
     {
       ...Input_Template_DynamicInput,
@@ -68,12 +67,14 @@ export const CodeNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.codeType,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
       value: 'js'
     },
     {
       key: NodeInputKeyEnum.code,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
       value: JS_TEMPLATE
     }
   ],
@@ -90,14 +91,6 @@ export const CodeNode: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.static
     },
     {
-      id: NodeOutputKeyEnum.error,
-      key: NodeOutputKeyEnum.error,
-      label: i18nT('workflow:execution_error'),
-      description: i18nT('workflow:error_info_returns_empty_on_success'),
-      valueType: WorkflowIOValueTypeEnum.object,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
       id: 'qLUQfhG0ILRX',
       type: FlowNodeOutputTypeEnum.dynamic,
       key: 'result',
@@ -110,6 +103,13 @@ export const CodeNode: FlowNodeTemplateType = {
       key: 'data2',
       valueType: WorkflowIOValueTypeEnum.string,
       label: 'data2'
+    },
+    {
+      id: NodeOutputKeyEnum.error,
+      key: NodeOutputKeyEnum.error,
+      label: i18nT('workflow:error_text'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.error
     }
   ]
 };

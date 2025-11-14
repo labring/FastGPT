@@ -9,7 +9,7 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -17,7 +17,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetsContext } from '../../../pages/dataset/list/context';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
   deleteDatasetCollaborators,
@@ -30,13 +30,13 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
-  const { setLoading } = useSystemStore();
+  const { setLoading, getModelProvider } = useSystemStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {
@@ -48,13 +48,14 @@ function List() {
     onDelDataset,
     onUpdateDataset,
     myDatasets,
-    folderDetail
+    folderDetail,
+    setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
-  const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
+  const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const parentDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === parentId),
+    () => myDatasets.find((item) => item._id === parentId),
     [parentId, myDatasets]
   );
 
@@ -81,8 +82,8 @@ function List() {
   });
 
   const editPerDataset = useMemo(
-    () => (editPerDatasetIndex !== undefined ? myDatasets[editPerDatasetIndex] : undefined),
-    [editPerDatasetIndex, myDatasets]
+    () => myDatasets.find((item) => item._id === editPerDatasetId),
+    [editPerDatasetId, myDatasets]
   );
 
   const { mutate: exportDataset } = useRequest({
@@ -160,8 +161,8 @@ function List() {
                   <Flex flexDirection={'column'} alignItems={'center'}>
                     <Box fontSize={'xs'} color={'myGray.500'}>
                       {dataset.type === DatasetTypeEnum.folder
-                        ? t('common:common.folder.Open folder')
-                        : t('common:common.folder.open_dataset')}
+                        ? t('common:open_folder')
+                        : t('common:folder.open_dataset')}
                     </Box>
                   </Flex>
                 }
@@ -201,6 +202,7 @@ function List() {
                   }}
                   onClick={() => {
                     if (dataset.type === DatasetTypeEnum.folder) {
+                      setSearchKey('');
                       router.push({
                         pathname: '/dataset/list',
                         query: {
@@ -217,14 +219,14 @@ function List() {
                     }
                   }}
                 >
-                  <HStack>
-                    <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} />
-                    <Box flex={'1 0 0'} className="textEllipsis3" color={'myGray.900'}>
+                  <Flex w="100%">
+                    <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
+                    <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} ml={2}>
                       {dataset.name}
                     </Box>
 
-                    <Box mr={'-1.25rem'}>
-                      {dataset.type !== DatasetTypeEnum.folder && (
+                    {dataset.type !== DatasetTypeEnum.folder && (
+                      <Box flexShrink={0} mr={-5}>
                         <SideTag
                           type={dataset.type}
                           py={0.5}
@@ -232,15 +234,15 @@ function List() {
                           borderLeftRadius={'sm'}
                           borderRightRadius={0}
                         />
-                      )}
-                    </Box>
-                  </HStack>
+                      </Box>
+                    )}
+                  </Flex>
 
                   <Box
                     flex={1}
                     className={'textEllipsis3'}
+                    whiteSpace={'pre-wrap'}
                     py={3}
-                    wordBreak={'break-all'}
                     fontSize={'xs'}
                     color={'myGray.500'}
                   >
@@ -344,7 +346,7 @@ function List() {
                                         {
                                           icon: 'key',
                                           label: t('common:permission.Permission'),
-                                          onClick: () => setEditPerDatasetIndex(index)
+                                          onClick: () => setEditPerDatasetId(dataset._id)
                                         }
                                       ]
                                     : [])
@@ -371,7 +373,7 @@ function List() {
                                       children: [
                                         {
                                           icon: 'delete',
-                                          label: t('common:common.Delete'),
+                                          label: t('common:Delete'),
                                           type: 'danger' as 'danger',
                                           onClick: () => onClickDeleteDataset(dataset._id)
                                         }
@@ -432,9 +434,10 @@ function List() {
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
           managePer={{
+            defaultRole: ReadRoleVal,
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
-            permissionList: DatasetPermissionList,
+            roleList: DatasetRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateDatasetCollaborators({
                 ...props,
@@ -447,7 +450,7 @@ function List() {
               }),
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
-          onClose={() => setEditPerDatasetIndex(undefined)}
+          onClose={() => setEditPerDatasetId(undefined)}
         />
       )}
       <ConfirmModal />

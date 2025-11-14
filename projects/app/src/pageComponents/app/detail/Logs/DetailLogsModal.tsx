@@ -20,6 +20,7 @@ import ChatRecordContextProvider, {
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -38,13 +39,13 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const { data: chat, loading: isFetching } = useRequest2(
+  const { data: chat } = useRequest2(
     async () => {
       const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
       res.userAvatar = HUMAN_ICON;
@@ -68,12 +69,11 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
-  const isPlugin = chat?.app.type === AppTypeEnum.plugin;
+  const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   return (
     <>
       <MyBox
-        isLoading={isFetching}
         display={'flex'}
         flexDirection={'column'}
         zIndex={3}
@@ -82,7 +82,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         right={0}
         h={['100%', '96%']}
         w={'100%'}
-        maxW={quoteData ? ['100%', '1080px'] : ['100%', '600px']}
+        maxW={datasetCiteData ? ['100%', '1080px'] : ['100%', '600px']}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -101,11 +101,11 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}
@@ -134,6 +134,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
                   totalRecordsCount={totalRecordsCount}
                   title={title || ''}
                   chatModels={chatModels}
+                  chatId={chatId}
                 />
                 <Box flex={1} />
               </>
@@ -165,12 +166,12 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
                 feedbackType={'admin'}
                 showMarkIcon
                 showVoiceIcon={false}
-                chatType="log"
+                chatType={ChatTypeEnum.log}
               />
             )}
           </Box>
 
-          {quoteData && (
+          {datasetCiteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -184,9 +185,9 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={quoteData.rawSearch}
-                metadata={quoteData.metadata}
-                onClose={() => setQuoteData(undefined)}
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={() => setCiteModalData(undefined)}
               />
             </Box>
           )}
@@ -211,9 +212,9 @@ const Render = (props: Props) => {
 
   return (
     <ChatItemContextProvider
-      showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

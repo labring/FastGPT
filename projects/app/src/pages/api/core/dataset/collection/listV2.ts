@@ -5,16 +5,16 @@ import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 async function handler(
   req: NextApiRequest
@@ -28,7 +28,7 @@ async function handler(
     simple = false
   } = req.body as GetDatasetCollectionsProps;
   let { pageSize, offset } = parsePaginationRequest(req);
-  pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 100);
   searchText = searchText?.replace(/'/g, '');
 
   // auth dataset and get my role
@@ -43,13 +43,14 @@ async function handler(
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
-    parentId: parentId ? new Types.ObjectId(parentId) : null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {
-          name: new RegExp(searchText, 'i')
+          name: new RegExp(`${replaceRegChars(searchText)}`, 'i')
         }
-      : {}),
+      : {
+          parentId: parentId ? new Types.ObjectId(parentId) : null
+        }),
     ...(filterTags.length ? { tags: { $in: filterTags } } : {})
   };
 
@@ -93,6 +94,7 @@ async function handler(
           dataAmount: 0,
           indexAmount: 0,
           trainingAmount: 0,
+          hasError: false,
           permission
         }))
       ),
@@ -109,26 +111,27 @@ async function handler(
       .lean(),
     MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
   ]);
-  const collectionIds = collections.map((item) => item._id);
+  const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
 
   // Compute data amount
   const [trainingAmount, dataAmount]: [
-    { _id: string; count: number }[],
+    { _id: string; count: number; hasError: boolean }[],
     { _id: string; count: number }[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [
         {
           $match: {
-            teamId: match.teamId,
-            datasetId: match.datasetId,
+            teamId: new Types.ObjectId(teamId),
+            datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds }
           }
         },
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
           }
         }
       ],
@@ -140,8 +143,8 @@ async function handler(
       [
         {
           $match: {
-            teamId: match.teamId,
-            datasetId: match.datasetId,
+            teamId: new Types.ObjectId(teamId),
+            datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds }
           }
         },
@@ -168,13 +171,10 @@ async function handler(
       trainingAmount:
         trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
+      hasError: trainingAmount.find((amount) => String(amount._id) === String(item._id))?.hasError,
       permission
     }))
   );
-
-  if (list.some((item) => item.trainingAmount > 0)) {
-    startTrainingQueue();
-  }
 
   // count collections
   return {

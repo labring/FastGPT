@@ -4,13 +4,20 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Tag from '@fastgpt/web/components/common/Tag';
 import React from 'react';
 
-function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 'tag' }) {
-  return (
+function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' | 'tag' }) {
+  return orgs?.length ? (
     <MyTooltip
       label={
         <VStack gap="1" alignItems={'start'}>
           {orgs.map((org, index) => (
-            <Box key={index} fontSize="sm" fontWeight={400} color="myGray.500">
+            <Box
+              key={index}
+              fontSize="sm"
+              fontWeight={400}
+              color="myGray.500"
+              maxW={'300px'}
+              className="textEllipsis"
+            >
               {org.slice(1)}
             </Box>
           ))}
@@ -19,10 +26,10 @@ function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 
     >
       {type === 'simple' ? (
         <Box
-          className="textEllipsis"
+          noOfLines={1}
           fontSize="xs"
           fontWeight={400}
-          w="full"
+          maxW={'200px'}
           color="myGray.400"
           whiteSpace={'nowrap'}
         >
@@ -39,6 +46,10 @@ function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 
         </Flex>
       )}
     </MyTooltip>
+  ) : (
+    <Box fontSize="xs" fontWeight={400} w="full" color="myGray.400" whiteSpace={'nowrap'}>
+      -
+    </Box>
   );
 }
 

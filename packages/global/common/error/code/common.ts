@@ -1,10 +1,11 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { ErrType } from '../errorCode';
+import { type ErrType } from '../errorCode';
 
 /* dataset: 507000 */
 const startCode = 507000;
 export enum CommonErrEnum {
   invalidParams = 'invalidParams',
+  invalidResource = 'invalidResource',
   fileNotFound = 'fileNotFound',
   unAuthFile = 'unAuthFile',
   missingParams = 'missingParams',
@@ -12,8 +13,12 @@ export enum CommonErrEnum {
 }
 const datasetErr = [
   {
-    statusText: CommonErrEnum.fileNotFound,
+    statusText: CommonErrEnum.invalidParams,
     message: i18nT('common:error.invalid_params')
+  },
+  {
+    statusText: CommonErrEnum.invalidResource,
+    message: i18nT('common:error_invalid_resource')
   },
   {
     statusText: CommonErrEnum.fileNotFound,

@@ -1,9 +1,0 @@
-<toc>
-    <!-- change -->
-    <div class="fw-bold text-uppercase mb-2">{{ .Title }}</div>
-    {{ if eq .Site.Params.docs.scrollSpy true -}}
-        {{ .TableOfContents | replaceRE "<nav id=\"TableOfContents\">" "<nav id=\"toc\">" | safeHTML }}
-    {{ else -}}
-        {{ .TableOfContents }}
-    {{ end -}}
-</toc>

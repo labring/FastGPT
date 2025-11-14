@@ -101,7 +101,7 @@ const CustomPromptEditor = ({
             px={2}
             onClick={() => setValue(defaultPrompt)}
           >
-            {t('common:common.Reset')}
+            {t('common:Reset')}
           </Button>
         </HStack>
 
@@ -126,6 +126,7 @@ const CustomPromptEditor = ({
             border="none"
             p={0}
             mb={2}
+            rounded={'none'}
             _focus={{
               border: 'none',
               boxShadow: 'none'
@@ -137,17 +138,17 @@ const CustomPromptEditor = ({
       <ModalFooter>
         <Flex gap={3}>
           <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
           <Button
             fontWeight={'medium'}
             onClick={() => {
-              onChange(value.replace(defaultValue, ''));
+              onChange(value.replace(defaultPrompt, ''));
               onClose();
             }}
             w={20}
           >
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </Flex>
       </ModalFooter>

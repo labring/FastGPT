@@ -3,7 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
-import AISettingModal, { AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
+import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -99,7 +99,6 @@ const SettingLLMModel = ({
         <AISettingModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            console.log(e);
             onChange(e);
             onCloseAIChatSetting();
           }}

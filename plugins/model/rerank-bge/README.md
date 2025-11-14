@@ -22,9 +22,9 @@
 
 3 个模型代码分别为：
 
-1. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-base)
-2. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-large)
-3. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-v2-m3](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-v2-m3)
+1. [https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-base)
+2. [https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-large)
+3. [https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-v2-m3](https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-v2-m3)
 
 ### 3. 安装依赖
 
@@ -111,4 +111,4 @@ services:
 
 ## 接入 FastGPT
 
-参考 [ReRank模型接入](https://doc.tryfastgpt.ai/docs/development/configuration/#rerank-接入)
+参考 [ReRank模型接入](https://doc.fastgpt.io/docs/introduction/development/configuration/#rerank-接入)

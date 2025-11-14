@@ -1,7 +1,7 @@
-import { SourceMemberType } from '@fastgpt/global/support/user/type';
+import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
 import { MongoTeamMember } from './team/teamMemberSchema';
-import { ClientSession } from '../../common/mongo';
+import { type ClientSession } from '../../common/mongo';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
@@ -104,8 +104,11 @@ export async function addSourceMember<T extends { tmbId: string }>({
       const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
       if (!tmb) return;
 
+      // @ts-ignore
+      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
+
       return {
-        ...item,
+        ...formatItem,
         sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status }
       };
     })

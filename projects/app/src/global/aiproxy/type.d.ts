@@ -1,4 +1,4 @@
-import { ChannelStatusEnum } from './constants';
+import type { ChannelStatusEnum } from './constants';
 
 export type ChannelInfoType = {
   model_mapping: Record<string, any>;
@@ -30,6 +30,13 @@ export type CreateChannelProps = {
 };
 
 // Log
+export type ChannelLogUsageType = {
+  cache_creation_tokens?: number;
+  cached_tokens?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+};
 export type ChannelLogListItemType = {
   token_name: string;
   model: string;
@@ -40,8 +47,25 @@ export type ChannelLogListItemType = {
   created_at: number;
   request_at: number;
   code: number;
-  prompt_tokens: number;
-  completion_tokens: number;
+  usage?: ChannelLogUsageType;
   endpoint: string;
   content?: string;
+  retry_times?: number;
+  ttfb_milliseconds?: number;
+  ip: string;
+};
+
+export type DashboardDataItemType = {
+  channel_id?: number;
+  model: string;
+  request_count?: number;
+  used_amount?: number;
+  exception_count?: number;
+  total_time_milliseconds?: number;
+  total_ttfb_milliseconds?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  max_rpm?: number;
+  max_tpm?: number;
 };

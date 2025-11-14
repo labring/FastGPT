@@ -1,6 +1,6 @@
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -8,23 +8,14 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
-export const emptyTemplates: Record<
-  AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow,
-  {
-    name: string;
-    avatar: string;
-    nodes: AppSchema['modules'];
-    edges: AppSchema['edges'];
-    chatConfig: AppSchema['chatConfig'];
-  }
-> = {
+export const emptyTemplates = {
   [AppTypeEnum.simple]: {
-    avatar: 'core/workflow/template/aiChat',
+    avatar: 'core/app/type/simpleFill',
     name: i18nT('app:template.simple_robot'),
     nodes: [
       {
@@ -143,8 +134,7 @@ export const emptyTemplates: Record<
               FlowNodeInputTypeEnum.reference
             ],
             label: 'core.module.input.label.aiModel',
-            valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-4o-mini'
+            valueType: WorkflowIOValueTypeEnum.string
           },
           {
             key: 'temperature',
@@ -364,7 +354,7 @@ export const emptyTemplates: Record<
     edges: [],
     chatConfig: {}
   },
-  [AppTypeEnum.plugin]: {
+  [AppTypeEnum.workflowTool]: {
     avatar: 'core/app/type/pluginFill',
     name: i18nT('common:core.module.template.empty_plugin'),
     nodes: [

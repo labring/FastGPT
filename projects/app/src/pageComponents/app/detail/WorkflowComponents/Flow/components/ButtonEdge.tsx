@@ -1,20 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
+import { BezierEdge, getBezierPath, EdgeLabelRenderer, type EdgeProps } from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { useThrottleEffect } from 'ahooks';
-import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../context/workflowInitContext';
+import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
-  const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);
+  const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
+  const { onEdgesChange, getNodeById, foldedNodesMap } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
+  const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
+  const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
   const {
     id,
@@ -33,19 +38,22 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   // If parentNode is folded, the edge will not be displayed
-  const parentNode = useMemo(() => {
-    for (const node of nodeList) {
-      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
-        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
-      }
+  const isFolded = useMemo(() => {
+    const sourceNode = getNodeById(source);
+    const targetNode = getNodeById(target);
+    if (sourceNode?.parentNodeId) {
+      return foldedNodesMap[sourceNode.parentNodeId];
     }
-    return undefined;
-  }, [nodeList, source, target]);
+    if (targetNode?.parentNodeId) {
+      return foldedNodesMap[targetNode.parentNodeId];
+    }
+    return false;
+  }, [foldedNodesMap, getNodeById, source, target]);
 
-  const defaultZIndex = useMemo(
-    () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 2002 : 0),
-    [nodeList, source]
-  );
+  const defaultZIndex = useMemo(() => {
+    const node = getNodeById(source, (node) => !!node.parentNodeId);
+    return node ? 2002 : 0;
+  }, [getNodeById, source]);
 
   const onDelConnect = useCallback(
     (id: string) => {
@@ -63,12 +71,11 @@ const ButtonEdge = (props: EdgeProps) => {
   const [highlightEdge, setHighlightEdge] = useState(false);
   useThrottleEffect(
     () => {
-      const connectNode = nodes.find((node) => {
-        return node.selected && (node.id === props.source || node.id === props.target);
-      });
-      setHighlightEdge(!!connectNode || !!selected);
+      const isSourceSelected = selectedNodesMap[props.source];
+      const isTargetSelected = selectedNodesMap[props.target];
+      setHighlightEdge(isSourceSelected || isTargetSelected || !!selected);
     },
-    [nodes, selected, props.source, props.target],
+    [selectedNodesMap, props.source, props.target, selected],
     {
       wait: 100
     }
@@ -91,24 +98,6 @@ const ButtonEdge = (props: EdgeProps) => {
       return {
         newTargetX: targetX - 3,
         newTargetY: targetY
-      };
-    }
-    if (targetPosition === 'right') {
-      return {
-        newTargetX: targetX + 3,
-        newTargetY: targetY
-      };
-    }
-    if (targetPosition === 'bottom') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY + 3
-      };
-    }
-    if (targetPosition === 'top') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY - 3
       };
     }
     return {
@@ -150,9 +139,10 @@ const ButtonEdge = (props: EdgeProps) => {
         return `translate(-50%, -90%) translate(${newTargetX}px,${newTargetY}px) rotate(90deg)`;
       }
     })();
+
     return (
       <EdgeLabelRenderer>
-        <Box hidden={parentNode?.isFolded}>
+        <Box hidden={isFolded}>
           <Flex
             display={isHover || highlightEdge ? 'flex' : 'none'}
             alignItems={'center'}
@@ -160,8 +150,8 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'18px'}
-            h={'18px'}
+            w={'26px'}
+            h={'26px'}
             bg={'white'}
             borderRadius={'18px'}
             cursor={'pointer'}
@@ -177,8 +167,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '12px' : '10px'}
-              h={highlightEdge ? '12px' : '10px'}
+              w={highlightEdge ? '14px' : '12px'}
+              h={highlightEdge ? '14px' : '12px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
@@ -192,13 +182,13 @@ const ButtonEdge = (props: EdgeProps) => {
       </EdgeLabelRenderer>
     );
   }, [
-    parentNode?.isFolded,
+    isFolded,
     isHover,
     highlightEdge,
     labelX,
     labelY,
-    isToolEdge,
     defaultZIndex,
+    isToolEdge,
     edgeColor,
     targetPosition,
     newTargetX,
@@ -238,7 +228,7 @@ const ButtonEdge = (props: EdgeProps) => {
         style={{
           ...edgeStyle,
           stroke: edgeColor,
-          display: parentNode?.isFolded ? 'none' : 'block'
+          display: isFolded ? 'none' : 'block'
         }}
       />
     );
@@ -252,7 +242,7 @@ const ButtonEdge = (props: EdgeProps) => {
     target,
     style,
     highlightEdge,
-    parentNode?.isFolded
+    isFolded
   ]);
 
   return (

@@ -10,6 +10,7 @@ let jieba: Jieba | undefined;
 })();
 
 const stopWords = new Set([
+  '\n',
   '--',
   '?',
   '“',
@@ -1519,8 +1520,7 @@ const stopWords = new Set([
 ]);
 
 export async function jiebaSplit({ text }: { text: string }) {
-  text = text.replace(/[#*`_~>[\](){}|]/g, '').replace(/\S*https?\S*/gi, '');
-
+  text = text.replace(/[#*`_~>[\](){}|]|\S*https?\S*/g, '').trim();
   const tokens = (await jieba!.cutAsync(text, true)) as string[];
 
   return (

@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -11,16 +10,17 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
-import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -40,34 +40,8 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVlmModelList } =
-    useSystemStore();
+  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
   const { isPc } = useSystem();
-
-  const datasetTypeMap = useMemo(() => {
-    return {
-      [DatasetTypeEnum.dataset]: {
-        name: t('dataset:common_dataset'),
-        icon: 'core/dataset/commonDatasetColor'
-      },
-      [DatasetTypeEnum.apiDataset]: {
-        name: t('dataset:api_file'),
-        icon: 'core/dataset/externalDatasetColor'
-      },
-      [DatasetTypeEnum.websiteDataset]: {
-        name: t('dataset:website_dataset'),
-        icon: 'core/dataset/websiteDatasetColor'
-      },
-      [DatasetTypeEnum.feishu]: {
-        name: t('dataset:feishu_dataset'),
-        icon: 'core/dataset/feishuDatasetColor'
-      },
-      [DatasetTypeEnum.yuque]: {
-        name: t('dataset:yuque_dataset'),
-        icon: 'core/dataset/yuqueDatasetColor'
-      }
-    };
-  }, [t]);
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
@@ -77,7 +51,7 @@ const CreateModal = ({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
-      avatar: datasetTypeMap[type].icon,
+      avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
       vectorModel:
@@ -93,21 +67,19 @@ const CreateModal = ({
   const agentModel = watch('agentModel');
   const vlmModel = watch('vlmModel');
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess: (avatar: string) => {
+        setValue('avatar', avatar);
+      }
+    });
 
   /* create a new kb and router to it */
-  const { run: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest2(
     async (data: CreateDatasetParams) => await postCreateDataset(data),
     {
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed'),
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed'),
       onSuccess(id) {
         router.push(`/dataset/detail?datasetId=${id}`);
       }
@@ -122,10 +94,10 @@ const CreateModal = ({
             w={'20px'}
             h={'20px'}
             borderRadius={'xs'}
-            src={datasetTypeMap[type].icon}
+            src={DatasetTypeMap[type].avatar}
             pr={'10px'}
           />
-          {t('common:core.dataset.Create dataset', { name: datasetTypeMap[type].name })}
+          {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
         </Flex>
       }
       isOpen
@@ -137,16 +109,16 @@ const CreateModal = ({
         <Box>
           <Flex justify={'space-between'}>
             <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
-              {t('common:common.Set Name')}
+              {t('common:input_name')}
             </Box>
-            {datasetTypeCourseMap[type] && (
+            {DatasetTypeMap[type]?.courseUrl && (
               <Flex
                 as={'span'}
                 alignItems={'center'}
                 color={'primary.600'}
                 fontSize={'sm'}
                 cursor={'pointer'}
-                onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
+                onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
               >
                 <MyIcon name={'book'} w={4} mr={0.5} />
                 {t('common:Instructions')}
@@ -154,7 +126,7 @@ const CreateModal = ({
             )}
           </Flex>
           <Flex mt={'12px'} alignItems={'center'}>
-            <MyTooltip label={t('common:common.avatar.Select Avatar')}>
+            <MyTooltip label={t('common:click_select_avatar')}>
               <Avatar
                 flexShrink={0}
                 src={avatar}
@@ -162,7 +134,7 @@ const CreateModal = ({
                 h={['28px', '32px']}
                 cursor={'pointer'}
                 borderRadius={'md'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
@@ -170,7 +142,7 @@ const CreateModal = ({
               flex={1}
               autoFocus
               bg={'myWhite.600'}
-              placeholder={t('common:common.Name')}
+              placeholder={t('common:Name')}
               maxLength={30}
               {...register('name', {
                 required: true
@@ -281,24 +253,16 @@ const CreateModal = ({
 
       <ModalFooter px={9}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common:common.Confirm Create')}
+          {t('common:comfirn_create')}
         </Button>
       </ModalFooter>
 
       <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };

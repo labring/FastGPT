@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -12,22 +12,23 @@ import {
 } from '../../../constants';
 import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { Output_Template_Error_Message } from '../../output';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.contentExtract,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/extractJson',
   name: i18nT('workflow:text_content_extraction'),
   intro: i18nT('workflow:intro_text_content_extraction'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/content_extract/',
-  version: '481',
+  catchError: false,
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/content_extract/',
+  version: '4.9.2',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -77,6 +78,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       description: i18nT('workflow:complete_extraction_result_description'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

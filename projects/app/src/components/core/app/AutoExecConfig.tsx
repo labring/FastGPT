@@ -1,6 +1,6 @@
 import { Box, Button, Flex, ModalBody, Switch, Textarea, useDisclosure } from '@chakra-ui/react';
 import { defaultAutoExecuteConfig } from '@fastgpt/global/core/app/constants';
-import { AppAutoExecuteConfigType } from '@fastgpt/global/core/app/type';
+import { type AppAutoExecuteConfigType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';

@@ -1,7 +1,6 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../mongo';
-import { MongoImageSchemaType } from '@fastgpt/global/common/file/image/type.d';
-const { Schema } = connectionMongo;
+import { Schema, getMongoModel } from '../../mongo';
+import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type.d';
 
 const ImageSchema = new Schema({
   teamId: {
@@ -24,6 +23,12 @@ try {
   ImageSchema.index({ type: 1 });
   // delete related img
   ImageSchema.index({ teamId: 1, 'metadata.relatedId': 1 });
+
+  // Cron clear invalid img
+  ImageSchema.index(
+    { createTime: 1 },
+    { partialFilterExpression: { 'metadata.relatedId': { $exists: true } } }
+  );
 } catch (error) {
   console.log(error);
 }

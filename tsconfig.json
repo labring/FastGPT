@@ -16,10 +16,9 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["projects/app/src/*"],
       "@fastgpt/*": ["packages/*"],
       "@test": ["test/*"]
     }
   },
-  "exclude": ["**/node_modules"]
+  "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]
 }

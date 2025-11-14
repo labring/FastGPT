@@ -1,11 +1,15 @@
 export enum TimerIdEnum {
-  checkInValidDatasetFiles = 'checkInValidDatasetFiles',
+  checkExpiredFiles = 'checkExpiredFiles',
   checkInvalidDatasetData = 'checkInvalidDatasetData',
   checkInvalidVector = 'checkInvalidVector',
   clearExpiredSubPlan = 'clearExpiredSubPlan',
   updateStandardPlan = 'updateStandardPlan',
   scheduleTriggerApp = 'scheduleTriggerApp',
-  notification = 'notification'
+  notification = 'notification',
+
+  clearExpiredRawTextBuffer = 'clearExpiredRawTextBuffer',
+  clearExpiredDatasetImage = 'clearExpiredDatasetImage',
+  clearExpiredMinioFiles = 'clearExpiredMinioFiles'
 }
 
 export enum LockNotificationEnum {

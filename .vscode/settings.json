@@ -3,6 +3,7 @@
     "editor.mouseWheelZoom": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "prettier.prettierPath": "node_modules/prettier",
+    "typescript.preferences.includePackageJsonAutoImports": "on",
     "typescript.tsdk": "node_modules/typescript/lib",
     "i18n-ally.localesPaths": [
         "packages/web/i18n",
@@ -21,11 +22,16 @@
     "i18n-ally.namespace": true,
     "i18n-ally.pathMatcher": "{locale}/{namespaces}.json",
     "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key",
-    "i18n-ally.translate.engines": ["google"],
+    "i18n-ally.translate.engines": ["deepl","google"],
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
+    "mdx.server.enable": true,
+    "markdown.copyFiles.overwriteBehavior": "nameIncrementally",
     "markdown.copyFiles.destination": {
-        "/docSite/content/**/*": "${documentWorkspaceFolder}/docSite/assets/imgs/"
+        "/document/content/docs/**/*": "${documentWorkspaceFolder}/document/public/imgs/"
+    },
+    "files.associations": {
+        "*.mdx": "markdown"
     }
 }

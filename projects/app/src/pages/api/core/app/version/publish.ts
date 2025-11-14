@@ -6,32 +6,76 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
-import { PostPublishAppProps } from '@/global/core/app/api';
+import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
 
-  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
-
-  const { nodes: formatNodes } = beforeUpdateAppFormat({
-    nodes,
-    isPlugin: app.type === AppTypeEnum.plugin
+  const { app, tmbId, teamId } = await authApp({
+    appId,
+    req,
+    per: WritePermissionVal,
+    authToken: true
   });
 
-  await rewriteAppWorkflowToSimple(formatNodes);
+  beforeUpdateAppFormat({
+    nodes
+  });
 
   if (autoSave) {
-    return MongoApp.findByIdAndUpdate(appId, {
-      modules: formatNodes,
-      edges,
-      chatConfig,
-      updateTime: new Date()
+    await mongoSessionRun(async (session) => {
+      await MongoAppVersion.updateOne(
+        {
+          appId,
+          isAutoSave: true
+        },
+        {
+          tmbId,
+          appId,
+          nodes,
+          edges,
+          chatConfig,
+          versionName: i18nT('app:auto_save'),
+          time: new Date()
+        },
+
+        { session, upsert: true }
+      );
+
+      await MongoApp.updateOne(
+        { _id: appId },
+        {
+          modules: nodes,
+          edges,
+          chatConfig,
+          updateTime: new Date()
+        },
+        {
+          session
+        }
+      );
     });
+
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: i18nT('account_team:update'),
+        appId,
+        appType: getI18nAppType(app.type)
+      }
+    });
+
+    return;
   }
 
   await mongoSessionRun(async (session) => {
@@ -40,7 +84,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       [
         {
           appId,
-          nodes: formatNodes,
+          nodes: nodes,
           edges,
           chatConfig,
           isPublish,
@@ -52,10 +96,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     );
 
     // update app
-    await MongoApp.findByIdAndUpdate(
-      appId,
+    await MongoApp.updateOne(
+      { _id: appId },
       {
-        modules: formatNodes,
+        modules: nodes,
         edges,
         chatConfig,
         updateTime: new Date(),
@@ -79,6 +123,30 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
       }
     );
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_PUBLISH_APP,
+      params: {
+        appName: app.name,
+        operationName: isPublish
+          ? i18nT('account_team:save_and_publish')
+          : i18nT('account_team:update'),
+        appId,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb'
+    }
+  }
+};

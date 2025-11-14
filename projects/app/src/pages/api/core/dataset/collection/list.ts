@@ -6,7 +6,6 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -24,7 +23,7 @@ async function handler(req: NextApiRequest) {
     simple = false
   } = req.body as any;
   searchText = searchText?.replace(/'/g, '');
-  pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 100);
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({
@@ -38,13 +37,14 @@ async function handler(req: NextApiRequest) {
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
-    parentId: parentId ? new Types.ObjectId(parentId) : null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {
           name: new RegExp(searchText, 'i')
         }
-      : {}),
+      : {
+          parentId: parentId ? new Types.ObjectId(parentId) : null
+        }),
     ...(filterTags.length ? { tags: { $in: filterTags } } : {})
   };
 
@@ -175,10 +175,6 @@ async function handler(req: NextApiRequest) {
       permission
     }))
   );
-
-  if (data.find((item) => item.trainingAmount > 0)) {
-    startTrainingQueue();
-  }
 
   // count collections
   return {

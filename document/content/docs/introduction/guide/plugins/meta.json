@@ -1,0 +1,14 @@
+{
+  "title": "系统插件",
+  "description": "介绍如何使用和提交系统插件，以及各插件的填写说明",
+  "pages": [
+    "dev_system_tool",
+    "how_to_submit_system_plugin",
+    "upload_system_tool",
+    "searxng_plugin_guide",
+    "google_search_plugin_guide",
+    "bing_search_plugin",
+    "doc2x_plugin_guide",
+    "deepseek_plugin_guide"
+  ]
+}

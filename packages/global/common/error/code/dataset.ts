@@ -1,5 +1,5 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { ErrType } from '../errorCode';
+import { type ErrType } from '../errorCode';
 
 /* dataset: 501000 */
 export enum DatasetErrEnum {
@@ -14,7 +14,8 @@ export enum DatasetErrEnum {
   invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel',
   notSupportSync = 'notSupportSync',
   sameApiCollection = 'sameApiCollection',
-  noApiServer = 'noApiServer'
+  noApiServer = 'noApiServer',
+  canNotEditAdminPermission = 'canNotEditAdminPermission'
 }
 const datasetErr = [
   {
@@ -27,7 +28,7 @@ const datasetErr = [
   },
   {
     statusText: DatasetErrEnum.unExist,
-    message: 'core.dataset.error.unExistDataset'
+    message: i18nT('common:core.dataset.error.unExistDataset')
   },
   {
     statusText: DatasetErrEnum.unExistCollection,
@@ -60,6 +61,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
     message: 'core.dataset.error.invalidVectorModelOrQAModel'
+  },
+  {
+    statusText: DatasetErrEnum.canNotEditAdminPermission,
+    message: 'core.dataset.error.canNotEditAdminPermission'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

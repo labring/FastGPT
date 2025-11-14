@@ -1,4 +1,4 @@
-import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export const getPreviewSourceReadType = (previewSource: ImportSourceItemType) => {

@@ -1,0 +1,5 @@
+{
+  "title": "基础教程",
+  "description": "FastGPT 基础教程",
+  "pages": ["quick-start", "ai_settings", "chat_input_guide", "fileInput"]
+}

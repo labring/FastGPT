@@ -1,7 +1,7 @@
-import { TeamPermission } from '../permission/user/controller';
-import { UserStatusEnum } from './constant';
-import { TeamMemberStatusEnum } from './team/constant';
-import { TeamTmbItemType } from './team/type';
+import type { TeamPermission } from '../permission/user/controller';
+import type { UserStatusEnum } from './constant';
+import type { TeamMemberStatusEnum } from './team/constant';
+import type { TeamTmbItemType } from './team/type';
 
 export type UserModelSchema = {
   _id: string;
@@ -14,6 +14,7 @@ export type UserModelSchema = {
   timezone: string;
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
+  passwordUpdateTime?: Date;
   fastgpt_sem?: {
     keyword: string;
   };

@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum } from '../node/constant';
+import type { FlowNodeTypeEnum } from '../node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -6,10 +6,10 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
 import { UserModelSchema } from '../../../support/user/type';
+import type { ChatHistoryItemResType } from '../../chat/type';
 import {
-  ChatHistoryItemResType,
   ChatItemType,
   ChatItemValueItemType,
   ToolRunResponseItemType,
@@ -17,12 +17,48 @@ import {
 } from '../../chat/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
-import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import { AppDetailType, AppSchema } from '../../app/type';
-import { ParentIdType } from 'common/parentFolder/type';
-import { AppTypeEnum } from 'core/app/constants';
+import type { AppDetailType, AppSchema, HttpToolConfigType } from '../../app/type';
+import type { McpToolConfigType } from '../../app/tool/mcpTool/type';
+import type { ParentIdType } from '../../../common/parentFolder/type';
+import { AppTypeEnum } from '../../app/constants';
+import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { StoreSecretValueType } from '../../../common/secret/type';
+import type { PluginStatusType } from '../../plugin/type';
+
+export type NodeToolConfigType = {
+  mcpToolSet?: {
+    toolId: string; // ObjectId of the MCP App
+    url: string;
+    headerSecret?: StoreSecretValueType;
+    toolList: McpToolConfigType[];
+  };
+  mcpTool?: {
+    toolId: string;
+  };
+  systemTool?: {
+    toolId: string;
+  };
+  systemToolSet?: {
+    toolId: string;
+    toolList: {
+      toolId: string;
+      name: string;
+      description: string;
+    }[];
+  };
+  httpToolSet?: {
+    toolList: HttpToolConfigType[];
+    baseUrl?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string;
+    headerSecret?: StoreSecretValueType;
+  };
+  httpTool?: {
+    toolId: string;
+  };
+};
 
 export type FlowNodeCommonType = {
   parentNodeId?: string;
@@ -32,28 +68,41 @@ export type FlowNodeCommonType = {
   avatar?: string;
   name: string;
   intro?: string; // template list intro
+  toolDescription?: string;
   showStatus?: boolean; // chatting response step status
-  version: string;
+
+  version?: string;
+  versionLabel?: string; // Just ui show
+  isLatestVersion?: boolean; // Just ui show
 
   // data
+  catchError?: boolean;
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 
   // plugin data
   pluginId?: string;
   isFolder?: boolean;
-  // pluginType?: AppTypeEnum;
   pluginData?: PluginDataType;
+
+  // tool data
+  toolConfig?: NodeToolConfigType;
+
+  // Not store, just computed
+  currentCost?: number;
+  systemKeyCost?: number;
+  hasTokenFee?: boolean;
+  hasSystemSecret?: boolean;
 };
 
 export type PluginDataType = {
-  version: string;
   diagram?: string;
   userGuide?: string;
   courseUrl?: string;
   name?: string;
   avatar?: string;
   error?: string;
+  status?: PluginStatusType;
 };
 
 type HandleType = {
@@ -66,10 +115,10 @@ type HandleType = {
 export type FlowNodeTemplateType = FlowNodeCommonType & {
   id: string; // node id, unique
   templateType: string;
+  status?: PluginStatusType;
 
-  // show handle
-  sourceHandle?: HandleType;
-  targetHandle?: HandleType;
+  showSourceHandle?: boolean;
+  showTargetHandle?: boolean;
 
   // info
   isTool?: boolean; // can be connected by tool
@@ -81,6 +130,11 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
+  tags?: string[] | null;
+
+  // @deprecated
+  sourceHandle?: HandleType;
+  targetHandle?: HandleType;
 };
 
 export type NodeTemplateListItemType = {
@@ -88,7 +142,8 @@ export type NodeTemplateListItemType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: ParentIdType;
   isFolder?: boolean;
-  templateType: string;
+  templateType?: string;
+  tags?: string[] | null;
   avatar?: string;
   name: string;
   intro?: string; // template list intro
@@ -97,10 +152,12 @@ export type NodeTemplateListItemType = {
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗
+  systemKeyCost?: number; // 系统密钥费用，统一为数字
   hasTokenFee?: boolean; // 是否配置积分
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接
   sourceMember?: SourceMember;
+  toolSource?: 'uploaded' | 'built-in'; // Plugin source type
 };
 
 export type NodeTemplateListType = {
@@ -114,12 +171,14 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
   nodeId: string;
   parentNodeId?: string;
   isError?: boolean;
+  searchedText?: string;
   debugResult?: {
     status: 'running' | 'success' | 'skipped' | 'failed';
     message?: string;
     showResult?: boolean; // show and hide result modal
     response?: ChatHistoryItemResType;
     isExpired?: boolean;
+    workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   };
   isFolded?: boolean;
 };

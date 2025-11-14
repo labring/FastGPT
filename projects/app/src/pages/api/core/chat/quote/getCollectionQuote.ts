@@ -1,14 +1,22 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
-import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  type DatasetCiteItemType,
+  type DatasetDataSchemaType
+} from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
-import { FilterQuery, Types } from 'mongoose';
-import { quoteDataFieldSelector, QuoteDataItemType } from '@/service/core/chat/constants';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  type LinkedListResponse,
+  type LinkedPaginationProps
+} from '@fastgpt/web/common/fetch/type';
+import { type FilterQuery, Types } from 'mongoose';
+import { quoteDataFieldSelector } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
@@ -23,7 +31,7 @@ export type GetCollectionQuoteProps = LinkedPaginationProps & {
   teamToken?: string;
 };
 
-export type GetCollectionQuoteRes = LinkedListResponse<QuoteDataItemType>;
+export type GetCollectionQuoteRes = LinkedListResponse<DatasetCiteItemType>;
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
@@ -51,7 +59,7 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [collection, { chat, showRawSource }, { chatItem }] = await Promise.all([
+  const [collection, { chat, showRawSource }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
     authChatCrud({
       req,
@@ -63,12 +71,13 @@ async function handler(
       teamId,
       teamToken
     }),
+    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
-  if (!showRawSource) {
+
+  if (!showRawSource || !chat || !chatItem) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
-  if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const baseMatch: BaseMatchType = {
     teamId: collection.teamId,
@@ -136,7 +145,7 @@ async function handleInitialLoad({
     const hasMoreNext = list.length === pageSize;
 
     return {
-      list: processChatTimeFilter(list, chatTime),
+      list: processChatTimeFilter(getFormatDatasetCiteList(list), chatTime),
       hasMorePrev: false,
       hasMoreNext
     };
@@ -161,7 +170,7 @@ async function handleInitialLoad({
   const resultList = [...prevList, centerNode, ...nextList];
 
   return {
-    list: processChatTimeFilter(resultList, chatTime),
+    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime),
     hasMorePrev,
     hasMoreNext
   };
@@ -189,7 +198,7 @@ async function handlePaginatedLoad({
       ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
       : await getNextNodes(nextId!, nextIndex!, pageSize, baseMatch);
 
-  const processedList = processChatTimeFilter(list, chatTime);
+  const processedList = processChatTimeFilter(getFormatDatasetCiteList(list), chatTime);
 
   return {
     list: processedList,

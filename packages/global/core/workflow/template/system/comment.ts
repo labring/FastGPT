@@ -1,18 +1,17 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../constants';
-import { getHandleConfig } from '../utils';
 
 export const CommentNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.comment,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowNodeType: FlowNodeTypeEnum.comment,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(false, false, false, false),
+  showSourceHandle: false,
+  showTargetHandle: false,
   avatar: '',
   name: '',
   intro: '',

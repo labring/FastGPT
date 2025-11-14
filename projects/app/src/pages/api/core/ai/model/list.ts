@@ -1,7 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type listQuery = {};
@@ -12,7 +11,7 @@ export type listResponse = {
   type: `${ModelTypeEnum}`;
   name: string;
   avatar: string | undefined;
-  provider: ModelProviderIdType;
+  provider: string;
   model: string;
   charsPointsPrice?: number;
   inputPrice?: number;

@@ -1,24 +1,19 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
+import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import type {
-  UserSelectInteractive,
-  UserSelectOptionItemType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
   [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[];
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.answerText]?: string;
-  [DispatchNodeResponseKeyEnum.interactive]?: UserSelectInteractive;
   [NodeOutputKeyEnum.selectResult]?: string;
 }>;
 
@@ -27,14 +22,13 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     histories,
     node,
     params: { description, userSelectOptions },
-    query
+    query,
+    lastInteractive
   } = props;
   const { nodeId, isEntry } = node;
 
-  const interactive = getLastInteractiveValue(histories);
-
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry || interactive?.type !== 'userSelect') {
+  if (!isEntry || lastInteractive?.type !== 'userSelect') {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
@@ -60,6 +54,9 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   }
 
   return {
+    data: {
+      [NodeOutputKeyEnum.selectResult]: userSelectedVal
+    },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
       .filter((item) => item.value !== userSelectedVal)
@@ -67,7 +64,6 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
     },
-    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal,
-    [NodeOutputKeyEnum.selectResult]: userSelectedVal
+    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal
   };
 };

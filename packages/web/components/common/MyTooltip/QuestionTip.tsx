@@ -1,6 +1,6 @@
 import React from 'react';
 import MyTooltip from '.';
-import { IconProps } from '@chakra-ui/icons';
+import { type IconProps } from '@chakra-ui/icons';
 import MyIcon from '../Icon';
 
 type Props = IconProps & {

@@ -1,5 +1,5 @@
-import { WorkflowIOValueTypeEnum } from '../constants';
 import { i18nT } from '../../../../web/i18n/utils';
+import { WorkflowIOValueTypeEnum } from '../constants';
 export enum FlowNodeInputTypeEnum { // render ui
   reference = 'reference', // reference to other node output
   input = 'input', // one line input
@@ -7,16 +7,15 @@ export enum FlowNodeInputTypeEnum { // render ui
   numberInput = 'numberInput',
   switch = 'switch', // true/false
   select = 'select',
+  multipleSelect = 'multipleSelect',
 
   // editor
   JSONEditor = 'JSONEditor',
 
   addInputParam = 'addInputParam', // params input
+  customVariable = 'customVariable', // 外部变量
 
-  // special input
   selectApp = 'selectApp',
-  customVariable = 'customVariable',
-
   // ai model select
   selectLLMModel = 'selectLLMModel',
   settingLLMModel = 'settingLLMModel',
@@ -27,9 +26,12 @@ export enum FlowNodeInputTypeEnum { // render ui
   settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
   hidden = 'hidden',
-  custom = 'custom',
+  custom = 'custom', // 自定义渲染
 
-  fileSelect = 'fileSelect'
+  fileSelect = 'fileSelect',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
+  password = 'password'
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -44,6 +46,9 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/numberInput'
   },
   [FlowNodeInputTypeEnum.select]: {
+    icon: 'core/workflow/inputType/option'
+  },
+  [FlowNodeInputTypeEnum.multipleSelect]: {
     icon: 'core/workflow/inputType/option'
   },
   [FlowNodeInputTypeEnum.switch]: {
@@ -90,11 +95,21 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
     icon: 'core/workflow/inputType/file'
+  },
+  [FlowNodeInputTypeEnum.timePointSelect]: {
+    icon: 'core/workflow/inputType/timePointSelect'
+  },
+  [FlowNodeInputTypeEnum.timeRangeSelect]: {
+    icon: 'core/workflow/inputType/timeRangeSelect'
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    icon: 'core/workflow/inputType/password'
   }
 };
 
 export enum FlowNodeOutputTypeEnum {
   hidden = 'hidden',
+  error = 'error',
   source = 'source',
   static = 'static',
   dynamic = 'dynamic'
@@ -105,6 +120,8 @@ export enum FlowNodeTypeEnum {
   systemConfig = 'userGuide',
   pluginConfig = 'pluginConfig',
   globalVariable = 'globalVariable',
+  comment = 'comment',
+
   workflowStart = 'workflowStart',
   chatNode = 'chatNode',
 
@@ -115,13 +132,10 @@ export enum FlowNodeTypeEnum {
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',
   httpRequest468 = 'httpRequest468',
-  runApp = 'app',
-  appModule = 'appModule',
-  pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  tools = 'tools',
+  agent = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
   lafModule = 'lafModule',
@@ -136,7 +150,13 @@ export enum FlowNodeTypeEnum {
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',
-  comment = 'comment'
+  tool = 'tool',
+  toolSet = 'toolSet',
+
+  // child:
+  appModule = 'appModule',
+  pluginModule = 'pluginModule',
+  runApp = 'app'
 }
 
 // node IO value type
@@ -212,7 +232,6 @@ export const FlowValueTypeMap: Record<
 };
 
 export const EDGE_TYPE = 'default';
-export const defaultNodeVersion = '481';
 
 export const chatHistoryValueDesc = `{
   obj: System | Human | AI;
@@ -230,3 +249,10 @@ export const datasetQuoteValueDesc = `{
 export const datasetSelectValueDesc = `{
   datasetId: string;
 }[]`;
+
+export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
+  [FlowNodeTypeEnum.pluginModule]: true,
+  [FlowNodeTypeEnum.appModule]: true,
+  [FlowNodeTypeEnum.tool]: true,
+  [FlowNodeTypeEnum.toolSet]: true
+};

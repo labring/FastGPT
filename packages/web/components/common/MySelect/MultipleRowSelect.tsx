@@ -11,7 +11,7 @@ import {
   MenuButton,
   MenuList
 } from '@chakra-ui/react';
-import { ListItemType, MultipleArraySelectProps, MultipleSelectProps } from './type';
+import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
@@ -26,7 +26,7 @@ export const MultipleRowSelect = ({
   onSelect,
   ButtonProps,
   changeOnEverySelect = false,
-  rowMinWidth = 'autp'
+  rowMinWidth = 'auto'
 }: MultipleSelectProps & {
   rowMinWidth?: string;
 }) => {
@@ -66,7 +66,7 @@ export const MultipleRowSelect = ({
         if (currentScrollTop !== undefined && MenuRef.current[index]) {
           MenuRef.current[index]!.scrollTop = currentScrollTop;
         }
-      }, [cloneValue, currentScrollTop]);
+      }, [currentScrollTop, index]);
 
       return (
         <>
@@ -136,18 +136,14 @@ export const MultipleRowSelect = ({
               );
             })}
             {list.length === 0 && (
-              <EmptyTip
-                text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}
-                pt={1}
-                pb={3}
-              />
+              <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
             )}
           </Box>
           {children.length > 0 && <RenderList list={children} index={index + 1} />}
         </>
       );
     },
-    [cloneValue]
+    [changeOnEverySelect, cloneValue, emptyTip, maxH, minWidth, onClose, onSelect, rowMinWidth, t]
   );
 
   const onOpenSelect = useCallback(() => {
@@ -176,7 +172,6 @@ export const MultipleRowSelect = ({
           ref={ButtonRef}
           width={'100%'}
           px={3}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           variant={'whitePrimaryOutline'}
           size={'lg'}
           fontSize={'sm'}
@@ -193,7 +188,12 @@ export const MultipleRowSelect = ({
             : {})}
           {...ButtonProps}
         >
-          <Box>{label ?? placeholder}</Box>
+          <Flex alignItems={'center'}>
+            <Box flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+              {label ?? placeholder}
+            </Box>
+            <MyIcon name={'core/chat/chevronDown'} w={4} flexShrink={0} color={'myGray.500'} />
+          </Flex>
         </MenuButton>
         <MenuList
           className={ButtonProps?.className}
@@ -264,7 +264,7 @@ export const MultipleRowArraySelect = ({
       });
       onSelect(validList);
     },
-    [onSelect]
+    [list, onSelect]
   );
 
   const RenderList = useCallback(
@@ -331,24 +331,20 @@ export const MultipleRowArraySelect = ({
               );
             })}
             {list.length === 0 && (
-              <EmptyTip
-                text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}
-                pt={1}
-                pb={3}
-              />
+              <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
             )}
           </Box>
           {children.length > 0 && <RenderList list={children} index={index + 1} />}
         </>
       );
     },
-    [navigationPath, formatValue, onSelect]
+    [navigationPath, maxH, emptyTip, t, formatValue, onChange]
   );
 
   const onOpenSelect = useCallback(() => {
     setNavigationPath([]);
     onOpen();
-  }, []);
+  }, [onOpen]);
 
   return (
     <Box ref={ref} position={'relative'}>

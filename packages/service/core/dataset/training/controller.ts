@@ -1,17 +1,14 @@
 import { MongoDatasetTraining } from './schema';
-import type {
-  PushDatasetDataChunkProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { simpleText } from '@fastgpt/global/common/string/tools';
-import { ClientSession } from '../../../common/mongo';
+import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
-import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
+import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
+import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -26,23 +23,6 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
   } catch (error) {}
 };
 
-export const pushDataListToTrainingQueueByCollectionId = async ({
-  collectionId,
-  ...props
-}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel' | 'vlmModel'>) => {
-  const {
-    dataset: { _id: datasetId, agentModel, vectorModel, vlmModel }
-  } = await getCollectionWithDataset(collectionId);
-  return pushDataListToTrainingQueue({
-    ...props,
-    datasetId,
-    collectionId,
-    vectorModel,
-    agentModel,
-    vlmModel
-  });
-};
-
 export async function pushDataListToTrainingQueue({
   teamId,
   tmbId,
@@ -52,54 +32,42 @@ export async function pushDataListToTrainingQueue({
   vectorModel,
   vlmModel,
   data,
-  prompt,
   billId,
   mode = TrainingModeEnum.chunk,
+  indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
-  const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
-    if (mode !== TrainingModeEnum.image) return mode;
-    // 检查内容中，是否包含 ![](xxx) 的图片格式
-    const text = data.q + data.a || '';
-    const regex = /!\[\]\((.*?)\)/g;
-    const match = text.match(regex);
-    if (match) {
-      return TrainingModeEnum.image;
-    }
-    return mode;
-  };
+  const vectorModelData = getEmbeddingModel(vectorModel);
+  if (!vectorModelData) {
+    return Promise.reject(i18nT('common:error_embedding_not_config'));
+  }
+  const agentModelData = getLLMModel(agentModel);
+  if (!agentModelData) {
+    return Promise.reject(i18nT('common:error_llm_not_config'));
+  }
+
   const { model, maxToken, weight } = await (async () => {
     if (mode === TrainingModeEnum.chunk) {
-      const vectorModelData = getEmbeddingModel(vectorModel);
-      if (!vectorModelData) {
-        return Promise.reject(i18nT('common:error_embedding_not_config'));
-      }
       return {
-        maxToken: vectorModelData.maxToken * 1.5,
+        maxToken: Infinity,
         model: vectorModelData.model,
         weight: vectorModelData.weight
       };
     }
-
     if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
-      const agentModelData = getLLMModel(agentModel);
-      if (!agentModelData) {
-        return Promise.reject(i18nT('common:error_llm_not_config'));
-      }
       return {
-        maxToken: agentModelData.maxContext * 0.8,
+        maxToken: getLLMMaxChunkSize(agentModelData),
         model: agentModelData.model,
         weight: 0
       };
     }
-
-    if (mode === TrainingModeEnum.image) {
+    if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
         return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {
-        maxToken: vllmModelData.maxContext * 0.8,
+        maxToken: getLLMMaxChunkSize(vllmModelData),
         model: vllmModelData.model,
         weight: 0
       };
@@ -107,117 +75,141 @@ export async function pushDataListToTrainingQueue({
 
     return Promise.reject(`Training mode "${mode}" is inValid`);
   })();
-  // Filter redundant params
-  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
-    prompt = undefined;
-  }
-
-  // filter repeat or equal content
-  const set = new Set();
-  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
-    success: [],
-    overToken: [],
-    repeat: [],
-    error: []
-  };
 
   // format q and a, remove empty char
-  data.forEach((item) => {
-    item.q = simpleText(item.q);
-    item.a = simpleText(item.a);
-
-    item.indexes = item.indexes
-      ?.map((index) => {
-        return {
-          ...index,
-          text: simpleText(index.text)
-        };
-      })
-      .filter(Boolean);
+  data = data.filter((item) => {
+    const q = item.q || '';
+    const a = item.a || '';
 
     // filter repeat content
-    if (!item.q) {
-      filterResult.error.push(item);
+    if (!item.imageId && !q) {
       return;
     }
 
-    const text = item.q + item.a;
+    const text = q + a;
 
+    // Oversize llm tokens
     if (text.length > maxToken) {
-      filterResult.overToken.push(item);
       return;
     }
 
-    if (set.has(text)) {
-      console.log('repeat', item);
-      filterResult.repeat.push(item);
-    } else {
-      filterResult.success.push(item);
-      set.add(text);
-    }
+    return true;
   });
 
   // insert data to db
-  const insertLen = filterResult.success.length;
-  const failedDocuments: PushDatasetDataChunkProps[] = [];
+  const batchSize = 500; // Batch insert size
+  const maxBatchesPerTransaction = 20; // Every session can insert at most 20 batches
 
-  // 使用 insertMany 批量插入
-  const batchSize = 200;
-  const insertData = async (startIndex: number, session: ClientSession) => {
-    const list = filterResult.success.slice(startIndex, startIndex + batchSize);
+  const insertDataIterative = async (
+    dataToInsert: typeof data,
+    session: ClientSession
+  ): Promise<number> => {
+    let insertedCount = 0;
 
-    if (list.length === 0) return;
+    for (let i = 0; i < dataToInsert.length; i += batchSize) {
+      const batch = dataToInsert.slice(i, i + batchSize);
 
-    try {
-      await MongoDatasetTraining.insertMany(
-        list.map((item) => ({
+      if (batch.length === 0) continue;
+
+      const result = await MongoDatasetTraining.insertMany(
+        batch.map((item) => ({
           teamId,
           tmbId,
           datasetId,
           collectionId,
           billId,
-          mode: getImageChunkMode(item, mode),
-          prompt,
-          model,
-          q: item.q,
-          a: item.a,
+          mode,
+          ...(item.q && { q: item.q }),
+          ...(item.a && { a: item.a }),
+          ...(item.imageId && { imageId: item.imageId }),
           chunkIndex: item.chunkIndex ?? 0,
+          indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
           retryCount: 5
         })),
         {
           session,
-          ordered: true
+          ordered: true, // 改为 true: 任何失败立即停止,事务回滚
+          rawResult: true,
+          includeResultMetadata: false
         }
       );
-    } catch (error: any) {
-      addLog.error(`Insert error`, error);
-      // 如果有错误，将失败的文档添加到失败列表中
-      error.writeErrors?.forEach((writeError: any) => {
-        failedDocuments.push(data[writeError.index]);
-      });
-      console.log('failed', failedDocuments);
+
+      // ordered: true 模式下,成功必定等于批次大小
+      insertedCount += result.insertedCount;
+
+      addLog.debug(`Training data insert progress: ${insertedCount}/${dataToInsert.length}`);
     }
 
-    // 对于失败的文档，尝试单独插入
-    await MongoDatasetTraining.create(failedDocuments, { session });
-
-    return insertData(startIndex + batchSize, session);
+    return insertedCount;
   };
 
-  if (session) {
-    await insertData(0, session);
-  } else {
-    await mongoSessionRun(async (session) => {
-      await insertData(0, session);
-    });
+  // 大数据量分段事务处理 (避免事务超时)
+  const chunkSize = maxBatchesPerTransaction * batchSize; // 10,000 条
+  let start = Date.now();
+
+  if (data.length > chunkSize) {
+    addLog.info(`Large dataset detected (${data.length} items), using chunked transactions`);
+
+    let totalInserted = 0;
+
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, i + chunkSize);
+
+      await retryFn(async () => {
+        const inserted = await mongoSessionRun(async (chunkSession) => {
+          return insertDataIterative(chunk, chunkSession);
+        });
+        totalInserted += inserted;
+      });
+    }
+
+    addLog.info(`Chunked transactions completed in ${Date.now() - start}ms`);
+
+    return { insertLen: totalInserted };
   }
 
-  delete filterResult.success;
-
-  return {
-    insertLen,
-    ...filterResult
-  };
+  // 小数据量单事务处理
+  if (session) {
+    const insertedCount = await insertDataIterative(data, session);
+    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    return { insertLen: insertedCount };
+  } else {
+    const insertedCount = await mongoSessionRun(async (session) => {
+      return insertDataIterative(data, session);
+    });
+    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    return { insertLen: insertedCount };
+  }
 }
+
+export const pushDatasetToParseQueue = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  billId,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+  billId: string;
+  session: ClientSession;
+}) => {
+  await MongoDatasetTraining.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId,
+        mode: TrainingModeEnum.parse
+      }
+    ],
+    { session, ordered: true }
+  );
+};

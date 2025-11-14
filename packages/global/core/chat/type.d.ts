@@ -1,35 +1,41 @@
 import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
-import { SearchDataResponseItemType } from '../dataset/type';
-import {
+import type { SearchDataResponseItemType } from '../dataset/type';
+import type {
   ChatFileTypeEnum,
   ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatStatusEnum
 } from './constants';
-import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { NodeOutputKeyEnum } from '../workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import { AppChatConfigType, AppSchema, VariableItemType } from '../app/type';
+import type { FlowNodeTypeEnum } from '../workflow/node/constant';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants';
+import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
+import type { AppSchema, VariableItemType } from '../app/type';
+import { AppChatConfigType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
-import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
-import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
-import { FlowNodeInputItemType } from '../workflow/type/io';
+import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
+import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import type { FlowNodeInputItemType } from '../workflow/type/io';
+import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 
-export type ChatSchema = {
+/* --------- chat ---------- */
+export type ChatSchemaType = {
   _id: string;
   chatId: string;
   userId: string;
   teamId: string;
   tmbId: string;
   appId: string;
+  createTime: Date;
   updateTime: Date;
   title: string;
   customTitle: string;
   top: boolean;
   source: `${ChatSourceEnum}`;
+  sourceName?: string;
+
   shareId?: string;
   outLinkUid?: string;
 
@@ -40,26 +46,30 @@ export type ChatSchema = {
   metadata?: Record<string, any>;
 };
 
-export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
+export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
   appId: AppSchema;
 };
 
+/* --------- chat item ---------- */
+export type UserChatItemFileItemType = {
+  type: `${ChatFileTypeEnum}`;
+  name?: string;
+  key?: string;
+  url: string;
+};
 export type UserChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
     content: string;
   };
-  file?: {
-    type: `${ChatFileTypeEnum}`;
-    name?: string;
-    url: string;
-  };
+  file?: UserChatItemFileItemType;
 };
 export type UserChatItemType = {
   obj: ChatRoleEnum.Human;
   value: UserChatItemValueItemType[];
   hideInUI?: boolean;
 };
+
 export type SystemChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text;
   text?: {
@@ -87,22 +97,30 @@ export type AIChatItemValueItemType = {
   tools?: ToolModuleResponseItemType[];
   interactive?: WorkflowInteractiveResponseType;
 };
-
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
+  memories?: Record<string, any>;
   userGoodFeedback?: string;
   userBadFeedback?: string;
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
+
+  durationSeconds?: number;
+  errorMsg?: string;
+  citeCollectionIds?: string[];
+
+  // @deprecated 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
 };
+
 export type ChatItemValueItemType =
   | UserChatItemValueItemType
   | SystemChatItemValueItemType
   | AIChatItemValueItemType;
+export type ChatItemMergeType = UserChatItemType | SystemChatItemType | AIChatItemType;
 
-export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatItemSchema = ChatItemMergeType & {
   dataId: string;
   chatId: string;
   userId: string;
@@ -120,20 +138,19 @@ export type AdminFbkType = {
   a?: string;
 };
 
-/* --------- chat item ---------- */
 export type ResponseTagItemType = {
-  totalRunningTime?: number;
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
+  toolCiteLinks?: ToolCiteLinksType[];
 };
 
-export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatItemType = ChatItemMergeType & {
   dataId?: string;
 } & ResponseTagItemType;
 
 // Frontend type
-export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
@@ -141,8 +158,19 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
   time?: Date;
+  durationSeconds?: number;
+  errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
+
+/* --------- chat item response ---------- */
+export type ChatItemResponseSchemaType = {
+  teamId: string;
+  appId: string;
+  chatId: string;
+  chatItemDataId: string;
+  data: ChatHistoryItemResType;
+};
 
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
@@ -190,6 +218,10 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 
+export type ToolCiteLinksType = {
+  name: string;
+  url: string;
+};
 /* dispatch run time */
 export type RuntimeUserPromptType = {
   files: UserChatItemValueItemType['file'][];

@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Box, BoxProps, SpinnerProps } from '@chakra-ui/react';
+import { Box, type BoxProps, type SpinnerProps } from '@chakra-ui/react';
 import Loading from '../MyLoading';
 
 type Props = BoxProps & {

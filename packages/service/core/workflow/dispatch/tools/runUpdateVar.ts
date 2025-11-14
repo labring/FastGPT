@@ -1,17 +1,19 @@
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getReferenceVariableValue,
   replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { removeSystemVariable, valueTypeFormat } from '../utils';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { runtimeSystemVar2StoreType } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -19,7 +21,15 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variables, runtimeNodes, workflowStreamResponse, externalProvider } = props;
+  const {
+    chatConfig,
+    params,
+    variables,
+    runtimeNodes,
+    workflowStreamResponse,
+    externalProvider,
+    runningAppInfo
+  } = props;
 
   const { updateList } = params;
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
@@ -49,6 +59,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
                 variables
               })
             : item.value?.[1];
+
         return valueTypeFormat(val, item.valueType);
       } else {
         return getReferenceVariableValue({
@@ -78,10 +89,16 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     return value;
   });
 
-  workflowStreamResponse?.({
-    event: SseResponseEventEnum.updateVariables,
-    data: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
-  });
+  if (!runningAppInfo.isChildApp) {
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.updateVariables,
+      data: runtimeSystemVar2StoreType({
+        variables,
+        removeObj: externalProvider.externalWorkflowVariables,
+        userVariablesConfigs: chatConfig?.variables
+      })
+    });
+  }
 
   return {
     [DispatchNodeResponseKeyEnum.newVariables]: variables,

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
@@ -9,58 +9,71 @@ import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import MySlider from '@/components/Slider';
 import {
-  FlowNodeInputItemType,
-  ReferenceItemValueType
+  type FlowNodeInputItemType,
+  type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+  const llmMaxQuoteContext = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.llmMaxQuoteContext
+  );
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+
+  const quoteList = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
+
+  const maxTokenStep = useMemo(() => {
+    if (!llmMaxQuoteContext || llmMaxQuoteContext < 8000) return 80;
+    return Math.ceil(llmMaxQuoteContext / 80 / 100) * 100;
+  }, [llmMaxQuoteContext]);
 
   const CustomComponent = useMemo(() => {
-    const quoteList = inputs.filter((item) => item.canEdit);
-    const tokenLimit = (() => {
-      let maxTokens = 16000;
-
-      nodeList.forEach((item) => {
-        if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
-          const model =
-            item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 16000;
-
-          maxTokens = Math.max(maxTokens, quoteMaxToken);
-        }
-      });
-
-      return maxTokens;
-    })();
-
     return {
-      [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) => (
-        <Box px={2}>
-          <MySlider
-            markList={[
-              { label: '100', value: 100 },
-              { label: tokenLimit, value: tokenLimit }
-            ]}
-            width={'100%'}
+      [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) =>
+        llmMaxQuoteContext ? (
+          <Box px={2} bg={'white'} py={2} border={'base'} borderRadius={'md'}>
+            <InputSlider
+              min={100}
+              max={llmMaxQuoteContext}
+              step={maxTokenStep}
+              value={item.value}
+              onChange={(e) => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: item.key,
+                  value: {
+                    ...item,
+                    value: e
+                  }
+                });
+              }}
+            />
+          </Box>
+        ) : (
+          <MyNumberInput
+            size={'sm'}
             min={100}
-            max={tokenLimit}
-            step={50}
+            max={1000000}
+            step={100}
             value={item.value}
+            name={NodeInputKeyEnum.datasetMaxTokens}
+            inputFieldProps={{ bg: 'white' }}
             onChange={(e) => {
               onChangeNode({
                 nodeId,
@@ -73,8 +86,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               });
             }}
           />
-        </Box>
-      ),
+        ),
       [NodeInputKeyEnum.datasetQuoteList]: (item: FlowNodeInputItemType) => {
         return (
           <>
@@ -96,7 +108,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   });
                 }}
               >
-                {t('common:common.Add New')}
+                {t('common:add_new')}
               </Button>
             </HStack>
             <Box mt={2}>
@@ -110,7 +122,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [inputs, nodeId, nodeList, onChangeNode, t]);
+  }, [maxTokenStep, llmMaxQuoteContext, nodeId, onChangeNode, quoteList, t]);
 
   const Render = useMemo(() => {
     return (
@@ -120,7 +132,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           {/* {RenderQuoteList} */}
         </Container>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </NodeCard>
@@ -139,7 +151,7 @@ const VariableSelector = ({
   inputChildren: FlowNodeInputItemType;
 }) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { referenceList } = useReference({
     nodeId,

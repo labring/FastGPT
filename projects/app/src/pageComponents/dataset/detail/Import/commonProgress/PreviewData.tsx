@@ -10,12 +10,13 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { getPreviewChunks } from '@/web/core/dataset/api';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { getPreviewSourceReadType } from '../utils';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -23,30 +24,36 @@ const PreviewData = () => {
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
-  const chunkSize = useContextSelector(DatasetImportContext, (v) => v.chunkSize);
-  const chunkOverlapRatio = useContextSelector(DatasetImportContext, (v) => v.chunkOverlapRatio);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
 
-  const { data = [], loading: isLoading } = useRequest2(
+  const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
-      if (!previewFile) return;
+      if (!previewFile) return { chunks: [], total: 0 };
+
+      const chunkData = processParamsForm.getValues();
+
       if (importSource === ImportDataSourceEnum.fileCustom) {
-        const customSplitChar = processParamsForm.getValues('customSplitChar');
+        const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkLen: chunkSize,
-          overlapRatio: chunkOverlapRatio,
-          customReg: customSplitChar ? [customSplitChar] : []
+          chunkSize: chunkData.chunkSize,
+          maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
+          overlapRatio: 0.2,
+          customReg: chunkSplitter ? [chunkSplitter] : []
         });
-        return chunks.map((chunk) => ({
-          q: chunk,
-          a: ''
-        }));
+        return {
+          chunks: chunks.map((chunk) => ({
+            q: chunk,
+            a: ''
+          })),
+          total: chunks.length
+        };
       }
 
       return getPreviewChunks({
@@ -58,16 +65,12 @@ const PreviewData = () => {
           previewFile.externalFileUrl ||
           previewFile.apiFileId ||
           '',
+        externalFileId: previewFile.externalFileId,
 
-        customPdfParse: processParamsForm.getValues('customPdfParse'),
-
-        chunkSize,
-        overlapRatio: chunkOverlapRatio,
-        customSplitChar: processParamsForm.getValues('customSplitChar'),
-
+        ...chunkData,
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: importSource === ImportDataSourceEnum.csvTable,
-        externalFileId: previewFile.externalFileId
+        customPdfParse: processParamsForm.getValues('customPdfParse'),
+        overlapRatio: 0.2
       });
     },
     {
@@ -75,7 +78,7 @@ const PreviewData = () => {
       manual: false,
       onSuccess(result) {
         if (!previewFile) return;
-        if (!result || result.length === 0) {
+        if (!result || result.total === 0) {
           toast({
             title: t('dataset:preview_chunk_empty'),
             status: 'error'
@@ -110,7 +113,17 @@ const PreviewData = () => {
                   bg: 'primary.50 !important'
                 })}
                 _notLast={{ mb: 3 }}
-                onClick={() => setPreviewFile(source)}
+                onClick={() => {
+                  if (source.apiFile?.type === 'folder') {
+                    toast({
+                      status: 'warning',
+                      title: t('dataset:preview_chunk_folder_warning')
+                    });
+                    return;
+                  } else {
+                    setPreviewFile(source);
+                  }
+                }}
               >
                 <MyIcon name={source.icon as any} w={'1.25rem'} />
                 <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>
@@ -124,14 +137,14 @@ const PreviewData = () => {
           <Flex py={4} px={5} borderBottom={'base'} justifyContent={'space-between'}>
             <FormLabel fontSize={'md'}>{t('dataset:preview_chunk')}</FormLabel>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('dataset:preview_chunk_intro')}
+              {t('dataset:preview_chunk_intro', { total: data.total })}
             </Box>
           </Flex>
           <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
             <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
               {previewFile ? (
                 <>
-                  {data.map((item, index) => (
+                  {data.chunks.map((item, index) => (
                     <Box
                       key={index}
                       fontSize={'sm'}
@@ -158,7 +171,7 @@ const PreviewData = () => {
         </Flex>
       </Flex>
       <Flex mt={2} justifyContent={'flex-end'}>
-        <Button onClick={goToNext}>{t('common:common.Next Step')}</Button>
+        <Button onClick={goToNext}>{t('common:next_step')}</Button>
       </Flex>
     </Flex>
   );

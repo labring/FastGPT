@@ -13,8 +13,8 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  CustomFieldConfigType,
-  FlowNodeInputItemType
+  type CustomFieldConfigType,
+  type FlowNodeInputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -179,10 +179,10 @@ const PluginOutputEditModal = ({
       </ModalBody>
       <ModalFooter gap={3}>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

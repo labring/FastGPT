@@ -27,13 +27,18 @@ export enum TeamErrEnum {
   userNotActive = 'userNotActive',
   invitationLinkInvalid = 'invitationLinkInvalid',
   youHaveBeenInTheTeam = 'youHaveBeenInTheTeam',
-  tooManyInvitations = 'tooManyInvitations'
+  tooManyInvitations = 'tooManyInvitations',
+  unPermission = 'unPermission'
 }
 
 const teamErr = [
   {
     statusText: TeamErrEnum.notUser,
     message: i18nT('common:code_error.team_error.not_user')
+  },
+  {
+    statusText: TeamErrEnum.unPermission,
+    message: i18nT('common:error_un_permission')
   },
   {
     statusText: TeamErrEnum.teamOverSize,

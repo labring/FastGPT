@@ -53,7 +53,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const theme = useTheme();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const [baseUrl, setBaseUrl] = useState('https://tryfastgpt.ai/api');
+  const [baseUrl, setBaseUrl] = useState('https://fastgpt.io/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
 
@@ -97,13 +97,15 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
+                href={
+                  feConfigs.openAPIDocUrl || getDocPath('/docs/introduction/development/openapi')
+                }
                 target={'_blank'}
                 ml={1}
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {t('common:common.Read document')}
+                {t('common:read_doc')}
               </Link>
             )}
           </Flex>
@@ -153,12 +155,12 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>{t('common:common.Expired Time')}</Th>
+                  <Th>{t('common:expired_time')}</Th>
                 </>
               )}
 
-              <Th>{t('common:common.Create Time')}</Th>
-              <Th>{t('common:common.Last use time')}</Th>
+              <Th>{t('common:create_time')}</Th>
+              <Th>{t('common:last_use_time')}</Th>
               <Th />
             </Tr>
           </Thead>
@@ -171,7 +173,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                   {Math.round(usagePoints)}/
                   {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
                     ? `${limit?.maxUsagePoints}`
-                    : t('common:common.Unlimited')}
+                    : t('common:Unlimited')}
                 </Td>
                 {feConfigs?.isPlus && (
                   <>
@@ -186,7 +188,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 <Td whiteSpace={'pre-wrap'}>
                   {lastUsedTime
                     ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
-                    : t('common:common.Un used')}
+                    : t('common:un_used')}
                 </Td>
                 <Td>
                   <MyMenu
@@ -204,7 +206,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                       {
                         children: [
                           {
-                            label: t('common:common.Edit'),
+                            label: t('common:Edit'),
                             icon: 'edit',
                             onClick: () =>
                               setEditData({
@@ -215,7 +217,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                               })
                           },
                           {
-                            label: t('common:common.Delete'),
+                            label: t('common:Delete'),
                             icon: 'delete',
                             type: 'danger',
                             onClick: () => openConfirm(() => onclickRemove(_id))()
@@ -279,7 +281,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         </ModalBody>
         <ModalFooter>
           <Button variant="whiteBase" onClick={() => setApiKey('')}>
-            {t('common:common.OK')}
+            {t('common:OK')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -338,9 +340,9 @@ function EditKeyModal({
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
             placeholder={t('publish:key_alias') || 'key_alias'}
-            maxLength={20}
+            maxLength={100}
             {...register('name', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
+              required: t('common:name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
@@ -364,7 +366,7 @@ function EditKeyModal({
               />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <FormLabel flex={'0 0 90px'}>{t('common:common.Expired Time')}</FormLabel>
+              <FormLabel flex={'0 0 90px'}>{t('common:expired_time')}</FormLabel>
               <Input
                 type="datetime-local"
                 defaultValue={
@@ -383,14 +385,14 @@ function EditKeyModal({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
 
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

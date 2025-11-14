@@ -1,6 +1,6 @@
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import React, { useCallback, useMemo } from 'react';
@@ -9,12 +9,12 @@ import { useTranslation } from 'next-i18next';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const ToolParamsEditModal = ({
   defaultValue = defaultEditFormData,
@@ -27,7 +27,7 @@ const ToolParamsEditModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
     defaultValues: defaultValue
@@ -169,10 +169,10 @@ const ToolParamsEditModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit((data) => onClickSubmit(data), onClickSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

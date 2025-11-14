@@ -15,7 +15,7 @@ export const getAppLatestVersion = (data: getLatestVersionQuery) =>
 export const postPublishApp = (appId: string, data: PostPublishAppProps) =>
   POST(`/core/app/version/publish?appId=${appId}`, data);
 
-export const getWorkflowVersionList = (data: PaginationProps<{ appId: string }>) =>
+export const getAppVersionList = (data: PaginationProps<{ appId: string }>) =>
   POST<versionListResponse>('/core/app/version/list', data);
 
 export const getAppVersionDetail = (versionId: string, appId: string) =>

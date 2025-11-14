@@ -6,9 +6,9 @@ import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/walle
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { type TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
-import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
+import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 
@@ -53,9 +53,9 @@ const Standard = ({
             permissionCustomApiKey: value.permissionCustomApiKey,
             permissionCustomCopyright: value.permissionCustomCopyright,
             trainingWeight: value.trainingWeight,
-            permissionReRank: value.permissionReRank,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-            permissionWebsiteSync: value.permissionWebsiteSync
+            permissionWebsiteSync: value.permissionWebsiteSync,
+            permissionTeamOperationLog: value.permissionTeamOperationLog
           };
         })
       : [];
@@ -65,48 +65,54 @@ const Standard = ({
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   /* Get pay code */
-  const { runAsync: onPay, loading: isLoading } = useRequest2(getWxPayQRCode, {
+  const { runAsync: onPay, loading: isLoading } = useRequest2(postCreatePayBill, {
     onSuccess(res) {
-      setQRPayData({
-        readPrice: res.readPrice,
-        codeUrl: res.codeUrl,
-        billId: res.billId
-      });
+      setQRPayData(res);
     }
   });
 
   return (
     <>
       <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-        <Box>
-          <RowTabs
-            list={[
-              {
-                label: t('common:support.wallet.subscription.mode.Month'),
-                value: SubModeEnum.month
-              },
-              {
-                label: (
-                  <Flex>
+        <Flex>
+          <Box>
+            <Box
+              textAlign={'right'}
+              color="#DC7E03"
+              fontWeight="500"
+              fontStyle="italic"
+              fontFamily={'JiangChengXieHei'}
+              fontSize={'14px'}
+              lineHeight={'20px'}
+              letterSpacing={'0.1px'}
+              textTransform={'lowercase'}
+              mb={2}
+              mr={'-2'}
+            >
+              {t('common:pay_year_tip')}
+            </Box>
+            <RowTabs
+              list={[
+                {
+                  label: t('common:support.wallet.subscription.mode.Month'),
+                  value: SubModeEnum.month
+                },
+                {
+                  label: (
                     <Box whiteSpace={'nowrap'}>
                       {t('common:support.wallet.subscription.mode.Year')}
                     </Box>
-                    <Box
-                      whiteSpace={'nowrap'}
-                      ml={1}
-                      color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}
-                    >
-                      ({t('common:support.wallet.subscription.mode.Year sale')})
-                    </Box>
-                  </Flex>
-                ),
-                value: SubModeEnum.year
-              }
-            ]}
-            value={selectSubMode}
-            onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
-          />
-        </Box>
+                  ),
+                  value: SubModeEnum.year
+                }
+              ]}
+              value={selectSubMode}
+              onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
+            />
+          </Box>
+          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
+        </Flex>
+
         {/* card */}
         <Grid
           mt={[10, '48px']}
@@ -164,7 +170,7 @@ const Standard = ({
                 <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
                   ￥{item.price}
                 </Box>
-                <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
+                <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
 
@@ -187,17 +193,6 @@ const Standard = ({
                       </Button>
                     );
                   }
-                  // feature:
-                  // if (
-                  //   item.level === myStandardPlan?.nextSubLevel &&
-                  //   selectSubMode === myStandardPlan?.nextMode
-                  // ) {
-                  //   return (
-                  //     <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
-                  //       {t('common:support.wallet.subscription.Next plan')}
-                  //     </Button>
-                  //   );
-                  // }
                   if (isCurrentPlan) {
                     return (
                       <Button
@@ -316,7 +311,7 @@ const RowTabs = ({
           px={'12px'}
           py={'7px'}
           userSelect={'none'}
-          w={['150px', '170px']}
+          w={['150px', '190px']}
           {...(value === item.value
             ? {
                 color: 'white',

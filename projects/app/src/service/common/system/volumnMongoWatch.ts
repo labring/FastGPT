@@ -1,27 +1,35 @@
-import { getSystemPluginCb } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
-import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
+import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+
+let changeStreams: any[] = [];
 
 export const startMongoWatch = async () => {
-  reloadConfigWatch();
-  refetchSystemPlugins();
-  createDatasetTrainingMongoWatch();
-  refetchAppTemplates();
-  watchSystemModelUpdate();
+  cleanupMongoWatch();
+  console.log('Watch mongo db start');
+  changeStreams.push(reloadConfigWatch());
+  changeStreams.push(createDatasetTrainingMongoWatch());
+  changeStreams.push(refetchAppTemplates());
+  changeStreams.push(watchSystemModelUpdate());
 };
 
 const reloadConfigWatch = () => {
   const changeStream = MongoSystemConfigs.watch();
 
-  changeStream.on('change', async (change) => {
+  return changeStream.on('change', async (change) => {
     try {
-      if (change.operationType === 'insert') {
+      if (
+        change.operationType === 'update' ||
+        (change.operationType === 'insert' &&
+          [SystemConfigsTypeEnum.fastgptPro, SystemConfigsTypeEnum.license].includes(
+            change.fullDocument.type
+          ))
+      ) {
         await initSystemConfig();
         console.log('refresh system config');
       }
@@ -29,25 +37,10 @@ const reloadConfigWatch = () => {
   });
 };
 
-const refetchSystemPlugins = () => {
-  const changeStream = MongoSystemPlugin.watch();
-
-  changeStream.on(
-    'change',
-    debounce(async (change) => {
-      setTimeout(() => {
-        try {
-          getSystemPluginCb(true);
-        } catch (error) {}
-      }, 5000);
-    }, 500)
-  );
-};
-
 const refetchAppTemplates = () => {
   const changeStream = MongoAppTemplate.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async (change) => {
       setTimeout(() => {
@@ -57,4 +50,11 @@ const refetchAppTemplates = () => {
       }, 5000);
     }, 500)
   );
+};
+
+const cleanupMongoWatch = () => {
+  changeStreams.forEach((changeStream) => {
+    changeStream?.close();
+  });
+  changeStreams = [];
 };

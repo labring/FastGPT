@@ -1,0 +1,80 @@
+name: spider
+version: "2.2"
+
+services:
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - spider_net
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
+      - UWSGI_WORKERS=4 # UWSGI 工作进程数
+      - UWSGI_THREADS=4 # UWSGI 线程数
+    cap_drop:
+      - ALL
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:4.4
+    restart: unless-stopped
+    networks:
+      - spider_net
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root # MongoDB 根用户名
+      MONGO_INITDB_ROOT_PASSWORD: example # MongoDB 根用户密码
+
+  nodeapp:
+    container_name: main
+    platform: linux/amd64
+    #build:
+    #  context: . 
+    image: gggaaallleee/webcrawler-test-new:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - spider_net
+    depends_on:
+      - mongodb
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+    volumes:
+      - /dev/shm:/dev/shm
+    environment:
+      - ACCESS_TOKEN=webcrawler # 访问令牌
+      - DETECT_WEBSITE=zhuanlan.zhihu.com # 无法处理跳过的网站
+      - STRATEGIES=[{"waitUntil":"networkidle0","timeout":5000},{"waitUntil":"networkidle2","timeout":10000},{"waitUntil":"load","timeout":15000}] # 页面加载策略
+      - PORT=3000
+      - MAX_CONCURRENCY=10 # 最大并发数
+      - NODE_ENV=development
+      - ENGINE_BAIDUURL=https://www.baidu.com/s  # 百度搜索引擎 URL
+      - ENGINE_SEARCHXNGURL=http://searxng:8080/search # Searxng 搜索引擎 URL
+      - MONGODB_URI=mongodb://root:example@mongodb:27017 # MongoDB 连接 URI
+      - BLACKLIST=[".gov.cn",".edu.cn"] # 受保护域名
+      - STD_TTL=3600 # 标准 TTL（秒）
+      - EXPIRE_AFTER_SECONDS=9000 # 过期时间（秒）
+     #- VALIDATE_PROXY=[{"ip":"","port":},{"ip":"","port":}] #代理池
+    deploy:
+        resources:
+          limits:
+            memory: 4G
+            cpus: '2.0'
+
+networks:
+  spider_net:
+
+volumes:
+  mongo-data:

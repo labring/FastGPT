@@ -49,7 +49,7 @@ const CustomTextInput = () => {
           createStatus: 'waiting',
           rawText: data.value,
           sourceName: data.name,
-          icon: 'file/fill/manual'
+          icon: 'file/fill/txt'
         }
       ]);
       goToNext();
@@ -71,7 +71,7 @@ const CustomTextInput = () => {
     <Box maxW={['100%', '800px']}>
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={'0 0 120px'} fontSize={'sm'}>
-          {t('common:core.dataset.collection.Collection name')}
+          {t('dataset:collection_name')}
         </Box>
         <Input
           flex={'1 0 0'}
@@ -79,7 +79,7 @@ const CustomTextInput = () => {
           {...register('name', {
             required: true
           })}
-          placeholder={t('common:core.dataset.collection.Collection name')}
+          placeholder={t('dataset:collection_name')}
           bg={'myGray.50'}
         />
       </Box>
@@ -99,9 +99,7 @@ const CustomTextInput = () => {
         />
       </Box>
       <Flex mt={5} justifyContent={'flex-end'}>
-        <Button onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('common:common.Next Step')}
-        </Button>
+        <Button onClick={handleSubmit((data) => onSubmit(data))}>{t('common:next_step')}</Button>
       </Flex>
     </Box>
   );

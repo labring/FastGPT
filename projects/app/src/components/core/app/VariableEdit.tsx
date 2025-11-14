@@ -15,13 +15,12 @@ import {
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
-  variableMap,
+  variableConfigs,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useForm, UseFormReset } from 'react-hook-form';
-import { customAlphabet } from 'nanoid';
+import { useForm, type UseFormReset } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -33,28 +32,29 @@ import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
-  DraggableProvided,
-  DraggableStateSnapshot
+  type DraggableProvided,
+  type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
+import { workflowSystemVariables } from '@/web/core/app/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultVariable: VariableItemType = {
-  id: nanoid(),
   key: '',
   label: '',
   type: VariableInputEnum.input,
   description: '',
   required: true,
-  valueType: WorkflowIOValueTypeEnum.string
-};
-
-type InputItemType = VariableItemType & {
-  list: { label: string; value: string }[];
+  valueType: WorkflowIOValueTypeEnum.string,
+  canSelectFile: true,
+  canSelectImg: true,
+  maxFiles: 5,
+  timeGranularity: 'day',
+  timeRangeStart: undefined,
+  timeRangeEnd: undefined
 };
 
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, key: '', id: '', list: [{ value: '', label: '' }] };
+  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
   return newVariable;
 };
 
@@ -75,24 +75,43 @@ const VariableEdit = ({
   const value = getValues();
   const type = watch('type');
 
-  const inputTypeList = useMemo(
-    () =>
-      Object.values(variableMap)
-        .filter((item) => item.value !== VariableInputEnum.textarea)
-        .map((item) => ({
-          icon: item.icon,
-          label: t(item.label as any),
-          value: item.value,
-          defaultValueType: item.defaultValueType,
-          description: item.description ? t(item.description as any) : ''
-        })),
-    [t]
-  );
+  const inputTypeList = useMemo(() => {
+    return variableConfigs
+      .map((group) =>
+        group
+          .filter((item) => item && item.value !== VariableInputEnum.textarea)
+          .map((item) => ({
+            icon: item.icon,
+            label: t(item.label as any),
+            value: item.value,
+            defaultValueType: item.defaultValueType,
+            description: item.description ? t(item.description as any) : ''
+          }))
+      )
+      .filter((group) => group.length > 0);
+  }, [t]);
 
   const defaultValueType = useMemo(() => {
-    const item = inputTypeList.find((item) => item.value === type);
+    const item = inputTypeList.flat().find((item) => item.value === type);
     return item?.defaultValueType;
   }, [inputTypeList, type]);
+
+  const handleTypeChange = useCallback(
+    (newType: VariableInputEnum) => {
+      const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+
+      if (
+        newType === VariableInputEnum.select ||
+        newType === VariableInputEnum.multipleSelect ||
+        (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
+      ) {
+        setValue('defaultValue', '');
+      }
+
+      setValue('type', newType);
+    },
+    [setValue, value.defaultValue]
+  );
 
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
@@ -105,40 +124,78 @@ const VariableEdit = ({
     });
   }, [variables]);
 
+  /* 
+    - New var: random key
+    - Update var: keep key
+  */
   const onSubmitSuccess = useCallback(
-    (data: InputItemType, action: 'confirm' | 'continue') => {
+    (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
+      if (!data.label) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_name_required')
+        });
+      }
 
-      const existingVariable = variables.find(
-        (item) => item.label === data.label && item.id !== data.id
-      );
+      // check if the variable already exists
+      const existingVariable = variables.find((item) => {
+        return item.key !== data.key && (data.label === item.label || data.label === item.key);
+      });
       if (existingVariable) {
+        return toast({
+          status: 'warning',
+          title: t('app:variable_repeat')
+        });
+      }
+
+      // check if the variable is a system variable
+      if (
+        workflowSystemVariables.some(
+          (item) => item.key === data.label || t(item.label) === data.label
+        )
+      ) {
         toast({
           status: 'warning',
-          title: t('common:core.module.variable.key already exists')
+          title: t('app:systemval_conflict_globalval')
         });
         return;
       }
 
-      data.key = data.label;
-      data.enums = data.list;
-
-      if (data.type === VariableInputEnum.custom) {
+      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
         data.required = false;
       } else {
-        data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
+        data.valueType = inputTypeList
+          .flat()
+          .find((item) => item.value === data.type)?.defaultValueType;
       }
 
-      const onChangeVariable = [...variables];
-      if (data.id) {
-        const index = variables.findIndex((item) => item.id === data.id);
-        onChangeVariable[index] = data;
-      } else {
-        onChangeVariable.push({
-          ...data,
-          id: nanoid()
-        });
-      }
+      // Remove undefined keys
+      Object.keys(data).forEach((key) => {
+        if (data[key as keyof VariableItemType] === undefined) {
+          delete data[key as keyof VariableItemType];
+        }
+      });
+
+      console.log(data);
+      const onChangeVariable = (() => {
+        if (data.key) {
+          return variables.map((item) => {
+            if (item.key === data.key) {
+              return data;
+            }
+            return item;
+          });
+        }
+
+        return [
+          ...variables,
+          {
+            ...data,
+            key: getNanoid(8)
+          }
+        ];
+      })();
 
       if (action === 'confirm') {
         onChange(onChangeVariable);
@@ -147,7 +204,7 @@ const VariableEdit = ({
         onChange(onChangeVariable);
         toast({
           status: 'success',
-          title: t('common:common.Add Success')
+          title: t('common:add_success')
         });
         reset({
           ...addVariable(),
@@ -194,7 +251,7 @@ const VariableEdit = ({
             reset(addVariable());
           }}
         >
-          {t('common:common.Add New')}
+          {t('common:add_new')}
         </Button>
       </Flex>
       {/* Form render */}
@@ -228,7 +285,7 @@ const VariableEdit = ({
               {({ provided }) => (
                 <Tbody {...provided.droppableProps} ref={provided.innerRef}>
                   {formatVariables.map((item, index) => (
-                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                    <Draggable key={item.key} draggableId={item.key} index={index}>
                       {(provided, snapshot) => (
                         <TableItem
                           provided={provided}
@@ -237,7 +294,7 @@ const VariableEdit = ({
                           reset={reset}
                           onChange={onChange}
                           variables={variables}
-                          key={item.id}
+                          key={item.key}
                         />
                       )}
                     </Draggable>
@@ -256,7 +313,7 @@ const VariableEdit = ({
           title={t('common:core.module.Variable Setting')}
           isOpen={true}
           onClose={() => reset({})}
-          maxW={['90vw', '928px']}
+          maxW={['90vw', '1078px']}
           w={'100%'}
           isCentered
         >
@@ -265,65 +322,67 @@ const VariableEdit = ({
               <FormLabel color={'myGray.600'} fontWeight={'medium'}>
                 {t('workflow:Variable.Variable type')}
               </FormLabel>
-              <Flex flexDirection={'column'} gap={4}></Flex>
-              <Box display={'grid'} gridTemplateColumns={'repeat(2, 1fr)'} gap={4}>
-                {inputTypeList.map((item) => {
-                  const isSelected = type === item.value;
+              <Flex flexDirection={'column'} gap={4}>
+                {inputTypeList.map((list, index) => {
                   return (
                     <Box
-                      display={'flex'}
-                      key={item.label}
-                      border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
-                      p={3}
-                      rounded={'6px'}
-                      fontWeight={'medium'}
-                      fontSize={'14px'}
-                      alignItems={'center'}
-                      cursor={'pointer'}
-                      boxShadow={isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
-                      _hover={{
-                        '& > svg': {
-                          color: 'primary.600'
-                        },
-                        '& > span': {
-                          color: 'myGray.900'
-                        },
-                        border: '1px solid #3370FF',
-                        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                      }}
-                      onClick={() => {
-                        const defaultValIsNumber = !isNaN(Number(value.defaultValue));
-                        // 如果切换到 numberInput，不是数字，则清空
-                        if (
-                          item.value === VariableInputEnum.select ||
-                          (item.value === VariableInputEnum.numberInput && !defaultValIsNumber)
-                        ) {
-                          setValue('defaultValue', '');
-                        }
-                        setValue('type', item.value);
-                      }}
+                      key={index}
+                      display={'grid'}
+                      gridTemplateColumns={'repeat(3, 1fr)'}
+                      gap={4}
+                      mt={3}
                     >
-                      <MyIcon
-                        name={item.icon as any}
-                        w={'20px'}
-                        mr={1.5}
-                        color={isSelected ? 'primary.600' : 'myGray.400'}
-                      />
-                      <Box
-                        as="span"
-                        color={isSelected ? 'myGray.900' : 'inherit'}
-                        pr={4}
-                        whiteSpace="nowrap"
-                      >
-                        {item.label}
-                      </Box>
-                      {item.description && (
-                        <QuestionTip label={item.description as string} ml={1} />
-                      )}
+                      {list.map((item) => {
+                        const isSelected = type === item.value;
+                        return (
+                          <Box
+                            display={'flex'}
+                            key={item.label}
+                            border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
+                            p={3}
+                            rounded={'6px'}
+                            fontWeight={'medium'}
+                            fontSize={'14px'}
+                            alignItems={'center'}
+                            cursor={'pointer'}
+                            boxShadow={
+                              isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'
+                            }
+                            _hover={{
+                              '& > svg': {
+                                color: 'primary.600'
+                              },
+                              '& > span': {
+                                color: 'myGray.900'
+                              },
+                              border: '1px solid #3370FF',
+                              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+                            }}
+                            onClick={() => handleTypeChange(item.value)}
+                          >
+                            <MyIcon
+                              name={item.icon as any}
+                              w={'20px'}
+                              mr={1.5}
+                              color={isSelected ? 'primary.600' : 'myGray.400'}
+                            />
+                            <Box
+                              as="span"
+                              color={isSelected ? 'myGray.900' : 'inherit'}
+                              whiteSpace="nowrap"
+                            >
+                              {item.label}
+                            </Box>
+                            {item.description && (
+                              <QuestionTip label={item.description as string} ml={1} />
+                            )}
+                          </Box>
+                        );
+                      })}
                     </Box>
                   );
                 })}
-              </Box>
+              </Flex>
             </Stack>
             <InputTypeConfig
               form={form}
@@ -372,7 +431,7 @@ const TableItem = ({
       <Td fontWeight={'medium'}>
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
-          {item.key}
+          {item.label}
         </Flex>
       </Td>
       <Td>
@@ -387,7 +446,10 @@ const TableItem = ({
             onClick={() => {
               const formattedItem = {
                 ...item,
-                list: item.enums || []
+                list:
+                  item.list ||
+                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
+                  []
               };
               reset(formattedItem);
             }}
@@ -395,7 +457,7 @@ const TableItem = ({
           <MyIconButton
             icon={'delete'}
             hoverColor={'red.500'}
-            onClick={() => onChange(variables.filter((variable) => variable.id !== item.id))}
+            onClick={() => onChange(variables.filter((variable) => variable.key !== item.key))}
           />
         </Flex>
       </Td>

@@ -34,15 +34,75 @@ export const valToStr = (val: any) => {
 };
 
 // replace {{variable}} to value
-export function replaceVariable(text: any, obj: Record<string, string | number>) {
+export function replaceVariable(
+  text: any,
+  obj: Record<string, string | number | undefined>,
+  depth = 0
+) {
   if (typeof text !== 'string') return text;
 
-  for (const key in obj) {
-    const val = obj[key];
-    const formatVal = valToStr(val);
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => formatVal);
+  const MAX_REPLACEMENT_DEPTH = 10;
+  const processedVariables = new Set<string>();
+
+  // Prevent infinite recursion
+  if (depth > MAX_REPLACEMENT_DEPTH) {
+    return text;
   }
-  return text || '';
+
+  // Check for circular references in variable values
+  const hasCircularReference = (value: any, targetKey: string): boolean => {
+    if (typeof value !== 'string') return false;
+
+    // Check if the value contains the target variable pattern (direct self-reference)
+    const selfRefPattern = new RegExp(
+      `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
+      'g'
+    );
+    return selfRefPattern.test(value);
+  };
+
+  let result = text;
+  let hasReplacements = false;
+
+  // Build replacement map first to avoid modifying string during iteration
+  const replacements: { pattern: string; replacement: string }[] = [];
+
+  for (const key in obj) {
+    // Skip if already processed to avoid immediate circular reference
+    if (processedVariables.has(key)) {
+      continue;
+    }
+
+    const val = obj[key];
+
+    // Check for direct circular reference
+    if (hasCircularReference(String(val), key)) {
+      continue;
+    }
+
+    const formatVal = valToStr(val);
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    replacements.push({
+      pattern: `{{(${escapedKey})}}`,
+      replacement: formatVal
+    });
+
+    processedVariables.add(key);
+    hasReplacements = true;
+  }
+
+  // Apply all replacements
+  replacements.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), () => replacement);
+  });
+
+  // If we made replacements and there might be nested variables, recursively process
+  if (hasReplacements && /\{\{[^}]+\}\}/.test(result)) {
+    result = replaceVariable(result, obj, depth + 1);
+  }
+
+  return result || '';
 }
 
 /* replace sensitive text */
@@ -56,7 +116,7 @@ export const replaceSensitiveText = (text: string) => {
 };
 
 /* Make sure the first letter is definitely lowercase */
-export const getNanoid = (size = 12) => {
+export const getNanoid = (size = 16) => {
   const firstChar = customAlphabet('abcdefghijklmnopqrstuvwxyz', 1)();
 
   if (size === 1) return firstChar;
@@ -83,19 +143,34 @@ export const getRegQueryStr = (text: string, flags = 'i') => {
 
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
-  str = str.replace(/(\\n|\\)/g, '').replace(/  /g, '');
+  str = str.trim();
 
-  const jsonRegex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g;
-  const matches = str.match(jsonRegex);
+  // Find first opening bracket
+  let start = -1;
+  let openChar = '';
 
-  if (!matches) {
-    return '';
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{' || str[i] === '[') {
+      start = i;
+      openChar = str[i];
+      break;
+    }
   }
 
-  // 找到第一个完整的 JSON 字符串
-  const jsonStr = matches[0];
+  if (start === -1) return str;
 
-  return jsonStr;
+  // Find matching closing bracket from the end
+  const closeChar = openChar === '{' ? '}' : ']';
+
+  for (let i = str.length - 1; i >= start; i--) {
+    const ch = str[i];
+
+    if (ch === closeChar) {
+      return str.slice(start, i + 1);
+    }
+  }
+
+  return str;
 };
 
 export const sliceStrStartEnd = (str: string, start: number, end: number) => {

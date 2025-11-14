@@ -1,19 +1,19 @@
 import type { AppChatConfigType, AppSimpleEditFormType } from '../app/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { NodeInputKeyEnum, FlowNodeTemplateTypeEnum } from '../workflow/constants';
+import { FlowNodeTemplateTypeEnum, NodeInputKeyEnum } from '../workflow/constants';
 import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
-import { StoreNodeItemType } from '../workflow/type/node';
+import { type StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { WorkflowTemplateBasicType } from '../workflow/type';
+import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
-import { AppErrEnum } from '../../common/error/code/app';
-import { PluginErrEnum } from '../../common/error/code/plugin';
+import appErrList from '../../common/error/code/app';
+import pluginErrList from '../../common/error/code/plugin';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
     aiSettings: {
-      model: 'gpt-4o-mini',
+      model: '',
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,
@@ -26,7 +26,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       similarity: 0.4,
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
-      usingReRank: false,
+      usingReRank: true,
       rerankModel: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
@@ -53,7 +53,7 @@ export const appWorkflow2Form = ({
   nodes.forEach((node) => {
     if (
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-      node.flowNodeType === FlowNodeTypeEnum.tools
+      node.flowNodeType === FlowNodeTypeEnum.agent
     ) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
@@ -140,7 +140,9 @@ export const appWorkflow2Form = ({
       );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-      node.flowNodeType === FlowNodeTypeEnum.appModule
+      node.flowNodeType === FlowNodeTypeEnum.appModule ||
+      node.flowNodeType === FlowNodeTypeEnum.tool ||
+      node.flowNodeType === FlowNodeTypeEnum.toolSet
     ) {
       if (!node.pluginId) return;
 
@@ -156,7 +158,8 @@ export const appWorkflow2Form = ({
         inputs: node.inputs,
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other,
-        pluginData: node.pluginData
+        pluginData: node.pluginData,
+        toolConfig: node.toolConfig
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -182,22 +185,15 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
     return AppTypeEnum.workflow;
   }
   if (config.nodes.some((node) => node.flowNodeType === 'pluginInput')) {
-    return AppTypeEnum.plugin;
+    return AppTypeEnum.workflowTool;
   }
   return '';
 };
 
-export const checkAppUnExistError = (error?: string) => {
-  const unExistError: Array<string> = [
-    AppErrEnum.unAuthApp,
-    AppErrEnum.unExist,
-    PluginErrEnum.unAuth,
-    PluginErrEnum.unExist
-  ];
+export const formatToolError = (error?: any) => {
+  if (!error || typeof error !== 'string') return;
 
-  if (!!error && unExistError.includes(error)) {
-    return error;
-  } else {
-    return undefined;
-  }
+  const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
+
+  return errorText || error;
 };

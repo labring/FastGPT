@@ -1,14 +1,14 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
-import { GetChatSpeechProps } from '@/global/core/chat/api.d';
+
+import { type GetChatSpeechProps } from '@/global/core/chat/api.d';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { getTTSModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* 
 1. get tts from chatItem store
@@ -17,7 +17,6 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 */
 async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiResponse) {
   try {
-    await connectToDatabase();
     const { ttsConfig, input } = req.body;
 
     if (!ttsConfig.model || !ttsConfig.voice) {

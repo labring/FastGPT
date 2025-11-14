@@ -1,18 +1,19 @@
 import { Types, connectionMongo, ReadPreference } from '../../mongo';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
-import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
+import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
 import { detectFileEncoding, detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
-import { gridFsStream2Buffer, stream2Encoding } from './utils';
+import { computeGridFsChunSize, gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
-import { readFromSecondary } from '../../mongo/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { Readable } from 'stream';
+import { addRawTextBuffer, getRawTextBuffer } from '../../buffer/rawText/controller';
+import { addMinutes } from 'date-fns';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -64,22 +65,7 @@ export async function uploadFile({
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);
 
-  const fileSize = stats.size;
-  const chunkSizeBytes = (() => {
-    // 计算理想块大小：文件大小 ÷ 目标块数(10)
-    const idealChunkSize = Math.ceil(fileSize / 10);
-
-    // 确保块大小至少为512KB
-    const minChunkSize = 512 * 1024; // 512KB
-
-    // 取理想块大小和最小块大小中的较大值
-    let chunkSize = Math.max(idealChunkSize, minChunkSize);
-
-    // 将块大小向上取整到最接近的64KB的倍数，使其更整齐
-    chunkSize = Math.ceil(chunkSize / (64 * 1024)) * (64 * 1024);
-
-    return chunkSize;
-  })();
+  const chunkSizeBytes = computeGridFsChunSize(stats.size);
 
   const stream = bucket.openUploadStream(filename, {
     metadata,
@@ -93,6 +79,8 @@ export async function uploadFile({
       .pipe(stream as any)
       .on('finish', resolve)
       .on('error', reject);
+  }).finally(() => {
+    readStream.destroy();
   });
 
   return String(stream.id);
@@ -163,33 +151,31 @@ export async function getFileById({
     _id: new Types.ObjectId(fileId)
   });
 
-  // if (!file) {
-  //   return Promise.reject('File not found');
-  // }
-
   return file || undefined;
 }
 
 export async function delFileByFileIdList({
   bucketName,
-  fileIdList,
-  retry = 3
+  fileIdList
 }: {
   bucketName: `${BucketNameEnum}`;
   fileIdList: string[];
-  retry?: number;
 }): Promise<any> {
-  try {
+  return retryFn(async () => {
     const bucket = getGridBucket(bucketName);
 
     for await (const fileId of fileIdList) {
-      await bucket.delete(new Types.ObjectId(fileId));
+      try {
+        await bucket.delete(new Types.ObjectId(String(fileId)));
+      } catch (error: any) {
+        if (typeof error?.message === 'string' && error.message.includes('File not found')) {
+          addLog.warn('File not found', { fileId });
+          return;
+        }
+        return Promise.reject(error);
+      }
     }
-  } catch (error) {
-    if (retry > 0) {
-      return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });
-    }
-  }
+  });
 }
 
 export async function getDownloadStream({
@@ -209,28 +195,28 @@ export const readFileContentFromMongo = async ({
   tmbId,
   bucketName,
   fileId,
-  isQAImport = false,
-  customPdfParse = false
+  customPdfParse = false,
+  getFormatText,
+  usageId
 }: {
   teamId: string;
   tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  isQAImport?: boolean;
   customPdfParse?: boolean;
+  getFormatText?: boolean; // 数据类型都尽可能转化成 markdown 格式
+  usageId?: string;
 }): Promise<{
   rawText: string;
   filename: string;
 }> => {
-  const bufferId = `${fileId}-${customPdfParse}`;
+  const bufferId = `${String(fileId)}-${customPdfParse}`;
   // read buffer
-  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: bufferId }, undefined, {
-    ...readFromSecondary
-  }).lean();
+  const fileBuffer = await getRawTextBuffer(bufferId);
   if (fileBuffer) {
     return {
-      rawText: fileBuffer.rawText,
-      filename: fileBuffer.metadata?.filename || ''
+      rawText: fileBuffer.text,
+      filename: fileBuffer?.sourceName
     };
   }
 
@@ -253,8 +239,9 @@ export const readFileContentFromMongo = async ({
   // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
     customPdfParse,
+    usageId,
+    getFormatText,
     extension,
-    isQAImport,
     teamId,
     tmbId,
     buffer: fileBuffers,
@@ -264,16 +251,13 @@ export const readFileContentFromMongo = async ({
     }
   });
 
-  // < 14M
-  if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
-    MongoRawTextBuffer.create({
-      sourceId: bufferId,
-      rawText,
-      metadata: {
-        filename: file.filename
-      }
-    });
-  }
+  // Add buffer
+  addRawTextBuffer({
+    sourceId: bufferId,
+    sourceName: file.filename,
+    text: rawText,
+    expiredTime: addMinutes(new Date(), 20)
+  });
 
   return {
     rawText,

@@ -1,4 +1,4 @@
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
@@ -7,9 +7,11 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 type Props = {
   nodeId: string;
@@ -20,7 +22,7 @@ type Props = {
 const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { description, required, label, selectedTypeIndex, renderTypeList, valueType, valueDesc } =
     input;
@@ -68,8 +70,38 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
         </Box>
       )}
 
+      {input.deprecated && (
+        <>
+          <Box flex={'1'} />
+          <MyTooltip label={t('app:Click_to_delete_this_field')}>
+            <Flex
+              px={1.5}
+              py={1}
+              bg={'adora.50'}
+              rounded={'6px'}
+              fontSize={'14px'}
+              cursor="pointer"
+              alignItems={'center'}
+              _hover={{
+                bg: 'adora.100'
+              }}
+              onClick={() => {
+                onChangeNode({
+                  nodeId,
+                  type: 'delInput',
+                  key: input.key
+                });
+              }}
+            >
+              <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
+              <Box color={'adora.600'}>{t('app:Filed_is_deprecated')}</Box>
+            </Flex>
+          </MyTooltip>
+        </>
+      )}
+
       {/* Right Component */}
-      {RightComponent && (
+      {!input.deprecated && RightComponent && (
         <>
           <Box flex={'1'} />
           {RightComponent}

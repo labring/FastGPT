@@ -1,0 +1,251 @@
+# 用于部署的 docker-compose 文件:
+# - FastGPT 端口映射为 3000:3000
+# - FastGPT-mcp-server 端口映射 3005:3000
+# - 建议修改账密后再运行
+
+# plugin auth token
+x-plugin-auth-token: &x-plugin-auth-token 'token'
+# aiproxy token
+x-aiproxy-token: &x-aiproxy-token 'token'
+# 数据库连接相关配置
+x-share-db-config: &x-share-db-config
+  MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+  DB_MAX_LINK: 100
+  REDIS_URL: redis://default:mypassword@redis:6379
+  S3_EXTERNAL_BASE_URL: https://minio.com # S3 的公网访问地址
+  S3_ENDPOINT: fastgpt-minio
+  S3_PORT: 9000
+  S3_USE_SSL: false
+  S3_ACCESS_KEY: minioadmin
+  S3_SECRET_KEY: minioadmin
+  S3_PUBLIC_BUCKET: fastgpt-public # 公开读私有写桶
+  S3_PRIVATE_BUCKET: fastgpt-private # 私有读写桶
+
+# 向量库相关配置
+x-vec-config: &x-vec-config
+${{vec.config}}
+
+version: '3.3'
+services:
+  # Vector DB
+${{vec.db}}
+
+  mongo:
+    image: ${{mongo.image}}:${{mongo.tag}} # cpu 不支持 AVX 时候使用 4.4.29
+    container_name: mongo
+    restart: always
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$!
+  redis:
+    image: ${{redis.image}}:${{redis.tag}}
+    container_name: redis
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'mypassword', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - ./redis/data:/data
+  fastgpt-minio:
+    image: ${{minio.image}}:${{minio.tag}}
+    container_name: fastgpt-minio
+    restart: always
+    ports:
+      - 9000:9000
+      - 9001:9001
+    networks:
+      - fastgpt
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt:
+    container_name: fastgpt
+    image: ${{fastgpt.image}}:${{fastgpt.tag}} # git
+    ports:
+      - 3000:3000
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - sandbox
+      - vectorDB
+    restart: always
+    environment:
+      <<: [*x-share-db-config, *x-vec-config]
+      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      FE_DOMAIN:
+      # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
+      DEFAULT_ROOT_PSW: 1234
+      # 登录凭证密钥
+      TOKEN_KEY: any
+      # root的密钥，常用于升级时候的初始化请求
+      ROOT_KEY: root_key
+      # 文件阅读加密
+      FILE_TOKEN_KEY: filetoken
+      # 密钥加密key
+      AES256_SECRET_KEY: fastgptkey
+
+      # plugin 地址
+      PLUGIN_BASE_URL: http://fastgpt-plugin:3000
+      PLUGIN_TOKEN: *x-plugin-auth-token
+      # sandbox 地址
+      SANDBOX_URL: http://sandbox:3000
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      AIPROXY_API_ENDPOINT: http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      AIPROXY_API_TOKEN: *x-aiproxy-token
+
+      # 日志等级: debug, info, warn, error
+      LOG_LEVEL: info
+      STORE_LOG_LEVEL: warn
+      # 工作流最大运行次数
+      WORKFLOW_MAX_RUN_TIMES: 1000
+      # 批量执行节点，最大输入长度
+      WORKFLOW_MAX_LOOP_TIMES: 100
+      # 对话文件过期天数
+      CHAT_FILE_EXPIRE_TIME: 7
+      # 服务器接收请求，最大大小，单位 MB
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+    volumes:
+      - ./config.json:/app/data/config.json
+  sandbox:
+    container_name: sandbox
+    image: ${{fastgpt-sandbox.image}}:${{fastgpt-sandbox.tag}}
+    networks:
+      - fastgpt
+    restart: always
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: ${{fastgpt-mcp_server.image}}:${{fastgpt-mcp_server.tag}}
+    networks:
+      - fastgpt
+    ports:
+      - 3005:3000
+    restart: always
+    environment:
+      - FASTGPT_ENDPOINT=http://fastgpt:3000
+  fastgpt-plugin:
+    image: ${{fastgpt-plugin.image}}:${{fastgpt-plugin.tag}}
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - fastgpt
+    environment:
+      <<: *x-share-db-config
+      AUTH_TOKEN: *x-plugin-auth-token
+      # 工具网络请求，最大请求和响应体
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # 最大 API 请求体大小
+      MAX_API_SIZE: 10
+    depends_on:
+      fastgpt-minio:
+        condition: service_healthy
+  # AI Proxy
+  aiproxy:
+    image: ${{aiproxy.image}}:${{aiproxy.tag}}
+    container_name: aiproxy
+    restart: unless-stopped
+    depends_on:
+      aiproxy_pg:
+        condition: service_healthy
+    networks:
+      - fastgpt
+      - aiproxy
+    environment:
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      ADMIN_KEY: *x-aiproxy-token
+      # 错误日志详情保存时间（小时）
+      LOG_DETAIL_STORAGE_HOURS: 1
+      # 数据库连接地址
+      SQL_DSN: postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # 最大重试次数
+      RETRY_TIMES: 3
+      # 不需要计费
+      BILLING_ENABLED: false
+      # 不需要严格检测模型
+      DISABLE_MODEL_CONFIG: true
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  aiproxy_pg:
+    image: ${{aiproxy-pg.image}}:${{aiproxy-pg.tag}} # docker hub
+    restart: unless-stopped
+    container_name: aiproxy_pg
+    volumes:
+      - ./aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - aiproxy
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+networks:
+  fastgpt:
+  aiproxy:
+  vector:
+${{vec.extra}}

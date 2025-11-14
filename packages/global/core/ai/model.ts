@@ -1,6 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
 import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
-import { getModelProvider, ModelProviderIdType } from './provider';
 
 export enum ModelTypeEnum {
   llm = 'llm',
@@ -14,8 +13,8 @@ export const defaultQAModels: LLMModelItemType[] = [
   {
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
-    model: 'gpt-4o-mini',
-    name: 'gpt-4o-mini',
+    model: 'gpt-5',
+    name: 'gpt-5',
     maxContext: 16000,
     maxResponse: 16000,
     quoteMaxToken: 13000,
@@ -26,8 +25,6 @@ export const defaultQAModels: LLMModelItemType[] = [
     datasetProcess: true,
     toolChoice: true,
     functionCall: false,
-    customCQPrompt: '',
-    customExtractPrompt: '',
     defaultSystemChatPrompt: '',
     defaultConfig: {}
   }
@@ -55,28 +52,6 @@ export const defaultSTTModels: STTModelType[] = [
     charsPointsPrice: 0
   }
 ];
-
-export const getModelFromList = (
-  modelList: { provider: ModelProviderIdType; name: string; model: string }[],
-  model: string
-):
-  | {
-      avatar: string;
-      provider: ModelProviderIdType;
-      name: string;
-      model: string;
-    }
-  | undefined => {
-  const modelData = modelList.find((item) => item.model === model) ?? modelList[0];
-  if (!modelData) {
-    return;
-  }
-  const provider = getModelProvider(modelData.provider);
-  return {
-    ...modelData,
-    avatar: provider.avatar
-  };
-};
 
 export const modelTypeList = [
   { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.llm },

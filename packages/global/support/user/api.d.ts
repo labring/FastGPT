@@ -1,24 +1,30 @@
-import { MemberGroupSchemaType, MemberGroupType } from 'support/permission/memberGroup/type';
-import { OAuthEnum } from './constant';
-import { TrackRegisterParams } from './login/api';
+import type { MemberGroupSchemaType } from 'support/permission/memberGroup/type';
+import { MemberGroupListItemType } from 'support/permission/memberGroup/type';
+import type { OAuthEnum } from './constant';
+import type { TrackRegisterParams } from './login/api';
 import { TeamMemberStatusEnum } from './team/constant';
-import { OrgType } from './team/org/type';
-import { TeamMemberItemType } from './team/type';
+import type { OrgType } from './team/org/type';
+import type { TeamMemberItemType } from './team/type';
 
 export type PostLoginProps = {
   username: string;
   password: string;
+  code: string;
 };
 
 export type OauthLoginProps = {
   type: `${OAuthEnum}`;
-  code: string;
   callbackUrl: string;
+  props: Record<string, string>;
 } & TrackRegisterParams;
 
 export type WxLoginProps = {
   inviterId?: string;
   code: string;
+  bd_vid?: string;
+  msclkid?: string;
+  fastgpt_sem?: string;
+  sourceDomain?: string;
 };
 
 export type FastLoginProps = {

@@ -17,6 +17,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../../core/ai/type.d';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+
 const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
@@ -71,6 +72,7 @@ export const chats2GPTMessages = ({
             if (item.file?.type === ChatFileTypeEnum.image) {
               return {
                 type: 'image_url',
+                key: item.file.key,
                 image_url: {
                   url: item.file.url
                 }
@@ -79,7 +81,8 @@ export const chats2GPTMessages = ({
               return {
                 type: 'file_url',
                 name: item.file?.name || '',
-                url: item.file.url
+                url: item.file.url,
+                key: item.file.key
               };
             }
           }
@@ -171,10 +174,16 @@ export const chats2GPTMessages = ({
 
   return results;
 };
-export const GPTMessages2Chats = (
-  messages: ChatCompletionMessageParam[],
-  reserveTool = true
-): ChatItemType[] => {
+
+export const GPTMessages2Chats = ({
+  messages,
+  reserveTool = true,
+  getToolInfo
+}: {
+  messages: ChatCompletionMessageParam[];
+  reserveTool?: boolean;
+  getToolInfo?: (name: string) => { name: string; avatar: string };
+}): ChatItemType[] => {
   const chatMessages = messages
     .map((item) => {
       const obj = GPT2Chat[item.role];
@@ -233,7 +242,8 @@ export const GPTMessages2Chats = (
                   file: {
                     type: ChatFileTypeEnum.image,
                     name: '',
-                    url: item.image_url.url
+                    url: item.image_url.url,
+                    key: item.key
                   }
                 });
               } else if (item.type === 'file_url') {
@@ -243,7 +253,8 @@ export const GPTMessages2Chats = (
                   file: {
                     type: ChatFileTypeEnum.file,
                     name: item.name,
-                    url: item.url
+                    url: item.url,
+                    key: item.key
                   }
                 });
               }
@@ -280,10 +291,12 @@ export const GPTMessages2Chats = (
                 toolResponse =
                   typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
 
+                const toolInfo = getToolInfo?.(tool.function.name);
+
                 return {
                   id: tool.id,
-                  toolName: tool.toolName || '',
-                  toolAvatar: tool.toolAvatar || '',
+                  toolName: toolInfo?.name || '',
+                  toolAvatar: toolInfo?.avatar || '',
                   functionName: tool.function.name,
                   params: tool.function.arguments,
                   response: toolResponse as string

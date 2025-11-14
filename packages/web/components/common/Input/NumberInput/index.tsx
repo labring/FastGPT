@@ -4,11 +4,12 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberDecrementStepper,
-  NumberInputProps
+  type NumberInputProps,
+  type NumberInputFieldProps
 } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '../../Icon';
-import { UseFormRegister } from 'react-hook-form';
+import { type UseFormRegister } from 'react-hook-form';
 
 type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   onChange?: (e?: number) => any;
@@ -16,38 +17,77 @@ type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   placeholder?: string;
   register?: UseFormRegister<any>;
   name?: string;
-  bg?: string;
+  inputFieldProps?: NumberInputFieldProps;
+  hideStepper?: boolean;
 };
 
 const MyNumberInput = (props: Props) => {
-  const { register, name, onChange, onBlur, placeholder, bg, ...restProps } = props;
+  const {
+    register,
+    name,
+    onChange,
+    onBlur,
+    placeholder,
+    inputFieldProps,
+    hideStepper = false,
+    ...restProps
+  } = props;
 
   return (
     <NumberInput
       {...restProps}
       onBlur={(e) => {
-        if (!onBlur) return;
-        const numE = Number(e.target.value);
-        if (isNaN(numE)) {
-          // @ts-ignore
-          onBlur('');
-        } else {
-          onBlur(numE);
+        const numE = e.target.value === '' ? '' : Number(e.target.value);
+        if (onBlur) {
+          if (numE === '') {
+            // @ts-ignore
+            onBlur('');
+          } else {
+            onBlur(numE);
+          }
+        }
+        if (onChange) {
+          if (numE === '') {
+            // @ts-ignore
+            onChange('');
+          } else {
+            onChange(numE);
+          }
+        }
+        if (register && name) {
+          const event = {
+            target: {
+              name,
+              value: numE
+            }
+          };
+          register(name).onBlur(event);
         }
       }}
       onChange={(e) => {
-        if (!onChange) return;
-        const numE = Number(e);
-        if (isNaN(numE)) {
-          // @ts-ignore
-          onChange('');
-        } else {
-          onChange(numE);
+        const numE = e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : Number(e);
+        if (onChange) {
+          if (numE === '') {
+            // @ts-ignore
+            onChange('');
+          } else {
+            // @ts-ignore
+            onChange(numE);
+          }
+        }
+        if (register && name) {
+          const event = {
+            target: {
+              name,
+              value: numE
+            }
+          };
+
+          register(name).onChange(event);
         }
       }}
     >
       <NumberInputField
-        bg={bg}
         placeholder={placeholder}
         h={restProps.h}
         defaultValue={restProps.defaultValue}
@@ -59,15 +99,18 @@ const MyNumberInput = (props: Props) => {
               valueAsNumber: true
             })
           : {})}
+        {...inputFieldProps}
       />
-      <NumberInputStepper>
-        <NumberIncrementStepper>
-          <MyIcon name={'core/chat/chevronUp'} width={'12px'} />
-        </NumberIncrementStepper>
-        <NumberDecrementStepper>
-          <MyIcon name={'core/chat/chevronDown'} width={'12px'} />
-        </NumberDecrementStepper>
-      </NumberInputStepper>
+      {!hideStepper && (
+        <NumberInputStepper>
+          <NumberIncrementStepper>
+            <MyIcon name={'core/chat/chevronUp'} width={'12px'} />
+          </NumberIncrementStepper>
+          <NumberDecrementStepper>
+            <MyIcon name={'core/chat/chevronDown'} width={'12px'} />
+          </NumberDecrementStepper>
+        </NumberInputStepper>
+      )}
     </NumberInput>
   );
 };

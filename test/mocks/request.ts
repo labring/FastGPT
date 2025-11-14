@@ -1,4 +1,8 @@
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
+import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { vi } from 'vitest';
 
 // vi.mock(import('@/service/middleware/entry'), async () => {
@@ -52,16 +56,18 @@ export type parseHeaderCertRet = {
   sourceName: string | undefined;
   apikey: string;
   isRoot: boolean;
+  sessionId: string;
 };
 
 export type MockReqType<B = any, Q = any> = {
   body?: B;
   query?: Q;
+  headers?: Record<string, any>;
   auth?: parseHeaderCertRet;
   [key: string]: any;
 };
 
-vi.mock(import('@fastgpt/service/support/permission/controller'), async (importOriginal) => {
+vi.mock(import('@fastgpt/service/support/permission/auth/common'), async (importOriginal) => {
   const mod = await importOriginal();
   const parseHeaderCert = vi.fn(
     ({
@@ -82,8 +88,78 @@ vi.mock(import('@fastgpt/service/support/permission/controller'), async (importO
       return Promise.resolve(auth);
     }
   );
+
+  const authCert = async (props: any) => {
+    const result = await parseHeaderCert(props);
+
+    return {
+      ...result,
+      isOwner: true,
+      canWrite: true
+    };
+  };
   return {
     ...mod,
-    parseHeaderCert
+    parseHeaderCert,
+    authCert
   };
 });
+
+vi.mock(
+  import('@fastgpt/service/support/permission/memberGroup/controllers'),
+  async (importOriginal) => {
+    const mod = await importOriginal();
+    const parseHeaderCert = vi.fn(
+      ({
+        req,
+        authToken = false,
+        authRoot = false,
+        authApiKey = false
+      }: {
+        req: MockReqType;
+        authToken?: boolean;
+        authRoot?: boolean;
+        authApiKey?: boolean;
+      }) => {
+        const { auth } = req;
+        if (!auth) {
+          return Promise.reject(Error('unAuthorization(mock)'));
+        }
+        return Promise.resolve(auth);
+      }
+    );
+    const authGroupMemberRole = vi.fn(async ({ groupId, role, ...props }: any) => {
+      const result = await parseHeaderCert(props);
+      const { teamId, tmbId, isRoot } = result;
+      if (isRoot) {
+        return {
+          ...result,
+          permission: new TeamPermission({
+            isOwner: true
+          }),
+          teamId,
+          tmbId
+        };
+      }
+      const [groupMember, tmb] = await Promise.all([
+        MongoGroupMemberModel.findOne({ groupId, tmbId }),
+        getTmbInfoByTmbId({ tmbId })
+      ]);
+
+      // Team admin or role check
+      if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
+        return {
+          ...result,
+          permission: tmb.permission,
+          teamId,
+          tmbId
+        };
+      }
+      return Promise.reject(TeamErrEnum.unAuthTeam);
+    });
+    return {
+      ...mod,
+      authGroupMemberRole
+    };
+  }
+);

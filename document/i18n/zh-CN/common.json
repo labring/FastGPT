@@ -1,0 +1,20 @@
+{
+  "Documentation": "文档",
+  "nav": {
+    "home": "首页",
+    "docs": "文档",
+    "blog": "博客",
+    "about": "关于"
+  },
+  "footer": {
+    "links": "链接",
+    "community": "社区",
+    "resources": "资源"
+  },
+  "introduction": "使用文档",
+  "use-cases": "使用场景",
+  "api": "API 手册",
+  "protocol": "协议",
+  "upgrading": "更新日志",
+  "faq": "常见问题"
+}

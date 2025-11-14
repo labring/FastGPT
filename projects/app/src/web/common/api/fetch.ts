@@ -1,8 +1,6 @@
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
   EventStreamContentType,
@@ -12,6 +10,8 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
+import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 
 type StreamFetchProps = {
   url?: string;
@@ -21,7 +21,6 @@ type StreamFetchProps = {
 };
 export type StreamResponseType = {
   responseText: string;
-  [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
 };
 type ResponseQueueItemType =
   | {
@@ -40,7 +39,7 @@ type ResponseQueueItemType =
 class FatalError extends Error {}
 
 export const streamFetch = ({
-  url = '/api/v1/chat/completions',
+  url = '/api/v2/chat/completions',
   data,
   onMessage,
   abortCtrl
@@ -55,7 +54,6 @@ export const streamFetch = ({
     let responseText = '';
     let responseQueue: ResponseQueueItemType[] = [];
     let errMsg: string | undefined;
-    let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
 
     const finish = () => {
@@ -63,8 +61,7 @@ export const streamFetch = ({
         return failedFinish();
       }
       return resolve({
-        responseText,
-        responseData
+        responseText
       });
     };
     const failedFinish = (err?: any) => {
@@ -124,7 +121,7 @@ export const streamFetch = ({
     try {
       // auto complete variables
       const variables = data?.variables || {};
-      variables.cTime = formatTime2YMDHMW();
+      variables.cTime = formatTime2YMDHMW(new Date());
 
       const requestData = {
         method: 'POST',
@@ -136,7 +133,8 @@ export const streamFetch = ({
           ...data,
           variables,
           detail: true,
-          stream: true
+          stream: true,
+          retainDatasetCite: data.retainDatasetCite ?? true
         })
       };
 
@@ -168,7 +166,7 @@ export const streamFetch = ({
             }
           }
         },
-        onmessage({ event, data }) {
+        onmessage: ({ event, data }) => {
           if (data === '[DONE]') {
             return;
           }
@@ -178,9 +176,12 @@ export const streamFetch = ({
             try {
               return JSON.parse(data);
             } catch (error) {
-              return {};
+              return;
             }
           })();
+
+          if (typeof parseJson !== 'object') return;
+
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
             const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
@@ -217,13 +218,11 @@ export const streamFetch = ({
               event,
               ...parseJson
             });
-          } else if (event === SseResponseEventEnum.flowNodeStatus) {
+          } else if (event === SseResponseEventEnum.flowNodeResponse) {
             onMessage({
               event,
-              ...parseJson
+              nodeResponse: parseJson
             });
-          } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
-            responseData = parseJson;
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
               event,
@@ -239,17 +238,25 @@ export const streamFetch = ({
               useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
             }
             errMsg = getErrText(parseJson, '流响应错误');
+          } else if (
+            [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
+              event as any
+            )
+          ) {
+            onMessage({
+              event,
+              ...parseJson
+            });
           }
         },
         onclose() {
           finished = true;
         },
         onerror(err) {
-          if (err instanceof FatalError) {
-            throw err;
-          }
+          console.log(err, 'fetch error');
           clearTimeout(timeoutId);
           failedFinish(getErrText(err));
+          throw new Error(err);
         },
         openWhenHidden: true
       });
@@ -266,3 +273,51 @@ export const streamFetch = ({
       failedFinish(err);
     }
   });
+
+export const onOptimizePrompt = async ({
+  originalPrompt,
+  model,
+  input,
+  onResult,
+  abortController
+}: OnOptimizePromptProps) => {
+  const controller = abortController || new AbortController();
+  await streamFetch({
+    url: '/api/core/ai/optimizePrompt',
+    data: {
+      originalPrompt,
+      optimizerInput: input,
+      model
+    },
+    onMessage: ({ event, text }) => {
+      if (event === SseResponseEventEnum.answer && text) {
+        onResult(text);
+      }
+    },
+    abortCtrl: controller
+  });
+};
+
+export const onOptimizeCode = async ({
+  optimizerInput,
+  model,
+  conversationHistory = [],
+  onResult,
+  abortController
+}: OnOptimizeCodeProps) => {
+  const controller = abortController || new AbortController();
+  await streamFetch({
+    url: '/api/core/workflow/optimizeCode',
+    data: {
+      optimizerInput,
+      model,
+      conversationHistory
+    },
+    onMessage: ({ event, text }) => {
+      if (event === SseResponseEventEnum.answer && text) {
+        onResult(text);
+      }
+    },
+    abortCtrl: controller
+  });
+};

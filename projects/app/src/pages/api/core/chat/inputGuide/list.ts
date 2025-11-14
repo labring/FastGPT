@@ -1,9 +1,9 @@
 import type { NextApiResponse } from 'next';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';

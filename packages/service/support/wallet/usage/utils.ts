@@ -1,18 +1,14 @@
 import { findAIModel } from '../../../core/ai/model';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { ConcatBillQueueItemType } from './type';
 
 export const formatModelChars2Points = ({
   model,
   inputTokens = 0,
   outputTokens = 0,
-  modelType,
   multiple = 1000
 }: {
   model: string;
   inputTokens?: number;
   outputTokens?: number;
-  modelType: `${ModelTypeEnum}`;
   multiple?: number;
 }) => {
   const modelData = findAIModel(model);
@@ -23,7 +19,7 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const isIOPriceType = typeof modelData.inputPrice === 'number';
+  const isIOPriceType = typeof modelData.inputPrice === 'number' && modelData.inputPrice > 0;
 
   const totalPoints = isIOPriceType
     ? (modelData.inputPrice || 0) * (inputTokens / multiple) +
@@ -34,21 +30,4 @@ export const formatModelChars2Points = ({
     modelName: modelData.name,
     totalPoints
   };
-};
-
-export const pushReduceTeamAiPointsTask = ({
-  teamId,
-  totalPoints
-}: {
-  teamId: string;
-  totalPoints: number;
-}) => {
-  global.reduceAiPointsQueue.push({
-    teamId: String(teamId),
-    totalPoints
-  });
-};
-
-export const pushConcatBillTask = (data: ConcatBillQueueItemType[]) => {
-  global.concatBillQueue.push(...data);
 };

@@ -16,10 +16,11 @@ import {
   ModalBody,
   Grid,
   GridItem,
-  BoxProps
+  type BoxProps
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -33,26 +34,24 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import type { ChannelLogListItemType } from '@/global/aiproxy/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-type LogDetailType = {
-  id: number;
-  request_id: string;
+type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
   model: React.JSX.Element;
   duration: number;
   request_at: string;
-  code: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  endpoint: string;
 
+  retry_times?: number;
   content?: string;
   request_body?: string;
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
+  const { getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
@@ -88,7 +87,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       );
       return [
         {
-          label: t('common:common.All'),
+          label: t('common:All'),
           value: ''
         },
         ...res
@@ -105,7 +104,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, i18n.language);
 
         return {
           order: provider.order,
@@ -117,12 +116,12 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       .sort((a, b) => a.order - b.order);
     return [
       {
-        label: t('common:common.All'),
+        label: t('common:All'),
         value: ''
       },
       ...res
     ];
-  }, [systemModelList, t]);
+  }, [getModelProvider, i18n.language, systemModelList, t]);
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
@@ -145,10 +144,10 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
 
       const model = systemModelList.find((model) => model.model === item.model);
-      const provider = getModelProvider(model?.provider);
+      const provider = getModelProvider(model?.provider, i18n.language);
 
       return {
-        id: item.id,
+        ...item,
         channelName: channelName || item.channel,
         model: (
           <HStack>
@@ -158,15 +157,10 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         duration: durationSecond,
         request_at: formatTime2YMDHMS(item.request_at),
-        code: item.code,
-        prompt_tokens: item.prompt_tokens,
-        completion_tokens: item.completion_tokens,
-        request_id: item.request_id,
-        endpoint: item.endpoint,
-        content: item.content
+        ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, systemModelList]);
+  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 
@@ -192,12 +186,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <DateRangePicker
               defaultDate={filterProps.dateRange}
               dateRange={filterProps.dateRange}
-              position="bottom"
               onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:channel_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
@@ -210,7 +203,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:model_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
@@ -229,9 +222,9 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <MySelect<'all' | 'success' | 'error'>
               bg={'myGray.50'}
               list={[
-                { label: t('common:common.All'), value: 'all' },
-                { label: t('common:common.Success'), value: 'success' },
-                { label: t('common:common.failed'), value: 'error' }
+                { label: t('common:All'), value: 'all' },
+                { label: t('common:Success'), value: 'success' },
+                { label: t('common:failed'), value: 'error' }
               ]}
               value={filterProps.code_type}
               onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
@@ -260,7 +253,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.channelName}</Td>
                     <Td>{item.model}</Td>
                     <Td>
-                      {item.prompt_tokens} / {item.completion_tokens}
+                      {item.usage?.input_tokens} / {item.usage?.output_tokens}
                     </Td>
                     <Td color={item.duration > 10 ? 'red.600' : ''}>{item.duration.toFixed(2)}s</Td>
                     <Td color={item.code === 200 ? 'green.600' : 'red.600'}>
@@ -363,13 +356,17 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>RequestID</Title>
               <Container>{detailData?.request_id}</Container>
             </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>Request IP</Title>
+              <Container>{detailData?.ip}</Container>
+            </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title>{t('account_model:channel_status')}</Title>
               <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
               </Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>Endpoint</Title>
               <Container>{detailData?.endpoint}</Container>
             </GridItem>
@@ -377,32 +374,44 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>{t('account_model:channel_name')}</Title>
               <Container>{detailData?.channelName}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:request_at')}</Title>
-              <Container>{detailData?.request_at}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:duration')}</Title>
-              <Container>{detailData?.duration.toFixed(2)}s</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>{t('account_model:model')}</Title>
               <Container>{detailData?.model}</Container>
             </GridItem>
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
+              <Title>{t('account_model:request_at')}</Title>
+              <Container>{detailData?.request_at}</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title>{t('account_model:duration')}</Title>
+              <Container>{detailData?.duration.toFixed(2)}s</Container>
+            </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+              <Title flex={'0 0 150px'}>{t('account_model:model_ttfb_time')}</Title>
               <Container>
-                {detailData?.prompt_tokens} / {detailData?.completion_tokens}
+                {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
               </Container>
             </GridItem>
+            <GridItem display={'flex'} borderBottomWidth="1px">
+              <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
+              <Container>
+                {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
+              </Container>
+            </GridItem>
+            {detailData?.retry_times !== undefined && (
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
+                <Title>{t('account_model:retry_times')}</Title>
+                <Container>{detailData?.retry_times}</Container>
+              </GridItem>
+            )}
             {detailData?.content && (
-              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
                 <Title>Content</Title>
                 <Container>{detailData?.content}</Container>
               </GridItem>
             )}
             {detailData?.request_body && (
-              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
                 <Title>Request Body</Title>
                 <Container userSelect={'all'}>{detailData?.request_body}</Container>
               </GridItem>

@@ -1,9 +1,15 @@
-import { DispatchNodeResponseType } from '../workflow/runtime/type';
+import { type DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
-import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
+import {
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType,
+  type ChatItemType,
+  type UserChatItemValueItemType
+} from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
+import { removeDatasetCiteText } from '../ai/llm/utils';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -77,32 +83,46 @@ export const getHistoryPreview = (
   });
 };
 
+// Filter workflow public response
 export const filterPublicNodeResponseData = ({
-  flowResponses = [],
+  nodeRespones = [],
   responseDetail = false
 }: {
-  flowResponses?: ChatHistoryItemResType[];
+  nodeRespones?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
-  const filedList = responseDetail
-    ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
-    : ['moduleType', 'pluginOutput', 'runningTime'];
-  const filterModuleTypeList: any[] = [
-    FlowNodeTypeEnum.pluginModule,
-    FlowNodeTypeEnum.datasetSearchNode,
-    FlowNodeTypeEnum.tools,
-    FlowNodeTypeEnum.pluginOutput
-  ];
+  const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.appModule]: true,
+    [FlowNodeTypeEnum.pluginModule]: true,
+    [FlowNodeTypeEnum.datasetSearchNode]: true,
+    [FlowNodeTypeEnum.agent]: true,
+    [FlowNodeTypeEnum.pluginOutput]: true,
 
-  return flowResponses
-    .filter((item) => filterModuleTypeList.includes(item.moduleType))
+    [FlowNodeTypeEnum.runApp]: true
+  };
+
+  const filedMap: Record<string, boolean> = responseDetail
+    ? {
+        quoteList: true,
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      }
+    : {
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      };
+
+  return nodeRespones
+    .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
         if (key === 'toolDetail' || key === 'pluginDetail') {
           // @ts-ignore
-          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key], responseDetail });
-        } else if (filedList.includes(key)) {
+          obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
+        } else if (filedMap[key]) {
           // @ts-ignore
           obj[key] = item[key];
         }
@@ -111,13 +131,48 @@ export const filterPublicNodeResponseData = ({
     });
 };
 
+// Remove dataset cite in ai response
+export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(
+  value: T,
+  retainCite: boolean
+): T => {
+  if (retainCite) return value;
+
+  if (typeof value === 'string') {
+    return removeDatasetCiteText(value, false) as T;
+  }
+
+  return value.map<AIChatItemValueItemType>((item) => {
+    if (item.text?.content) {
+      return {
+        ...item,
+        text: {
+          ...item.text,
+          content: removeDatasetCiteText(item.text.content, false)
+        }
+      };
+    }
+    if (item.reasoning?.content) {
+      return {
+        ...item,
+        reasoning: {
+          ...item.reasoning,
+          content: removeDatasetCiteText(item.reasoning.content, false)
+        }
+      };
+    }
+    return item;
+  }) as T;
+};
+
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
       if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
         return false;
       }
-      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+      // type 为 'file' 时 key 和 url 不能同时为空
+      if (item.type === ChatItemValueTypeEnum.file && !item.file?.key && !item.file?.url) {
         return false;
       }
       return true;
@@ -150,28 +205,49 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
-/* 
+/*
   Merge chat responseData
   1. Same tool mergeSignId (Interactive tool node)
+  2. Recursively merge plugin details with same mergeSignId
 */
-export const mergeChatResponseData = (responseDataList: ChatHistoryItemResType[]) => {
-  let lastResponse: ChatHistoryItemResType | undefined = undefined;
+export const mergeChatResponseData = (
+  responseDataList: ChatHistoryItemResType[]
+): ChatHistoryItemResType[] => {
+  const result: ChatHistoryItemResType[] = [];
+  const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  return responseDataList.reduce<ChatHistoryItemResType[]>((acc, curr) => {
-    if (lastResponse && lastResponse.mergeSignId && curr.mergeSignId === lastResponse.mergeSignId) {
-      // 替换 lastResponse
-      const concatResponse: ChatHistoryItemResType = {
-        ...curr,
-        runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
-        totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
-        childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-        toolCallTokens: (lastResponse.toolCallTokens || 0) + (curr.toolCallTokens || 0),
-        toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])]
+  for (const item of responseDataList) {
+    if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
+      // Merge with existing item
+      const existingIndex = mergeMap.get(item.mergeSignId)!;
+      const existing = result[existingIndex];
+
+      result[existingIndex] = {
+        ...item,
+        runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
+        totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
+        childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
+        toolDetail: mergeChatResponseData([
+          ...(existing.toolDetail || []),
+          ...(item.toolDetail || [])
+        ]),
+        loopDetail: mergeChatResponseData([
+          ...(existing.loopDetail || []),
+          ...(item.loopDetail || [])
+        ]),
+        pluginDetail: mergeChatResponseData([
+          ...(existing.pluginDetail || []),
+          ...(item.pluginDetail || [])
+        ])
       };
-      return [...acc.slice(0, -1), concatResponse];
     } else {
-      lastResponse = curr;
-      return [...acc, curr];
+      // Add new item
+      result.push(item);
+      if (item.mergeSignId) {
+        mergeMap.set(item.mergeSignId, result.length - 1);
+      }
     }
-  }, []);
+  }
+
+  return result;
 };

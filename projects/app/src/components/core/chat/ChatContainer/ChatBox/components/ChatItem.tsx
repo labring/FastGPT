@@ -1,5 +1,5 @@
-import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo, useRef } from 'react';
+import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -14,18 +14,31 @@ import {
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowAuthContext } from '../../context/workflowAuthContext';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  type AIChatItemValueItemType,
+  type ChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import {
+  ChatItemContext,
+  type OnOpenCiteModalProps
+} from '@/web/core/chat/context/chatItemContext';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import dynamic from 'next/dynamic';
+import { useMemoizedFn } from 'ahooks';
+import ChatBoxDivider from '../../../Divider';
+
+const ResponseTags = dynamic(() => import('./ResponseTags'));
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -82,13 +95,15 @@ const AIContentCard = React.memo(function AIContentCard({
   dataId,
   isLastChild,
   isChatting,
-  questionGuides
+  questionGuides,
+  onOpenCiteModal
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
+  onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
   return (
     <Flex flexDirection={'column'} gap={2}>
@@ -97,10 +112,12 @@ const AIContentCard = React.memo(function AIContentCard({
 
         return (
           <AIResponseBox
+            chatItemDataId={dataId}
             key={key}
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
+            onOpenCiteModal={onOpenCiteModal}
           />
         );
       })}
@@ -141,6 +158,17 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
+
+  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+
+  const { totalQuoteList: quoteList = [] } = useMemo(
+    () => addStatisticalDataToHistoryItem(chat),
+    [chat]
+  );
+
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
@@ -150,7 +178,7 @@ const ChatItem = (props: Props) => {
     return colorMap[statusBoxData.status];
   }, [statusBoxData?.status]);
 
-  /* 
+  /*
     1. The interactive node is divided into n dialog boxes.
     2. Auto-complete the last textnode
   */
@@ -207,6 +235,48 @@ const ChatItem = (props: Props) => {
 
     return groupedValues;
   }, [chat.obj, chat.value, isChatting]);
+
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const onOpenCiteModal = useMemoizedFn(
+    (item?: {
+      collectionId?: string;
+      sourceId?: string;
+      sourceName?: string;
+      datasetId?: string;
+      quoteId?: string;
+    }) => {
+      const collectionIdList = item?.collectionId
+        ? [item.collectionId]
+        : [...new Set(quoteList.map((item) => item.collectionId))];
+
+      setCiteModalData({
+        rawSearch: quoteList,
+        metadata:
+          item?.collectionId && isShowReadRawSource
+            ? {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionId: item.collectionId,
+                collectionIdList,
+                sourceId: item.sourceId || '',
+                sourceName: item.sourceName || '',
+                datasetId: item.datasetId || '',
+                outLinkAuthData,
+                quoteId: item.quoteId
+              }
+            : {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionIdList,
+                sourceId: item?.sourceId,
+                sourceName: item?.sourceName,
+                outLinkAuthData
+              }
+      });
+    }
+  );
 
   return (
     <Box
@@ -284,16 +354,39 @@ const ChatItem = (props: Props) => {
           >
             {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
             {type === ChatRoleEnum.AI && (
-              <AIContentCard
-                chatValue={value}
-                dataId={chat.dataId}
-                isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
-                isChatting={isChatting}
-                questionGuides={questionGuides}
-              />
+              <>
+                <AIContentCard
+                  chatValue={value}
+                  dataId={chat.dataId}
+                  isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
+                  isChatting={isChatting}
+                  questionGuides={questionGuides}
+                  onOpenCiteModal={onOpenCiteModal}
+                />
+                {i === splitAiResponseResults.length - 1 && (
+                  <ResponseTags
+                    showTags={!isLastChild || !isChatting}
+                    historyItem={chat}
+                    onOpenCiteModal={onOpenCiteModal}
+                  />
+                )}
+              </>
             )}
             {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
-            {i === splitAiResponseResults.length - 1 && <>{children}</>}
+            {i === splitAiResponseResults.length - 1 && (
+              <>
+                {/* error message */}
+                {!!chat.errorMsg && (
+                  <Box mt={2}>
+                    <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
+                    <Box fontSize={'xs'} color={'myGray.500'}>
+                      {chat.errorMsg}
+                    </Box>
+                  </Box>
+                )}
+                {children}
+              </>
+            )}
             {/* 对话框底部的复制按钮 */}
             {type == ChatRoleEnum.AI &&
               value[0]?.type !== 'interactive' &&
@@ -306,7 +399,7 @@ const ChatItem = (props: Props) => {
                   right={0}
                   transform={'translateX(100%)'}
                 >
-                  <MyTooltip label={t('common:common.Copy')}>
+                  <MyTooltip label={t('common:Copy')}>
                     <MyIcon
                       w={'1rem'}
                       cursor="pointer"

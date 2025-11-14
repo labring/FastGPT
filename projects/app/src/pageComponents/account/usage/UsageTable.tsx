@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
-import { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
@@ -23,10 +23,11 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { UsageFilterParams } from './type';
+import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
@@ -39,14 +40,14 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
   const requestParams = useMemo(() => {
     return {
-      dateStart: dateRange.from || new Date(),
-      dateEnd: addDays(dateRange.to || new Date(), 1),
+      dateStart: dayjs(dateRange.from || new Date()).format(),
+      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
@@ -67,12 +68,12 @@ const UsageTableList = ({
     Pagination,
     total
   } = usePagination(getUserUsages, {
-    pageSize: 20,
+    defaultPageSize: 20,
     params: requestParams,
     refreshDeps: [requestParams]
   });
 
-  const [usageDetail, setUsageDetail] = useState<UsageItemType>();
+  const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
 
   const { runAsync: exportUsage } = useRequest2(
     async () => {
@@ -110,7 +111,7 @@ const UsageTableList = ({
   );
 
   return (
-    <>
+    <MyBox display={'flex'} flexDirection={'column'} h={'100%'} isLoading={isLoading}>
       <Box>{Tabs}</Box>
       <Flex mt={4} w={'100%'}>
         <Box>{Selectors}</Box>
@@ -122,52 +123,46 @@ const UsageTableList = ({
           onConfirm={exportUsage}
         />
       </Flex>
-      <MyBox mt={3} flex={'1 0 0'} h={0} isLoading={isLoading}>
-        <Box h={'100%'} overflow={'auto'}>
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>{t('common:user.Time')}</Th>
-                  <Th>{t('account_usage:member')}</Th>
-                  <Th>{t('account_usage:user_type')}</Th>
-                  <Th>{t('account_usage:project_name')}</Th>
-                  <Th>{t('account_usage:total_points')}</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody fontSize={'sm'}>
-                {usages.map((item) => (
-                  <Tr key={item.id}>
-                    <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                    <Td>
-                      <Flex alignItems={'center'} color={'myGray.500'}>
-                        <Avatar src={item.sourceMember.avatar} w={'20px'} mr={1} rounded={'full'} />
-                        {item.sourceMember.name}
-                      </Flex>
-                    </Td>
-                    <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
-                    <Td>{t(item.appName as any) || '-'}</Td>
-                    <Td>{formatNumber(item.totalPoints) || 0}</Td>
-                    <Td>
-                      <Button
-                        size={'sm'}
-                        variant={'whitePrimary'}
-                        onClick={() => setUsageDetail(item)}
-                      >
-                        {t('account_usage:details')}
-                      </Button>
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-            {!isLoading && usages.length === 0 && (
-              <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
-            )}
-          </TableContainer>
-        </Box>
-      </MyBox>
+      <TableContainer mt={3} flex={'1 0 0'} h={0} overflowY={'auto'}>
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>{t('common:user.Time')}</Th>
+              <Th>{t('account_usage:member')}</Th>
+              <Th>{t('account_usage:user_type')}</Th>
+              <Th>{t('account_usage:project_name')}</Th>
+              <Th>{t('account_usage:total_points')}</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {usages.map((item) => (
+              <Tr key={item.id}>
+                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                <Td>
+                  <Flex alignItems={'center'} color={'myGray.500'}>
+                    <Avatar src={item.sourceMember.avatar} w={'20px'} mr={1} rounded={'full'} />
+                    {item.sourceMember.name}
+                  </Flex>
+                </Td>
+                <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
+                <Td className="textEllipsis" maxW={'400px'} title={t(item.appName as any)}>
+                  {t(item.appName as any) || '-'}
+                </Td>
+                <Td>{formatNumber(item.totalPoints) || 0}</Td>
+                <Td>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
+                    {t('account_usage:details')}
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {!isLoading && usages.length === 0 && (
+          <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
+        )}
+      </TableContainer>
       <Flex mt={3} justifyContent={'center'}>
         <Pagination />
       </Flex>
@@ -175,7 +170,7 @@ const UsageTableList = ({
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
-    </>
+    </MyBox>
   );
 };
 

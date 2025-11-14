@@ -1,6 +1,4 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getDatasets } from '@/web/core/dataset/api';
 

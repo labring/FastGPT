@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Input, InputProps, InputGroup, InputLeftElement } from '@chakra-ui/react';
+import { Input, type InputProps, InputGroup, InputLeftElement } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 
 const SearchInput = (props: InputProps) => {
   return (
-    <InputGroup alignItems="center" size={'sm'}>
-      <InputLeftElement>
-        <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
-      </InputLeftElement>
-      <Input fontSize="sm" bg={'myGray.50'} {...props} />
+    <InputGroup position={'relative'} maxW={props.maxW}>
+      <MyIcon
+        position={'absolute'}
+        zIndex={10}
+        left={2.5}
+        name={'common/searchLight'}
+        w={4}
+        top={'50%'}
+        transform={'translateY(-50%)'}
+        color={'myGray.600'}
+      />
+      <Input fontSize="sm" bg={'myGray.25'} pl={8} {...props} />
     </InputGroup>
   );
 };

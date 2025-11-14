@@ -11,6 +11,10 @@ import { checkTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
 import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants';
 import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
+import { clearExpiredRawTextBufferCron } from '@fastgpt/service/common/buffer/rawText/controller';
+import { clearExpiredDatasetImageCron } from '@fastgpt/service/core/dataset/image/controller';
+import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
+import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/controller';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -28,10 +32,11 @@ const setClearTmpUploadFilesCron = () => {
 };
 
 const clearInvalidDataCron = () => {
+  // Clear files
   setCron('0 */1 * * *', async () => {
     if (
       await checkTimerLock({
-        timerId: TimerIdEnum.checkInValidDatasetFiles,
+        timerId: TimerIdEnum.checkExpiredFiles,
         lockMinuted: 59
       })
     ) {
@@ -75,6 +80,7 @@ const scheduleTriggerAppCron = () => {
       getScheduleTriggerApp();
     }
   });
+  getScheduleTriggerApp();
 };
 
 export const startCron = () => {
@@ -82,4 +88,8 @@ export const startCron = () => {
   setClearTmpUploadFilesCron();
   clearInvalidDataCron();
   scheduleTriggerAppCron();
+  clearExpiredRawTextBufferCron();
+  clearExpiredDatasetImageCron();
+  cronRefreshModels();
+  clearExpiredS3FilesCron();
 };

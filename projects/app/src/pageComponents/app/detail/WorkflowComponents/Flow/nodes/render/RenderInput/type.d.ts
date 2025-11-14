@@ -1,4 +1,4 @@
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 
 export type RenderInputProps = {
   inputs?: FlowNodeInputItemType[];

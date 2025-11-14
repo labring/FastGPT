@@ -1,5 +1,5 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
@@ -18,18 +18,18 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import ToolParamsEditModal from './ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
   const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const Render = useMemo(() => {
     return (

@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
+import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  computedNodeInputReference,
-  filterWorkflowNodeOutputsByType
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -18,10 +15,17 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../../context/workflowInitContext';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -47,7 +51,7 @@ type CommonSelectProps = {
     }[];
   }[];
   popDirection?: 'top' | 'bottom';
-  styles?: ButtonProps;
+  ButtonProps?: ButtonProps;
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -64,20 +68,19 @@ export const useReference = ({
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   // 获取可选的变量列表
-  const referenceList = useMemo(() => {
-    const sourceNodes = computedNodeInputReference({
+  const referenceList = useMemoEnhance(() => {
+    const sourceNodes = getNodeAllSource({
       nodeId,
-      nodes: nodeList,
+      systemConfigNode,
+      getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
       t
     });
-
-    if (!sourceNodes) return [];
 
     const isArray = valueType?.includes('array');
 
@@ -87,15 +90,18 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.25rem'} borderRadius={'xs'} />
+              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
               <Box ml={1}>{t(node.name as any)}</Box>
             </Flex>
           ),
           value: node.nodeId,
           children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
-            .filter(
-              (output) => output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true
-            )
+            .filter((output) => {
+              if (output.type === FlowNodeOutputTypeEnum.error) {
+                return node.catchError === true;
+              }
+              return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+            })
             .map((output) => {
               return {
                 label: t(output.label as any),
@@ -108,7 +114,7 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail.chatConfig, t, valueType]);
 
   return {
     referenceList
@@ -118,8 +124,8 @@ export const useReference = ({
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
 
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const isArray = item.valueType?.includes('array') ?? false;
 
@@ -144,10 +150,10 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   });
 
   const popDirection = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
+    const node = getNodeById(nodeId);
     if (!node) return 'bottom';
     return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
-  }, [nodeId, nodeList]);
+  }, [nodeId, getNodeById]);
 
   return (
     <ReferSelector
@@ -168,7 +174,8 @@ const SingleReferenceSelector = ({
   value,
   list = [],
   onSelect,
-  popDirection
+  popDirection,
+  ButtonProps
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -196,12 +203,10 @@ const SingleReferenceSelector = ({
       <MultipleRowSelect
         label={
           isValidSelect ? (
-            <Flex gap={2} alignItems={'center'} fontSize={'sm'}>
-              <Flex py={1} pl={1} alignItems={'center'}>
-                {nodeName}
-                <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
-                {outputName}
-              </Flex>
+            <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
+              {nodeName}
+              <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
+              {outputName}
             </Flex>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>
@@ -213,9 +218,10 @@ const SingleReferenceSelector = ({
         list={list}
         onSelect={onSelect as any}
         popDirection={popDirection}
+        ButtonProps={ButtonProps}
       />
     );
-  }, [getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
 
   return ItemSelector;
 };
@@ -226,8 +232,6 @@ const MultipleReferenceSelector = ({
   onSelect,
   popDirection
 }: SelectProps<true>) => {
-  const { t } = useTranslation();
-
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];
@@ -247,9 +251,9 @@ const MultipleReferenceSelector = ({
 
   // Get valid item and remove invalid item
   const formatList = useMemo(() => {
-    if (!value) return [];
+    if (!value || !Array.isArray(value)) return [];
 
-    return value?.map((item) => {
+    return value.map((item) => {
       const [nodeName, outputName] = getSelectValue(item);
       return {
         rawValue: item,
@@ -259,6 +263,10 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
+  const invalidList = useMemo(() => {
+    return formatList.filter((item) => item.nodeName && item.outputName);
+  }, [formatList]);
+
   useEffect(() => {
     // Adapt array type from old version
     if (Array.isArray(value) && typeof value[0] === 'string') {
@@ -267,33 +275,35 @@ const MultipleReferenceSelector = ({
     }
   }, [formatList, onSelect, value]);
 
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
-
   const ArraySelector = useMemo(() => {
     return (
       <MultipleRowArraySelect
         label={
           invalidList.length > 0 ? (
-            <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
+            <Grid
+              py={3}
+              gridTemplateColumns={'1fr 1fr'}
+              gap={2}
+              fontSize={'sm'}
+              _hover={{
+                '.delete': {
+                  visibility: 'visible'
+                }
+              }}
+            >
               {invalidList.map(({ nodeName, outputName }, index) => {
                 return (
                   <Flex
-                    alignItems={'center'}
                     key={index}
+                    w={'100%'}
+                    alignItems={'center'}
                     bg={'primary.50'}
                     color={'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex
-                      alignItems={'center'}
-                      flex={'1 0 0'}
-                      maxW={'200px'}
-                      className="textEllipsis"
-                    >
+                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
                       {nodeName}
                       <MyIcon
                         name={'common/rightArrowLight'}
@@ -304,6 +314,8 @@ const MultipleReferenceSelector = ({
                       {outputName}
                     </Flex>
                     <MyIcon
+                      className="delete"
+                      visibility={'hidden'}
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
@@ -329,7 +341,9 @@ const MultipleReferenceSelector = ({
         }
         value={value as any}
         list={list}
-        onSelect={onSelect as any}
+        onSelect={(e) => {
+          onSelect(e as any);
+        }}
         popDirection={popDirection}
       />
     );

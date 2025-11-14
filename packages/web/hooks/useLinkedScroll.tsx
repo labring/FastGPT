@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, ReactNode } from 'react';
-import { LinkedListResponse, LinkedPaginationProps } from '../common/fetch/type';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type LinkedListResponse, type LinkedPaginationProps } from '../common/fetch/type';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
@@ -65,7 +65,6 @@ export function useLinkedScroll<
   let scroolSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
-      console.log('loadInitData', params);
       if (!currentData || isLoading) return;
 
       const item = dataList.find((item) => item._id === currentData.id);
@@ -213,13 +212,13 @@ export function useLinkedScroll<
         <MyBox ref={ref} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
           {hasMorePrev && prevLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
           {hasMoreNext && nextLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
         </MyBox>

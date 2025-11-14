@@ -17,11 +17,14 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { type InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { downloadFetch } from '@/web/common/system/utils';
+
 const InvoiceTable = () => {
   const { t } = useTranslation();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType | ''>('');
@@ -29,14 +32,15 @@ const InvoiceTable = () => {
     data: invoices,
     isLoading,
     Pagination,
-    total
+    total,
+    pageSize
   } = usePagination(getInvoiceRecords, {
-    pageSize: 20
+    defaultPageSize: 10
   });
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} h={'100%'} overflow={'overlay'}>
-      <TableContainer minH={'50vh'}>
+    <MyBox isLoading={isLoading} position={'relative'} minH={'50vh'} overflow={'overlay'}>
+      <TableContainer>
         <Table>
           <Thead h="3rem">
             <Tr>
@@ -98,11 +102,6 @@ const InvoiceTable = () => {
             ))}
           </Tbody>
         </Table>
-        {total >= 20 && (
-          <Flex mt={3} justifyContent={'flex-end'}>
-            <Pagination />
-          </Flex>
-        )}
         {!isLoading && invoices.length === 0 && (
           <Flex
             mt={'20vh'}
@@ -117,6 +116,11 @@ const InvoiceTable = () => {
           </Flex>
         )}
       </TableContainer>
+      {total >= pageSize && (
+        <Flex mt={3} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
       {!!invoiceDetailData && (
         <InvoiceDetailModal invoice={invoiceDetailData} onClose={() => setInvoiceDetailData('')} />
       )}
@@ -134,6 +138,14 @@ function InvoiceDetailModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+
+  const { runAsync: handleDownloadInvoice } = useRequest2(async (id: string) => {
+    await downloadFetch({
+      url: `/api/proApi/support/wallet/bill/invoice/downloadFile?id=${id}`,
+      filename: `${invoice.teamName}.pdf`
+    });
+  });
+
   return (
     <MyModal
       maxW={['90vw', '700px']}
@@ -164,6 +176,14 @@ function InvoiceDetailModal({
           />
           <LabelItem label={t('account_bill:contact_phone')} value={invoice.contactPhone} />
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />
+          {invoice.status === 2 && (
+            <Flex alignItems={'center'} justify={'space-between'}>
+              <FormLabel flex={'0 0 120px'}>{t('account_bill:Invoice_document')}</FormLabel>
+              <Box cursor={'pointer'} onClick={() => handleDownloadInvoice(invoice._id)}>
+                {t('account_bill:click_to_download')}
+              </Box>
+            </Flex>
+          )}
         </Flex>
       </ModalBody>
     </MyModal>

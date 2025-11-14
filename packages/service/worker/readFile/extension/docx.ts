@@ -1,5 +1,5 @@
 import mammoth, { images } from 'mammoth';
-import { ReadRawTextByBuffer, ReadFileResponse, ImageType } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse, type ImageType } from '../type';
 import { html2md } from '../../htmlStr2Md/utils';
 
 /**
@@ -13,6 +13,7 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
         buffer
       },
       {
+        ignoreEmptyParagraphs: false,
         convertImage: images.imgElement(async (image) => {
           const imageBase64 = await image.readAsBase64String();
           const uuid = crypto.randomUUID();

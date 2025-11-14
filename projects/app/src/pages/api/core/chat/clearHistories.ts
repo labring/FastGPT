@@ -1,13 +1,14 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { ClearHistoriesProps } from '@/global/core/chat/api';
+import { type ClearHistoriesProps } from '@/global/core/chat/api';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 /* clear chat history */
 async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextApiResponse) {
@@ -64,22 +65,19 @@ async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextA
   const idList = list.map((item) => item.chatId);
 
   await deleteChatFiles({ chatIdList: idList });
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: uid });
 
-  return mongoSessionRun(async (session) => {
-    await MongoChatItem.deleteMany(
-      {
-        appId,
-        chatId: { $in: idList }
-      },
-      { session }
-    );
-    await MongoChat.deleteMany(
-      {
-        appId,
-        chatId: { $in: idList }
-      },
-      { session }
-    );
+  await MongoChatItemResponse.deleteMany({
+    appId,
+    chatId: { $in: idList }
+  });
+  await MongoChatItem.deleteMany({
+    appId,
+    chatId: { $in: idList }
+  });
+  await MongoChat.deleteMany({
+    appId,
+    chatId: { $in: idList }
   });
 }
 

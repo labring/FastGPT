@@ -4,7 +4,7 @@ import { Box, useTheme } from '@chakra-ui/react';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../Provider';
+import { WorkflowAuthContext } from '../../context/workflowAuthContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -18,9 +18,9 @@ const QuoteList = React.memo(function QuoteList({
   rawSearch: SearchDataResponseItemType[];
 }) {
   const theme = useTheme();
-  const { chatId, appId, outLinkAuthData } = useChatStore();
+  const { appId, outLinkAuthData } = useChatStore();
 
-  const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
+  const RawSourceBoxProps = useContextSelector(WorkflowAuthContext, (v) => ({
     chatItemDataId,
     appId: v.appId,
     chatId: v.chatId,
@@ -34,36 +34,43 @@ const QuoteList = React.memo(function QuoteList({
 
   const { data: quoteList } = useRequest2(
     async () =>
-      await getQuoteDataList({
-        datasetDataIdList: rawSearch.map((item) => item.id),
-        collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
-        chatItemDataId,
-        appId,
-        chatId,
-        ...outLinkAuthData
-      }),
+      !!chatItemDataId
+        ? await getQuoteDataList({
+            datasetDataIdList: rawSearch.map((item) => item.id),
+            collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
+            chatItemDataId,
+            appId,
+            chatId: RawSourceBoxProps.chatId,
+            ...outLinkAuthData
+          })
+        : [],
     {
+      refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
       manual: false
     }
   );
 
   const formatedDataList = useMemo(() => {
-    return rawSearch
-      .map((item) => {
-        const currentFilterItem = quoteList?.find((res) => res._id === item.id);
-
+    const processedData = rawSearch.map((item) => {
+      if (chatItemDataId && quoteList) {
+        const currentFilterItem = quoteList.find((res) => res._id === item.id);
         return {
           ...item,
           q: currentFilterItem?.q || '',
-          a: currentFilterItem?.a || ''
+          a: currentFilterItem?.a || '',
+          imagePreivewUrl: currentFilterItem?.imagePreivewUrl
         };
-      })
-      .sort((a, b) => {
-        const aScore = formatScore(a.score);
-        const bScore = formatScore(b.score);
-        return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
-      });
-  }, [quoteList, rawSearch]);
+      }
+
+      return { ...item, q: item.q || '' };
+    });
+
+    return processedData.sort((a, b) => {
+      const aScore = formatScore(a.score);
+      const bScore = formatScore(b.score);
+      return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
+    });
+  }, [rawSearch, quoteList, chatItemDataId]);
 
   return (
     <>
@@ -81,6 +88,7 @@ const QuoteList = React.memo(function QuoteList({
           <QuoteItem
             quoteItem={item}
             canViewSource={showRawSource}
+            canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}
           />

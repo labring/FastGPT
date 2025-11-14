@@ -1,10 +1,11 @@
 import type { AppChatConfigType, AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
-import { AdminFbkType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { AdminFbkType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { RequestPaging } from '@/types';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type { GetChatTypeEnum } from '@/global/core/chat/constants';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 export type GetChatSpeechProps = OutLinkChatAuthProps & {
   appId: string;
   ttsConfig: AppTTSConfigType;
@@ -23,7 +24,7 @@ export type GetChatRecordsProps = OutLinkChatAuthProps & {
   appId: string;
   chatId?: string;
   loadCustomFeedbacks?: boolean;
-  type: `${GetChatTypeEnum}`;
+  type?: `${GetChatTypeEnum}`;
 };
 
 export type InitOutLinkChatProps = {
@@ -59,6 +60,11 @@ export type InitChatResponse = {
 export type GetHistoriesProps = OutLinkChatAuthProps & {
   appId?: string;
   source?: `${ChatSourceEnum}`;
+
+  startCreateTime?: string;
+  endCreateTime?: string;
+  startUpdateTime?: string;
+  endUpdateTime?: string;
 };
 
 export type UpdateHistoryProps = OutLinkChatAuthProps & {
@@ -82,6 +88,7 @@ export type DeleteChatItemProps = OutLinkChatAuthProps & {
   appId: string;
   chatId: string;
   contentId?: string;
+  delFile?: boolean;
 };
 
 export type AdminUpdateFeedbackParams = AdminFbkType & {

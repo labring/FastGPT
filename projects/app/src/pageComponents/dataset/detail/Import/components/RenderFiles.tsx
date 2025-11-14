@@ -9,12 +9,14 @@ import {
   Td,
   Tbody,
   Progress,
-  IconButton
+  IconButton,
+  Box
 } from '@chakra-ui/react';
-import { ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { type ImportSourceItemType } from '@/web/core/dataset/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 export const RenderUploadFiles = ({
   files,
@@ -24,7 +26,6 @@ export const RenderUploadFiles = ({
   setFiles: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
 }) => {
   const { t } = useTranslation();
-  const { fileT } = useI18n();
 
   return files.length > 0 ? (
     <>
@@ -33,16 +34,16 @@ export const RenderUploadFiles = ({
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
               <Th borderLeftRadius={'md'} borderBottom={'none'} py={4}>
-                {fileT('file_name')}
+                {t('file:file_name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
                 {t('common:core.dataset.import.Upload file progress')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {fileT('file_size')}
+                {t('file:file_size')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
-                {t('common:common.Action')}
+                {t('common:Action')}
               </Th>
             </Tr>
           </Thead>
@@ -56,22 +57,31 @@ export const RenderUploadFiles = ({
                   </Flex>
                 </Td>
                 <Td>
-                  <Flex alignItems={'center'} fontSize={'xs'}>
-                    <Progress
-                      value={item.uploadedFileRate}
-                      h={'6px'}
-                      w={'100%'}
-                      maxW={'210px'}
-                      size="sm"
-                      borderRadius={'20px'}
-                      colorScheme={(item.uploadedFileRate || 0) >= 100 ? 'green' : 'blue'}
-                      bg="myGray.200"
-                      hasStripe
-                      isAnimated
-                      mr={2}
-                    />
-                    {`${item.uploadedFileRate}%`}
-                  </Flex>
+                  {item.errorMsg ? (
+                    <MyTooltip label={item.errorMsg}>
+                      <MyTag colorSchema={'red'}>
+                        <Box mr={1}>{t('common:Error')}</Box>
+                        <MyIcon name={'help'} w={'0.9rem'} color={'red.500'} />
+                      </MyTag>
+                    </MyTooltip>
+                  ) : (
+                    <Flex alignItems={'center'} fontSize={'xs'}>
+                      <Progress
+                        value={item.uploadedFileRate}
+                        h={'6px'}
+                        w={'100%'}
+                        maxW={'210px'}
+                        size="sm"
+                        borderRadius={'20px'}
+                        colorScheme={(item.uploadedFileRate || 0) >= 100 ? 'green' : 'blue'}
+                        bg="myGray.200"
+                        hasStripe
+                        isAnimated
+                        mr={2}
+                      />
+                      {`${item.uploadedFileRate}%`}
+                    </Flex>
+                  )}
                 </Td>
                 <Td>{item.sourceSize}</Td>
                 <Td>

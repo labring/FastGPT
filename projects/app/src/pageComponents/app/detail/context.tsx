@@ -1,9 +1,8 @@
 import {
-  Dispatch,
-  ReactNode,
-  SetStateAction,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
   useCallback,
-  useEffect,
   useMemo,
   useState
 } from 'react';
@@ -12,8 +11,8 @@ import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
-import { AppUpdateParams, PostPublishAppProps } from '@/global/core/app/api';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppUpdateParams, type PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
@@ -22,7 +21,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
@@ -137,7 +135,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       refreshDeps: [appId],
       errorToast: t('common:core.app.error.Get app failed'),
       onError(err: any) {
-        router.replace('/app/list');
+        router.replace('/dashboard/agent');
       },
       onSuccess(res) {
         setAppDetail(res);
@@ -148,7 +146,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
     () => getAppLatestVersion({ appId }),
     {
-      manual: false
+      manual: !appDetail?.permission?.hasWritePer,
+      refreshDeps: [appDetail?.permission?.hasWritePer]
     }
   );
 
@@ -161,22 +160,29 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
-    try {
-      await postPublishApp(appId, data);
-      setAppDetail((state) => ({
-        ...state,
-        ...data,
-        modules: data.nodes || state.modules
-      }));
-      reloadAppLatestVersion();
-    } catch (error: any) {
-      if (error.statusText == AppErrEnum.unExist) {
-        return;
+  const { runAsync: onSaveApp } = useRequest2(
+    async (data: PostPublishAppProps) => {
+      try {
+        if (!appDetail.permission.hasWritePer) return;
+        await postPublishApp(appId, data);
+        setAppDetail((state) => ({
+          ...state,
+          ...data,
+          modules: data.nodes || state.modules
+        }));
+        reloadAppLatestVersion();
+      } catch (error: any) {
+        if (error.statusText == AppErrEnum.unExist) {
+          return;
+        }
+        return Promise.reject(error);
       }
-      return Promise.reject(error);
+    },
+    {
+      manual: true,
+      refreshDeps: [appDetail.permission.hasWritePer, appId]
     }
-  });
+  );
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('app:confirm_del_app_tip', { name: appDetail.name }),
@@ -188,11 +194,15 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       return delAppById(appDetail._id);
     },
     {
-      onSuccess() {
-        router.replace(`/app/list`);
+      onSuccess(data) {
+        data.forEach((appId) => {
+          localStorage.removeItem(`app_log_keys_${appId}`);
+        });
+
+        router.replace(`/dashboard/agent`);
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
   const onDelApp = useCallback(
@@ -204,16 +214,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       )(),
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
-
-  // check app unExist error
-  useEffect(() => {
-    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
-      toast({
-        title: t('app:app.error.unExist_app'),
-        status: 'error'
-      });
-    }
-  }, [appDetail.modules, t, toast]);
 
   const contextValue: AppContextType = useMemo(
     () => ({

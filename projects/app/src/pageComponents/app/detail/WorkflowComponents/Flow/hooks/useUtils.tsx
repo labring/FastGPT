@@ -1,12 +1,10 @@
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
-import { useTranslation } from 'next-i18next';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useCallback } from 'react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const useWorkflowUtils = () => {
-  const { t } = useTranslation();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const getNodeList = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeList);
 
   const computedNewNodeName = useCallback(
     ({
@@ -18,9 +16,16 @@ export const useWorkflowUtils = () => {
       flowNodeType: FlowNodeTypeEnum;
       pluginId?: string;
     }) => {
-      const nodeLength = nodeList.filter((node) => {
+      const nodeLength = getNodeList().filter((node) => {
         if (node.flowNodeType === flowNodeType) {
-          if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+          if (
+            [
+              FlowNodeTypeEnum.pluginModule,
+              FlowNodeTypeEnum.appModule,
+              FlowNodeTypeEnum.toolSet,
+              FlowNodeTypeEnum.tool
+            ].includes(flowNodeType)
+          ) {
             return node.pluginId === pluginId;
           } else {
             return true;
@@ -31,7 +36,7 @@ export const useWorkflowUtils = () => {
         ? `${templateName.replace(/#\d+$/, '')}#${nodeLength + 1}`
         : templateName;
     },
-    [nodeList]
+    [getNodeList]
   );
 
   return {

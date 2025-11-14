@@ -1,32 +1,40 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import type { BoxProps } from '@chakra-ui/react';
 import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
-import { type DateRange, DayPicker } from 'react-day-picker';
+import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import zhCN from 'date-fns/locale/zh-CN';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 
+export type DateRangeType = {
+  from: Date;
+  to: Date;
+};
+
 const DateRangePicker = ({
   onChange,
   onSuccess,
-  position = 'bottom',
+  popPosition = 'bottom',
   defaultDate = {
     from: addDays(new Date(), -30),
     to: new Date()
   },
-  dateRange
+  dateRange,
+  formLabel,
+  ...props
 }: {
-  onChange?: (date: DateRange) => void;
-  onSuccess?: (date: DateRange) => void;
-  position?: 'bottom' | 'top';
-  defaultDate?: DateRange;
-  dateRange?: DateRange;
-}) => {
+  onChange?: (date: DateRangeType) => void;
+  onSuccess?: (date: DateRangeType) => void;
+  popPosition?: 'bottom' | 'top';
+  defaultDate?: DateRangeType;
+  dateRange?: DateRangeType;
+  formLabel?: string;
+} & BoxProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const OutRangeRef = useRef(null);
-  const [range, setRange] = useState<DateRange | undefined>(defaultDate);
+  const [range, setRange] = useState<DateRangeType>(defaultDate);
   const [showSelected, setShowSelected] = useState(false);
 
   useEffect(() => {
@@ -37,9 +45,9 @@ const DateRangePicker = ({
 
   const formatSelected = useMemo(() => {
     if (range?.from && range.to) {
-      return `${format(range.from, 'y-MM-dd')} ~ ${format(range.to, 'y-MM-dd')}`;
+      return `${format(range.from, 'y/MM/dd')} - ${format(range.to, 'y/MM/dd')}`;
     }
-    return `${format(new Date(), 'y-MM-dd')} ~ ${format(new Date(), 'y-MM-dd')}`;
+    return `${format(new Date(), 'y/MM/dd')} - ${format(new Date(), 'y/MM/dd')}`;
   }, [range]);
 
   useOutsideClick({
@@ -52,19 +60,30 @@ const DateRangePicker = ({
   return (
     <Box position={'relative'} ref={OutRangeRef}>
       <Flex
-        border={theme.borders.base}
+        border={'base'}
         px={3}
+        pr={3}
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
         bg={'myGray.50'}
         fontSize={'sm'}
         onClick={() => setShowSelected(true)}
+        alignItems={'center'}
+        {...props}
       >
-        <Box color={'myGray.600'} fontWeight={'400'}>
+        {formLabel && (
+          <>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {formLabel}
+            </Box>
+            <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          </>
+        )}
+        <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
           {formatSelected}
         </Box>
-        <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />
+        {!formLabel && <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />}
       </Flex>
       {showSelected && (
         <Card
@@ -72,9 +91,9 @@ const DateRangePicker = ({
           zIndex={1}
           css={{
             '--rdp-background-color': '#d6e8ff',
-            ' --rdp-accent-color': '#0000ff'
+            '--rdp-accent-color': '#0000ff'
           }}
-          {...(position === 'top'
+          {...(popPosition === 'top'
             ? {
                 bottom: '40px'
               }
@@ -87,28 +106,30 @@ const DateRangePicker = ({
             defaultMonth={defaultDate.to}
             selected={range}
             disabled={[
-              { from: new Date(2022, 3, 1), to: addDays(new Date(), -90) },
+              { from: new Date(2022, 3, 1), to: addDays(new Date(), -180) },
               { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
             ]}
             onSelect={(date) => {
-              if (date?.from === undefined) {
-                date = {
+              let typeDate = date as DateRangeType;
+              if (!typeDate || typeDate?.from === undefined) {
+                typeDate = {
                   from: range?.from,
                   to: range?.from
                 };
               }
-              if (date?.to === undefined) {
-                date.to = date.from;
+              if (typeDate?.to === undefined) {
+                typeDate.to = typeDate.from;
               }
 
-              if (date?.from) {
-                date.from = new Date(date.from.setHours(0, 0, 0, 0));
+              if (typeDate?.from) {
+                typeDate.from = new Date(typeDate.from.setHours(0, 0, 0, 0));
               }
-              if (date?.to) {
-                date.to = new Date(date.to.setHours(23, 59, 59, 999));
+              if (typeDate?.to) {
+                typeDate.to = new Date(typeDate.to.setHours(23, 59, 59, 999));
               }
-              setRange(date);
-              onChange?.(date);
+
+              setRange(typeDate);
+              onChange?.(typeDate);
             }}
             footer={
               <Flex justifyContent={'flex-end'}>
@@ -118,7 +139,7 @@ const DateRangePicker = ({
                   mr={2}
                   onClick={() => setShowSelected(false)}
                 >
-                  {t('common:common.Close')}
+                  {t('common:Close')}
                 </Button>
                 <Button
                   size={'sm'}
@@ -127,7 +148,7 @@ const DateRangePicker = ({
                     setShowSelected(false);
                   }}
                 >
-                  {t('common:common.Confirm')}
+                  {t('common:Confirm')}
                 </Button>
               </Flex>
             }
@@ -139,4 +160,3 @@ const DateRangePicker = ({
 };
 
 export default DateRangePicker;
-export type DateRangeType = DateRange;

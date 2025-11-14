@@ -4,9 +4,11 @@ import {
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
-  PlacementWithLogical,
+  type PlacementWithLogical,
   PopoverArrow,
-  PopoverContentProps
+  type PopoverContentProps,
+  Box,
+  Portal
 } from '@chakra-ui/react';
 
 interface Props extends PopoverContentProps {
@@ -15,6 +17,7 @@ interface Props extends PopoverContentProps {
   offset?: [number, number];
   trigger?: 'hover' | 'click';
   hasArrow?: boolean;
+  onBackdropClick?: () => void;
   children: (e: { onClose: () => void }) => React.ReactNode;
   onCloseFunc?: () => void;
   onOpenFunc?: () => void;
@@ -31,6 +34,7 @@ const MyPopover = ({
   onOpenFunc,
   onCloseFunc,
   closeOnBlur = false,
+  onBackdropClick,
   ...props
 }: Props) => {
   const firstFieldRef = React.useRef(null);
@@ -43,11 +47,11 @@ const MyPopover = ({
       initialFocusRef={firstFieldRef}
       onOpen={() => {
         onOpen();
-        onOpenFunc && onOpenFunc();
+        onOpenFunc?.();
       }}
       onClose={() => {
         onClose();
-        onCloseFunc && onCloseFunc();
+        onCloseFunc?.();
       }}
       placement={placement}
       offset={offset}
@@ -56,13 +60,21 @@ const MyPopover = ({
       openDelay={100}
       closeDelay={100}
       isLazy
-      lazyBehavior="keepMounted"
+      lazyBehavior="unmount"
+      autoFocus={false}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
-      <PopoverContent {...props}>
-        {hasArrow && <PopoverArrow />}
-        {children({ onClose })}
-      </PopoverContent>
+      {isOpen && onBackdropClick && (
+        <Portal>
+          <Box position="fixed" zIndex={1000} inset={0} onClick={() => onBackdropClick()} />
+        </Portal>
+      )}
+      <Portal>
+        <PopoverContent zIndex={1001} {...props}>
+          {hasArrow && <PopoverArrow />}
+          {children({ onClose })}
+        </PopoverContent>
+      </Portal>
     </Popover>
   );
 };

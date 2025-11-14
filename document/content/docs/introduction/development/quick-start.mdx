@@ -1,0 +1,100 @@
+---
+title: 快速开始
+description: 一键启动 FastGPT，进行本地体验
+---
+
+import { Alert } from '@/components/docs/Alert';
+import FastGPTLink from '@/components/docs/linkFastGPT';
+
+## 本地 Docker 快速体验
+
+快速体验将默认使用 PostgreSQL Vector 向量库。
+
+### 1. 准备 Docker 环境
+
+<Tabs items={['Linux','MacOS','Windows']}>
+  <Tab value="Linux">
+  参考：https://www.docker.com
+```bash
+# 安装 Docker
+curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+systemctl enable --now docker
+# 安装 docker-compose
+curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+# 验证安装
+docker -v
+docker-compose -v
+# 如失效，自行百度~
+```
+  </Tab>
+  <Tab value="MacOS">
+推荐直接使用 [Orbstack](https://orbstack.dev/)。可直接通过 Homebrew 来安装：
+
+```bash
+brew install orbstack
+```
+
+或者直接[下载安装包](https://orbstack.dev/download)进行安装。
+
+  </Tab>
+  <Tab value="Windows">
+我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
+
+可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
+
+也可以直接[在 WSL 2 中安装命令行版本的 Docker](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop)。
+
+  </Tab>
+</Tabs>
+
+### 2. 获取部署文件
+
+<Tabs items={['使用 bash 脚本一键安装','手动安装']}>
+<Tab value="使用 bash 脚本一键安装">
+根据您的网络环境选择：
+
+国内镜像(阿里云)
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=pg
+```
+非国内镜像(dockhub, ghcr)
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=pg
+```
+上述脚本需要在 bash 环境下使用（Windows 用户请使用 Windows WSL，或者使用手动安装）
+</Tab>
+<Tab value="手动安装">
+在你有权限的目录下创建一个目录，在目录内下载如下两个文件：
+
+根据您的网络环境选择下载：
+- [国内镜像版本的 docker-compose.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
+- [非国内镜像版本的 docker-compose.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
+
+下载 config.json
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+</Tab>
+</Tabs>
+
+### 3. 启动
+
+```bash
+docker compose -f docker-compose.pg.yml up -d
+```
+
+等待服务启动，通过 http://localhost:3000 进行访问
+默认用户为 `root`，密码为 `1234`
+
+### Sealos 一键部署
+本地部署起不来？试试 [Sealos 一键部署](sealos)。
+
+## 进阶使用
+
+### 进行本地开发
+
+如果要改代码或者给 FastGPT 贡献代码，请参考：[进行本地开发](intro)
+
+### 生产环境部署
+
+如果要在生产环境进行部署，使用其他的向量库，配置相关的环境变量，请参考：[生产环境部署](docker)

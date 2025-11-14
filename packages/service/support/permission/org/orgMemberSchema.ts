@@ -4,7 +4,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { OrgMemberSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import { type OrgMemberSchemaType } from '@fastgpt/global/support/user/team/org/type';
 const { Schema } = connectionMongo;
 
 export const OrgMemberCollectionName = 'team_org_members';

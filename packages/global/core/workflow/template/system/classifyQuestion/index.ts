@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -17,21 +17,20 @@ import {
 } from '../../input';
 import { Input_Template_System_Prompt } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.classifyQuestion,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(true, false, true, true),
+  showSourceHandle: false,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/questionClassify',
   name: i18nT('workflow:question_classification'),
   intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,
-  version: '481',
-  courseUrl: '/docs/guide/workbench/workflow/question_classify/',
+  version: '4.9.2',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/question_classify/',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
@@ -39,9 +38,9 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
     },
     {
       ...Input_Template_System_Prompt,
-      label: 'core.module.input.label.Background',
-      description: 'core.module.input.description.Background',
-      placeholder: 'core.module.input.placeholder.Classify background'
+      label: i18nT('common:core.module.input.label.Background'),
+      description: i18nT('common:core.module.input.description.Background'),
+      placeholder: i18nT('common:core.module.input.placeholder.Classify background')
     },
     Input_Template_History,
     Input_Template_UserChatInput,

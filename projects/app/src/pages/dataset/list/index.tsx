@@ -1,34 +1,36 @@
+'use client';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import ParentPaths from '@/components/common/folder/Path';
+import FolderPath from '@/components/common/folder/Path';
 import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MultipleMenu from '@fastgpt/web/components/common/MyMenu/Multiple';
 import { AddIcon } from '@chakra-ui/icons';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
-import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
+import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
 import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
   deleteDatasetCollaborators,
   getCollaboratorList
 } from '@/web/core/dataset/api/collaborator';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
+import { type CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -64,10 +66,7 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (
-        !feConfigs?.isPlus &&
-        [DatasetTypeEnum.websiteDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e)
-      ) {
+      if (!feConfigs?.isPlus && [DatasetTypeEnum.websiteDataset].includes(e)) {
         return toast({
           status: 'warning',
           title: t('common:commercial_function_tip')
@@ -110,7 +109,7 @@ const Dataset = () => {
       <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <ParentPaths
+            <FolderPath
               paths={paths}
               FirstPathDom={
                 <Flex flex={1} alignItems={'center'}>
@@ -138,12 +137,11 @@ const Dataset = () => {
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasWritePer) && (
+              : userInfo?.team?.permission.hasDatasetCreatePer) && (
               <Box pl={[0, 4]}>
-                <MyMenu
+                <MultipleMenu
                   size="md"
-                  offset={[0, 10]}
-                  Button={
+                  Trigger={
                     <Button variant={'primary'} px="0">
                       <Flex alignItems={'center'} px={5}>
                         <AddIcon mr={2} />
@@ -161,28 +159,47 @@ const Dataset = () => {
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
                         },
                         {
-                          icon: 'core/dataset/externalDatasetColor',
-                          label: t('dataset:api_file'),
-                          description: t('dataset:external_file_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                        },
-                        {
                           icon: 'core/dataset/websiteDatasetColor',
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
                         {
-                          icon: 'core/dataset/feishuDatasetColor',
-                          label: t('dataset:feishu_dataset'),
-                          description: t('dataset:feishu_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                        },
-                        {
-                          icon: 'core/dataset/yuqueDatasetColor',
-                          label: t('dataset:yuque_dataset'),
-                          description: t('dataset:yuque_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                          icon: 'core/dataset/otherDataset',
+                          label: t('dataset:other_dataset'),
+                          description: t('dataset:external_other_dataset_desc'),
+                          menuList: [
+                            {
+                              children: [
+                                {
+                                  icon: 'core/dataset/externalDatasetColor',
+                                  label: t('dataset:api_file'),
+                                  description: t('dataset:external_file_dataset_desc'),
+                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                                },
+                                ...(feConfigs?.show_dataset_feishu !== false
+                                  ? [
+                                      {
+                                        icon: 'core/dataset/feishuDatasetColor',
+                                        label: t('dataset:feishu_dataset'),
+                                        description: t('dataset:feishu_dataset_desc'),
+                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                                      }
+                                    ]
+                                  : []),
+                                ...(feConfigs?.show_dataset_yuque !== false
+                                  ? [
+                                      {
+                                        icon: 'core/dataset/yuqueDatasetColor',
+                                        label: t('dataset:yuque_dataset'),
+                                        description: t('dataset:yuque_dataset_desc'),
+                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                                      }
+                                    ]
+                                  : [])
+                              ]
+                            }
+                          ]
                         }
                       ]
                     },
@@ -209,7 +226,7 @@ const Dataset = () => {
         </Flex>
 
         {!!folderDetail && isPc && (
-          <Box ml="6">
+          <Box ml="6" h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
               isInheritPermission={folderDetail.inheritPermission}
@@ -238,42 +255,20 @@ const Dataset = () => {
                 })
               }
               managePer={{
+                defaultRole: ReadRoleVal,
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                permissionList: DatasetPermissionList,
-                onUpdateCollaborators: ({
-                  members,
-                  groups,
-                  permission
-                }: {
-                  members?: string[];
-                  groups?: string[];
-                  permission: number;
-                }) =>
+                roleList: DatasetRoleList,
+                onUpdateCollaborators: (params) =>
                   postUpdateDatasetCollaborators({
-                    members,
-                    groups,
-                    permission,
+                    ...params,
                     datasetId: folderDetail._id
                   }),
-                onDelOneCollaborator: async ({ tmbId, groupId, orgId }) => {
-                  if (tmbId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      tmbId
-                    });
-                  } else if (groupId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      groupId
-                    });
-                  } else if (orgId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      orgId
-                    });
-                  }
-                },
+                onDelOneCollaborator: async (params) =>
+                  deleteDatasetCollaborators({
+                    ...params,
+                    datasetId: folderDetail._id
+                  }),
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />

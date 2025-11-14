@@ -1,18 +1,23 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import {
+  type RuntimeNodeItemType,
+  type DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
   VariableConditionEnum
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import {
-  ConditionListItemType,
-  IfElseConditionType,
-  IfElseListItemType
+  type ConditionListItemType,
+  type IfElseConditionType,
+  type IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -48,13 +53,13 @@ function isInclude(value: any, target: any) {
   }
 }
 
-function checkCondition(condition: VariableConditionEnum, inputValue: any, value: string) {
+function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
   const operations: Record<VariableConditionEnum, () => boolean> = {
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
 
-    [VariableConditionEnum.equalTo]: () => String(inputValue).trim() === value.trim(),
-    [VariableConditionEnum.notEqual]: () => String(inputValue).trim() !== value.trim(),
+    [VariableConditionEnum.equalTo]: () => String(inputValue).trim() === String(value).trim(),
+    [VariableConditionEnum.notEqual]: () => String(inputValue).trim() !== String(value).trim(),
 
     // number
     [VariableConditionEnum.greaterThan]: () => Number(inputValue) > Number(value),
@@ -99,19 +104,29 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
 function getResult(
   condition: IfElseConditionType,
   list: ConditionListItemType[],
-  variables: any,
-  runtimeNodes: any[]
+  variables: Record<string, any>,
+  runtimeNodes: RuntimeNodeItemType[]
 ) {
   const listResult = list.map((item) => {
-    const { variable, condition: variableCondition, value } = item;
+    const { variable, condition: variableCondition, value, valueType } = item;
+    if (!variableCondition) return;
 
-    const inputValue = getReferenceVariableValue({
+    const conditionLeftValue = getReferenceVariableValue({
       value: variable,
       variables,
       nodes: runtimeNodes
     });
 
-    return checkCondition(variableCondition as VariableConditionEnum, inputValue, value || '');
+    const conditionRightValue =
+      valueType === 'reference'
+        ? getReferenceVariableValue({
+            value: value as ReferenceItemValueType,
+            variables,
+            nodes: runtimeNodes
+          })
+        : value;
+
+    return checkCondition(variableCondition, conditionLeftValue, conditionRightValue);
   });
 
   return condition === 'AND' ? listResult.every(Boolean) : listResult.some(Boolean);
@@ -142,7 +157,9 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   });
 
   return {
-    [NodeOutputKeyEnum.ifElseResult]: res,
+    data: {
+      [NodeOutputKeyEnum.ifElseResult]: res
+    },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: 0,
       ifElseResult: res

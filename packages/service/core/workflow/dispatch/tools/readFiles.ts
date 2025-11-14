@@ -1,24 +1,28 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
-import { MongoRawTextBuffer } from '../../../../common/buffer/rawText/schema';
-import { readFromSecondary } from '../../../../common/mongo/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
+import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
+import { addMinutes } from 'date-fns';
+import { getNodeErrResponse } from '../utils';
+import { isInternalAddress } from '../../../../common/system/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
+  [NodeOutputKeyEnum.rawResponse]: ReturnType<typeof formatResponseObject>[];
 }>;
 
 const formatResponseObject = ({
@@ -49,7 +53,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     histories,
     chatConfig,
     node: { version },
-    params: { fileUrlList = [] }
+    params: { fileUrlList = [] },
+    usageId
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
   const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
@@ -57,31 +62,39 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
-  const { text, readFilesResult } = await getFileContentFromLinks({
-    // Concat fileUrlList and filesFromHistories; remove not supported files
-    urls: [...fileUrlList, ...filesFromHistories],
-    requestOrigin,
-    maxFiles,
-    teamId,
-    tmbId,
-    customPdfParse
-  });
+  try {
+    const { text, readFilesResult } = await getFileContentFromLinks({
+      // Concat fileUrlList and filesFromHistories; remove not supported files
+      urls: [...fileUrlList, ...filesFromHistories],
+      requestOrigin,
+      maxFiles,
+      teamId,
+      tmbId,
+      customPdfParse,
+      usageId
+    });
 
-  return {
-    [NodeOutputKeyEnum.text]: text,
-    [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      readFiles: readFilesResult.map((item) => ({
-        name: item?.filename || '',
-        url: item?.url || ''
-      })),
-      readFilesResult: readFilesResult
-        .map((item) => item?.nodeResponsePreviewText ?? '')
-        .join('\n******\n')
-    },
-    [DispatchNodeResponseKeyEnum.toolResponses]: {
-      fileContent: text
-    }
-  };
+    return {
+      data: {
+        [NodeOutputKeyEnum.text]: text,
+        [NodeOutputKeyEnum.rawResponse]: readFilesResult
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        readFiles: readFilesResult.map((item) => ({
+          name: item?.filename || '',
+          url: item?.url || ''
+        })),
+        readFilesResult: readFilesResult
+          .map((item) => item?.nodeResponsePreviewText ?? '')
+          .join('\n******\n')
+      },
+      [DispatchNodeResponseKeyEnum.toolResponses]: {
+        fileContent: text
+      }
+    };
+  } catch (error) {
+    return getNodeErrResponse({ error });
+  }
 };
 
 export const getHistoryFileLinks = (histories: ChatItemType[]) => {
@@ -110,7 +123,8 @@ export const getFileContentFromLinks = async ({
   maxFiles,
   teamId,
   tmbId,
-  customPdfParse
+  customPdfParse,
+  usageId
 }: {
   urls: string[];
   requestOrigin?: string;
@@ -118,6 +132,7 @@ export const getFileContentFromLinks = async ({
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  usageId?: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -157,18 +172,19 @@ export const getFileContentFromLinks = async ({
     parseUrlList
       .map(async (url) => {
         // Get from buffer
-        const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: url }, undefined, {
-          ...readFromSecondary
-        }).lean();
+        const fileBuffer = await getRawTextBuffer(url);
         if (fileBuffer) {
           return formatResponseObject({
-            filename: fileBuffer.metadata?.filename || url,
+            filename: fileBuffer.sourceName || url,
             url,
-            content: fileBuffer.rawText
+            content: fileBuffer.text
           });
         }
 
         try {
+          if (isInternalAddress(url)) {
+            return Promise.reject('Url is invalid');
+          }
           // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,
@@ -210,26 +226,22 @@ export const getFileContentFromLinks = async ({
           // Read file
           const { rawText } = await readRawContentByFileBuffer({
             extension,
-            isQAImport: false,
             teamId,
             tmbId,
             buffer,
             encoding,
-            customPdfParse
+            customPdfParse,
+            getFormatText: true,
+            usageId
           });
 
           // Add to buffer
-          try {
-            if (buffer.length < 14 * 1024 * 1024 && rawText.trim()) {
-              MongoRawTextBuffer.create({
-                sourceId: url,
-                rawText,
-                metadata: {
-                  filename: filename
-                }
-              });
-            }
-          } catch (error) {}
+          addRawTextBuffer({
+            sourceId: url,
+            sourceName: filename,
+            text: rawText,
+            expiredTime: addMinutes(new Date(), 20)
+          });
 
           return formatResponseObject({ filename, url, content: rawText });
         } catch (error) {

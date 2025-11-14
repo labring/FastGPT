@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { CollectionPageContext } from './Context';
 import { isEqual } from 'lodash';
 import TagManageModal from './TagManageModal';
-import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 
 const HeaderTagPopOver = () => {
   const { t } = useTranslation();

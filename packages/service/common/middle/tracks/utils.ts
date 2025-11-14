@@ -1,15 +1,17 @@
-import { PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
+import { type PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { addLog } from '../../system/log';
-import { OAuthEnum } from '@fastgpt/global/support/user/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
+import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import { getRedisCache, setRedisCache } from '../../redis/cache';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.info('Push tracks', {
+  addLog.debug('Push tracks', {
     event,
     ...data
   });
@@ -24,14 +26,79 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
     data: props
   });
 };
+
+// Run times
+const pushCountTrack = ({
+  event,
+  key,
+  data
+}: {
+  event: TrackEnum;
+  key: string;
+  data: Record<string, any>;
+}) => {
+  if (!global.feConfigs?.isPlus) return;
+  addLog.debug('Push tracks', {
+    event,
+    key
+  });
+
+  if (!global.countTrackQueue) {
+    global.countTrackQueue = new Map();
+  }
+
+  const value = global.countTrackQueue.get(key);
+  if (value) {
+    global.countTrackQueue.set(key, {
+      ...value,
+      count: value.count + 1
+    });
+  } else {
+    global.countTrackQueue.set(key, {
+      event,
+      data,
+      count: 1
+    });
+  }
+};
+
 export const pushTrack = {
   login: (data: PushTrackCommonType & { type: `${OAuthEnum}` | 'password' }) => {
     return createTrack({
       event: TrackEnum.login,
       data
+    })?.then(() => {
+      pushTrack.dailyUserActive({
+        uid: data.uid,
+        teamId: data.teamId,
+        tmbId: data.tmbId
+      });
     });
   },
-  createApp: (data: PushTrackCommonType & { type: AppTypeEnum }) => {
+  dailyUserActive: async (data: PushTrackCommonType) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dailyUserActive:${data.uid}_${today}`;
+      const cache = await getRedisCache(key);
+      if (cache) return;
+
+      await setRedisCache(key, '1', 24 * 60 * 60);
+
+      return createTrack({
+        event: TrackEnum.dailyUserActive,
+        data
+      });
+    } catch (error) {
+      addLog.error('Failed to track daily user active:', error);
+    }
+  },
+  createApp: (
+    data: PushTrackCommonType &
+      ShortUrlParams & {
+        type: AppTypeEnum;
+        appId: string;
+      }
+  ) => {
     return createTrack({
       event: TrackEnum.createApp,
       data
@@ -58,5 +125,26 @@ export const pushTrack = {
         }
       });
     } catch (error) {}
+  },
+  runSystemTool: (
+    data: PushTrackCommonType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }
+  ) => {
+    return createTrack({
+      event: TrackEnum.runSystemTool,
+      data
+    });
+  },
+  datasetSearch: (data: { teamId: string; datasetIds: string[] }) => {
+    if (!data.teamId) return;
+    data.datasetIds.forEach((datasetId) => {
+      pushCountTrack({
+        event: TrackEnum.datasetSearch,
+        key: `${TrackEnum.datasetSearch}_${datasetId}`,
+        data: {
+          teamId: data.teamId,
+          datasetId
+        }
+      });
+    });
   }
 };

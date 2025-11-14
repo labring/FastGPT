@@ -1,0 +1,169 @@
+name: Document deploy
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'document/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: labring/fastgpt-img
+          token: ${{ secrets.DOCS_IMGS_SYNC_TOKEN }}
+          path: fastgpt-img
+
+      - name: Sync images
+        run: |
+          # Create imgs directory if it doesn't exist
+          mkdir -p fastgpt-img
+
+          # Copy all images from document/public/imgs to the target repository
+          cp -r document/public/imgs/* fastgpt-img
+
+          # Navigate to target repository
+          cd fastgpt-img
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add, commit and push changes
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync images from FastGPT document at $(date)"
+            git push
+            echo "Images synced successfully"
+          else
+            echo "No changes to sync"
+          fi
+  # Add a new job to generate unified timestamp
+  generate-timestamp:
+    needs: sync-images
+    runs-on: ubuntu-latest
+    outputs:
+      datetime: ${{ steps.datetime.outputs.datetime }}
+    steps:
+      - name: Get current datetime
+        id: datetime
+        run: echo "datetime=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+  build-images:
+    needs: generate-timestamp
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain_config:
+          - domain: 'https://fastgpt.io'
+            suffix: 'io'
+          - domain: 'https://fastgpt.cn'
+            suffix: 'cn'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rewrite image paths
+        if: matrix.domain_config.suffix == 'io'
+        run: |
+          find document/content/docs -name "*.mdx" -type f | while read file; do
+            sed -i 's|](/imgs/|](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/|g' "$file"
+          done
+      - name: Rewrite domain links for CN
+        if: matrix.domain_config.suffix == 'cn'
+        run: |
+          find document/content/docs -name "*.mdx" -type f | while read file; do
+            sed -i 's|doc\.fastgpt\.io|doc.fastgpt.cn|g' "$file"
+          done
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs
+          tags: |
+            ${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
+          flavor: latest=false
+
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+
+      - name: Build and push Docker images (CN)
+        if: matrix.domain_config.suffix == 'cn'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./document
+          file: ./document/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
+          build-args: |
+            FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+
+      - name: Build and push Docker images (IO)
+        if: matrix.domain_config.suffix == 'io'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./document
+          file: ./document/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
+          build-args: |
+            FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+
+  update-images:
+    needs: [generate-timestamp, build-images]
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        domain_config:
+          - domain: 'https://fastgpt.io'
+            suffix: 'io'
+            deployment: 'fastgpt-docs'
+            kube_config: 'KUBE_CONFIG_IO'
+          - domain: 'https://fastgpt.cn'
+            suffix: 'cn'
+            deployment: 'fastgpt-docs'
+            kube_config: 'KUBE_CONFIG_CN'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Add kubeconfig setup step to handle encoding issues
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets[matrix.domain_config.kube_config] }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/${{ matrix.domain_config.deployment }} ${{ matrix.domain_config.deployment }}=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
+
+      - name: Annotate deployment
+        run: |
+          kubectl annotate deployment/${{ matrix.domain_config.deployment }} originImageName="${{ secrets.ALI_IMAGE_NAME }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}" --overwrite

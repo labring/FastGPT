@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, ButtonProps } from '@chakra-ui/react';
+import { Box, type ButtonProps } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
@@ -11,10 +11,12 @@ import { useRouter } from 'next/router';
 
 const TeamSelector = ({
   showManage,
+  showAvatar = true,
   onChange,
   ...props
 }: Omit<ButtonProps, 'onChange'> & {
   showManage?: boolean;
+  showAvatar?: boolean;
   onChange?: () => void;
 }) => {
   const { t } = useTranslation();
@@ -43,7 +45,7 @@ const TeamSelector = ({
 
   const teamList = useMemo(() => {
     return myTeams.map((team) => ({
-      icon: team.avatar,
+      ...(showAvatar ? { icon: team.avatar } : {}),
       iconSize: '1.25rem',
       label: team.teamName,
       value: team.teamId

@@ -1,34 +1,53 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type {
+  FlowNodeItemType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import {
+  AppNodeFlowNodeTypeMap,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
-import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
-import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../context/workflowEventContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useBoolean, useCreation } from 'ahooks';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -38,19 +57,19 @@ type Props = FlowNodeItemType & {
   w?: string | number;
   h?: string | number;
   selected?: boolean;
+  searchedText?: string;
   menuForbid?: {
+    copilot?: boolean;
     debug?: boolean;
     copy?: boolean;
     delete?: boolean;
   };
   customStyle?: FlexProps;
+  rtDoms?: React.ReactNode[];
 };
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
-
-  const { toast } = useToast();
-
   const {
     children,
     avatar = LOGO_ICON,
@@ -63,39 +82,55 @@ const NodeCard = (props: Props) => {
     h = 'full',
     nodeId,
     selected,
+    searchedText,
     menuForbid,
     isTool = false,
     isError = false,
     debugResult,
     isFolded,
-    customStyle
+    customStyle,
+    inputs,
+    rtDoms
   } = props;
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
-  const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
 
-  // custom title edit
-  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:common.Custom Title'),
-    placeholder: t('app:module.Custom Title Tip') || ''
-  });
+  const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
+  const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
 
-  const showToolHandle = useMemo(
-    () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.tools),
-    [isTool, nodeList]
+  const inputConfig = useMemo(
+    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
+    [inputs]
   );
 
-  // Current node and parent node
-  const { node, parentNode } = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
-    const parentNode = node?.parentNodeId
-      ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
-      : undefined;
+  const showToolHandle = isTool && hasToolNode;
 
-    return { node, parentNode };
-  }, [nodeList, nodeId]);
+  // Current node and parent node
+  const { node, hidden } = useMemo(() => {
+    const node = getNodeById(nodeId);
+    const hidden = node?.parentNodeId ? foldedNodesMap[node.parentNodeId] : false;
+
+    return { node, hidden };
+  }, [foldedNodesMap, getNodeById, nodeId]);
+
+  const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
+  const showVersion = useMemo(() => {
+    // 1. MCP tool & HTTP tool set do not have version
+    if (
+      isAppNode &&
+      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
+    )
+      return false;
+    // 2. Team app/System commercial plugin
+    if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
+    // 3. System tool
+    if (isAppNode && node?.toolConfig?.systemTool) return true;
+
+    return false;
+  }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
@@ -103,10 +138,7 @@ const NodeCard = (props: Props) => {
         return undefined;
       }
 
-      if (
-        node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.appModule
-      ) {
+      if (isAppNode) {
         return { ...node, ...node.pluginData };
       } else {
         const template = moduleTemplatesFlat.find(
@@ -130,248 +162,19 @@ const NodeCard = (props: Props) => {
     }
   );
 
-  const {
-    openConfirm: onOpenConfirmSync,
-    onClose: onCloseConfirmSync,
-    ConfirmModal: ConfirmSyncModal
-  } = useConfirm({
-    content: t('workflow:Confirm_sync_node')
-  });
+  /* Node header - 重构后的版本,依赖项大幅减少 */
+  const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
+  const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
-  const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
-
-  const { runAsync: onClickSyncVersion } = useRequest2(
-    async () => {
-      if (!node) return;
-
-      if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        if (!!template) {
-          onResetNode({
-            id: nodeId,
-            node: template
-          });
-        }
-      } else {
-        const template = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === node.flowNodeType
-        );
-        if (!template) {
-          return toast({
-            title: t('app:app.modules.not_found_tips'),
-            status: 'warning'
-          });
-        }
-        onResetNode({
-          id: nodeId,
-          node: template
-        });
-      }
-    },
-    {
-      refreshDeps: [node, nodeId, onResetNode],
-      onFinally() {}
-    }
-  );
-
-  /* Node header */
-  const Header = useMemo(() => {
-    const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
-
-    return (
-      <Box position={'relative'}>
-        {/* debug */}
-        {showHeader && (
-          <Box px={3} pt={4}>
-            {/* tool target handle */}
-            <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-
-            {/* avatar and name */}
-            <Flex alignItems={'center'} mb={1}>
-              {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
-                <Flex
-                  alignItems={'center'}
-                  mr={1}
-                  p={1}
-                  cursor={'pointer'}
-                  rounded={'sm'}
-                  _hover={{ bg: 'myGray.200' }}
-                  onClick={() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'isFolded',
-                      value: !isFolded
-                    });
-                  }}
-                >
-                  <MyIcon
-                    name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
-                    w={'16px'}
-                    h={'16px'}
-                    color={'myGray.500'}
-                  />
-                </Flex>
-              )}
-              <Avatar
-                src={avatar}
-                borderRadius={'sm'}
-                objectFit={'contain'}
-                w={'24px'}
-                h={'24px'}
-              />
-              <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
-                {t(name as any)}
-              </Box>
-              <Button
-                display={'none'}
-                variant={'grayGhost'}
-                size={'xs'}
-                ml={0.5}
-                className="controller-rename"
-                cursor={'pointer'}
-                onClick={() => {
-                  onOpenCustomTitleModal({
-                    defaultVal: name,
-                    onSuccess: (e) => {
-                      if (!e) {
-                        return toast({
-                          title: t('app:modules.Title is required'),
-                          status: 'warning'
-                        });
-                      }
-                      onChangeNode({
-                        nodeId,
-                        type: 'attr',
-                        key: 'name',
-                        value: e
-                      });
-                    }
-                  });
-                }}
-              >
-                <MyIcon name={'edit'} w={'14px'} />
-              </Button>
-              <Box flex={1} />
-              {hasNewVersion && (
-                <MyTooltip label={t('app:app.modules.click to update')}>
-                  <Button
-                    bg={'yellow.50'}
-                    color={'yellow.600'}
-                    variant={'ghost'}
-                    h={8}
-                    px={2}
-                    rounded={'6px'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'yellow.100' }}
-                    onClick={onOpenConfirmSync(onClickSyncVersion)}
-                  >
-                    <Box>{t('app:app.modules.has new version')}</Box>
-                    <MyIcon name={'help'} w={'14px'} ml={1} />
-                  </Button>
-                </MyTooltip>
-              )}
-              {!!nodeTemplate?.diagram && !hasNewVersion && (
-                <MyTooltip
-                  label={
-                    <MyImage
-                      src={nodeTemplate?.diagram}
-                      w={'100%'}
-                      minH={['auto', '200px']}
-                      alt={''}
-                    />
-                  }
-                >
-                  <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
-                    {t('common:core.module.Diagram')}
-                  </Button>
-                </MyTooltip>
-              )}
-              {!!nodeTemplate?.diagram && node?.courseUrl && (
-                <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
-              )}
-              {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
-                <UseGuideModal
-                  title={nodeTemplate?.name}
-                  iconSrc={nodeTemplate?.avatar}
-                  text={nodeTemplate?.userGuide}
-                  link={nodeTemplate?.courseUrl}
-                >
-                  {({ onClick }) => (
-                    <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                      <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
-                    </MyTooltip>
-                  )}
-                </UseGuideModal>
-              )}
-              {!!node?.pluginData?.error && (
-                <MyTooltip label={t('app:app.modules.not_found_tips')}>
-                  <Flex
-                    bg={'red.50'}
-                    alignItems={'center'}
-                    h={8}
-                    px={2}
-                    rounded={'6px'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                  >
-                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                    <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
-                  </Flex>
-                </MyTooltip>
-              )}
-            </Flex>
-            <NodeIntro nodeId={nodeId} intro={intro} />
-          </Box>
-        )}
-        <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
-      </Box>
-    );
-  }, [
-    node?.flowNodeType,
-    node?.courseUrl,
-    node?.pluginData?.error,
-    showToolHandle,
-    nodeId,
-    isFolded,
-    avatar,
-    t,
-    name,
-    hasNewVersion,
-    onOpenConfirmSync,
-    onClickSyncVersion,
-    nodeTemplate?.diagram,
-    nodeTemplate?.userGuide,
-    nodeTemplate?.name,
-    nodeTemplate?.avatar,
-    nodeTemplate?.courseUrl,
-    intro,
-    menuForbid,
-    nodeList,
-    onChangeNode,
-    onOpenCustomTitleModal,
-    toast
-  ]);
-
-  const RenderHandle = useMemo(() => {
-    return (
-      <>
-        <ConnectionSourceHandle nodeId={nodeId} isFoldNode={isFolded} />
-        <ConnectionTargetHandle nodeId={nodeId} />
-      </>
-    );
-  }, [nodeId, isFolded]);
   const RenderToolHandle = useMemo(
-    () => (node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle /> : null),
-    [node?.flowNodeType]
+    () =>
+      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
+    [node?.flowNodeType, nodeId]
   );
 
   return (
     <Flex
-      hidden={parentNode?.isFolded}
+      hidden={hidden}
       flexDirection={'column'}
       minW={minW}
       maxW={maxW}
@@ -409,194 +212,180 @@ const NodeCard = (props: Props) => {
           })}
       {...customStyle}
     >
-      <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
-      {Header}
-      <Flex flexDirection={'column'} flex={1} my={!isFolded ? 3 : 0} gap={2}>
-        {!isFolded ? children : <Box h={4} />}
-      </Flex>
-      {RenderHandle}
-      {RenderToolHandle}
+      {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
+      {/* Header */}
+      <Box position={'relative'}>
+        {showHeader && (
+          <Box px={3} pt={4}>
+            <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
-      <ConfirmSyncModal />
-      <EditTitleModal maxLength={50} />
+            <Flex alignItems={'center'} mb={1}>
+              {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
+                <NodeFoldButton nodeId={nodeId} isFolded={isFolded} />
+              )}
+
+              <NodeTitleSection
+                nodeId={nodeId}
+                avatar={avatar}
+                name={name}
+                searchedText={searchedText}
+              />
+
+              <Box flex={1} mr={1} />
+
+              {showVersion && <NodeVersion node={node!} />}
+
+              <NodeActionButtons
+                nodeTemplate={nodeTemplate}
+                courseUrl={node?.courseUrl}
+                rtDoms={rtDoms}
+              />
+
+              <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+            </Flex>
+
+            <NodeIntro nodeId={nodeId} intro={intro} />
+          </Box>
+        )}
+        <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
+      </Box>
+
+      <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
+        {!isFolded ? (
+          <>
+            {inputConfig && !inputConfig?.value ? (
+              <NodeSecret
+                nodeId={nodeId}
+                isFolder={node?.isFolder}
+                courseUrl={node?.courseUrl}
+                hasSystemSecret={node?.hasSystemSecret}
+                pluginId={node?.pluginId}
+                systemKeyCost={node?.systemKeyCost}
+                inputConfig={inputConfig}
+              />
+            ) : (
+              children
+            )}
+          </>
+        ) : (
+          <Box h={4} />
+        )}
+      </Flex>
+
+      {/* Handle */}
+      <ConnectionSourceHandle nodeId={nodeId} />
+      <ConnectionTargetHandle nodeId={nodeId} />
+      {RenderToolHandle}
     </Flex>
   );
 };
 
 export default React.memo(NodeCard);
 
-const MenuRender = React.memo(function MenuRender({
-  nodeId,
-  menuForbid,
-  nodeList
-}: {
+// 节点折叠按钮组件
+const NodeFoldButton = React.memo<{
   nodeId: string;
-  menuForbid?: Props['menuForbid'];
-  nodeList: FlowNodeItemType[];
-}) {
-  const { t } = useTranslation();
-  const { openDebugNode, DebugInputModal } = useDebug();
+  isFolded?: boolean;
+}>(({ nodeId, isFolded }) => {
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
-  const { computedNewNodeName } = useWorkflowUtils();
+  const handleClick = useCallback(() => {
+    onChangeNode({
+      nodeId,
+      type: 'attr',
+      key: 'isFolded',
+      value: !isFolded
+    });
+  }, [nodeId, isFolded, onChangeNode]);
 
-  const onCopyNode = useCallback(
-    (nodeId: string) => {
-      setNodes((state) => {
-        const node = state.find((node) => node.id === nodeId);
-        if (!node) return state;
-        const template = {
-          avatar: node.data.avatar,
-          name: computedNewNodeName({
-            templateName: node.data.name,
-            flowNodeType: node.data.flowNodeType,
-            pluginId: node.data.pluginId
-          }),
-          intro: node.data.intro,
-          flowNodeType: node.data.flowNodeType,
-          inputs: node.data.inputs,
-          outputs: node.data.outputs,
-          showStatus: node.data.showStatus,
-          pluginId: node.data.pluginId,
-          version: node.data.version
-        };
-
-        return [
-          ...state.map((item) => ({
-            ...item,
-            selected: false
-          })),
-          storeNode2FlowNode({
-            item: {
-              flowNodeType: template.flowNodeType,
-              avatar: template.avatar,
-              name: template.name,
-              intro: template.intro,
-              nodeId: getNanoid(),
-              position: { x: node.position.x + 200, y: node.position.y + 50 },
-              showStatus: template.showStatus,
-              pluginId: template.pluginId,
-              inputs: template.inputs,
-              outputs: template.outputs,
-              version: template.version
-            },
-            selected: true,
-            parentNodeId: undefined,
-            t
-          })
-        ];
-      });
-    },
-    [computedNewNodeName, setNodes, t]
+  return (
+    <Flex
+      alignItems={'center'}
+      mr={1}
+      p={1}
+      cursor={'pointer'}
+      rounded={'sm'}
+      _hover={{ bg: 'myGray.200' }}
+      onClick={handleClick}
+    >
+      <MyIcon
+        name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+        w={'16px'}
+        h={'16px'}
+        color={'myGray.500'}
+      />
+    </Flex>
   );
-  const onDelNode = useCallback(
-    (nodeId: string) => {
-      // Remove node and its child nodes
-      setNodes((state) =>
-        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
-      );
-
-      // Remove edges connected to the node and its child nodes
-      const childNodeIds = nodeList
-        .filter((node) => node.parentNodeId === nodeId)
-        .map((node) => node.nodeId);
-      setEdges((state) =>
-        state.filter(
-          (edge) =>
-            edge.source !== nodeId &&
-            edge.target !== nodeId &&
-            !childNodeIds.includes(edge.target) &&
-            !childNodeIds.includes(edge.source)
-        )
-      );
-    },
-    [nodeList, setEdges, setNodes]
-  );
-
-  const Render = useMemo(() => {
-    const menuList = [
-      ...(menuForbid?.debug
-        ? []
-        : [
-            {
-              icon: 'core/workflow/debug',
-              label: t('common:core.workflow.Debug'),
-              variant: 'whiteBase',
-              onClick: () => openDebugNode({ entryNodeId: nodeId })
-            }
-          ]),
-      ...(menuForbid?.copy
-        ? []
-        : [
-            {
-              icon: 'copy',
-              label: t('common:common.Copy'),
-              variant: 'whiteBase',
-              onClick: () => onCopyNode(nodeId)
-            }
-          ]),
-      ...(menuForbid?.delete
-        ? []
-        : [
-            {
-              icon: 'delete',
-              label: t('common:common.Delete'),
-              variant: 'whiteDanger',
-              onClick: () => onDelNode(nodeId)
-            }
-          ])
-    ];
-
-    return (
-      <>
-        <Box
-          className="nodrag controller-menu"
-          display={'none'}
-          flexDirection={'column'}
-          gap={2}
-          position={'absolute'}
-          top={'-20px'}
-          right={0}
-          transform={'translateX(90%)'}
-          pl={'20px'}
-          pr={'10px'}
-          pb={'20px'}
-          pt={'20px'}
-        >
-          {menuList.map((item) => (
-            <Button
-              key={item.icon}
-              h={8}
-              fontSize={'sm'}
-              pl={2}
-              pr={6}
-              variant={item.variant}
-              leftIcon={<MyIcon name={item.icon as any} w={'16px'} mr={-1} />}
-              onClick={item.onClick}
-            >
-              {t(item.label as any)}
-            </Button>
-          ))}
-        </Box>
-        <DebugInputModal />
-      </>
-    );
-  }, [
-    menuForbid?.debug,
-    menuForbid?.copy,
-    menuForbid?.delete,
-    t,
-    DebugInputModal,
-    openDebugNode,
-    nodeId,
-    onCopyNode,
-    onDelNode
-  ]);
-
-  return Render;
 });
+NodeFoldButton.displayName = 'NodeFoldButton';
 
+// 节点标题区域组件
+const NodeTitleSection = React.memo<{
+  nodeId: string;
+  avatar: string;
+  name: string;
+  searchedText?: string;
+}>(({ nodeId, avatar, name, searchedText }) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+
+  // custom title edit
+  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
+    title: t('common:custom_title'),
+    placeholder: t('app:module.Custom Title Tip') || ''
+  });
+
+  const handleRenameClick = useCallback(() => {
+    onOpenCustomTitleModal({
+      defaultVal: name,
+      onSuccess: (newName) => {
+        if (!newName) {
+          return toast({
+            title: t('app:modules.Title is required'),
+            status: 'warning'
+          });
+        }
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'name',
+          value: newName
+        });
+      }
+    });
+  }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
+
+  return (
+    <>
+      <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
+      <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
+        <HighlightText
+          rawText={t(name as any)}
+          matchText={searchedText ?? ''}
+          mode={'bg'}
+          color={'#ffe82d'}
+        />
+      </Box>
+      <Button
+        display={'none'}
+        variant={'grayGhost'}
+        size={'xs'}
+        ml={0.5}
+        className="controller-rename"
+        cursor={'pointer'}
+        onClick={handleRenameClick}
+      >
+        <MyIcon name={'edit'} w={'14px'} />
+      </Button>
+
+      <EditTitleModal maxLength={100} />
+    </>
+  );
+});
+NodeTitleSection.displayName = 'NodeTitleSection';
+
+// 节点介绍组件
 const NodeIntro = React.memo(function NodeIntro({
   nodeId,
   intro = ''
@@ -605,8 +394,8 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const NodeIsTool = useMemo(() => {
     const { isTool } = splitToolInputs([], nodeId);
@@ -662,167 +451,476 @@ const NodeIntro = React.memo(function NodeIntro({
   return Render;
 });
 
-const NodeDebugResponse = React.memo(function NodeDebugResponse({
-  nodeId,
-  debugResult
-}: {
-  nodeId: string;
-  debugResult: FlowNodeItemType['debugResult'];
-}) {
+const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
   const { t } = useTranslation();
 
-  const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowContext,
+  const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Load version list
+  const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
+    pageSize: 20,
+    params: {
+      pluginId: node.pluginId
+    },
+    refreshDeps: [node.pluginId, isOpen],
+    disabled: !isOpen,
+    manual: false
+  });
+
+  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
+    async (versionId: string) => {
+      if (!node) return;
+
+      if (node.pluginId) {
+        const template = await getToolPreviewNode({ appId: node.pluginId, versionId });
+
+        if (!!template) {
+          onResetNode({
+            id: node.nodeId,
+            node: {
+              ...template,
+              name: node.name,
+              intro: node.intro,
+              avatar: node.avatar
+            }
+          });
+        }
+      }
+    },
+    {
+      refreshDeps: [node, onResetNode]
+    }
+  );
+
+  const renderVersionList = useCreation(
+    () => [
+      {
+        label: t('app:keep_the_latest'),
+        value: ''
+      },
+      ...versionList.map((item) => ({
+        label: item.versionName,
+        value: item._id
+      }))
+    ],
+    [node.isLatestVersion, node.version, t, versionList]
+  );
+  const valueLabel = useMemo(() => {
+    return (
+      <Flex alignItems={'center'} gap={0.5}>
+        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
+        {!node.isLatestVersion && (
+          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
+            {t('app:not_the_newest')}
+          </MyTag>
+        )}
+      </Flex>
+    );
+  }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
+
+  return (
+    <MySelect
+      className="nowheel"
+      value={node.version}
+      onChange={onUpdateVersion}
+      isLoading={isUpdating}
+      customOnOpen={onOpen}
+      customOnClose={onClose}
+      placeholder={node?.versionLabel}
+      variant={'whitePrimaryOutline'}
+      size={'sm'}
+      list={renderVersionList}
+      ScrollData={(props) => (
+        <ScrollData minH={'100px'} maxH={'40vh'}>
+          {props.children}
+        </ScrollData>
+      )}
+      valueLabel={valueLabel}
+    />
+  );
+});
+
+const MenuRender = React.memo(function MenuRender({
+  nodeId,
+  menuForbid
+}: {
+  nodeId: string;
+  menuForbid?: Props['menuForbid'];
+}) {
+  const { t } = useTranslation();
+  const { openDebugNode, DebugInputModal } = useDebug();
+  const { setNodes, setEdges, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
     (v) => v
   );
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:core.workflow.Confirm stop debug')
-  });
+  const { computedNewNodeName } = useWorkflowUtils();
 
-  const RenderStatus = useMemo(() => {
-    const map = {
-      running: {
-        bg: 'primary.50',
-        text: t('common:core.workflow.Running'),
-        icon: 'core/workflow/running'
-      },
-      success: {
-        bg: 'green.50',
-        text: t('common:core.workflow.Success'),
-        icon: 'core/workflow/runSuccess'
-      },
-      failed: {
-        bg: 'red.50',
-        text: t('common:core.workflow.Failed'),
-        icon: 'core/workflow/runError'
-      },
-      skipped: {
-        bg: 'myGray.50',
-        text: t('common:core.workflow.Skipped'),
-        icon: 'core/workflow/runSkip'
-      }
-    };
+  const onCopyNode = useCallback(
+    (nodeId: string) => {
+      setNodes((state) => {
+        const node = state.find((node) => node.id === nodeId);
+        if (!node) return state;
+        const template: Omit<StoreNodeItemType, 'nodeId'> = {
+          flowNodeType: node.data.flowNodeType,
+          parentNodeId: node.data.parentNodeId,
+          avatar: node.data.avatar,
+          name: computedNewNodeName({
+            templateName: node.data.name,
+            flowNodeType: node.data.flowNodeType,
+            pluginId: node.data.pluginId
+          }),
+          intro: node.data.intro,
+          toolDescription: node.data.toolDescription,
+          showStatus: node.data.showStatus,
 
-    const statusData = map[debugResult?.status || 'running'];
+          version: node.data.version,
+          versionLabel: node.data.versionLabel,
+          isLatestVersion: node.data.isLatestVersion,
 
-    const response = debugResult?.response;
+          catchError: node.data.catchError,
+          inputs: node.data.inputs,
+          outputs: node.data.outputs,
 
-    const onStop = () => {
-      openConfirm(onStopNodeDebug)();
-    };
+          pluginId: node.data.pluginId,
+          isFolder: node.data.isFolder,
+          pluginData: node.data.pluginData,
 
-    return !!debugResult && !!statusData ? (
+          toolConfig: node.data.toolConfig,
+
+          currentCost: node.data.currentCost,
+          systemKeyCost: node.data.systemKeyCost,
+          hasTokenFee: node.data.hasTokenFee,
+          hasSystemSecret: node.data.hasSystemSecret
+        };
+
+        return [
+          ...state.map((item) => ({
+            ...item,
+            selected: false
+          })),
+          storeNode2FlowNode({
+            item: {
+              flowNodeType: template.flowNodeType,
+              avatar: template.avatar,
+              name: template.name,
+              intro: template.intro,
+              nodeId: getNanoid(),
+              position: { x: node.position.x + 200, y: node.position.y + 50 },
+              showStatus: template.showStatus,
+              pluginId: template.pluginId,
+              inputs: template.inputs,
+              outputs: template.outputs,
+              version: template.version,
+              versionLabel: template.versionLabel,
+              isLatestVersion: template.isLatestVersion,
+              toolConfig: template.toolConfig,
+              catchError: template.catchError
+            },
+            selected: true,
+            parentNodeId: template.parentNodeId,
+            t
+          })
+        ];
+      });
+    },
+    [computedNewNodeName, setNodes, t]
+  );
+  const onDelNode = useCallback(
+    (nodeId: string) => {
+      // Remove node and its child nodes
+      setNodes((state) =>
+        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
+      );
+
+      // Remove edges connected to the node and its child nodes
+      const childNodeIds = getNodeList()
+        .filter((node) => node.parentNodeId === nodeId)
+        .map((node) => node.nodeId);
+      setEdges((state) =>
+        state.filter(
+          (edge) =>
+            edge.source !== nodeId &&
+            edge.target !== nodeId &&
+            !childNodeIds.includes(edge.target) &&
+            !childNodeIds.includes(edge.source)
+        )
+      );
+    },
+    [getNodeList, setEdges, setNodes]
+  );
+
+  const Render = useMemo(() => {
+    const menuList = [
+      ...(menuForbid?.debug
+        ? []
+        : [
+            {
+              icon: 'core/workflow/debug',
+              label: t('common:core.workflow.Debug'),
+              variant: 'whiteBase',
+              onClick: () => openDebugNode({ entryNodeId: nodeId })
+            }
+          ]),
+      ...(menuForbid?.copy
+        ? []
+        : [
+            {
+              icon: 'copy',
+              label: t('common:Copy'),
+              variant: 'whiteBase',
+              onClick: () => onCopyNode(nodeId)
+            }
+          ]),
+      ...(menuForbid?.delete
+        ? []
+        : [
+            {
+              icon: 'delete',
+              label: t('common:Delete'),
+              variant: 'whiteDanger',
+              onClick: () => onDelNode(nodeId)
+            }
+          ])
+    ];
+
+    return (
       <>
-        <Flex px={3} bg={statusData.bg} borderTopRadius={'md'} py={3}>
-          <MyIcon name={statusData.icon as any} w={'16px'} mr={2} />
-          <Box color={'myGray.900'} fontWeight={'bold'} flex={'1 0 0'}>
-            {statusData.text}
-          </Box>
-          {debugResult.status !== 'running' && (
-            <Box
-              color={'primary.700'}
-              cursor={'pointer'}
+        <Box
+          className="nodrag controller-menu"
+          display={'none'}
+          flexDirection={'column'}
+          gap={2}
+          position={'absolute'}
+          top={'-20px'}
+          right={0}
+          transform={'translateX(90%)'}
+          pl={'20px'}
+          pr={'10px'}
+          pb={'20px'}
+          pt={'20px'}
+        >
+          {menuList.map((item) => (
+            <Button
+              key={item.icon}
+              h={8}
               fontSize={'sm'}
-              onClick={() =>
-                onChangeNode({
-                  nodeId,
-                  type: 'attr',
-                  key: 'debugResult',
-                  value: {
-                    ...debugResult,
-                    showResult: !debugResult.showResult
-                  }
-                })
-              }
+              pl={2}
+              pr={6}
+              variant={item.variant}
+              leftIcon={<MyIcon name={item.icon as any} w={'16px'} mr={-1} />}
+              onClick={item.onClick}
             >
-              {debugResult.showResult
-                ? t('common:core.workflow.debug.Hide result')
-                : t('common:core.workflow.debug.Show result')}
-            </Box>
-          )}
-        </Flex>
-        {/* Result card */}
-        {debugResult.showResult && (
-          <Card
-            className="nowheel"
-            position={'absolute'}
-            right={'-430px'}
-            top={0}
-            zIndex={10}
-            w={'420px'}
-            maxH={'max(100%,500px)'}
-            border={'base'}
-          >
-            {/* Status header */}
-            <Flex h={'54x'} px={3} py={3} alignItems={'center'}>
-              <MyIcon mr={1} name={'core/workflow/debugResult'} w={'20px'} color={'primary.600'} />
-              <Box fontWeight={'bold'} flex={'1'}>
-                {t('common:core.workflow.debug.Run result')}
-              </Box>
-              {workflowDebugData?.nextRunNodes.length !== 0 && (
-                <Button
-                  size={'sm'}
-                  leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}
-                  variant={'whiteDanger'}
-                  onClick={onStop}
-                >
-                  {t('common:core.workflow.Stop debug')}
-                </Button>
-              )}
-              {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
-                !debugResult.isExpired &&
-                workflowDebugData?.nextRunNodes &&
-                workflowDebugData.nextRunNodes.length > 0 && (
-                  <Button
-                    ml={2}
-                    size={'sm'}
-                    leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
-                    variant={'primary'}
-                    onClick={() => onNextNodeDebug()}
-                  >
-                    {t('common:common.Next Step')}
-                  </Button>
-                )}
-              {workflowDebugData?.nextRunNodes && workflowDebugData?.nextRunNodes.length === 0 && (
-                <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
-                  {t('common:core.workflow.debug.Done')}
-                </Button>
-              )}
-            </Flex>
-            {/* Response list */}
-            {debugResult.status !== 'skipped' && (
-              <Box borderTop={'base'} mt={1} overflowY={'auto'} minH={'250px'}>
-                {!debugResult.message && !response && (
-                  <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
-                )}
-                {debugResult.message && (
-                  <Box color={'red.600'} px={3} py={4}>
-                    {debugResult.message}
-                  </Box>
-                )}
-                {response && <WholeResponseContent activeModule={response} />}
-              </Box>
-            )}
-          </Card>
-        )}
+              {t(item.label as any)}
+            </Button>
+          ))}
+        </Box>
+        <DebugInputModal />
       </>
-    ) : null;
+    );
   }, [
-    debugResult,
-    nodeId,
-    onChangeNode,
-    onNextNodeDebug,
-    onStopNodeDebug,
-    openConfirm,
+    menuForbid?.debug,
+    menuForbid?.copy,
+    menuForbid?.delete,
     t,
-    workflowDebugData
+    DebugInputModal,
+    openDebugNode,
+    nodeId,
+    onCopyNode,
+    onDelNode
   ]);
+
+  return Render;
+});
+
+// 节点操作按钮组组件
+const NodeActionButtons = React.memo<{
+  nodeTemplate?: {
+    diagram?: string;
+    userGuide?: string;
+    name?: string;
+    avatar?: string;
+    courseUrl?: string;
+  };
+  courseUrl?: string;
+  rtDoms?: React.ReactNode[];
+}>(({ nodeTemplate, courseUrl, rtDoms }) => {
+  const { t } = useTranslation();
+
+  const buttons = useMemo(() => {
+    const result: React.ReactNode[] = [];
+
+    if (nodeTemplate?.diagram) {
+      result.push(
+        <MyTooltip
+          key="diagram"
+          label={
+            <MyImage src={nodeTemplate.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
+          }
+        >
+          <Button variant={'grayGhost'} size={'xs'} color={'primary.600'} px={1}>
+            {t('common:core.module.Diagram')}
+          </Button>
+        </MyTooltip>
+      );
+    }
+
+    if (courseUrl || nodeTemplate?.userGuide) {
+      result.push(
+        <UseGuideModal
+          key="userGuide"
+          title={nodeTemplate?.name}
+          iconSrc={nodeTemplate?.avatar}
+          text={nodeTemplate?.userGuide}
+          link={nodeTemplate?.courseUrl || courseUrl}
+        >
+          {({ onClick }) => (
+            <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+              <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
+            </MyTooltip>
+          )}
+        </UseGuideModal>
+      );
+    }
+
+    if (rtDoms) {
+      result.push(...rtDoms);
+    }
+
+    return result;
+  }, [nodeTemplate, courseUrl, rtDoms, t]);
+
+  if (buttons.length === 0) {
+    return null;
+  }
 
   return (
     <>
-      {RenderStatus}
-      <ConfirmModal />
+      {buttons.map((button, index) => (
+        <React.Fragment key={index}>
+          {index > 0 && <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />}
+          {button}
+        </React.Fragment>
+      ))}
+    </>
+  );
+});
+NodeActionButtons.displayName = 'NodeActionButtons';
+
+// 节点错误徽章组件
+const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
+  ({ status, error }) => {
+    const { t } = useTranslation();
+
+    if (error) {
+      return (
+        <Flex
+          bg={'red.50'}
+          alignItems={'center'}
+          h={8}
+          px={2}
+          rounded={'6px'}
+          fontSize={'xs'}
+          fontWeight={'medium'}
+        >
+          <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+          <Box color={'red.600'}>{t(error as any)}</Box>
+        </Flex>
+      );
+    }
+    if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      return (
+        <MyTooltip
+          label={
+            status === PluginStatusEnum.Offline
+              ? t('app:tool_offset_tips')
+              : t('app:tool_soon_offset_tips')
+          }
+        >
+          <MyTag
+            mr={2}
+            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
+            type="borderFill"
+          >
+            {t(PluginStatusMap[status].label)}
+          </MyTag>
+        </MyTooltip>
+      );
+    }
+    return null;
+  }
+);
+NodeStatusBadge.displayName = 'NodeStatusBadge';
+
+// 节点 Secret 组件
+const NodeSecret = React.memo(function NodeSecret({
+  nodeId,
+  isFolder,
+  courseUrl,
+  hasSystemSecret,
+  pluginId,
+  systemKeyCost,
+  inputConfig
+}: {
+  nodeId: string;
+  isFolder?: boolean;
+  courseUrl?: string;
+  hasSystemSecret?: boolean;
+  pluginId?: string;
+  systemKeyCost?: number;
+  inputConfig: FlowNodeInputItemType | undefined;
+}) {
+  const { t } = useTranslation();
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+
+  const [
+    isOpenToolParamConfigModal,
+    { setTrue: onOpenToolParamConfigModal, setFalse: onCloseToolParamConfigModal }
+  ] = useBoolean(false);
+
+  return (
+    <>
+      <Flex
+        alignItems={'center'}
+        flexDirection={'column'}
+        justifyContent={'center'}
+        borderRadius={'lg'}
+        h={'200px'}
+        bg={'myGray.25'}
+        border={'base'}
+        mx={4}
+      >
+        <Box>{t('app:tool_not_active')}</Box>
+        <Button w={'83px'} mt={2} size={'lg'} onClick={onOpenToolParamConfigModal}>
+          {t('app:too_to_active')}
+        </Button>
+      </Flex>
+
+      {inputConfig && isOpenToolParamConfigModal && (
+        <SecretInputModal
+          isFolder={isFolder}
+          onClose={onCloseToolParamConfigModal}
+          onSubmit={(data) => {
+            onChangeNode({
+              nodeId,
+              type: 'updateInput',
+              key: inputConfig.key,
+              value: {
+                ...inputConfig,
+                value: data
+              }
+            });
+            onCloseToolParamConfigModal();
+          }}
+          courseUrl={courseUrl}
+          inputConfig={inputConfig}
+          hasSystemSecret={hasSystemSecret}
+          parentId={pluginId}
+          secretCost={systemKeyCost}
+        />
+      )}
     </>
   );
 });
