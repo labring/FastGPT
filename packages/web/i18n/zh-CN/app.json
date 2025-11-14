@@ -111,6 +111,7 @@
   "custom_plugin_default_installed_label": "默认安装",
   "custom_plugin_delete_success": "删除成功",
   "custom_plugin_duplicate": "ID 重复",
+  "custom_plugin_duplicate_tip": "确认导入将覆盖原有资源",
   "custom_plugin_has_token_fee_label": "是否收取 Token 费用",
   "custom_plugin_intro_label": "介绍",
   "custom_plugin_intro_placeholder": "为这个应用添加一个介绍",
