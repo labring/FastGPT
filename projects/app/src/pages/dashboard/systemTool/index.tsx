@@ -146,7 +146,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
 
   return (
-    <Box h={'full'} pr={6}>
+    <Box h={'full'}>
       <MyBox
         bg={'white'}
         h={'full'}

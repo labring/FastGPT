@@ -1,4 +1,4 @@
-import React, { type Dispatch } from 'react';
+import React, { useEffect, type Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
@@ -10,6 +10,10 @@ import { useTranslation } from 'next-i18next';
 import FormLayout from './FormLayout';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import PolicyTip from './PolicyTip';
+import { useSearchParams } from 'next/navigation';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { useRouter } from 'next/router';
+import { useMount } from 'ahooks';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -25,6 +29,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
+  const query = useSearchParams();
+  const router = useRouter();
+
   const {
     register,
     handleSubmit,
@@ -41,13 +48,28 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           code
         })
       );
-      toast({
-        title: t('login:login_success'),
-        status: 'success'
-      });
     },
     {
-      refreshDeps: [loginSuccess]
+      refreshDeps: [loginSuccess],
+      successToast: t('login:login_success'),
+      onError: (error: any) => {
+        // 密码错误，需要清空 query 参数
+        if (error.statusText === UserErrEnum.account_psw_error) {
+          router.replace(
+            router.pathname,
+            {
+              query: {
+                ...router.query,
+                u: '',
+                p: ''
+              }
+            },
+            {
+              shallow: false
+            }
+          );
+        }
+      }
     }
   );
 
@@ -70,6 +92,17 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       )
       .join('/');
   })();
+
+  useMount(() => {
+    const username = query.get('u');
+    const password = query.get('p');
+    if (username && password) {
+      onclickLogin({
+        username,
+        password
+      });
+    }
+  });
 
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>

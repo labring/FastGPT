@@ -19,6 +19,8 @@ const AppTemplateSchema = new Schema({
   },
   type: String,
   isActive: Boolean,
+  isPromoted: Boolean,
+  recommendText: String,
   userGuide: Object,
   isQuickTemplate: Boolean,
   order: {

@@ -1187,3 +1187,167 @@ describe('checkNodeRunStatus - 边界情况测试', () => {
     expect(checkNodeRunStatus({ nodesMap, node: nodeA, runtimeEdges: edges })).toBe('run');
   });
 });
+
+describe('checkNodeRunStatus - 工具调用场景测试', () => {
+  it('工具调用1: Tool节点作为入口节点 (无workflowStart时)', () => {
+    // 场景：当工作流中没有 workflowStart/pluginInput 节点时，tool 节点可以作为入口节点
+    // Tool → Process → End
+    const toolNode = createNode('tool1', FlowNodeTypeEnum.tool);
+    const processNode = createNode('process');
+    const endNode = createNode('end');
+
+    const nodesMap = new Map<string, RuntimeNodeItemType>([
+      ['tool1', toolNode],
+      ['process', processNode],
+      ['end', endNode]
+    ]);
+
+    // 场景1: Tool节点作为入口，无输入边
+    const edges1: RuntimeEdgeItemType[] = [
+      createEdge('tool1', 'process', 'waiting'),
+      createEdge('process', 'end', 'waiting')
+    ];
+
+    // Tool节点作为入口节点应该可以运行
+    expect(checkNodeRunStatus({ nodesMap, node: toolNode, runtimeEdges: edges1 })).toBe('run');
+    // 注意：由于tool节点没有输入边（是入口），process节点也会没有可追溯到start的边
+    // 因此process节点在这个场景下也会返回'run'（因为commonEdges和recursiveEdgeGroups都为空）
+    expect(checkNodeRunStatus({ nodesMap, node: processNode, runtimeEdges: edges1 })).toBe('run');
+
+    // 场景2: Tool节点执行完成后,process可以运行但end仍需等待
+    const edges2: RuntimeEdgeItemType[] = [
+      createEdge('tool1', 'process', 'active'),
+      createEdge('process', 'end', 'waiting')
+    ];
+
+    expect(checkNodeRunStatus({ nodesMap, node: processNode, runtimeEdges: edges2 })).toBe('run');
+    // end节点的输入边是waiting状态,需要等待process完成
+    expect(checkNodeRunStatus({ nodesMap, node: endNode, runtimeEdges: edges2 })).toBe('wait');
+
+    // 场景2.1: process完成后,end可以运行
+    const edges2_1: RuntimeEdgeItemType[] = [
+      createEdge('tool1', 'process', 'active'),
+      createEdge('process', 'end', 'active')
+    ];
+
+    expect(checkNodeRunStatus({ nodesMap, node: endNode, runtimeEdges: edges2_1 })).toBe('run');
+
+    // 场景3: 有workflowStart时，tool节点不再是入口节点
+    const startNode = createNode('start', FlowNodeTypeEnum.workflowStart);
+    const nodesMapWithStart = new Map<string, RuntimeNodeItemType>([
+      ['start', startNode],
+      ['tool1', toolNode],
+      ['process', processNode],
+      ['end', endNode]
+    ]);
+
+    const edges3: RuntimeEdgeItemType[] = [
+      createEdge('start', 'tool1', 'active'),
+      createEdge('tool1', 'process', 'waiting'),
+      createEdge('process', 'end', 'waiting')
+    ];
+
+    // 此时tool节点不再是入口节点，需要start激活才能运行
+    expect(
+      checkNodeRunStatus({ nodesMap: nodesMapWithStart, node: toolNode, runtimeEdges: edges3 })
+    ).toBe('run');
+    expect(
+      checkNodeRunStatus({ nodesMap: nodesMapWithStart, node: processNode, runtimeEdges: edges3 })
+    ).toBe('wait');
+
+    // Tool执行完成后，process可以运行
+    const edges4: RuntimeEdgeItemType[] = [
+      createEdge('start', 'tool1', 'active'),
+      createEdge('tool1', 'process', 'active'),
+      createEdge('process', 'end', 'waiting')
+    ];
+
+    expect(
+      checkNodeRunStatus({ nodesMap: nodesMapWithStart, node: processNode, runtimeEdges: edges4 })
+    ).toBe('run');
+  });
+
+  it('工具调用2: ToolSet节点与条件分支和循环组合 (Agent → ToolSet → Tool1/Tool2 → Result → Agent)', () => {
+    // 场景：Agent调用工具集，工具集根据条件选择不同工具执行，并支持循环调用
+    // Start → Agent → ToolSet → (Tool1 | Tool2) → Result → Agent (循环)
+    const nodeStart = createNode('start', FlowNodeTypeEnum.workflowStart);
+    const agentNode = createNode('agent', FlowNodeTypeEnum.agent);
+    const toolSetNode = createNode('toolSet', FlowNodeTypeEnum.toolSet);
+    const tool1Node = createNode('tool1', FlowNodeTypeEnum.tool);
+    const tool2Node = createNode('tool2', FlowNodeTypeEnum.tool);
+    const resultNode = createNode('result');
+
+    const nodesMap = new Map<string, RuntimeNodeItemType>([
+      ['start', nodeStart],
+      ['agent', agentNode],
+      ['toolSet', toolSetNode],
+      ['tool1', tool1Node],
+      ['tool2', tool2Node],
+      ['result', resultNode]
+    ]);
+
+    // 场景1: 第一次执行，Agent选择Tool1
+    const edges1: RuntimeEdgeItemType[] = [
+      createEdge('start', 'agent', 'active'),
+      createEdge('agent', 'toolSet', 'active'),
+      createEdge('toolSet', 'tool1', 'active'), // 选择Tool1
+      createEdge('toolSet', 'tool2', 'skipped'), // Tool2未选择
+      createEdge('tool1', 'result', 'waiting'),
+      createEdge('tool2', 'result', 'skipped'),
+      createEdge('result', 'agent', 'waiting') // 循环边等待
+    ];
+
+    expect(checkNodeRunStatus({ nodesMap, node: agentNode, runtimeEdges: edges1 })).toBe('wait');
+    expect(checkNodeRunStatus({ nodesMap, node: toolSetNode, runtimeEdges: edges1 })).toBe('run');
+    expect(checkNodeRunStatus({ nodesMap, node: tool1Node, runtimeEdges: edges1 })).toBe('run');
+    expect(checkNodeRunStatus({ nodesMap, node: tool2Node, runtimeEdges: edges1 })).toBe('skip');
+    expect(checkNodeRunStatus({ nodesMap, node: resultNode, runtimeEdges: edges1 })).toBe('wait');
+
+    // 场景2: Tool1执行完成，Result处理结果
+    const edges2: RuntimeEdgeItemType[] = [
+      createEdge('start', 'agent', 'active'),
+      createEdge('agent', 'toolSet', 'active'),
+      createEdge('toolSet', 'tool1', 'active'),
+      createEdge('toolSet', 'tool2', 'skipped'),
+      createEdge('tool1', 'result', 'active'), // Tool1完成
+      createEdge('tool2', 'result', 'skipped'),
+      createEdge('result', 'agent', 'waiting')
+    ];
+
+    expect(checkNodeRunStatus({ nodesMap, node: resultNode, runtimeEdges: edges2 })).toBe('run');
+
+    // 场景3: 循环回Agent，第二次调用选择Tool2
+    const edges3: RuntimeEdgeItemType[] = [
+      createEdge('start', 'agent', 'active'),
+      createEdge('agent', 'toolSet', 'active'),
+      createEdge('toolSet', 'tool1', 'skipped'), // Tool1未选择
+      createEdge('toolSet', 'tool2', 'active'), // 选择Tool2
+      createEdge('tool1', 'result', 'skipped'),
+      createEdge('tool2', 'result', 'active'), // Tool2完成
+      createEdge('result', 'agent', 'active') // 循环边激活
+    ];
+
+    // Agent有来自start和result的两条active边
+    expect(checkNodeRunStatus({ nodesMap, node: agentNode, runtimeEdges: edges3 })).toBe('run');
+    expect(checkNodeRunStatus({ nodesMap, node: tool1Node, runtimeEdges: edges3 })).toBe('skip');
+    expect(checkNodeRunStatus({ nodesMap, node: tool2Node, runtimeEdges: edges3 })).toBe('run');
+    expect(checkNodeRunStatus({ nodesMap, node: resultNode, runtimeEdges: edges3 })).toBe('run');
+
+    // 场景4: 循环退出，不再调用工具
+    const edges4: RuntimeEdgeItemType[] = [
+      createEdge('start', 'agent', 'active'),
+      createEdge('agent', 'toolSet', 'skipped'), // 不再调用工具集
+      createEdge('toolSet', 'tool1', 'skipped'),
+      createEdge('toolSet', 'tool2', 'skipped'),
+      createEdge('tool1', 'result', 'skipped'),
+      createEdge('tool2', 'result', 'skipped'),
+      createEdge('result', 'agent', 'skipped') // 循环退出
+    ];
+
+    expect(checkNodeRunStatus({ nodesMap, node: agentNode, runtimeEdges: edges4 })).toBe('run');
+    expect(checkNodeRunStatus({ nodesMap, node: toolSetNode, runtimeEdges: edges4 })).toBe('skip');
+    expect(checkNodeRunStatus({ nodesMap, node: tool1Node, runtimeEdges: edges4 })).toBe('skip');
+    expect(checkNodeRunStatus({ nodesMap, node: tool2Node, runtimeEdges: edges4 })).toBe('skip');
+    expect(checkNodeRunStatus({ nodesMap, node: resultNode, runtimeEdges: edges4 })).toBe('skip');
+  });
+});

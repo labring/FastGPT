@@ -2,6 +2,8 @@ import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import json5 from 'json5';
+import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 
 /* 
   Count response max token
@@ -316,4 +318,12 @@ export const parseLLMStreamResponse = () => {
     getResponseData,
     updateFinishReason
   };
+};
+
+export const parseToolArgs = <T = Record<string, any>>(toolArgs: string) => {
+  try {
+    return json5.parse(sliceJsonStr(toolArgs)) as T;
+  } catch {
+    return;
+  }
 };

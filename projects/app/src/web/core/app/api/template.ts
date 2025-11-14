@@ -1,5 +1,5 @@
 import type { ListParams, ListResponse } from '@/pages/api/core/app/template/list';
-import { GET } from '@/web/common/api/request';
+import { GET, POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';

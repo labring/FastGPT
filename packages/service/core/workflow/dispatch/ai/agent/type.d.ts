@@ -14,7 +14,11 @@ import type { DispatchFlowResponse } from '../../type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  ToolCallChildrenInteractive,
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
@@ -37,18 +41,17 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
   toolModel: LLMModelItemType;
-  interactiveEntryToolParams?: WorkflowInteractiveResponseType['toolParams'];
+  childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
 };
 
 export type RunToolResponse = {
-  dispatchFlowResponse: DispatchFlowResponse[];
+  toolDispatchFlowResponses: DispatchFlowResponse[];
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
-  completeMessages?: ChatCompletionMessageParam[];
-  assistantResponses?: AIChatItemValueItemType[];
-  toolWorkflowInteractiveResponse?: WorkflowInteractiveResponseType;
-  [DispatchNodeResponseKeyEnum.runTimes]: number;
-  finish_reason?: CompletionFinishReason;
+  completeMessages: ChatCompletionMessageParam[];
+  assistantResponses: AIChatItemValueItemType[];
+  finish_reason: CompletionFinishReason;
+  toolWorkflowInteractiveResponse?: ToolCallChildrenInteractive;
 };
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
