@@ -15,6 +15,7 @@
   "Copy": "複製",
   "Creating": "建立中",
   "Delete": "刪除",
+  "Clear": "清除",
   "Detail": "詳細資料",
   "Documents": "文件",
   "Done": "完成",
@@ -1372,5 +1373,6 @@
   "database_search_results": "數據庫搜索結果",
   "other_knowledge_base_search_results": "其他知識庫搜索結果",
   "comma": "、",
-   "set_avatar_in_edit_modal": "點擊設置頭像"
+   "set_avatar_in_edit_modal": "點擊設置頭像",
+  "select_time": "請選擇時間"
 }

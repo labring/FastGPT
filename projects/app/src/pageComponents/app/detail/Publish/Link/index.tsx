@@ -47,6 +47,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -338,15 +339,12 @@ function EditLinkModal({
                 <FormLabel flex={'0 0 90px'} alignItems={'center'}>
                   {t('common:expired_time')}
                 </FormLabel>
-                <Input
-                  type="datetime-local"
-                  defaultValue={
-                    defaultData.limit?.expiredTime
-                      ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                      : ''
+                <DateTimePicker
+                  value={
+                    defaultData.limit?.expiredTime ? new Date(defaultData.limit.expiredTime) : null
                   }
-                  onChange={(e) => {
-                    setValue('limit.expiredTime', new Date(e.target.value));
+                  onChange={(date) => {
+                    setValue('limit.expiredTime', date || undefined);
                   }}
                 />
               </Flex>

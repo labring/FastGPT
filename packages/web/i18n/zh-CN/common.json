@@ -15,6 +15,7 @@
   "Copy": "复制",
   "Creating": "创建中",
   "Delete": "删除",
+  "Clear": "清除",
   "Detail": "详情",
   "Documents": "文档",
   "Done": "完成",
@@ -1370,5 +1371,6 @@
   "database_sql_query": "数据库检索的 SQL 语句",
   "search_result": "检索结果",
   "comma": "、",
-  "set_avatar_in_edit_modal": "点击设置头像"
+  "set_avatar_in_edit_modal": "点击设置头像",
+  "select_time": "请选择时间"
 }
