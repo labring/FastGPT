@@ -339,7 +339,9 @@ const DashboardContainer = ({
               );
             })}
           </Box>
-          <TeamPlanStatusCard />
+          <Box px={2.5}>
+            <TeamPlanStatusCard />
+          </Box>
         </MyBox>
       )}
 
