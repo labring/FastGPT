@@ -5,15 +5,17 @@ export const delay = (ms: number) =>
     }, ms);
   });
 
-export const retryFn = async <T>(fn: () => Promise<T>, retryTimes = 3): Promise<T> => {
-  try {
-    return fn();
-  } catch (error) {
-    if (retryTimes > 0) {
+export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+  while (true) {
+    try {
+      return fn();
+    } catch (error) {
+      if (attempts <= 0) {
+        return Promise.reject(error);
+      }
       await delay(500);
-      return retryFn(fn, retryTimes - 1);
+      attempts--;
     }
-    return Promise.reject(error);
   }
 };
 

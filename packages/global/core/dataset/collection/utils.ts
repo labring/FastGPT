@@ -1,5 +1,5 @@
 import { DatasetCollectionTypeEnum } from '../constants';
-import { DatasetCollectionSchemaType } from '../type';
+import { type DatasetCollectionSchemaType } from '../type';
 
 export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType) => {
   return {
@@ -15,4 +15,8 @@ export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType
 
 export const checkCollectionIsFolder = (type: DatasetCollectionTypeEnum) => {
   return type === DatasetCollectionTypeEnum.folder || type === DatasetCollectionTypeEnum.virtual;
+};
+
+export const collectionCanSync = (type: DatasetCollectionTypeEnum) => {
+  return [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(type);
 };

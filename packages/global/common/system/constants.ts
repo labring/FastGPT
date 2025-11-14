@@ -7,3 +7,4 @@ export const DEFAULT_ORG_AVATAR = '/imgs/avatar/defaultOrgAvatar.svg';
 export const DEFAULT_USER_AVATAR = '/imgs/avatar/BlueAvatar.svg';
 
 export const isProduction = process.env.NODE_ENV === 'production';
+export const isTestEnv = process.env.NODE_ENV === 'test';

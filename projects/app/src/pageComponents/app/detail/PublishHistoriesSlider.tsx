@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import {
   getAppVersionDetail,
-  getWorkflowVersionList,
+  getAppVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
-import { useTranslation } from 'next-i18next';
-import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import type { WorkflowSnapshotsType } from './WorkflowComponents/context';
+import type { WorkflowSnapshotsType } from './WorkflowComponents/context/workflowSnapshotContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
@@ -36,7 +36,7 @@ const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapsh
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
   positionStyles?: BoxProps;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
 
   return (
@@ -86,7 +86,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   past: T[];
   onSwitchTmpVersion: (params: T, customTitle: string) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   return (
@@ -167,7 +167,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
           );
         })}
         <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-          {t('common:common.No more data')}
+          {t('common:no_more_data')}
         </Box>
       </Flex>
     </Flex>
@@ -179,15 +179,14 @@ const TeamCloud = ({
 }: {
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const {
     ScrollData,
     data: scrollDataList,
-    setData,
-    isLoading
-  } = useScrollPagination(getWorkflowVersionList, {
+    setData
+  } = useScrollPagination(getAppVersionList, {
     pageSize: 30,
     params: {
       appId: appDetail._id
@@ -230,7 +229,7 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
+    <ScrollData flex={'1 0 0'} px={5} isLoading={isLoadingVersion}>
       {scrollDataList.map((item, index) => {
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 
@@ -304,7 +303,7 @@ const TeamCloud = ({
                 >
                   <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                     <Box as={'span'} color={'myGray.900'}>
-                      {item.versionName || formatTime2YMDHMS(item.time)}
+                      {t(item.versionName) || formatTime2YMDHMS(item.time)}
                     </Box>
                   </Box>
                   {item.isPublish && (

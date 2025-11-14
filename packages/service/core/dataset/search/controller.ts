@@ -3,13 +3,17 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorStore/controller';
+import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
+import type {
+  DatasetCollectionSchemaType,
+  DatasetDataSchemaType
+} from '@fastgpt/global/core/dataset/type';
 import {
-  DatasetDataTextSchemaType,
-  SearchDataResponseItemType
+  type DatasetDataTextSchemaType,
+  type SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
@@ -23,15 +27,18 @@ import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { POST } from '../../../common/api/plusRequest';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { formatDatasetDataValue } from '../data/controller';
+import { pushTrack } from '../../../common/middle/tracks/utils';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
   teamId: string;
+  uid?: string;
+  tmbId?: string;
   model: string;
   datasetIds: string[];
   reRankQuery: string;
@@ -63,7 +70,8 @@ export type SearchDatasetDataProps = {
 
 export type SearchDatasetDataResponse = {
   searchRes: SearchDataResponseItemType[];
-  tokens: number;
+  embeddingTokens: number;
+  reRankInputTokens: number;
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   similarity: number;
@@ -87,8 +95,11 @@ export const datasetDataReRank = async ({
   rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
-}): Promise<SearchDataResponseItemType[]> => {
-  const results = await reRankRecall({
+}): Promise<{
+  results: SearchDataResponseItemType[];
+  inputTokens: number;
+}> => {
+  const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
     documents: data.map((item) => ({
@@ -115,7 +126,10 @@ export const datasetDataReRank = async ({
     })
     .filter(Boolean) as SearchDataResponseItemType[];
 
-  return mergeResult;
+  return {
+    results: mergeResult,
+    inputTokens
+  };
 };
 export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
@@ -134,12 +148,10 @@ export const filterDatasetDataByMaxTokens = async (
     let totalTokens = 0;
 
     for await (const item of tokensScoreFilter) {
+      results.push(item);
+
       totalTokens += item.tokens;
 
-      if (totalTokens > maxTokens + 500) {
-        break;
-      }
-      results.push(item);
       if (totalTokens > maxTokens) {
         break;
       }
@@ -169,6 +181,12 @@ export async function searchDatasetData(
     datasetIds = [],
     collectionFilterMatch
   } = props;
+
+  // Constants data
+  const datasetDataSelectField =
+    '_id datasetId collectionId updateTime q a imageId imageDescMap chunkIndex indexes';
+  const datsaetCollectionSelectField =
+    '_id name fileId rawLink apiFileId externalFileId externalFileUrl';
 
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
@@ -287,50 +305,64 @@ export async function searchDatasetData(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      // Tag
-      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
-      // get andTagIds
       if (andTags && andTags.length > 0) {
-        // tag 去重
-        andTags = Array.from(new Set(andTags));
-
-        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
+        const uniqueAndTags = Array.from(new Set(andTags));
+        if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
           return [];
         }
-
-        if (andTags.every((tag) => typeof tag === 'string')) {
-          // Get tagId by tag string
-          const andTagIdList = await MongoDatasetCollectionTags.find(
+        if (uniqueAndTags.every((tag) => typeof tag === 'string')) {
+          const matchedTags = await MongoDatasetCollectionTags.find(
             {
               teamId,
               datasetId: { $in: datasetIds },
-              tag: { $in: andTags }
+              tag: { $in: uniqueAndTags as string[] }
             },
-            '_id',
-            {
-              ...readFromSecondary
-            }
+            '_id datasetId tag',
+            { ...readFromSecondary }
           ).lean();
 
-          // If you enter a tag that does not exist, none will be found
-          if (andTagIdList.length !== andTags.length) return [];
+          // Group tags by dataset
+          const datasetTagMap = new Map<string, { tagIds: string[]; tagNames: Set<string> }>();
 
-          // Get collectionId by tagId
-          const collections = await MongoDatasetCollection.find(
-            {
-              teamId,
-              datasetId: { $in: datasetIds },
-              tags: { $all: andTagIdList.map((item) => String(item._id)) }
-            },
-            '_id',
-            {
-              ...readFromSecondary
+          matchedTags.forEach((tag) => {
+            const datasetId = String(tag.datasetId);
+            if (!datasetTagMap.has(datasetId)) {
+              datasetTagMap.set(datasetId, {
+                tagIds: [],
+                tagNames: new Set()
+              });
             }
-          ).lean();
-          tagCollectionIdList = collections.map((item) => String(item._id));
-        } else if (andTags.every((tag) => tag === null)) {
+
+            const datasetData = datasetTagMap.get(datasetId)!;
+            datasetData.tagIds.push(String(tag._id));
+            datasetData.tagNames.add(tag.tag);
+          });
+
+          const validDatasetIds = Array.from(datasetTagMap.entries())
+            .filter(([_, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
+            .map(([datasetId]) => datasetId);
+
+          if (validDatasetIds.length === 0) return [];
+
+          const collectionsPromises = validDatasetIds.map((datasetId) => {
+            const { tagIds } = datasetTagMap.get(datasetId)!;
+            return MongoDatasetCollection.find(
+              {
+                teamId,
+                datasetId,
+                tags: { $all: tagIds }
+              },
+              '_id',
+              { ...readFromSecondary }
+            ).lean();
+          });
+
+          const collectionsResults = await Promise.all(collectionsPromises);
+          tagCollectionIdList = collectionsResults.flat().map((item) => String(item._id));
+        } else if (uniqueAndTags.every((tag) => tag === null)) {
           const collections = await MongoDatasetCollection.find(
             {
               teamId,
@@ -338,9 +370,7 @@ export async function searchDatasetData(
               $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
             },
             '_id',
-            {
-              ...readFromSecondary
-            }
+            { ...readFromSecondary }
           ).lean();
           tagCollectionIdList = collections.map((item) => String(item._id));
         }
@@ -411,203 +441,277 @@ export async function searchDatasetData(
     } catch (error) {}
   };
   const embeddingRecall = async ({
-    query,
+    queries,
     limit,
     forbidCollectionIdList,
     filterCollectionIdList
   }: {
-    query: string;
+    queries: string[];
     limit: number;
     forbidCollectionIdList: string[];
     filterCollectionIdList?: string[];
-  }) => {
+  }): Promise<{
+    embeddingRecallResults: SearchDataResponseItemType[][];
+    tokens: number;
+  }> => {
+    if (limit === 0) {
+      return {
+        embeddingRecallResults: [],
+        tokens: 0
+      };
+    }
+
     const { vectors, tokens } = await getVectorsByText({
       model: getEmbeddingModel(model),
-      input: query,
+      input: queries,
       type: 'query'
     });
 
-    const { results } = await recallFromVectorStore({
-      teamId,
-      datasetIds,
-      vector: vectors[0],
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList
-    });
+    const recallResults = await Promise.all(
+      vectors.map(async (vector) => {
+        return await recallFromVectorStore({
+          teamId,
+          datasetIds,
+          vector,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+      })
+    );
 
     // Get data and collections
-    const collectionIdList = Array.from(new Set(results.map((item) => item.collectionId)));
-    const [dataList, collections] = await Promise.all([
+    const collectionIdList = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.collectionId)).flat())
+    );
+    const indexDataIds = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.id?.trim())).flat())
+    );
+
+    const [dataMaps, collectionMaps] = await Promise.all([
       MongoDatasetData.find(
         {
           teamId,
           datasetId: { $in: datasetIds },
           collectionId: { $in: collectionIdList },
-          'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
+          'indexes.dataId': { $in: indexDataIds }
         },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        datasetDataSelectField,
         { ...readFromSecondary }
-      ).lean(),
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+
+          res.forEach((item) => {
+            item.indexes.forEach((index) => {
+              map.set(String(index.dataId), item);
+            });
+          });
+
+          return map;
+        }),
       MongoDatasetCollection.find(
         {
           _id: { $in: collectionIdList }
         },
-        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
+        datsaetCollectionSelectField,
         { ...readFromSecondary }
-      ).lean()
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        })
     ]);
 
-    const set = new Map<string, number>();
-    const formatResult = results
-      .map((item, index) => {
-        const collection = collections.find((col) => String(col._id) === String(item.collectionId));
-        if (!collection) {
-          console.log('Collection is not found', item);
-          return;
-        }
-        const data = dataList.find((data) =>
-          data.indexes.some((index) => index.dataId === item.id)
-        );
-        if (!data) {
-          console.log('Data is not found', item);
-          return;
-        }
+    const embeddingRecallResults = recallResults.map((item) => {
+      const set = new Set<string>();
+      return (
+        item.results
+          .map((item, index) => {
+            const collection = collectionMaps.get(String(item.collectionId));
+            if (!collection) {
+              console.log('Collection is not found', item);
+              return;
+            }
 
-        const result: SearchDataResponseItemType = {
-          id: String(data._id),
-          updateTime: data.updateTime,
-          q: data.q,
-          a: data.a,
-          chunkIndex: data.chunkIndex,
-          datasetId: String(data.datasetId),
-          collectionId: String(data.collectionId),
-          ...getCollectionSourceData(collection),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
-        };
+            const data = dataMaps.get(String(item.id));
+            if (!data) {
+              console.log('Data is not found', item);
+              return;
+            }
 
-        return result;
-      })
-      .filter((item) => {
-        if (!item) return false;
-        if (set.has(item.id)) return false;
-        set.set(item.id, 1);
-        return true;
-      })
-      .map((item, index) => {
-        if (!item) return;
-        return {
-          ...item,
-          score: item.score.map((item) => ({ ...item, index }))
-        };
-      }) as SearchDataResponseItemType[];
+            const result: SearchDataResponseItemType = {
+              id: String(data._id),
+              updateTime: data.updateTime,
+              ...formatDatasetDataValue({
+                teamId,
+                datasetId: data.datasetId,
+                q: data.q,
+                a: data.a,
+                imageId: data.imageId,
+                imageDescMap: data.imageDescMap
+              }),
+              chunkIndex: data.chunkIndex,
+              datasetId: String(data.datasetId),
+              collectionId: String(data.collectionId),
+              ...getCollectionSourceData(collection),
+              score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
+            };
+
+            return result;
+          })
+          // 多个向量对应一个数据，每一路召回，保障数据只有一份，并且取最高排名
+          .filter((item) => {
+            if (!item) return false;
+            if (set.has(item.id)) return false;
+            set.add(item.id);
+            return true;
+          })
+          .map((item, index) => {
+            return {
+              ...item!,
+              score: item!.score.map((item) => ({ ...item, index }))
+            };
+          }) as SearchDataResponseItemType[]
+      );
+    });
 
     return {
-      embeddingRecallResults: formatResult,
+      embeddingRecallResults,
       tokens
     };
   };
   const fullTextRecall = async ({
-    query,
+    queries,
     limit,
     filterCollectionIdList,
     forbidCollectionIdList
   }: {
-    query: string;
+    queries: string[];
     limit: number;
     filterCollectionIdList?: string[];
     forbidCollectionIdList: string[];
   }): Promise<{
-    fullTextRecallResults: SearchDataResponseItemType[];
-    tokenLen: number;
+    fullTextRecallResults: SearchDataResponseItemType[][];
   }> => {
     if (limit === 0) {
       return {
-        fullTextRecallResults: [],
-        tokenLen: 0
+        fullTextRecallResults: []
       };
     }
 
-    const searchResults = (
-      await Promise.all(
-        datasetIds.map(async (id) => {
-          return MongoDatasetDataText.aggregate(
-            [
-              {
-                $match: {
-                  teamId: new Types.ObjectId(teamId),
-                  datasetId: new Types.ObjectId(id),
-                  $text: { $search: await jiebaSplit({ text: query }) },
-                  ...(filterCollectionIdList
-                    ? {
-                        collectionId: {
-                          $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
-                        }
+    const recallResults = await Promise.all(
+      queries.map(async (query) => {
+        return (await MongoDatasetDataText.aggregate(
+          [
+            {
+              $match: {
+                teamId: new Types.ObjectId(teamId),
+                $text: { $search: await jiebaSplit({ text: query }) },
+                datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+                ...(filterCollectionIdList
+                  ? {
+                      collectionId: {
+                        $in: filterCollectionIdList
+                          .filter((id) => !forbidCollectionIdList.includes(id))
+                          .map((id) => new Types.ObjectId(id))
                       }
-                    : {}),
-                  ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+                    }
+                  : forbidCollectionIdList?.length
                     ? {
                         collectionId: {
                           $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
                         }
                       }
                     : {})
-                }
-              },
-              {
-                $sort: {
-                  score: { $meta: 'textScore' }
-                }
-              },
-              {
-                $limit: limit
-              },
-              {
-                $project: {
-                  _id: 1,
-                  collectionId: 1,
-                  dataId: 1,
-                  score: { $meta: 'textScore' }
-                }
               }
-            ],
+            },
             {
-              ...readFromSecondary
+              $sort: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $limit: limit
+            },
+            {
+              $project: {
+                _id: 1,
+                collectionId: 1,
+                dataId: 1,
+                score: { $meta: 'textScore' }
+              }
             }
-          );
-        })
-      )
-    ).flat() as (DatasetDataTextSchemaType & { score: number })[];
+          ],
+          {
+            ...readFromSecondary
+          }
+        )) as (DatasetDataTextSchemaType & { score: number })[];
+      })
+    );
+
+    const dataIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.dataId)).flat())
+    );
+    const collectionIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.collectionId)).flat())
+    );
 
     // Get data and collections
-    const [dataList, collections] = await Promise.all([
+    const [dataMaps, collectionMaps] = await Promise.all([
       MongoDatasetData.find(
         {
-          _id: { $in: searchResults.map((item) => item.dataId) }
+          _id: { $in: dataIds }
         },
-        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        datasetDataSelectField,
         { ...readFromSecondary }
-      ).lean(),
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: searchResults.map((item) => item.collectionId) }
+          _id: { $in: collectionIds }
         },
-        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
+        datsaetCollectionSelectField,
         { ...readFromSecondary }
-      ).lean()
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        })
     ]);
 
-    return {
-      fullTextRecallResults: searchResults
+    const fullTextRecallResults = recallResults.map((item) => {
+      return item
         .map((item, index) => {
-          const collection = collections.find(
-            (col) => String(col._id) === String(item.collectionId)
-          );
+          const collection = collectionMaps.get(String(item.collectionId));
           if (!collection) {
             console.log('Collection is not found', item);
             return;
           }
-          const data = dataList.find((data) => String(data._id) === String(item.dataId));
+
+          const data = dataMaps.get(String(item.dataId));
           if (!data) {
             console.log('Data is not found', item);
             return;
@@ -618,8 +722,14 @@ export async function searchDatasetData(
             datasetId: String(data.datasetId),
             collectionId: String(data.collectionId),
             updateTime: data.updateTime,
-            q: data.q,
-            a: data.a,
+            ...formatDatasetDataValue({
+              teamId,
+              datasetId: data.datasetId,
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
             chunkIndex: data.chunkIndex,
             indexes: data.indexes,
             ...getCollectionSourceData(collection),
@@ -632,8 +742,20 @@ export async function searchDatasetData(
             ]
           };
         })
-        .filter(Boolean) as SearchDataResponseItemType[],
-      tokenLen: 0
+        .filter((item) => {
+          if (!item) return false;
+          return true;
+        })
+        .map((item, index) => {
+          return {
+            ...item,
+            score: item!.score.map((item) => ({ ...item, index }))
+          };
+        }) as SearchDataResponseItemType[];
+    });
+
+    return {
+      fullTextRecallResults
     };
   };
   const multiQueryRecall = async ({
@@ -643,50 +765,36 @@ export async function searchDatasetData(
     embeddingLimit: number;
     fullTextLimit: number;
   }) => {
-    // multi query recall
-    const embeddingRecallResList: SearchDataResponseItemType[][] = [];
-    const fullTextRecallResList: SearchDataResponseItemType[][] = [];
-    let totalTokens = 0;
-
     const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
       getForbidData(),
       filterCollectionByMetadata()
     ]);
 
-    await Promise.all(
-      queries.map(async (query) => {
-        const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
-          embeddingRecall({
-            query,
-            limit: embeddingLimit,
-            forbidCollectionIdList,
-            filterCollectionIdList
-          }),
-          // FullText tmp
-          fullTextRecall({
-            query,
-            limit: fullTextLimit,
-            filterCollectionIdList,
-            forbidCollectionIdList
-          })
-        ]);
-        totalTokens += tokens;
-
-        embeddingRecallResList.push(embeddingRecallResults);
-        fullTextRecallResList.push(fullTextRecallResults);
+    const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
+      embeddingRecall({
+        queries,
+        limit: embeddingLimit,
+        forbidCollectionIdList,
+        filterCollectionIdList
+      }),
+      fullTextRecall({
+        queries,
+        limit: fullTextLimit,
+        filterCollectionIdList,
+        forbidCollectionIdList
       })
-    );
+    ]);
 
     // rrf concat
     const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResList.map((list) => ({ k: 60, list }))
+      embeddingRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, embeddingLimit);
     const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResList.map((list) => ({ k: 60, list }))
+      fullTextRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, fullTextLimit);
 
     return {
-      tokens: totalTokens,
+      tokens,
       embeddingRecallResults: rrfEmbRecall,
       fullTextRecallResults: rrfFTRecall
     };
@@ -697,14 +805,23 @@ export async function searchDatasetData(
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
+  const {
+    embeddingRecallResults,
+    fullTextRecallResults,
+    tokens: embeddingTokens
+  } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
 
   // ReRank results
-  const reRankResults = await (async () => {
-    if (!usingReRank) return [];
+  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
+    if (!usingReRank) {
+      return {
+        results: [],
+        inputTokens: 0
+      };
+    }
 
     set = new Set<string>(embeddingRecallResults.map((item) => item.id));
     const concatRecallResults = embeddingRecallResults.concat(
@@ -728,29 +845,24 @@ export async function searchDatasetData(
       });
     } catch (error) {
       usingReRank = false;
-      return [];
+      return {
+        results: [],
+        inputTokens: 0
+      };
     }
   })();
 
-  // embedding recall and fullText recall rrf concat
-  const baseK = 120;
-  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
-  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
-
   const rrfSearchResult = datasetSearchResultConcat([
-    { k: embK, list: embeddingRecallResults },
-    { k: fullTextK, list: fullTextRecallResults }
+    { weight: embeddingWeight, list: embeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
   ]);
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
-    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
-
     return datasetSearchResultConcat([
-      { k: searchK, list: rrfSearchResult },
-      { k: rerankK, list: reRankResults }
+      { weight: 1 - rerankWeight, list: rrfSearchResult },
+      { weight: rerankWeight, list: reRankResults }
     ]);
   })();
 
@@ -791,9 +903,12 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  pushTrack.datasetSearch({ datasetIds, teamId });
+
   return {
     searchRes: filterMaxTokensResult,
-    tokens,
+    embeddingTokens,
+    reRankInputTokens,
     searchMode,
     limit: maxTokens,
     similarity,
@@ -852,5 +967,4 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
-export const deepRagSearch = (data: DeepRagSearchProps) =>
-  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);

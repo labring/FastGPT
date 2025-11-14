@@ -1,13 +1,14 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
+import type { TextNode } from 'lexical';
+import { $createTextNode, $getSelection, $isRangeSelection } from 'lexical';
 import * as React from 'react';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { EditorVariableLabelPickerType } from '../../type';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { type EditorVariableLabelPickerType } from '../../type';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../../Avatar';
 

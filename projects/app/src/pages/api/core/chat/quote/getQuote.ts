@@ -1,12 +1,15 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { quoteDataFieldSelector, QuoteDataItemType } from '@/service/core/chat/constants';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { quoteDataFieldSelector } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
+import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
-export type GetQuoteDataProps = {
+export type GetQuoteProps = {
   datasetDataIdList: string[];
 
   collectionIdList: string[];
@@ -19,9 +22,9 @@ export type GetQuoteDataProps = {
   teamToken?: string;
 };
 
-export type GetQuoteDataRes = QuoteDataItemType[];
+export type GetQuotesRes = DatasetCiteItemType[];
 
-async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuoteDataRes> {
+async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRes> {
   const {
     appId,
     chatId,
@@ -36,7 +39,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
     datasetDataIdList
   } = req.body;
 
-  const [chat, { chatItem }] = await Promise.all([
+  const [{ chat, responseDetail }, chatItem] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -47,16 +50,20 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       teamId,
       teamToken
     }),
+    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
   ]);
-  if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
+  if (!chat || !chatItem || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const list = await MongoDatasetData.find(
     { _id: { $in: datasetDataIdList }, collectionId: { $in: collectionIdList } },
     quoteDataFieldSelector
   ).lean();
 
-  const quoteList = processChatTimeFilter(list, chatItem.time);
+  // Get image preview url
+  const formatPreviewUrlList = getFormatDatasetCiteList(list);
+
+  const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 
   return quoteList;
 }

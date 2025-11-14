@@ -12,7 +12,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResponse) {
   let { teamId, appId, chatId, teamToken } = req.query;

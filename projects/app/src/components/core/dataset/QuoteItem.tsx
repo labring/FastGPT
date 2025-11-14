@@ -8,7 +8,11 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  SearchScoreTypeEnum,
+  SearchScoreTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import Markdown from '@/components/Markdown';
 
@@ -88,11 +92,13 @@ export const formatScore = (score: ScoreItemType[]) => {
 const QuoteItem = ({
   quoteItem,
   canViewSource,
+  canEditData,
   canEditDataset,
   ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseItemType;
   canViewSource?: boolean;
+  canEditData?: boolean;
   canEditDataset?: boolean;
 } & Omit<readCollectionSourceBody, 'collectionId'>) => {
   const { t } = useTranslation();
@@ -206,7 +212,7 @@ const QuoteItem = ({
             {...RawSourceBoxProps}
           />
           <Box flex={1} />
-          {quoteItem.id && canEditDataset && (
+          {quoteItem.id && canEditData && (
             <MyTooltip label={t('common:core.dataset.data.Edit')}>
               <Box
                 className="hover-data"
@@ -238,12 +244,13 @@ const QuoteItem = ({
             <Link
               as={NextLink}
               className="hover-data"
-              visibility={'hidden'}
+              display={'flex'}
               alignItems={'center'}
+              visibility={'hidden'}
               color={'primary.500'}
               href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
             >
-              {t('chat:to_dataset')}
+              {t('common:to_dataset')}
               <MyIcon name={'common/rightArrowLight'} w={'10px'} />
             </Link>
           )}

@@ -1,4 +1,4 @@
-import { BucketNameEnum } from './constants';
+import type { BucketNameEnum } from './constants';
 
 export type FileTokenQuery = {
   bucketName: `${BucketNameEnum}`;

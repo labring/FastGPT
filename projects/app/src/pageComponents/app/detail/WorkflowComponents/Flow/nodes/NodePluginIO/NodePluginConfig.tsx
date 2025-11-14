@@ -1,22 +1,18 @@
-import React, { Dispatch, useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import React, { type Dispatch, useMemo } from 'react';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { Box, Flex } from '@chakra-ui/react';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { Flex } from '@chakra-ui/react';
 import Container from '../../components/Container';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { AppContext } from '../../../../context';
-import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { useMount } from 'ahooks';
 import ChatFunctionTip from '@/components/core/app/Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { WorkflowContext } from '../../../context';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import FileSelect from '@/components/core/app/FileSelect';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type ComponentProps = {
@@ -110,62 +106,6 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
           }));
         }}
       />
-    </>
-  );
-}
-
-function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
-  const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const pluginInputNode = nodeList.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
-  )!;
-
-  return (
-    <>
-      <FileSelect
-        value={fileSelectConfig}
-        color={'myGray.600'}
-        fontWeight={'medium'}
-        fontSize={'sm'}
-        onChange={(e) => {
-          setAppDetail((state) => ({
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              fileSelectConfig: e
-            }
-          }));
-
-          // Dynamic add or delete userFilesInput
-          const canUploadFiles = e.canSelectFile || e.canSelectImg;
-          const repeatKey = pluginInputNode?.outputs.find(
-            (item) => item.key === userFilesInput.key
-          );
-          if (canUploadFiles) {
-            !repeatKey &&
-              onChangeNode({
-                nodeId: pluginInputNode.nodeId,
-                type: 'addOutput',
-                value: {
-                  ...userFilesInput,
-                  label: t('workflow:plugin.global_file_input')
-                }
-              });
-          } else {
-            repeatKey &&
-              onChangeNode({
-                nodeId: pluginInputNode.nodeId,
-                type: 'delOutput',
-                key: userFilesInput.key
-              });
-          }
-        }}
-      />
-      <Box fontSize={'mini'} color={'myGray.500'}>
-        {t('workflow:plugin_file_abandon_tip')}
-      </Box>
     </>
   );
 }

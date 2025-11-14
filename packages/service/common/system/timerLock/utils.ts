@@ -1,3 +1,4 @@
+import { type ClientSession } from '../../mongo';
 import { MongoTimerLock } from './schema';
 import { addMinutes } from 'date-fns';
 
@@ -6,16 +7,23 @@ import { addMinutes } from 'date-fns';
 */
 export const checkTimerLock = async ({
   timerId,
-  lockMinuted
+  lockMinuted,
+  session
 }: {
   timerId: string;
   lockMinuted: number;
+  session?: ClientSession;
 }) => {
   try {
-    await MongoTimerLock.create({
-      timerId,
-      expiredTime: addMinutes(new Date(), lockMinuted)
-    });
+    await MongoTimerLock.create(
+      [
+        {
+          timerId,
+          expiredTime: addMinutes(new Date(), lockMinuted)
+        }
+      ],
+      { session, ordered: true }
+    );
 
     return true;
   } catch (error) {

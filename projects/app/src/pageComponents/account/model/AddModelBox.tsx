@@ -14,21 +14,16 @@ import {
   Input,
   ModalFooter,
   Button,
-  ButtonProps
+  type ButtonProps
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  ModelProviderList,
-  ModelProviderIdType,
-  getModelProvider
-} from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { useForm } from 'react-hook-form';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
@@ -36,7 +31,6 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
@@ -96,8 +90,8 @@ export const ModelEditModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { t, i18n } = useTranslation();
+  const { feConfigs, getModelProviders } = useSystemStore();
 
   const { register, getValues, setValue, handleSubmit, watch, reset } =
     useForm<SystemModelItemType>({
@@ -112,14 +106,13 @@ export const ModelEditModal = ({
   const isRerankModel = modelData?.type === ModelTypeEnum.rerank;
 
   const provider = watch('provider');
-  const providerData = useMemo(() => getModelProvider(provider), [provider]);
 
-  const providerList = useRef<{ label: any; value: ModelProviderIdType }[]>(
-    ModelProviderList.map((item) => ({
+  const providerList = useRef<{ label: React.ReactNode; value: string }[]>(
+    getModelProviders(i18n.language).map((item) => ({
       label: (
         <HStack>
           <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{t(item.name as any)}</Box>
+          <Box>{item.name}</Box>
         </HStack>
       ),
       value: item.id
@@ -127,11 +120,11 @@ export const ModelEditModal = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
     if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
@@ -143,6 +136,7 @@ export const ModelEditModal = ({
           data[key] = '';
         }
       }
+
       return putSystemModel({
         model: data.model,
         metadata: data
@@ -152,7 +146,7 @@ export const ModelEditModal = ({
       onSuccess: () => {
         onClose();
       },
-      successToast: t('common:common.Success')
+      successToast: t('common:Success')
     }
   );
 
@@ -170,6 +164,36 @@ export const ModelEditModal = ({
         }, 0);
       }
     }
+  );
+
+  const CustomApi = useMemo(
+    () => (
+      <>
+        <Tr>
+          <Td>
+            <HStack spacing={1}>
+              <Box>{t('account:model.request_url')}</Box>
+              <QuestionTip label={t('account:model.request_url_tip')} />
+            </HStack>
+          </Td>
+          <Td textAlign={'right'}>
+            <Input {...register('requestUrl')} {...InputStyles} />
+          </Td>
+        </Tr>
+        <Tr>
+          <Td>
+            <HStack spacing={1}>
+              <Box>{t('account:model.request_auth')}</Box>
+              <QuestionTip label={t('account:model.request_auth_tip')} />
+            </HStack>
+          </Td>
+          <Td textAlign={'right'}>
+            <Input {...register('requestAuth')} {...InputStyles} />
+          </Td>
+        </Tr>
+      </>
+    ),
+    []
   );
 
   return (
@@ -356,7 +380,12 @@ export const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            min={2000}
+                            register={register}
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -372,6 +401,7 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             register={register}
                             name="maxTemperature"
+                            min={0}
                             step={0.1}
                             {...InputStyles}
                           />
@@ -443,6 +473,26 @@ export const ModelEditModal = ({
                     <Tr>
                       <Td>
                         <HStack spacing={1}>
+                          <Box>{t('account_model:batch_size')}</Box>
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput
+                            defaultValue={1}
+                            register={register}
+                            name="batchSize"
+                            min={1}
+                            step={1}
+                            isRequired
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
                           <Box>{t('account:model.default_token')}</Box>
                           <QuestionTip label={t('account:model.default_token_tip')} />
                         </HStack>
@@ -484,7 +534,7 @@ export const ModelEditModal = ({
                             value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                             onChange={(e) => {
                               if (!e) {
-                                setValue('defaultConfig', {});
+                                setValue('defaultConfig', undefined);
                                 return;
                               }
                               try {
@@ -527,28 +577,7 @@ export const ModelEditModal = ({
                     </Tr>
                   </>
                 )}
-                <Tr>
-                  <Td>
-                    <HStack spacing={1}>
-                      <Box>{t('account:model.request_url')}</Box>
-                      <QuestionTip label={t('account:model.request_url_tip')} />
-                    </HStack>
-                  </Td>
-                  <Td textAlign={'right'}>
-                    <Input {...register('requestUrl')} {...InputStyles} />
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Td>
-                    <HStack spacing={1}>
-                      <Box>{t('account:model.request_auth')}</Box>
-                      <QuestionTip label={t('account:model.request_auth_tip')} />
-                    </HStack>
-                  </Td>
-                  <Td textAlign={'right'}>
-                    <Input {...register('requestAuth')} {...InputStyles} />
-                  </Td>
-                </Tr>
+                {!isLLMModel && CustomApi}
               </Tbody>
             </Table>
           </TableContainer>
@@ -572,19 +601,6 @@ export const ModelEditModal = ({
                     <Td textAlign={'right'}>
                       <Flex justifyContent={'flex-end'}>
                         <Switch {...register('toolChoice')} />
-                      </Flex>
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      <HStack spacing={1}>
-                        <Box>{t('account:model.function_call')}</Box>
-                        <QuestionTip label={t('account:model.function_call_tip')} />
-                      </HStack>
-                    </Td>
-                    <Td textAlign={'right'}>
-                      <Flex justifyContent={'flex-end'}>
-                        <Switch {...register('functionCall')} />
                       </Flex>
                     </Td>
                   </Tr>
@@ -661,6 +677,16 @@ export const ModelEditModal = ({
                       </Flex>
                     </Td>
                   </Tr>
+                  {feConfigs?.isPlus && (
+                    <Tr>
+                      <Td>{t('account_model:use_in_eval')}</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('useInEvaluation')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  )}
                   <Tr>
                     <Td>
                       <HStack spacing={1}>
@@ -675,34 +701,6 @@ export const ModelEditModal = ({
                   <Tr>
                     <Td>
                       <HStack spacing={1}>
-                        <Box>{t('account:model.custom_cq_prompt')}</Box>
-                        <QuestionTip
-                          label={t('account:model.custom_cq_prompt_tip', { prompt: Prompt_CQJson })}
-                        />
-                      </HStack>
-                    </Td>
-                    <Td textAlign={'right'}>
-                      <MyTextarea {...register('customCQPrompt')} {...InputStyles} />
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      <HStack spacing={1}>
-                        <Box>{t('account:model.custom_extract_prompt')}</Box>
-                        <QuestionTip
-                          label={t('account:model.custom_extract_prompt_tip', {
-                            prompt: Prompt_ExtractJson
-                          })}
-                        />
-                      </HStack>
-                    </Td>
-                    <Td textAlign={'right'}>
-                      <MyTextarea {...register('customExtractPrompt')} {...InputStyles} />
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      <HStack spacing={1}>
                         <Box>{t('account:model.default_config')}</Box>
                         <QuestionTip label={t('account:model.default_config_tip')} />
                       </HStack>
@@ -712,12 +710,13 @@ export const ModelEditModal = ({
                         value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                         resize
                         onChange={(e) => {
+                          console.log(e, '===');
                           if (!e) {
-                            setValue('defaultConfig', {});
+                            setValue('defaultConfig', undefined);
                             return;
                           }
                           try {
-                            setValue('defaultConfig', JSON.parse(e));
+                            setValue('defaultConfig', JSON.parse(e.trim()));
                           } catch (error) {
                             console.error(error);
                           }
@@ -726,6 +725,7 @@ export const ModelEditModal = ({
                       />
                     </Td>
                   </Tr>
+                  {CustomApi}
                 </Tbody>
               </Table>
             </TableContainer>
@@ -744,10 +744,10 @@ export const ModelEditModal = ({
           </Button>
         )}
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -1,33 +1,34 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  contentTypeMap,
+  ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
-import { formatHttpError, valueTypeFormat } from '../utils';
-import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { addLog } from '../../../../common/system/log';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  ModuleDispatchProps,
+  RuntimeNodeItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import {
-  textAdaptGptResponse,
-  replaceEditorVariable,
   formatVariableValByType,
-  getReferenceVariableValue
+  getReferenceVariableValue,
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
-import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { createFileToken } from '../../../../support/permission/controller';
-import { JSONPath } from 'jsonpath-plus';
-import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 import json5 from 'json5';
+import { JSONPath } from 'jsonpath-plus';
+import { getSecretValue } from '../../../../common/secret/utils';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { addLog } from '../../../../common/system/log';
+import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
+import { formatHttpError } from '../utils';
+import { isInternalAddress } from '../../../../common/system/utils';
+import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 
 type PropsArrType = {
   key: string;
@@ -36,6 +37,7 @@ type PropsArrType = {
 };
 type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.abandon_httpUrl]: string;
+  [NodeInputKeyEnum.headerSecret]?: StoreSecretValueType;
   [NodeInputKeyEnum.httpMethod]: string;
   [NodeInputKeyEnum.httpReqUrl]: string;
   [NodeInputKeyEnum.httpHeaders]?: PropsArrType[];
@@ -47,21 +49,16 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
-type HttpResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.error]?: object;
-  [key: string]: any;
-}>;
+type HttpResponse = DispatchNodeResultType<
+  {
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.error]?: string;
+  }
+>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
-
-const contentTypeMap = {
-  [ContentTypes.none]: '',
-  [ContentTypes.formData]: '',
-  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
-  [ContentTypes.json]: 'application/json',
-  [ContentTypes.xml]: 'application/xml',
-  [ContentTypes.raw]: 'text/plain'
-};
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
@@ -82,6 +79,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpFormBody: httpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
+      system_header_secret: headerSecret,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
@@ -115,213 +113,16 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       variables: allVariables
     });
   };
-  /* Replace the JSON string to reduce parsing errors
-    1. Replace undefined values with null
-    2. Replace newline strings
-  */
-  const replaceJsonBodyString = (text: string) => {
-    // Check if the variable is in quotes
-    const isVariableInQuotes = (text: string, variable: string) => {
-      const index = text.indexOf(variable);
-      if (index === -1) return false;
-
-      // 计算变量前面的引号数量
-      const textBeforeVar = text.substring(0, index);
-      const matches = textBeforeVar.match(/"/g) || [];
-
-      // 如果引号数量为奇数，则变量在引号内
-      return matches.length % 2 === 1;
-    };
-    const valToStr = (val: any, isQuoted = false) => {
-      if (val === undefined) return 'null';
-      if (val === null) return 'null';
-
-      if (typeof val === 'object') return JSON.stringify(val);
-
-      if (typeof val === 'string') {
-        if (isQuoted) {
-          // Replace newlines with escaped newlines
-          return val.replace(/\n/g, '\\n').replace(/(?<!\\)"/g, '\\"');
-        }
-        try {
-          JSON.parse(val);
-          return val;
-        } catch (error) {
-          const str = JSON.stringify(val);
-
-          return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
-        }
-      }
-
-      return String(val);
-    };
-    // Test cases for variable replacement in JSON body
-    // const bodyTest = () => {
-    //   const testData = [
-    //     // 基本字符串替换
-    //     {
-    //       body: `{"name":"{{name}}","age":"18"}`,
-    //       variables: [{ key: '{{name}}', value: '测试' }],
-    //       result: `{"name":"测试","age":"18"}`
-    //     },
-    //     // 特殊字符处理
-    //     {
-    //       body: `{"text":"{{text}}"}`,
-    //       variables: [{ key: '{{text}}', value: '包含"引号"和\\反斜杠' }],
-    //       result: `{"text":"包含\\"引号\\"和\\反斜杠"}`
-    //     },
-    //     // 数字类型处理
-    //     {
-    //       body: `{"count":{{count}},"price":{{price}}}`,
-    //       variables: [
-    //         { key: '{{count}}', value: '42' },
-    //         { key: '{{price}}', value: '99.99' }
-    //       ],
-    //       result: `{"count":42,"price":99.99}`
-    //     },
-    //     // 布尔值处理
-    //     {
-    //       body: `{"isActive":{{isActive}},"hasData":{{hasData}}}`,
-    //       variables: [
-    //         { key: '{{isActive}}', value: 'true' },
-    //         { key: '{{hasData}}', value: 'false' }
-    //       ],
-    //       result: `{"isActive":true,"hasData":false}`
-    //     },
-    //     // 对象类型处理
-    //     {
-    //       body: `{"user":{{user}},"user2":"{{user2}}"}`,
-    //       variables: [
-    //         { key: '{{user}}', value: `{"id":1,"name":"张三"}` },
-    //         { key: '{{user2}}', value: `{"id":1,"name":"张三"}` }
-    //       ],
-    //       result: `{"user":{"id":1,"name":"张三"},"user2":"{\\"id\\":1,\\"name\\":\\"张三\\"}"}`
-    //     },
-    //     // 数组类型处理
-    //     {
-    //       body: `{"items":{{items}}}`,
-    //       variables: [{ key: '{{items}}', value: '[1, 2, 3]' }],
-    //       result: `{"items":[1,2,3]}`
-    //     },
-    //     // null 和 undefined 处理
-    //     {
-    //       body: `{"nullValue":{{nullValue}},"undefinedValue":{{undefinedValue}}}`,
-    //       variables: [
-    //         { key: '{{nullValue}}', value: 'null' },
-    //         { key: '{{undefinedValue}}', value: 'undefined' }
-    //       ],
-    //       result: `{"nullValue":null,"undefinedValue":null}`
-    //     },
-    //     // 嵌套JSON结构
-    //     {
-    //       body: `{"data":{"nested":{"value":"{{nestedValue}}"}}}`,
-    //       variables: [{ key: '{{nestedValue}}', value: '嵌套值' }],
-    //       result: `{"data":{"nested":{"value":"嵌套值"}}}`
-    //     },
-    //     // 多变量替换
-    //     {
-    //       body: `{"first":"{{first}}","second":"{{second}}","third":{{third}}}`,
-    //       variables: [
-    //         { key: '{{first}}', value: '第一' },
-    //         { key: '{{second}}', value: '第二' },
-    //         { key: '{{third}}', value: '3' }
-    //       ],
-    //       result: `{"first":"第一","second":"第二","third":3}`
-    //     },
-    //     // JSON字符串作为变量值
-    //     {
-    //       body: `{"config":{{config}}}`,
-    //       variables: [{ key: '{{config}}', value: '{"setting":"enabled","mode":"advanced"}' }],
-    //       result: `{"config":{"setting":"enabled","mode":"advanced"}}`
-    //     }
-    //   ];
-
-    //   for (let i = 0; i < testData.length; i++) {
-    //     const item = testData[i];
-    //     let bodyStr = item.body;
-    //     for (const variable of item.variables) {
-    //       const isQuote = isVariableInQuotes(bodyStr, variable.key);
-    //       bodyStr = bodyStr.replace(variable.key, valToStr(variable.value, isQuote));
-    //     }
-    //     bodyStr = bodyStr.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
-
-    //     console.log(bodyStr === item.result, i);
-    //     if (bodyStr !== item.result) {
-    //       console.log(bodyStr);
-    //       console.log(item.result);
-    //     } else {
-    //       try {
-    //         JSON.parse(item.result);
-    //       } catch (error) {
-    //         console.log('反序列化异常', i, item.result);
-    //       }
-    //     }
-    //   }
-    // };
-    // bodyTest();
-
-    // 1. Replace {{key.key}} variables
-    const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
-    const matches1 = [...text.matchAll(regex1)];
-    matches1.forEach((match) => {
-      const nodeId = match[1];
-      const id = match[2];
-      const fullMatch = match[0];
-
-      // 检查变量是否在引号内
-      const isInQuotes = isVariableInQuotes(text, fullMatch);
-
-      const variableVal = (() => {
-        if (nodeId === VARIABLE_NODE_ID) {
-          return variables[id];
-        }
-        // Find upstream node input/output
-        const node = runtimeNodes.find((node) => node.nodeId === nodeId);
-        if (!node) return;
-
-        const output = node.outputs.find((output) => output.id === id);
-        if (output) return formatVariableValByType(output.value, output.valueType);
-
-        const input = node.inputs.find((input) => input.key === id);
-        if (input)
-          return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
-      })();
-
-      const formatVal = valToStr(variableVal, isInQuotes);
-
-      const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, '');
-      text = text.replace(regex, () => formatVal);
-    });
-
-    // 2. Replace {{key}} variables
-    const regex2 = /{{([^}]+)}}/g;
-    const matches2 = text.match(regex2) || [];
-    const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
-    for (const key of uniqueKeys2) {
-      const fullMatch = `{{${key}}}`;
-      // 检查变量是否在引号内
-      const isInQuotes = isVariableInQuotes(text, fullMatch);
-
-      text = text.replace(new RegExp(`{{(${key})}}`, ''), () =>
-        valToStr(allVariables[key], isInQuotes)
-      );
-    }
-
-    return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
-  };
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
 
-  // parse header
-  const headers = await (() => {
+  const publicHeaders = await (async () => {
     try {
       const contentType = contentTypeMap[httpContentType];
       if (contentType) {
         httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
       }
 
-      if (!httpHeader || httpHeader.length === 0) return {};
-      // array
       return httpHeader.reduce((acc: Record<string, string>, item) => {
         const key = replaceStringVariables(item.key);
         const value = replaceStringVariables(item.value);
@@ -332,6 +133,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
+  const sensitiveHeaders = getSecretValue({
+    storeSecret: headerSecret
+  });
 
   const params = httpParams.reduce((acc: Record<string, string>, item) => {
     const key = replaceStringVariables(item.key);
@@ -371,7 +175,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        httpJsonBody = replaceJsonBodyString(httpJsonBody);
+        httpJsonBody = replaceJsonBodyString(
+          { text: httpJsonBody },
+          { variables, allVariables, runtimeNodes }
+        );
         return json5.parse(httpJsonBody);
       }
 
@@ -401,23 +208,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
   try {
     const { formatResponse, rawResponse } = await (async () => {
-      const systemPluginCb = global.systemPluginCb;
-      if (systemPluginCb[httpReqUrl]) {
-        const pluginResult = await replaceSystemPluginResponse({
-          response: await systemPluginCb[httpReqUrl](requestBody),
-          teamId,
-          tmbId
-        });
-
-        return {
-          formatResponse: pluginResult,
-          rawResponse: pluginResult
-        };
-      }
       return fetchData({
         method: httpMethod,
         url: httpReqUrl,
-        headers,
+        headers: { ...sensitiveHeaders, ...publicHeaders },
         body: requestBody,
         params,
         timeout: httpTimeout
@@ -455,42 +249,232 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         })();
       });
 
-    if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.fastAnswer,
-        data: textAdaptGptResponse({
-          text: formatResponse[NodeOutputKeyEnum.answerText]
-        })
-      });
-    }
-
     return {
-      ...results,
+      data: {
+        [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
+        ...results
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
-        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: rawResponse
       },
       [DispatchNodeResponseKeyEnum.toolResponses]:
-        Object.keys(results).length > 0 ? results : rawResponse,
-      [NodeOutputKeyEnum.httpRawResponse]: rawResponse
+        Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    addLog.error('Http request error', error);
+    addLog.warn('Http request error', formatHttpError(error));
+
+    // @adapt
+    if (node.catchError === undefined) {
+      return {
+        data: {
+          [NodeOutputKeyEnum.error]: getErrText(error)
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          params: Object.keys(params).length > 0 ? params : undefined,
+          body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
+          headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
+          httpResult: { error: formatHttpError(error) }
+        }
+      };
+    }
 
     return {
-      [NodeOutputKeyEnum.error]: formatHttpError(error),
+      error: {
+        [NodeOutputKeyEnum.error]: getErrText(error)
+      },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
-        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: { error: formatHttpError(error) }
-      },
-      [NodeOutputKeyEnum.httpRawResponse]: getErrText(error)
+      }
     };
   }
+};
+
+/* Replace the JSON string to reduce parsing errors
+  1. Replace undefined values with null
+  2. Replace newline strings
+*/
+export const replaceJsonBodyString = (
+  { text, depth = 0 }: { text: string; depth?: number },
+  props: {
+    variables: Record<string, any>;
+    allVariables: Record<string, any>;
+    runtimeNodes: RuntimeNodeItemType[];
+  }
+) => {
+  const { variables, allVariables, runtimeNodes } = props;
+
+  const MAX_REPLACEMENT_DEPTH = 10;
+  const processedVariables = new Set<string>();
+
+  // Prevent infinite recursion
+  if (depth > MAX_REPLACEMENT_DEPTH) {
+    return text;
+  }
+
+  // Check if the variable is in quotes
+  const isVariableInQuotes = (text: string, variable: string) => {
+    const index = text.indexOf(variable);
+    if (index === -1) return false;
+
+    // 计算变量前面的引号数量
+    const textBeforeVar = text.substring(0, index);
+    const matches = textBeforeVar.match(/"/g) || [];
+
+    // 如果引号数量为奇数，则变量在引号内
+    return matches.length % 2 === 1;
+  };
+
+  const valToStr = (val: any, isQuoted = false) => {
+    if (val === undefined) return 'null';
+    if (val === null) return 'null';
+
+    if (typeof val === 'object') {
+      const jsonStr = JSON.stringify(val);
+      if (isQuoted) {
+        // Only escape quotes for JSON strings inside quotes (backslashes are already properly escaped by JSON.stringify)
+        return jsonStr.replace(/"/g, '\\"');
+      }
+      return jsonStr;
+    }
+
+    if (typeof val === 'string') {
+      if (isQuoted) {
+        const jsonStr = JSON.stringify(val);
+        return jsonStr.slice(1, -1); // 移除首尾的双引号
+      }
+      try {
+        JSON.parse(val);
+        return val;
+      } catch (error) {
+        const str = JSON.stringify(val);
+        return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
+      }
+    }
+
+    return String(val);
+  };
+
+  // Check for circular references in variable values
+  const hasCircularReference = (value: any, targetKey: string): boolean => {
+    if (typeof value !== 'string') return false;
+
+    // Check if the value contains the target variable pattern (direct self-reference)
+    const selfRefPattern = new RegExp(
+      `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
+      'g'
+    );
+    return selfRefPattern.test(value);
+  };
+
+  let result = text;
+  let hasReplacements = false;
+
+  // 1. Replace {{$nodeId.id$}} variables
+  const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
+  const matches1 = [...result.matchAll(regex1)];
+
+  // Build replacement map first to avoid modifying string during iteration
+  const replacements1: Array<{ pattern: string; replacement: string }> = [];
+
+  for (const match of matches1) {
+    const nodeId = match[1];
+    const id = match[2];
+    const fullMatch = match[0];
+    const variableKey = `${nodeId}.${id}`;
+
+    // Skip if already processed to avoid immediate circular reference
+    if (processedVariables.has(variableKey)) {
+      continue;
+    }
+
+    // 检查变量是否在引号内
+    const isInQuotes = isVariableInQuotes(result, fullMatch);
+
+    const variableVal = (() => {
+      if (nodeId === VARIABLE_NODE_ID) {
+        return variables[id];
+      }
+      // Find upstream node input/output
+      const node = runtimeNodes.find((node) => node.nodeId === nodeId);
+      if (!node) return;
+
+      const output = node.outputs.find((output) => output.id === id);
+      if (output) return formatVariableValByType(output.value, output.valueType);
+
+      const input = node.inputs.find((input) => input.key === id);
+      if (input)
+        return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
+    })();
+
+    const formatVal = valToStr(variableVal, isInQuotes);
+    // Check for direct circular reference
+    if (hasCircularReference(String(variableVal), variableKey)) {
+      continue;
+    }
+
+    const escapedPattern = `\\{\\{\\$(${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\$\\}\\}`;
+
+    replacements1.push({
+      pattern: escapedPattern,
+      replacement: formatVal
+    });
+
+    processedVariables.add(variableKey);
+    hasReplacements = true;
+  }
+  replacements1.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
+  });
+
+  // 2. Replace {{key}} variables
+  const regex2 = /{{([^}]+)}}/g;
+  const matches2 = result.match(regex2) || [];
+  const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
+  // Build replacement map for simple variables
+  const replacements2: Array<{ pattern: string; replacement: string }> = [];
+  for (const key of uniqueKeys2) {
+    if (processedVariables.has(key)) {
+      continue;
+    }
+
+    const fullMatch = `{{${key}}}`;
+    const variableVal = allVariables[key];
+
+    // Check for direct circular reference
+    if (hasCircularReference(variableVal, key)) {
+      continue;
+    }
+
+    // 检查变量是否在引号内
+    const isInQuotes = isVariableInQuotes(result, fullMatch);
+    const formatVal = valToStr(variableVal, isInQuotes);
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    replacements2.push({
+      pattern: `{{(${escapedKey})}}`,
+      replacement: formatVal
+    });
+
+    processedVariables.add(key);
+    hasReplacements = true;
+  }
+  replacements2.forEach(({ pattern, replacement }) => {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
+  });
+
+  // If we made replacements and there might be nested variables, recursively process
+  if (hasReplacements && /\{\{[^}]*\}\}/.test(result)) {
+    result = replaceJsonBodyString({ text: result, depth: depth + 1 }, props);
+  }
+
+  return result.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
 };
 
 async function fetchData({
@@ -508,8 +492,13 @@ async function fetchData({
   params: Record<string, any>;
   timeout: number;
 }) {
+  if (isInternalAddress(url)) {
+    return Promise.reject('Url is invalid');
+  }
+
   const { data: response } = await axios({
     method,
+    maxContentLength: serviceRequestMaxContentLength,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
@@ -524,39 +513,4 @@ async function fetchData({
     formatResponse: typeof response === 'object' ? response : {},
     rawResponse: response
   };
-}
-
-// Replace some special response from system plugin
-async function replaceSystemPluginResponse({
-  response,
-  teamId,
-  tmbId
-}: {
-  response: Record<string, any>;
-  teamId: string;
-  tmbId: string;
-}) {
-  for await (const key of Object.keys(response)) {
-    if (typeof response[key] === 'object' && response[key].type === 'SYSTEM_PLUGIN_BASE64') {
-      const fileObj = response[key] as SystemPluginSpecialResponse;
-      const filename = `${tmbId}-${Date.now()}.${fileObj.extension}`;
-      try {
-        const fileId = await uploadFileFromBase64Img({
-          teamId,
-          tmbId,
-          bucketName: 'chat',
-          base64: fileObj.value,
-          filename,
-          metadata: {}
-        });
-        response[key] = `${ReadFileBaseUrl}/${filename}?token=${await createFileToken({
-          bucketName: 'chat',
-          teamId,
-          uid: tmbId,
-          fileId
-        })}`;
-      } catch (error) {}
-    }
-  }
-  return response;
 }

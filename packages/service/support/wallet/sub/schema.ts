@@ -1,4 +1,4 @@
-/* 
+/*
   user sub plan
   1. type=standard: There will only be 1, and each team will have one
   2. type=extraDatasetSize/extraPoints: Can buy multiple
@@ -52,6 +52,9 @@ const SubSchema = new Schema({
     type: String,
     enum: Object.values(StandardSubLevelEnum)
   },
+  maxTeamMember: Number,
+  maxApp: Number,
+  maxDataset: Number,
 
   // stand sub and extra points sub. Plan total points
   totalPoints: {

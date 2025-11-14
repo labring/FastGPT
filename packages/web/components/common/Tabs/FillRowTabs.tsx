@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Flex, Box, BoxProps } from '@chakra-ui/react';
+import { Flex, Box, type BoxProps, HStack } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
 type Props<T = string> = Omit<BoxProps, 'onChange'> & {
@@ -10,9 +10,22 @@ type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   }[];
   value: T;
   onChange: (e: T) => void;
+  iconSize?: string;
+  labelSize?: string;
+  iconGap?: number;
 };
 
-const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
+const FillRowTabs = ({
+  list,
+  value,
+  onChange,
+  py = '2.5',
+  px = '4',
+  iconSize = '18px',
+  labelSize = 'sm',
+  iconGap = 2,
+  ...props
+}: Props) => {
   return (
     <Box
       display={'inline-flex'}
@@ -28,7 +41,7 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
       {...props}
     >
       {list.map((item) => (
-        <Flex
+        <HStack
           key={item.value}
           flex={'1 0 0'}
           alignItems={'center'}
@@ -39,6 +52,7 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
           py={py}
           userSelect={'none'}
           whiteSpace={'noWrap'}
+          gap={iconGap}
           {...(value === item.value
             ? {
                 bg: 'white',
@@ -53,9 +67,9 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
                 onClick: () => onChange(item.value)
               })}
         >
-          {item.icon && <MyIcon name={item.icon as any} mr={1.5} w={'18px'} />}
-          <Box>{item.label}</Box>
-        </Flex>
+          {item.icon && <MyIcon name={item.icon as any} w={iconSize} />}
+          <Box fontSize={labelSize}>{item.label}</Box>
+        </HStack>
       ))}
     </Box>
   );

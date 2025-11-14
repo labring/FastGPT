@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -17,6 +16,8 @@ import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -40,7 +41,7 @@ export const WholeResponseContent = ({
   dataId?: string;
   chatTime?: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,9 @@ export const WholeResponseContent = ({
         if (isObject) {
           return `~~~json\n${JSON.stringify(value, null, 2)}`;
         }
+        if (typeof value === 'string') {
+          return t(value);
+        }
         return `${value}`;
       }, [isObject, value]);
 
@@ -114,7 +118,7 @@ export const WholeResponseContent = ({
         </RowRender>
       );
     },
-    [RowRender]
+    [RowRender, t]
   );
 
   return activeModule ? (
@@ -132,10 +136,7 @@ export const WholeResponseContent = ({
     >
       {/* common info */}
       <>
-        <Row
-          label={t('common:core.chat.response.module name')}
-          value={t(activeModule.moduleName as any)}
-        />
+        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
         {activeModule?.totalPoints !== undefined && (
           <Row
             label={t('common:support.wallet.usage.Total points')}
@@ -148,35 +149,22 @@ export const WholeResponseContent = ({
             value={formatNumber(activeModule.childTotalPoints)}
           />
         )}
-        <Row
-          label={t('common:core.chat.response.module time')}
-          value={`${activeModule?.runningTime || 0}s`}
-        />
         <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
-        <Row
-          label={t('common:core.chat.response.module tokens')}
-          value={`${activeModule?.tokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.module input tokens')}
-          value={`${activeModule?.inputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.module output tokens')}
-          value={`${activeModule?.outputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call tokens')}
-          value={`${activeModule?.toolCallTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call input tokens')}
-          value={`${activeModule?.toolCallInputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call output tokens')}
-          value={`${activeModule?.toolCallOutputTokens}`}
-        />
+        {activeModule?.tokens && (
+          <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
+        )}
+        {(!!activeModule?.inputTokens || !!activeModule?.outputTokens) && (
+          <Row
+            label={t('chat:llm_tokens')}
+            value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
+          />
+        )}
+        {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
+          <Row
+            label={t('common:core.chat.response.Tool call tokens')}
+            value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
+          />
+        )}
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
         <Row
@@ -184,6 +172,7 @@ export const WholeResponseContent = ({
           value={activeModule?.contextTotalLen}
         />
         <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
         <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
       </>
       {/* ai chat */}
@@ -196,6 +185,13 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.module maxToken')}
           value={activeModule?.maxToken}
         />
+        {activeModule?.finishReason && (
+          <Row
+            label={t('chat:completion_finish_reason')}
+            value={t(completionFinishReasonMap[activeModule?.finishReason])}
+          />
+        )}
+
         <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
         <Row
           label={t('common:core.chat.response.module historyPreview')}
@@ -244,28 +240,40 @@ export const WholeResponseContent = ({
             }
           />
         )}
-
         <Row
           label={t('common:core.chat.response.module similarity')}
           value={activeModule?.similarity}
         />
         <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
         <Row
-          label={t('common:core.chat.response.search using reRank')}
-          rawDom={
-            <Box border={'base'} borderRadius={'md'} p={2}>
-              {activeModule?.searchUsingReRank ? (
-                activeModule?.rerankModel ? (
-                  <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
-                ) : (
-                  'True'
-                )
-              ) : (
-                `False`
-              )}
-            </Box>
-          }
+          label={t('chat:response_embedding_model_tokens')}
+          value={`${activeModule?.embeddingTokens}`}
         />
+        {activeModule?.searchUsingReRank !== undefined && (
+          <>
+            <Row
+              label={t('common:core.chat.response.search using reRank')}
+              rawDom={
+                <Box border={'base'} borderRadius={'md'} p={2}>
+                  {activeModule?.searchUsingReRank ? (
+                    activeModule?.rerankModel ? (
+                      <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                    ) : (
+                      'True'
+                    )
+                  ) : (
+                    `False`
+                  )}
+                </Box>
+              }
+            />
+            <Row
+              label={t('chat:response_rerank_tokens')}
+              value={`${activeModule?.reRankInputTokens}`}
+            />
+          </>
+        )}
         {activeModule.queryExtensionResult && (
           <>
             <Row
@@ -289,7 +297,7 @@ export const WholeResponseContent = ({
         <Row label={t('chat:query_extension_result')} value={`${activeModule?.extensionResult}`} />
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
-            label={t('common:core.chat.response.module quoteList')}
+            label={t('chat:search_results')}
             rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}
@@ -428,6 +436,9 @@ export const WholeResponseContent = ({
         label={t('workflow:tool_params.tool_params_result')}
         value={activeModule?.toolParamsResult}
       />
+
+      {/* tool */}
+      <Row label={t('workflow:tool.tool_result')} value={activeModule?.toolRes} />
     </Box>
   ) : null;
 };
@@ -444,7 +455,7 @@ const SideTabItem = ({
   value: string;
   index: number;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   if (!sideBarItem) return null;
 
@@ -599,7 +610,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
   const flattedResponse = useMemo(() => {
@@ -807,7 +818,7 @@ const WholeResponseModal = ({
   dataId: string;
   chatTime: Date;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest2(

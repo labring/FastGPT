@@ -31,17 +31,12 @@ testApi/
 local/
 dist/
 
-# hugo
-**/.hugo_build.lock
-docSite/public/
-docSite/resources/_gen/
-docSite/.vercel
-*.local.*
-
-
 .idea/
 files/helm/fastgpt/fastgpt-0.1.0.tgz
 files/helm/fastgpt/charts/*.tgz
 
 tmp/
 coverage
+document/.source
+
+projects/app/worker/

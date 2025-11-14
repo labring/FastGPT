@@ -1,4 +1,4 @@
-import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
+import { extendTheme, defineStyleConfig, type ComponentStyleConfig } from '@chakra-ui/react';
 import {
   modalAnatomy,
   switchAnatomy,
@@ -9,6 +9,7 @@ import {
   radioAnatomy
 } from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
+import { getWebReqUrl } from './../common/system/utils';
 
 const { definePartsStyle: modalPart, defineMultiStyleConfig: modalMultiStyle } =
   createMultiStyleConfigHelpers(modalAnatomy.keys);
@@ -77,6 +78,24 @@ const Button = defineStyleConfig({
       h: '30px',
       minH: '30px',
       w: '30px',
+      borderRadius: 'sm'
+    },
+    base: {
+      fontSize: 'sm',
+      px: '4',
+      py: 0,
+      h: '34px',
+      minH: '34px',
+      fontWeight: 'medium',
+      borderRadius: 'sm'
+    },
+    baseSquare: {
+      fontSize: 'sm',
+      px: '0',
+      py: 0,
+      h: '34px',
+      w: '34px',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     md: {
@@ -221,7 +240,8 @@ const Button = defineStyleConfig({
       boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
         color: 'red.600',
-        borderColor: 'red.300'
+        borderColor: 'red.300',
+        bg: 'red.50'
       },
       _active: {
         color: 'red.600'
@@ -253,7 +273,6 @@ const Button = defineStyleConfig({
     grayGhost: {
       color: 'myGray.500',
       fontWeight: '500',
-      p: 0,
       bg: 'transparent',
       transition: 'background 0.1s',
       _hover: {
@@ -281,11 +300,11 @@ const Button = defineStyleConfig({
       bg: 'transparent',
       transition: 'background 0.1s',
       _hover: {
-        bg: 'myGray.150',
+        bg: 'red.50',
         color: 'red.600'
       },
       _active: {
-        bg: 'myGray.150'
+        bg: 'red.50'
       },
       _disabled: {
         color: 'myGray.800 !important'
@@ -305,12 +324,17 @@ const Button = defineStyleConfig({
     }
   },
   defaultProps: {
-    size: 'md',
+    size: 'base',
     variant: 'primary'
   }
 });
 
 const Input: ComponentStyleConfig = {
+  baseStyle: {
+    field: {
+      color: 'myGray.700'
+    }
+  },
   sizes: {
     sm: defineStyle({
       field: {
@@ -381,14 +405,31 @@ const NumberInput = numInputMultiStyle({
         bg: 'myGray.50',
         border: '1px solid',
         borderColor: 'myGray.200',
+        borderRadius: 'sm',
+        transition: 'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out',
+        _hover: {
+          borderColor: 'primary.300'
+        },
         _focus: {
-          borderColor: 'primary.500 !important',
+          borderColor: 'primary.600 !important',
           boxShadow: `${shadowLight} !important`,
           bg: 'white'
         },
         _disabled: {
           color: 'myGray.400 !important',
           bg: 'myWhite.300 !important'
+        },
+        _invalid: {
+          borderColor: 'red.500 !important',
+          borderWidth: '1px !important',
+          boxShadow: 'none !important',
+          _hover: {
+            borderColor: 'red.400 !important'
+          },
+          _focus: {
+            borderColor: 'red.600 !important',
+            boxShadow: '0px 0px 0px 2.4px rgba(244, 69, 46, 0.15) !important'
+          }
         }
       },
       stepper: {
@@ -425,7 +466,7 @@ const Textarea: ComponentStyleConfig = {
         bg: 'white'
       },
       '&::-webkit-resizer': {
-        background: "url('/icon/resizer.svg') no-repeat",
+        background: `url(${getWebReqUrl('/icon/resizer.svg')}) no-repeat`,
         backgroundSize: '11px',
         backgroundPosition: 'right bottom',
         backgroundPositionX: 'right 12px',
@@ -522,7 +563,42 @@ const Checkbox = checkBoxMultiStyle({
         borderColor: 'primary.400'
       }
     }
-  })
+  }),
+  sizes: {
+    sm: checkBoxPart({
+      control: {
+        width: '16px',
+        height: '16px',
+        borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '10px'
+      }
+    }),
+    md: checkBoxPart({
+      control: {
+        width: '18px',
+        height: '18px',
+        borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '12px'
+      }
+    }),
+    lg: checkBoxPart({
+      control: {
+        width: '20px',
+        height: '20px',
+        borderWidth: '2px'
+      },
+      icon: {
+        fontSize: '14px'
+      }
+    })
+  },
+  defaultProps: {
+    size: 'sm'
+  }
 });
 
 const Modal = modalMultiStyle({
@@ -814,10 +890,11 @@ export const theme = extendTheme({
     md: '0.5rem',
     semilg: '0.625rem',
     lg: '0.75rem',
-    xl: '1rem'
+    xl: '1rem',
+    xxl: '1.25rem'
   },
   shadows: {
-    1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    1: '0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
     1.5: '0px 1px 2px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
     2: '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
     3: '0px 4px 10px 0px rgba(19, 51, 107, 0.08), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',

@@ -5,21 +5,19 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
-import { getHandleConfig } from '../../utils';
+import { type FlowNodeTemplateType } from '../../../type/node';
 
 export const LoopEndNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopEnd,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowNodeType: FlowNodeTypeEnum.loopEnd,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(false, false, false, true),
+  showSourceHandle: false,
+  showTargetHandle: true,
   unique: true,
   forbidDelete: true,
   avatar: 'core/workflow/template/loopEnd',
   name: i18nT('workflow:loop_end'),
   showStatus: false,
-  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.loopEndInput,

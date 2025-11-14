@@ -3,9 +3,9 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import {
-  GetResourceFolderListProps,
-  GetResourceFolderListItemResponse,
-  ParentIdType
+  type GetResourceFolderListProps,
+  type GetResourceFolderListItemResponse,
+  type ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import { useMemoizedFn, useMount } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -51,7 +51,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
     setFolderList([
       {
         id: rootId,
-        name: t('common:common.folder.Root Path'),
+        name: t('common:root_folder'),
         open: true,
         children: data.map((item) => ({
           id: item.id,
@@ -158,7 +158,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       onSuccess: () => {
         onClose();
       },
-      successToast: t('common:common.folder.Move Success')
+      successToast: t('common:move_success')
     }
   );
 
@@ -181,7 +181,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       </ModalBody>
       <ModalFooter>
         <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

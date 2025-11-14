@@ -1,10 +1,7 @@
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  ChatItemValueItemType,
-  ChatSiteItemType,
-  ToolModuleResponseItemType
-} from '@fastgpt/global/core/chat/type';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type UserInputFileItemType = {
@@ -15,7 +12,9 @@ export type UserInputFileItemType = {
   icon: string; // img is base64
   status: 0 | 1; // 0: uploading, 1: success
   url?: string;
+  key?: string; // S3 key for the file
   process?: number;
+  error?: string;
 };
 
 export type ChatBoxInputFormType = {

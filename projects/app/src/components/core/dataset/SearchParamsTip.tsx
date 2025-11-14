@@ -12,7 +12,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 const SearchParamsTip = ({
   searchMode,
   similarity = 0,
-  limit = 1500,
+  limit = 5000,
   responseEmptyText,
   usingReRank = false,
   datasetSearchUsingExtensionQuery,

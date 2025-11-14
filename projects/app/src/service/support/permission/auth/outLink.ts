@@ -5,12 +5,11 @@ import type {
   AuthOutLinkInitProps,
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
-import { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 
 export function authOutLinkInit(data: AuthOutLinkInitProps): Promise<AuthOutLinkResponse> {
   if (!global.feConfigs?.isPlus) return Promise.resolve({ uid: data.outLinkUid });
@@ -57,10 +56,7 @@ export async function authOutLinkChatStart({
   const { outLinkConfig, appId } = await authOutLinkValid({ shareId });
 
   // check ai points and chat limit
-  const [{ timezone, externalProvider }, { uid }] = await Promise.all([
-    getUserChatInfoAndAuthTeamPoints(outLinkConfig.tmbId),
-    authOutLinkChatLimit({ outLink: outLinkConfig, ip, outLinkUid, question })
-  ]);
+  const { uid } = await authOutLinkChatLimit({ outLink: outLinkConfig, ip, outLinkUid, question });
 
   return {
     sourceName: outLinkConfig.name,
@@ -69,8 +65,6 @@ export async function authOutLinkChatStart({
     authType: AuthUserTypeEnum.token,
     responseDetail: outLinkConfig.responseDetail,
     showNodeStatus: outLinkConfig.showNodeStatus,
-    timezone,
-    externalProvider,
     appId,
     uid
   };

@@ -1,5 +1,5 @@
 import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
 
@@ -20,19 +20,17 @@ export const readXlsxRawText = async ({
 
   const rawText = format2Csv.map((item) => item.csvText).join('\n');
 
-  const formatText = format2Csv
-    .map((item) => {
-      const csvArr = Papa.parse(item.csvText).data as string[][];
-      const header = csvArr[0];
-
+  const formatText = result
+    .map(({ data }) => {
+      const header = data[0];
       if (!header) return;
 
       const formatText = `| ${header.join(' | ')} |
-      | ${header.map(() => '---').join(' | ')} |
-      ${csvArr
-        .slice(1)
-        .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
-        .join('\n')}`;
+| ${header.map(() => '---').join(' | ')} |
+${data
+  .slice(1)
+  .map((row) => `| ${row.map((cell) => String(cell).replace(/\n/g, '\\n')).join(' | ')} |`)
+  .join('\n')}`;
 
       return formatText;
     })

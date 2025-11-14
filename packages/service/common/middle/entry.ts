@@ -1,7 +1,7 @@
 import { jsonRes } from '../response';
-import type { NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { withNextCors } from './cors';
-import { ApiRequestProps } from '../../type/next';
+import { type ApiRequestProps } from '../../type/next';
 import { addLog } from '../system/log';
 
 export type NextApiHandler<T = any> = (
@@ -9,14 +9,21 @@ export type NextApiHandler<T = any> = (
   res: NextApiResponse<T>
 ) => unknown | Promise<unknown>;
 
-export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<any>[] }) => {
+export const NextEntry = ({
+  beforeCallback = []
+}: {
+  beforeCallback?: ((req: NextApiRequest, res: NextApiResponse) => Promise<any>)[];
+}) => {
   return (...args: NextApiHandler[]): NextApiHandler => {
     return async function api(req: ApiRequestProps, res: NextApiResponse) {
       const start = Date.now();
       addLog.debug(`Request start ${req.url}`);
 
       try {
-        await Promise.all([withNextCors(req, res), ...beforeCallback]);
+        await Promise.all([
+          withNextCors(req, res),
+          ...beforeCallback.map((item) => item(req, res))
+        ]);
 
         let response = null;
         for await (const handler of args) {

@@ -1,5 +1,5 @@
 import { AppSchema } from '../../core/app/type';
-import { PublishChannelEnum } from './constant';
+import type { PublishChannelEnum } from './constant';
 import { RequireOnlyOne } from '../../common/type/utils';
 
 // Feishu Config interface

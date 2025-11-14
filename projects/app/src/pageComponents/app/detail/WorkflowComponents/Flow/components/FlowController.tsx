@@ -3,13 +3,13 @@ import {
   Background,
   ControlButton,
   MiniMap,
-  MiniMapNodeProps,
+  type MiniMapNodeProps,
   Panel,
   useReactFlow,
   useViewport
 } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
@@ -17,7 +17,8 @@ import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { maxZoom, minZoom } from '../../constants';
 import { useKeyPress } from 'ahooks';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
+import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
 
 const buttonStyle = {
   border: 'none',
@@ -28,20 +29,12 @@ const buttonStyle = {
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const undo = useContextSelector(WorkflowContext, (v) => v.undo);
-  const redo = useContextSelector(WorkflowContext, (v) => v.redo);
-  const canRedo = useContextSelector(WorkflowContext, (v) => v.canRedo);
-  const canUndo = useContextSelector(WorkflowContext, (v) => v.canUndo);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const workflowControlMode = useContextSelector(
-    WorkflowEventContext,
-    (v) => v.workflowControlMode
+  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { workflowControlMode, setWorkflowControlMode, mouseInCanvas } = useContextSelector(
+    WorkflowUIContext,
+    (v) => v
   );
-  const setWorkflowControlMode = useContextSelector(
-    WorkflowEventContext,
-    (v) => v.setWorkflowControlMode
-  );
-  const mouseInCanvas = useContextSelector(WorkflowEventContext, (v) => v.mouseInCanvas);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
@@ -78,17 +71,15 @@ const FlowController = React.memo(function FlowController() {
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
       // If the node parentNode is folded, the child node will not be displayed
-      const node = nodeList.find((node) => node.nodeId === id);
-      const parentNode = node?.parentNodeId
-        ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
-        : undefined;
+      const node = getNodeById(id);
+      const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
       if (parentNode?.isFolded) {
         return null;
       }
 
       return <rect x={x} y={y} width={width} height={height} fill={color} />;
     },
-    [nodeList]
+    [getNodeById]
   );
 
   const Render = useMemo(() => {
@@ -150,7 +141,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* undo */}
-          <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
+          <MyTooltip label={isMac ? t('common:undo_tip_mac') : t('common:undo_tip')}>
             <ControlButton
               onClick={undo}
               style={buttonStyle}
@@ -162,7 +153,7 @@ const FlowController = React.memo(function FlowController() {
           </MyTooltip>
 
           {/* redo */}
-          <MyTooltip label={isMac ? t('common:common.redo_tip_mac') : t('common:common.redo_tip')}>
+          <MyTooltip label={isMac ? t('common:redo_tip_mac') : t('common:redo_tip')}>
             <ControlButton
               onClick={redo}
               style={buttonStyle}
@@ -176,9 +167,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* zoom out */}
-          <MyTooltip
-            label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
-          >
+          <MyTooltip label={isMac ? t('common:zoomin_tip_mac') : t('common:zoomin_tip')}>
             <ControlButton
               onClick={() => zoomOut()}
               style={buttonStyle}
@@ -190,9 +179,7 @@ const FlowController = React.memo(function FlowController() {
           </MyTooltip>
 
           {/* zoom in */}
-          <MyTooltip
-            label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
-          >
+          <MyTooltip label={isMac ? t('common:zoomout_tip_mac') : t('common:zoomout_tip')}>
             <ControlButton
               onClick={() => zoomIn()}
               style={buttonStyle}
@@ -206,7 +193,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* fit view */}
-          <MyTooltip label={t('common:common.page_center')}>
+          <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => fitView()}
               style={buttonStyle}

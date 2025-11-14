@@ -1,14 +1,12 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  toolValueTypeList,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
@@ -18,6 +16,7 @@ import {
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
@@ -30,22 +29,19 @@ const typeMap = {
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const loopStartNode = useMemo(
-    () => nodeList.find((node) => node.nodeId === nodeId),
-    [nodeList, nodeId]
-  );
+  const loopStartNode = getNodeById(nodeId);
 
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
-    const parentNode = nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId);
+    const parentNode = getNodeById(loopStartNode?.parentNodeId);
     const parentArrayInput = parentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.loopInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [loopStartNode?.parentNodeId, nodeList]);
+  }, [getNodeById, loopStartNode?.parentNodeId]);
 
   // Auth update loopStartInput output
   useEffect(() => {

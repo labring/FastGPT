@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -10,8 +10,9 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { NextApiResponse } from 'next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type NextApiResponse } from 'next';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 
 export type ExportCollectionBody = {
   collectionId: string;
@@ -109,10 +110,10 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
   write(`\uFEFFindex,content`);
 
   cursor.on('data', (doc) => {
-    const q = doc.q.replace(/"/g, '""') || '';
-    const a = doc.a.replace(/"/g, '""') || '';
+    const sanitizedQ = sanitizeCsvField(doc.q || '');
+    const sanitizedA = sanitizeCsvField(doc.a || '');
 
-    write(`\n"${q}","${a}"`);
+    write(`\n${sanitizedQ},${sanitizedA}`);
   });
 
   cursor.on('end', () => {

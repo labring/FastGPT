@@ -1,5 +1,5 @@
 import { SERVICE_LOCAL_HOST } from '../system/tools';
-import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 
 interface ConfigType {
   headers?: { [key: string]: string };

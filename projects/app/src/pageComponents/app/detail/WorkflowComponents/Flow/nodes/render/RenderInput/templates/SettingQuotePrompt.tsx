@@ -1,16 +1,18 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Box, type BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { PromptTemplateItem } from '@fastgpt/global/core/ai/type';
+import { type PromptTemplateItem } from '@fastgpt/global/core/ai/type';
 import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Prompt_userQuotePromptList,
   Prompt_QuoteTemplateList,
-  Prompt_systemQuotePromptList
+  Prompt_systemQuotePromptList,
+  getQuoteTemplate,
+  getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
@@ -19,7 +21,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -34,6 +39,8 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -46,8 +53,10 @@ const selectTemplateBtn: BoxProps = {
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
@@ -64,14 +73,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const aiChatQuoteRole = watch('quoteRole');
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     const globalVariables = getWorkflowGlobalVariables({
-      nodes: nodeList,
+      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
 
     return globalVariables;
-  }, [nodeList]);
+  }, [systemConfigNode]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
@@ -87,6 +96,11 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
       {
         key: 'source',
         label: t('common:core.dataset.search.Source name'),
+        icon: 'core/app/simpleMode/variable'
+      },
+      {
+        key: 'sourceId',
+        label: t('common:core.dataset.search.Source id'),
         icon: 'core/app/simpleMode/variable'
       },
       {
@@ -214,14 +228,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             </Box>
           </Flex>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
-                  default: Prompt_QuoteTemplateList[0].value
+                  default: getQuoteTemplate(nodeVersion)
                 })}
-              ></QuestionTip>
+              />
               <Box flex={1} />
               <Box
                 {...selectTemplateBtn}
@@ -233,7 +247,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                   })
                 }
               >
-                {t('common:common.Select template')}
+                {t('common:select_template')}
               </Box>
             </Flex>
 
@@ -249,21 +263,21 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             />
           </Box>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
-                  default: quotePromptTemplates[0].value
+                  default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
-              ></QuestionTip>
+              />
             </Flex>
             <PromptEditor
               variables={quotePromptVariables}
               title={t('common:core.app.Quote prompt')}
               minH={300}
               placeholder={t('workflow:quote_prompt_tip', {
-                default: quotePromptTemplates[0].value
+                default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
               })}
               value={aiChatQuotePrompt}
               onChange={(e) => {
@@ -274,9 +288,9 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       {/* Prompt template */}
@@ -288,10 +302,10 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
           onSuccess={(e) => {
             const quoteVal = e.value;
 
-            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
+            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value!;
 
-            setValue('quoteTemplate', quoteVal);
-            setValue('quotePrompt', promptVal);
+            setValue('quoteTemplate', Object.values(quoteVal)[0]);
+            setValue('quotePrompt', Object.values(promptVal)[0]);
           }}
         />
       )}

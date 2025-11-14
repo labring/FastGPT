@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Box, ImageProps, Skeleton } from '@chakra-ui/react';
+import { Box, type ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
+import { useTranslation } from 'next-i18next';
 
 const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
+  const { t } = useTranslation();
   const [isLoaded, { setTrue }] = useBoolean(false);
 
   const [renderSrc, setRenderSrc] = useState(src);
@@ -11,6 +13,11 @@ const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
   if (src?.includes('base64') && !src.startsWith('data:image')) {
     return <Box>Invalid base64 image</Box>;
   }
+
+  if (props.alt?.startsWith('OFFIACCOUNT_MEDIA')) {
+    return <Box>{t('common:not_support_wechat_image')}</Box>;
+  }
+
   return (
     <Skeleton isLoaded={isLoaded}>
       <MyPhotoView

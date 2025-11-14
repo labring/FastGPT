@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ModalFooter, ModalBody, Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type EditResourceInfoFormType = {
   id: string;
@@ -41,14 +42,14 @@ const EditResourceModal = ({
     }
   );
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
+  const afterUploadAvatar = useCallback(
+    (avatar: string) => {
+      setValue('avatar', avatar);
+    },
+    [setValue]
+  );
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, { onSuccess: afterUploadAvatar });
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>
@@ -56,7 +57,7 @@ const EditResourceModal = ({
         <Box>
           <FormLabel mb={1}>{t('common:core.app.Name and avatar')}</FormLabel>
           <HStack spacing={4}>
-            <MyTooltip label={t('common:common.Set Avatar')}>
+            <MyTooltip label={t('common:set_avatar')}>
               <Avatar
                 flex={'0 0 2rem'}
                 src={avatar}
@@ -64,37 +65,29 @@ const EditResourceModal = ({
                 h={'2rem'}
                 cursor={'pointer'}
                 borderRadius={'sm'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
               {...register('name', { required: true })}
               bg={'myGray.50'}
               autoFocus
-              maxLength={20}
+              maxLength={100}
             />
           </HStack>
         </Box>
         <Box mt={4}>
-          <FormLabel mb={1}>{t('common:common.Intro')}</FormLabel>
+          <FormLabel mb={1}>{t('common:Intro')}</FormLabel>
           <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
         </Box>
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };

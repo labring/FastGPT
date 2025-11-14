@@ -1,3 +1,4 @@
+'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Flex, Box, HStack } from '@chakra-ui/react';
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -16,13 +17,11 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
-import { UnitType } from '@/pageComponents/account/usage/type';
+import { type UnitType } from '@/pageComponents/account/usage/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
@@ -112,12 +111,7 @@ const UsageTable = () => {
           <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
             {t('common:user.Time')}
           </Box>
-          <DateRangePicker
-            defaultDate={dateRange}
-            dateRange={dateRange}
-            position="bottom"
-            onSuccess={setDateRange}
-          />
+          <DateRangePicker defaultDate={dateRange} dateRange={dateRange} onSuccess={setDateRange} />
           {/* {usageTab === UsageTabEnum.dashboard && (
             <MySelect<UnitType>
               bg={'myGray.50'}
@@ -147,7 +141,7 @@ const UsageTable = () => {
                   setSelectTmbIds(val as string[]);
                 }}
                 itemWrap={false}
-                height={'32px'}
+                h={'32px'}
                 bg={'myGray.50'}
                 w={'160px'}
                 ScrollData={ScrollData}

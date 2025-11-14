@@ -9,6 +9,7 @@ import type {
   DatasetItemType
 } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const defaultDatasetDetail: DatasetItemType = {
   _id: '',
@@ -45,7 +46,6 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     avatar: '/icon/logo.svg',
     name: '',
     intro: '',
-    status: 'active',
     vectorModel: defaultVectorModels[0].model,
     agentModel: defaultQAModels[0].model,
     inheritPermission: true
@@ -60,21 +60,42 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   createTime: new Date(),
   trainingType: DatasetCollectionDataProcessModeEnum.chunk,
   chunkSize: 0,
+  indexSize: 512,
   permission: new DatasetPermission(),
   indexAmount: 0
 };
 
-export enum ChunkSettingModeEnum {
-  auto = 'auto',
-  custom = 'custom'
-}
-
-export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
-  [DatasetTypeEnum.folder]: '',
-  [DatasetTypeEnum.dataset]: '',
-  [DatasetTypeEnum.apiDataset]: '/docs/guide/knowledge_base/api_dataset/',
-  [DatasetTypeEnum.websiteDataset]: '/docs/guide/knowledge_base/websync/',
-  [DatasetTypeEnum.feishu]: '/docs/guide/knowledge_base/lark_dataset/',
-  [DatasetTypeEnum.yuque]: '/docs/guide/knowledge_base/yuque_dataset/',
-  [DatasetTypeEnum.externalFile]: ''
+export const TrainingProcess = {
+  waiting: {
+    label: i18nT('dataset:process.Waiting'),
+    value: 'waiting'
+  },
+  parsing: {
+    label: i18nT('dataset:process.Parsing'),
+    value: 'parsing'
+  },
+  parseImage: {
+    label: i18nT('dataset:process.Parse_Image'),
+    value: 'parseImage'
+  },
+  getQA: {
+    label: i18nT('dataset:process.Get QA'),
+    value: 'getQA'
+  },
+  imageIndex: {
+    label: i18nT('dataset:process.Image_Index'),
+    value: 'imageIndex'
+  },
+  autoIndex: {
+    label: i18nT('dataset:process.Auto_Index'),
+    value: 'autoIndex'
+  },
+  vectorizing: {
+    label: i18nT('dataset:process.Vectorizing'),
+    value: 'vectorizing'
+  },
+  isReady: {
+    label: i18nT('dataset:process.Is_Ready'),
+    value: 'isReady'
+  }
 };

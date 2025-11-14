@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { getSystemModelConfig } from '@fastgpt/service/core/ai/config/utils';
-import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 
 export type getDefaultQuery = { model: string };
 

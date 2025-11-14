@@ -12,6 +12,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+
+type DataItemType = {
+  _id: string;
+  q: string;
+  a: string;
+  indexes: DatasetDataSchemaType['indexes'];
+};
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { datasetId } = req.query as {
@@ -23,7 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // 凭证校验
-  const { teamId } = await authDataset({
+  const { teamId, dataset } = await authDataset({
     req,
     authToken: true,
     datasetId,
@@ -42,19 +51,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv; ');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename=${encodeURIComponent(dataset.name)}-backup.csv;`
+  );
 
-  const cursor = MongoDatasetData.find<{
-    _id: string;
-    collectionId: { name: string };
-    q: string;
-    a: string;
-  }>(
+  const cursor = MongoDatasetData.find<DataItemType>(
     {
       teamId,
       datasetId: { $in: datasets.map((d) => d._id) }
     },
-    'q a',
+    'q a indexes',
     {
       ...readFromSecondary
     }
@@ -67,13 +74,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     readStream: cursor
   });
 
-  write(`\uFEFFindex,content`);
+  write(`\uFEFFq,a,indexes`);
 
-  cursor.on('data', (doc) => {
-    const q = doc.q.replace(/"/g, '""') || '';
-    const a = doc.a.replace(/"/g, '""') || '';
+  cursor.on('data', (doc: DataItemType) => {
+    const sanitizedQ = sanitizeCsvField(doc.q || '');
+    const sanitizedA = sanitizeCsvField(doc.a || '');
+    const sanitizedIndexes = doc.indexes.map((i) => sanitizeCsvField(i.text || '')).join(',');
 
-    write(`\n"${q}","${a}"`);
+    write(`\n${sanitizedQ},${sanitizedA},${sanitizedIndexes}`);
   });
 
   cursor.on('end', () => {

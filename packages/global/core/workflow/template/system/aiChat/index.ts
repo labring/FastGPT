@@ -4,7 +4,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -17,11 +17,10 @@ import {
   Input_Template_History,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
-  Input_Template_File_Link_Prompt
+  Input_Template_File_Link
 } from '../../input';
-import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
-import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { Output_Template_Error_Message } from '../../output';
 
 export const AiChatQuoteRole = {
   key: NodeInputKeyEnum.aiChatQuoteRole,
@@ -47,15 +46,16 @@ export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
   templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.chatNode,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/aiChat',
   name: i18nT('workflow:template.ai_chat'),
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/ai_chat/',
-  version: '490',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/ai_chat/',
+  version: '4.9.7',
+  catchError: false,
   inputs: [
     Input_Template_SettingAiModel,
     // --- settings modal
@@ -121,15 +121,10 @@ export const AiChatModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string
     },
     // settings modal ---
-    {
-      ...Input_Template_System_Prompt,
-      label: i18nT('common:core.ai.Prompt'),
-      description: systemPromptTip,
-      placeholder: chatNodeSystemPromptTip
-    },
+    Input_Template_System_Prompt,
     Input_Template_History,
     Input_Template_Dataset_Quote,
-    Input_Template_File_Link_Prompt,
+    Input_Template_File_Link,
     { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],
   outputs: [
@@ -165,6 +160,7 @@ export const AiChatModule: FlowNodeTemplateType = {
         const modelItem = llmModelList.find((item) => item.model === model);
         return modelItem?.reasoning !== true;
       }
-    }
+    },
+    Output_Template_Error_Message
   ]
 };

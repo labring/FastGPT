@@ -1,4 +1,10 @@
-import { deleteChannel, getChannelList, putChannel, putChannelStatus } from '@/web/core/ai/channel';
+import {
+  deleteChannel,
+  getChannelList,
+  getChannelProviders,
+  putChannel,
+  putChannelStatus
+} from '@/web/core/ai/channel';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React, { useState } from 'react';
 import {
@@ -18,27 +24,27 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { ChannelInfoType } from '@/global/aiproxy/type';
+import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import {
-  aiproxyIdMap,
-  ChannelStatusEnum,
-  ChannelStautsMap,
-  defaultChannel
-} from '@/global/aiproxy/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
+  const { aiproxyIdMap, getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -47,6 +53,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     runAsync: refreshChannelList,
     loading: loadingChannelList
   } = useRequest2(getChannelList, {
+    manual: false
+  });
+
+  const { data: channelProviders = {} } = useRequest2(getChannelProviders, {
     manual: false
   });
 
@@ -67,6 +77,9 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
+  const { openConfirm, ConfirmModal } = useConfirm({
+    type: 'delete'
+  });
   const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest2(deleteChannel, {
     manual: true,
     onSuccess: () => {
@@ -111,22 +124,20 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             </Thead>
             <Tbody>
               {channelList.map((item) => {
-                const providerData = aiproxyIdMap[item.type];
-                const provider = getModelProvider(providerData?.provider);
-
+                const providerData = aiproxyIdMap[item.type] || {
+                  name: channelProviders[item.type]?.name || 'Invalid provider',
+                  provider: 'Other'
+                };
+                const provider = getModelProvider(providerData?.provider, i18n.language);
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                     <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
-                      {providerData ? (
-                        <HStack>
-                          <MyIcon name={provider?.avatar as any} w={'1rem'} />
-                          <Box>{t(providerData?.label as any)}</Box>
-                        </HStack>
-                      ) : (
-                        'Invalid provider'
-                      )}
+                      <HStack>
+                        <Avatar src={provider?.avatar} w={'1rem'} />
+                        <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
+                      </HStack>
                     </Td>
                     <Td>
                       <MyTag
@@ -202,8 +213,15 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               {
                                 type: 'danger',
                                 icon: 'delete',
-                                label: t('common:common.Delete'),
-                                onClick: () => onDeleteChannel(item.id)
+                                label: t('common:Delete'),
+                                onClick: () =>
+                                  openConfirm(
+                                    () => onDeleteChannel(item.id),
+                                    undefined,
+                                    t('account_model:confirm_delete_channel', {
+                                      name: item.name
+                                    })
+                                  )()
                               }
                             ]
                           }
@@ -229,6 +247,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       {!!modelTestData && (
         <ModelTest {...modelTestData} onClose={() => setTestModelData(undefined)} />
       )}
+      <ConfirmModal />
     </>
   );
 };

@@ -180,7 +180,7 @@ const CustomLinkInput = () => {
             goToNext();
           })}
         >
-          {t('common:common.Next Step')}
+          {t('common:next_step')}
         </Button>
       </Flex>
     </Box>

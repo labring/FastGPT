@@ -90,6 +90,6 @@ export async function createRootOrg({
         path: ''
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 }

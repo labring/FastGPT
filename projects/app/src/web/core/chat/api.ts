@@ -25,11 +25,17 @@ import type {
   getPaginationRecordsBody,
   getPaginationRecordsResponse
 } from '@/pages/api/core/chat/getPaginationRecords';
-import type { GetQuoteDataProps, GetQuoteDataRes } from '@/pages/api/core/chat/quote/getQuote';
+import type { GetQuoteProps, GetQuotesRes } from '@/pages/api/core/chat/quote/getQuote';
 import type {
   GetCollectionQuoteProps,
   GetCollectionQuoteRes
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
+import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import type {
+  GetChatFavouriteListParamsType,
+  UpdateFavouriteAppParamsType
+} from '@fastgpt/global/openapi/core/chat/favourite/api';
+import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 
 /**
  * 获取初始化聊天内容
@@ -69,7 +75,7 @@ export const delClearChatHistories = (data: ClearHistoriesProps) =>
  * delete one chat record
  */
 export const delChatRecordById = (data: DeleteChatItemProps) =>
-  DELETE(`/core/chat/item/delete`, data);
+  POST(`/core/chat/item/delete`, data);
 
 /**
  * 修改历史记录: 标题/置顶
@@ -101,8 +107,29 @@ export const getMyTokensApps = (data: AuthTeamTagTokenProps) =>
 export const getinitTeamChat = (data: { teamId: string; authToken: string; appId: string }) =>
   GET(`/proApi/core/chat/initTeamChat`, data);
 
-export const getQuoteDataList = (data: GetQuoteDataProps) =>
-  POST<GetQuoteDataRes>(`/core/chat/quote/getQuote`, data);
+export const getQuoteDataList = (data: GetQuoteProps) =>
+  POST<GetQuotesRes>(`/core/chat/quote/getQuote`, data);
 
 export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
   POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+
+/*---------- chat setting ------------*/
+export const getChatSetting = () => GET<ChatSettingType>('/proApi/core/chat/setting/detail');
+
+export const updateChatSetting = (data: Partial<ChatSettingModelType>) =>
+  POST<Partial<ChatSettingType>>('/proApi/core/chat/setting/update', data);
+
+export const getFavouriteApps = (data?: GetChatFavouriteListParamsType) =>
+  GET<ChatFavouriteAppType[]>('/proApi/core/chat/setting/favourite/list', data);
+
+export const updateFavouriteApps = (data: UpdateFavouriteAppParamsType[]) =>
+  POST<ChatFavouriteAppType[]>('/proApi/core/chat/setting/favourite/update', data);
+
+export const updateFavouriteAppOrder = (data: { id: string; order: number }[]) =>
+  PUT<null>('/proApi/core/chat/setting/favourite/order', data);
+
+export const updateFavouriteAppTags = (data: { id: string; tags: string[] }[]) =>
+  PUT<null>('/proApi/core/chat/setting/favourite/tags', data);
+
+export const deleteFavouriteApp = (data: { id: string }) =>
+  DELETE<null>('/proApi/core/chat/setting/favourite/delete', data);

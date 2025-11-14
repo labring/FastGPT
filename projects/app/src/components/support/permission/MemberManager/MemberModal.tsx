@@ -1,44 +1,39 @@
+import Path from '@/components/common/folder/Path';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { getGroupList } from '@/web/support/user/team/group/api';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Grid,
-  HStack,
-  ModalBody,
-  ModalFooter,
-  Tag,
-  Text
-} from '@chakra-ui/react';
-import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import { useMemo, useRef, useState } from 'react';
-import PermissionSelect from './PermissionSelect';
-import PermissionTags from './PermissionTags';
+import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Tooltip } from '@chakra-ui/react';
 import {
   DEFAULT_ORG_AVATAR,
   DEFAULT_TEAM_AVATAR,
   DEFAULT_USER_AVATAR
 } from '@fastgpt/global/common/system/constants';
-import Path from '@/components/common/folder/Path';
-import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useTranslation } from 'next-i18next';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import { getGroupList } from '@/web/support/user/team/group/api';
-import { getOrgList } from '@/web/support/user/team/org/api';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import type {
+  CollaboratorItemDetailType,
+  CollaboratorItemType
+} from '@fastgpt/global/support/permission/collaborator';
+import type { RoleValueType } from '@fastgpt/global/support/permission/type';
+import { Permission } from '@fastgpt/global/support/permission/controller';
+import {
+  checkRoleUpdateConflict,
+  getCollaboratorId
+} from '@fastgpt/global/support/permission/utils';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -47,24 +42,48 @@ const HoverBoxStyle = {
 
 function MemberModal({
   onClose,
-  addPermissionOnly: addOnly = false
+  SelectedTip
 }: {
   onClose: () => void;
-  addPermissionOnly?: boolean;
+  SelectedTip?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
-  const [searchText, setSearchText] = useState<string>('');
+  const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
+  const isInheritPermission = useContextSelector(CollaboratorContext, (v) => v.isInheritPermission);
+  const defaultRole = useContextSelector(CollaboratorContext, (v) => v.defaultRole);
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {
-    pageSize: 15
+  const {
+    paths,
+    onClickOrg,
+    members: orgMembers,
+    MemberScrollData: OrgMemberScrollData,
+    onPathClick,
+    orgs,
+    searchKey,
+    setSearchKey
+  } = useOrg({ withPermission: false });
+
+  const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
+    pageSize: 15,
+    params: {
+      withPermission: true,
+      withOrgs: true,
+      status: 'active',
+      searchKey
+    },
+    throttleWait: 500,
+    debounceWait: 200,
+    refreshDeps: [searchKey]
   });
 
-  const { data: [groups = [], orgs = []] = [], loading: loadingGroupsAndOrgs } = useRequest2(
+  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
     async () => {
-      if (!userInfo?.team?.teamId) return [[], []];
-      return Promise.all([getGroupList(), getOrgList()]);
+      if (!userInfo?.team?.teamId) return [];
+      return getGroupList<false>({
+        withMembers: false,
+        searchKey
+      });
     },
     {
       manual: false,
@@ -72,114 +91,73 @@ function MemberModal({
     }
   );
 
-  const [parentPath, setParentPath] = useState('');
+  const [editCollaborators, setCollaboratorList] = useState<CollaboratorItemDetailType[]>([]);
 
-  const { data: searchedData } = useRequest2(() => GetSearchUserGroupOrg(searchText), {
-    manual: false,
-    throttleWait: 500,
-    refreshDeps: [searchText]
-  });
-
-  const paths = useMemo(() => {
-    const splitPath = parentPath.split('/').filter(Boolean);
-    return splitPath
-      .map((id) => {
-        const org = orgs.find((org) => org.pathId === id)!;
-
-        if (org.path === '') return;
-
-        return {
-          parentId: getOrgChildrenPath(org),
-          parentName: org.name
-        };
-      })
-      .filter(Boolean) as ParentTreePathItemType[];
-  }, [parentPath, orgs]);
-
-  const [selectedOrgIdList, setSelectedOrgIdList] = useState<string[]>([]);
-  const currentOrg = useMemo(() => {
-    const splitPath = parentPath.split('/');
-    const currentOrgId = splitPath[splitPath.length - 1];
-    if (!currentOrgId) return;
-
-    return orgs.find((org) => org.pathId === currentOrgId);
-  }, [orgs, parentPath]);
-  const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
-    if (searchText && searchedData) {
-      const orgids = searchedData.orgs.map((item) => item._id);
-      return orgs.filter((org) => orgids.includes(String(org._id)));
-    }
-    if (!searchText && filterClass !== 'org') return [];
-    if (parentPath === '') {
-      setParentPath(`/${orgs[0].pathId}`);
-      return [];
-    }
-    return orgs
-      .filter((org) => org.path === parentPath)
-      .map((item) => ({
-        ...item,
-        count:
-          item.members.length + orgs.filter((org) => org.path === getOrgChildrenPath(item)).length
-      }));
-  }, [searchText, filterClass, parentPath, orgs, searchedData]);
-
-  const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
-  const filterMembers = useMemo(() => {
-    if (searchText) {
-      return searchedData?.members || [];
-    }
-    if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
-    if (currentOrg && filterClass === 'org') {
-      return members.filter((item) => currentOrg.members.find((v) => v.tmbId === item.tmbId));
-    }
-
-    return members;
-  }, [members, searchedData, searchText, filterClass, currentOrg]);
-
-  const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
-  const filterGroups = useMemo(() => {
-    if (searchText) {
-      return searchedData?.groups.map((item) => ({
-        groupName: item.name,
-        _id: item.id,
-        ...item
-      }));
-    }
-    if (!searchText && filterClass !== 'group') return [];
-
-    return groups;
-  }, [searchText, filterClass, groups, searchedData]);
-
-  const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
-  const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
-  const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
-    permissionList?.read?.value
-  );
-  const perLabel = useMemo(() => {
-    if (selectedPermission === undefined) return '';
-    return getPerLabelList(selectedPermission!).join('、');
-  }, [getPerLabelList, selectedPermission]);
+  useEffect(() => {
+    setCollaboratorList(collaboratorDetailList);
+  }, [collaboratorDetailList]);
 
   const onUpdateCollaborators = useContextSelector(
     CollaboratorContext,
     (v) => v.onUpdateCollaborators
   );
 
-  const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
+  const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
+  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+
+  const { runAsync: _onConfirm, loading: isUpdating } = useRequest2(
     () =>
       onUpdateCollaborators({
-        members: selectedMemberIdList,
-        groups: selectedGroupIdList,
-        orgs: selectedOrgIdList,
-        permission: selectedPermission!
+        collaborators: editCollaborators.map(
+          (clb) =>
+            ({
+              tmbId: clb.tmbId,
+              groupId: clb.groupId,
+              orgId: clb.orgId,
+              permission: clb.permission.role
+            }) as CollaboratorItemType
+        )
       }),
     {
-      successToast: t('common:common.Add Success'),
+      successToast: t('common:add_success'),
       onSuccess() {
         onClose();
       }
     }
   );
+
+  const { openConfirm: openConfirmDisableInheritPer, ConfirmModal: ConfirmDisableInheritPer } =
+    useConfirm({
+      content: t('common:permission.Remove InheritPermission Confirm')
+    });
+
+  const onConfirm = useCallback(() => {
+    const _parentClbs = parentClbs.map((clb) => ({
+      ...clb,
+      permission: clb.permission.role === OwnerRoleVal ? ManageRoleVal : clb.permission.role
+    }));
+
+    const newChildClbs = editCollaborators.map((clb) => ({
+      ...clb,
+      permission: clb.permission.role
+    }));
+
+    const isConflict = checkRoleUpdateConflict({
+      parentClbs: _parentClbs,
+      newChildClbs
+    });
+    if (isConflict && isInheritPermission) {
+      return openConfirmDisableInheritPer(_onConfirm)();
+    } else {
+      return _onConfirm();
+    }
+  }, [
+    _onConfirm,
+    editCollaborators,
+    isInheritPermission,
+    openConfirmDisableInheritPer,
+    parentClbs
+  ]);
 
   const entryList = useRef([
     { label: t('user:team.group.members'), icon: DEFAULT_USER_AVATAR, value: 'member' },
@@ -187,328 +165,374 @@ function MemberModal({
     { label: t('user:team.group.group'), icon: DEFAULT_TEAM_AVATAR, value: 'group' }
   ]);
 
-  const selectedList = useMemo(() => {
-    const selectedOrgs = orgs.filter((org) => selectedOrgIdList.includes(org._id));
-    const selectedGroups = groups.filter((group) => selectedGroupIdList.includes(group._id));
-    const selectedMembers = members.filter((member) => selectedMemberIdList.includes(member.tmbId));
+  const memberWithPer = useMemo(() => {
+    const map = new Map(collaboratorDetailList.map((clb) => [getCollaboratorId(clb), { ...clb }]));
+    return members.map((member) => {
+      const clb = map.get(getCollaboratorId(member));
+      return {
+        ...member,
+        permission: new Permission({
+          role: clb?.permission.role
+        })
+      };
+    });
+  }, [collaboratorDetailList, members]);
 
-    return [
-      ...selectedOrgs.map((item) => ({
-        id: `org-${item._id}`,
-        avatar: item.avatar,
-        name: item.name,
-        onDelete: () => setSelectedOrgIdList(selectedOrgIdList.filter((v) => v !== item._id))
-      })),
-      ...selectedGroups.map((item) => ({
-        id: `group-${item._id}`,
-        avatar: item.avatar,
-        name: item.name === DefaultGroupName ? userInfo?.team.teamName : item.name,
-        onDelete: () => setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== item._id))
-      })),
-      ...selectedMembers.map((item) => ({
-        id: `member-${item.tmbId}`,
-        avatar: item.avatar,
-        name: item.memberName,
-        onDelete: () => setSelectedMembers(selectedMemberIdList.filter((v) => v !== item.tmbId))
-      }))
-    ];
-  }, [
-    orgs,
-    groups,
-    members,
-    selectedOrgIdList,
-    selectedGroupIdList,
-    selectedMemberIdList,
-    userInfo?.team.teamName
-  ]);
+  const orgMembersWithPer = useMemo(() => {
+    const map = new Map(collaboratorDetailList.map((clb) => [getCollaboratorId(clb), { ...clb }]));
+    return orgMembers.map((member) => {
+      const clb = map.get(getCollaboratorId(member));
+      return {
+        ...member,
+        permission: new Permission({
+          role: clb?.permission.role
+        })
+      };
+    });
+  }, [collaboratorDetailList, orgMembers]);
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc={addOnly ? 'keyPrimary' : 'modal/AddClb'}
-      title={addOnly ? t('user:team.add_permission') : t('user:team.add_collaborator')}
-      minW="800px"
-      maxW={'60vw'}
-      h={'100%'}
-      maxH={'90vh'}
-      isCentered
-      isLoading={loadingGroupsAndOrgs}
-    >
-      <ModalBody flex={'1'}>
-        <Grid
-          border="1px solid"
-          borderColor="myGray.200"
-          borderRadius="0.5rem"
-          gridTemplateColumns="1fr 1fr"
-          h={'100%'}
-        >
-          <Flex
-            h={'100%'}
-            flexDirection="column"
-            borderRight="1px solid"
+    <>
+      <MyModal
+        isOpen
+        onClose={onClose}
+        iconSrc={'common/settingLight'}
+        title={t('user:team.manage_collaborators')}
+        minW="900px"
+        maxW={'60vw'}
+        h={'100%'}
+        isCentered
+        isLoading={loadingGroupsAndOrgs}
+      >
+        <ModalBody flex={'1'}>
+          <Grid
+            border="1px solid"
             borderColor="myGray.200"
-            p="4"
+            borderRadius="0.5rem"
+            gridTemplateColumns="40% 60%"
+            h={'100%'}
           >
-            <SearchInput
-              placeholder={t('user:search_group_org_user')}
-              bgColor="myGray.50"
-              onChange={(e) => setSearchText(e.target.value)}
-            />
+            <Flex
+              h={'100%'}
+              flexDirection="column"
+              borderRight="1px solid"
+              borderColor="myGray.200"
+              py="2"
+            >
+              <Box px={2}>
+                <SearchInput
+                  placeholder={t('user:search_group_org_user')}
+                  bgColor="myGray.50"
+                  onChange={(e) => setSearchKey(e.target.value)}
+                />
+              </Box>
 
-            <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
-              {/* Entry */}
-              {!searchText && !filterClass && (
-                <>
-                  {entryList.current.map((item) => {
-                    return (
-                      <HStack
-                        key={item.value}
-                        justifyContent="space-between"
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        _notLast={{ mb: 1 }}
-                        onClick={() => setFilterClass(item.value as any)}
-                      >
-                        <MyAvatar src={item.icon} w="1.5rem" borderRadius={'50%'} />
-                        <Box ml="2" w="full">
-                          {item.label}
-                        </Box>
-                        <MyIcon name="core/chat/chevronRight" w="16px" />
-                      </HStack>
-                    );
-                  })}
-                </>
-              )}
-
-              {/* Path */}
-              {!searchText && filterClass && (
-                <Box mb={1}>
-                  <Path
-                    paths={[
-                      {
-                        parentId: filterClass,
-                        parentName:
-                          filterClass === 'member'
-                            ? t('user:team.group.members')
-                            : filterClass === 'org'
-                              ? t('user:team.org.org')
-                              : t('user:team.group.group')
-                      },
-                      ...paths
-                    ]}
-                    onClick={(parentId) => {
-                      if (parentId === '') {
-                        setFilterClass(undefined);
-                        setParentPath('');
-                      } else if (
-                        parentId === 'member' ||
-                        parentId === 'org' ||
-                        parentId === 'group'
-                      ) {
-                        setFilterClass(parentId);
-                        setParentPath('');
-                      } else {
-                        setParentPath(parentId);
-                      }
-                    }}
-                    rootName={t('common:common.Team')}
-                  />
-                </Box>
-              )}
-
-              {(filterClass === 'org' || filterClass === 'member') && (
-                <ScrollData
-                  flexDirection={'column'}
-                  gap={1}
-                  userSelect={'none'}
-                  height={'fit-content'}
-                >
-                  {filterOrgs?.map((org) => {
-                    const onChange = () => {
-                      setSelectedOrgIdList((state) => {
-                        if (state.includes(org._id)) {
-                          return state.filter((v) => v !== org._id);
-                        }
-                        return [...state, org._id];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
-                    return (
-                      <HStack
-                        justifyContent="space-between"
-                        key={org._id}
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        onClick={onChange}
-                      >
-                        <Checkbox
-                          isChecked={selectedOrgIdList.includes(org._id)}
-                          pointerEvents="none"
-                        />
-                        <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <HStack ml="2" w="full" gap="5px">
-                          <Text>{org.name}</Text>
-                          {org.count && (
-                            <>
-                              <Tag size="sm" my="auto">
-                                {org.count}
-                              </Tag>
-                            </>
-                          )}
+              <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
+                {/* Entry */}
+                {!searchKey && !filterClass && (
+                  <Box px={2}>
+                    {entryList.current.map((item) => {
+                      return (
+                        <HStack
+                          key={item.value}
+                          justifyContent="space-between"
+                          py="2"
+                          px="3"
+                          borderRadius="sm"
+                          alignItems="center"
+                          _hover={HoverBoxStyle}
+                          _notLast={{ mb: 1 }}
+                          onClick={() => setFilterClass(item.value as any)}
+                        >
+                          <MyAvatar src={item.icon} w="1.5rem" borderRadius={'50%'} />
+                          <Box ml="2" w="full">
+                            {item.label}
+                          </Box>
+                          <MyIcon name="core/chat/chevronRight" w="16px" />
                         </HStack>
-                        <PermissionTags permission={collaborator?.permission.value} />
-                        {org.count && (
-                          <MyIcon
-                            name="core/chat/chevronRight"
-                            w="16px"
-                            p="4px"
-                            rounded={'6px'}
-                            _hover={{
-                              bgColor: 'myGray.200'
-                            }}
-                            onClick={(e) => {
-                              setParentPath(getOrgChildrenPath(org));
-                              e.stopPropagation();
-                            }}
-                          />
-                        )}
-                      </HStack>
-                    );
-                  })}
-                  {filterMembers?.map((member) => {
-                    const onChange = () => {
-                      setSelectedMembers((state) => {
-                        if (state.includes(member.tmbId)) {
-                          return state.filter((v) => v !== member.tmbId);
+                      );
+                    })}
+                  </Box>
+                )}
+
+                {/* Path */}
+                {!searchKey && filterClass && (
+                  <Box mb={1} px={2}>
+                    <Path
+                      paths={[
+                        {
+                          parentId: filterClass,
+                          parentName:
+                            filterClass === 'member'
+                              ? t('user:team.group.members')
+                              : filterClass === 'org'
+                                ? t('user:team.org.org')
+                                : t('user:team.group.group')
+                        },
+                        ...paths
+                      ]}
+                      onClick={(parentId) => {
+                        if (parentId === '') {
+                          setFilterClass(undefined);
+                          onPathClick('');
+                        } else if (
+                          parentId === 'member' ||
+                          parentId === 'org' ||
+                          parentId === 'group'
+                        ) {
+                          setFilterClass(parentId);
+                          onPathClick('');
+                        } else {
+                          onPathClick(parentId);
                         }
-                        return [...state, member.tmbId];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
-                    const memberOrgs = orgs.filter((org) =>
-                      org.members.find((v) => String(v.tmbId) === String(member.tmbId))
-                    );
-                    const memberPathIds = memberOrgs.map((org) =>
-                      (org.path + '/' + org.pathId).split('/').slice(0)
-                    );
-                    const memberOrgNames = memberPathIds.map((pathIds) =>
-                      pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
-                    );
-                    return (
-                      <MemberItemCard
-                        avatar={member.avatar}
-                        key={member.tmbId}
-                        name={member.memberName}
-                        permission={collaborator?.permission.value}
-                        onChange={onChange}
-                        isChecked={selectedMemberIdList.includes(member.tmbId)}
-                        orgs={memberOrgNames}
+                      }}
+                      rootName={t('common:Team')}
+                    />
+                  </Box>
+                )}
+                {(filterClass === 'member' || searchKey) &&
+                  (() => {
+                    const MemberList = (
+                      <RenderMemberList
+                        members={memberWithPer}
+                        setCollaboratorList={setCollaboratorList}
+                        editCollaborators={editCollaborators}
+                        defaultRole={defaultRole}
                       />
                     );
-                  })}
-                </ScrollData>
-              )}
-              {filterGroups?.map((group) => {
-                const onChange = () => {
-                  setSelectedGroupIdList((state) => {
-                    if (state.includes(group._id)) {
-                      return state.filter((v) => v !== group._id);
-                    }
-                    return [...state, group._id];
-                  });
-                };
-                const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
-                return (
-                  <MemberItemCard
-                    avatar={group.avatar}
-                    key={group._id}
-                    name={
-                      group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
-                    }
-                    permission={collaborator?.permission.value}
-                    onChange={onChange}
-                    isChecked={selectedGroupIdList.includes(group._id)}
-                  />
-                );
-              })}
-            </Flex>
-          </Flex>
-
-          <Flex h={'100%'} p="4" flexDirection="column">
-            <Box>
-              {`${t('user:has_chosen')}: `}
-              {selectedMemberIdList.length + selectedGroupIdList.length + selectedOrgIdList.length}
-            </Box>
-            <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
-              {selectedList.map((item) => {
-                return (
-                  <MemberItemCard
-                    key={item.id}
-                    avatar={item.avatar}
-                    name={item.name ?? ''}
-                    onChange={item.onDelete}
-                    onDelete={item.onDelete}
-                    orgs={(() => {
-                      if (!item.id.startsWith('member-')) return [];
-                      const id = item.id.replace('member-', '');
-                      const memberOrgs = orgs.filter((org) =>
-                        org.members.find((v) => v.tmbId === id)
+                    return searchKey ? (
+                      <Box px={2}>{MemberList}</Box>
+                    ) : (
+                      <TeamMemberScrollData
+                        flexDirection={'column'}
+                        gap={1}
+                        userSelect={'none'}
+                        height={'fit-content'}
+                        px={2}
+                      >
+                        {MemberList}
+                      </TeamMemberScrollData>
+                    );
+                  })()}
+                {(filterClass === 'org' || searchKey) &&
+                  (() => {
+                    const Orgs = orgs?.map((org) => {
+                      const addTheOrg = () => {
+                        setCollaboratorList((state) => {
+                          if (state.find((v) => v.orgId === org._id)) {
+                            return state.filter((v) => v.orgId !== org._id);
+                          }
+                          return [
+                            ...state,
+                            {
+                              ...org,
+                              orgId: org._id,
+                              permission: new Permission({ role: defaultRole })
+                            }
+                          ];
+                        });
+                      };
+                      const isChecked = !!editCollaborators.find((v) => v.orgId === org._id);
+                      return (
+                        <MemberItemCard
+                          avatar={org.avatar}
+                          key={org._id}
+                          name={org.name}
+                          onChange={addTheOrg}
+                          isChecked={isChecked}
+                          rightSlot={
+                            org.total && (
+                              <MyIcon
+                                name="core/chat/chevronRight"
+                                w="16px"
+                                p="4px"
+                                rounded={'6px'}
+                                _hover={{
+                                  bgColor: 'myGray.200'
+                                }}
+                                onClick={(e) => {
+                                  onClickOrg(org);
+                                  e.stopPropagation();
+                                }}
+                              />
+                            )
+                          }
+                        />
                       );
-                      const memberPathIds = memberOrgs.map((org) =>
-                        (org.path + '/' + org.pathId).split('/').slice(0)
+                    });
+                    return searchKey ? (
+                      <Box px={2}>{Orgs}</Box>
+                    ) : (
+                      <OrgMemberScrollData px={2}>
+                        {Orgs}
+                        <RenderMemberList
+                          members={orgMembersWithPer}
+                          setCollaboratorList={setCollaboratorList}
+                          editCollaborators={editCollaborators}
+                          defaultRole={defaultRole}
+                        />
+                      </OrgMemberScrollData>
+                    );
+                  })()}
+                {(filterClass === 'group' || searchKey) && (
+                  <Box
+                    {...(searchKey
+                      ? {}
+                      : {
+                          flex: '1 0 0',
+                          overflow: 'auto'
+                        })}
+                    px={2}
+                  >
+                    {groups?.map((group) => {
+                      const addGroup = () => {
+                        setCollaboratorList((state) => {
+                          if (state.find((v) => v.groupId === group._id)) {
+                            return state.filter((v) => v.groupId !== group._id);
+                          }
+                          return [
+                            ...state,
+                            {
+                              ...group,
+                              groupId: group._id,
+                              permission: new Permission({ role: defaultRole })
+                            }
+                          ];
+                        });
+                      };
+                      const isChecked = !!editCollaborators.find((v) => v.groupId === group._id);
+                      return (
+                        <MemberItemCard
+                          avatar={group.avatar}
+                          key={group._id}
+                          name={
+                            group.name === DefaultGroupName
+                              ? userInfo?.team.teamName ?? ''
+                              : group.name
+                          }
+                          onChange={addGroup}
+                          isChecked={isChecked}
+                        />
                       );
-                      const memberOrgNames = memberPathIds.map((pathIds) =>
-                        pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
-                      );
-                      return memberOrgNames;
-                    })()}
-                  />
-                );
-              })}
-            </Flex>
-          </Flex>
-        </Grid>
-      </ModalBody>
-      <ModalFooter>
-        {!addOnly && !!permissionList && (
-          <PermissionSelect
-            value={selectedPermission}
-            Button={
-              <Flex
-                alignItems={'center'}
-                bg={'myGray.50'}
-                border="base"
-                fontSize={'sm'}
-                px={3}
-                borderRadius={'md'}
-                h={'32px'}
-              >
-                {t(perLabel as any)}
-                <ChevronDownIcon fontSize={'md'} />
+                    })}
+                  </Box>
+                )}
               </Flex>
-            }
-            onChange={(v) => setSelectedPermission(v)}
-          />
-        )}
-        {addOnly && (
-          <HStack bg={'blue.50'} color={'blue.600'} padding={'6px 12px'} rounded={'5px'}>
-            <MyIcon name="common/info" w="1rem" h="1rem" />
-            <Text fontSize="12px">{t('user:permission_add_tip')}</Text>
-          </HStack>
-        )}
-        <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
-          {t('common:common.Confirm')}
-        </Button>
-      </ModalFooter>
-    </MyModal>
+            </Flex>
+
+            <Flex h={'100%'} flexDirection="column" overflow={'auto'} p="2">
+              <Flex alignItems={'center'} mt={2} mb={3}>
+                <Box>{`${t('common:chosen')}: ${editCollaborators.length}`}</Box>
+                {SelectedTip ? <Box ml={1}>{SelectedTip}</Box> : null}
+              </Flex>
+              <Flex flexDirection="column" gap={1} flex={'1 0 0'} h={0}>
+                {editCollaborators.map((clb) => {
+                  const onDelete = () => {
+                    setCollaboratorList((state) => {
+                      return state.filter((v) => getCollaboratorId(v) !== getCollaboratorId(clb));
+                    });
+                  };
+                  const onRoleChange = (role: RoleValueType) => {
+                    setCollaboratorList((state) => {
+                      const index = state.findIndex(
+                        (v) => getCollaboratorId(v) === getCollaboratorId(clb)
+                      );
+                      if (index === -1) return state;
+                      return [
+                        ...state.slice(0, index),
+                        {
+                          ...state[index],
+                          permission: new Permission({ role })
+                        },
+                        ...state.slice(index + 1)
+                      ];
+                    });
+                  };
+                  return (
+                    <MemberItemCard
+                      key={'chosen-' + getCollaboratorId(clb)}
+                      avatar={clb.avatar}
+                      name={clb.name ?? ''}
+                      onDelete={onDelete}
+                      role={clb.permission.role}
+                      onRoleChange={onRoleChange}
+                      disabled={
+                        clb.permission.role === OwnerRoleVal ||
+                        clb.tmbId === userInfo?.team.tmbId ||
+                        (clb.permission.hasManagePer && !myRole.isOwner)
+                      }
+                    />
+                  );
+                })}
+              </Flex>
+            </Flex>
+          </Grid>
+        </ModalBody>
+        <ModalFooter>
+          <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
+      <ConfirmDisableInheritPer />
+    </>
   );
 }
 
 export default MemberModal;
+
+const RenderMemberList = ({
+  members,
+  setCollaboratorList,
+  editCollaborators,
+  defaultRole
+}: {
+  members: Array<Omit<TeamMemberItemType, 'permission'> & { permission: Permission }>;
+  setCollaboratorList: React.Dispatch<React.SetStateAction<CollaboratorItemDetailType[]>>;
+  editCollaborators: CollaboratorItemDetailType[];
+  defaultRole: RoleValueType;
+}) => {
+  const { userInfo } = useUserStore();
+  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+
+  return (
+    <>
+      {members?.map((member) => {
+        const addTheMember = () => {
+          setCollaboratorList((state) => {
+            if (state.find((v) => v.tmbId === member.tmbId)) {
+              return state.filter((v) => v.tmbId !== member.tmbId);
+            }
+            return [
+              ...state,
+              {
+                tmbId: member.tmbId,
+                avatar: member.avatar,
+                name: member.memberName,
+                teamId: member.teamId,
+                permission: new Permission({ role: defaultRole })
+              }
+            ];
+          });
+        };
+        const isChecked = !!editCollaborators.find((v) => v.tmbId === member.tmbId);
+        return (
+          <MemberItemCard
+            role={member.permission.role}
+            avatar={member.avatar}
+            key={member.tmbId}
+            name={member.memberName}
+            onChange={addTheMember}
+            isChecked={isChecked}
+            orgs={member.orgs}
+            disabled={
+              member.permission.role === OwnerRoleVal ||
+              member.tmbId === userInfo?.team.tmbId ||
+              (member.permission.hasManagePer && !myRole.isOwner)
+            }
+          />
+        );
+      })}
+    </>
+  );
+};

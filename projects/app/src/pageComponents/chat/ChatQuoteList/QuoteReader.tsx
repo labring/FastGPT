@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
@@ -8,7 +8,7 @@ import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
-import { GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
+import { type GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteReader = ({
@@ -97,7 +97,7 @@ const QuoteReader = ({
                   color={'myGray.900'}
                   fontWeight={'medium'}
                 >
-                  {metadata.sourceName || t('common:common.UnKnow Source')}
+                  {metadata.sourceName || t('common:unknow_source')}
                 </Box>
               </>
             ) : (

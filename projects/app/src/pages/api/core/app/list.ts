@@ -1,5 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -7,18 +7,19 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
+import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -62,7 +63,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   ]);
 
   // Get team all app permissions
-  const [perList, myGroupMap, myOrgSet] = await Promise.all([
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.app,
       teamId,
@@ -86,7 +87,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
   ]);
   // Get my permissions
-  const myPerList = perList.filter(
+  const myPerList = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
       myGroupMap.has(String(item.groupId)) ||
@@ -96,16 +97,18 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   const findAppsQuery = (() => {
     if (getRecentlyChat) {
       return {
-        // get all chat app
+        // get all chat app, excluding hidden apps
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] }
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] }
       };
     }
 
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
-      ? {}
+      ? {
+          parentId: parentId ? parseParentIdInMongo(parentId) : null
+        }
       : parentId
         ? {
             $or: [idList, parseParentIdInMongo(parentId)]
@@ -121,35 +124,51 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         }
       : {};
 
+    const _type = (() => {
+      if (type) {
+        // 如果明确指定了类型，则按指定类型查询（包括 hidden）
+        return Array.isArray(type) ? { $in: type } : type;
+      }
+      // 如果没有指定类型，则排除 hidden 类型
+      return { $ne: AppTypeEnum.hidden } as const;
+    })();
+
     if (searchKey) {
-      return {
+      const data = {
         ...appPerQuery,
         teamId,
-        ...searchMatch
+        ...searchMatch,
+        type: _type
       };
+
+      // @ts-ignore
+      delete data.parentId;
+      return data;
     }
 
     return {
       ...appPerQuery,
       teamId,
-      ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
+      type: _type,
       ...parseParentIdInMongo(parentId)
     };
   })();
   const limit = (() => {
     if (getRecentlyChat) return 15;
-    if (searchKey) return 20;
-    return 1000;
+    if (searchKey) return 50;
+    return;
   })();
 
   const myApps = await MongoApp.find(
     findAppsQuery,
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission'
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+    {
+      limit: limit
+    }
   )
     .sort({
       updateTime: -1
     })
-    .limit(limit)
     .lean();
 
   // Add app permission and filter apps by read permission
@@ -157,11 +176,11 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     .map((app) => {
       const { Per, privateApp } = (() => {
         const getPer = (appId: string) => {
-          const tmbPer = myPerList.find(
+          const tmbRole = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
-          const groupPer = concatPer(
-            myPerList
+          const groupAndOrgRole = sumPer(
+            ...myPerList
               .filter(
                 (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
               )
@@ -169,35 +188,40 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           );
 
           return new AppPermission({
-            per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
+            role: tmbRole ?? groupAndOrgRole,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
 
         const getClbCount = (appId: string) => {
-          return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
         };
 
-        // Inherit app, check parent folder clb
+        // Inherit app, check parent folder clb and it's own clb
         if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
           return {
-            Per: getPer(String(app.parentId)),
+            Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
             privateApp: getClbCount(String(app.parentId)) <= 1
           };
         }
 
         return {
           Per: getPer(String(app._id)),
-          privateApp: AppFolderTypeList.includes(app.type)
-            ? getClbCount(String(app._id)) <= 1
-            : getClbCount(String(app._id)) === 0
+          privateApp: getClbCount(String(app._id)) <= 1
         };
       })();
 
+      const { modules, ...rest } = app;
+      const hasInteractiveNode = modules?.some((item) =>
+        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
+      );
+
       return {
-        ...app,
+        ...rest,
+        parentId: app.parentId,
         permission: Per,
-        private: privateApp
+        private: privateApp,
+        hasInteractiveNode
       };
     })
     .filter((app) => app.permission.hasReadPer);

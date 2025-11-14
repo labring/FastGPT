@@ -52,8 +52,8 @@ const OffiAccountEditModal = ({
       });
     },
     {
-      errorToast: t('common:common.Create Failed'),
-      successToast: t('common:common.Create Success'),
+      errorToast: t('common:create_failed'),
+      successToast: t('common:create_success'),
       onSuccess: onCreate
     }
   );
@@ -69,8 +69,8 @@ const OffiAccountEditModal = ({
       return updateShareChat(e);
     },
     {
-      errorToast: t('common:common.Update Failed'),
-      successToast: t('common:common.Update Success'),
+      errorToast: t('common:update_failed'),
+      successToast: t('common:update_success'),
       onSuccess: onEdit
     }
   );
@@ -107,7 +107,7 @@ const OffiAccountEditModal = ({
               >
                 <Flex alignItems={'center'}>
                   <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                  {t('common:common.Read document')}
+                  {t('common:read_doc')}
                 </Flex>
               </Link>
             )}
@@ -154,7 +154,7 @@ const OffiAccountEditModal = ({
 
           <Flex justifyContent={'end'}>
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-              {t('common:common.Close')}
+              {t('common:Close')}
             </Button>
             <Button
               isLoading={creating || updating}
@@ -162,7 +162,7 @@ const OffiAccountEditModal = ({
                 isEdit ? onclickUpdate(data) : onclickCreate(data)
               )}
             >
-              {t('common:common.Confirm')}
+              {t('common:Confirm')}
             </Button>
           </Flex>
         </Flex>

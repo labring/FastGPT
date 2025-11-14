@@ -1,13 +1,13 @@
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
 import { Button, HStack, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
@@ -15,8 +15,7 @@ export type OrgFormType = {
   avatar: string;
   description?: string;
   name: string;
-  path: string;
-  parentId?: string;
+  path?: string;
 };
 
 export const defaultOrgForm: OrgFormType = {
@@ -30,11 +29,15 @@ export const defaultOrgForm: OrgFormType = {
 function OrgInfoModal({
   editOrg,
   onClose,
-  onSuccess
+  onSuccess,
+  updateCurrentOrg,
+  parentId
 }: {
   editOrg: OrgFormType;
   onClose: () => void;
   onSuccess: () => void;
+  updateCurrentOrg: (data: { name?: string; avatar?: string; description?: string }) => void;
+  parentId?: string;
 }) {
   const { t } = useTranslation();
 
@@ -51,16 +54,16 @@ function OrgInfoModal({
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async (data: OrgFormType) => {
-      if (!editOrg.parentId) return;
+      if (parentId === undefined) return;
       return postCreateOrg({
         name: data.name,
         avatar: data.avatar,
-        parentId: editOrg.parentId,
+        orgId: parentId,
         description: data.description
       });
     },
     {
-      successToast: t('common:common.Create Success'),
+      successToast: t('common:create_success'),
       onSuccess: () => {
         onClose();
         onSuccess();
@@ -68,7 +71,7 @@ function OrgInfoModal({
     }
   );
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async (data: OrgFormType) => {
       if (!editOrg._id) return;
       return putUpdateOrg({
@@ -79,7 +82,7 @@ function OrgInfoModal({
       });
     },
     {
-      successToast: t('common:common.Update Success'),
+      successToast: t('common:update_success'),
       onSuccess: () => {
         onClose();
         onSuccess();
@@ -88,26 +91,14 @@ function OrgInfoModal({
   );
 
   const {
-    File: AvatarSelect,
-    onOpen: onOpenSelectAvatar,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg, .jpeg, .png',
-    multiple: false
-  });
-  const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
-    async (file: File[]) => {
-      return onSelectImage(file, {
-        maxW: 300,
-        maxH: 300
-      });
-    },
-    {
-      onSuccess: (src: string) => {
-        setValue('avatar', src);
-      }
+    Component: AvatarUploader,
+    uploading: uploadingAvatar,
+    handleFileSelectorOpen: handleAvatarSelectorOpen
+  } = useUploadAvatar(getUploadAvatarPresignedUrl, {
+    onSuccess: (avatar) => {
+      setValue('avatar', avatar);
     }
-  );
+  });
 
   const isLoading = uploadingAvatar || isLoadingUpdate || isLoadingCreate;
 
@@ -123,7 +114,7 @@ function OrgInfoModal({
         <HStack>
           <Avatar
             src={avatar || DEFAULT_ORG_AVATAR}
-            onClick={onOpenSelectAvatar}
+            onClick={handleAvatarSelectorOpen}
             cursor={'pointer'}
             borderRadius={'md'}
           />
@@ -145,16 +136,18 @@ function OrgInfoModal({
           isLoading={isLoading}
           onClick={handleSubmit((data) => {
             if (isEdit) {
-              onUpdate(data);
+              onUpdate(data).then(() => {
+                updateCurrentOrg(data);
+              });
             } else {
               onCreate(data);
             }
           })}
         >
-          {isEdit ? t('common:common.Save') : t('common:new_create')}
+          {isEdit ? t('common:Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
-      <AvatarSelect onSelect={onSelectAvatar} />
+      <AvatarUploader />
     </MyModal>
   );
 }

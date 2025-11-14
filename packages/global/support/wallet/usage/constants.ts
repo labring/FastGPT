@@ -11,7 +11,11 @@ export enum UsageSourceEnum {
   feishu = 'feishu',
   dingtalk = 'dingtalk',
   official_account = 'official_account',
-  pdfParse = 'pdfParse'
+  pdfParse = 'pdfParse',
+  mcp = 'mcp',
+  evaluation = 'evaluation',
+  optimize_prompt = 'optimize_prompt',
+  code_copilot = 'code_copilot'
 }
 
 export const UsageSourceMap = {
@@ -47,5 +51,29 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.pdfParse]: {
     label: i18nT('account_usage:pdf_parse')
+  },
+  [UsageSourceEnum.mcp]: {
+    label: i18nT('account_usage:mcp')
+  },
+  [UsageSourceEnum.evaluation]: {
+    label: i18nT('account_usage:evaluation')
+  },
+  [UsageSourceEnum.optimize_prompt]: {
+    label: i18nT('common:support.wallet.usage.Optimize Prompt')
+  },
+  [UsageSourceEnum.code_copilot]: {
+    label: i18nT('common:support.wallet.usage.Code Copilot')
   }
 };
+
+export enum UsageItemTypeEnum {
+  training_vector = 1,
+  training_qa = 2,
+  training_autoIndex = 3,
+  training_imageIndex = 4,
+  training_paragraph = 5,
+  training_imageParse = 6,
+
+  evaluation_generateAnswer = 7,
+  evaluation_answerAccuracy = 8
+}

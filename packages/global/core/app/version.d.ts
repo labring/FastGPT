@@ -1,7 +1,8 @@
 import { TeamMemberStatusEnum } from 'support/user/team/constant';
 import { StoreEdgeItemType } from '../workflow/type/edge';
-import { AppChatConfigType, AppSchema } from './type';
-import { SourceMemberType } from 'support/user/type';
+import type { AppSchema } from './type';
+import { AppChatConfigType } from './type';
+import type { SourceMemberType } from 'support/user/type';
 
 export type AppVersionSchemaType = {
   _id: string;
@@ -11,6 +12,7 @@ export type AppVersionSchemaType = {
   edges: AppSchema['edges'];
   chatConfig: AppSchema['chatConfig'];
   isPublish?: boolean;
+  isAutoSave?: boolean;
   versionName: string;
   tmbId: string;
 };

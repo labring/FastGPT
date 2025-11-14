@@ -1,6 +1,6 @@
 import React from 'react';
-import { FieldArrayWithId } from 'react-hook-form';
-import { ChatBoxInputFormType } from '../ChatBox/type';
+import { type FieldArrayWithId } from 'react-hook-form';
+import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { Box, CircularProgress, Flex, HStack } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,7 +22,7 @@ const RenderFilePreview = ({
     <Flex
       overflow={'visible'}
       wrap={'wrap'}
-      pt={3}
+      pt={[2, 3]}
       userSelect={'none'}
       mb={fileList.length > 0 ? 2 : 0}
       gap={'6px'}

@@ -1,20 +1,22 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
-import { AppTypeEnum } from './constants';
+import type { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import {
+import type {
+  ContentTypes,
   NodeInputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '../workflow/constants';
-import { SelectedDatasetType } from '../workflow/api';
-import { DatasetSearchModeEnum } from '../dataset/constants';
+import type { InputComponentPropsType, SelectedDatasetType } from '../workflow/type/io';
+import type { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
-import { StoreEdgeItemType } from '../workflow/type/edge';
-import { AppPermission } from '../../support/permission/app/controller';
-import { ParentIdType } from '../../common/parentFolder/type';
+import type { StoreEdgeItemType } from '../workflow/type/edge';
+import type { AppPermission } from '../../support/permission/app/controller';
+import type { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
-import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-import { SourceMemberType } from '../../support/user/type';
+import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import type { SourceMemberType } from '../../support/user/type';
+import type { JSONSchemaInputType, JSONSchemaOutputType } from './jsonschema';
 
 export type AppSchema = {
   _id: string;
@@ -27,6 +29,7 @@ export type AppSchema = {
   name: string;
   avatar: string;
   intro: string;
+  templateId?: string; // Create by template
 
   updateTime: Date;
 
@@ -44,16 +47,23 @@ export type AppSchema = {
   scheduledTriggerConfig?: AppScheduledTriggerConfigType | null;
   scheduledTriggerNextTime?: Date;
 
-  inited?: boolean;
-  teamTags: string[];
   inheritPermission?: boolean;
 
-  // abandon
+  // if access the app by favourite or quick
+  favourite?: boolean;
+  quick?: boolean;
+
+  /** @deprecated */
   defaultPermission?: number;
+  /** @deprecated */
+  inited?: boolean;
+  /** @deprecated */
+  teamTags: string[];
 };
 
 export type AppListItemType = {
   _id: string;
+  parentId: ParentIdType;
   tmbId: string;
   name: string;
   avatar: string;
@@ -65,6 +75,7 @@ export type AppListItemType = {
   inheritPermission?: boolean;
   private?: boolean;
   sourceMember: SourceMemberType;
+  hasInteractiveNode?: boolean;
 };
 
 export type AppDetailType = AppSchema & {
@@ -107,6 +118,25 @@ export type AppSimpleEditFormType = {
   chatConfig: AppChatConfigType;
 };
 
+export type HttpToolConfigType = {
+  name: string;
+  description: string;
+  inputSchema: JSONSchemaInputType;
+  outputSchema: JSONSchemaOutputType;
+  path: string;
+  method: string;
+
+  // manual
+  staticParams?: Array<{ key: string; value: string }>;
+  staticHeaders?: Array<{ key: string; value: string }>;
+  staticBody?: {
+    type: ContentTypes;
+    content?: string;
+    formData?: Array<{ key: string; value: string }>;
+  };
+  headerSecret?: StoreSecretValueType;
+};
+
 /* app chat config type */
 export type AppChatConfigType = {
   welcomeText?: string;
@@ -137,24 +167,11 @@ export type SettingAIDataType = {
 };
 
 // variable
-export type VariableItemType = {
-  id: string;
-  key: string;
-  label: string;
-  type: VariableInputEnum;
-  required: boolean;
-  description: string;
-  valueType?: WorkflowIOValueTypeEnum;
-  defaultValue?: any;
-
-  // input
-  maxLength?: number;
-  // numberInput
-  max?: number;
-  min?: number;
-  // select
-  enums?: { value: string; label: string }[];
-};
+export type VariableItemType = AppFileSelectConfigType &
+  InputComponentPropsType & {
+    type: VariableInputEnum;
+    description: string;
+  };
 // tts
 export type AppTTSConfigType = {
   type: 'none' | 'web' | 'model';
@@ -194,16 +211,14 @@ export type AppAutoExecuteConfigType = {
 };
 // File
 export type AppFileSelectConfigType = {
-  canSelectFile: boolean;
+  maxFiles?: number;
+  canSelectFile?: boolean;
   customPdfParse?: boolean;
-  canSelectImg: boolean;
-  maxFiles: number;
-};
-
-export type SystemPluginListItemType = {
-  _id: string;
-  name: string;
-  avatar: string;
+  canSelectImg?: boolean;
+  canSelectVideo?: boolean;
+  canSelectAudio?: boolean;
+  canSelectCustomFileExtension?: boolean;
+  customFileExtensionList?: string[];
 };
 
 export type AppTemplateSchemaType = {
@@ -215,6 +230,8 @@ export type AppTemplateSchemaType = {
   type: string;
   author?: string;
   isActive?: boolean;
+  isPromoted?: boolean;
+  recommendText?: string;
   userGuide?: {
     type: 'markdown' | 'link';
     content?: string;
@@ -222,6 +239,7 @@ export type AppTemplateSchemaType = {
   };
   isQuickTemplate?: boolean;
   order?: number;
+  // TODO: 对于建议应用，是另一个格式
   workflow: WorkflowTemplateBasicType;
 };
 

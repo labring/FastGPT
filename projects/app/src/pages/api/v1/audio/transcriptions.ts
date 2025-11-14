@@ -5,7 +5,7 @@ import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
@@ -22,7 +22,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     let {
       file,
       data: { appId, duration, shareId, outLinkUid, teamId: spaceTeamId, teamToken }
-    } = await upload.doUpload<
+    } = await upload.getUploadFile<
       OutLinkChatAuthProps & {
         appId: string;
         duration: number;
@@ -56,24 +56,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       ...req.body
     });
 
-    // auth app
-    // const app = await MongoApp.findById(appId, 'modules').lean();
-    // if (!app) {
-    //   throw new Error('app not found');
-    // }
-    // if (!whisperConfig?.open) {
-    //   throw new Error('Whisper is not open in the app');
-    // }
-
     const result = await aiTranscriptions({
-      model: getDefaultSTTModel().model,
+      model: getDefaultSTTModel(),
       fileStream: fs.createReadStream(file.path)
     });
 
     pushWhisperUsage({
       teamId,
       tmbId,
-      duration
+      duration: result?.usage?.total_tokens || duration
     });
 
     jsonRes(res, {

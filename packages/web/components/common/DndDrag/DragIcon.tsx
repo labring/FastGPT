@@ -1,7 +1,7 @@
 import { DragHandleIcon } from '@chakra-ui/icons';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import React from 'react';
-import { DraggableProvided } from 'react-beautiful-dnd';
+import { type DraggableProvided } from 'react-beautiful-dnd';
 
 const DragIcon = ({ provided, ...props }: { provided: DraggableProvided } & BoxProps) => {
   return (

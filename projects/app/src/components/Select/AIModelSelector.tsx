@@ -1,29 +1,52 @@
-import React, { useCallback, useMemo, useState } from 'react';
-
-import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
+import { Box, Flex } from '@chakra-ui/react';
+import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import dynamic from 'next/dynamic';
-import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
+import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
-
-const ModelPriceModal = dynamic(() =>
-  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
-);
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo, useState } from 'react';
 
 type Props = SelectProps & {
   disableTip?: string;
+  noOfLines?: ResponsiveValue<number>;
+  cacheModel?: boolean;
 };
 
-const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
+const OneRowSelector = ({
+  list,
+  onChange,
+  disableTip,
+  noOfLines,
+  cacheModel = true,
+  ...props
+}: Props) => {
   const { t } = useTranslation();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    getModelProvider,
+    getMyModelList
+  } = useSystemStore();
+
+  const { data: myModels } = useRequest2(
+    async () => {
+      const set = await getMyModelList();
+      if (cacheModel) {
+        set.add(props.value);
+      }
+      return set;
+    },
+    {
+      manual: false
+    }
+  );
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -45,9 +68,13 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
     ];
     return list
       .map((item) => {
-        const modelData = getModelFromList(allModels, item.value)!;
+        const modelData = allModels.find((model) => model.model === item.value);
         if (!modelData) return;
 
+        const avatar = getModelProvider(modelData.provider)?.avatar;
+        if (!myModels?.has(modelData.model)) {
+          return;
+        }
         return {
           value: item.value,
           label: (
@@ -55,11 +82,12 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
               <Avatar
                 borderRadius={'0'}
                 mr={2}
-                src={modelData?.avatar || HUGGING_FACE_ICON}
-                fallbackSrc={HUGGING_FACE_ICON}
+                src={avatar || HUGGING_FACE_ICON}
                 w={avatarSize}
+                fallbackSrc={HUGGING_FACE_ICON}
               />
-              <Box>{modelData.name}</Box>
+
+              <Box noOfLines={noOfLines}>{modelData.name}</Box>
             </Flex>
           )
         };
@@ -69,13 +97,16 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
       label: React.JSX.Element;
     }[];
   }, [
-    list,
     llmModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
     reRankModelList,
-    avatarSize
+    list,
+    getModelProvider,
+    avatarSize,
+    noOfLines,
+    myModels
   ]);
 
   return (
@@ -87,33 +118,46 @@ const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
       }}
     >
       <MyTooltip label={disableTip}>
-        <ModelPriceModal>
-          {({ onOpen }) => (
-            <MySelect
-              className="nowheel"
-              isDisabled={!!disableTip}
-              list={avatarList}
-              placeholder={t('common:not_model_config')}
-              h={'40px'}
-              {...props}
-              onChange={(e) => {
-                if (e === 'price') {
-                  onOpen();
-                  return;
-                }
-                return onChange?.(e);
-              }}
-            />
-          )}
-        </ModelPriceModal>
+        <MySelect
+          className="nowheel"
+          isDisabled={!!disableTip}
+          list={avatarList}
+          placeholder={t('common:not_model_config')}
+          h={'40px'}
+          {...props}
+          onChange={(e) => {
+            return onChange?.(e);
+          }}
+        />
       </MyTooltip>
     </Box>
   );
 };
-const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props }: Props) => {
-  const { t } = useTranslation();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+
+const MultipleRowSelector = ({
+  list,
+  onChange,
+  disableTip,
+  placeholder,
+  noOfLines,
+  ...props
+}: Props) => {
+  const { t, i18n } = useTranslation();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    getModelProvider,
+    getModelProviders,
+    getMyModelList
+  } = useSystemStore();
+
+  const { data: myModels } = useRequest2(getMyModelList, {
+    manual: false
+  });
+
   const modelList = useMemo(() => {
     const allModels = [
       ...llmModelList,
@@ -123,8 +167,18 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
       ...reRankModelList
     ];
 
-    return list.map((item) => getModelFromList(allModels, item.value)!).filter(Boolean);
-  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
+    return list
+      .map((item) => allModels.find((model) => model.model === item.value))
+      .filter((item) => !!item && !!myModels?.has(item.model));
+  }, [
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    list,
+    myModels
+  ]);
 
   const [value, setValue] = useState<string[]>([]);
 
@@ -139,7 +193,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
   }, [props.size]);
 
   const selectorList = useMemo(() => {
-    const renderList = ModelProviderList.map<{
+    const renderList = getModelProviders(i18n.language).map<{
       label: React.JSX.Element;
       value: string;
       children: { label: string | React.ReactNode; value: string }[];
@@ -153,7 +207,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
             fallbackSrc={HUGGING_FACE_ICON}
             w={avatarSize}
           />
-          <Box>{t(provider.name as any)}</Box>
+          <Box>{provider.name}</Box>
         </Flex>
       ),
       value: provider.id,
@@ -161,20 +215,20 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList(modelList, item.value);
+      const modelData = modelList.find((model) => model?.model === item.value);
       if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
 
-      provider.children.push({
+      provider?.children.push({
         label: modelData.name,
         value: modelData.model
       });
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, modelList, t]);
+  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -183,27 +237,29 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     [onChange]
   );
 
-  const SelectedModel = useMemo(() => {
+  const SelectedLabel = useMemo(() => {
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    const modelData = getModelFromList(modelList, props.value);
+    const modelData = modelList.find((model) => model?.model === props.value);
 
     if (!modelData) return <>{t('common:not_model_config')}</>;
 
     setValue([modelData.provider, props.value]);
 
+    const avatar = getModelProvider(modelData.provider)?.avatar;
+
     return (
-      <HStack spacing={1}>
+      <Flex alignItems={'center'} py={1}>
         <Avatar
           borderRadius={'0'}
           mr={2}
-          src={modelData?.avatar}
+          src={avatar}
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box>{modelData?.name}</Box>
-      </HStack>
+        <Box noOfLines={noOfLines}>{modelData?.name}</Box>
+      </Flex>
     );
-  }, [modelList, props.value, t, avatarSize]);
+  }, [props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box
@@ -215,7 +271,7 @@ const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props
     >
       <MyTooltip label={disableTip}>
         <MultipleRowSelect
-          label={SelectedModel}
+          label={SelectedLabel}
           list={selectorList}
           onSelect={onSelect}
           value={value}

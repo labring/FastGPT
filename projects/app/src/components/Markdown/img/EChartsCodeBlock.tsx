@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import * as echarts from 'echarts';
 import type { ECharts } from 'echarts';
 import { Box, Skeleton } from '@chakra-ui/react';
 import json5 from 'json5';
@@ -56,8 +55,14 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     if (!option) return;
 
     if (chartRef.current) {
-      eChart.current = echarts.init(chartRef.current);
-      eChart.current.setOption(option);
+      try {
+        import('echarts').then((module) => {
+          eChart.current = module.init(chartRef.current!);
+          eChart.current.setOption(option);
+        });
+      } catch (error) {
+        console.error('ECharts render failed:', error);
+      }
     }
 
     findMarkdownDom();

@@ -1,11 +1,13 @@
 import {
-  AIChatItemValueItemType,
-  ChatItemValueItemType,
-  ChatSiteItemType
+  type AIChatItemValueItemType,
+  type ChatItemValueItemType,
+  type ChatSiteItemType
 } from '@fastgpt/global/core/chat/type';
-import { ChatBoxInputType, UserInputFileItemType } from './type';
+import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -30,7 +32,8 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
               type: item.file.type,
               name: item.file.name,
               icon: getFileIcon(item.file.name),
-              url: item.file.url
+              url: item.file.url,
+              key: item.file.key
             }
           : undefined
       )
@@ -42,9 +45,11 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   };
 };
 
-export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[]) => {
+export const getInteractiveByHistories = (
+  chatHistories: ChatSiteItemType[]
+): WorkflowInteractiveResponseType | undefined => {
   const lastAIHistory = chatHistories[chatHistories.length - 1];
-  if (!lastAIHistory) return false;
+  if (!lastAIHistory) return;
 
   const lastMessageValue = lastAIHistory.value[
     lastAIHistory.value.length - 1
@@ -55,19 +60,24 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
     lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
     !!lastMessageValue?.interactive?.params
   ) {
-    const params = lastMessageValue.interactive.params;
+    const finalInteractive = extractDeepestInteractive(lastMessageValue.interactive);
+
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
-    if ('userSelectOptions' in params) {
-      return !params.userSelectedVal;
-    } else if ('inputForm' in params) {
-      return !params.submitted;
+    if (finalInteractive.type === 'userSelect') {
+      if (!!finalInteractive.params.userSelectedVal) return;
+    } else if (finalInteractive.type === 'userInput') {
+      if (!!finalInteractive.params.submitted) return;
+    } else if (finalInteractive.type === 'paymentPause') {
+      if (!!finalInteractive.params.continue) return;
     }
+
+    return finalInteractive;
   }
 
-  return false;
+  return;
 };
 
-export const setUserSelectResultToHistories = (
+export const setInteractiveResultToHistories = (
   histories: ChatSiteItemType[],
   interactiveVal: string
 ): ChatSiteItemType[] => {
@@ -82,17 +92,19 @@ export const setUserSelectResultToHistories = (
         i !== item.value.length - 1 ||
         val.type !== ChatItemValueTypeEnum.interactive ||
         !val.interactive
-      )
+      ) {
         return val;
+      }
 
-      if (val.interactive.type === 'userSelect') {
+      const finalInteractive = extractDeepestInteractive(val.interactive);
+      if (finalInteractive.type === 'userSelect') {
         return {
           ...val,
           interactive: {
-            ...val.interactive,
+            ...finalInteractive,
             params: {
-              ...val.interactive.params,
-              userSelectedVal: val.interactive.params.userSelectOptions.find(
+              ...finalInteractive.params,
+              userSelectedVal: finalInteractive.params.userSelectOptions.find(
                 (item) => item.value === interactiveVal
               )?.value
             }
@@ -100,14 +112,27 @@ export const setUserSelectResultToHistories = (
         };
       }
 
-      if (val.interactive.type === 'userInput') {
+      if (finalInteractive.type === 'userInput') {
         return {
           ...val,
           interactive: {
-            ...val.interactive,
+            ...finalInteractive,
             params: {
-              ...val.interactive.params,
+              ...finalInteractive.params,
               submitted: true
+            }
+          }
+        };
+      }
+
+      if (finalInteractive.type === 'paymentPause') {
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              ...finalInteractive.params,
+              continue: true
             }
           }
         };

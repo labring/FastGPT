@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
@@ -11,6 +11,16 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import {
+  getBdVId,
+  getFastGPTSem,
+  getInviterId,
+  getMsclkid,
+  getSourceDomain,
+  removeFastGPTSem
+} from '@/web/support/marketing/utils';
+import { postAcceptInvitationLink } from '@/web/support/user/team/api';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 let isOauthLogging = false;
 
@@ -19,37 +29,57 @@ const provider = () => {
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
-  const { code, state, error } = router.query as { code: string; state: string; error?: string };
+  const { state, error, ...props } = router.query as Record<string, string>;
   const { toast } = useToast();
 
+  const lastRoute = loginStore?.lastRoute
+    ? decodeURIComponent(loginStore.lastRoute)
+    : '/dashboard/agent';
+  const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
+
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    async (res: LoginSuccessResponse) => {
+      const decodeLastRoute = decodeURIComponent(lastRoute);
       setUserInfo(res.user);
 
-      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
+      const navigateTo = await (async () => {
+        if (res.user.team.status !== 'active') {
+          if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
+            const id = decodeLastRoute.split('invitelinkid=')[1];
+            await postAcceptInvitationLink(id);
+            return '/dashboard/agent';
+          } else {
+            toast({
+              status: 'warning',
+              title: t('common:not_active_team')
+            });
+          }
+        }
+
+        return decodeLastRoute &&
+          !decodeLastRoute.includes('/login') &&
+          decodeLastRoute.startsWith('/')
+          ? lastRoute
+          : '/dashboard/agent';
+      })();
+
+      navigateTo && router.replace(navigateTo);
     },
-    [setUserInfo, router, loginStore?.lastRoute]
+    [setUserInfo, router, lastRoute]
   );
 
-  const authCode = useCallback(
-    async (code: string) => {
+  const authProps = useCallback(
+    async (props: Record<string, string>) => {
       try {
         const res = await oauthLogin({
           type: loginStore?.provider || OAuthEnum.sso,
-          code,
+          props,
           callbackUrl: `${location.origin}/login/provider`,
-          inviterId: localStorage.getItem('inviterId') || undefined,
-          bd_vid: sessionStorage.getItem('bd_vid') || undefined,
-          fastgpt_sem: (() => {
-            try {
-              return sessionStorage.getItem('fastgpt_sem')
-                ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
-                : undefined;
-            } catch {
-              return undefined;
-            }
-          })(),
-          sourceDomain: sessionStorage.getItem('sourceDomain') || undefined
+          inviterId: getInviterId(),
+          bd_vid: getBdVId(),
+          msclkid: getMsclkid(),
+          fastgpt_sem: getFastGPTSem(),
+          sourceDomain: getSourceDomain()
         });
 
         if (!res) {
@@ -58,9 +88,11 @@ const provider = () => {
             title: t('common:support.user.login.error')
           });
           return setTimeout(() => {
-            router.replace('/login');
+            router.replace(errorRedirectPage);
           }, 1000);
         }
+
+        removeFastGPTSem();
         loginSuccess(res);
       } catch (error) {
         toast({
@@ -68,12 +100,12 @@ const provider = () => {
           title: getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
-          router.replace('/login');
+          router.replace(errorRedirectPage);
         }, 1000);
       }
       setLoginStore(undefined);
     },
-    [loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
+    [errorRedirectPage, loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
   );
 
   useEffect(() => {
@@ -82,20 +114,19 @@ const provider = () => {
         status: 'warning',
         title: t('common:support.user.login.Provider error')
       });
-      router.replace('/login');
+      router.replace(errorRedirectPage);
       return;
     }
 
-    console.log('SSO', { initd, loginStore, code, state });
-    if (!code || !initd) return;
+    if (!props || !initd) return;
 
     if (isOauthLogging) return;
 
     isOauthLogging = true;
 
     (async () => {
-      await clearToken();
-      router.prefetch('/app/list');
+      await retryFn(async () => clearToken());
+      router.prefetch('/dashboard/agent');
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({
@@ -103,14 +134,14 @@ const provider = () => {
           title: t('common:support.user.login.security_failed')
         });
         setTimeout(() => {
-          router.replace('/login');
+          router.replace(errorRedirectPage);
         }, 1000);
         return;
       } else {
-        authCode(code);
+        authProps(props);
       }
     })();
-  }, [initd, authCode, code, error, loginStore, loginStore?.state, router, state, t, toast]);
+  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
 
   return <Loading />;
 };

@@ -25,11 +25,11 @@ import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -48,7 +48,7 @@ const DatasetParamsModal = ({
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
-  maxTokens = defaultDatasetMaxTokens,
+  maxTokens,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
@@ -78,7 +78,7 @@ const DatasetParamsModal = ({
       defaultValues: {
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
-        usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
+        usingReRank: !!usingReRank,
         rerankModel: rerankModel || defaultModels?.rerank?.model,
         rerankWeight: rerankWeight || 0.5,
         limit,
@@ -130,7 +130,7 @@ const DatasetParamsModal = ({
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
-    if (maxTokens < 8000) return 80;
+    if (!maxTokens || maxTokens < 8000) return 80;
     return Math.ceil(maxTokens / 80 / 100) * 100;
   }, [maxTokens]);
 
@@ -246,11 +246,6 @@ const DatasetParamsModal = ({
                   <Box color={'myGray.500'} fontSize={'sm'}>
                     {t('common:core.ai.Not deploy rerank model')}
                   </Box>
-                ) : teamPlanStatus?.standardConstants &&
-                  !teamPlanStatus?.standardConstants?.permissionReRank ? (
-                  <Box color={'myGray.500'} fontSize={'sm'}>
-                    {t('common:support.team.limit.No permission rerank')}
-                  </Box>
                 ) : (
                   <Switch {...register('usingReRank')} />
                 )}
@@ -306,16 +301,27 @@ const DatasetParamsModal = ({
                   <QuestionTip label={t('common:max_quote_tokens_tips')} />
                 </Flex>
                 <Box flex={'1 0 0'}>
-                  <InputSlider
-                    min={100}
-                    max={maxTokens}
-                    step={maxTokenStep}
-                    value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
-                    onChange={(val) => {
-                      setValue(NodeInputKeyEnum.datasetMaxTokens, val);
-                      setRefresh(!refresh);
-                    }}
-                  />
+                  {maxTokens ? (
+                    <InputSlider
+                      min={100}
+                      max={maxTokens}
+                      step={maxTokenStep}
+                      value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
+                      onChange={(val) => {
+                        setValue(NodeInputKeyEnum.datasetMaxTokens, val);
+                        setRefresh(!refresh);
+                      }}
+                    />
+                  ) : (
+                    <MyNumberInput
+                      size={'sm'}
+                      min={100}
+                      max={1000000}
+                      step={100}
+                      register={register}
+                      name={NodeInputKeyEnum.datasetMaxTokens}
+                    />
+                  )}
                 </Box>
               </Box>
             )}
@@ -398,7 +404,7 @@ const DatasetParamsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button
           onClick={() => {
@@ -406,7 +412,7 @@ const DatasetParamsModal = ({
             handleSubmit(onSuccess)();
           }}
         >
-          {t('common:common.Done')}
+          {t('common:Done')}
         </Button>
       </ModalFooter>
     </MyModal>

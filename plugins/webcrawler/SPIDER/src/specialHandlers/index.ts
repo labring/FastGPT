@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import type { Page } from 'puppeteer';
 
 export const handleSpecialWebsite = async (page: Page, url: string): Promise<string | null> => {
   if (url.includes('blog.csdn.net')) {

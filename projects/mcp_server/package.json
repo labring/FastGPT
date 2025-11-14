@@ -1,0 +1,27 @@
+{
+  "name": "mcp_server",
+  "version": "0.1",
+  "keywords": [],
+  "author": "fastgpt",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir=dist --target=node && chmod +x dist/index.js",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "mcp_test": "npx @modelcontextprotocol/inspector"
+  },
+  "dependencies": {
+    "@fastgpt/global": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "chalk": "^5.3.0",
+    "dayjs": "^1.11.7",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1"
+  }
+}

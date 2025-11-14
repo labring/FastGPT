@@ -1,4 +1,4 @@
-import { UrlFetchParams, UrlFetchResponse } from '@fastgpt/global/common/file/api';
+import { type UrlFetchParams, type UrlFetchResponse } from '@fastgpt/global/common/file/api';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { htmlToMarkdown } from './utils';
@@ -42,7 +42,7 @@ export const cheerioToHtml = ({
       }
     }
   });
-  selectDom.find('img').each((i, el) => {
+  selectDom.find('img, video, source, audio, iframe').each((i, el) => {
     const src = $(el).attr('src');
     if (src) {
       if (src.startsWith('//')) {

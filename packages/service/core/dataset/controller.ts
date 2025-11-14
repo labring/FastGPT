@@ -1,14 +1,20 @@
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';
-import { ClientSession } from '../../common/mongo';
+import { type ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
 import { MongoDatasetData } from './data/schema';
-import { deleteDatasetDataVector } from '../../common/vectorStore/controller';
+import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { clearDatasetImages } from './image/utils';
+import { MongoDatasetCollectionTags } from './tag/schema';
+import { removeDatasetSyncJobScheduler } from './datasetSync';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { removeImageByPath } from '../../common/file/image/controller';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -45,7 +51,7 @@ export async function findDatasetAndAllChildren({
   ]);
 
   if (!dataset) {
-    return Promise.reject('Dataset not found');
+    return Promise.reject(new UserError('Dataset not found'));
   }
 
   return [dataset, ...childDatasets];
@@ -74,7 +80,7 @@ export async function delDatasetRelevantData({
   const teamId = datasets[0].teamId;
 
   if (!teamId) {
-    return Promise.reject('TeamId is required');
+    return Promise.reject(new UserError('TeamId is required'));
   }
 
   const datasetIds = datasets.map((item) => item._id);
@@ -102,8 +108,10 @@ export async function delDatasetRelevantData({
       }),
       //delete dataset_datas
       MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }),
-      // Delete Image and file
+      // Delete collection image and file
       delCollectionRelatedSource({ collections }),
+      // Delete dataset Image
+      clearDatasetImages(datasetIds),
       // Delete vector data
       deleteDatasetDataVector({ teamId, datasetIds })
     ]);
@@ -115,3 +123,44 @@ export async function delDatasetRelevantData({
     datasetId: { $in: datasetIds }
   }).session(session);
 }
+
+export const deleteDatasets = async ({
+  teamId,
+  datasets
+}: {
+  teamId: string;
+  datasets: DatasetSchemaType[];
+}) => {
+  const datasetIds = datasets.map((d) => d._id);
+
+  // delete collection.tags
+  await MongoDatasetCollectionTags.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+
+  // Remove cron job
+  await Promise.all(
+    datasets.map((dataset) => {
+      return removeDatasetSyncJobScheduler(dataset._id);
+    })
+  );
+
+  // delete all dataset.data and pg data
+  await mongoSessionRun(async (session) => {
+    // delete dataset data
+    await delDatasetRelevantData({ datasets, session });
+
+    // delete dataset
+    await MongoDataset.deleteMany(
+      {
+        _id: { $in: datasetIds }
+      },
+      { session }
+    );
+
+    for await (const dataset of datasets) {
+      await removeImageByPath(dataset.avatar, session);
+    }
+  });
+};

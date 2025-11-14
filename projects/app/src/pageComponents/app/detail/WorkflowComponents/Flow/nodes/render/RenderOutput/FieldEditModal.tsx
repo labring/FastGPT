@@ -14,8 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  CustomFieldConfigType,
-  FlowNodeOutputItemType
+  type CustomFieldConfigType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -162,10 +162,10 @@ const FieldModal = ({
       </ModalBody>
       <ModalFooter gap={3}>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

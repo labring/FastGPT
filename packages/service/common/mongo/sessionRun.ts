@@ -1,5 +1,5 @@
 import { addLog } from '../system/log';
-import { connectionMongo, ClientSession } from './index';
+import { connectionMongo, type ClientSession } from './index';
 
 const timeout = 60000;
 

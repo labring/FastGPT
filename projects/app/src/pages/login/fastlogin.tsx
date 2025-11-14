@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
@@ -23,7 +23,7 @@ const FastLogin = ({
   const { toast } = useToast();
   const { t } = useTranslation();
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    (res: LoginSuccessResponse) => {
       setUserInfo(res.user);
 
       setTimeout(() => {
@@ -60,14 +60,14 @@ const FastLogin = ({
         }, 1000);
       }
     },
-    [loginSuccess, router, toast]
+    [loginSuccess, router, t, toast]
   );
 
   useEffect(() => {
     clearToken();
     router.prefetch(callbackUrl);
     authCode(code, token);
-  }, []);
+  }, [authCode, callbackUrl, code, router, token]);
 
   return <Loading />;
 };
@@ -77,7 +77,7 @@ export async function getServerSideProps(content: any) {
     props: {
       code: content?.query?.code || '',
       token: content?.query?.token || '',
-      callbackUrl: content?.query?.callbackUrl || '/app/list',
+      callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
       ...(await serviceSideProps(content))
     }
   };

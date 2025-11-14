@@ -1,4 +1,4 @@
-import { SystemConfigsTypeEnum } from "./constants";
+import type { SystemConfigsTypeEnum } from './constants';
 
 export type SystemConfigsType = {
   _id: string;

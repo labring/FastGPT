@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react';
-import { Box, BoxProps, Flex, Link, LinkProps } from '@chakra-ui/react';
+import { Box, type BoxProps, Flex, Link, type LinkProps } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -11,6 +10,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -40,42 +42,45 @@ const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
-  const { lastChatAppId } = useChatStore();
+  const { lastChatAppId, lastPane } = useChatStore();
 
   const navbarList = useMemo(
     () => [
       {
         label: t('common:navbar.Chat'),
-        icon: 'core/chat/chatLight',
-        activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}`,
+        icon: 'navbar/chatLight',
+        activeIcon: 'navbar/chatFill',
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
         activeLink: ['/chat']
       },
       {
         label: t('common:navbar.Studio'),
-        icon: 'core/app/aiLight',
-        activeIcon: 'core/app/aiFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail']
+        icon: 'navbar/dashboardLight',
+        activeIcon: 'navbar/dashboardFill',
+        link: `/dashboard/agent`,
+        activeLink: [
+          '/dashboard/agent',
+          '/dashboard/create',
+          '/app/detail',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
+          '/dashboard/templateMarket',
+          '/dashboard/mcpServer',
+          '/dashboard/evaluation',
+          '/dashboard/evaluation/create'
+        ]
       },
       {
         label: t('common:navbar.Datasets'),
-        icon: 'core/dataset/datasetLight',
-        activeIcon: 'core/dataset/datasetFill',
+        icon: 'navbar/datasetLight',
+        activeIcon: 'navbar/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('common:navbar.Toolkit'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: `/toolkit`,
-        activeLink: ['/toolkit']
-      },
-      {
         label: t('common:navbar.Account'),
-        icon: 'support/user/userLight',
-        activeIcon: 'support/user/userFill',
+        icon: 'navbar/userLight',
+        activeIcon: 'navbar/userFill',
         link: '/account/info',
         activeLink: [
           '/account/bill',
@@ -89,13 +94,24 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/promotion',
           '/account/model'
         ]
-      }
+      },
+      ...(userInfo?.username === 'root'
+        ? [
+            {
+              label: t('common:navbar.Config'),
+              icon: 'support/config/configLight',
+              activeIcon: 'support/config/configFill',
+              link: '/config/tool',
+              activeLink: ['/config/tool', '/config/tool/marketplace']
+            }
+          ]
+        : [])
     ],
-    [lastChatAppId, t]
+    [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
   const isSecondNavbarPage = useMemo(() => {
-    return ['/toolkit'].includes(router.pathname);
+    return ['/plugin'].includes(router.pathname);
   }, [router.pathname]);
 
   return (
@@ -107,24 +123,17 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
-      bg={isSecondNavbarPage ? 'myGray.50' : 'transparent'}
+      bg={isSecondNavbarPage ? 'white' : 'transparent'}
     >
       {/* logo */}
-      <Box
-        flex={'0 0 auto'}
-        mb={3}
-        border={'2px solid #fff'}
-        borderRadius={'50%'}
-        overflow={'hidden'}
-        cursor={'pointer'}
-        onClick={() => router.push('/account/info')}
-      >
-        <Avatar w={'2rem'} h={'2rem'} src={userInfo?.avatar} borderRadius={'50%'} />
+      <Box flex={'0 0 auto'} mb={3}>
+        <MyImage w={9} h={9} src={LOGO_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
         {navbarList.map((item) => {
           const isActive = item.activeLink.includes(router.pathname);
+
           return (
             <Box
               key={item.link}
@@ -143,7 +152,13 @@ const Navbar = ({ unread }: { unread: number }) => {
                   })}
               {...(item.link !== router.asPath
                 ? {
-                    onClick: () => router.push(item.link)
+                    onClick: () => {
+                      if (item.link.startsWith('/chat')) {
+                        window.open(getWebReqUrl(item.link), '_blank', 'noopener,noreferrer');
+                        return;
+                      }
+                      router.push(item.link);
+                    }
                   }
                 : {})}
             >
@@ -157,8 +172,8 @@ const Navbar = ({ unread }: { unread: number }) => {
                       name: item.icon as any,
                       color: 'myGray.400'
                     })}
-                width={'20px'}
-                height={'20px'}
+                width={'24px'}
+                height={'24px'}
               />
               <Box
                 fontSize={'12px'}
@@ -228,6 +243,10 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </MyTooltip>
       )}
+
+      <Box flex={'0 0 auto'} mb={4} cursor={'pointer'} onClick={() => router.push('/account/info')}>
+        <Avatar w={9} src={userInfo?.avatar} borderRadius={'50%'} />
+      </Box>
     </Flex>
   );
 };

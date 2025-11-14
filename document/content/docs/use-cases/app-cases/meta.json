@@ -1,0 +1,5 @@
+{
+  "title": "应用搭建案例",
+  "description": "FastGPT 应用场景及功能实现的搭建案例",
+  "pages": ["submit_application_template","translate-subtitle-using-gpt","multi_turn_translation_bot","english_essay_correction_bot","fixingEvidence","lab_appointment","dalle3","google_search","feishu_webhook"]
+}

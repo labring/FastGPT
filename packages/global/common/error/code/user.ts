@@ -1,4 +1,4 @@
-import { ErrType } from '../errorCode';
+import { type ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
 /* team: 503000 */
 export enum UserErrEnum {
@@ -6,7 +6,6 @@ export enum UserErrEnum {
   userExist = 'userExist',
   unAuthRole = 'unAuthRole',
   account_psw_error = 'account_psw_error',
-  balanceNotEnough = 'balanceNotEnough',
   unAuthSso = 'unAuthSso'
 }
 const errList = [
@@ -21,10 +20,6 @@ const errList = [
   {
     statusText: UserErrEnum.account_psw_error,
     message: i18nT('common:code_error.account_error')
-  },
-  {
-    statusText: UserErrEnum.balanceNotEnough,
-    message: i18nT('common:code_error.user_error.balance_not_enough')
   },
   {
     statusText: UserErrEnum.unAuthSso,

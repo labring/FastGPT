@@ -1,6 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
-import { TTSBufferSchemaType } from './type.d';
+import { Schema, getMongoModel } from '../../../common/mongo';
+import { type TTSBufferSchemaType } from './type.d';
 
 export const collectionName = 'buffer_tts';
 

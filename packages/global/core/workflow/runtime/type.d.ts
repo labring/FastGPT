@@ -1,27 +1,36 @@
-import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import {
+import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
+import type {
   ChatItemType,
-  UserChatItemValueItemType,
   ToolRunResponseItemType,
-  NodeOutputItemType,
-  AIChatItemValueItemType
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
 } from '../../chat/type';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
-import { StoreNodeItemType } from '../type/node';
-import { DispatchNodeResponseKeyEnum } from './constants';
-import { StoreEdgeItemType } from '../type/edge';
-import { NodeInputKeyEnum } from '../constants';
-import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
-import { NextApiResponse } from 'next';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
+import type { NodeToolConfigType, StoreNodeItemType } from '../type/node';
+import type { DispatchNodeResponseKeyEnum } from './constants';
+import type { StoreEdgeItemType } from '../type/edge';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
+import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
+import type { NextApiResponse } from 'next';
 import { UserModelSchema } from '../../../support/user/type';
-import { AppDetailType, AppSchema } from '../../app/type';
-import { RuntimeNodeItemType } from '../runtime/type';
-import { RuntimeEdgeItemType } from './edge';
-import { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import type { AppSchema } from '../../app/type';
+import { AppDetailType } from '../../app/type';
+import type { RuntimeNodeItemType } from '../runtime/type';
+import type { RuntimeEdgeItemType } from './edge';
+import type { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
-import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
-import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
-import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
+import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
+import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
+import type { OpenaiAccountType } from '../../../support/user/team/type';
+import { LafAccountType } from '../../../support/user/team/type';
+import type { CompletionFinishReason } from '../../ai/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
+import type { SearchDataResponseItemType } from '../../dataset/type';
+import type { localeType } from '../../../common/i18n/type';
+import { type UserChatItemValueItemType } from '../../chat/type';
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
@@ -31,6 +40,7 @@ export type ExternalProviderType = {
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  lang?: localeType;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   timezone: string;
@@ -40,8 +50,14 @@ export type ChatDispatchProps = {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
     teamId: string;
     tmbId: string; // App tmbId
+    name: string;
+    isChildApp?: boolean;
   };
   runningUserInfo: {
+    username: string;
+    teamName: string;
+    memberName: string;
+    contact: string;
     teamId: string;
     tmbId: string;
   };
@@ -53,11 +69,19 @@ export type ChatDispatchProps = {
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
+  lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
+  retainDatasetCite?: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
-  workflowDispatchDeep?: number;
+  version?: 'v1' | 'v2';
+
+  workflowDispatchDeep: number;
+
+  responseAllData?: boolean;
+  responseDetail?: boolean;
+  usageId?: string;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
@@ -65,6 +89,8 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+
+  mcpClientMemory: Record<string, MCPClient>; // key: url
 };
 
 export type SystemVariablesType = {
@@ -80,17 +106,24 @@ export type SystemVariablesType = {
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
   name: StoreNodeItemType['name'];
-  avatar: StoreNodeItemType['avatar'];
+  avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
+  toolDescription?: StoreNodeItemType['toolDescription'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
+  version?: string;
 
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string; // workflow id / plugin id
-  version: string;
+
+  // Tool
+  toolConfig?: StoreNodeItemType['toolConfig'];
+
+  // catch error
+  catchError?: boolean;
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {
@@ -103,7 +136,12 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
-  error?: Record<string, any>;
+
+  // Client will toast
+  error?: Record<string, any> | string;
+  // Just show
+  errorText?: string;
+
   customInputs?: Record<string, any>;
   customOutputs?: Record<string, any>;
   nodeInputs?: Record<string, any>;
@@ -128,14 +166,18 @@ export type DispatchNodeResponseType = {
     obj: `${ChatRoleEnum}`;
     value: string;
   }[]; // completion context array. history will slice
+  finishReason?: CompletionFinishReason;
 
   // dataset search
+  embeddingModel?: string;
+  embeddingTokens?: number;
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
   embeddingWeight?: number;
   rerankModel?: string;
   rerankWeight?: number;
+  reRankInputTokens?: number;
   searchUsingReRank?: boolean;
   queryExtensionResult?: {
     model: string;
@@ -174,7 +216,6 @@ export type DispatchNodeResponseType = {
   ifElseResult?: string;
 
   // tool
-  toolCallTokens?: number;
   toolCallInputTokens?: number;
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
@@ -211,13 +252,17 @@ export type DispatchNodeResponseType = {
   // tool params
   toolParamsResult?: Record<string, any>;
 
+  toolRes?: any;
+
   // abandon
   extensionModel?: string;
   extensionResult?: string;
   extensionTokens?: number;
 };
 
-export type DispatchNodeResultType<T = {}> = {
+export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]?: string }> = {
+  [DispatchNodeResponseKeyEnum.answerText]?: string;
+  [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
@@ -227,7 +272,12 @@ export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
-} & T;
+  [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
+
+  data?: T;
+  error?: ERR;
+};
 
 /* Single node props */
 export type AIChatNodeProps = {

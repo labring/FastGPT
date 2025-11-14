@@ -1,20 +1,25 @@
-import {
+import type {
   PushDatasetDataChunkProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
-import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import {
+import type {
+  APIFileServer,
+  FeishuServer,
+  YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset/type';
+import type {
   DatasetSearchModeEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
   DatasetSourceReadTypeEnum,
-  DatasetTypeEnum,
   ImportDataSourceEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import {
-  DatasetDataIndexItemType,
-  SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 /* ================= dataset ===================== */
@@ -27,9 +32,7 @@ export type CreateDatasetParams = {
   vectorModel?: string;
   agentModel?: string;
   vlmModel?: string;
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
+  apiDatasetServer?: ApiDatasetServerType;
 };
 
 export type RebuildEmbeddingProps = {
@@ -46,15 +49,6 @@ export type CreateCollectionResponse = Promise<{
 /* ================= data ===================== */
 export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
   collectionId: string;
-};
-
-export type GetTrainingQueueProps = {
-  vectorModel: string;
-  agentModel: string;
-};
-export type GetTrainingQueueResponse = {
-  vectorTrainingCount: number;
-  agentTrainingCount: number;
 };
 
 /* -------------- search ---------------- */

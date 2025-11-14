@@ -1,29 +1,33 @@
 import type { NextApiResponse } from 'next';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { InitDateResponse } from '@/global/common/api/systemRes';
-import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type {
+  AiproxyMapProviderType,
+  I18nStringStrictType
+} from '@fastgpt/global/sdk/fastgpt-plugin';
+
+export type InitDateResponse = {
+  bufferId?: string;
+
+  feConfigs?: FastGPTFeConfigsType;
+  subPlans?: SubPlanType;
+  systemVersion?: string;
+
+  activeModelList?: SystemModelItemType[];
+  defaultModels?: SystemDefaultModelType;
+  modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
+  aiproxyIdMap?: AiproxyMapProviderType;
+};
 
 async function handler(
   req: ApiRequestProps<{}, { bufferId?: string }>,
   res: NextApiResponse
 ): Promise<InitDateResponse> {
   const { bufferId } = req.query;
-
-  const activeModelList = global.systemActiveModelList.map((model) => ({
-    ...model,
-    customCQPrompt: undefined,
-    customExtractPrompt: undefined,
-    defaultSystemChatPrompt: undefined,
-    fieldMap: undefined,
-    defaultConfig: undefined,
-    weight: undefined,
-    dbConfig: undefined,
-    queryConfig: undefined,
-    requestUrl: undefined,
-    requestAuth: undefined
-  })) as SystemModelItemType[];
 
   try {
     await authCert({ req, authToken: true });
@@ -40,8 +44,10 @@ async function handler(
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
-      activeModelList,
-      defaultModels: global.systemDefaultModel
+      activeModelList: global.systemActiveDesensitizedModels,
+      defaultModels: global.systemDefaultModel,
+      modelProviders: global.ModelProviderRawCache,
+      aiproxyIdMap: global.aiproxyIdMapCache
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -49,20 +55,26 @@ async function handler(
       return {
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
-        activeModelList
+        modelProviders: global.ModelProviderRawCache,
+        aiproxyIdMap: global.aiproxyIdMapCache,
+        activeModelList: global.systemActiveDesensitizedModels
       };
     }
 
     const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
-        bufferId: unAuthBufferId
+        bufferId: unAuthBufferId,
+        modelProviders: global.ModelProviderRawCache,
+        aiproxyIdMap: global.aiproxyIdMapCache
       };
     }
 
     return {
       bufferId: unAuthBufferId,
-      feConfigs: global.feConfigs
+      feConfigs: global.feConfigs,
+      modelProviders: global.ModelProviderRawCache,
+      aiproxyIdMap: global.aiproxyIdMapCache
     };
   }
 }

@@ -3,9 +3,10 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 
 export type getResDataQuery = OutLinkChatAuthProps & {
   chatId?: string;
@@ -15,7 +16,7 @@ export type getResDataQuery = OutLinkChatAuthProps & {
 
 export type getResDataBody = {};
 
-export type getResDataResponse = ChatHistoryItemResType[] | {};
+export type getResDataResponse = ChatHistoryItemResType[] | [];
 
 async function handler(
   req: ApiRequestProps<getResDataBody, getResDataQuery>,
@@ -23,10 +24,10 @@ async function handler(
 ): Promise<getResDataResponse> {
   const { appId, chatId, dataId, shareId } = req.query;
   if (!appId || !chatId || !dataId) {
-    return {};
+    return [];
   }
 
-  const [{ responseDetail }, chatData] = await Promise.all([
+  const [{ responseDetail }, chatData, nodeResponses] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -39,19 +40,25 @@ async function handler(
         chatId,
         dataId
       },
-      'obj responseData'
-    ).lean()
+      'dataId obj responseData'
+    ).lean(),
+    (
+      await MongoChatItemResponse.find(
+        { appId, chatId, chatItemDataId: dataId },
+        { data: 1 }
+      ).lean()
+    ).map((item) => item.data)
   ]);
 
   if (chatData?.obj !== ChatRoleEnum.AI) {
-    return {};
+    return [];
   }
 
-  const flowResponses = chatData.responseData ?? {};
+  const flowResponses = chatData.responseData?.length ? chatData.responseData : nodeResponses;
   return req.query.shareId
     ? filterPublicNodeResponseData({
         responseDetail,
-        flowResponses: chatData.responseData
+        nodeRespones: flowResponses
       })
     : flowResponses;
 }

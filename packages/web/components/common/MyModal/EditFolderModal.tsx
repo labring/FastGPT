@@ -67,22 +67,22 @@ const EditFolderModal = ({
     <MyModal isOpen onClose={onClose} iconSrc="common/folderFill" title={typeMap.title}>
       <ModalBody>
         <Box>
-          <FormLabel mb={1}>{t('common:common.Input name')}</FormLabel>
+          <FormLabel mb={1}>{t('common:input_name')}</FormLabel>
           <Input
             {...register('name', { required: true })}
             bg={'myGray.50'}
             autoFocus
-            maxLength={20}
+            maxLength={100}
           />
         </Box>
         <Box mt={4}>
-          <FormLabel mb={1}>{t('common:common.Input folder description')}</FormLabel>
+          <FormLabel mb={1}>{t('common:folder_description')}</FormLabel>
           <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
         </Box>
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

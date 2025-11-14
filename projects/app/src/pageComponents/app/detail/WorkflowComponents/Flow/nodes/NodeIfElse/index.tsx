@@ -3,23 +3,23 @@ import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeProps, Position, useViewport } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type NodeProps, Position } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
-import { SourceHandle } from '../render/Handle';
+import { MySourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
-  const { zoom } = useViewport();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
   const ifElseList = useMemo(
@@ -95,7 +95,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box color={'black'} fontSize={'md'} ml={2}>
               {IfElseResultEnum.ELSE}
             </Box>
-            <SourceHandle
+            <MySourceHandle
               nodeId={nodeId}
               handleId={elseHandleId}
               position={Position.Right}
@@ -108,6 +108,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <Button
           variant={'whiteBase'}
           w={'full'}
+          leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
           onClick={() => {
             const ifElseListInput = inputs.find(
               (input) => input.key === NodeInputKeyEnum.ifElseList

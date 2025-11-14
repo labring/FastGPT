@@ -2,9 +2,12 @@ import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/co
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
+import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type Query = {
   id: string;
@@ -28,31 +31,17 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
+  const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
+
   return {
     ...dataset,
-    apiServer: dataset.apiServer
-      ? {
-          baseUrl: dataset.apiServer.baseUrl,
-          authorization: ''
-        }
-      : undefined,
-    yuqueServer: dataset.yuqueServer
-      ? {
-          userId: dataset.yuqueServer.userId,
-          token: ''
-        }
-      : undefined,
-    feishuServer: dataset.feishuServer
-      ? {
-          appId: dataset.feishuServer.appId,
-          appSecret: '',
-          folderToken: dataset.feishuServer.folderToken
-        }
-      : undefined,
+    status,
+    errorMsg,
     permission,
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: getVlmModel(dataset.vlmModel)
+    vlmModel: getVlmModel(dataset.vlmModel),
+    apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 }
 

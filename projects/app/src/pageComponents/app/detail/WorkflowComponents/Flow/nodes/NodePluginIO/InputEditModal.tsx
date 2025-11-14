@@ -9,7 +9,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from './InputTypeConfig';
 
@@ -25,7 +25,9 @@ export const defaultInput: FlowNodeInputItemType = {
   list: [{ label: '', value: '' }],
   maxFiles: 5,
   canSelectFile: true,
-  canSelectImg: true
+  canSelectImg: true,
+  canLocalUpload: true,
+  canUrlUpload: false
 };
 
 const FieldEditModal = ({
@@ -61,9 +63,9 @@ const FieldEditModal = ({
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
-            icon: 'core/workflow/inputType/jsonEditor',
-            label: t('common:core.workflow.inputType.JSON Editor'),
-            value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+            icon: 'core/workflow/inputType/password',
+            label: t('common:core.workflow.inputType.password'),
+            value: [FlowNodeInputTypeEnum.password],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
@@ -153,6 +155,7 @@ const FieldEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
+      console.log('data', data);
       data.label = data?.label?.trim();
 
       if (!data.label) {
@@ -212,6 +215,13 @@ const FieldEditModal = ({
 
       data.key = data.label;
 
+      // Remove undefined keys
+      Object.keys(data).forEach((key) => {
+        if (data[key as keyof FlowNodeInputItemType] === undefined) {
+          delete data[key as keyof FlowNodeInputItemType];
+        }
+      });
+
       if (action === 'confirm') {
         onSubmit(data);
         onClose();
@@ -219,12 +229,12 @@ const FieldEditModal = ({
         onSubmit(data);
         toast({
           status: 'success',
-          title: t('common:common.Add Success')
+          title: t('common:add_success')
         });
         reset(defaultInput);
       }
     },
-    [defaultValue.key, defaultValueType, isEdit, keys, onSubmit, t, toast, onClose, reset]
+    [defaultValue.key, keys, toast, t, defaultValueType, isEdit, onSubmit, onClose, reset]
   );
   const onSubmitError = useCallback(
     (e: Object) => {
@@ -296,6 +306,7 @@ const FieldEditModal = ({
                           }}
                           onClick={() => {
                             setValue('renderTypeList', item.value);
+                            setValue('defaultValue', '');
                           }}
                         >
                           <MyIcon

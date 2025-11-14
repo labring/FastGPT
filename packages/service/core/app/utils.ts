@@ -3,6 +3,13 @@ import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getChildAppPreviewNode } from './tool/controller';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { authAppByTmbId } from '../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -27,13 +34,91 @@ export async function listAppDatasetDataByTeamIdAndDatasetIds({
 export async function rewriteAppWorkflowToDetail({
   nodes,
   teamId,
-  isRoot
+  isRoot,
+  ownerTmbId,
+  lang
 }: {
   nodes: StoreNodeItemType[];
   teamId: string;
   isRoot: boolean;
+  ownerTmbId: string;
+  lang?: localeType;
 }) {
   const datasetIdSet = new Set<string>();
+
+  /* Add node(App Type) versionlabel and latest sign ==== */
+  await Promise.all(
+    nodes.map(async (node) => {
+      if (!node.pluginId) return;
+      const { source, pluginId } = splitCombineToolId(node.pluginId);
+
+      try {
+        const [preview] = await Promise.all([
+          getChildAppPreviewNode({
+            appId: node.pluginId,
+            versionId: node.version,
+            lang
+          }),
+          ...(source === AppToolSourceEnum.personal
+            ? [
+                authAppByTmbId({
+                  tmbId: ownerTmbId,
+                  appId: pluginId,
+                  per: ReadPermissionVal
+                })
+              ]
+            : [])
+        ]);
+
+        node.pluginData = {
+          name: preview.name,
+          avatar: preview.avatar,
+          status: preview.status,
+          diagram: preview.diagram,
+          userGuide: preview.userGuide,
+          courseUrl: preview.courseUrl
+        };
+        node.versionLabel = preview.versionLabel;
+        node.isLatestVersion = preview.isLatestVersion;
+        node.version = preview.version;
+
+        node.currentCost = preview.currentCost;
+        node.systemKeyCost = preview.systemKeyCost;
+        node.hasTokenFee = preview.hasTokenFee;
+        node.hasSystemSecret = preview.hasSystemSecret;
+        node.isFolder = preview.isFolder;
+
+        node.toolConfig = preview.toolConfig;
+        node.toolDescription = preview.toolDescription;
+
+        // Latest version
+        if (!node.version) {
+          const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
+          const outputsMap = new Map(node.outputs.map((item) => [item.key, item]));
+
+          node.inputs = preview.inputs.map((item) => {
+            const input = inputsMap.get(item.key);
+            return {
+              ...item,
+              value: input?.value,
+              selectedTypeIndex: input?.selectedTypeIndex
+            };
+          });
+          node.outputs = preview.outputs.map((item) => {
+            const output = outputsMap.get(item.key);
+            return {
+              ...item,
+              value: output?.value
+            };
+          });
+        }
+      } catch (error) {
+        node.pluginData = {
+          error: getErrText(error)
+        };
+      }
+    })
+  );
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {
@@ -119,31 +204,4 @@ export async function rewriteAppWorkflowToDetail({
   }
 
   return nodes;
-}
-
-export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[]) {
-  formatNodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-
-    node.inputs.forEach((input) => {
-      if (input.key === NodeInputKeyEnum.datasetSelectList) {
-        const val = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-        if (!val) {
-          input.value = [];
-        } else if (Array.isArray(val)) {
-          input.value = val
-            .map((dataset: { datasetId: string }) => ({
-              datasetId: dataset.datasetId
-            }))
-            .filter((item) => !!item.datasetId);
-        } else if (typeof val === 'object' && val !== null) {
-          input.value = [
-            {
-              datasetId: val.datasetId
-            }
-          ];
-        }
-      }
-    });
-  });
 }

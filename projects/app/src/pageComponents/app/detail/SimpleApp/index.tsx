@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 
 import Header from './Header';
-import Edit from './Edit';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
+import { type SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
+const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
@@ -79,7 +80,13 @@ const SimpleEdit = () => {
     if (past.length === 0) {
       const appForm = appWorkflow2Form({
         nodes: appDetail.modules,
-        chatConfig: appDetail.chatConfig
+        chatConfig: {
+          ...appDetail.chatConfig,
+          fileSelectConfig: appDetail.chatConfig.fileSelectConfig || {
+            ...defaultAppSelectFileConfig,
+            canSelectFile: true
+          }
+        }
       });
       saveSnapshot({
         appForm,

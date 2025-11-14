@@ -7,6 +7,11 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 const baseUrl = process.env.AIPROXY_API_ENDPOINT;
 const token = process.env.AIPROXY_API_TOKEN;
 
+// 特殊路径映射，标记需要在末尾保留斜杠的路径
+const endPathMap: Record<string, boolean> = {
+  'api/dashboardv2': true
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await authSystemAdmin({ req });
@@ -22,9 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const queryStr = new URLSearchParams(query).toString();
-    const requestPath = queryStr
-      ? `/${path?.join('/')}?${new URLSearchParams(query).toString()}`
-      : `/${path?.join('/')}`;
+    // Determine whether the base path requires a trailing slash.
+    const basePath = `/${path?.join('/')}${endPathMap[path?.join('/')] ? '/' : ''}`;
+    const requestPath = queryStr ? `${basePath}?${queryStr}` : basePath;
 
     const parsedUrl = new URL(baseUrl);
     delete req.headers?.cookie;

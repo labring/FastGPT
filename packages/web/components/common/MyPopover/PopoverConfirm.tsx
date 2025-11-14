@@ -7,19 +7,20 @@ import {
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
-  PlacementWithLogical,
+  type PlacementWithLogical,
   HStack,
   Box,
   Button,
-  PopoverArrow
+  PopoverArrow,
+  Portal
 } from '@chakra-ui/react';
 
 const PopoverConfirm = ({
   content,
-  showCancel,
+  showCancel = true,
   type,
   Trigger,
-  placement = 'bottom-start',
+  placement = 'auto',
   offset,
   onConfirm,
   confirmText,
@@ -50,7 +51,7 @@ const PopoverConfirm = ({
     };
     if (type && map[type]) return map[type];
     return map.info;
-  }, [type, t]);
+  }, [type]);
 
   const firstFieldRef = React.useRef(null);
   const { onOpen, onClose, isOpen } = useDisclosure();
@@ -67,13 +68,15 @@ const PopoverConfirm = ({
       onClose={onClose}
       placement={placement}
       offset={offset}
-      closeOnBlur={false}
+      closeOnBlur={true}
       trigger={'click'}
       openDelay={100}
       closeDelay={100}
       isLazy
-      lazyBehavior="keepMounted"
+      lazyBehavior="unmount"
       arrowSize={10}
+      strategy={'fixed'}
+      computePositionOnMount={true}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
       <PopoverContent p={4}>
@@ -81,16 +84,26 @@ const PopoverConfirm = ({
 
         <HStack alignItems={'flex-start'} color={'myGray.700'}>
           <MyIcon name={map.icon as any} w={'1.5rem'} />
-          <Box fontSize={'sm'}>{content}</Box>
+          <Box fontSize={'sm'} whiteSpace={'pre-wrap'}>
+            {content}
+          </Box>
         </HStack>
-        <HStack mt={1} justifyContent={'flex-end'}>
+        <HStack mt={2} justifyContent={'flex-end'}>
           {showCancel && (
             <Button variant={'whiteBase'} size="sm" onClick={onClose}>
-              {cancelText || t('common:common.Cancel')}
+              {cancelText || t('common:Cancel')}
             </Button>
           )}
-          <Button isLoading={loading} variant={map.variant} size="sm" onClick={onclickConfirm}>
-            {confirmText || t('common:common.Confirm')}
+          <Button
+            isLoading={loading}
+            variant={map.variant}
+            size="sm"
+            onClick={async (e) => {
+              e.stopPropagation();
+              await onclickConfirm();
+            }}
+          >
+            {confirmText || t('common:Confirm')}
           </Button>
         </HStack>
       </PopoverContent>

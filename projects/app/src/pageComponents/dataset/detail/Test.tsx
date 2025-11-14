@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, useDisclosure } from '@chakra-ui/react';
-import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
+import {
+  useSearchTestStore,
+  type SearchTestStoreItemType
+} from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -10,7 +13,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { SearchTestResponse } from '@/global/core/dataset/api';
+import { type SearchTestResponse } from '@/global/core/dataset/api';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
@@ -27,8 +30,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -71,7 +73,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
-        usingReRank: false,
+        usingReRank: true,
         rerankModel: defaultModels?.rerank?.model,
         rerankWeight: 0.5,
         limit: 5000,
@@ -105,7 +107,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         }
 
         const testItem: SearchTestStoreItemType = {
-          id: nanoid(),
+          id: getNanoid(),
           datasetId,
           text: getValues('inputText').trim(),
           time: new Date(),
@@ -119,12 +121,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         };
         pushDatasetTestItem(testItem);
         setDatasetTestItem(testItem);
-      },
-      onError(err) {
-        toast({
-          title: getErrText(err),
-          status: 'error'
-        });
       }
     }
   );
@@ -168,7 +164,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <MySelect<'text' | 'file'>
               size={'sm'}
-              w={'150px'}
               list={[
                 {
                   label: (
@@ -454,7 +449,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource />
+                <QuoteItem quoteItem={item} canViewSource canEditData />
               </Box>
             ))}
           </Box>

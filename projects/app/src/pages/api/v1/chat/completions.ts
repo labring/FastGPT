@@ -11,7 +11,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse,
   getLastInteractiveValue
@@ -20,7 +20,6 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
@@ -30,18 +29,20 @@ import {
   concatHistories,
   filterPublicNodeResponseData,
   getChatTitleFromChatMessage,
+  removeAIResponseCite,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
+import { getUserChatInfo } from '@fastgpt/service/support/user/team/utils';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppSchema } from '@fastgpt/global/core/app/type';
-import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
@@ -49,17 +50,17 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -75,14 +76,13 @@ export type Props = ChatCompletionCreateParams &
     responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
+    retainDatasetCite?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  timezone: string;
-  externalProvider: ExternalProviderType;
   app: AppSchema;
   responseDetail?: boolean;
   showNodeStatus?: boolean;
@@ -94,14 +94,6 @@ type AuthResponseType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.on('close', () => {
-    res.end();
-  });
-  res.on('error', () => {
-    console.log('error: ', 'request error');
-    res.end();
-  });
-
   let {
     chatId,
     appId,
@@ -115,6 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
+    retainDatasetCite = false,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
@@ -135,12 +128,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       API params: chatId + [Human]
       API params: [histories, Human]
     */
-    const chatMessages = GPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats({ messages });
 
     // Computed start hook params
     const startHookText = (() => {
       // Chat
-      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType | undefined;
+      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
       if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
 
       // plugin
@@ -156,8 +149,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const {
       teamId,
       tmbId,
-      timezone,
-      externalProvider,
       app,
       responseDetail,
       authType,
@@ -194,22 +185,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId
       });
     })();
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    retainDatasetCite = retainDatasetCite && !!responseDetail;
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
     if (isPlugin) {
       detail = true;
     } else {
       if (messages.length === 0) {
-        throw new Error('messages is empty');
+        throw new UserError('messages is empty');
       }
     }
 
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+        return serverGetWorkflowToolRunUserQuery({
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(app.modules),
           variables,
           files: variables.files
         });
@@ -230,7 +222,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId,
         offset: 0,
         limit,
-        field: `dataId obj value nodeOutputs`
+        field: `obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
@@ -246,16 +238,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
+    const interactive = getLastInteractiveValue(newHistories) || undefined;
 
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
-      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       // Plugin runtime does not need global variables(It has been injected into the pluginInputNode)
       variables = {};
     }
-    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
+    runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -266,35 +259,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start flow controller */
-    const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
+    const {
+      flowResponses,
+      flowUsages,
+      assistantResponses,
+      newVariables,
+      durationSeconds,
+      system_memories
+    } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           res,
+          lang: getLocale(req),
           requestOrigin: req.headers.origin,
           mode: 'chat',
-          timezone,
-          externalProvider,
 
+          usageSource: getUsageSourceByAuthType({ shareId, authType }),
           runningAppInfo: {
             id: String(app._id),
+            name: app.name,
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
-          runningUserInfo: {
-            teamId,
-            tmbId
-          },
+          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
           uid: String(outLinkUserId || tmbId),
 
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges, newHistories),
+          runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
           variables,
           query: removeEmptyUserInput(userQuestion.value),
+          lastInteractive: interactive,
           chatConfig,
           histories: newHistories,
           stream,
+          retainDatasetCite,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite
         });
@@ -318,49 +318,46 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
     const newTitle = isPlugin
-      ? variables.cTime ?? getSystemTime(timezone)
+      ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      memories: system_memories
     };
 
     const saveChatId = chatId || getNanoid(24);
+    const params = {
+      chatId: saveChatId,
+      appId: app._id,
+      teamId,
+      tmbId: tmbId,
+      nodes,
+      appChatConfig: chatConfig,
+      variables: newVariables,
+      isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
+      newTitle,
+      shareId,
+      outLinkUid: outLinkUserId,
+      source,
+      sourceName: sourceName || '',
+      userContent: userQuestion,
+      aiContent: aiResponse,
+      metadata: {
+        originIp,
+        ...metadata
+      },
+      durationSeconds
+    };
     if (isInteractiveRequest) {
-      await updateInteractiveChat({
-        chatId: saveChatId,
-        appId: app._id,
-        userInteractiveVal,
-        aiResponse,
-        newVariables
-      });
+      await updateInteractiveChat(params);
     } else {
-      await saveChat({
-        chatId: saveChatId,
-        appId: app._id,
-        teamId,
-        tmbId: tmbId,
-        nodes,
-        appChatConfig: chatConfig,
-        variables: newVariables,
-        isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
-        newTitle,
-        shareId,
-        outLinkUid: outLinkUserId,
-        source,
-        sourceName: sourceName || '',
-        content: [userQuestion, aiResponse],
-        metadata: {
-          originIp,
-          ...metadata
-        }
-      });
+      await saveChat(params);
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
@@ -368,7 +365,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* select fe response field */
     const feResponseData = responseAllData
       ? flowResponses
-      : filterPublicNodeResponseData({ flowResponses, responseDetail });
+      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail });
 
     if (stream) {
       workflowResponseWrite({
@@ -407,17 +404,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         return assistantResponses;
       })();
+      const formatResponseContent = removeAIResponseCite(responseContent, retainDatasetCite);
       const error = flowResponses[flowResponses.length - 1]?.error;
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
         error,
-        id: chatId || '',
+        id: saveChatId,
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: responseContent },
+            message: { role: 'assistant', content: formatResponseContent },
             finish_reason: 'stop',
             index: 0
           }
@@ -425,16 +423,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    // add record
-    const { totalPoints } = createChatUsage({
-      appName: app.name,
-      appId: app._id,
-      teamId,
-      tmbId: tmbId,
-      source: getUsageSourceByAuthType({ shareId, authType }),
-      flowUsages
-    });
-
+    const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
     if (shareId) {
       pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
       addOutLinkUsage({
@@ -469,18 +458,8 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const {
-    teamId,
-    tmbId,
-    timezone,
-    externalProvider,
-    appId,
-    authType,
-    responseDetail,
-    showNodeStatus,
-    uid,
-    sourceName
-  } = await authOutLinkChatStart(data);
+  const { teamId, tmbId, appId, authType, responseDetail, showNodeStatus, uid, sourceName } =
+    await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {
@@ -498,8 +477,6 @@ const authShareChat = async ({
     teamId,
     tmbId,
     app,
-    timezone,
-    externalProvider,
     apikey: '',
     authType,
     responseAllData: false,
@@ -529,10 +506,7 @@ const authTeamSpaceChat = async ({
     return Promise.reject('app is empty');
   }
 
-  const [chat, { timezone, externalProvider }] = await Promise.all([
-    MongoChat.findOne({ appId, chatId }).lean(),
-    getUserChatInfoAndAuthTeamPoints(app.tmbId)
-  ]);
+  const chat = await MongoChat.findOne({ appId, chatId }).lean();
 
   if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
@@ -542,8 +516,6 @@ const authTeamSpaceChat = async ({
     teamId,
     tmbId: app.tmbId,
     app,
-    timezone,
-    externalProvider,
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
     responseAllData: false,
@@ -610,10 +582,7 @@ const authHeaderRequest = async ({
     }
   })();
 
-  const [{ timezone, externalProvider }, chat] = await Promise.all([
-    getUserChatInfoAndAuthTeamPoints(tmbId),
-    MongoChat.findOne({ appId, chatId }).lean()
-  ]);
+  const chat = await MongoChat.findOne({ appId, chatId }).lean();
 
   if (
     chat &&
@@ -627,8 +596,6 @@ const authHeaderRequest = async ({
   return {
     teamId,
     tmbId,
-    timezone,
-    externalProvider,
     app,
     apikey,
     authType,

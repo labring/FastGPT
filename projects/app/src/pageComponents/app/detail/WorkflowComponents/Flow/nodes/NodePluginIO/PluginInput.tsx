@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { NodeProps } from 'reactflow';
+import React, { useCallback, useMemo, useState } from 'react';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { Box, Button, HStack } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import Container from '../../components/Container';
 import { useTranslation } from 'next-i18next';
@@ -18,11 +18,11 @@ import {
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import VariableTable from './VariableTable';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -36,55 +36,58 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
-  const onSubmit = (data: FlowNodeInputItemType) => {
-    if (!editField) return;
+  const onSubmit = useCallback(
+    (data: FlowNodeInputItemType) => {
+      if (!editField) return;
 
-    if (editField?.key) {
-      const output = outputs.find((output) => output.key === editField.key);
-      const newOutput: FlowNodeOutputItemType = {
-        ...(output as FlowNodeOutputItemType),
-        valueType: data.valueType,
-        key: data.key,
-        label: data.label
-      };
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: editField.key,
-        value: data
-      });
-      onChangeNode({
-        nodeId,
-        type: 'replaceOutput',
-        key: editField.key,
-        value: newOutput
-      });
-    } else {
-      const newOutput: FlowNodeOutputItemType = {
-        id: data.key,
-        valueType: data.valueType,
-        key: data.key,
-        label: data.label,
-        type: FlowNodeOutputTypeEnum.hidden
-      };
+      if (editField?.key) {
+        const output = outputs.find((output) => output.key === editField.key);
+        const newOutput: FlowNodeOutputItemType = {
+          ...(output as FlowNodeOutputItemType),
+          valueType: data.valueType,
+          key: data.key,
+          label: data.label
+        };
+        onChangeNode({
+          nodeId,
+          type: 'replaceInput',
+          key: editField.key,
+          value: data
+        });
+        onChangeNode({
+          nodeId,
+          type: 'replaceOutput',
+          key: editField.key,
+          value: newOutput
+        });
+      } else {
+        const newOutput: FlowNodeOutputItemType = {
+          id: data.key,
+          valueType: data.valueType,
+          key: data.key,
+          label: data.label,
+          type: FlowNodeOutputTypeEnum.hidden
+        };
 
-      // add_new_input
-      onChangeNode({
-        nodeId,
-        type: 'addInput',
-        value: data
-      });
-      onChangeNode({
-        nodeId,
-        type: 'addOutput',
-        value: newOutput
-      });
-    }
-  };
+        // add_new_input
+        onChangeNode({
+          nodeId,
+          type: 'addInput',
+          value: data
+        });
+        onChangeNode({
+          nodeId,
+          type: 'addOutput',
+          value: newOutput
+        });
+      }
+    },
+    [editField, nodeId, onChangeNode, outputs]
+  );
 
   const Render = useMemo(() => {
     return (
@@ -108,7 +111,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               size={'sm'}
               onClick={() => setEditField(defaultInput)}
             >
-              {t('common:common.Add New')}
+              {t('common:add_new')}
             </Button>
           </HStack>
           <VariableTable
@@ -143,7 +146,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
         {outputs.length != inputs.length && (
           <Container>
-            <IOTitle text={t('common:common.Output')} />
+            <IOTitle text={t('common:Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
           </Container>
         )}

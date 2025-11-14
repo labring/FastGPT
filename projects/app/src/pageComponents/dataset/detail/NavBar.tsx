@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -7,8 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import ParentPaths from '@/components/common/ParentPaths';
+import FolderPath from '@/components/common/folder/Path';
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -24,8 +23,10 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
-  const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount, paths } =
-    useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, rebuildingCount, paths } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
 
   const tabList = [
     {
@@ -34,7 +35,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     },
     { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test },
     ...(datasetDetail.permission.hasManagePer && !isPc
-      ? [{ label: t('common:common.Config'), value: TabEnum.info }]
+      ? [{ label: t('common:Config'), value: TabEnum.info }]
       : [])
   ];
 
@@ -75,13 +76,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 fontSize={'sm'}
                 fontWeight={500}
                 onClick={() => {
-                  router.replace({
-                    query: {
-                      datasetId: router.query.datasetId,
-                      parentId: router.query.parentId,
-                      currentTab: TabEnum.collectionCard
-                    }
-                  });
+                  router.back();
                 }}
               >
                 <IconButton
@@ -104,7 +99,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </>
           ) : (
             <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
-              <ParentPaths
+              <FolderPath
                 paths={paths}
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);
@@ -137,68 +132,6 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               }}
             />
           </Box>
-
-          {/* 训练情况hover弹窗 */}
-          <MyPopover
-            placement="bottom-end"
-            visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-            trigger="hover"
-            Trigger={
-              <Flex
-                visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-                alignItems={'center'}
-                justifyContent={'center'}
-                p={2}
-                borderRadius={'md'}
-                _hover={{
-                  bg: 'myGray.05'
-                }}
-              >
-                <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
-                <Box color={'myGray.600'} ml={1.5} fontWeight={500} userSelect={'none'}>
-                  {t('common:core.dataset.training.tag')}
-                </Box>
-              </Flex>
-            }
-          >
-            {({ onClose }) => (
-              <Box p={6}>
-                {rebuildingCount > 0 && (
-                  <Box mb={3}>
-                    <Box fontSize={'sm'}>
-                      {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
-                    </Box>
-                  </Box>
-                )}
-                <Box mb={3}>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('common:core.dataset.training.Agent queue')}({agentTrainingMap.tip})
-                  </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={agentTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
-                </Box>
-                <Box>
-                  <Box fontSize={'sm'} pb={1}>
-                    {t('common:core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
-                  </Box>
-                  <Progress
-                    value={100}
-                    size={'xs'}
-                    colorScheme={vectorTrainingMap.colorSchema}
-                    borderRadius={'md'}
-                    isAnimated
-                    hasStripe
-                  />
-                </Box>
-              </Box>
-            )}
-          </MyPopover>
         </Flex>
       ) : (
         <Box mb={2}>

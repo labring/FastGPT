@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Button, useTheme } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
@@ -7,7 +7,6 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -25,25 +24,40 @@ import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
-import { useMemoizedFn } from 'ahooks';
+import { useBoolean, useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import TrainingStates from './CollectionCard/TrainingStates';
+import { getTextValidLength } from '@fastgpt/global/common/string/utils';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import dynamic from 'next/dynamic';
+
+const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
+  ssr: false
+});
 
 const DataCard = () => {
-  const theme = useTheme();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { collectionId = '', datasetId } = router.query as {
+  const { feConfigs } = useSystemStore();
+
+  const { collectionId = '' } = router.query as {
     collectionId: string;
     datasetId: string;
   };
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const { feConfigs } = useSystemStore();
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
+  const [errorModalId, setErrorModalId] = useState('');
   const { toast } = useToast();
 
   const scrollParams = useMemo(
@@ -72,43 +86,46 @@ const DataCard = () => {
 
   const [editDataId, setEditDataId] = useState<string>();
 
-  // get file info
-  const { data: collection } = useRequest2(() => getDatasetCollectionById(collectionId), {
-    refreshDeps: [collectionId],
-    manual: false,
-    onError: () => {
-      router.replace({
-        query: {
-          datasetId
-        }
-      });
+  // Get collection info
+  const { data: collection, runAsync: reloadCollection } = useRequest2(
+    () => getDatasetCollectionById(collectionId),
+    {
+      refreshDeps: [collectionId],
+      manual: false,
+      onError: () => {
+        router.replace({
+          query: {
+            datasetId
+          }
+        });
+      }
     }
-  });
+  );
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:dataset.Confirm to delete the data'),
-    type: 'delete'
-  });
-  const onDeleteOneData = useMemoizedFn((dataId: string) => {
-    openConfirm(async () => {
-      try {
-        await delOneDatasetDataById(dataId);
-        setDatasetDataList((prev) => {
-          return prev.filter((data) => data._id !== dataId);
-        });
-        toast({
-          title: t('common:common.Delete Success'),
-          status: 'success'
-        });
-      } catch (error) {
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
-      }
-    })();
+  const [
+    isInsertImagesModalOpen,
+    { setTrue: openInsertImagesModal, setFalse: closeInsertImagesModal }
+  ] = useBoolean();
+  const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
+
+  const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
+    try {
+      await delOneDatasetDataById(dataId);
+      setDatasetDataList((prev) => {
+        return prev.filter((data) => data._id !== dataId);
+      });
+      toast({
+        title: t('common:delete_success'),
+        status: 'success'
+      });
+    } catch (error) {
+      toast({
+        title: getErrText(error),
+        status: 'error'
+      });
+    }
   });
 
   return (
@@ -125,6 +142,7 @@ const DataCard = () => {
             >
               {collection?._id && (
                 <RawSourceBox
+                  collectionType={collection.type}
                   collectionId={collection._id}
                   {...getCollectionSourceData(collection)}
                   fontSize={['sm', 'md']}
@@ -137,26 +155,28 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {datasetDetail.type !== 'websiteDataset' && !!collection?.chunkSize && (
-            <Button
-              ml={2}
-              variant={'whitePrimary'}
-              size={['sm', 'md']}
-              onClick={() => {
-                router.push({
-                  query: {
-                    datasetId,
-                    currentTab: TabEnum.import,
-                    source: ImportDataSourceEnum.reTraining,
-                    collectionId
-                  }
-                });
-              }}
-            >
-              {t('dataset:retain_collection')}
-            </Button>
-          )}
-          {canWrite && (
+          {datasetDetail.type !== 'websiteDataset' &&
+            !!collection?.chunkSize &&
+            collection.permission?.hasWritePer && (
+              <Button
+                ml={2}
+                variant={'whitePrimary'}
+                size={['sm', 'md']}
+                onClick={() => {
+                  router.push({
+                    query: {
+                      datasetId,
+                      currentTab: TabEnum.import,
+                      source: ImportDataSourceEnum.reTraining,
+                      collectionId
+                    }
+                  });
+                }}
+              >
+                {t('dataset:retain_collection')}
+              </Button>
+            )}
+          {canWrite && !isImageCollection && (
             <Button
               ml={2}
               variant={'whitePrimary'}
@@ -169,12 +189,23 @@ const DataCard = () => {
               {t('common:dataset.Insert Data')}
             </Button>
           )}
+          {canWrite && isImageCollection && (
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              isDisabled={!collection}
+              onClick={openInsertImagesModal}
+            >
+              {t('dataset:insert_images')}
+            </Button>
+          )}
         </Flex>
         <Box justifyContent={'center'} px={6} pos={'relative'} w={'100%'}>
           <MyDivider my={'17px'} w={'100%'} />
         </Box>
         <Flex alignItems={'center'} px={6} pb={4}>
-          <Flex align={'center'} color={'myGray.500'}>
+          <Flex alignItems={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
               {t('dataset:data_amount', {
@@ -182,6 +213,25 @@ const DataCard = () => {
                 indexAmount: collection?.indexAmount ?? '-'
               })}
             </Box>
+            {!!collection?.errorCount && (
+              <MyTag
+                colorSchema={'red'}
+                type={'fill'}
+                cursor={'pointer'}
+                rounded={'full'}
+                ml={2}
+                onClick={() => {
+                  setErrorModalId(collection._id);
+                }}
+              >
+                <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                  {t('dataset:data_error_amount', {
+                    errorAmount: collection?.errorCount
+                  })}
+                  <MyIcon name={'common/maximize'} w={'11px'} />
+                </Flex>
+              </MyTag>
+            )}
           </Flex>
           <Box flex={1} mr={1} />
           <MyInput
@@ -215,7 +265,7 @@ const DataCard = () => {
                 userSelect={'none'}
                 boxShadow={'none'}
                 bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
-                border={theme.borders.sm}
+                border={'sm'}
                 position={'relative'}
                 overflow={'hidden'}
                 _hover={{
@@ -261,17 +311,35 @@ const DataCard = () => {
                 </Flex>
 
                 {/* Data content */}
-                <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  <Markdown source={item.q} isDisabled />
-                  {!!item.a && (
-                    <>
-                      <MyDivider />
-                      <Markdown source={item.a} isDisabled />
-                    </>
-                  )}
-                </Box>
+                {item.imagePreviewUrl ? (
+                  <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
+                    <Box flex="1 0 0">
+                      <MyImage
+                        src={item.imagePreviewUrl}
+                        alt={''}
+                        w={'100%'}
+                        h="100%"
+                        maxH={'300px'}
+                        objectFit="contain"
+                      />
+                    </Box>
+                    <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
+                      <Markdown source={item.q} isDisabled />
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box wordBreak={'break-all'} fontSize={'sm'}>
+                    <Markdown source={item.q} isDisabled />
+                    {!!item.a && (
+                      <>
+                        <MyDivider />
+                        <Markdown source={item.a} isDisabled />
+                      </>
+                    )}
+                  </Box>
+                )}
 
-                {/* Mask */}
+                {/* Footer */}
                 <Flex
                   className="footer"
                   position={'absolute'}
@@ -296,31 +364,43 @@ const DataCard = () => {
                     py={1}
                     mr={2}
                   >
-                    <MyIcon
-                      bg={'white'}
-                      color={'myGray.600'}
-                      borderRadius={'sm'}
-                      border={'1px'}
-                      borderColor={'myGray.200'}
-                      name="common/text/t"
-                      w={'14px'}
-                      mr={1}
-                    />
-                    {item.q.length + (item.a?.length || 0)}
+                    {item.imageSize ? (
+                      <>{formatFileSize(item.imageSize)}</>
+                    ) : (
+                      <>
+                        <MyIcon
+                          bg={'white'}
+                          color={'myGray.600'}
+                          borderRadius={'sm'}
+                          border={'1px'}
+                          borderColor={'myGray.200'}
+                          name="common/text/t"
+                          w={'14px'}
+                          mr={1}
+                        />
+                        {getTextValidLength((item?.q || '') + (item?.a || ''))}
+                      </>
+                    )}
                   </Flex>
                   {canWrite && (
-                    <IconButton
-                      display={'flex'}
-                      p={1}
-                      boxShadow={'1'}
-                      icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
-                      variant={'whiteDanger'}
-                      size={'xsSquare'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteOneData(item._id);
-                      }}
-                      aria-label={''}
+                    <PopoverConfirm
+                      Trigger={
+                        <IconButton
+                          display={'flex'}
+                          p={1}
+                          boxShadow={'1'}
+                          icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                          variant={'whiteDanger'}
+                          size={'xsSquare'}
+                          aria-label={''}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      }
+                      content={t('common:dataset.Confirm to delete the data')}
+                      type="delete"
+                      onConfirm={() => onDeleteOneData(item._id)}
                     />
                   )}
                 </Flex>
@@ -335,7 +415,7 @@ const DataCard = () => {
           collectionId={collection._id}
           dataId={editDataId}
           onClose={() => setEditDataId(undefined)}
-          onSuccess={(data) => {
+          onSuccess={(data: any) => {
             if (editDataId === '') {
               refreshList();
               return;
@@ -354,7 +434,21 @@ const DataCard = () => {
           }}
         />
       )}
-      <ConfirmModal />
+      {errorModalId && (
+        <TrainingStates
+          datasetId={datasetId}
+          defaultTab={'errors'}
+          collectionId={errorModalId}
+          onClose={() => {
+            setErrorModalId('');
+            refreshList();
+            reloadCollection();
+          }}
+        />
+      )}
+      {isInsertImagesModalOpen && (
+        <InsertImagesModal collectionId={collectionId} onClose={closeInsertImagesModal} />
+      )}
     </MyBox>
   );
 };

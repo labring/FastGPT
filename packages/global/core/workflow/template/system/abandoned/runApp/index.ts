@@ -4,7 +4,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../../node/constant';
-import { FlowNodeTemplateType } from '../../../../type/node';
+import { type FlowNodeTemplateType } from '../../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -12,20 +12,18 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../../../constants';
 import { Input_Template_History, Input_Template_UserChatInput } from '../../../input';
-import { getHandleConfig } from '../../../utils';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 
 export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.runApp,
-  sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, true, true, true),
+  showSourceHandle: true,
+  showTargetHandle: true,
   avatar: 'core/workflow/template/runApp',
   name: i18nT('workflow:application_call'),
   intro: i18nT('workflow:select_another_application_to_call'),
   showStatus: true,
-  version: '481',
   isTool: true,
   inputs: [
     {

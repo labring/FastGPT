@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import MyMenu, { MenuItemType } from '../../common/MyMenu';
+import MyMenu, { type MenuItemType } from '../../common/MyMenu';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum

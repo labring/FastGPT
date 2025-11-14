@@ -1,12 +1,14 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
-
 import InputLabel from './Label';
 import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
+import CommonInputForm from './templates/CommonInputForm';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -22,20 +24,8 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.fileSelect]: {
     Component: dynamic(() => import('./templates/Reference'))
   },
-  [FlowNodeInputTypeEnum.select]: {
-    Component: dynamic(() => import('./templates/Select'))
-  },
-  [FlowNodeInputTypeEnum.numberInput]: {
-    Component: dynamic(() => import('./templates/NumberInput'))
-  },
-  [FlowNodeInputTypeEnum.switch]: {
-    Component: dynamic(() => import('./templates/Switch'))
-  },
   [FlowNodeInputTypeEnum.selectApp]: {
     Component: dynamic(() => import('./templates/SelectApp'))
-  },
-  [FlowNodeInputTypeEnum.selectLLMModel]: {
-    Component: dynamic(() => import('./templates/SelectLLMModel'))
   },
   [FlowNodeInputTypeEnum.settingLLMModel]: {
     Component: dynamic(() => import('./templates/SettingLLMModel'))
@@ -54,20 +44,45 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.addInputParam]: {
     Component: dynamic(() => import('./templates/DynamicInputs/index'))
   },
-  [FlowNodeInputTypeEnum.JSONEditor]: {
-    Component: dynamic(() => import('./templates/JsonEditor'))
-  },
   [FlowNodeInputTypeEnum.settingDatasetQuotePrompt]: {
     Component: dynamic(() => import('./templates/SettingQuotePrompt'))
   },
+
   [FlowNodeInputTypeEnum.input]: {
-    Component: dynamic(() => import('./templates/TextInput'))
+    Component: CommonInputForm
   },
   [FlowNodeInputTypeEnum.textarea]: {
-    Component: dynamic(() => import('./templates/Textarea')),
+    Component: CommonInputForm,
     LableRightComponent: dynamic(() =>
-      import('./templates/Textarea').then((mod) => mod.TextareaRightComponent)
+      Promise.resolve(() => <VariableTip transform={'translateY(2px)'} />)
     )
+  },
+  [FlowNodeInputTypeEnum.numberInput]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.switch]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.select]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.multipleSelect]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.JSONEditor]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.selectLLMModel]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.timePointSelect]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.timeRangeSelect]: {
+    Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.password]: {
+    Component: CommonInputForm
   },
 
   [FlowNodeInputTypeEnum.customVariable]: undefined,
@@ -86,14 +101,14 @@ type Props = {
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
 
-  const filterProInputs = useMemo(() => {
+  const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
       if (input.isPro && !feConfigs?.isPlus) return false;
       return true;
     });
   }, [feConfigs?.isPlus, flowInputList]);
 
-  const filterInputs = useMemo(() => {
+  const filterInputs = useMemoEnhance(() => {
     return filterProInputs.filter((input) => {
       const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
       const isDynamic = !!input.canEdit;

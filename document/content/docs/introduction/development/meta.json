@@ -1,0 +1,20 @@
+{
+  "title": "FastGPT 社区版",
+  "description": "FastGPT 社区版",
+  "icon": "🔧",
+  "pages": [
+    "quick-start",
+    "sealos",
+    "intro",
+    "docker",
+    "configuration",
+    "faq",
+    "signoz",
+    "modelConfig",
+    "openapi",
+    "custom-models",
+    "proxy",
+    "migration",
+    "design"
+  ]
+}

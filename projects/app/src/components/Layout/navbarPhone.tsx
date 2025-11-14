@@ -5,18 +5,21 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
+  const { userInfo } = useUserStore();
   const { t } = useTranslation();
-  const { lastChatAppId } = useChatStore();
+  const { lastChatAppId, lastPane } = useChatStore();
+
   const navbarList = useMemo(
     () => [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}`,
+        link: `/chat?appId=${lastChatAppId}&pane=${lastPane}`,
         activeLink: ['/chat'],
         unread: 0
       },
@@ -24,8 +27,17 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail'],
+        link: `/dashboard/agent`,
+        activeLink: [
+          '/dashboard/agent',
+          '/app/detail',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
+          '/dashboard/templateMarket',
+          '/dashboard/mcpServer',
+          '/dashboard/evaluation',
+          '/dashboard/evaluation/create'
+        ],
         unread: 0
       },
       {
@@ -34,14 +46,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail'],
-        unread: 0
-      },
-      {
-        label: t('common:navbar.Toolkit'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: `/toolkit`,
-        activeLink: ['/toolkit'],
         unread: 0
       },
       {
@@ -61,9 +65,20 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/account/model'
         ],
         unread
-      }
+      },
+      ...(userInfo?.username === 'root'
+        ? [
+            {
+              label: t('common:navbar.Config'),
+              icon: 'support/config/configLight',
+              activeIcon: 'support/config/configFill',
+              link: '/config/tool',
+              activeLink: ['/config/tool', '/config/tool/marketplace']
+            }
+          ]
+        : [])
     ],
-    [t, lastChatAppId, unread]
+    [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
   return (
@@ -97,6 +112,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                 })}
             onClick={() => {
               if (item.link === router.asPath) return;
+              if (item.link.startsWith('/chat')) {
+                window.open(item.link, '_blank');
+                return;
+              }
               router.push(item.link);
             }}
           >

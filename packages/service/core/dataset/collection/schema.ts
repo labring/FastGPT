@@ -1,11 +1,8 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import {
-  DatasetCollectionTypeMap,
-  DatasetCollectionDataProcessModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { DatasetCollectionName } from '../schema';
+const { Schema } = connectionMongo;
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { ChunkSettings, DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -81,25 +78,13 @@ const DatasetCollectionSchema = new Schema({
   },
 
   forbid: Boolean,
-  // next sync time
-  nextSyncTime: Date,
 
   // Parse settings
   customPdfParse: Boolean,
+  apiFileParentId: String,
 
   // Chunk settings
-  imageIndex: Boolean,
-  autoIndexes: Boolean,
-  trainingType: {
-    type: String,
-    enum: Object.values(DatasetCollectionDataProcessModeEnum)
-  },
-  chunkSize: {
-    type: Number,
-    required: true
-  },
-  chunkSplitter: String,
-  qaPrompt: String
+  ...ChunkSettings
 });
 
 DatasetCollectionSchema.virtual('dataset', {
@@ -126,16 +111,6 @@ try {
   // create time filter
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
 
-  // next sync time filter
-  DatasetCollectionSchema.index(
-    { type: 1, nextSyncTime: -1 },
-    {
-      partialFilterExpression: {
-        nextSyncTime: { $exists: true }
-      }
-    }
-  );
-
   // Get collection by external file id
   DatasetCollectionSchema.index(
     { datasetId: 1, externalFileId: 1 },
@@ -146,6 +121,12 @@ try {
       }
     }
   );
+
+  // Clear invalid image
+  DatasetCollectionSchema.index({
+    teamId: 1,
+    'metadata.relatedImgId': 1
+  });
 } catch (error) {
   console.log(error);
 }

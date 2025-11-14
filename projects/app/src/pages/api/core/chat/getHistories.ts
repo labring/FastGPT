@@ -4,9 +4,9 @@ import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { GetHistoriesProps } from '@/global/core/chat/api';
+import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type GetHistoriesProps } from '@/global/core/chat/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 
@@ -20,7 +20,18 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   _res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const { appId, shareId, outLinkUid, teamId, teamToken, source } = req.body;
+  const {
+    appId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    source,
+    startCreateTime,
+    endCreateTime,
+    startUpdateTime,
+    endUpdateTime
+  } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const match = await (async () => {
@@ -49,7 +60,7 @@ async function handler(
       return {
         tmbId,
         appId,
-        source
+        ...(source && { source })
       };
     }
   })();
@@ -61,13 +72,29 @@ async function handler(
     };
   }
 
+  const timeMatch: Record<string, any> = {};
+  if (startCreateTime || endCreateTime) {
+    timeMatch.createTime = {
+      ...(startCreateTime && { $gte: new Date(startCreateTime) }),
+      ...(endCreateTime && { $lte: new Date(endCreateTime) })
+    };
+  }
+  if (startUpdateTime || endUpdateTime) {
+    timeMatch.updateTime = {
+      ...(startUpdateTime && { $gte: new Date(startUpdateTime) }),
+      ...(endUpdateTime && { $lte: new Date(endUpdateTime) })
+    };
+  }
+
+  const mergeMatch = { ...match, ...timeMatch };
+
   const [data, total] = await Promise.all([
-    await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
+    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime')
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
-    MongoChat.countDocuments(match)
+    MongoChat.countDocuments(mergeMatch)
   ]);
 
   return {

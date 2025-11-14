@@ -1,6 +1,6 @@
 import React from 'react';
 import { PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
-import { Box, StackProps, HStack } from '@chakra-ui/react';
+import { Box, type StackProps, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 

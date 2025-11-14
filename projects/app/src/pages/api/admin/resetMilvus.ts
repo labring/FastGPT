@@ -1,14 +1,14 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MilvusCtrl } from '@fastgpt/service/common/vectorStore/milvus/class';
-import { DatasetVectorTableName } from '@fastgpt/service/common/vectorStore/constants';
+import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus/index';
+import { DatasetVectorTableName } from '@fastgpt/service/common/vectorDB/constants';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 

@@ -55,7 +55,7 @@ export const htmlTable2Md = (content: string): string => {
           tableData[rowIndex] = [];
         }
         let colIndex = 0;
-        const cells = row.match(/<td.*?>(.*?)<\/td>/g) || [];
+        const cells = row.match(/<td[^>]*\/>|<td[^>]*>.*?<\/td>/g) || [];
 
         cells.forEach((cell) => {
           while (tableData[rowIndex][colIndex]) {
@@ -63,8 +63,12 @@ export const htmlTable2Md = (content: string): string => {
           }
           const colspan = parseInt(cell.match(/colspan="(\d+)"/)?.[1] || '1');
           const rowspan = parseInt(cell.match(/rowspan="(\d+)"/)?.[1] || '1');
-          const content = cell.replace(/<td.*?>|<\/td>/g, '').trim();
-
+          let content = '';
+          if (cell.endsWith('/>')) {
+            content = '';
+          } else {
+            content = cell.replace(/<td[^>]*>|<\/td>/g, '').trim();
+          }
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {
               if (!tableData[rowIndex + i]) {
@@ -169,18 +173,20 @@ export const markdownProcess = async ({
 };
 
 export const matchMdImg = (text: string) => {
-  const base64Regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64[^)]+)\)/g;
+  // 优化后的正则:
+  // 1. 使用 [^\]]* 匹配 alt 文本(更精确)
+  // 2. 使用 [A-Za-z0-9+/=]+ 匹配 base64 数据(避免回溯)
+  // 3. 明确匹配 data:image/ 前缀
+  const base64Regex = /!\[([^\]]*)\]\((data:image\/([^;]+);base64,([A-Za-z0-9+/=]+))\)/g;
   const imageList: ImageType[] = [];
 
-  text = text.replace(base64Regex, (match, altText, base64Url) => {
+  text = text.replace(base64Regex, (_match, altText, _fullDataUrl, mime, base64Data) => {
     const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
-    const mime = base64Url.split(';')[0].split(':')[1];
-    const base64 = base64Url.split(',')[1];
 
     imageList.push({
       uuid,
-      base64,
-      mime
+      base64: base64Data,
+      mime: `image/${mime}`
     });
 
     // 保持原有的 alt 文本，只替换 base64 部分

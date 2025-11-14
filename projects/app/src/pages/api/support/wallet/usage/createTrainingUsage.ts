@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api.d';
+import { type CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api.d';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
-  const { billId } = await createTrainingUsage({
+  const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: name,
@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest) {
     vllmModel: getVlmModel(dataset.vlmModel)?.name
   });
 
-  return billId;
+  return usageId;
 }
 
 export default NextAPI(handler);

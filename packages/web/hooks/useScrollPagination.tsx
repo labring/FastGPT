@@ -1,8 +1,8 @@
-import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { PaginationProps, PaginationResponse } from '../common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
@@ -14,6 +14,7 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
+import { useRequest2 } from './useRequest';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -69,7 +70,7 @@ export function useVirtualScrollPagination<
     overscan
   });
 
-  const loadData = useLockFn(async (init = false) => {
+  const loadData = useLockFn(async ({ init = false }: { init?: boolean } = {}) => {
     if (noMore && !init) return;
 
     const offset = init ? 0 : data.length;
@@ -125,7 +126,7 @@ export function useVirtualScrollPagination<
             {children}
             {noMore && list.length > 0 && (
               <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-                {t('common:common.No more data')}
+                {t('common:no_more_data')}
               </Box>
             )}
           </Box>
@@ -139,7 +140,7 @@ export function useVirtualScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      loadData(true);
+      loadData({ init: true });
     },
     {
       manual: false,
@@ -155,7 +156,7 @@ export function useVirtualScrollPagination<
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
       if (scrollTop + clientHeight >= scrollHeight - thresholdVal) {
-        loadData(false);
+        loadData({ init: false });
       }
     },
     [scroll],
@@ -183,22 +184,24 @@ export function useScrollPagination<
 >(
   api: (data: TParams) => Promise<TData>,
   {
-    refreshDeps,
     scrollLoadType = 'bottom',
 
     pageSize = 10,
-    params = {},
+    params,
     EmptyTip,
-    showErrorToast = true
+    showErrorToast = true,
+    disabled = false,
+
+    ...props
   }: {
-    refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
-    params?: Record<string, any>;
+    params?: Omit<TParams, 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
-  }
+    disabled?: boolean;
+  } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -211,8 +214,16 @@ export function useScrollPagination<
   const noMore = data.length >= total;
 
   const loadData = useLockFn(
-    async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+    async ({
+      init = false,
+      ScrollContainerRef
+    }: {
+      init?: boolean;
+      ScrollContainerRef?: RefObject<HTMLDivElement>;
+    } = {}) => {
       if (noMore && !init) return;
+
+      setTrue();
 
       if (init) {
         setData([]);
@@ -220,8 +231,6 @@ export function useScrollPagination<
       }
 
       const offset = init ? 0 : data.length;
-
-      setTrue();
 
       try {
         const res = await api({
@@ -235,7 +244,7 @@ export function useScrollPagination<
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
-          // 使用 requestAnimationFrame 来调整滚动位置
+
           function adjustScrollPosition() {
             requestAnimationFrame(
               ScrollContainerRef?.current
@@ -250,10 +259,12 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (offset === 0 ? res.list : [...res.list, ...prevData]));
+          const newData = offset === 0 ? res.list : [...res.list, ...data];
+          setData(newData);
           adjustScrollPosition();
         } else {
-          setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
+          const newData = offset === 0 ? res.list : [...data, ...res.list];
+          setData(newData);
         }
       } catch (error: any) {
         if (showErrorToast) {
@@ -274,7 +285,7 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
-      isLoading,
+      isLoading: isLoadingProp,
       ...props
     }: {
       isLoading?: boolean;
@@ -283,9 +294,9 @@ export function useScrollPagination<
     } & BoxProps) => {
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = useMemo(() => {
-        if (isLoading) return t('common:common.is_requesting');
-        if (noMore) return t('common:common.request_end');
-        return t('common:common.request_more');
+        if (isLoading || isLoadingProp) return t('common:is_requesting');
+        if (noMore) return t('common:request_end');
+        return t('common:request_more');
       }, [isLoading, noMore]);
 
       const scroll = useScroll(ref);
@@ -301,7 +312,7 @@ export function useScrollPagination<
               scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
             (scrollLoadType === 'top' && scrollTop < thresholdVal)
           ) {
-            loadData(false, ref);
+            loadData({ init: false, ScrollContainerRef: ref });
           }
         },
         [scroll],
@@ -309,10 +320,16 @@ export function useScrollPagination<
       );
 
       return (
-        <MyBox ref={ref} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
+        <MyBox
+          ref={ref}
+          h={'100%'}
+          overflow={'auto'}
+          isLoading={isLoading || isLoadingProp}
+          {...props}
+        >
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
@@ -322,10 +339,10 @@ export function useScrollPagination<
               fontSize={'xs'}
               color={'blackAlpha.500'}
               textAlign={'center'}
-              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
-                if (loadText !== t('common:common.request_more')) return;
-                loadData(false);
+                if (loadText !== t('common:request_more')) return;
+                loadData({ init: false });
               }}
             >
               {loadText}
@@ -338,18 +355,19 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest(
+  useRequest2(
     async () => {
-      loadData(true);
+      if (disabled) return;
+      loadData({ init: true });
     },
     {
       manual: false,
-      refreshDeps
+      ...props
     }
   );
 
   const refreshList = useMemoizedFn(() => {
-    loadData(true);
+    loadData({ init: true });
   });
 
   return {

@@ -16,9 +16,6 @@ usageMatchRegex:
   # the `{key}` will be placed by a proper keypath matching regex,
   # you can ignore it and use your own matching rules as well
   - "[^\\w\\d]t\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]commonT\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]fileT\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]workflowT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]i18nT\\(['\"`]({key})['\"`]"
 
 # A RegEx to set a custom scope range. This scope will be used as a prefix when detecting keys

@@ -3,12 +3,13 @@ import { ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
+import { getFlatAppResponses } from '@/global/core/chat/utils';
 const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
 
 const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
@@ -16,17 +17,7 @@ const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string
   const { loading: isLoading, data: contextModalData } = useRequest2(
     () =>
       getHistoryResponseData({ dataId }).then((res) => {
-        const flatResData: ChatHistoryItemResType[] =
-          res
-            ?.map((item) => {
-              return [
-                item,
-                ...(item.pluginDetail || []),
-                ...(item.toolDetail || []),
-                ...(item.loopDetail || [])
-              ];
-            })
-            .flat() || [];
+        const flatResData = getFlatAppResponses(res || []);
         return flatResData.find(isLLMNode)?.historyPreview || [];
       }),
     { manual: false }

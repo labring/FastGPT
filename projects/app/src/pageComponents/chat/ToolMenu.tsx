@@ -8,26 +8,31 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRouter } from 'next/router';
 
-const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
-  const router = useRouter();
+const ToolMenu = ({
+  history,
+  reserveSpace
+}: {
+  history: ChatItemType[];
+  reserveSpace?: boolean;
+}) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
 
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
-  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
 
   return (
     <MyMenu
       Button={
-        <IconButton
-          icon={<MyIcon name={'more'} w={'14px'} p={2} />}
-          aria-label={''}
-          size={'sm'}
-          variant={'whitePrimary'}
-        />
+        <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>
+          <IconButton
+            icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+            aria-label={''}
+            size={'sm'}
+            variant={reserveSpace ? 'transparentBase' : 'whitePrimary'}
+          />
+        </Box>
       }
       menuList={[
         {
@@ -59,20 +64,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
             //   onClick: () => onExportChat({ type: 'pdf', history })
             // }
           ]
-        },
-        ...(showRouteToAppDetail
-          ? [
-              {
-                children: [
-                  {
-                    icon: 'core/app/aiLight',
-                    label: t('app:app_detail'),
-                    onClick: () => router.push(`/app/detail?appId=${chatData.appId}`)
-                  }
-                ]
-              }
-            ]
-          : [])
+        }
       ]}
     />
   );

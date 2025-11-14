@@ -16,7 +16,6 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 
 const TTSSelect = ({
@@ -26,8 +25,8 @@ const TTSSelect = ({
   value?: AppTTSConfigType;
   onChange: (e: AppTTSConfigType) => void;
 }) => {
-  const { t } = useTranslation();
-  const { ttsModelList } = useSystemStore();
+  const { t, i18n } = useTranslation();
+  const { ttsModelList, getModelProvider } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -37,7 +36,7 @@ const TTSSelect = ({
       { label: t('app:tts_close'), value: TTSTypeEnum.none, children: [] },
       { label: t('app:tts_browser'), value: TTSTypeEnum.web, children: [] },
       ...ttsModelList.map((model) => {
-        const providerData = getModelProvider(model.provider);
+        const providerData = getModelProvider(model.provider, i18n.language);
         return {
           label: (
             <HStack>
@@ -71,9 +70,9 @@ const TTSSelect = ({
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
     const voice = provider.children.find((item) => item.value === formatValue[1]);
     return (
-      <Box maxW={'220px'} className="textEllipsis">
+      <Box>
         {voice ? (
-          <Flex alignItems={'center'}>
+          <Flex maxW={['200px', '250px']} overflow={'hidden'} alignItems={'center'}>
             <Box>{provider.label}</Box>
             <Box>/</Box>
             <Box>{voice.label}</Box>

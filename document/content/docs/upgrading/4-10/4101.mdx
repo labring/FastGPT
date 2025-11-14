@@ -1,0 +1,55 @@
+---
+title: 'V4.10.1(包含升级脚本)'
+description: 'FastGPT V4.10.1 更新说明'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.10.1-fix3
+- 更新 FastGPT 商业版镜像tag: v4.10.1
+- 更新 fastgpt-plugin 镜像 tag: v0.1.3
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+
+### 2. 执行升级脚本
+
+该脚本仅需商业版用户执行。
+
+从任意终端，发起 1 个 HTTP 请求。其中   `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4101' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+- 给自动同步的知识库加入新的定时任务。
+
+## 🚀 新增内容
+
+1. 系统工具支持流输出。
+2. 商业版第三方知识库定时同步，支持全量同步，可以同步整个目录。
+   
+## ⚙️ 优化
+
+1. 定时任务报错日志记录到对话日志。
+2. 封装应用动态form渲染组件。
+3. 目录面包屑导航溢出省略。
+
+## 🐛 修复
+
+1. 搜索类型系统工具无法正常显示。
+2. 部分系统工具向下兼容问题。
+3. AI 节点，手动选择历史记录时，会导致 system 记录重复。
+4. 知识库 tag 无法滚动到底。
+5. API 知识库通过 API 导入文件时，自定义 API 解析参数未生效。
+
+## 🔨 工具更新
+
+1. 新增 Flux 官方绘图工具。
+2. 新增 JinaAI 工具集。
+3. 新增阿里百炼 Flux 和通义万相绘图。
+4. 纠正硅基流动画图工具输出值类型。

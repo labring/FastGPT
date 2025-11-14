@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -10,9 +9,9 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 
 // 删了库，没删集合
 const checkInvalidCollection = async () => {
@@ -174,7 +173,6 @@ const checkInvalidDataText = async () => {
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await connectToDatabase();
     await authCert({ req, authRoot: true });
     const { start = -2, end = -360 * 24 } = req.body as { start: number; end: number };
 

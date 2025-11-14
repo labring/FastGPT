@@ -1,9 +1,12 @@
 import { getMongoModel, Schema } from '../../common/mongo';
 import {
-  DatasetStatusEnum,
-  DatasetStatusMap,
+  ChunkSettingModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  DataChunkSplitModeEnum,
+  DatasetCollectionDataProcessModeEnum,
   DatasetTypeEnum,
-  DatasetTypeMap
+  DatasetTypeMap,
+  ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   TeamCollectionName,
@@ -12,6 +15,45 @@ import {
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
 export const DatasetCollectionName = 'datasets';
+
+export const ChunkSettings = {
+  trainingType: {
+    type: String,
+    enum: Object.values(DatasetCollectionDataProcessModeEnum)
+  },
+
+  chunkTriggerType: {
+    type: String,
+    enum: Object.values(ChunkTriggerConfigTypeEnum)
+  },
+  chunkTriggerMinSize: Number,
+
+  dataEnhanceCollectionName: Boolean,
+
+  imageIndex: Boolean,
+  autoIndexes: Boolean,
+  indexPrefixTitle: Boolean,
+
+  chunkSettingMode: {
+    type: String,
+    enum: Object.values(ChunkSettingModeEnum)
+  },
+  chunkSplitMode: {
+    type: String,
+    enum: Object.values(DataChunkSplitModeEnum)
+  },
+  paragraphChunkAIMode: {
+    type: String,
+    enum: Object.values(ParagraphChunkAIModeEnum)
+  },
+  paragraphChunkDeep: Number,
+  paragraphChunkMinSize: Number,
+  chunkSize: Number,
+  chunkSplitter: String,
+
+  indexSize: Number,
+  qaPrompt: String
+};
 
 const DatasetSchema = new Schema({
   parentId: {
@@ -39,11 +81,6 @@ const DatasetSchema = new Schema({
     enum: Object.keys(DatasetTypeMap),
     required: true,
     default: DatasetTypeEnum.dataset
-  },
-  status: {
-    type: String,
-    enum: Object.keys(DatasetStatusMap),
-    default: DatasetStatusEnum.active
   },
   avatar: {
     type: String,
@@ -84,31 +121,28 @@ const DatasetSchema = new Schema({
       }
     }
   },
+  chunkSettings: {
+    type: ChunkSettings
+  },
   inheritPermission: {
     type: Boolean,
     default: true
   },
-  apiServer: {
-    type: Object
-  },
-  feishuServer: {
-    type: Object
-  },
-  yuqueServer: {
-    type: Object
-  },
 
-  autoSync: Boolean,
+  apiDatasetServer: Object,
 
   // abandoned
-  externalReadUrl: {
-    type: String
-  },
-  defaultPermission: Number
+  autoSync: Boolean,
+  externalReadUrl: String,
+  defaultPermission: Number,
+  apiServer: Object,
+  feishuServer: Object,
+  yuqueServer: Object
 });
 
 try {
   DatasetSchema.index({ teamId: 1 });
+  DatasetSchema.index({ type: 1 });
 } catch (error) {
   console.log(error);
 }

@@ -1,13 +1,13 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit } from '@/service/support/permission/auth/outLink';
@@ -27,7 +27,6 @@ async function handler(
   res: NextApiResponse<any>
 ) {
   try {
-    await connectToDatabase();
     const { messages } = req.body;
 
     const { tmbId, teamId } = await authChatCert({

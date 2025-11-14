@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { NodeProps, Position } from 'reactflow';
+import { type NodeProps, Position } from 'reactflow';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
@@ -10,17 +10,17 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SourceHandle } from './render/Handle';
+import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const CustomComponent = useMemo(
     () => ({
@@ -35,31 +35,33 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             {agents.map((item, i) => (
               <Box key={item.key} mb={4}>
                 <Flex alignItems={'center'}>
-                  <MyTooltip label={t('common:common.Delete')}>
+                  <MyTooltip label={t('common:Delete')}>
                     <MyIcon
                       mt={1}
                       mr={2}
-                      name={'minus'}
+                      name={'circleMinus'}
                       w={'12px'}
                       cursor={'pointer'}
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
                       onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'updateInput',
-                          key: agentKey,
-                          value: {
-                            ...props,
+                        onChangeNode([
+                          {
+                            nodeId,
+                            type: 'updateInput',
                             key: agentKey,
-                            value: agents.filter((input) => input.key !== item.key)
+                            value: {
+                              ...props,
+                              key: agentKey,
+                              value: agents.filter((input) => input.key !== item.key)
+                            }
+                          },
+                          {
+                            nodeId,
+                            type: 'delOutput',
+                            key: item.key
                           }
-                        });
-                        onChangeNode({
-                          nodeId,
-                          type: 'delOutput',
-                          key: item.key
-                        });
+                        ]);
                       }}
                     />
                   </MyTooltip>
@@ -95,7 +97,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       });
                     }}
                   />
-                  <SourceHandle
+                  <MySourceHandle
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}

@@ -1,0 +1,115 @@
+// 已使用 json5 进行解析，会自动去掉注释，无需手动去除
+{
+  "feConfigs": {
+    "lafEnv": "https://laf.dev" // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
+  },
+  "systemEnv": {
+    "vectorMaxProcess": 15,
+    "qaMaxProcess": 15,
+    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+  },
+  "llmModels": [
+    {
+      "model": "gpt-5", // 模型名(对应OneAPI中渠道的模型名)
+      "name": "gpt-5", // 模型别名
+      "avatar": "/imgs/model/openai.svg", // 模型的logo
+      "maxContext": 125000, // 最大上下文
+      "maxResponse": 16000, // 最大回复
+      "quoteMaxToken": 120000, // 最大引用内容
+      "maxTemperature": 1.2, // 最大温度
+      "charsPointsPrice": 0, // n积分/1k token（商业版）
+      "censor": false, // 是否开启敏感校验（商业版）
+      "vision": true, // 是否支持图片输入
+      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
+      "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
+      "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
+      "usedInQueryExtension": true, // 是否用于问题优化（务必保证至少有一个为true）
+      "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。目前只有gpt支持）
+      "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
+      "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
+      "customExtractPrompt": "", // 自定义内容提取提示词
+      "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
+      "defaultConfig": {} // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
+    },
+    {
+      "model": "gpt-4o",
+      "name": "gpt-4o",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 125000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": true,
+      "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    }
+  ],
+  "vectorModels": [
+    {
+      "model": "text-embedding-ada-002", // 模型名（与OneAPI对应）
+      "name": "Embedding-2", // 模型展示名
+      "avatar": "/imgs/model/openai.svg", // logo
+      "charsPointsPrice": 0, // n积分/1k token
+      "defaultToken": 700, // 默认文本分割时候的 token
+      "maxToken": 3000, // 最大 token
+      "weight": 100, // 优先训练权重
+      "defaultConfig": {}, // 自定义额外参数。例如，如果希望使用 embedding3-large 的话，可以传入 dimensions:1024，来返回1024维度的向量。（目前必须小于1536维度）
+      "dbConfig": {}, // 存储时的额外参数（非对称向量模型时候需要用到）
+      "queryConfig": {} // 参训时的额外参数
+    },
+    {
+      "model": "text-embedding-3-large",
+      "name": "text-embedding-3-large",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 3000,
+      "weight": 100,
+      "defaultConfig": {
+        "dimensions": 1024
+      }
+    },
+    {
+      "model": "text-embedding-3-small",
+      "name": "text-embedding-3-small",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 3000,
+      "weight": 100
+    }
+  ],
+  "reRankModels": [],
+  "audioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "charsPointsPrice": 0,
+      "voices": [
+        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
+        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
+        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
+        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
+        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
+        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
+      ]
+    }
+  ],
+  "whisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "charsPointsPrice": 0
+  }
+}

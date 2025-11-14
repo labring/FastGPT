@@ -4,12 +4,12 @@ import { Box } from '@chakra-ui/react';
 import ChatTest from './ChatTest';
 import AppCard from './AppCard';
 import EditForm from './EditForm';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { SimpleAppSnapshotType } from './useSnapshots';
+import { type SimpleAppSnapshotType } from './useSnapshots';
 
 const Edit = ({
   appForm,

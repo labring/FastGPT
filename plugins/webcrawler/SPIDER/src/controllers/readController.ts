@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import puppeteer, { Page } from 'puppeteer';
 import * as cheerio from 'cheerio';
 import UserAgent from 'user-agents';

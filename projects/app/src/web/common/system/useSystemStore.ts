@@ -1,8 +1,6 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import axios from 'axios';
-import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
   TTSModelType,
   LLMModelItemType,
@@ -10,12 +8,19 @@ import type {
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
-import { InitDateResponse } from '@/global/common/api/systemRes';
-import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
-import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
+import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import {
+  defaultProvider,
+  formatModelProviders,
+  type langType,
+  type ModelProviderItemType
+} from '@fastgpt/global/core/ai/provider';
+import { getMyModels, getOperationalAd } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -50,15 +55,30 @@ type State = {
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
+
+  modelProviders: Record<langType, ModelProviderItemType[]>;
+  modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
+  aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
-  getVlmModelList: () => LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  myModelList: {
+    modelSet: Set<string>;
+    versionKey: string;
+  };
+  operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
+  loadOperationalAd: () => Promise<void>;
+  getMyModelList: () => Promise<Set<string>>;
+  getVlmModelList: () => LLMModelItemType[];
+  getModelProviders: (language?: string) => ModelProviderItemType[];
+  getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
+
   initStaticData: (e: InitDateResponse) => void;
+
   appType?: string;
   setAppType: (e?: string) => void;
 };
@@ -79,7 +99,7 @@ export const useSystemStore = create<State>()(
             state.initd = true;
           });
         },
-        lastRoute: '/app/list',
+        lastRoute: '/dashboard/agent',
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;
@@ -105,7 +125,7 @@ export const useSystemStore = create<State>()(
           return null;
         },
 
-        gitStar: 20000,
+        gitStar: 25000,
         async loadGitStar() {
           if (!get().feConfigs?.show_git) return;
           try {
@@ -128,6 +148,18 @@ export const useSystemStore = create<State>()(
         feConfigs: {},
         subPlans: undefined,
         systemVersion: '0.0.0',
+
+        modelProviders: {
+          en: [],
+          'zh-CN': [],
+          'zh-Hant': []
+        },
+        modelProviderMap: {
+          en: {},
+          'zh-CN': {},
+          'zh-Hant': {}
+        },
+        aiproxyIdMap: {},
         defaultModels: {},
         llmModelList: [],
         datasetModelList: [],
@@ -135,8 +167,52 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        myModelList: {
+          modelSet: new Set(),
+          versionKey: ''
+        },
+        operationalAd: undefined,
+        loadOperationalAd: async () => {
+          try {
+            const res = await getOperationalAd();
+            set((state) => {
+              state.operationalAd = res;
+            });
+          } catch (error) {
+            console.log('Get operational ad error', error);
+          }
+        },
+        getMyModelList: async () => {
+          try {
+            const res = await getMyModels({ versionKey: get().myModelList.versionKey });
+            if (res.isRefreshed === false) {
+              return new Set(get().myModelList.modelSet);
+            } else {
+              set((state) => {
+                state.myModelList = {
+                  modelSet: new Set(res.models),
+                  versionKey: res.versionKey
+                };
+              });
+              return new Set(res.models);
+            }
+          } catch {
+            console.log('Get my modals error');
+          }
+          return new Set(get().myModelList.modelSet);
+        },
+
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
+        },
+        getModelProviders(language = 'en') {
+          return get().modelProviders[language as langType] ?? [];
+        },
+        getModelProvider(provider, language = 'en') {
+          if (!provider) {
+            return defaultProvider;
+          }
+          return get().modelProviderMap[language as langType][provider] ?? {};
         },
         initStaticData(res) {
           set((state) => {
@@ -145,6 +221,15 @@ export const useSystemStore = create<State>()(
             state.feConfigs = res.feConfigs ?? state.feConfigs;
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
+
+            if (res.modelProviders) {
+              const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders(
+                res.modelProviders
+              );
+              state.modelProviders = ModelProviderListCache ?? state.modelProviders;
+              state.modelProviderMap = ModelProviderMapCache ?? state.modelProviderMap;
+            }
+            state.aiproxyIdMap = res.aiproxyIdMap ?? state.aiproxyIdMap;
 
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
@@ -175,6 +260,10 @@ export const useSystemStore = create<State>()(
           feConfigs: state.feConfigs,
           subPlans: state.subPlans,
           systemVersion: state.systemVersion,
+
+          modelProviders: state.modelProviders,
+          modelProviderMap: state.modelProviderMap,
+          aiproxyIdMap: state.aiproxyIdMap,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
           datasetModelList: state.datasetModelList,

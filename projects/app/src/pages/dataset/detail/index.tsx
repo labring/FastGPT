@@ -1,6 +1,7 @@
+'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, FlexProps } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
@@ -40,7 +41,7 @@ type Props = { datasetId: string; currentTab: TabEnum };
 const sliderStyles: FlexProps = {
   bg: 'white',
   borderRadius: 'md',
-  overflowY: 'scroll',
+  overflowY: 'auto',
   boxShadow: 2
 };
 
@@ -56,7 +57,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
-        title: t(getErrText(err, t('common:common.Load Failed')) as any),
+        title: t(getErrText(err, t('common:load_failed')) as any),
         status: 'error'
       });
     },

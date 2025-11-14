@@ -1,0 +1,13 @@
+{
+  "title": "功能介绍",
+  "description": "FastGPT 功能介绍",
+  "pages": [
+    "course",
+    "dashboard",
+    "plugins",
+    "knowledge_base",
+    "team_permissions",
+    "DialogBoxes",
+    "admin"
+  ]
+}

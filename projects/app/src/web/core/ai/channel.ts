@@ -1,12 +1,13 @@
-import axios, { Method, AxiosResponse } from 'axios';
+import axios, { type Method, type AxiosResponse } from 'axios';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import {
+import type {
+  DashboardDataItemType,
   ChannelInfoType,
   ChannelListResponseType,
   ChannelLogListItemType,
   CreateChannelProps
 } from '@/global/aiproxy/type';
-import { ChannelStatusEnum } from '@/global/aiproxy/constants';
+import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
 interface ResponseDataType {
   success: boolean;
@@ -109,6 +110,14 @@ export const getChannelList = () =>
   GET<ChannelListResponseType>('/channels/all', {
     page: 1,
     perPage: 10
+  }).then((res) => {
+    res.sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status - b.status;
+      }
+      return b.priority - a.priority;
+    });
+    return res;
   });
 
 export const getChannelProviders = () =>
@@ -166,6 +175,7 @@ export const getChannelLog = (params: {
     logs: ChannelLogListItemType[];
     total: number;
   }>(`/logs/search`, {
+    result_only: true,
     request_id: params.request_id,
     channel: params.channel,
     model_name: params.model_name,
@@ -186,3 +196,20 @@ export const getLogDetail = (id: number) =>
     request_body: string;
     response_body: string;
   }>(`/logs/detail/${id}`);
+
+export const getDashboardV2 = (params: {
+  channel?: number;
+  model?: string;
+  start_timestamp?: number;
+  end_timestamp?: number;
+  timezone: string;
+  timespan: 'day' | 'hour' | 'minute';
+}) =>
+  GET<
+    {
+      timestamp: number;
+      summary: DashboardDataItemType[];
+    }[]
+  >('/dashboardv2/', params);
+
+export { responseSuccess, checkRes, responseError, instance, request };

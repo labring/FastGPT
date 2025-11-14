@@ -1,16 +1,17 @@
 import axios, {
-  Method,
-  InternalAxiosRequestConfig,
-  AxiosResponse,
-  AxiosProgressEvent
+  type Method,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+  type AxiosProgressEvent
 } from 'axios';
 import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import dayjs from 'dayjs';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -35,7 +36,7 @@ const maxQuantityMap: Record<
     }[]
 > = {};
 
-/* 
+/*
   Every request generates a unique sign
   If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
 */
@@ -109,6 +110,13 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  const pathname = window.location.pathname;
+  const isOutlinkPage = {
+    [`${subRoute}/chat/share`]: true,
+    [`${subRoute}/price`]: true,
+    [`${subRoute}/login`]: true
+  }[pathname];
+
   const data = err?.response?.data || err;
 
   if (!err) {
@@ -121,9 +129,9 @@ function responseError(err: any) {
     return Promise.reject(data);
   }
 
-  // 有报错响应
+  // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!['/chat/share', '/chat/team', '/login'].includes(window.location.pathname)) {
+    if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -132,14 +140,19 @@ function responseError(err: any) {
 
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
+  // Blance error
   if (
-    data?.statusText === TeamErrEnum.aiPointsNotEnough ||
-    data?.statusText === TeamErrEnum.datasetSizeNotEnough ||
-    data?.statusText === TeamErrEnum.datasetAmountNotEnough ||
-    data?.statusText === TeamErrEnum.appAmountNotEnough ||
-    data?.statusText === TeamErrEnum.pluginAmountNotEnough ||
-    data?.statusText === TeamErrEnum.websiteSyncNotEnough ||
-    data?.statusText === TeamErrEnum.reRankNotEnough
+    data?.statusText &&
+    [
+      TeamErrEnum.aiPointsNotEnough,
+      TeamErrEnum.datasetSizeNotEnough,
+      TeamErrEnum.datasetAmountNotEnough,
+      TeamErrEnum.appAmountNotEnough,
+      TeamErrEnum.pluginAmountNotEnough,
+      TeamErrEnum.websiteSyncNotEnough,
+      TeamErrEnum.reRankNotEnough
+    ].includes(data?.statusText) &&
+    !isOutlinkPage
   ) {
     useSystemStore.getState().setNotSufficientModalType(data.statusText);
     return Promise.reject(data);
@@ -168,8 +181,11 @@ function request(
 ): any {
   /* 去空 */
   for (const key in data) {
+    const val = data[key];
     if (data[key] === undefined) {
       delete data[key];
+    } else if (val instanceof Date) {
+      data[key] = dayjs(val).format();
     }
   }
 
@@ -213,3 +229,15 @@ export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = 
 export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'DELETE');
 }
+
+export {
+  maxQuantityMap,
+  checkMaxQuantity,
+  requestFinish,
+  startInterceptors,
+  responseSuccess,
+  checkRes,
+  responseError,
+  instance,
+  request
+};

@@ -5,26 +5,27 @@ import { streamFetch } from '@/web/common/api/fetch';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 export const useChatTest = ({
   nodes,
   edges,
-  chatConfig,
+  chatConfig = {},
   isReady
 }: {
   nodes: StoreNodeItemType[];
@@ -48,7 +49,7 @@ export const useChatTest = ({
       const histories = messages.slice(-1);
 
       // 流请求，获取数据
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
           // Send histories and user messages
@@ -66,13 +67,16 @@ export const useChatTest = ({
         abortCtrl: controller
       });
 
-      return { responseText, responseData };
+      return { responseText };
     }
   );
 
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
+
+  const variableList = useMemo(() => chatConfig.variables, [chatConfig.variables]);
 
   const pluginInputs = useMemo(() => {
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
@@ -107,10 +111,9 @@ export const useChatTest = ({
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });
-
       resetVariables({
         variables: res.variables,
-        variableList: res.app?.chatConfig?.variables
+        variableList: variableList ?? res.app?.chatConfig?.variables
       });
     },
     {
@@ -124,26 +127,43 @@ export const useChatTest = ({
     setChatId();
   }, [clearChatRecords, setChatId]);
 
-  const CustomChatContainer = useMemoizedFn(() =>
-    appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5} pb={16}>
-        <PluginRunBox
+  // 新增变量时候，自动加入默认值
+  useEffect(() => {
+    const values = variablesForm.getValues();
+    if (values.variables && variableList) {
+      variableList.forEach((item) => {
+        const val = variablesForm.getValues(`variables.${item.key}`);
+        if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
+          values.variables[item.key] = item.defaultValue;
+        }
+      });
+
+      variablesForm.reset(values);
+    }
+  }, [variableList, variablesForm]);
+
+  const CustomChatContainer = useCallback(
+    () =>
+      appDetail.type === AppTypeEnum.workflowTool ? (
+        <Box p={5} pb={16}>
+          <PluginRunBox
+            appId={appId}
+            chatId={chatId}
+            onNewChat={restartChat}
+            onStartChat={startChat}
+          />
+        </Box>
+      ) : (
+        <ChatBox
+          isReady={isReady}
           appId={appId}
           chatId={chatId}
-          onNewChat={restartChat}
+          showMarkIcon
+          chatType={ChatTypeEnum.test}
           onStartChat={startChat}
         />
-      </Box>
-    ) : (
-      <ChatBox
-        isReady={isReady}
-        appId={appId}
-        chatId={chatId}
-        showMarkIcon
-        chatType="chat"
-        onStartChat={startChat}
-      />
-    )
+      ),
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
   );
 
   return {

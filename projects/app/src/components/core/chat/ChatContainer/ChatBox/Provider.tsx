@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
-  AppFileSelectConfigType,
-  AppQGConfigType,
-  AppTTSConfigType,
-  AppWhisperConfigType,
-  ChatInputGuideConfigType,
-  VariableItemType
+  type AppFileSelectConfigType,
+  type AppQGConfigType,
+  type AppTTSConfigType,
+  type AppWhisperConfigType,
+  type ChatInputGuideConfigType,
+  type VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,
   defaultChatInputGuideConfig,
@@ -22,19 +22,31 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChatResData } from '@/web/core/chat/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { useCreation } from 'ahooks';
+import type { ChatTypeEnum } from './constants';
+import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
 
 export type ChatProviderProps = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
-  chatType: 'log' | 'chat' | 'share' | 'team';
+  InputLeftComponent?: React.ReactNode;
+
+  chatType: ChatTypeEnum;
+  dialogTips?: string;
+  wideLogo?: string;
+  slogan?: string;
+
+  currentQuickAppId?: string;
+  quickAppList?: ChatQuickAppType[];
+  onSwitchQuickApp?: (appId: string) => Promise<void>;
 };
 
-type useChatStoreType = ChatProviderProps & {
+type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAuthData'> & {
   welcomeText: string;
   variableList: VariableItemType[];
-  allVariableList: VariableItemType[];
   questionGuide: AppQGConfigType;
   ttsConfig: AppTTSConfigType;
   whisperConfig: AppWhisperConfigType;
@@ -61,10 +73,6 @@ type useChatStoreType = ChatProviderProps & {
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
-
-  appId: string;
-  chatId: string;
-  outLinkAuthData: OutLinkChatAuthProps;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -120,7 +128,6 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
-  outLinkAuthData: {},
   // @ts-ignore
   variablesForm: undefined
 });
@@ -128,13 +135,17 @@ export const ChatBoxContext = createContext<useChatStoreType>({
 const Provider = ({
   appId,
   chatId,
-  outLinkAuthData = {},
-  chatType = 'chat',
+  outLinkAuthData,
+  chatType,
   children,
   ...props
 }: ChatProviderProps & {
   children: React.ReactNode;
 }) => {
+  const formatOutLinkAuth = useCreation(() => {
+    return outLinkAuthData || {};
+  }, [outLinkAuthData]);
+
   const welcomeText = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.welcomeText ?? ''
@@ -187,7 +198,7 @@ const Provider = ({
   } = useAudioPlay({
     appId,
     ttsConfig,
-    ...outLinkAuthData
+    ...formatOutLinkAuth
   });
 
   const autoTTSResponse =
@@ -209,7 +220,7 @@ const Provider = ({
           appId: appId,
           chatId: chatId,
           dataId,
-          ...outLinkAuthData
+          ...formatOutLinkAuth
         });
         setChatRecords((state) =>
           state.map((item) => (item.dataId === dataId ? { ...item, responseData: resData } : item))
@@ -217,13 +228,12 @@ const Provider = ({
         return resData;
       }
     },
-    [chatRecords, chatId, appId, outLinkAuthData, setChatRecords]
+    [chatRecords, chatId, appId, formatOutLinkAuth, setChatRecords]
   );
   const value: useChatStoreType = {
     ...props,
     welcomeText,
-    variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
-    allVariableList: variables,
+    variableList: variables,
     questionGuide,
     ttsConfig,
     fileSelectConfig,
@@ -241,14 +251,19 @@ const Provider = ({
     setAudioPlayingChatId,
     isChatting,
     chatInputGuide,
-    appId,
-    chatId,
-    outLinkAuthData,
     getHistoryResponseData,
     chatType
   };
 
-  return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
+  return (
+    <WorkflowRuntimeContextProvider
+      appId={appId}
+      chatId={chatId}
+      outLinkAuthData={formatOutLinkAuth}
+    >
+      <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
+    </WorkflowRuntimeContextProvider>
+  );
 };
 
 export default React.memo(Provider);

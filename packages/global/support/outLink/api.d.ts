@@ -1,5 +1,5 @@
 import type { HistoryItemType } from '../../core/chat/type.d';
-import { OutLinkSchema } from './type.d';
+import type { OutLinkSchema } from './type.d';
 
 export type AuthOutLinkInitProps = {
   outLinkUid: string;

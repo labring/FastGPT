@@ -32,7 +32,7 @@ function embedChatbot() {
   ChatBtnDiv.draggable = false;
 
   const iframe = document.createElement('iframe');
-  iframe.allow = '*';
+  iframe.allow = 'microphone *; *';
   iframe.referrerPolicy = 'no-referrer';
   iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;

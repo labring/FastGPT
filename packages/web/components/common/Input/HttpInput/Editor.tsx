@@ -15,22 +15,22 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
-import { EditorState, LexicalEditor } from 'lexical';
+import type { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
+  type EditorVariableLabelPickerType,
+  type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
 import { textToEditorState } from '../../Textarea/PromptEditor/utils';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
 import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
 import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
-import VariablePickerPlugin from '../../Textarea/PromptEditor/plugins/VariablePickerPlugin';
 import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
 import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin';
 import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';
 import VariableLabelPickerPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPickerPlugin';
+import { useDeepCompareEffect } from 'ahooks';
 
 export default function Editor({
   h = 40,
@@ -46,7 +46,7 @@ export default function Editor({
   h?: number;
   variables: EditorVariablePickerType[];
   variableLabels: EditorVariableLabelPickerType[];
-  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
+  onChange?: (editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   currentValue?: string;
@@ -62,11 +62,11 @@ export default function Editor({
     nodes: [VariableNode, VariableLabelNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
-      throw error;
+      console.error('Lexical errror', error);
     }
   };
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
   }, [value, variables.length]);
@@ -120,7 +120,7 @@ export default function Editor({
         <OnChangePlugin
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
             startSts(() => {
-              onChange?.(editorState, editor);
+              onChange?.(editor);
             });
           }}
         />

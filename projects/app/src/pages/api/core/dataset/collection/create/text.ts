@@ -5,7 +5,8 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
+import { createFileFromText } from '@fastgpt/service/common/file/gridfs/utils';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { name, text, ...body } = req.body as TextCreateDatasetCollectionParams;
@@ -18,16 +19,27 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     per: WritePermissionVal
   });
 
+  // 1. Create file from text
+  const filename = `${name}.txt`;
+  const { fileId } = await createFileFromText({
+    bucket: 'dataset',
+    filename,
+    text,
+    metadata: {
+      teamId,
+      uid: tmbId
+    }
+  });
+
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    rawText: text,
     createCollectionParams: {
       ...body,
       teamId,
       tmbId,
-      type: DatasetCollectionTypeEnum.virtual,
-
-      name
+      type: DatasetCollectionTypeEnum.file,
+      fileId,
+      name: filename
     }
   });
 

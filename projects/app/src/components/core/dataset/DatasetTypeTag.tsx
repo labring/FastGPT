@@ -1,5 +1,5 @@
-import { Box, Flex, FlexProps } from '@chakra-ui/react';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import React from 'react';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';

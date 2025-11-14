@@ -8,7 +8,6 @@ const PageContainer = ({
   insertProps = {},
   ...props
 }: BoxProps & { isLoading?: boolean; insertProps?: BoxProps }) => {
-  const theme = useTheme();
   return (
     <MyBox h={'100%'} py={[0, '16px']} pr={[0, '16px']} {...props}>
       <MyBox

@@ -1,3 +1,4 @@
+import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import {
   Box,
@@ -9,7 +10,7 @@ import {
   Button,
   useDisclosure
 } from '@chakra-ui/react';
-import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -38,16 +39,29 @@ export function ChangeOwnerModal({
     pageSize: 15
   });
 
-  const memberList = teamMembers.filter((item) => {
-    return item.memberName.includes(inputValue);
-  });
+  const { data: searchedData } = useRequest2(
+    async () => {
+      if (!inputValue) return;
+      return GetSearchUserGroupOrg(inputValue);
+    },
+    {
+      manual: false,
+      refreshDeps: [inputValue],
+      throttleWait: 500,
+      debounceWait: 200
+    }
+  );
 
+  const memberList = searchedData ? searchedData.members : teamMembers;
   const {
     isOpen: isOpenMemberListMenu,
     onClose: onCloseMemberListMenu,
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
-  const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
+  const [selectedMember, setSelectedMember] = useState<Omit<
+    TeamMemberItemType,
+    'permission' | 'teamId'
+  > | null>(null);
 
   const { runAsync, loading } = useRequest2(onChangeOwner, {
     onSuccess: onClose,
@@ -152,9 +166,9 @@ export function ChangeOwnerModal({
       <ModalFooter>
         <HStack>
           <Button onClick={onClose} variant={'whiteBase'}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
-          <Button onClick={onConfirm}>{t('common:common.Confirm')}</Button>
+          <Button onClick={onConfirm}>{t('common:Confirm')}</Button>
         </HStack>
       </ModalFooter>
     </MyModal>

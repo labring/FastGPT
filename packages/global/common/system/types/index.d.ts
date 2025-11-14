@@ -1,4 +1,5 @@
-import { StandSubPlanLevelMapType, SubPlanType } from '../../../support/wallet/sub/type';
+import type { SubPlanType } from '../../../support/wallet/sub/type';
+import { StandSubPlanLevelMapType } from '../../../support/wallet/sub/type';
 import type {
   ChatModelItemType,
   FunctionModelItemType,
@@ -44,11 +45,15 @@ export type FastGPTFeConfigsType = {
   show_workorder?: boolean;
   show_emptyChat?: boolean;
   isPlus?: boolean;
+  hideChatCopyrightSetting?: boolean;
   register_method?: ['email' | 'phone' | 'sync'];
   login_method?: ['email' | 'phone']; // Attention: login method is diffrent with oauth
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
+  mcpServerProxyEndpoint?: string;
+  chineseRedirectUrl?: string;
+  botIframeUrl?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;
@@ -59,18 +64,28 @@ export type FastGPTFeConfigsType = {
   show_team_chat?: boolean;
   show_compliance_copywriting?: boolean;
   show_aiproxy?: boolean;
+  show_coupon?: boolean;
   concatMd?: string;
+
+  show_dataset_feishu?: boolean;
+  show_dataset_yuque?: boolean;
+  show_publish_feishu?: boolean;
+  show_publish_dingtalk?: boolean;
+  show_publish_wecom?: boolean;
+  show_publish_offiaccount?: boolean;
+
+  show_dataset_enhance?: boolean;
+  show_batch_eval?: boolean;
 
   concatMd?: string;
   docUrl?: string;
   openAPIDocUrl?: string;
-  systemPluginCourseUrl?: string;
+  submitPluginRequestUrl?: string;
   appTemplateCourse?: string;
   customApiDomain?: string;
   customSharePageDomain?: string;
 
   systemTitle?: string;
-  systemDescription?: string;
   scripts?: { [key: string]: string }[];
   favicon?: string;
 
@@ -84,11 +99,6 @@ export type FastGPTFeConfigsType = {
     github?: string;
     google?: string;
     wechat?: string;
-    dingtalk?: string;
-    wecom?: {
-      corpid?: string;
-      agentid?: string;
-    };
     microsoft?: {
       clientId?: string;
       tenantId?: string;
@@ -102,6 +112,7 @@ export type FastGPTFeConfigsType = {
 
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
+  evalFileMaxLines?: number;
 
   // Compute by systemEnv.customPdfParse
   showCustomPdfParse?: boolean;
@@ -110,24 +121,53 @@ export type FastGPTFeConfigsType = {
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
+
+  payConfig?: {
+    wx?: boolean;
+    alipay?: boolean;
+    bank?: boolean;
+  };
 };
 
 export type SystemEnvType = {
   openapiPrefix?: string;
+  tokenWorkers: number; // token count max worker
+
+  datasetParseMaxProcess: number;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  pgHNSWEfSearch: number;
-  tokenWorkers: number; // token count max worker
+
+  hnswEfSearch: number;
+  hnswMaxScanTuples: number;
 
   oneapiUrl?: string;
   chatApiKey?: string;
 
-  customPdfParse?: {
-    url?: string;
-    key?: string;
+  customPdfParse?: customPdfParseType;
+};
 
-    doc2xKey?: string;
-    price?: number; // n points/1 page
+export type customPdfParseType = {
+  url?: string;
+  key?: string;
+  doc2xKey?: string;
+  price?: number;
+};
+
+export type LicenseDataType = {
+  startTime: string;
+  expiredTime: string;
+  company: string;
+  description?: string; // 描述
+  hosts?: string[]; // 管理端有效域名
+  maxUsers?: number; // 最大用户数，不填默认不上限
+  maxApps?: number; // 最大应用数，不填默认不上限
+  maxDatasets?: number; // 最大数据集数，不填默认不上限
+  functions: {
+    sso: boolean;
+    pay: boolean;
+    customTemplates: boolean;
+    datasetEnhance: boolean;
+    batchEval: boolean;
   };
 };

@@ -14,22 +14,31 @@ import {
   DatasetTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { ClientSession } from 'mongoose';
+import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { addDays } from 'date-fns';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  removeDatasetSyncJobScheduler,
+  upsertDatasetSyncJobScheduler
+} from '@fastgpt/service/core/dataset/datasetSync';
+import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
+import { isEqual } from 'lodash';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
+import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -49,7 +58,7 @@ async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<DatasetUpdateResponse> {
-  const {
+  let {
     id,
     parentId,
     name,
@@ -59,11 +68,9 @@ async function handler(
     vlmModel,
     websiteConfig,
     externalReadUrl,
-    apiServer,
-    yuqueServer,
-    feishuServer,
-    status,
-    autoSync
+    apiDatasetServer,
+    autoSync,
+    chunkSettings
   } = req.body;
 
   if (!id) {
@@ -72,16 +79,35 @@ async function handler(
 
   const isMove = parentId !== undefined;
 
-  const { dataset, permission } = await authDataset({
+  const { dataset, permission, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
     datasetId: id,
     per: ReadPermissionVal
   });
+
+  let targetName = '';
+
+  chunkSettings = chunkSettings
+    ? computedCollectionChunkSettings({
+        ...chunkSettings,
+        llmModel: getLLMModel(dataset.agentModel),
+        vectorModel: getEmbeddingModel(dataset.vectorModel)
+      })
+    : undefined;
+
   if (isMove) {
     if (parentId) {
       // move to a folder, check the target folder's permission
-      await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
+      const { dataset: targetDataset } = await authDataset({
+        req,
+        authToken: true,
+        datasetId: parentId,
+        per: ManagePermissionVal
+      });
+      targetName = targetDataset.name;
+    } else {
+      targetName = 'root';
     }
     if (dataset.parentId) {
       // move from a folder, check the (old) folder's permission
@@ -97,7 +123,7 @@ async function handler(
       await authUserPer({
         req,
         authToken: true,
-        per: TeamWritePermissionVal
+        per: TeamDatasetCreatePermissionVal
       });
     }
   } else {
@@ -114,6 +140,68 @@ async function handler(
   });
 
   const onUpdate = async (session: ClientSession) => {
+    // Website dataset update chunkSettings, need to clean up dataset
+    if (
+      dataset.type === DatasetTypeEnum.websiteDataset &&
+      chunkSettings &&
+      dataset.chunkSettings &&
+      !isEqual(
+        {
+          imageIndex: dataset.chunkSettings.imageIndex,
+          autoIndexes: dataset.chunkSettings.autoIndexes,
+          trainingType: dataset.chunkSettings.trainingType,
+          chunkSettingMode: dataset.chunkSettings.chunkSettingMode,
+          chunkSplitMode: dataset.chunkSettings.chunkSplitMode,
+          chunkSize: dataset.chunkSettings.chunkSize,
+          chunkSplitter: dataset.chunkSettings.chunkSplitter,
+          indexSize: dataset.chunkSettings.indexSize,
+          qaPrompt: dataset.chunkSettings.qaPrompt
+        },
+        {
+          imageIndex: chunkSettings.imageIndex,
+          autoIndexes: chunkSettings.autoIndexes,
+          trainingType: chunkSettings.trainingType,
+          chunkSettingMode: chunkSettings.chunkSettingMode,
+          chunkSplitMode: chunkSettings.chunkSplitMode,
+          chunkSize: chunkSettings.chunkSize,
+          chunkSplitter: chunkSettings.chunkSplitter,
+          indexSize: chunkSettings.indexSize,
+          qaPrompt: chunkSettings.qaPrompt
+        }
+      )
+    ) {
+      await delDatasetRelevantData({ datasets: [dataset], session });
+    }
+
+    const apiDatasetParams = (() => {
+      if (!apiDatasetServer) return {};
+
+      const flattenObjectWithConditions = (
+        obj: any,
+        prefix = 'apiDatasetServer'
+      ): Record<string, any> => {
+        const result: Record<string, any> = {};
+
+        if (!obj || typeof obj !== 'object') return result;
+
+        Object.keys(obj).forEach((key) => {
+          const value = obj[key];
+          const newKey = prefix ? `${prefix}.${key}` : key;
+
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            // Recursively flatten nested objects
+            Object.assign(result, flattenObjectWithConditions(value, newKey));
+          } else {
+            // Add non-empty primitive values
+            result[newKey] = value;
+          }
+        });
+
+        return result;
+      };
+      return flattenObjectWithConditions(apiDatasetServer);
+    })();
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -123,70 +211,53 @@ async function handler(
         ...(agentModel && { agentModel }),
         ...(vlmModel && { vlmModel }),
         ...(websiteConfig && { websiteConfig }),
-        ...(status && { status }),
+        ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
-        ...(!!apiServer?.authorization && {
-          'apiServer.authorization': apiServer.authorization
-        }),
-        ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
-        ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
-        ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
-        ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
-        ...(!!feishuServer?.folderToken && {
-          'feishuServer.folderToken': feishuServer.folderToken
-        }),
         ...(isMove && { inheritPermission: true }),
-        ...(typeof autoSync === 'boolean' && { autoSync })
+        ...(typeof autoSync === 'boolean' && { autoSync }),
+        ...apiDatasetParams
       },
       { session }
     );
+
     await updateSyncSchedule({
-      teamId: dataset.teamId,
-      datasetId: dataset._id,
-      autoSync,
-      session
+      dataset,
+      autoSync
     });
 
-    await refreshSourceAvatar(avatar, dataset.avatar, session);
+    await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
   await mongoSessionRun(async (session) => {
     if (isMove) {
-      if (isFolder && dataset.inheritPermission) {
-        const parentClbsAndGroups = await getResourceClbsAndGroups({
-          teamId: dataset.teamId,
-          resourceId: parentId,
-          resourceType: PerResourceTypeEnum.dataset,
-          session
-        });
+      const parentClbs = await getResourceOwnedClbs({
+        teamId: dataset.teamId,
+        resourceId: parentId,
+        resourceType: PerResourceTypeEnum.dataset,
+        session
+      });
 
-        await syncCollaborators({
-          teamId: dataset.teamId,
-          resourceId: id,
-          resourceType: PerResourceTypeEnum.dataset,
-          collaborators: parentClbsAndGroups,
-          session
-        });
+      await syncCollaborators({
+        teamId: dataset.teamId,
+        resourceId: id,
+        resourceType: PerResourceTypeEnum.dataset,
+        collaborators: parentClbs,
+        session
+      });
 
-        await syncChildrenPermission({
-          resource: dataset,
-          resourceType: PerResourceTypeEnum.dataset,
-          resourceModel: MongoDataset,
-          folderTypeList: [DatasetTypeEnum.folder],
-          collaborators: parentClbsAndGroups,
-          session
-        });
-      } else {
-        // Not folder, delete all clb
-        await MongoResourcePermission.deleteMany(
-          { resourceId: id, teamId: dataset.teamId, resourceType: PerResourceTypeEnum.dataset },
-          { session }
-        );
-      }
+      await syncChildrenPermission({
+        resource: dataset,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceModel: MongoDataset,
+        folderTypeList: [DatasetTypeEnum.folder],
+        collaborators: parentClbs,
+        session
+      });
+      logDatasetMove({ tmbId, teamId, dataset, targetName });
       return onUpdate(session);
     } else {
+      logDatasetUpdate({ tmbId, teamId, dataset });
       return onUpdate(session);
     }
   });
@@ -221,45 +292,67 @@ const updateTraining = async ({
 };
 
 const updateSyncSchedule = async ({
-  teamId,
-  datasetId,
-  autoSync,
-  session
+  dataset,
+  autoSync
 }: {
-  teamId: string;
-  datasetId: string;
+  dataset: DatasetSchemaType;
   autoSync?: boolean;
-  session: ClientSession;
 }) => {
   if (typeof autoSync !== 'boolean') return;
 
   // Update all collection nextSyncTime
   if (autoSync) {
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId,
-        type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
-      },
-      {
-        $set: {
-          nextSyncTime: addDays(new Date(), 1)
-        }
-      },
-      { session }
-    );
+    // upsert Job Scheduler
+    return upsertDatasetSyncJobScheduler({ datasetId: dataset._id });
   } else {
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId
-      },
-      {
-        $unset: {
-          nextSyncTime: 1
-        }
-      },
-      { session }
-    );
+    // remove Job Scheduler
+    return removeDatasetSyncJobScheduler(dataset._id);
   }
+};
+
+const logDatasetMove = ({
+  tmbId,
+  teamId,
+  dataset,
+  targetName
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+  targetName: string;
+}) => {
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.MOVE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        targetFolderName: targetName,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
+};
+
+const logDatasetUpdate = ({
+  tmbId,
+  teamId,
+  dataset
+}: {
+  tmbId: string;
+  teamId: string;
+  dataset: any;
+}) => {
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_DATASET,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 };
