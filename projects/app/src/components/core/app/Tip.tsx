@@ -17,20 +17,28 @@ enum FnTypeEnum {
 }
 
 const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // 国际化图片映射
+  const getImagePath = (basePath: string) => {
+    if (i18n.language === 'en') {
+      return basePath.replace('.svg', 'En.svg');
+    }
+    return basePath;
+  };
 
   const map = useRef({
     [FnTypeEnum.inputGuide]: {
       icon: '/imgs/app/inputGuide-icon.svg',
       title: t('chat:input_guide'),
       desc: t('chat:input_guide_tip'),
-      imgUrl: '/imgs/app/inputGuide.svg'
+      imgUrl: getImagePath('/imgs/app/inputGuide.svg')
     },
     [FnTypeEnum.nextQuestion]: {
       icon: '/imgs/app/nextQuestion-icon.svg',
       title: t('common:core.app.Question Guide'),
       desc: t('app:question_guide_tip'),
-      imgUrl: '/imgs/app/nextQuestion.svg'
+      imgUrl: getImagePath('/imgs/app/nextQuestion.svg')
     },
     [FnTypeEnum.tts]: {
       icon: '/imgs/app/tts-icon.svg',
@@ -42,13 +50,13 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       icon: '/imgs/app/variable-icon.svg',
       title: t('common:core.module.Variable'),
       desc: t('common:core.app.tip.variableTip'),
-      imgUrl: '/imgs/app/variable.svg'
+      imgUrl: getImagePath('/imgs/app/variable.svg')
     },
     [FnTypeEnum.welcome]: {
       icon: '/imgs/app/welcome-icon.svg',
       title: t('common:core.app.Welcome Text'),
       desc: t('common:core.app.tip.welcomeTextTip'),
-      imgUrl: '/imgs/app/welcome.svg'
+      imgUrl: getImagePath('/imgs/app/welcome.svg')
     },
     [FnTypeEnum.file]: {
       icon: '/imgs/app/fileinput.svg',
@@ -60,19 +68,19 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       icon: '/imgs/app/question.svg',
       title: t('app:vision_model_title'),
       desc: t('app:open_vision_function_tip'),
-      imgUrl: '/imgs/app/visionModel.svg'
+      imgUrl: getImagePath('/imgs/app/visionModel.svg')
     },
     [FnTypeEnum.instruction]: {
       icon: '/imgs/app/help.svg',
       title: t('workflow:plugin.Instructions'),
       desc: t('workflow:plugin.Instruction_Tip'),
-      imgUrl: '/imgs/app/instruction.svg'
+      imgUrl: getImagePath('/imgs/app/instruction.svg')
     },
     [FnTypeEnum.autoExec]: {
       icon: '/imgs/app/autoExec-icon.svg',
       title: t('common:core.app.Auto execute'),
       desc: t('app:auto_execute_tip'),
-      imgUrl: '/imgs/app/autoExec.svg'
+      imgUrl: getImagePath('/imgs/app/autoExec.svg')
     }
   });
   const data = map.current[type];
