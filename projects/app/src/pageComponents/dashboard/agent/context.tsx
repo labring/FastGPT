@@ -72,12 +72,27 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingApps
   } = useRequest2(
     () => {
-      const isAgent = router.pathname.includes('/agent');
-      const formatType = isAgent
-        ? !type || type === 'all'
-          ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
-          : [AppTypeEnum.folder, type]
-        : !type || type === 'all'
+      const formatType = (() => {
+        // chat page show all apps
+        if (router.pathname.includes('/chat')) {
+          return [
+            AppTypeEnum.folder,
+            AppTypeEnum.toolFolder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.workflowTool
+          ];
+        }
+
+        // agent page
+        if (router.pathname.includes('/agent')) {
+          return !type || type === 'all'
+            ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+            : [AppTypeEnum.folder, type];
+        }
+
+        // tool page
+        return !type || type === 'all'
           ? [
               AppTypeEnum.toolFolder,
               AppTypeEnum.workflowTool,
@@ -85,6 +100,8 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
               AppTypeEnum.httpToolSet
             ]
           : [AppTypeEnum.toolFolder, type];
+      })();
+
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
