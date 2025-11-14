@@ -31,6 +31,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import { useForm } from 'react-hook-form';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
@@ -367,15 +368,12 @@ function EditKeyModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <FormLabel flex={'0 0 90px'}>{t('common:expired_time')}</FormLabel>
-              <Input
-                type="datetime-local"
-                defaultValue={
-                  defaultData.limit?.expiredTime
-                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                    : ''
+              <DateTimePicker
+                value={
+                  defaultData.limit?.expiredTime ? new Date(defaultData.limit.expiredTime) : null
                 }
-                onChange={(e) => {
-                  setValue('limit.expiredTime', new Date(e.target.value));
+                onChange={(date) => {
+                  setValue('limit.expiredTime', date || undefined);
                 }}
               />
             </Flex>
