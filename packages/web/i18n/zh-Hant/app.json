@@ -108,6 +108,7 @@
   "custom_plugin_default_installed_label": "預設安裝",
   "custom_plugin_delete_success": "刪除成功",
   "custom_plugin_duplicate": "ID 重複",
+  "custom_plugin_duplicate_tip": "確認導入將覆蓋原有資源",
   "custom_plugin_has_token_fee_label": "是否收取 Token 費用",
   "custom_plugin_intro_label": "介紹",
   "custom_plugin_intro_placeholder": "為這個應用程式新增一個介紹",

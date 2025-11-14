@@ -109,6 +109,7 @@
   "custom_plugin_default_installed_label": "Default Installed",
   "custom_plugin_delete_success": "Delete successful",
   "custom_plugin_duplicate": "Duplicate ID",
+  "custom_plugin_duplicate_tip": "Confirm that the import will overwrite the original resources",
   "custom_plugin_has_token_fee_label": "Charge Token Fee",
   "custom_plugin_intro_label": "Introduction",
   "custom_plugin_intro_placeholder": "Add an introduction for this application",
