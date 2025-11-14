@@ -20,6 +20,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
+import { isChildInteractive } from '../template/system/interactive/constants';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
@@ -28,11 +29,7 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (
-    depth < MAX_DEPTH &&
-    (current?.type === 'childrenInteractive' || current?.type === 'loopInteractive') &&
-    current.params?.childrenResponse
-  ) {
+  while (depth < MAX_DEPTH && 'childrenResponse' in current.params) {
     current = current.params.childrenResponse;
     depth++;
   }
@@ -181,10 +178,7 @@ export const getLastInteractiveValue = (
       return;
     }
 
-    if (
-      lastValue.interactive.type === 'childrenInteractive' ||
-      lastValue.interactive.type === 'loopInteractive'
-    ) {
+    if (isChildInteractive(lastValue.interactive.type)) {
       return lastValue.interactive;
     }
 
@@ -297,7 +291,6 @@ export const checkNodeRunStatus = ({
   node: RuntimeNodeItemType;
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
-  const filterRuntimeEdges = filterWorkflowEdges(runtimeEdges);
   const isStartNode = (nodeType: string) => {
     const map: Record<any, boolean> = {
       [FlowNodeTypeEnum.workflowStart]: true,
@@ -310,7 +303,7 @@ export const checkNodeRunStatus = ({
     const commonEdges: RuntimeEdgeItemType[] = [];
     const recursiveEdgeGroupsMap = new Map<string, RuntimeEdgeItemType[]>();
 
-    const sourceEdges = filterRuntimeEdges.filter((item) => item.target === targetNode.nodeId);
+    const sourceEdges = runtimeEdges.filter((item) => item.target === targetNode.nodeId);
 
     sourceEdges.forEach((sourceEdge) => {
       const stack: Array<{
@@ -333,7 +326,7 @@ export const checkNodeRunStatus = ({
         const sourceNode = nodesMap.get(edge.source);
         if (!sourceNode) continue;
 
-        if (isStartNode(sourceNode.flowNodeType) || sourceNode.isStart) {
+        if (isStartNode(sourceNode.flowNodeType) || sourceEdge.sourceHandle === 'selectedTools') {
           commonEdges.push(sourceEdge);
           continue;
         }
@@ -355,7 +348,7 @@ export const checkNodeRunStatus = ({
         newVisited.add(edge.source);
 
         // 查找目标节点的 source edges 并加入栈中
-        const nextEdges = filterRuntimeEdges.filter((item) => item.target === edge.source);
+        const nextEdges = runtimeEdges.filter((item) => item.target === edge.source);
 
         for (const nextEdge of nextEdges) {
           stack.push({

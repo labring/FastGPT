@@ -11,7 +11,6 @@ import {
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import dynamic from 'next/dynamic';
 import Script from 'next/script';

@@ -230,6 +230,8 @@ export type AppTemplateSchemaType = {
   type: string;
   author?: string;
   isActive?: boolean;
+  isPromoted?: boolean;
+  recommendText?: string;
   userGuide?: {
     type: 'markdown' | 'link';
     content?: string;
@@ -237,6 +239,7 @@ export type AppTemplateSchemaType = {
   };
   isQuickTemplate?: boolean;
   order?: number;
+  // TODO: 对于建议应用，是另一个格式
   workflow: WorkflowTemplateBasicType;
 };
 

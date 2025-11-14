@@ -4,6 +4,7 @@
   "app_name": "Application name",
   "auto_index": "Auto index",
   "billing_module": "Deduction module",
+  "compress_llm_messages": "AI history compression",
   "confirm_export": "A total of {{total}} pieces of data were filtered out. Are you sure to export?",
   "count": "Number of runs",
   "current_filter_conditions": "Current filter conditions",

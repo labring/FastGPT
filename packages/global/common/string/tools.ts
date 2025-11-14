@@ -143,10 +143,7 @@ export const getRegQueryStr = (text: string, flags = 'i') => {
 
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
-  str = str
-    .trim()
-    .replace(/(\\n|\\)/g, '')
-    .replace(/  /g, '');
+  str = str.trim();
 
   // Find first opening bracket
   let start = -1;

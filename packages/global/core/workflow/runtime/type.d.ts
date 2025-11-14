@@ -2,9 +2,9 @@ import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import type {
   ChatItemType,
   ToolRunResponseItemType,
-  AIChatItemValueItemType
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
 } from '../../chat/type';
-import { NodeOutputItemType } from '../../chat/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import type { NodeToolConfigType, StoreNodeItemType } from '../type/node';
 import type { DispatchNodeResponseKeyEnum } from './constants';
@@ -112,7 +112,6 @@ export type RuntimeNodeItemType = {
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
-  isStart?: boolean;
   version?: string;
 
   inputs: FlowNodeInputItemType[];

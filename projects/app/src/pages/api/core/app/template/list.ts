@@ -10,7 +10,7 @@ export type ListParams = {
   isQuickTemplate?: boolean;
   randomNumber?: number;
   type?: AppTypeEnum | 'all';
-  excludeIds?: string[];
+  excludeIds?: string;
 };
 
 export type ListResponse = {
@@ -24,20 +24,30 @@ async function handler(
 ): Promise<ListResponse> {
   await authCert({ req, authToken: true });
 
-  const { isQuickTemplate = false, randomNumber = 0, type = 'all', excludeIds = [] } = req.query;
+  const { isQuickTemplate = false, randomNumber = 0, type = 'all', excludeIds } = req.query;
 
+  const parsedExcludeIds: string[] = (() => {
+    if (!excludeIds) return [];
+    try {
+      return JSON.parse(excludeIds);
+    } catch (error) {
+      console.error('Failed to parse excludeIds:', error);
+      return [];
+    }
+  })();
   const templateMarketItems = await getAppTemplatesAndLoadThem();
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
-    if (type === 'all' && !ToolTypeList.includes(item.type as AppTypeEnum)) return true;
+    if (type === 'all' && !(ToolTypeList.includes(item.type as AppTypeEnum) && randomNumber > 0))
+      return true;
     if (item.type === type) return true;
     return false;
   });
   const total = filteredItems.length;
 
-  if (excludeIds && excludeIds.length > 0) {
-    filteredItems = filteredItems.filter((item) => !excludeIds.includes(item.templateId));
+  if (parsedExcludeIds && parsedExcludeIds.length > 0) {
+    filteredItems = filteredItems.filter((item) => !parsedExcludeIds.includes(item.templateId));
   }
 
   if (isQuickTemplate) {
@@ -63,6 +73,8 @@ async function handler(
       templateId: item.templateId,
       name: item.name,
       intro: item.intro,
+      recommendText: item.recommendText,
+      isPromoted: item.isPromoted,
       avatar: item.avatar,
       tags: item.tags,
       type: item.type,

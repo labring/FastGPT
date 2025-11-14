@@ -11,7 +11,7 @@ import {
   SkeletonCircle,
   useBreakpointValue
 } from '@chakra-ui/react';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,13 +22,16 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useLocalStorageState } from 'ahooks';
 import { useState } from 'react';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
+import { appTypeTagMap } from '../constant';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
   const router = useRouter();
 
   const randomNumber =
-    useBreakpointValue({ base: 3, sm: 3, md: 4, lg: 4, xl: 5 }, { ssr: false }) || 4;
+    useBreakpointValue({ base: 2, sm: 2, md: 3, lg: 3, xl: 4 }, { ssr: false }) || 3;
 
   const [isHoverMoreButton, setIsHoverMoreButton] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorageState<boolean>(
@@ -43,12 +46,20 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     data: templateData,
     loading: isFetchingTemplates
   } = useRequest2(
-    (excludeIds?: string[]) =>
-      getTemplateMarketItemList({
+    (ids?: string[]) => {
+      const excludeIds = (() => {
+        try {
+          return JSON.stringify(ids);
+        } catch (error) {
+          return '';
+        }
+      })();
+      return getTemplateMarketItemList({
         type,
         randomNumber,
         excludeIds
-      }),
+      });
+    },
     {
       manual: false,
       refreshDeps: [type, randomNumber]
@@ -62,6 +73,11 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
       setCreatingTemplateId(templateId);
       const templateDetail = await getTemplateMarketItemDetail(templateId);
 
+      if (templateDetail.type === AppTypeEnum.simple) {
+        const completeWorkflow = form2AppWorkflow(templateDetail.workflow, t);
+        templateDetail.workflow = completeWorkflow;
+      }
+
       return postCreateApp({
         avatar: templateDetail.avatar,
         name: templateDetail.name,
@@ -70,6 +86,13 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig || {},
         templateId: templateDetail.templateId
+      }).then((res) => {
+        webPushTrack.useAppTemplate({
+          id: res,
+          name: templateDetail.name
+        });
+
+        return res;
       });
     },
     {
@@ -141,66 +164,167 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         in={!isCollapsed}
         animateOpacity
         transition={{ enter: { duration: 0.2 }, exit: { duration: 0.2 } }}
+        style={{ overflow: 'visible' }}
       >
         <Box
           display={'grid'}
           gridTemplateColumns={[
+            'repeat(2, 1fr) 160px',
+            'repeat(2, 1fr) 160px',
             'repeat(3, 1fr) 160px',
             'repeat(3, 1fr) 160px',
-            'repeat(4, 1fr) 160px',
-            'repeat(4, 1fr) 160px',
-            'repeat(5, 1fr) 160px'
+            'repeat(4, 1fr) 160px'
           ]}
-          gap={4}
+          gap={5}
         >
           {isFetchingTemplates && !templateData?.list?.length
             ? Array.from({ length: randomNumber }).map((_, index) => (
                 <Box
                   key={`skeleton-${index}`}
                   bg={'white'}
-                  p={'19px'}
+                  p={6}
                   borderRadius={'10px'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                 >
                   <Flex alignItems={'center'} gap={2} mb={2}>
-                    <SkeletonCircle size={'24px'} />
-                    <Skeleton height={'16px'} flex={1} />
+                    <SkeletonCircle size={'40px'} />
+                    <Flex flexDirection={'column'} gap={2} flex={1}>
+                      <Skeleton height={4} />
+                      <Skeleton height={4} />
+                    </Flex>
                   </Flex>
-                  <Skeleton height={'12px'} />
                 </Box>
               ))
-            : templateData?.list.map((item, index) => (
-                <MyBox
-                  key={index}
-                  bg={'white'}
-                  p={4}
-                  borderRadius={'10px'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  cursor={'pointer'}
-                  _hover={{
-                    borderColor: 'primary.500',
-                    boxShadow: 'md'
-                  }}
-                  isLoading={creatingTemplateId === item.templateId}
-                  onClick={() => {
-                    if (!creatingTemplateId) {
-                      handleCreateFromTemplate(item.templateId);
-                    }
-                  }}
-                >
-                  <Flex alignItems={'center'} gap={2} mb={2}>
-                    <Avatar src={item.avatar} w={'24px'} h={'24px'} borderRadius={'4px'} />
-                    <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} noOfLines={1}>
-                      {item.name}
-                    </Box>
-                  </Flex>
-                  <Box fontSize={'12px'} color={'myGray.500'} noOfLines={1}>
-                    {item.intro || ''}
-                  </Box>
-                </MyBox>
-              ))}
+            : templateData?.list.map((item, index) => {
+                return (
+                  <MyBox
+                    key={index}
+                    bg={'white'}
+                    p={6}
+                    borderRadius={'10px'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    boxShadow={'none'}
+                    cursor={'pointer'}
+                    position={'relative'}
+                    overflow={'hidden'}
+                    bgImage={item.isPromoted ? "url('/imgs/app/templateCreateBg.svg')" : 'none'}
+                    bgSize={'105% auto'}
+                    bgPosition={'top'}
+                    bgRepeat={'no-repeat'}
+                    _hover={{
+                      boxShadow:
+                        '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
+                      '& .template-content': {
+                        filter: 'blur(5px)'
+                      },
+                      '& .hover-text': {
+                        opacity: 1
+                      }
+                    }}
+                    isLoading={creatingTemplateId === item.templateId}
+                    onClick={() => {
+                      if (!creatingTemplateId) {
+                        handleCreateFromTemplate(item.templateId);
+                      }
+                    }}
+                    display={'flex'}
+                    gap={2}
+                    alignItems={'center'}
+                  >
+                    <Flex
+                      className="template-content"
+                      gap={2}
+                      alignItems={'center'}
+                      transition={'filter 0.1s ease-in-out'}
+                      w={'full'}
+                    >
+                      <Avatar src={item.avatar} w={10} h={10} borderRadius={'4px'} />
+                      <Box flex={1} minW={0} h={12}>
+                        <Flex
+                          fontSize={'16px'}
+                          fontWeight={'medium'}
+                          color={'myGray.900'}
+                          alignItems={'center'}
+                          gap={1}
+                          justifyContent={'space-between'}
+                        >
+                          <Flex alignItems={'center'} gap={'7px'} flex={1} minW={0}>
+                            <Box className="textEllipsis2" whiteSpace={'nowrap'}>
+                              {item.name}
+                            </Box>
+                            {item.isPromoted && (
+                              <Box
+                                p={'1px'}
+                                bgGradient={'linear(201deg, #E6B3FF 13.74%, #006AFF 89.76%)'}
+                                borderRadius={'full'}
+                                flexShrink={0}
+                              >
+                                <Box
+                                  px={1.5}
+                                  fontSize={'10px'}
+                                  bg={'myGray.25'}
+                                  borderRadius={'full'}
+                                  color={'myGray.900'}
+                                >
+                                  {t('app:template.recommended')}
+                                </Box>
+                              </Box>
+                            )}
+                          </Flex>
+                          <MyIcon
+                            name={
+                              appTypeTagMap[item.type as keyof typeof appTypeTagMap]?.icon as any
+                            }
+                            w={4}
+                            color={'myGray.900'}
+                            flexShrink={0}
+                          />
+                        </Flex>
+                        <Box
+                          fontSize={item.isPromoted ? '16px' : '14px'}
+                          fontWeight={item.isPromoted ? 'medium' : 'normal'}
+                          color={'myGray.500'}
+                          noOfLines={1}
+                          mt={0.5}
+                        >
+                          {(item.isPromoted ? item.recommendText || item.intro : item.intro) ||
+                            t('app:templateMarket.no_intro')}
+                        </Box>
+                      </Box>
+                    </Flex>
+                    <Flex
+                      className="hover-text"
+                      position={'absolute'}
+                      top={0}
+                      left={0}
+                      right={0}
+                      bottom={0}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      opacity={0}
+                      bg={' linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FFF 100%)'}
+                      transition={'opacity 0.1s ease-in-out'}
+                      cursor={'pointer'}
+                    >
+                      <Flex
+                        fontSize={'14px'}
+                        fontWeight={'medium'}
+                        color={'primary.700'}
+                        rounded={'sm'}
+                        px={5}
+                        py={2.5}
+                        _hover={{
+                          bg: 'rgba(17, 24, 36, 0.05)'
+                        }}
+                      >
+                        {t('app:templateMarket.Use')}
+                      </Flex>
+                    </Flex>
+                  </MyBox>
+                );
+              })}
           <Box
             borderRadius={'10px'}
             overflow={'hidden'}
@@ -218,6 +342,8 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
             p={0}
             onMouseEnter={() => setIsHoverMoreButton(true)}
             onMouseLeave={() => setIsHoverMoreButton(false)}
+            minH={20}
+            maxW={160}
           >
             <Box
               as="img"
