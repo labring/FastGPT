@@ -27,7 +27,7 @@
     "eslint-config-next": "^14.1.0",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "lint-staged": "^13.3.0",
     "mongodb-memory-server": "^10.1.4",
     "next-i18next": "15.4.2",
