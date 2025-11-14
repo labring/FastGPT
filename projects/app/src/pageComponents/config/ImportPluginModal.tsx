@@ -82,10 +82,10 @@ const ImportPluginModal = ({
       const isDuplicated = tools.some((tool) => tool.id.includes(toolDetail.toolId));
 
       setUploadedFiles((prev) =>
-        prev.map((f) =>
-          f.name === file.name
+        prev.map((prevFile) =>
+          prevFile.name === file.name
             ? {
-                ...f,
+                ...prevFile,
                 status: isDuplicated ? 'duplicate' : 'success',
                 toolId: parentId,
                 toolName: parseI18nString(toolDetail.name || '', i18n.language),
@@ -97,12 +97,16 @@ const ImportPluginModal = ({
                     return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
                   }) || []
               }
-            : f
+            : prevFile
         )
       );
     } catch (error: any) {
       setUploadedFiles((prev) =>
-        prev.map((f) => (f.name === file.name ? { ...f, status: 'error', errorMsg: error } : f))
+        prev.map((prevFile) =>
+          prevFile.name === file.name
+            ? { ...prevFile, status: 'error', errorMsg: error.message }
+            : prevFile
+        )
       );
     }
   };
@@ -160,7 +164,7 @@ const ImportPluginModal = ({
   const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest2(
     async () => {
       const successToolIds = uploadedFiles
-        .filter((file) => file.status === 'success' && file.toolId)
+        .filter((file) => (file.status === 'success' || file.status === 'duplicate') && file.toolId)
         .map((file) => file.toolId!);
 
       await confirmPkgPluginUpload({ toolIds: successToolIds });
@@ -248,11 +252,15 @@ const ImportPluginModal = ({
                     textOverflow={'ellipsis'}
                     whiteSpace={'nowrap'}
                   >
-                    {item.status === 'success' && item.toolName ? item.toolName : item.name}
+                    {(item.status === 'success' || item.status === 'duplicate') && item.toolName
+                      ? item.toolName
+                      : item.name}
                   </Box>
                 </Flex>
                 <Flex w={'20%'} px={1} py={'15px'} align={'center'} gap={1} flexWrap={'wrap'}>
-                  {item.status === 'success' && item.toolTags && item.toolTags.length > 0 ? (
+                  {(item.status === 'success' || item.status === 'duplicate') &&
+                  item.toolTags &&
+                  item.toolTags.length > 0 ? (
                     item.toolTags.map((tag, tagIndex) => (
                       <Box
                         key={tagIndex}
@@ -282,7 +290,9 @@ const ImportPluginModal = ({
                   whiteSpace={'nowrap'}
                   alignItems={'center'}
                 >
-                  {item.status === 'success' && item.toolIntro ? item.toolIntro : '-'}
+                  {(item.status === 'success' || item.status === 'duplicate') && item.toolIntro
+                    ? item.toolIntro
+                    : '-'}
                 </Flex>
                 <Flex w={'10%'} px={1} py={'15px'}>
                   {(item.status === 'uploading' || item.status === 'parsing') && (
@@ -303,8 +313,10 @@ const ImportPluginModal = ({
                       fontSize={'xs'}
                       fontWeight={'medium'}
                       color={'yellow.500'}
+                      gap={1}
                     >
                       {t('app:custom_plugin_duplicate')}
+                      <QuestionTip label={t('app:custom_plugin_duplicate_tip')} />
                     </Flex>
                   )}
                   {item.status === 'success' && (
@@ -371,7 +383,8 @@ const ImportPluginModal = ({
         <Button
           onClick={handleConfirmImport}
           isDisabled={
-            uploadedFiles.length === 0 || uploadedFiles.every((f) => f.status !== 'success')
+            uploadedFiles.length === 0 ||
+            uploadedFiles.every((f) => f.status !== 'success' && f.status !== 'duplicate')
           }
           isLoading={confirmLoading || uploadLoading}
         >
