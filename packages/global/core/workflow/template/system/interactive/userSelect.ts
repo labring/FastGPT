@@ -1,4 +1,6 @@
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { LangEnum } from '../../../../../common/i18n/type';
+import { getLang } from '../../../../../../web/hooks/useI18n';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
@@ -12,6 +14,16 @@ import {
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node.d';
 
+const getUserSelectDiagram = () => {
+  const currentLang = getLang();
+
+  if (currentLang === LangEnum.en) {
+    return '/imgs/app/userSelectEn.svg';
+  }
+
+  return '/imgs/app/userSelect.svg';
+};
+
 export const UserSelectNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.userSelect,
   templateType: FlowNodeTemplateTypeEnum.interactive,
@@ -19,7 +31,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   showSourceHandle: false,
   showTargetHandle: true,
   avatar: 'core/workflow/template/userSelect',
-  diagram: '/imgs/app/userSelect.svg',
+  diagram: getUserSelectDiagram(),
   name: i18nT('app:workflow.user_select'),
   intro: i18nT(`app:workflow.user_select_tip`),
   isTool: true,

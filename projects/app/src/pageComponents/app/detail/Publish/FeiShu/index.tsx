@@ -33,8 +33,14 @@ import { getDocPath } from '@/web/common/system/doc';
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
 
+const LangMap: Record<string, string> = {
+  'zh-CN': '/imgs/outlink/feishu-copylink-instruction.png',
+  'zh-Hant': '/imgs/outlink/feishu-copylink-instruction.png',
+  en: '/imgs/outlink/feishu-copylink-instruction-en.png'
+};
+
 const FeiShu = ({ appId }: { appId: string }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuAppType>>();
@@ -237,7 +243,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}
           onClose={closeShowShareLinkModal}
-          img="/imgs/outlink/feishu-copylink-instruction.png"
+          img={LangMap[i18n.language]}
         />
       )}
     </Box>

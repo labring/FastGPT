@@ -19,7 +19,11 @@ const setLang = (value: string) => {
     localStorage.setItem(LANG_KEY, value);
   }
 };
-const getLang = () => {
+export const getLang = () => {
+  // 检查是否在浏览器环境中
+  if (typeof window === 'undefined') {
+    return LangEnum.zh_CN;
+  }
   return localStorage.getItem(LANG_KEY) || Cookies.get(LANG_KEY);
 };
 
