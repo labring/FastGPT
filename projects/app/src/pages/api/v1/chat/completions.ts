@@ -48,6 +48,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { useTeamFrequencyLimit } from '@fastgpt/service/common/middle/teamRateLimit';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -449,7 +450,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 }
-export default NextAPI(handler);
+export default NextAPI(
+  useTeamFrequencyLimit({
+    seconds: 60,
+    limit: 1000,
+    keyPrefix: 'chat-completions-rate-limit'
+  }),
+  handler
+);
 
 const authShareChat = async ({
   chatId,
