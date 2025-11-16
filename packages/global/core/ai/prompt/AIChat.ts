@@ -1,6 +1,8 @@
 import { type PromptTemplateItem } from '../type.d';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getPromptByVersion } from './utils';
+import { LangEnum } from '../../../common/i18n/type';
+import { getLang } from '../../../../web/hooks/useI18n';
 
 export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
@@ -137,6 +139,145 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   }
 ];
 
+export const Prompt_userQuotePromptList_EN: PromptTemplateItem[] = [
+  {
+    title: i18nT('app:template.standard_template'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
+To ensure credibility and traceability, you must append citation markers at the end of each paragraph to indicate which references were used.
+
+## Citation Rules
+
+- Use the format [id](CITE) to cite content from <Cites></Cites>, where CITE is a fixed constant and id is the actual citation ID.
+- Integrate citations naturally at the **end of each paragraph**. Example: "Nginx is a lightweight web server and reverse proxy server[67e517e74767063e882d6861](CITE)."
+- Each paragraph **must contain at least one citation**. For multiple citations, list them in order: "Nginx is a lightweight web server[67e517e74767063e882d6861](CITE)[67e517e74767063e882d6862](CITE).\\nIt is known for its low resource usage[67e517e74767063e882d6863](CITE)."
+- Do not treat examples as factual knowledge.
+- Never fabricate IDs. All cited IDs must exist in <Cites></Cites>!
+
+## General Rules
+
+- If you are unsure of the answer, clarify that you don't know.
+- Keep your answer consistent with the content in <Cites></Cites>, but do not mention that your knowledge comes from <Cites></Cites>.
+- Use Markdown to format your response (especially for images, tables, lists), and output them completely and correctly.
+- If an image is relevant, output only the image URL in Markdown format: [](url). Do not add alt text or description.
+- Respond in the same language as the user's question.
+
+<Cites>
+{{quote}}
+</Cites>
+
+## User Question
+
+{{question}}
+
+## Response
+`
+    }
+  },
+  {
+    title: i18nT('app:template.qa_template'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+As a Q&A assistant, you will use the data pairs provided within <QA></QA> to answer the question.
+
+## Response Requirements
+- Select one or more relevant Q&A pairs to answer.
+- Your response should closely match the content in <Answer></Answer>.
+- If no relevant Q&A pair exists, clarify that you cannot answer.
+- Do not mention that your answer comes from <QA></QA>; just provide the answer directly.
+- Respond in the same language as the user's question.
+
+<QA>
+{{quote}}
+</QA>
+
+## User Question
+
+{{question}}
+
+## Response
+`
+    }
+  },
+  {
+    title: i18nT('app:template.standard_strict'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.  
+To enhance credibility and traceability, you must append citation markers at the end of each paragraph to indicate which sources were referenced.
+
+## Citation Rules
+
+- Use the format [id](CITE) to cite content from <Cites></Cites>, where CITE is a fixed constant and id is the actual citation ID.
+- Integrate citations naturally at the **end of each paragraph**. Example: "Nginx is a lightweight web server and reverse proxy server[67e517e74767063e882d6861](CITE)."
+- Each paragraph **must contain at least one citation**. For multiple citations, list them in order: "Nginx is a lightweight web server[67e517e74767063e882d6861](CITE)[67e517e74767063e882d6862](CITE).\\nIt is known for its low resource usage[67e517e74767063e882d6863](CITE)."
+- Do not treat examples as factual knowledge.
+- Never fabricate IDs. All cited IDs must exist in <Cites></Cites>.
+
+## General Rules
+
+- If you are uncertain about the answer, clarify that you don’t know.
+- Keep your answer consistent with the content in <Cites></Cites>, but avoid mentioning that your knowledge comes from <Cites></Cites>.
+- Use Markdown syntax to format your response. Pay special attention to images, tables, and lists—output them completely and correctly.
+- If a relevant image is available, output only the image URL in Markdown format: [](url). Do not include alt text or descriptions.
+- Respond in the same language as the user's question.
+
+## Strict Requirement
+
+You may ONLY use content from <Cites></Cites> as your knowledge source. Do not use your own knowledge, and your response must strictly match the content within <Cites></Cites>.
+
+<Cites>
+{{quote}}
+</Cites>
+
+## User Question
+
+{{question}}
+
+## Response
+`
+    }
+  },
+  {
+    title: i18nT('app:template.hard_strict'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+As a Q&A assistant, you will answer questions using the data pairs provided within <QA></QA>.
+
+## Response Requirements
+- Select one or more relevant Q&A pairs to formulate your answer.
+- Your response must closely match the content inside <Answer></Answer>.
+- If no relevant Q&A pair exists, clarify that you cannot answer.
+- Do not mention that your answer is based on <QA></QA>; simply provide the answer directly.
+- Respond in the same language as the user's question.
+
+## Strict Requirement
+
+You may ONLY use content from <QA></QA> as your knowledge source. Do not use your own knowledge, and your response must strictly match the content within <QA></QA>.
+
+<QA>
+{{quote}}
+</QA>
+
+## User Question
+
+{{question}}
+
+## Response
+`
+    }
+  }
+];
+
+export const get_userQuotePromptList = () => {
+  return getLang() === LangEnum.en ? Prompt_userQuotePromptList_EN : Prompt_userQuotePromptList;
+};
+
 export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
@@ -244,6 +385,119 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   }
 ];
 
+export const Prompt_systemQuotePromptList_EN: PromptTemplateItem[] = [
+  {
+    title: i18nT('app:template.standard_template'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
+
+To ensure credibility and traceability, you must append citation markers at the end of each paragraph to indicate which references were used.
+
+## Citation Rules
+
+- Use the format [id](CITE) to cite content from <Cites></Cites>, where CITE is a fixed constant and id is the actual citation ID.
+- Integrate citations naturally at the **end of each paragraph**. Example: "Nginx is a lightweight web server and reverse proxy server[67e517e74767063e882d6861](CITE)."
+- Each paragraph **must contain at least one citation**. For multiple citations, list them in order: "Nginx is a lightweight web server[67e517e74767063e882d6861](CITE)[67e517e74767063e882d6862](CITE).\\nIt is known for its low resource usage[67e517e74767063e882d6863](CITE)."
+- Do not treat examples as factual knowledge.
+- Never fabricate IDs. All cited IDs must exist in <Cites></Cites>!
+
+## General Rules
+
+- If you are unsure of the answer, clarify that you don't know.
+- Keep your answer consistent with the content in <Cites></Cites>, but do not mention that your knowledge comes from <Cites></Cites>.
+- Use Markdown to format your response (especially for images, tables, lists), and output them completely and correctly.
+- If an image is relevant, output only the image URL in Markdown format: [](url). Do not add alt text or description.
+- Respond in the same language as the user's question.
+
+<Cites>
+{{quote}}
+</Cites>`
+    }
+  },
+  {
+    title: i18nT('app:template.qa_template'),
+    desc: '',
+    value: {
+      ['4.9.8']: `## Task Description
+As a Q&A assistant, you will use the data pairs provided within <QA></QA> to answer the question.
+
+## Response Requirements
+- Select one or more relevant Q&A pairs to answer.
+- Your response should closely match the content in <Answer></Answer>.
+- If no relevant Q&A pair exists, clarify that you cannot answer.
+- Do not mention that your answer comes from <QA></QA>; just provide the answer directly.
+- Respond in the same language as the user's question.
+
+<QA>
+{{quote}}
+</QA>`
+    }
+  },
+  {
+    title: i18nT('app:template.standard_strict'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.  
+To enhance credibility and traceability, you must append citation markers at the end of each paragraph to indicate which sources were referenced.
+
+## Citation Rules
+
+- Use the format [id](CITE) to cite content from <Cites></Cites>, where CITE is a fixed constant and id is the actual citation ID.
+- Integrate citations naturally at the **end of each paragraph**. Example: "Nginx is a lightweight web server and reverse proxy server[67e517e74767063e882d6861](CITE)."
+- Each paragraph **must contain at least one citation**. For multiple citations, list them in order: "Nginx is a lightweight web server[67e517e74767063e882d6861](CITE)[67e517e74767063e882d6862](CITE).\\nIt is known for its low resource usage[67e517e74767063e882d6863](CITE)."
+- Do not treat examples as factual knowledge.
+- Never fabricate IDs. All cited IDs must exist in <Cites></Cites>.
+
+## General Rules
+
+- If you are uncertain about the answer, clarify that you don’t know.
+- Keep your answer consistent with the content in <Cites></Cites>, but avoid mentioning that your knowledge comes from <Cites></Cites>.
+- Use Markdown syntax to format your response. Pay special attention to images, tables, and lists—output them completely and correctly.
+- If a relevant image is available, output only the image URL in Markdown format: [](url). Do not include alt text or descriptions.
+- Respond in the same language as the user's question.
+
+## Strict Requirement
+
+You may ONLY use content from <Cites></Cites> as your knowledge source. Do not use your own knowledge, and your response must strictly match the content within <Cites></Cites>.
+
+<Cites>
+{{quote}}
+</Cites>`
+    }
+  },
+  {
+    title: i18nT('app:template.hard_strict'),
+    desc: '',
+    value: {
+      ['4.9.7']: `## Task Description
+As a Q&A assistant, you will answer questions using the data pairs provided within <QA></QA>.
+
+## Response Requirements
+- Select one or more relevant Q&A pairs to formulate your answer.
+- Your response must closely match the content inside <Answer></Answer>.
+- If no relevant Q&A pair exists, clarify that you cannot answer.
+- Do not mention that your answer is based on <QA></QA>; simply provide the answer directly.
+- Respond in the same language as the user's question.
+
+## Strict Requirement
+
+You may ONLY use content from <QA></QA> as your knowledge source. Do not use your own knowledge, and your response must strictly match the content within <QA></QA>.
+
+<QA>
+{{quote}}
+</QA>`
+    }
+  }
+];
+
+export const get_systemQuotePromptList = () => {
+  return getLang() === LangEnum.en ? Prompt_systemQuotePromptList_EN : Prompt_systemQuotePromptList;
+};
+
+
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
@@ -304,7 +558,7 @@ export const getQuoteTemplate = (version?: string) => {
 
 export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user') => {
   const quotePromptTemplates =
-    role === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
+    role === 'user' ? get_userQuotePromptList() : get_systemQuotePromptList();
 
   const defaultTemplate = quotePromptTemplates[0].value;
 
@@ -313,13 +567,24 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 
 // Document quote prompt
 export const getDocumentQuotePrompt = (version?: string) => {
-  const promptMap = {
+
+  const promptMapZh = {
     ['4.9.7']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
 <FilesContent>
 {{quote}}
 </FilesContent>
 `
   };
+
+  const promptMapEn = {
+    ['4.9.7']: `Use the content within <FilesContent></FilesContent> as reference for this conversation:
+<FilesContent>
+{{quote}}
+</FilesContent>
+`
+  };
+
+  const promptMap = getLang() === LangEnum.en ? promptMapEn : promptMapZh;
 
   return getPromptByVersion(version, promptMap);
 };
