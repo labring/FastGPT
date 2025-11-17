@@ -583,7 +583,10 @@ FastGPT AI 相关参数配置说明
 
   const normalizedChunks = simpleChunks(chunks);
   const normalizedExpected = simpleChunks(mock.result);
-
+  fs.writeFileSync(
+    '/Volumes/code/fastgpt-pro/FastGPT/test/cases/global/common/string/test.md',
+    JSON.stringify(normalizedChunks, null, 2)
+  );
   expect(normalizedChunks).toEqual(normalizedExpected);
 });
 
