@@ -295,10 +295,8 @@ it(`Test splitText2Chunks 6`, () => {
 这是测试文本 2,长的。
 FastGPT是一款基于大语言模型（LLM）的智能问答系统，专为提供高效、准确的知识库问答服务而设计。它支持多种数据导入方式，包括手动输入、PDF、WORD、Markdown和CSV等格式，能够自动进行数据预处理、向量化和QA分割，大幅提升数据处理效率。FastGPT的可视化界面设计简洁直观，用户可以通过Flow模块进行工作流编排，轻松实现复杂的问答场景。此外，FastGPT支持多种LLM模型，如GPT、Claude、文心一言等，未来还将支持自定义的向量模型。其强大的API集成能力使得用户可以轻松将其接入现有的GPT应用或其他平台，如企业微信、公众号、飞书等。FastGPT的开源项目遵循Apache License 2.0协议，用户可以进行二次开发和发布。其独特的QA结构设计提高了在大量数据场景中的问答准确性，而可视化工作流则展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。FastGPT还提供了多种调试途径，如搜索测试、引用修改和完整对话预览等，方便用户进行调试。其知识库核心流程包括AI相关参数配置说明，如返回AI内容、最大上下文、函数调用、温度、回复上限、系统提示词、引用模板和引用提示词等。通过这些配置，用户可以更好地控制和优化AI模型的表现。FastGPT的引用模板和提示词设计使得用户可以根据具体需求进行灵活配置，从而提高问答的准确性和效率。总之，FastGPT是一款功能强大、易于使用的智能问答系统，适用于各种应用场景，帮助用户实现高效、准确的知识库问答服务。FastGPT的设计理念是通过先进的技术手段简化用户的操作流程，使得即便是没有技术背景的用户也能轻松上手。其多样化的数据导入方式确保了用户可以根据自身需求选择最合适的方式进行数据输入，而自动化的数据预处理功能则大大减少了用户的工作量。通过对数据的向量化处理，FastGPT能够更好地理解和分析用户的问题，从而提供更为精准的回答。`,
     result: [
-      `这是测试文本 1，短的`,
-      `这是测试文本 2,长的。
-FastGPT是一款基于大语言模型（LLM）的智能问答系统，专为提供高效、准确的知识库问答服务而设计。它支持多种数据导入方式，包括手动输入、PDF、WORD、Markdown和CSV等格式，能够自动进行数据预处理、向量化和QA分割，大幅提升数据处理效率。FastGPT的可视化界面设计简洁直观，用户可以通过Flow模块进行工作流编排，轻松实现复杂的问答场景。此外，FastGPT支持多种LLM模型，如GPT、Claude、文心一言等，未来还将支持自定义的向量模型。其强大的API集成能力使得用户可以轻松将其接入现有的GPT应用或其他平台，如企业微信、公众号、飞书等。FastGPT的开源项目遵循Apache License 2.0协议，用户可以进行二次开发和发布。其独特的QA结构设计提高了在大量数据场景中的问答准确性，而可视化工作流则展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。FastGPT还提供了多种调试途径，如搜索测试、引用修改和完整对话预览等，方便用户进行调试。其知识库核心流程包括AI相关参数配置说明，如返回AI内容、最大上下文、函数调用、温度、回复上限、系统提示词、引用模板和引用提示词等。`,
-      `FastGPT还提供了多种调试途径，如搜索测试、引用修改和完整对话预览等，方便用户进行调试。其知识库核心流程包括AI相关参数配置说明，如返回AI内容、最大上下文、函数调用、温度、回复上限、系统提示词、引用模板和引用提示词等。通过这些配置，用户可以更好地控制和优化AI模型的表现。FastGPT的引用模板和提示词设计使得用户可以根据具体需求进行灵活配置，从而提高问答的准确性和效率。总之，FastGPT是一款功能强大、易于使用的智能问答系统，适用于各种应用场景，帮助用户实现高效、准确的知识库问答服务。FastGPT的设计理念是通过先进的技术手段简化用户的操作流程，使得即便是没有技术背景的用户也能轻松上手。其多样化的数据导入方式确保了用户可以根据自身需求选择最合适的方式进行数据输入，而自动化的数据预处理功能则大大减少了用户的工作量。通过对数据的向量化处理，FastGPT能够更好地理解和分析用户的问题，从而提供更为精准的回答。`
+      '这是测试文本 1，短的',
+      '这是测试文本 2,长的。\nFastGPT是一款基于大语言模型（LLM）的智能问答系统，专为提供高效、准确的知识库问答服务而设计。它支持多种数据导入方式，包括手动输入、PDF、WORD、Markdown和CSV等格式，能够自动进行数据预处理、向量化和QA分割，大幅提升数据处理效率。FastGPT的可视化界面设计简洁直观，用户可以通过Flow模块进行工作流编排，轻松实现复杂的问答场景。此外，FastGPT支持多种LLM模型，如GPT、Claude、文心一言等，未来还将支持自定义的向量模型。其强大的API集成能力使得用户可以轻松将其接入现有的GPT应用或其他平台，如企业微信、公众号、飞书等。FastGPT的开源项目遵循Apache License 2.0协议，用户可以进行二次开发和发布。其独特的QA结构设计提高了在大量数据场景中的问答准确性，而可视化工作流则展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。FastGPT还提供了多种调试途径，如搜索测试、引用修改和完整对话预览等，方便用户进行调试。其知识库核心流程包括AI相关参数配置说明，如返回AI内容、最大上下文、函数调用、温度、回复上限、系统提示词、引用模板和引用提示词等。通过这些配置，用户可以更好地控制和优化AI模型的表现。FastGPT的引用模板和提示词设计使得用户可以根据具体需求进行灵活配置，从而提高问答的准确性和效率。总之，FastGPT是一款功能强大、易于使用的智能问答系统，适用于各种应用场景，帮助用户实现高效、准确的知识库问答服务。FastGPT的设计理念是通过先进的技术手段简化用户的操作流程，使得即便是没有技术背景的用户也能轻松上手。其多样化的数据导入方式确保了用户可以根据自身需求选择最合适的方式进行数据输入，而自动化的数据预处理功能则大大减少了用户的工作量。通过对数据的向量化处理，FastGPT能够更好地理解和分析用户的问题，从而提供更为精准的回答。'
     ]
   };
 
@@ -324,6 +322,41 @@ it(`Test splitText2Chunks 7`, () => {
   const { chunks } = splitText2Chunks({ customReg: ['\\n\\n'], text: mock.text, chunkSize: 2000 });
 
   expect(chunks).toEqual(mock.result);
+});
+
+// 自定义分隔符测试:使用 maxSize 而非 chunkSize 进行分割
+it(`Test splitText2Chunks 7.5 - Custom separator uses maxSize for splitting`, () => {
+  const mock = {
+    text: `第一段内容。FastGPT 是一个基于 LLM 大语言模型的知识库问答系统,提供开箱即用的数据处理、模型调用等能力。它支持多种数据导入方式,包括手动输入、PDF、WORD、Markdown 和 CSV 等格式,能够自动进行数据预处理、向量化和 QA 分割,大幅提升数据处理效率。FastGPT 的可视化界面设计简洁直观,用户可以通过 Flow 模块进行工作流编排,轻松实现复杂的问答场景。补充几个字，hello！！！
+----
+第二段内容。FastGPT 支持多种 LLM 模型,如 GPT、Claude、文心一言等,未来还将支持自定义的向量模型。其强大的 API 集成能力使得用户可以轻松将其接入现有的 GPT 应用或其他平台,如企业微信、公众号、飞书等。FastGPT 的开源项目遵循 Apache License 2.0 协议,用户可以进行二次开发和发布。,轻松实现复杂的问答场景。补充几个字，hello！！！,轻松实现复杂的问答场景。补充几个字，hello！！！`,
+    chunkSize: 200, // 设置较小的 chunkSize
+    maxSize: 2000 // maxSize 远大于 chunkSize
+  };
+
+  const { chunks } = splitText2Chunks({
+    text: mock.text,
+    chunkSize: mock.chunkSize,
+    maxSize: mock.maxSize,
+    customReg: ['----']
+  });
+
+  // 应该分成 2 个块(通过 ---- 分隔符分割)
+  expect(chunks.length).toBe(2);
+
+  // 验证第一个块大于 chunkSize(200),说明使用的是 maxSize
+  expect(chunks[0].length).toBeGreaterThan(mock.chunkSize);
+  expect(chunks[0].length).toBeLessThanOrEqual(mock.maxSize);
+
+  // 验证第二个块大于 chunkSize(200),说明使用的是 maxSize
+  expect(chunks[1].length).toBeGreaterThan(mock.chunkSize);
+  expect(chunks[1].length).toBeLessThanOrEqual(mock.maxSize);
+
+  // 验证包含完整内容(去除分隔符和空白后)
+  expect(chunks[0]).toContain('第一段内容');
+  expect(chunks[0]).toContain('FastGPT 是一个基于 LLM 大语言模型');
+  expect(chunks[1]).toContain('第二段内容');
+  expect(chunks[1]).toContain('FastGPT 支持多种 LLM 模型');
 });
 
 // 长代码块分割
@@ -545,8 +578,7 @@ FastGPT AI 相关参数配置说明
   const { chunks } = splitText2Chunks({
     text: mock.text,
     chunkSize: 500,
-    maxSize: 100000,
-    customReg: ['----']
+    maxSize: 100000
   });
 
   const normalizedChunks = simpleChunks(chunks);
