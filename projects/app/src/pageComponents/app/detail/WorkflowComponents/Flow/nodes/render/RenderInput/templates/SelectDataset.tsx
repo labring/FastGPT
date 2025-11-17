@@ -36,8 +36,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(item.value)) return item.value as SelectedDatasetType;
-    return [] as SelectedDatasetType;
+    if (Array.isArray(item.value)) return item.value as SelectedDatasetType[];
+    return [] as SelectedDatasetType[];
   }, [item.value]);
 
   useEffect(() => {
