@@ -783,7 +783,6 @@
   "dataset.Manual collection Tip": "Manual datasets allow you to create an empty container to hold data",
   "dataset.Move Failed": "Move Error",
   "dataset.Select Dataset": "Select This Dataset",
-  "dataset.Select Dataset Tips": "Only Datasets with the same index model can be selected",
   "dataset.Select Folder": "Enter Folder",
   "dataset.Training Name": "Data Training",
   "dataset.collections.Collection Embedding": "{{total}} Indexes",

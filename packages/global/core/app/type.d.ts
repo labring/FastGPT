@@ -112,7 +112,7 @@ export type AppSimpleEditFormType = {
     [NodeInputKeyEnum.aiChatJsonSchema]?: string;
   };
   dataset: {
-    datasets: SelectedDatasetType;
+    datasets: SelectedDatasetType[];
   } & AppDatasetSearchParamsType;
   selectedTools: FlowNodeTemplateType[];
   chatConfig: AppChatConfigType;
