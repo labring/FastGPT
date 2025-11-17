@@ -39,7 +39,7 @@
     "hyperdown": "^2.4.29",
     "i18next": "23.16.8",
     "immer": "^9.0.19",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "json5": "^2.2.3",
     "jsondiffpatch": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
