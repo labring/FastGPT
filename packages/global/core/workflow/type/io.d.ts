@@ -128,7 +128,7 @@ export type SelectedDatasetType = {
   avatar: string;
   name: string;
   vectorModel: EmbeddingModelItemType;
-}[];
+};
 
 /* http node */
 export type HttpParamAndHeaderItemType = {

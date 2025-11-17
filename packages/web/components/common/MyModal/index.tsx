@@ -95,7 +95,7 @@ const MyModal = ({
                 />
               </>
             )}
-            <Box ml={3} color={'myGray.900'} fontWeight={'500'}>
+            <Box ml={iconSrc ? 3 : 0} color={'myGray.900'} fontWeight={'500'}>
               {title}
             </Box>
             <Box flex={1} />

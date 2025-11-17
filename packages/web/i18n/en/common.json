@@ -773,6 +773,7 @@
   "dataset.Confirm to delete the file": "Confirm to Delete This File and All Its Data?",
   "dataset.Create Folder": "Create Folder",
   "dataset.Create manual collection": "Create Manual Dataset",
+  "dataset.Create_dataset_tips": "For more advanced operations, please go to",
   "dataset.Delete Dataset Error": "Delete Dataset Error",
   "dataset.Edit Folder": "Edit Folder",
   "dataset.Edit Info": "Edit Information",
