@@ -27,6 +27,9 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
+  ChunkSettingModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -59,19 +62,19 @@ const QuickCreateDatasetModal = ({
     defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model;
   const defaultAgentModel =
     defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model;
+  const defaultVLLM = defaultModels.datasetImageLLM?.model;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       parentId,
-      name: t('app:unnamed_app'),
+      name: '',
       avatar: 'core/dataset/commonDatasetColor'
     }
   });
 
   const avatar = watch('avatar');
-  const name = watch('name');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -125,10 +128,13 @@ const QuickCreateDatasetModal = ({
         datasetId,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-        chunkSize: 512,
-        chunkSplitter: '',
-        qaPrompt: '',
-        metadata: {}
+        chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
+        chunkTriggerMinSize: 1000,
+        chunkSettingMode: ChunkSettingModeEnum.auto,
+        chunkSplitMode: DataChunkSplitModeEnum.paragraph,
+        chunkSize: 1024,
+        indexSize: 512,
+        customPdfParse: false
       });
 
       setSelectFiles((prev) =>
@@ -154,7 +160,8 @@ const QuickCreateDatasetModal = ({
         parentId,
         type: DatasetTypeEnum.dataset,
         vectorModel: defaultVectorModel,
-        agentModel: defaultAgentModel
+        agentModel: defaultAgentModel,
+        vlmModel: defaultVLLM
       });
 
       if (selectFiles.length > 0) {
@@ -206,7 +213,7 @@ const QuickCreateDatasetModal = ({
             </MyTooltip>
             <FormControl flex={1}>
               <Input
-                {...register('name')}
+                {...register('name', { required: true })}
                 placeholder={t('common:dataset.dataset_name')}
                 h={8}
                 autoFocus
@@ -306,7 +313,7 @@ const QuickCreateDatasetModal = ({
 
       <ModalFooter justifyContent={'space-between'} fontSize={'14px'}>
         <Flex fontWeight={'medium'}>
-          <Box color={'myGray.500'}>{t('common:dataset.Create_dataset_tips')}</Box>
+          <Box color={'myGray.500'}>{t('app:dataset.create_dataset_tips')}</Box>
           <Box
             px={1}
             cursor={'pointer'}
@@ -324,7 +331,7 @@ const QuickCreateDatasetModal = ({
           </Button>
           <Button
             isLoading={isCreating}
-            isDisabled={name.trim().length === 0 || selectFiles.length === 0}
+            isDisabled={selectFiles.length === 0}
             onClick={handleSubmit(onCreate)}
           >
             {t('common:Create')}

@@ -42,7 +42,7 @@ const requestLLMPargraph = async ({
   rawText: string;
   model: string;
   billId: string;
-  paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+  paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
   if (
     !global.feConfigs?.isPlus ||
@@ -255,7 +255,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           usageId: data.billId,
           type: UsageItemTypeEnum.training_paragraph
         });
-
+        console.log(collection, 1111);
         // 4. Chunk split
         const chunks = await rawText2Chunks({
           rawText: resultText,
