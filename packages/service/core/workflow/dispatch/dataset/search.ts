@@ -19,7 +19,7 @@ import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/a
 import { getNodeErrResponse } from '../utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.userChatInput]?: string;

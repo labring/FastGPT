@@ -42,7 +42,7 @@ const requestLLMPargraph = async ({
   rawText: string;
   model: string;
   billId: string;
-  paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+  paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
   if (
     !global.feConfigs?.isPlus ||

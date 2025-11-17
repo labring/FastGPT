@@ -77,7 +77,8 @@ export function useDatasetSelect() {
       datasets: [],
       paths: []
     },
-    loading: isFetching
+    loading: isFetching,
+    runAsync: loadDatasets
   } = useRequest2(
     async () => {
       const result = await Promise.all([
@@ -105,7 +106,8 @@ export function useDatasetSelect() {
     setSearchKey,
     datasets: data.datasets,
     paths: data.paths,
-    isFetching
+    isFetching,
+    loadDatasets
   };
 }
 

@@ -782,7 +782,6 @@
   "dataset.Manual collection Tip": "手動資料集允許建立一個空的容器來存放資料",
   "dataset.Move Failed": "移動錯誤",
   "dataset.Select Dataset": "選擇此知識庫",
-  "dataset.Select Dataset Tips": "僅能選擇相同索引模型的知識庫",
   "dataset.Select Folder": "進入資料夾",
   "dataset.Training Name": "資料訓練",
   "dataset.collections.Collection Embedding": "{{total}} 個索引",

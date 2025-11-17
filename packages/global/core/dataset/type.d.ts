@@ -10,7 +10,8 @@ import type {
   SearchScoreTypeEnum,
   TrainingModeEnum,
   ChunkSettingModeEnum,
-  ChunkTriggerConfigTypeEnum
+  ChunkTriggerConfigTypeEnum,
+  ParagraphChunkAIModeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
