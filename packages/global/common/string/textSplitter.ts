@@ -176,7 +176,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   const stepReges: { reg: RegExp | string; maxLen: number }[] = [
     ...customReg.map((text) => ({
       reg: text.replace(/\\n/g, '\n'),
-      maxLen: chunkSize
+      maxLen: maxSize
     })),
     ...markdownHeaderRules,
 
@@ -250,7 +250,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       .map((text) => {
         const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
         // 如果一个分块没有匹配到，则使用默认块大小，否则使用最大块大小
-        const chunkMaxSize = text.match(reg) === null ? chunkSize : maxLen;
+        const chunkMaxSize = (() => {
+          if (isCustomStep) return maxLen;
+          return text.match(reg) === null ? chunkSize : maxLen;
+        })();
 
         return {
           text: isMarkdownSplit ? text.replace(matchTitle, '') : text,
