@@ -3,12 +3,13 @@ import { type DatasetCollectionSchemaType } from '../type';
 
 export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType) => {
   return {
-    sourceId:
+    sourceId: String(
       collection?.fileId ||
-      collection?.rawLink ||
-      collection?.externalFileId ||
-      collection?.externalFileUrl ||
-      collection?.apiFileId,
+        collection?.rawLink ||
+        collection?.externalFileId ||
+        collection?.externalFileUrl ||
+        collection?.apiFileId
+    ),
     sourceName: collection?.name || ''
   };
 };
