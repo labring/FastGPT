@@ -561,7 +561,9 @@ export async function searchDatasetData(
 
           res.forEach((item) => {
             item.indexes.forEach((index) => {
-              map.set(String(index.dataId), item);
+              if (indexDataIds.includes(index.dataId)) {
+                map.set(String(index.dataId), item);
+              }
             });
           });
 
@@ -788,7 +790,6 @@ export async function searchDatasetData(
               imageDescMap: data.imageDescMap
             }),
             chunkIndex: data.chunkIndex,
-            indexes: data.indexes,
             metadata: data.metadata,
             ...getCollectionSourceData(collection),
             score: [
