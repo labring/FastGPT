@@ -31,6 +31,8 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
@@ -58,6 +60,7 @@ type Props = {
   };
   questionGuides?: string[];
   children?: React.ReactNode;
+  hasPlanCheck?: boolean;
 } & ChatControllerProps;
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
@@ -122,7 +125,7 @@ const AIContentCard = React.memo(function AIContentCard({
   );
 });
 
-const ChatItem = (props: Props) => {
+const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
   const { avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { t } = useTranslation();
@@ -163,7 +166,7 @@ const ChatItem = (props: Props) => {
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
 
-  const { totalQuoteList: quoteList = [] } = useMemo(
+  const { totalQuoteList: quoteList = [] } = useMemoEnhance(
     () => addStatisticalDataToHistoryItem(chat),
     [chat]
   );
@@ -172,7 +175,7 @@ const ChatItem = (props: Props) => {
 
   const { copyData } = useCopyData();
 
-  const chatStatusMap = useMemo(() => {
+  const chatStatusMap = useMemoEnhance(() => {
     if (!statusBoxData?.status) return;
     return colorMap[statusBoxData.status];
   }, [statusBoxData?.status]);
@@ -181,8 +184,12 @@ const ChatItem = (props: Props) => {
     1. The interactive node is divided into n dialog boxes.
     2. Auto-complete the last textnode
   */
-  const splitAiResponseResults = useMemo(() => {
-    if (chat.obj === ChatRoleEnum.Human) return [chat.value];
+  const { responses: splitAiResponseResults } = useMemo(() => {
+    if (chat.obj === ChatRoleEnum.Human) {
+      return {
+        responses: [chat.value]
+      };
+    }
 
     if (chat.obj === ChatRoleEnum.AI) {
       // Remove empty text node
@@ -200,7 +207,11 @@ const ChatItem = (props: Props) => {
       let currentGroup: AIChatItemValueItemType[] = [];
 
       filterList.forEach((value) => {
+        // 每次遇到交互节点，则推送一个全新的分组
         if (value.interactive) {
+          if (value.interactive.type === 'agentPlanCheck') {
+            return;
+          }
           if (currentGroup.length > 0) {
             groupedValues.push(currentGroup);
             currentGroup = [];
@@ -235,10 +246,14 @@ const ChatItem = (props: Props) => {
         }
       }
 
-      return groupedValues;
+      return {
+        responses: groupedValues
+      };
     }
 
-    return [];
+    return {
+      responses: []
+    };
   }, [chat.obj, chat.value, isChatting]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
@@ -282,8 +297,6 @@ const ChatItem = (props: Props) => {
       });
     }
   );
-
-  const aiSubApps = 'subApps' in chat ? chat.subApps : undefined;
 
   return (
     <Box
@@ -463,6 +476,23 @@ const ChatItem = (props: Props) => {
           </Box>
         );
       })}
+
+      {hasPlanCheck && isLastChild && (
+        <Flex mt={3}>
+          <Button
+            leftIcon={<MyIcon name={'common/check'} w={'16px'} />}
+            variant={'primaryOutline'}
+            onClick={() => {
+              eventBus.emit(EventNameEnum.sendQuestion, {
+                text: ConfirmPlanAgentText,
+                focus: true
+              });
+            }}
+          >
+            {t('chat:confirm_plan')}
+          </Button>
+        </Flex>
+      )}
     </Box>
   );
 };
