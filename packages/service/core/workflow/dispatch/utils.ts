@@ -25,6 +25,7 @@ import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { WorkflowResponseType } from './type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -39,18 +40,8 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  return ({
-    write,
-    event,
-    data
-  }: {
-    write?: (text: string) => void;
-    event: SseResponseEventEnum;
-    data: Record<string, any>;
-  }) => {
-    const useStreamResponse = streamResponse;
-
-    if (!res || res.closed || !useStreamResponse) return;
+  const fn: WorkflowResponseType = ({ id, subAppId, event, data }) => {
+    if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -70,10 +61,28 @@ export const getWorkflowResponseWrite = ({
 
     responseWrite({
       res,
-      write,
       event: detail ? event : undefined,
-      data: JSON.stringify(data)
+      data: JSON.stringify({
+        ...data,
+        ...(subAppId && detail && { subAppId }),
+        ...(id && detail && { responseValueId: id })
+      })
     });
+  };
+  return fn;
+};
+export const getWorkflowChildResponseWrite = ({
+  id,
+  subAppId,
+  fn
+}: {
+  id: string;
+  subAppId: string;
+  fn?: WorkflowResponseType;
+}): WorkflowResponseType | undefined => {
+  if (!fn) return;
+  return (e: Parameters<WorkflowResponseType>[0]) => {
+    return fn({ ...e, id, subAppId });
   };
 };
 

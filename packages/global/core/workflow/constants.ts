@@ -168,6 +168,12 @@ export enum NodeInputKeyEnum {
   aiChatResponseFormat = 'aiChatResponseFormat',
   aiChatJsonSchema = 'aiChatJsonSchema',
 
+  // agent
+  subApps = 'subApps',
+  isAskAgent = 'isAskAgent',
+  isPlanAgent = 'isPlanAgent',
+  isConfirmPlanAgent = 'isConfirmPlanAgent',
+
   // dataset
   datasetSelectList = 'datasets',
   datasetSimilarity = 'similarity',

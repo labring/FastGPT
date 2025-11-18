@@ -2,11 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType,
@@ -22,7 +18,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
@@ -62,7 +58,6 @@ export const getScheduleTriggerApp = async () => {
       );
       const userQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: app.scheduledTriggerConfig.defaultPrompt || ''
           }
@@ -91,8 +86,8 @@ export const getScheduleTriggerApp = async () => {
         assistantResponses?: AIChatItemValueItemType[];
         flowResponses?: ChatHistoryItemResType[];
         system_memories?: Record<string, any>;
-      }) =>
-        saveChat({
+      }) => {
+        return pushChatRecords({
           chatId,
           appId: app._id,
           versionId,
@@ -117,6 +112,7 @@ export const getScheduleTriggerApp = async () => {
           durationSeconds,
           errorMsg: getErrText(error)
         });
+      };
 
       try {
         const { assistantResponses, flowResponses, durationSeconds, system_memories } =

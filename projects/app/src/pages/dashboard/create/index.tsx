@@ -57,6 +57,7 @@ type FormType = {
 };
 
 export type CreateAppType =
+  | AppTypeEnum.agent
   | AppTypeEnum.simple
   | AppTypeEnum.workflow
   | AppTypeEnum.workflowTool

@@ -2,13 +2,17 @@ import type { StreamResponseType } from '@/web/common/api/fetch';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
+  AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
+  responseValueId?: string;
+  subAppId?: string;
   text?: string;
   reasoningText?: string;
   name?: string;

@@ -8,6 +8,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const { t } = useTranslation();
 
   const map = useRef({
+    [AppTypeEnum.agent]: {
+      label: 'Agent',
+      icon: 'core/app/type/simple',
+      bg: '#DBF3FF',
+      color: '#0884DD'
+    },
     [AppTypeEnum.simple]: {
       label: t('app:type.Chat_Agent'),
       icon: 'core/app/type/simple',
