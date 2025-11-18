@@ -627,5 +627,22 @@
   "image_compression_error": "Image compression error occurred.",
   "image_too_large": "The image size is too large.",
   "password_min_length": "Must contain at least 8 characters.",
-  "password_requirement": "Must contain at least 2 of the following: digits, letters, and special characters."
+  "password_requirement": "Must contain at least 2 of the following: digits, letters, and special characters.",
+  "hype_index_params": "Hype index enhancement parameter configuration",
+  "hype_similarity_threshold": "Similarity threshold",
+  "hype_similarity_threshold_desc": "Threshold for judging semantic drift (value range (0,1), larger values ​​generate higher quality but fewer questions, effective when the Top 1 document is not the target document)",
+  "hype_max_delta_score": "Maximum score difference threshold",
+  "hype_max_delta_score_desc": "Upper limit of the score difference between the highest retrieved document and the target document (value range (0,1), smaller values ​​generate higher quality but fewer questions, avoiding semantic drift)",
+  "hype_min_delta_score": "Minimum score difference threshold",
+  "hype_min_delta_score_desc": "Lower limit of the score difference between the target document and the second-best candidate document (value range (0,1), larger values ​​generate higher quality but fewer questions, ensuring semantic discriminability)", 
+  "hype_expect_rank": "Expected ranking threshold",
+  "hype_expect_rank_desc": "Minimum allowed ranking for the target document (integer ≥ 1, smaller values ​​generate higher quality but fewer questions, ranking starts from 1)",
+  "hype_default_score": "Default quality score",
+  "hype_default_score_desc": "Indicator for detecting question diversity and divergence (value range (0,1), larger values ​​generate higher quality but fewer questions)",
+  "hype_top_k": "Number of documents retrieved",
+  "hype_top_k_desc": "Number of documents retrieved using the hypothetical question for vector retrieval (integer ≥ 1, larger values ​​result in more comprehensive retrieval but longer computation time)",
+  "hype_rerank": "Enable reranking",
+  "hype_rerank_desc": "Whether to use a reranking model for secondary ranking (enabling this generates higher quality questions but increases computation time, requires configuring a reranking model)",
+  "hype_min_rerank_threshold": "Reranking score threshold",
+  "hype_min_rerank_threshold_desc": "Minimum score requirement after reranking (value range (0,1), higher values ​​generate higher quality but fewer questions, only effective when reranking is enabled)"
 }

@@ -296,7 +296,6 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
             a: trainingData.a || '',
             chunkIndex: trainingData.chunkIndex,
             dataId: insertId, // MongoDatasetData._id for later appending indexes
-            lockTime: new Date('2000/1/1'),
             retryCount: 5,
             billId: trainingData.billId
           }

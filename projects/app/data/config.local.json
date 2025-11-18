@@ -6,7 +6,18 @@
   "systemEnv": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
-    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "hypeMaxProcess": 5, // 索引增强线程数量
+    "pgHNSWEfSearch": 100, // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "hypeParams": {
+      "similarityThreshold": 0.85, // 用于判断语义漂移, CosineSimilarity(candidateQuery,top1Doc),top1Doc!=tarDoc
+      "maxDeltaScore": 0.15, // 用于判断语义漂移, Score(Top1Doc) - Score(tarDoc) 必须低于此值
+      "minDeltaScore": 0.05, // 用于判断语义区分度,Score(tarDoc)- Score(nextDoc) 必须低于此值
+      "expectRank": 3, // 目标文档排名必须高于此值
+      "defaultScore": 0.8, // 对于低top1相似度的未检索目标的默认分数(表示候选具有良好的离散性/多样性)
+      "topK": 20, // 召回的文档数量
+      "rerank": false, // 是否使用重排序
+      "min_rerank_threshold": 0.85 // 重排序最小阈值
+    }
   },
   "llmModels": [
     {
