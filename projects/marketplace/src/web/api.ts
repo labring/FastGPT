@@ -22,3 +22,10 @@ export const getToolTags = async () => {
   const res = await fetch('api/tool/tags', { method: 'GET' }).then((res) => res.json());
   return res.data as Promise<Array<SystemPluginToolTagType>>;
 };
+
+export const getDownloadURL = async (toolId: string) => {
+  const res = await fetch(`api/tool/getDownloadUrl?toolId=${toolId}`, { method: 'GET' }).then(
+    (res) => res.json()
+  );
+  return res.data as Promise<string>;
+};

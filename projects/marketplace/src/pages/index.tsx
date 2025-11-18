@@ -12,7 +12,12 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { ToolListItem } from '@/pages/api/tool/list';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';
+import {
+  getDownloadURL,
+  getMarketplaceToolDetail,
+  getMarketplaceTools,
+  getToolTags
+} from '@/web/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 import Head from 'next/head';
@@ -166,10 +171,23 @@ const ToolkitMarketplace = () => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
-        downloadUrl: tool.downloadUrl
+        downloadCount: tool.downloadCount
       };
     });
   }, [tools, i18n.language, toolTags]);
+
+  const onDownload = useCallback((toolId: string) => {
+    getDownloadURL(toolId).then((url) => {
+      if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+  }, []);
 
   // 使用 IntersectionObserver 监听英雄区域是否在视窗中
   useEffect(() => {
@@ -433,14 +451,7 @@ const ToolkitMarketplace = () => {
                       isLoading={operatingToolId === tool.id}
                       mode="marketplace"
                       onClickButton={() => {
-                        if (tool.downloadUrl) {
-                          const link = document.createElement('a');
-                          link.href = tool.downloadUrl;
-                          link.download = '';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }
+                        onDownload(tool.id);
                       }}
                       onClickCard={() => setSelectedTool(tool)}
                     />
@@ -463,14 +474,7 @@ const ToolkitMarketplace = () => {
           // @ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => {
-            if (selectedTool.downloadUrl) {
-              const link = document.createElement('a');
-              link.href = selectedTool.downloadUrl;
-              link.download = '';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }
+            onDownload(selectedTool.id);
           }}
         />
       )}

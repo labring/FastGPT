@@ -7,7 +7,7 @@ import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
-/* 
+/*
   3 种使用场景：
   1. admin 视角插件市场：显示是否安装，无状态，显示安装/卸载
   2. team 视角资源库：显示是否安装，状态文本，以及安装/卸载
@@ -23,6 +23,7 @@ export type ToolCardItemType = {
   downloadUrl?: string;
   status?: number;
   installed?: boolean;
+  downloadCount: number;
 };
 
 const ToolCard = ({
@@ -127,6 +128,9 @@ const ToolCard = ({
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {
           display: 'flex'
+        },
+        '& .download-count': {
+          display: 'none'
         }
       }}
     >
@@ -195,6 +199,15 @@ const ToolCard = ({
 
       <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
         <Box color={'myGray.500'} mt={3}>{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
+        {/*TODO: when statistics is ready*/}
+        {/*<Flex flexDirection={'row'} gap={1} className="download-count" color={'myGray.500'} mt={3}>
+          <MyIcon name="common/downloadLine" />
+          {!item.downloadCount
+            ? 0
+            : item.downloadCount < 1000
+              ? `${item.downloadCount}`
+              : `${(item.downloadCount / 1000).toFixed(1)}k`}
+        </Flex>*/}
         {mode === 'marketplace' ? (
           <Button
             className="install-button"

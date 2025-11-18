@@ -19,6 +19,7 @@ import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
 import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
   getMarketPlaceToolTags,
+  getMarketplaceDownloadURL,
   getMarketplaceToolDetail,
   getMarketplaceTools,
   getSystemInstalledPlugins
@@ -178,7 +179,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   // Controler
   const { runAsync: handleInstallTool } = useRequest2(
     async (tool: ToolCardItemType) => {
-      if (!tool.downloadUrl) return;
+      const downloadUrl = await getMarketplaceDownloadURL(tool.id);
+      if (!downloadUrl) return;
 
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {
@@ -191,7 +193,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
         try {
           await intallPluginWithUrl({
-            downloadUrls: [tool.downloadUrl || '']
+            downloadUrls: [downloadUrl]
           });
           setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: true }));
 
@@ -282,8 +284,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               const currentTag = allTags.find((t) => t.tagId === tag);
               return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
             }),
-            downloadUrl: tool.downloadUrl,
-            installed: isInstalled
+            installed: isInstalled,
+            downloadCount: tool.downloadCount
           };
         })
         ?.filter((tool) => {

@@ -12,6 +12,7 @@ export const MarketplaceToolListItemSchema = formatToolSimpleSchema.extend({
 });
 export type MarketplaceToolListItemType = ToolSimpleType & {
   downloadUrl: string;
+  downloadCount: number;
 };
 
 export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
