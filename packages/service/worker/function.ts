@@ -34,3 +34,22 @@ export const readRawContentFromBuffer = (props: {
     bufferSize: bufferSize
   });
 };
+
+export const runSyncFunction = <T = any>(functionName: string, ...args: any[]) => {
+  // Test env, not run worker
+  if (isTestEnv) {
+    // 在测试环境中直接导入并运行函数
+    const { parseDatasetBackup2Chunks } = require('../core/dataset/utils');
+    const availableFunctions: Record<string, Function> = {
+      parseDatasetBackup2Chunks
+    };
+
+    const func = availableFunctions[functionName];
+    if (!func) {
+      throw new Error(`Function '${functionName}' is not available`);
+    }
+    return func(...args);
+  }
+
+  return runWorker<T>(WorkerNameEnum.syncFunction, { functionName, args });
+};
