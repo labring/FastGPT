@@ -69,7 +69,7 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${parentId}/${tool.name}`
       }
     },
-    inputs: jsonSchema2NodeInput(tool.inputSchema),
+    inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
     outputs: [
       ...jsonSchema2NodeOutput(tool.outputSchema),
       {
