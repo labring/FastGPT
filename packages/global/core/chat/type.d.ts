@@ -15,6 +15,7 @@ import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 import { ChatCompletionMessageParam } from '../ai/type';
 import type { RequireOnlyOne } from '../../common/type/utils';
+import type { AgentPlanType } from '../../../service/core/workflow/dispatch/ai/agent/sub/plan/type';
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -86,17 +87,10 @@ export type AIChatItemValueItemType = {
   };
   tool: ToolModuleResponseItemType;
   interactive: WorkflowInteractiveResponseType;
-
-  text?: {
-    content: string;
-  };
-  reasoning?: {
-    content: string;
-  };
-  interactive?: WorkflowInteractiveResponseType;
+  agentPlan: AgentPlanType;
 
   // Abandon
-  tools?: ToolModuleResponseItemType[];
+  tools: ToolModuleResponseItemType[];
 }>;
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;

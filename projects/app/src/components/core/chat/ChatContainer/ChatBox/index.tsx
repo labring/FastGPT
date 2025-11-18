@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -253,6 +253,7 @@ const ChatBox = ({
       tool,
       subAppId,
       interactive,
+      agentPlan,
       variables,
       nodeResponse,
       durationSeconds,
@@ -490,6 +491,14 @@ const ChatBox = ({
               return {
                 ...item,
                 value: item.value.concat(val)
+              };
+            }
+            if (event === SseResponseEventEnum.agentPlan && agentPlan) {
+              return {
+                ...item,
+                value: item.value.concat({
+                  agentPlan
+                })
               };
             }
             if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
@@ -1151,6 +1160,8 @@ const ChatBox = ({
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
   //chat history
+  const hasPlanCheck =
+    lastInteractive?.type === 'agentPlanCheck' && !lastInteractive.params.confirmed;
   const RecordsBox = useMemo(() => {
     return (
       <Box id={'history'}>
@@ -1178,6 +1189,7 @@ const ChatBox = ({
                   avatar={appAvatar}
                   chat={item}
                   isLastChild={index === chatRecords.length - 1}
+                  hasPlanCheck={hasPlanCheck}
                   {...{
                     showVoiceIcon,
                     statusBoxData,
@@ -1249,7 +1261,8 @@ const ChatBox = ({
     onReadUserDislike,
     t,
     showMarkIcon,
-    onCloseCustomFeedback
+    onCloseCustomFeedback,
+    hasPlanCheck
   ]);
 
   // Child box

@@ -253,23 +253,3 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     </Box>
   );
 });
-
-// Agent interactive
-export const AgentPlanCheckComponent = React.memo(function AgentPlanCheckComponent({
-  interactiveParams,
-  onConfirm
-}: {
-  interactiveParams: AgentPlanCheckInteractive['params'];
-  onConfirm: () => void;
-}) {
-  const { t } = useTranslation();
-  return interactiveParams?.confirmed ? (
-    // TODO：临时 UI
-    <Box>已确认计划</Box>
-  ) : (
-    <Box>
-      <Box>{t('chat:confirm_plan_agent')}</Box>
-      <Button onClick={onConfirm}>{t('common:Confirm')}</Button>
-    </Box>
-  );
-});

@@ -12,6 +12,7 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
+import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -35,6 +36,12 @@ type ResponseQueueItemType =
       subAppId?: string;
       event: SseResponseEventEnum.interactive;
       [key: string]: any;
+    }
+  | {
+      responseValueId?: string;
+      subAppId?: string;
+      event: SseResponseEventEnum.agentPlan;
+      agentPlan: AgentPlanType;
     }
   | {
       responseValueId?: string;
@@ -255,6 +262,13 @@ export const streamFetch = ({
               subAppId,
               event,
               ...rest
+            });
+          } else if (event === SseResponseEventEnum.agentPlan) {
+            pushDataToQueue({
+              responseValueId,
+              subAppId,
+              event,
+              agentPlan: rest.agentPlan
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
