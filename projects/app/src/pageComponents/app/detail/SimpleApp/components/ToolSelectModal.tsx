@@ -408,17 +408,15 @@ const RenderList = React.memo(function RenderList({
                       borderRadius={'sm'}
                       flexShrink={0}
                     />
-                    <Box
-                      px={3}
-                      color={'myGray.900'}
-                      fontWeight={'500'}
-                      fontSize={'sm'}
-                      maxW={'180px'}
-                      whiteSpace={'nowrap'}
-                      overflow={'hidden'}
-                      textOverflow={'ellipsis'}
-                    >
-                      {t(parseI18nString(template.name, i18n.language))}
+                    <Box flex={'1 0 0'} ml={3}>
+                      <Box
+                        color={'myGray.900'}
+                        fontWeight={'500'}
+                        fontSize={'sm'}
+                        className="textEllipsis"
+                      >
+                        {t(parseI18nString(template.name, i18n.language))}
+                      </Box>
                     </Box>
                     <Box flex={1} />
 

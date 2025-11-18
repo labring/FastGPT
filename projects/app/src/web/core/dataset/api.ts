@@ -79,6 +79,10 @@ import type {
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
+import type {
+  DatasetCreateWithFilesBody,
+  DatasetCreateWithFilesResponse
+} from '@/pages/api/core/dataset/createWithFiles';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -99,6 +103,9 @@ export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/datase
 
 export const postCreateDataset = (data: CreateDatasetParams) =>
   POST<string>(`/core/dataset/create`, data);
+
+export const postCreateDatasetWithFiles = (data: DatasetCreateWithFilesBody) =>
+  POST<DatasetCreateWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
 export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
 

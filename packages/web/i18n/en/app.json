@@ -129,6 +129,7 @@
   "dataset": "dataset",
   "dataset.Select_dataset_model_tip": "Only knowledge bases with the same index model can be selected",
   "dataset.create_dataset_tips": "For more advanced operations, please go to",
+  "dataset_create_failed": "Knowledge base creation failed",
   "dataset_create_success": "The knowledge base was created successfully and files are being indexed in the background.",
   "dataset_empty_tips": "You don’t have a knowledge base yet, create one first.",
   "dataset_search_tool_description": "Call the \"Semantic Search\" and \"Full-text Search\" capabilities to find reference content that may be related to the problem from the \"Knowledge Base\". \nPrioritize calling this tool to assist in answering user questions.",
