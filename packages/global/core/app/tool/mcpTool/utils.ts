@@ -62,7 +62,7 @@ export const getMCPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.mcp}-${parentId}/${tool.name}`
       }
     },
-    inputs: jsonSchema2NodeInput(tool.inputSchema),
+    inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }),
     outputs: [
       {
         id: NodeOutputKeyEnum.rawResponse,
