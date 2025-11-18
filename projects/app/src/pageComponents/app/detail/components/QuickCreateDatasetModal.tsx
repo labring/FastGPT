@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import {
@@ -18,21 +18,10 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  postCreateDataset,
-  getDatasetById,
-  postCreateDatasetFileCollection
-} from '@/web/core/dataset/api';
+import { postCreateDatasetWithFiles, getDatasetById } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  ChunkSettingModeEnum,
-  ChunkTriggerConfigTypeEnum,
-  DataChunkSplitModeEnum,
-  DatasetCollectionDataProcessModeEnum,
-  DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -66,6 +55,11 @@ const QuickCreateDatasetModal = ({
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
 
+  const successFiles = useMemo(
+    () => selectFiles.filter((item) => item.dbFileId && !item.errorMsg),
+    [selectFiles]
+  );
+
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       parentId,
@@ -83,103 +77,106 @@ const QuickCreateDatasetModal = ({
       }
     });
 
-  const handleSelectFiles = (files: SelectFileItemType[]) => {
-    setSelectFiles((state) => [
-      ...state,
-      ...files.map<ImportSourceItemType>((selectFile) => {
-        const { fileId, file } = selectFile;
+  const { runAsync: handleSelectFiles, loading: uploading } = useRequest2(
+    async (files: SelectFileItemType[]) => {
+      await Promise.all(
+        files.map(async ({ fileId, file }) => {
+          try {
+            const { fileId: uploadFileId } = await uploadFile2DB({
+              file,
+              bucketName: BucketNameEnum.dataset,
+              data: { datasetId: '' },
+              percentListen: (percent) => {
+                setSelectFiles((state) =>
+                  state.map((item) =>
+                    item.id === fileId
+                      ? {
+                          ...item,
+                          uploadedFileRate: item.uploadedFileRate
+                            ? Math.max(percent, item.uploadedFileRate)
+                            : percent
+                        }
+                      : item
+                  )
+                );
+              }
+            });
 
-        return {
-          id: fileId,
-          createStatus: 'waiting',
-          file,
-          sourceName: file.name,
-          sourceSize: formatFileSize(file.size),
-          icon: getFileIcon(file.name),
-          uploadedFileRate: 0
-        };
-      })
-    ]);
-  };
-
-  const uploadSingleFile = async (fileItem: ImportSourceItemType, datasetId: string) => {
-    try {
-      if (!fileItem.file) return;
-      setSelectFiles((prev) =>
-        prev.map((item) => (item.id === fileItem.id ? { ...item, uploadedFileRate: 0 } : item))
+            setSelectFiles((state) =>
+              state.map((item) =>
+                item.id === fileId
+                  ? {
+                      ...item,
+                      dbFileId: uploadFileId,
+                      isUploading: false,
+                      uploadedFileRate: 100
+                    }
+                  : item
+              )
+            );
+          } catch (error) {
+            setSelectFiles((state) =>
+              state.map((item) =>
+                item.id === fileId
+                  ? {
+                      ...item,
+                      isUploading: false,
+                      errorMsg: getErrText(error)
+                    }
+                  : item
+              )
+            );
+          }
+        })
       );
+    },
+    {
+      manual: true,
+      onBefore([files]) {
+        setSelectFiles((state) => [
+          ...state,
+          ...files.map<ImportSourceItemType>((selectFile) => {
+            const { fileId, file } = selectFile;
 
-      const { fileId } = await uploadFile2DB({
-        file: fileItem.file,
-        bucketName: BucketNameEnum.dataset,
-        data: { datasetId },
-        percentListen: (percent) => {
-          setSelectFiles((prev) =>
-            prev.map((item) =>
-              item.id === fileItem.id
-                ? { ...item, uploadedFileRate: Math.max(percent, item.uploadedFileRate || 0) }
-                : item
-            )
-          );
-        }
-      });
-
-      await postCreateDatasetFileCollection({
-        datasetId,
-        fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-        chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
-        chunkTriggerMinSize: 1000,
-        chunkSettingMode: ChunkSettingModeEnum.auto,
-        chunkSplitMode: DataChunkSplitModeEnum.paragraph,
-        chunkSize: 1024,
-        indexSize: 512,
-        customPdfParse: false
-      });
-
-      setSelectFiles((prev) =>
-        prev.map((item) =>
-          item.id === fileItem.id ? { ...item, dbFileId: fileId, uploadedFileRate: 100 } : item
-        )
-      );
-    } catch (error) {
-      setSelectFiles((prev) =>
-        prev.map((item) =>
-          item.id === fileItem.id ? { ...item, errorMsg: getErrText(error) } : item
-        )
-      );
+            return {
+              id: fileId,
+              createStatus: 'waiting',
+              file,
+              sourceName: file.name,
+              sourceSize: formatFileSize(file.size),
+              icon: getFileIcon(file.name),
+              isUploading: true,
+              uploadedFileRate: 0
+            };
+          })
+        ]);
+      }
     }
-  };
+  );
 
   const { runAsync: onCreate, loading: isCreating } = useRequest2(
     async (data) => {
-      const datasetId = await postCreateDataset({
-        name: data.name.trim(),
-        avatar: data.avatar,
-        intro: '',
-        parentId,
-        type: DatasetTypeEnum.dataset,
-        vectorModel: defaultVectorModel,
-        agentModel: defaultAgentModel,
-        vlmModel: defaultVLLM
+      return await postCreateDatasetWithFiles({
+        datasetParams: {
+          name: data.name.trim(),
+          avatar: data.avatar,
+          parentId,
+          vectorModel: defaultVectorModel,
+          agentModel: defaultAgentModel,
+          vlmModel: defaultVLLM
+        },
+        files: selectFiles
+          .filter((item) => item.dbFileId && !item.errorMsg)
+          .map((item) => ({
+            fileId: item.dbFileId!,
+            name: item.sourceName
+          }))
       });
-
-      if (selectFiles.length > 0) {
-        await Promise.all(selectFiles.map((file) => uploadSingleFile(file, datasetId)));
-      }
-
-      const datasetDetail = await getDatasetById(datasetId);
-
-      return {
-        datasetId,
-        name: datasetDetail.name,
-        avatar: datasetDetail.avatar,
-        vectorModel: datasetDetail.vectorModel
-      };
     },
     {
       manual: true,
       successToast: t('app:dataset_create_success'),
+      errorToast: t('app:dataset_create_failed'),
       onSuccess: (result) => {
         onSuccess(result);
         onClose();
@@ -198,18 +195,19 @@ const QuickCreateDatasetModal = ({
     >
       <ModalBody py={6} minH={'500px'}>
         <Box mb={6}>
-          <FormLabel mb={2}>{t('common:app_icon_and_name')}</FormLabel>
+          <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
           <Flex alignItems={'center'}>
             <MyTooltip label={t('common:set_avatar')}>
-              <Avatar
-                src={avatar}
-                w={9}
-                h={9}
-                mr={4}
-                borderRadius={'8px'}
-                cursor={'pointer'}
-                onClick={handleAvatarSelectorOpen}
-              />
+              <Box w={9} h={9} mr={4}>
+                <Avatar
+                  src={avatar}
+                  w={'full'}
+                  h={'full'}
+                  borderRadius={'8px'}
+                  cursor={'pointer'}
+                  onClick={handleAvatarSelectorOpen}
+                />
+              </Box>
             </MyTooltip>
             <FormControl flex={1}>
               <Input
@@ -288,7 +286,7 @@ const QuickCreateDatasetModal = ({
                     ) : null}
                   </Flex>
                   <Flex w={1 / 5} justifyContent={'end'}>
-                    {!item.uploadedFileRate && (
+                    {!item.isUploading && (
                       <Flex alignItems={'center'} justifyContent={'center'} w={6} h={6}>
                         <MyIcon
                           name={'delete'}
@@ -331,7 +329,7 @@ const QuickCreateDatasetModal = ({
           </Button>
           <Button
             isLoading={isCreating}
-            isDisabled={selectFiles.length === 0}
+            isDisabled={successFiles.length === 0 || uploading}
             onClick={handleSubmit(onCreate)}
           >
             {t('common:Create')}
