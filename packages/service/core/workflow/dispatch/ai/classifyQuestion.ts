@@ -1,6 +1,6 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -114,7 +114,6 @@ const completions = async ({
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getCQSystemPrompt({
               systemPrompt,
@@ -132,7 +131,6 @@ const completions = async ({
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: userChatInput
           }

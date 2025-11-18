@@ -23,7 +23,6 @@ import {
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -174,8 +173,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })()
     ]);
 
-    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
-
     const {
       completeMessages,
       reasoningText,
@@ -205,7 +202,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             reasoning_content: text
@@ -215,7 +211,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onStreaming({ text }) {
         if (!isResponseAnswerText) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             text

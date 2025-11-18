@@ -273,41 +273,140 @@ describe('valueTypeFormat', () => {
   });
 
   //   value 为 null/undefined
-  // const nullTestList = [
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.string,
-  //     result: ''
-  //   },
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.number,
-  //     result: 0
-  //   },
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.boolean,
-  //     result: false
-  //   },
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.arrayAny,
-  //     result: []
-  //   },
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.object,
-  //     result: {}
-  //   },
-  //   {
-  //     value: undefined,
-  //     type: WorkflowIOValueTypeEnum.chatHistory,
-  //     result: []
-  //   }
-  // ];
-  // nullTestList.forEach((item, index) => {
-  //   it(`Null test ${index}`, () => {
-  //     expect(valueTypeFormat(item.value, item.type)).toEqual(item.result);
-  //   });
-  // });
+  const nullTestList = [
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.string,
+      result: undefined
+    },
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.number,
+      result: undefined
+    },
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.boolean,
+      result: undefined
+    },
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.arrayAny,
+      result: undefined
+    },
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.object,
+      result: undefined
+    },
+    {
+      value: undefined,
+      type: WorkflowIOValueTypeEnum.chatHistory,
+      result: undefined
+    }
+  ];
+  nullTestList.forEach((item, index) => {
+    it(`Null test ${index}`, () => {
+      expect(valueTypeFormat(item.value, item.type)).toEqual(item.result);
+    });
+  });
+});
+
+import { getHistories } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+
+describe('getHistories test', async () => {
+  const MockHistories: ChatItemType[] = [
+    {
+      obj: ChatRoleEnum.System,
+      value: [
+        {
+          text: {
+            content: '你好'
+          }
+        }
+      ]
+    },
+    {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          text: {
+            content: '你好'
+          }
+        }
+      ]
+    },
+    {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: '你好2'
+          }
+        }
+      ]
+    },
+    {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          text: {
+            content: '你好3'
+          }
+        }
+      ]
+    },
+    {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: '你好4'
+          }
+        }
+      ]
+    }
+  ];
+
+  it('getHistories', async () => {
+    // Number
+    expect(getHistories(1, MockHistories)).toEqual([
+      ...MockHistories.slice(0, 1),
+      ...MockHistories.slice(-2)
+    ]);
+    expect(getHistories(2, MockHistories)).toEqual([...MockHistories.slice(0)]);
+    expect(getHistories(4, MockHistories)).toEqual([...MockHistories.slice(0)]);
+
+    // Array
+    expect(
+      getHistories(
+        [
+          {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                text: {
+                  content: '你好'
+                }
+              }
+            ]
+          }
+        ],
+        MockHistories
+      )
+    ).toEqual([
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            text: {
+              content: '你好'
+            }
+          }
+        ]
+      }
+    ]);
+  });
 });

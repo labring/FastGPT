@@ -6,7 +6,6 @@ import {
   getWorkflowEntryNodeIds,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 vi.mock(import('@fastgpt/service/common/string/tiktoken'), async (importOriginal) => {
@@ -60,7 +59,6 @@ const testWorkflow = async (path: string) => {
     variables,
     query: [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: '你是谁'
         }
