@@ -139,11 +139,3 @@ export const getToolNodesByIds = ({
       };
     });
 };
-
-export const parseToolArgs = <T = Record<string, any>>(toolArgs: string) => {
-  try {
-    return json5.parse(sliceJsonStr(toolArgs)) as T;
-  } catch {
-    return;
-  }
-};

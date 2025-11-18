@@ -16,7 +16,7 @@ import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseToolArgs } from '../../../utils';
+import { parseToolArgs } from '../../../../../../ai/utils';
 import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
 import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
@@ -93,7 +93,7 @@ export const dispatchPlanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
-    // TODO: 是否合理
+    // TODO: 是否合理，以及模型兼容性问题
     requestMessages.push({
       role: 'assistant',
       content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'

@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowChildResponseWrite } from '../../../utils';
 import { SubAppIds } from '../sub/constants';
-import { parseToolArgs } from '../../utils';
+import { parseToolArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -25,8 +25,6 @@ import { dispatchApp, dispatchPlugin } from '../sub/app';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
-import { createLLMResponse } from '../../../../../ai/llm/request';
-import { addLog } from '../../../../../../common/system/log';
 import { getStepDependon } from './dependon';
 import { getResponseSummary } from './responseSummary';
 
@@ -47,6 +45,7 @@ export const stepCall = async ({
   subAppsMap: Map<string, RuntimeNodeItemType>;
 }) => {
   const {
+    res,
     node: { nodeId },
     runtimeNodes,
     chatConfig,
@@ -55,7 +54,6 @@ export const stepCall = async ({
     variables,
     externalProvider,
     stream,
-    res,
     workflowStreamResponse,
     usagePush,
     params: { userChatInput, systemPrompt, model, temperature, aiChatTopP }
@@ -74,15 +72,17 @@ export const stepCall = async ({
     step.depends_on = depends;
   }
 
-  // addLog.debug(`Step information`, steps);
+  // Step call system prompt
+  // TODO: 需要把压缩的 usage 返回
   const systemPromptContent = await getMasterAgentSystemPrompt({
     steps,
     step,
     userInput: userChatInput,
-    model
-    // background: systemPrompt
+    model,
+    background: systemPrompt
   });
 
+  // Step call request messages
   const requestMessages = chats2GPTMessages({
     messages: [
       {
@@ -109,24 +109,22 @@ export const stepCall = async ({
   //   'Step call requestMessages',
   //   JSON.stringify({ requestMessages, subAppList }, null, 2)
   // );
-  // TODO: 阶段性推送账单
-  const { assistantResponses, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
+
+  const { assistantMessages, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({
       maxRunAgentTimes: 100,
-      currentStep: step,
-      // interactiveEntryToolParams: lastInteractive?.toolParams,
       body: {
         messages: requestMessages,
         model: getLLMModel(model),
         temperature,
         stream,
         top_p: aiChatTopP,
-        subApps: subAppList
+        tools: subAppList
       },
 
       userKey: externalProvider.openaiAccount,
       isAborted: res ? () => res.closed : undefined,
-      getToolInfo: getSubAppInfo,
+      // childrenInteractiveParams
 
       onReasoning({ text }) {
         workflowStreamResponse?.({
@@ -160,9 +158,9 @@ export const stepCall = async ({
           }
         });
       },
-      onToolParam({ call, params }) {
+      onToolParam({ tool, params }) {
         workflowStreamResponse?.({
-          id: call.id,
+          id: tool.id,
           event: SseResponseEventEnum.toolParams,
           data: {
             tool: {
@@ -172,6 +170,7 @@ export const stepCall = async ({
         });
       },
 
+      // TODO: 对齐最新的方案
       handleToolResponse: async ({ call, messages }) => {
         const toolId = call.function.name;
         const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
@@ -338,12 +337,34 @@ export const stepCall = async ({
 
         return {
           response,
+          assistantMessages: [], // TODO
           usages
+        };
+      },
+      handleInteractiveTool: async ({ toolParams }) => {
+        return {
+          response: 'Interactive tool not supported',
+          assistantMessages: [], // TODO
+          usages: []
         };
       }
     });
 
-  const answerText = assistantResponses.map((item) => item.text?.content).join('\n');
+  const answerText = assistantMessages
+    .map((item) => {
+      if (item.role === 'assistant' && item.content) {
+        if (typeof item.content === 'string') {
+          return item.content;
+        } else {
+          return item.content
+            .map((content) => (content.type === 'text' ? content.text : ''))
+            .join('\n');
+        }
+      }
+      return '';
+    })
+    .join('\n');
+  // Get step response summary
   const { answerText: summary, usage: summaryUsage } = await getResponseSummary({
     response: answerText,
     model
@@ -355,6 +376,6 @@ export const stepCall = async ({
   return {
     rawResponse: answerText,
     summary,
-    assistantResponses
+    assistantMessages
   };
 };

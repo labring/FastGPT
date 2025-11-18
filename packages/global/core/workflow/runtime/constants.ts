@@ -15,7 +15,8 @@ export enum SseResponseEventEnum {
   flowResponses = 'flowResponses', // sse response request
   updateVariables = 'updateVariables',
 
-  interactive = 'interactive' // user select
+  interactive = 'interactive', // user select
+  agentPlan = 'agentPlan' // agent plan
 }
 
 export enum DispatchNodeResponseKeyEnum {

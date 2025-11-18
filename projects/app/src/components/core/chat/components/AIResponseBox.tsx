@@ -26,18 +26,15 @@ import type {
 import { isEqual } from 'lodash';
 import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-import {
-  SelectOptionsComponent,
-  FormInputComponent,
-  AgentPlanCheckComponent
-} from './Interactive/InteractiveComponents';
+import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useCreation } from 'ahooks';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -334,6 +331,33 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
   );
 });
 
+const RenderAgentPlan = React.memo(function RenderAgentPlan({
+  agentPlan
+}: {
+  agentPlan: AgentPlanType;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Box>
+      <Box fontSize={'xl'} color={'myGray.900'} fontWeight={'bold'}>
+        {agentPlan.task}
+      </Box>
+      <Box>
+        {agentPlan.steps.map((step, index) => (
+          <Box key={step.id} mt={3}>
+            <Box fontSize={'lg'} fontWeight={'bold'}>
+              {`${index + 1}. ${step.title}`}
+            </Box>
+            <Box>{step.description}</Box>
+          </Box>
+        ))}
+      </Box>
+      <MyDivider />
+      <Box>{t('chat:plan_check_tip')}</Box>
+    </Box>
+  );
+});
+
 const AIResponseBox = ({
   chatItemDataId,
   value,
@@ -391,14 +415,7 @@ const AIResponseBox = ({
       );
     }
     if (interactive.type === 'agentPlanCheck') {
-      return (
-        <AgentPlanCheckComponent
-          interactiveParams={interactive.params}
-          onConfirm={() => {
-            onSendPrompt(ConfirmPlanAgentText);
-          }}
-        />
-      );
+      return null;
     }
     if (interactive.type === 'agentPlanAskQuery') {
       return <Box>{interactive.params.content}</Box>;
@@ -406,6 +423,9 @@ const AIResponseBox = ({
     if (interactive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={interactive} />;
     }
+  }
+  if ('agentPlan' in value && value.agentPlan) {
+    return <RenderAgentPlan agentPlan={value.agentPlan} />;
   }
 
   // Abandon
