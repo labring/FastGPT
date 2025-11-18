@@ -12,6 +12,7 @@ import { getSystemToolsWithInstalled } from '@fastgpt/service/core/app/tool/cont
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type GetSystemPluginTemplatesBody = {
+  getAll?: boolean;
   searchKey?: string;
   parentId?: ParentIdType;
   tags?: string[];
@@ -22,7 +23,7 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, isRoot } = await authCert({ req, authToken: true });
-  const { searchKey, parentId, tags } = req.body;
+  const { searchKey, parentId, tags, getAll } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
@@ -49,6 +50,7 @@ async function handler(
       tags: tool.tags
     }))
     .filter((item) => {
+      if (getAll) return true;
       if (searchKey) {
         const regex = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
         return regex.test(String(item.name)) || regex.test(String(item.intro || ''));

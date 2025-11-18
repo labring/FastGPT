@@ -22,9 +22,10 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  saveChat,
+  pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -342,8 +343,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -356,6 +355,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories
     };
 
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
     const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,
@@ -382,7 +382,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
