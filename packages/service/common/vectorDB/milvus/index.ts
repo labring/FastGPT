@@ -143,6 +143,12 @@ export class MilvusCtrl {
       data
     });
 
+    if (result.IDs === null) {
+      addLog.error(
+        `[Milvus] insert error: ${result.status.error_code},detail: ${result.status.reason}`
+      );
+    }
+
     const insertIds = (() => {
       if ('int_id' in result.IDs) {
         return result.IDs.int_id.data.map((id) => String(id));
