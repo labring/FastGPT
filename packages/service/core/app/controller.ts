@@ -220,7 +220,6 @@ export const onDelOneApp = async ({
 
     // Delete avatar
     await removeImageByPath(app.avatar, session);
-    await getS3AvatarSource().deleteAvatar(app.avatar, session);
   };
 
   // Delete chats

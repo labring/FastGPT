@@ -20,6 +20,8 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -289,6 +291,20 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       embeddingModel: trainingData.dataset.vectorModel,
       session
     });
+
+    await (async () => {
+      const s3DatasetSource = getS3DatasetSource();
+      const keys = Array.from(
+        new Set([...(trainingData.imageKeys ?? []), trainingData.imageId ?? ''])
+      )
+        .flat()
+        .filter((key) => s3DatasetSource.isDatasetObjectKey(key));
+
+      if (keys.length <= 0) return;
+
+      await s3DatasetSource.removeDatasetImagesTTL(keys, session);
+    })();
+
     // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 

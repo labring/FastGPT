@@ -19,11 +19,7 @@ import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/ra
 import { addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
-import { S3Sources } from '../../../../common/s3/type';
-import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
-import { getS3ChatSource } from '../../../../common/s3/sources/chat';
-import { jwtSignS3ObjectKey, replaceDatasetQuoteTextWithJWT } from '../../../../common/s3/utils';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
+import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -249,7 +245,10 @@ export const getFileContentFromLinks = async ({
             encoding,
             customPdfParse,
             getFormatText: true,
-            uploadKeyPrefix: parsedFileContentS3Key.chat({ appId, chatId: chatId!, uId }),
+            imageKeyOptions: {
+              prefix: parsedFileContentS3Key.chat({ appId, chatId: chatId!, uId }),
+              hasTTL: false
+            },
             usageId
           });
 

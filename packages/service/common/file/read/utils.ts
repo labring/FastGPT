@@ -41,7 +41,9 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    uploadKeyPrefix: params.uploadKey
+    imageKeyOptions: {
+      prefix: params.uploadKey
+    }
   });
 };
 
@@ -55,7 +57,7 @@ export const readS3FileContentByBuffer = async ({
   customPdfParse = false,
   usageId,
   getFormatText = true,
-  uploadKeyPrefix
+  imageKeyOptions
 }: {
   teamId: string;
   tmbId: string;
@@ -67,7 +69,10 @@ export const readS3FileContentByBuffer = async ({
   customPdfParse?: boolean;
   usageId?: string;
   getFormatText?: boolean;
-  uploadKeyPrefix: string;
+  imageKeyOptions: {
+    prefix: string;
+    hasTTL?: boolean;
+  };
 }): Promise<{
   rawText: string;
   imageKeys?: string[];
@@ -173,12 +178,14 @@ export const readS3FileContentByBuffer = async ({
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
         try {
+          const { prefix, hasTTL } = imageKeyOptions;
           const ext = item.mime.split('/')[1].replace('x-', '');
           const imageKey = await getS3DatasetSource().uploadDatasetImage({
             base64Img: `data:${item.mime};base64,${item.base64}`,
             mimetype: `${ext}`,
             filename: `${item.uuid}.${ext}`,
-            uploadKey: `${uploadKeyPrefix}/${item.uuid}.${ext}`
+            uploadKey: `${prefix}/${item.uuid}.${ext}`,
+            hasTTL
           });
           uploadedImageKeys.push(imageKey);
           return imageKey;
@@ -213,11 +220,14 @@ export const readS3FileContentByBuffer = async ({
 };
 
 export const parsedFileContentS3Key = {
+  // 临时的文件路径（比如 evaluation)
   temp: (appId: string) => `chat/${appId}/temp/parsed/${randomUUID()}`,
 
+  // 对话中上传的文件的解析结果的图片的 Key
   chat: ({ appId, chatId, uId }: { chatId: string; uId: string; appId: string }) =>
     `chat/${appId}/${uId}/${chatId}/parsed`,
 
+  // 上传数据集的文件的解析结果的图片的 Key
   dataset: (params: ParsedFileContentS3KeyParams) => {
     const { datasetId, mimetype, filename, parentFileKey } = params;
 

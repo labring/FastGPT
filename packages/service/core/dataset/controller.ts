@@ -168,9 +168,5 @@ export const deleteDatasets = async ({
     for await (const dataset of datasets) {
       await removeImageByPath(dataset.avatar, session);
     }
-
-    for await (const dataset of datasets) {
-      await getS3AvatarSource().deleteAvatar(dataset.avatar, session);
-    }
   });
 };

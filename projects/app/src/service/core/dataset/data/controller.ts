@@ -221,14 +221,6 @@ export async function insertData2Dataset({
     dataId: insertIds[index]
   }));
 
-  // 2. Create mongo data
-  addLog.debug('[insertData2Dataset] Creating mongo data', {
-    qPreview: q?.substring(0, 100),
-    imageKeysCount: imageKeys?.length || 0,
-    imageKeys,
-    chunkIndex
-  });
-
   const [{ _id }] = await MongoDatasetData.create(
     [
       {

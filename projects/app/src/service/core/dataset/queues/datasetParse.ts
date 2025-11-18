@@ -382,36 +382,20 @@ export const datasetParseQueue = async (): Promise<any> => {
             }
           );
 
-          // 8. Remove TTLs (file, images)
+          // 8. Remove file TTL (images TTL will be removed after successful insertion to dataset_datas)
           const s3DatasetSource = getS3DatasetSource();
 
-          addLog.info('[Parse Queue] Before removing TTLs', {
+          addLog.info('[Parse Queue] Before removing file TTL', {
             hasFileId: !!collection.fileId,
-            isS3File: collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId),
-            imageKeysCount: imageKeys?.length || 0,
-            imageKeys: imageKeys
+            isS3File: collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId)
           });
 
-          // 8.1 For S3 files, remove file TTL and image TTLs
+          // 8.1 For S3 files, remove file TTL only
           if (collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId)) {
             // Remove file TTL
             await s3DatasetSource.removeDatasetFileTTL(collection.fileId, session);
             addLog.info('[Parse Queue] Removed file TTL', { fileId: collection.fileId });
-
-            // Remove image TTLs
-            if (imageKeys && imageKeys.length > 0) {
-              await s3DatasetSource.removeDatasetImagesTTL(imageKeys, session);
-              addLog.info('[Parse Queue] Removed image TTLs', {
-                imageKeysCount: imageKeys.length,
-                imageKeys
-              });
-            } else {
-              addLog.warn('[Parse Queue] No imageKeys to remove TTL', {
-                imageKeysIsUndefined: imageKeys === undefined,
-                imageKeysIsNull: imageKeys === null,
-                imageKeysLength: imageKeys?.length
-              });
-            }
+            // Note: Image TTLs will be removed in generateVector queue after successful insertion
           }
           // 8.2 For GridFS files (legacy), remove MongoDB image TTL
           else {

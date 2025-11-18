@@ -15,7 +15,8 @@ export const CreateGetDatasetFileURLParamsSchema = z.object({
 export type CreateGetDatasetFileURLParams = z.infer<typeof CreateGetDatasetFileURLParamsSchema>;
 
 export const DeleteDatasetFilesByPrefixParamsSchema = z.object({
-  datasetId: ObjectIdSchema
+  datasetId: ObjectIdSchema.optional(),
+  rawPrefix: z.string().nonempty().optional()
 });
 export type DeleteDatasetFilesByPrefixParams = z.infer<
   typeof DeleteDatasetFilesByPrefixParamsSchema
@@ -41,7 +42,8 @@ export const UploadDatasetImageParamsSchema = z.object({
   base64Img: z.string().nonempty(),
   uploadKey: z.string().nonempty(),
   mimetype: z.string().nonempty(),
-  filename: z.string().nonempty()
+  filename: z.string().nonempty(),
+  hasTTL: z.boolean().optional()
 });
 export type UploadDatasetImageParams = z.infer<typeof UploadDatasetImageParamsSchema>;
 

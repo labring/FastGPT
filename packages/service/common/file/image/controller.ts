@@ -135,9 +135,13 @@ export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!name) return;
 
   const id = name.split('.')[0];
-  if (!id || !Types.ObjectId.isValid(id)) return;
+  if (!id) return;
 
-  return MongoImage.deleteOne({ _id: id }, { session });
+  if (Types.ObjectId.isValid(id)) {
+    return MongoImage.deleteOne({ _id: id }, { session });
+  } else if (getS3AvatarSource().isAvatarKey(path)) {
+    return getS3AvatarSource().deleteAvatar(path, session);
+  }
 };
 
 export async function readMongoImg({ id }: { id: string }) {

@@ -13,7 +13,6 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { removeDatasetImageExpiredTime } from '@fastgpt/service/core/dataset/image/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import path from 'node:path';
 import fsp from 'node:fs/promises';
@@ -111,9 +110,6 @@ async function handler(
         })),
         session
       });
-
-      // 3. Clear ttl
-      await getS3DatasetSource().removeDatasetImagesTTL(imageIds, session);
     });
 
     return {};

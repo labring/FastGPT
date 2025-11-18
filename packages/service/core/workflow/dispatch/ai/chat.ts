@@ -41,11 +41,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { S3Sources } from '../../../../common/s3/type';
-import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
-import { getS3ChatSource } from '../../../../common/s3/sources/chat';
-import { jwtSignS3ObjectKey, replaceDatasetQuoteTextWithJWT } from '../../../../common/s3/utils';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
+import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {

@@ -67,8 +67,8 @@ class S3DatasetSource {
 
   // 前缀删除
   deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
-    const { datasetId } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
-    const prefix = [S3Sources.dataset, datasetId].filter(Boolean).join('/');
+    const { datasetId, rawPrefix } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
+    const prefix = rawPrefix || [S3Sources.dataset, datasetId].filter(Boolean).join('/');
     return this.bucket.addDeleteJob({ prefix });
   }
 
@@ -154,13 +154,15 @@ class S3DatasetSource {
     const { rawText, imageKeys } = await readS3FileContentByBuffer({
       teamId,
       tmbId,
-      uploadKeyPrefix: prefix,
       extension,
       buffer,
       encoding,
       customPdfParse,
       usageId,
-      getFormatText
+      getFormatText,
+      imageKeyOptions: {
+        prefix: prefix
+      }
     });
 
     addRawTextBuffer({
@@ -180,8 +182,13 @@ class S3DatasetSource {
 
   // 上传图片
   async uploadDatasetImage(params: UploadDatasetImageParams): Promise<string> {
-    const { uploadKey, base64Img, mimetype, filename } =
-      UploadDatasetImageParamsSchema.parse(params);
+    const {
+      uploadKey,
+      base64Img,
+      mimetype,
+      filename,
+      hasTTL = true
+    } = UploadDatasetImageParamsSchema.parse(params);
 
     const base64Data = base64Img.split(',')[1] || base64Img;
     const buffer = Buffer.from(base64Data, 'base64');
@@ -192,11 +199,13 @@ class S3DatasetSource {
       'origin-filename': encodeURIComponent(filename)
     });
 
-    await MongoS3TTL.create({
-      minioKey: uploadKey,
-      bucketName: this.bucket.name,
-      expiredTime: addDays(new Date(), 7)
-    });
+    if (hasTTL) {
+      await MongoS3TTL.create({
+        minioKey: uploadKey,
+        bucketName: this.bucket.name,
+        expiredTime: addDays(new Date(), 7)
+      });
+    }
 
     return uploadKey;
   }
@@ -248,19 +257,6 @@ class S3DatasetSource {
       imageKeysCount: imageKeys.length,
       deletedCount: result.deletedCount
     });
-  }
-
-  async getFileDatasetInfo(key: string): Promise<{
-    _id: string;
-    datasetId: string;
-    collectionId: string;
-  } | null> {
-    return await MongoDatasetData.findOne(
-      { $or: [{ imageKeys: { $in: [key] } }, { imageId: key }] },
-      'datasetId collectionId'
-    )
-      .lean()
-      .exec();
   }
 }
 

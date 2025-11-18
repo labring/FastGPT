@@ -125,7 +125,9 @@ export const readFileRawTextByUrl = async ({
             tmbId,
             buffer,
             encoding: 'utf-8',
-            uploadKeyPrefix: prefix
+            imageKeyOptions: {
+              prefix: prefix
+            }
           });
         });
 
