@@ -2,7 +2,7 @@ import { getLLMModel } from '../../../../../ai/model';
 import type { AgentPlanStepType } from '../sub/plan/type';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
-import { parseToolArgs } from '../../utils';
+import { parseToolArgs } from '../../../../../ai/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 

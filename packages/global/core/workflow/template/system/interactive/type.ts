@@ -20,13 +20,13 @@ type InteractiveNodeType = {
   nodeOutputs?: NodeOutputItemType[];
 };
 
-type ChildrenInteractive = InteractiveNodeType & {
+export type ChildrenInteractive = InteractiveNodeType & {
   type: 'childrenInteractive';
   params: {
     childrenResponse: WorkflowInteractiveResponseType;
   };
 };
-type ToolCallChildrenInteractive = InteractiveNodeType & {
+export type ToolCallChildrenInteractive = InteractiveNodeType & {
   type: 'toolChildrenInteractive';
   params: {
     childrenResponse: WorkflowInteractiveResponseType;
@@ -38,7 +38,7 @@ type ToolCallChildrenInteractive = InteractiveNodeType & {
 };
 
 // Loop bode
-type LoopInteractive = InteractiveNodeType & {
+export type LoopInteractive = InteractiveNodeType & {
   type: 'loopInteractive';
   params: {
     loopResult: any[];
