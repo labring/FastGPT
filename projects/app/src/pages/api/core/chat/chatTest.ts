@@ -41,12 +41,9 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
@@ -126,7 +123,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           obj: ChatRoleEnum.Human,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: { content: 'tool test' }
             }
           ]
@@ -161,7 +157,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const newHistories = concatHistories(histories, chatMessages);
-    const interactive = getLastInteractiveValue(newHistories) || undefined;
+    const interactive = getLastInteractiveValue(newHistories);
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
@@ -261,7 +257,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
   } catch (err: any) {
     res.status(500);

@@ -99,7 +99,8 @@ export type AppDatasetSearchParamsType = {
   datasetSearchExtensionModel?: string;
   datasetSearchExtensionBg?: string;
 };
-export type AppSimpleEditFormType = {
+
+export type AppFormEditFormType = {
   // templateId: string;
   aiSettings: {
     [NodeInputKeyEnum.aiModel]: string;
@@ -117,7 +118,9 @@ export type AppSimpleEditFormType = {
   dataset: {
     datasets: SelectedDatasetType[];
   } & AppDatasetSearchParamsType;
-  selectedTools: FlowNodeTemplateType[];
+  selectedTools: (FlowNodeTemplateType & {
+    configStatus?: 'active' | 'waitingForConfig' | 'invalid';
+  })[];
   chatConfig: AppChatConfigType;
 };
 

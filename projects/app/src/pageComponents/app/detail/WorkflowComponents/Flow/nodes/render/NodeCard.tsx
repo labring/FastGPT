@@ -272,7 +272,9 @@ const NodeCard = (props: Props) => {
 
   const RenderToolHandle = useMemo(
     () =>
-      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
+      node?.flowNodeType === FlowNodeTypeEnum.toolCall ? (
+        <ToolSourceHandle nodeId={nodeId} />
+      ) : null,
     [node?.flowNodeType, nodeId]
   );
 

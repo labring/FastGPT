@@ -55,7 +55,7 @@ export const checkTeamAppTypeLimit = async ({
       MongoApp.countDocuments({
         teamId,
         type: {
-          $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
+          $in: [AppTypeEnum.agent, AppTypeEnum.simple, AppTypeEnum.workflow]
         }
       })
     ]);
