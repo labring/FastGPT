@@ -174,6 +174,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
             q: data.q,
             a: data.a,
             indexes: allIndexes,
+            metadata: data.dataMetadata,
             chunkIndex: data.chunkIndex
           }
         ],
