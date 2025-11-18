@@ -8,9 +8,9 @@ import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
-  Prompt_userQuotePromptList,
+  get_userQuotePromptList,
   Prompt_QuoteTemplateList,
-  Prompt_systemQuotePromptList,
+  get_systemQuotePromptList,
   getQuoteTemplate,
   getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
@@ -179,7 +179,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   );
 
   const quotePromptTemplates =
-    aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
+    aiChatQuoteRole === 'user' ? get_userQuotePromptList() : get_systemQuotePromptList();
 
   return (
     <>

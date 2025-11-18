@@ -1,3 +1,6 @@
+import { LangEnum } from '../../../common/i18n/type';
+import { getLang } from '../../../../web/hooks/useI18n';
+
 export const Prompt_AgentQA = {
   description: `<Context></Context> 标记中是一段文本，学习和分析它，并整理学习成果：
 - 提出问题并给出每个问题的答案。
@@ -40,7 +43,7 @@ export const getExtractJsonPrompt = ({
     systemPrompt ? '【背景知识】' : '',
     memory ? '【历史提取结果】' : ''
   ].filter(Boolean);
-  const prompt = `## 背景
+  const promptZh = `## 背景
 用户需要执行一个函数，该函数需要一些参数，需要你结合${list.join('、')}，来生成对应的参数
 
 ## 基本要求
@@ -72,7 +75,46 @@ ${schema}
 - 严格输出 json 字符串。
 - 不要回答问题。`.replace(/\n{3,}/g, '\n\n');
 
-  return prompt;
+  const listEn = [
+    '【Conversation History】',
+    '【User Input】',
+    systemPrompt ? '【Background Knowledge】' : '',
+    memory ? '【Previous Extraction Result】' : ''
+  ].filter(Boolean);
+  const promptEn = `## Background
+The user needs to execute a function that requires certain parameters. You must generate these parameters by considering ${listEn.join(', ')}.
+
+## Basic Requirements
+
+- Strictly generate parameters according to the JSON Schema description.
+- Not all parameters are required. If a suitable value is unavailable, omit the parameter or use an empty string.
+- Use conversation history to help generate appropriate parameters.
+
+${
+  systemPrompt
+    ? `## Specific Requirements
+${systemPrompt}`
+    : ''
+}
+
+${
+  memory
+    ? `## Previous Extraction Result
+${memory}`
+    : ''
+}
+
+## JSON Schema
+
+${schema}
+
+## Output Requirements
+
+- Output only a valid JSON string.
+- Do not answer the question or add any extra text.`.replace(/\n{3,}/g, '\n\n');
+
+  return getLang() === LangEnum.en ? promptEn : promptZh;
+
 };
 export const getExtractJsonToolPrompt = ({
   systemPrompt,
@@ -87,7 +129,7 @@ export const getExtractJsonToolPrompt = ({
     systemPrompt ? '【背景知识】' : '',
     memory ? '【历史提取结果】' : ''
   ].filter(Boolean);
-  const prompt = `## 背景
+  const promptZh = `## 背景
 用户需要执行一个叫 "request_function" 的函数，该函数需要你结合${list.join('、')}，来生成对应的参数
 
 ## 基本要求
@@ -110,7 +152,36 @@ ${memory}`
     : ''
 }`.replace(/\n{3,}/g, '\n\n');
 
-  return prompt;
+  const listEn = [
+    '【Conversation History】',
+    '【User Input】',
+    systemPrompt ? '【Background Knowledge】' : '',
+    memory ? '【Previous Extraction Result】' : ''
+  ].filter(Boolean);
+  const promptEn = `## Background
+The user needs to execute a function called "request_function". You must generate its parameters by considering ${listEn.join(', ')}.
+
+## Basic Requirements
+
+- Not all parameters are required. If a suitable value is unavailable, omit the parameter or use an empty string.
+- Use conversation history to generate appropriate parameters, with the most recent messages taking higher priority.
+- Even if the function cannot be called, you must return a JSON string, do not respond with natural language.
+
+${
+  systemPrompt
+    ? `## Specific Requirements
+${systemPrompt}`
+    : ''
+}
+
+${
+  memory
+    ? `## Previous Extraction Result
+${memory}`
+    : ''
+}`.replace(/\n{3,}/g, '\n\n');
+
+  return getLang() === LangEnum.en ? promptEn : promptZh;
 };
 
 export const getCQSystemPrompt = ({
@@ -127,7 +198,7 @@ export const getCQSystemPrompt = ({
     '【历史记录】',
     memory ? '【上一轮分类结果】' : ''
   ].filter(Boolean);
-  const CLASSIFY_QUESTION_SYSTEM_PROMPT = `## 角色
+  const CLASSIFY_QUESTION_SYSTEM_PROMPT_ZH = `## 角色
 你是一个"分类助手"，可以结合${list.join('、')}，来判断用户当前问题属于哪一个分类，并输出分类标记。
 
 ${
@@ -158,7 +229,44 @@ ${typeList}
 
 只需要输出分类的 id 即可，无需输出额外内容。`.replace(/\n{3,}/g, '\n\n');
 
-  return CLASSIFY_QUESTION_SYSTEM_PROMPT;
+  const listEn = [
+    systemPrompt ? '[Background Knowledge]' : '',
+    '[Conversation History]',
+    memory ? '[Previous Classification Result]' : ''
+  ].filter(Boolean);
+
+  const CLASSIFY_QUESTION_SYSTEM_PROMPT_EN = `## Role
+You are a "Classification Assistant" who can determine which category the user's current question belongs to by considering ${listEn.join(', ')}, and output the category ID.
+
+${
+  systemPrompt
+    ? `## Background Knowledge
+${systemPrompt}`
+    : ''
+}
+
+${
+  memory
+    ? `## Previous Classification Result
+${memory}`
+    : ''
+}
+
+## Category List
+
+${typeList}
+
+## Classification Rules
+
+1. The classification result must be selected from the category list.
+2. In continuous conversations, if the category is unclear and the user has not changed the topic, retain the previous classification result.
+3. In case of classification ambiguity or conflict, the category associated with the subject (main entity) takes higher priority.
+
+## Output Format
+
+Only output the category ID. Do not include any additional content.`.replace(/\n{3,}/g, '\n\n');
+
+  return getLang() === LangEnum.en ? CLASSIFY_QUESTION_SYSTEM_PROMPT_EN : CLASSIFY_QUESTION_SYSTEM_PROMPT_ZH;
 };
 
 export const QuestionGuidePrompt = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
