@@ -128,6 +128,7 @@
   "dataset": "知識庫",
   "dataset.Select_dataset_model_tip": "僅能選擇同一個索引模型的知識庫",
   "dataset.create_dataset_tips": "更多高級操作請前往",
+  "dataset_create_failed": "知識庫創建失敗",
   "dataset_create_success": "知識庫創建成功，正在後台索引文件",
   "dataset_empty_tips": "你還沒有知識庫，先創建一個吧",
   "dataset_search_tool_description": "呼叫「語意搜尋」和「全文搜尋」功能，從「知識庫」中尋找可能與問題相關的參考內容。優先呼叫這個工具來協助回答使用者的問題。",

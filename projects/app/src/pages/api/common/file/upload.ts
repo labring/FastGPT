@@ -13,12 +13,14 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createFileToken } from '@fastgpt/service/support/permission/auth/file';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type UploadChatFileProps = {
   appId: string;
 } & OutLinkChatAuthProps;
 export type UploadDatasetFileProps = {
-  datasetId: string;
+  datasetId?: string;
 };
 
 const authUploadLimit = (tmbId: string) => {
@@ -58,18 +60,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
         };
       }
       if (bucketName === 'dataset') {
-        const chatData = data as UploadDatasetFileProps;
-        const authData = await authDataset({
-          datasetId: chatData.datasetId,
-          per: WritePermissionVal,
-          req,
-          authToken: true,
-          authApiKey: true
-        });
-        return {
-          teamId: authData.teamId,
-          uid: authData.tmbId
-        };
+        const datasetData = data as UploadDatasetFileProps;
+
+        if (datasetData.datasetId) {
+          const authData = await authDataset({
+            datasetId: datasetData.datasetId,
+            per: WritePermissionVal,
+            req,
+            authToken: true,
+            authApiKey: true
+          });
+          return {
+            teamId: authData.teamId,
+            uid: authData.tmbId
+          };
+        } else {
+          const authData = await authUserPer({
+            req,
+            authToken: true,
+            authApiKey: true,
+            per: TeamDatasetCreatePermissionVal
+          });
+          return {
+            teamId: authData.teamId,
+            uid: authData.tmbId
+          };
+        }
       }
       return Promise.reject('bucketName is empty');
     })();

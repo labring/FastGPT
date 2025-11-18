@@ -27,7 +27,8 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import FolderPath from '@/components/common/folder/Path';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/QuickCreateModal';
+import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/QuickCreateDatasetModal';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
@@ -47,6 +48,7 @@ export const DatasetSelectModal = ({
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType[]>(defaultSelectedDatasets);
   const { toast } = useToast();
+  const { userInfo } = useUserStore();
 
   // Use server-side search, following the logic of the dataset list page
   const {
@@ -154,9 +156,11 @@ export const DatasetSelectModal = ({
       <Flex h="100%" direction="column" flex={1} overflow="hidden" minH={0}>
         <ModalBody flex={1} h={0} overflow="hidden">
           {isRootEmpty ? (
-            <VStack mt={8}>
+            <VStack h={'full'} justifyContent={'center'}>
               <EmptyTip text={t('app:dataset_empty_tips')} py={4} />
-              <Button onClick={onOpenQuickCreate}>{t('common:Create')}</Button>
+              {userInfo?.team?.permission.hasDatasetCreatePer && (
+                <Button onClick={onOpenQuickCreate}>{t('common:Create')}</Button>
+              )}
             </VStack>
           ) : (
             <>
@@ -427,7 +431,7 @@ export const DatasetSelectModal = ({
         {/* Modal footer button area */}
         <ModalFooter>
           <HStack spacing={4} w="full" align="center">
-            {!isRootEmpty && (
+            {!isRootEmpty && userInfo?.team?.permission.hasDatasetCreatePer && (
               <Button
                 leftIcon={<MyIcon name="common/addLight" w={4} />}
                 variant={'transparentBase'}

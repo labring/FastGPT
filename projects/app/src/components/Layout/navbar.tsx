@@ -110,8 +110,8 @@ const Navbar = ({ unread }: { unread: number }) => {
     [lastChatAppId, lastPane, t, userInfo?.username]
   );
 
-  const isSecondNavbarPage = useMemo(() => {
-    return ['/plugin'].includes(router.pathname);
+  const isDashboardPage = useMemo(() => {
+    return router.pathname.startsWith('/dashboard');
   }, [router.pathname]);
 
   return (
@@ -123,7 +123,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
-      bg={isSecondNavbarPage ? 'white' : 'transparent'}
+      bg={isDashboardPage ? 'white' : 'transparent'}
     >
       {/* logo */}
       <Box flex={'0 0 auto'} mb={3}>
@@ -147,7 +147,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                 : {
                     bg: 'transparent',
                     _hover: {
-                      bg: isSecondNavbarPage ? 'white' : 'rgba(255,255,255,0.9)'
+                      bg: isDashboardPage ? 'white' : 'rgba(255,255,255,0.9)'
                     }
                   })}
               {...(item.link !== router.asPath
