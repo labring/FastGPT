@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
 import { type OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 
 function BasicInfo({
   register,
@@ -68,15 +69,10 @@ function BasicInfo({
         <FormLabel flex={'0 0 6.25rem'} alignItems={'center'}>
           {t('common:expired_time')}
         </FormLabel>
-        <Input
-          type="datetime-local"
-          defaultValue={
-            defaultData.limit?.expiredTime
-              ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-              : ''
-          }
-          onChange={(e) => {
-            setValue('limit.expiredTime', new Date(e.target.value));
+        <DateTimePicker
+          value={defaultData.limit?.expiredTime ? new Date(defaultData.limit.expiredTime) : null}
+          onChange={(date) => {
+            setValue('limit.expiredTime', date || undefined);
           }}
         />
       </Flex>
