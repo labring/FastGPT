@@ -24,18 +24,28 @@ export type StreamResponseType = {
 };
 type ResponseQueueItemType =
   | {
+      responseValueId?: string;
+      subAppId?: string;
       event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
       text?: string;
       reasoningText?: string;
     }
-  | { event: SseResponseEventEnum.interactive; [key: string]: any }
   | {
+      responseValueId?: string;
+      subAppId?: string;
+      event: SseResponseEventEnum.interactive;
+      [key: string]: any;
+    }
+  | {
+      responseValueId?: string;
+      subAppId?: string;
       event:
         | SseResponseEventEnum.toolCall
         | SseResponseEventEnum.toolParams
         | SseResponseEventEnum.toolResponse;
-      [key: string]: any;
+      tools: any;
     };
+
 class FatalError extends Error {}
 
 export const streamFetch = ({
@@ -80,7 +90,7 @@ export const streamFetch = ({
       if (abortCtrl.signal.aborted) {
         responseQueue.forEach((item) => {
           onMessage(item);
-          if (isAnswerEvent(item.event) && item.text) {
+          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
         });
@@ -92,7 +102,7 @@ export const streamFetch = ({
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
           onMessage(item);
-          if (isAnswerEvent(item.event) && item.text) {
+          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
         }
@@ -181,31 +191,40 @@ export const streamFetch = ({
           })();
 
           if (typeof parseJson !== 'object') return;
+          const { responseValueId, subAppId, ...rest } = parseJson;
 
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
+              responseValueId,
+              subAppId,
               event,
               reasoningText
             });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
+            const text = rest.choices?.[0]?.delta?.content || '';
             for (const item of text) {
               pushDataToQueue({
+                responseValueId,
+                subAppId,
                 event,
                 text: item
               });
             }
           } else if (event === SseResponseEventEnum.fastAnswer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
+              responseValueId,
+              subAppId,
               event,
               reasoningText
             });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
+            const text = rest.choices?.[0]?.delta?.content || '';
             pushDataToQueue({
+              responseValueId,
+              subAppId,
               event,
               text
             });
@@ -215,29 +234,33 @@ export const streamFetch = ({
             event === SseResponseEventEnum.toolResponse
           ) {
             pushDataToQueue({
+              responseValueId,
+              subAppId,
               event,
-              ...parseJson
+              ...rest
             });
           } else if (event === SseResponseEventEnum.flowNodeResponse) {
             onMessage({
               event,
-              nodeResponse: parseJson
+              nodeResponse: rest
             });
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
               event,
-              variables: parseJson
+              variables: rest
             });
           } else if (event === SseResponseEventEnum.interactive) {
             pushDataToQueue({
+              responseValueId,
+              subAppId,
               event,
-              ...parseJson
+              ...rest
             });
           } else if (event === SseResponseEventEnum.error) {
-            if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
+            if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
             }
-            errMsg = getErrText(parseJson, '流响应错误');
+            errMsg = getErrText(rest, '流响应错误');
           } else if (
             [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
               event as any
@@ -245,7 +268,7 @@ export const streamFetch = ({
           ) {
             onMessage({
               event,
-              ...parseJson
+              ...rest
             });
           }
         },

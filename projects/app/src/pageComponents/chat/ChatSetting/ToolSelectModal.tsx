@@ -21,19 +21,19 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
-  chatConfig?: AppSimpleEditFormType['chatConfig'];
+  chatConfig?: AppFormEditFormType['chatConfig'];
   onAddTool: (tool: FlowNodeTemplateType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };

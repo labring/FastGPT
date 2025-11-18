@@ -12,7 +12,7 @@ import {
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
@@ -102,7 +102,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
       const updatedQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: { content: userContent }
         }
       ];
@@ -112,7 +111,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
                 entryNodeIds: workflowDebugData.entryNodeIds || [],

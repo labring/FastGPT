@@ -70,14 +70,14 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
       // Default to file type for non-extension files
       return {
         type: ChatFileTypeEnum.image,
-        name: filename || 'null',
+        name: filename ? decodeURIComponent(filename) : url,
         url
       };
     }
     // If it's a document type, return as file, otherwise treat as image
     return {
       type: ChatFileTypeEnum.file,
-      name: filename || 'null',
+      name: filename ? decodeURIComponent(filename) : url,
       url
     };
   } catch (error) {
