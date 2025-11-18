@@ -304,8 +304,7 @@ const ChatItem = (props: Props) => {
                 }).replace('#', ':')}
               </Box>
             )}
-            <ChatController {...props} isLastChild={isLastChild} />
-          </Flex>
+            </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
 
@@ -414,6 +413,16 @@ const ChatItem = (props: Props) => {
                 </Box>
               )}
           </Card>
+          {/* 添加到底部的控制按钮 */}
+          {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+            <Flex
+              mt={2}
+              justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
+              className="bottom-controller"
+            >
+              <ChatController {...props} isLastChild={isLastChild} />
+            </Flex>
+          )}
         </Box>
       ))}
     </Box>
