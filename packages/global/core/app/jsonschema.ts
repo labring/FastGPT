@@ -84,13 +84,19 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
 };
-export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeInputItemType[] => {
+export const jsonSchema2NodeInput = ({
+  jsonSchema,
+  schemaType
+}: {
+  jsonSchema: JSONSchemaInputType;
+  schemaType: 'mcp' | 'http';
+}): FlowNodeInputItemType[] => {
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
     label: key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: value['x-tool-description'] ?? value.description ?? key,
+    toolDescription: schemaType === 'http' ? value['x-tool-description'] : value.description || key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));

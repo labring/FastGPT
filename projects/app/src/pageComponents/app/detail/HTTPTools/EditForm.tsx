@@ -154,13 +154,17 @@ const EditForm = ({
                 >
                   <Flex alignItems={'center'} py={3} px={3}>
                     <Box maxW={'full'} pl={2} position="relative" width="calc(100% - 30px)">
-                      <Flex alignItems="center" gap={2} mb={1}>
-                        <Box>{renderHttpMethod(tool.method)}</Box>
+                      <Flex alignItems="center" gap={2} mb={1} w={'full'}>
+                        <Box flex={'0 0 40px'}>{renderHttpMethod(tool.method)}</Box>
                         <Box
                           color={'myGray.900'}
                           fontSize={'14px'}
                           lineHeight={'20px'}
                           letterSpacing={'0.25px'}
+                          whiteSpace={'nowrap'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          maxW={'200px'}
                         >
                           {tool.name}
                         </Box>
@@ -170,6 +174,10 @@ const EditForm = ({
                           fontSize={'14px'}
                           lineHeight={'20px'}
                           letterSpacing={'0.25px'}
+                          whiteSpace={'nowrap'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          maxW={'200px'}
                         >
                           {tool.path}
                         </Box>

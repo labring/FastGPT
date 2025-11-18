@@ -371,7 +371,7 @@ const RenderList = React.memo(function RenderList({
                           objectFit={'contain'}
                           borderRadius={'sm'}
                         />
-                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
+                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'} overflow={'hidden'}>
                           {t(parseI18nString(template.name, i18n.language))}
                         </Box>
                         {isSystemTool && (
@@ -408,16 +408,19 @@ const RenderList = React.memo(function RenderList({
                       borderRadius={'sm'}
                       flexShrink={0}
                     />
-                    <Box flex={'1 0 0'} ml={3}>
-                      <Box
-                        color={'myGray.900'}
-                        fontWeight={'500'}
-                        fontSize={'sm'}
-                        className="textEllipsis"
-                      >
-                        {t(parseI18nString(template.name, i18n.language))}
-                      </Box>
+                    <Box
+                      px={3}
+                      color={'myGray.900'}
+                      fontWeight={'500'}
+                      fontSize={'sm'}
+                      maxW={'200px'}
+                      whiteSpace={'nowrap'}
+                      overflow={'hidden'}
+                      textOverflow={'ellipsis'}
+                    >
+                      {t(parseI18nString(template.name, i18n.language))}
                     </Box>
+                    <Box flex={1} />
 
                     {selected ? (
                       <Button
