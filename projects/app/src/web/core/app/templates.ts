@@ -13,7 +13,15 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
+// TODO: 需要做一个类型强制约束
 export const emptyTemplates = {
+  [AppTypeEnum.agent]: {
+    avatar: 'core/app/type/simpleFill',
+    name: 'Agent',
+    nodes: [],
+    edges: [],
+    chatConfig: {}
+  },
   [AppTypeEnum.simple]: {
     avatar: 'core/app/type/simpleFill',
     name: i18nT('app:template.simple_robot'),

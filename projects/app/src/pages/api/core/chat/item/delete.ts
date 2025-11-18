@@ -6,7 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiResponse) {
@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiRe
     if (item?.obj === ChatRoleEnum.Human && delFile) {
       const s3ChatSource = getS3ChatSource();
       for (const value of item.value) {
-        if (value.type === ChatItemValueTypeEnum.file && value.file?.key) {
+        if (value.file?.key) {
           await s3ChatSource.deleteChatFileByKey(value.file.key);
         }
       }

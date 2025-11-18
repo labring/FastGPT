@@ -23,7 +23,7 @@ import type { WorkflowResponseType } from '../../../../service/core/workflow/dis
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
 import { LafAccountType } from '../../../support/user/team/type';
-import type { CompletionFinishReason } from '../../ai/type';
+import type { ChatCompletionMessageParam, CompletionFinishReason } from '../../ai/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -82,6 +82,8 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+
+  // TOOD: 移除
   usageId?: string;
 };
 
@@ -92,6 +94,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   params: T;
 
   mcpClientMemory: Record<string, MCPClient>; // key: url
+  usagePush: (usages: ChatNodeUsageType[]) => void;
 };
 
 export type SystemVariablesType = {
