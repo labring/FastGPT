@@ -57,7 +57,7 @@ type FormType = {
 };
 
 export type CreateAppType =
-  | AppTypeEnum.agent
+  | AppTypeEnum.chatAgent
   | AppTypeEnum.simple
   | AppTypeEnum.workflow
   | AppTypeEnum.workflowTool
@@ -72,7 +72,7 @@ const CreateAppsPage = () => {
   const { parentId, appType } = query;
 
   const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(
-    (appType as CreateAppType) || AppTypeEnum.workflow
+    (appType as CreateAppType) || AppTypeEnum.chatAgent
   );
   const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
   const isToolType = ToolTypeList.includes(selectedAppType);
