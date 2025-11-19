@@ -326,28 +326,38 @@ const ToolDetailDrawer = ({
               {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
             </Box>
             <Flex mt={3} gap={2}>
-              <Button
-                flex={selectedTool.update && onUpdate && mode !== 'marketplace' ? 1 : 'full'}
-                variant={isInstalled ? 'primaryOutline' : 'primary'}
-                isLoading={isLoading || loading}
-                isDisabled={isUpdating}
-                onClick={async () => {
-                  onToggleInstall(!isInstalled);
-                  if (mode === 'marketplace') return;
-                  setIsInstalled(!isInstalled);
-                }}
-              >
-                {isDownload
-                  ? t('common:Download')
-                  : isInstalled
-                    ? t('app:toolkit_uninstall')
-                    : t('app:toolkit_install')}
-              </Button>
-              {selectedTool.update && onUpdate && mode !== 'marketplace' && (
-                <Button variant="primary" flex={1} isLoading={isUpdating} onClick={onUpdate}>
-                  {t('app:custom_plugin_update')}
-                </Button>
-              )}
+              {/* Determine if we have two buttons */}
+              {(() => {
+                const hasUpdateButton = selectedTool.update && onUpdate && mode !== 'marketplace';
+                const buttonFlex = hasUpdateButton ? 1 : 1; // Both use flex=1, but when single button it fills the space
+
+                return (
+                  <>
+                    <Button
+                      flex={buttonFlex}
+                      variant={isInstalled ? 'primaryOutline' : 'primary'}
+                      isLoading={isLoading || loading}
+                      isDisabled={isUpdating}
+                      onClick={async () => {
+                        onToggleInstall(!isInstalled);
+                        if (mode === 'marketplace') return;
+                        setIsInstalled(!isInstalled);
+                      }}
+                    >
+                      {isDownload
+                        ? t('common:Download')
+                        : isInstalled
+                          ? t('app:toolkit_uninstall')
+                          : t('app:toolkit_install')}
+                    </Button>
+                    {hasUpdateButton && (
+                      <Button variant="primary" flex={1} isLoading={isUpdating} onClick={onUpdate}>
+                        {t('app:custom_plugin_update')}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </Flex>
 
             {showPoint && (
