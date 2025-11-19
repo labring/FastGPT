@@ -58,7 +58,12 @@ export type GetSystemInstalledPluginsQueryType = z.infer<
   typeof GetSystemInstalledPluginsQuerySchema
 >;
 export const GetSystemInstalledPluginsResponseSchema = z.object({
-  ids: z.array(z.string())
+  list: z.array(
+    z.object({
+      id: z.string(),
+      version: z.string()
+    })
+  )
 });
 export type GetSystemInstalledPluginsResponseType = z.infer<
   typeof GetSystemInstalledPluginsResponseSchema

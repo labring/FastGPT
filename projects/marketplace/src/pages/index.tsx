@@ -30,7 +30,6 @@ const ToolkitMarketplace = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [operatingToolId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -176,17 +175,23 @@ const ToolkitMarketplace = () => {
     });
   }, [tools, i18n.language, toolTags]);
 
-  const onDownload = useCallback((toolId: string) => {
-    getDownloadURL(toolId).then((url) => {
+  const onDownload = useCallback(async (toolId: string) => {
+    try {
+      const url = await getDownloadURL(toolId);
       if (url) {
+        // 创建下载链接
         const link = document.createElement('a');
         link.href = url;
         link.download = '';
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
-    });
+    } catch (error) {
+      console.error('Download failed:', error);
+      // 可以在这里添加错误提示
+    }
   }, []);
 
   // 使用 IntersectionObserver 监听英雄区域是否在视窗中
@@ -219,6 +224,8 @@ const ToolkitMarketplace = () => {
     <>
       <Head>
         <title>{t('app:fastgpt_marketplace')}</title>
+        <meta name="description" content={t('app:toolkit_marketplace_title')} />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <MyBox
         bg={'white'}
@@ -448,9 +455,8 @@ const ToolkitMarketplace = () => {
                     <ToolCard
                       key={tool.id}
                       item={tool}
-                      isLoading={operatingToolId === tool.id}
                       mode="marketplace"
-                      onClickButton={() => {
+                      onInstall={() => {
                         onDownload(tool.id);
                       }}
                       onClickCard={() => setSelectedTool(tool)}

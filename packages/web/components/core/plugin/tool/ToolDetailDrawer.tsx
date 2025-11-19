@@ -163,6 +163,8 @@ const ToolDetailDrawer = ({
   onClose,
   selectedTool,
   onToggleInstall,
+  onUpdate,
+  isUpdating,
   systemTitle,
   onFetchDetail,
   isLoading,
@@ -172,6 +174,8 @@ const ToolDetailDrawer = ({
   onClose: () => void;
   selectedTool: ToolCardItemType;
   onToggleInstall: (installed: boolean) => void;
+  onUpdate?: () => void;
+  isUpdating?: boolean;
   systemTitle?: string;
   onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
   isLoading?: boolean;
@@ -321,11 +325,12 @@ const ToolDetailDrawer = ({
             <Box fontSize={'12px'} color="myGray.500" mt={3}>
               {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
             </Box>
-            <Flex mt={3}>
+            <Flex mt={3} gap={2}>
               <Button
-                w="full"
+                flex={selectedTool.update && onUpdate && mode !== 'marketplace' ? 1 : 'full'}
                 variant={isInstalled ? 'primaryOutline' : 'primary'}
                 isLoading={isLoading || loading}
+                isDisabled={isUpdating}
                 onClick={async () => {
                   onToggleInstall(!isInstalled);
                   if (mode === 'marketplace') return;
@@ -338,6 +343,11 @@ const ToolDetailDrawer = ({
                     ? t('app:toolkit_uninstall')
                     : t('app:toolkit_install')}
               </Button>
+              {selectedTool.update && onUpdate && mode !== 'marketplace' && (
+                <Button variant="primary" flex={1} isLoading={isUpdating} onClick={onUpdate}>
+                  {t('app:custom_plugin_update')}
+                </Button>
+              )}
             </Flex>
 
             {showPoint && (

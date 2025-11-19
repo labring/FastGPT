@@ -9,7 +9,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect, useCallback, useReducer } from 'react';
-import { useDebounce, useMount } from 'ahooks';
+import { useDebounce, useMount, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
@@ -61,28 +61,6 @@ const useSearchParams = () => {
   return { searchText, tagIds, updateParams };
 };
 
-type OperatingAction = { type: 'TRY_ADD'; toolId: string } | { type: 'REMOVE'; toolId: string };
-
-const operatingReducer = (state: Set<string>, action: OperatingAction): Set<string> => {
-  if (action.type === 'TRY_ADD') {
-    if (state.has(action.toolId)) {
-      return state;
-    }
-    const newSet = new Set(state);
-    newSet.add(action.toolId);
-    return newSet;
-  }
-  if (action.type === 'REMOVE') {
-    if (!state.has(action.toolId)) {
-      return state;
-    }
-    const newSet = new Set(state);
-    newSet.delete(action.toolId);
-    return newSet;
-  }
-  return state;
-};
-
 const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -93,7 +71,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { searchText, tagIds, updateParams } = useSearchParams();
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [operatingToolIds, dispatchOperating] = useReducer(operatingReducer, new Set<string>());
+  const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
+  const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   // Type filter
@@ -154,16 +133,27 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const [installedPluginsMap, setInstalledPluginsMap] = useState<Record<string, boolean>>({});
+  const [installedPluginsMap, setInstalledPluginsMap] = useState<
+    Record<
+      string,
+      {
+        installed: boolean;
+        version?: string;
+      }
+    >
+  >({});
   useRequest2(
     async () => {
-      const { ids } = await getSystemInstalledPlugins({ type: 'tool' });
-      const data = ids.reduce(
-        (acc, id) => {
-          acc[id] = true;
+      const { list } = await getSystemInstalledPlugins({ type: 'tool' });
+      const data = list.reduce(
+        (acc, item) => {
+          acc[item.id] = {
+            installed: true,
+            version: item.version
+          };
           return acc;
         },
-        {} as Record<string, boolean>
+        {} as Record<string, { installed: boolean; version?: string }>
       );
       setInstalledPluginsMap(data);
     },
@@ -189,19 +179,25 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
 
       const operationPromise = (async () => {
-        dispatchOperating({ type: 'TRY_ADD', toolId: tool.id });
+        installingOrDeletingToolIdsDispatch.add(tool.id);
 
         try {
           await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
           });
-          setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: true }));
+          setInstalledPluginsMap((prev) => ({
+            ...prev,
+            [tool.id]: {
+              installed: true,
+              version: tools.find((t) => t.toolId === tool.id)?.version
+            }
+          }));
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
           }
         } finally {
-          dispatchOperating({ type: 'REMOVE', toolId: tool.id });
+          installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
         }
       })();
@@ -213,6 +209,58 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       manual: true
     }
   );
+
+  const handleUpdateTool = useCallback(
+    async (tool: ToolCardItemType) => {
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const operationPromise = (async () => {
+        updatingToolIdsDispatch.add(tool.id);
+
+        try {
+          // 获取下载 URL
+          const downloadUrl = await getMarketplaceDownloadURL(tool.id);
+          if (!downloadUrl) return;
+
+          // 调用安装接口进行更新
+          await intallPluginWithUrl({
+            downloadUrls: [downloadUrl]
+          });
+
+          // 更新安装插件映射
+          setInstalledPluginsMap((prev) => ({
+            ...prev,
+            [tool.id]: {
+              installed: true,
+              version: tool.version
+            }
+          }));
+
+          // 如果当前选中的工具是要更新的工具，更新其状态
+          if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
+          }
+        } finally {
+          updatingToolIdsDispatch.remove(tool.id);
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+      await operationPromise;
+    },
+    [
+      updatingToolIdsDispatch,
+      selectedTool,
+      getMarketplaceDownloadURL,
+      intallPluginWithUrl,
+      setInstalledPluginsMap
+    ]
+  );
   const { runAsync: handleDeleteTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
@@ -222,17 +270,22 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
 
       const operationPromise = (async () => {
-        dispatchOperating({ type: 'TRY_ADD', toolId: tool.id });
+        installingOrDeletingToolIdsDispatch.add(tool.id);
 
         try {
           await deletePkgPlugin({ toolId: tool.id });
-          setInstalledPluginsMap((prev) => ({ ...prev, [tool.id]: false }));
+          setInstalledPluginsMap((prev) => ({
+            ...prev,
+            [tool.id]: {
+              installed: false
+            }
+          }));
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
           }
         } finally {
-          dispatchOperating({ type: 'REMOVE', toolId: tool.id });
+          installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
         }
       })();
@@ -272,7 +325,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     return (
       tools
         ?.map((tool) => {
-          const isInstalled = !!installedPluginsMap[tool.toolId];
+          const isInstalled = !!installedPluginsMap[tool.toolId]?.installed;
+          const update = installedPluginsMap[tool.toolId]?.version !== tool.version;
 
           return {
             id: tool.toolId,
@@ -285,6 +339,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
             }),
             installed: isInstalled,
+            update,
             downloadCount: tool.downloadCount
           };
         })
@@ -600,15 +655,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     <ToolCard
                       key={tool.id}
                       item={tool}
-                      isLoading={operatingToolIds.has(tool.id)}
                       mode="admin"
-                      onClickButton={(installed) => {
-                        if (installed) {
-                          handleInstallTool(tool);
-                        } else {
-                          handleDeleteTool(tool);
-                        }
-                      }}
+                      isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
+                      isUpdating={updatingToolIds.has(tool.id)}
+                      onInstall={() => handleInstallTool(tool)}
+                      onDelete={() => handleDeleteTool(tool)}
+                      onUpdate={() => handleUpdateTool(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                     />
                   );
@@ -633,7 +685,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               handleInstallTool(selectedTool);
             }
           }}
-          isLoading={operatingToolIds.has(selectedTool.id)}
+          onUpdate={() => handleUpdateTool(selectedTool)}
+          isUpdating={updatingToolIds.has(selectedTool.id)}
+          isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
