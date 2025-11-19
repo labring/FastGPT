@@ -288,7 +288,7 @@ const ChatItem = (props: Props) => {
     >
       {/* control icon */}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+        {null ? null : (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
             {chat.time && (isPc || isChatLog) && (
               <Box
@@ -415,14 +415,14 @@ const ChatItem = (props: Props) => {
           </Card>
           {/* 添加到底部的控制按钮 */}
           {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-            <Flex
-              mt={2}
-              justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
-              className="bottom-controller"
-            >
-              <ChatController {...props} isLastChild={isLastChild} />
-            </Flex>
-          )}
+          <Flex
+            mt={2}
+            justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
+            className="bottom-controller"
+          >
+            <ChatController {...props} isLastChild={isLastChild} />
+          </Flex>
+        )}
         </Box>
       ))}
     </Box>
