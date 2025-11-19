@@ -3,6 +3,9 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'projects/app/src/components/core/chat/ChatContainer/ChatBox/components/**'
+      - 'Dockerfile'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:  # 允许手动触发
@@ -39,7 +42,7 @@ jobs:
           type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value=v4.12.4-custom
+          type=raw,value=v4.14.2-custom
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
