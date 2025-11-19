@@ -3,10 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
-import {
-  parsedFileContentS3Key,
-  readRawTextByLocalFile
-} from '@fastgpt/service/common/file/read/utils';
+import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -16,6 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { ParsedFileContentS3Key } from '@fastgpt/service/common/s3/utils';
 
 export type templateImportQuery = {};
 
@@ -55,7 +53,7 @@ async function handler(
       path: file.path,
       encoding: file.encoding,
       getFormatText: false,
-      uploadKey: parsedFileContentS3Key.dataset({
+      uploadKey: ParsedFileContentS3Key.dataset({
         datasetId: dataset._id,
         mimetype: file.mimetype,
         filename: file.originalname

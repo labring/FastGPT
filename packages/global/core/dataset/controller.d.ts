@@ -9,7 +9,6 @@ export type CreateDatasetDataProps = {
   q: string;
   a?: string;
   imageId?: string;
-  imageKeys?: string[];
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
   indexPrefix?: string;
 };

@@ -5,7 +5,7 @@ import {
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
-import { parsedFileContentS3Key, readS3FileContentByBuffer } from '../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
@@ -18,6 +18,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 import { Mimes } from '../../common/s3/constants';
 import path from 'node:path';
+import { ParsedFileContentS3Key } from '../../common/s3/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -67,7 +68,7 @@ export const readFileRawTextByUrl = async ({
   const chunks: Buffer[] = [];
   let totalLength = 0;
 
-  return new Promise<{ rawText: string; imageKeys: string[] }>((resolve, reject) => {
+  return new Promise<{ rawText: string }>((resolve, reject) => {
     let isAborted = false;
 
     const cleanup = () => {
@@ -110,12 +111,12 @@ export const readFileRawTextByUrl = async ({
         // 立即清理 chunks 数组释放内存
         chunks.length = 0;
 
-        const { rawText, imageKeys } = await retryFn(() => {
-          const key = parsedFileContentS3Key.dataset({
+        const { rawText } = await retryFn(() => {
+          const { key } = ParsedFileContentS3Key.dataset({
             datasetId,
-            mimetype: Mimes[extension as keyof typeof Mimes],
-            filename: 'file'
-          }).key;
+            filename: 'file',
+            mimetype: Mimes[extension as keyof typeof Mimes]
+          });
           const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
           return readS3FileContentByBuffer({
             customPdfParse,
@@ -131,7 +132,7 @@ export const readFileRawTextByUrl = async ({
           });
         });
 
-        resolve({ rawText, imageKeys: imageKeys || [] });
+        resolve({ rawText });
       } catch (error) {
         cleanup();
         reject(error);
@@ -184,14 +185,13 @@ export const readDatasetSourceRawText = async ({
 }): Promise<{
   title?: string;
   rawText: string;
-  imageKeys?: string[];
 }> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     if (!datasetId || !getS3DatasetSource().isDatasetObjectKey(sourceId)) {
       return Promise.reject('datasetId is required for S3 files');
     }
 
-    const { filename, rawText, imageKeys } = await getS3DatasetSource().getDatasetFileRawText({
+    const { filename, rawText } = await getS3DatasetSource().getDatasetFileRawText({
       teamId,
       tmbId,
       fileId: sourceId,
@@ -203,8 +203,7 @@ export const readDatasetSourceRawText = async ({
 
     return {
       title: filename,
-      rawText,
-      imageKeys
+      rawText
     };
   } else if (type === DatasetSourceReadTypeEnum.link) {
     const result = await urlsFetch({
@@ -219,12 +218,11 @@ export const readDatasetSourceRawText = async ({
 
     return {
       title,
-      rawText: content,
-      imageKeys: [] // Link sources don't have images, return empty array
+      rawText: content
     };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     if (!externalFileId) return Promise.reject(new UserError('FileId not found'));
-    const { rawText, imageKeys } = await readFileRawTextByUrl({
+    const { rawText } = await readFileRawTextByUrl({
       teamId,
       tmbId,
       url: sourceId,
@@ -233,8 +231,7 @@ export const readDatasetSourceRawText = async ({
       customPdfParse
     });
     return {
-      rawText,
-      imageKeys
+      rawText
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
     const { title, rawText } = await readApiServerFileContent({
@@ -247,14 +244,12 @@ export const readDatasetSourceRawText = async ({
     });
     return {
       title,
-      rawText,
-      imageKeys: [] // API files don't have imageKeys in current implementation
+      rawText
     };
   }
   return {
     title: '',
-    rawText: '',
-    imageKeys: []
+    rawText: ''
   };
 };
 
@@ -292,12 +287,10 @@ export const rawText2Chunks = async ({
   backupParse,
   chunkSize = 512,
   imageIdList,
-  imageKeys,
   ...splitProps
 }: {
   rawText: string;
   imageIdList?: string[];
-  imageKeys?: string[];
 
   chunkTriggerType?: ChunkTriggerConfigTypeEnum;
   chunkTriggerMinSize?: number; // maxSize from agent model, not store
@@ -310,48 +303,18 @@ export const rawText2Chunks = async ({
     a: string;
     indexes?: string[];
     imageIdList?: string[];
-    imageKeys?: string[];
   }[]
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
-
     const chunks = csvArr
       .slice(1)
-      .map((item) => {
-        const q = item[0] || '';
-        const a = item[1] || '';
-        const fullText = q + '\n' + a;
-
-        // Extract image keys that are actually referenced in this chunk
-        const chunkImageKeys = [];
-
-        if (imageKeys && imageKeys.length > 0) {
-          // Find all markdown image references in the chunk
-          const imageRefRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-          const referencedUrls = new Set();
-          let match;
-
-          while ((match = imageRefRegex.exec(fullText)) !== null) {
-            referencedUrls.add(match[1]);
-          }
-
-          // Filter imageKeys to only include those referenced in this chunk
-          for (const imageKey of imageKeys) {
-            if (referencedUrls.has(imageKey)) {
-              chunkImageKeys.push(imageKey);
-            }
-          }
-        }
-
-        return {
-          q,
-          a,
-          indexes: item.slice(2).filter((item) => item.trim()),
-          imageIdList,
-          imageKeys: chunkImageKeys
-        };
-      })
+      .map((item) => ({
+        q: item[0] || '',
+        a: item[1] || '',
+        indexes: item.slice(2).filter((item) => item.trim()),
+        imageIdList
+      }))
       .filter((item) => item.q || item.a);
 
     return {
@@ -373,8 +336,7 @@ export const rawText2Chunks = async ({
         {
           q: rawText,
           a: '',
-          imageIdList,
-          imageKeys: imageKeys || []
+          imageIdList
         }
       ];
     }
@@ -383,7 +345,7 @@ export const rawText2Chunks = async ({
   if (chunkTriggerType !== ChunkTriggerConfigTypeEnum.forceChunk) {
     const textLength = rawText.trim().length;
     if (textLength < chunkTriggerMinSize) {
-      return [{ q: rawText, a: '', imageIdList, imageKeys: imageKeys || [] }];
+      return [{ q: rawText, a: '', imageIdList }];
     }
   }
 
@@ -393,34 +355,10 @@ export const rawText2Chunks = async ({
     ...splitProps
   });
 
-  return chunks.map((item) => {
-    // Extract image keys that are actually referenced in this chunk
-    const chunkImageKeys = [];
-
-    if (imageKeys && imageKeys.length > 0) {
-      // Find all markdown image references in the chunk
-      const imageRefRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-      const referencedUrls = new Set();
-      let match;
-
-      while ((match = imageRefRegex.exec(item)) !== null) {
-        referencedUrls.add(match[1]); // match[1] is the URL part
-      }
-
-      // Filter imageKeys to only include those referenced in this chunk
-      for (const imageKey of imageKeys) {
-        if (referencedUrls.has(imageKey)) {
-          chunkImageKeys.push(imageKey);
-        }
-      }
-    }
-
-    return {
-      q: item,
-      a: '',
-      indexes: [],
-      imageIdList,
-      imageKeys: chunkImageKeys
-    };
-  });
+  return chunks.map((item) => ({
+    q: item,
+    a: '',
+    indexes: [],
+    imageIdList
+  }));
 };

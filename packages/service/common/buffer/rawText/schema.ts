@@ -6,8 +6,7 @@ const RawTextBufferSchema = new Schema({
   metadata: {
     sourceId: { type: String, required: true },
     sourceName: { type: String, required: true },
-    expiredTime: { type: Date, required: true },
-    imageKeys: { type: [String], required: true }
+    expiredTime: { type: Date, required: true }
   }
 });
 RawTextBufferSchema.index({ 'metadata.sourceId': 'hashed' });
@@ -19,6 +18,5 @@ export const MongoRawTextBufferSchema = getMongoModel<{
     sourceId: string;
     sourceName: string;
     expiredTime: Date;
-    imageKeys: string[];
   };
 }>(`${bucketName}.files`, RawTextBufferSchema);

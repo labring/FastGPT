@@ -250,12 +250,11 @@ export async function authDatasetData({
     q: datasetData.q,
     a: datasetData.a,
     imageId: datasetData.imageId,
-    imageKeys: datasetData.imageKeys,
     imagePreivewUrl: datasetData.imageId
       ? s3DatasetSource.isDatasetObjectKey(datasetData.imageId)
         ? await s3DatasetSource.createGetDatasetFileURL({
             key: datasetData.imageId,
-            expiredHours: 24
+            expiredHours: 1
           })
         : getDatasetImagePreviewUrl({
             imageId: datasetData.imageId,

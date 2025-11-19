@@ -175,13 +175,12 @@ export const onCreateApp = async ({
         return `${getNanoid(6)}-${last}`;
       })();
 
-      const copiedAvatar = await s3AvatarSource.copyAvatar({
+      return await s3AvatarSource.copyAvatar({
         key: template.avatar,
         teamId,
         filename,
         temporary: true
       });
-      return copiedAvatar;
     })();
 
     const [app] = await MongoApp.create(

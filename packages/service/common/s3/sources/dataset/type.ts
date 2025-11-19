@@ -38,20 +38,11 @@ export const UploadParsedDatasetImagesParamsSchema = z.object({
 });
 export type UploadParsedDatasetImagesParams = z.infer<typeof UploadParsedDatasetImagesParamsSchema>;
 
-export const UploadDatasetImageParamsSchema = z.object({
-  base64Img: z.string().nonempty(),
-  uploadKey: z.string().nonempty(),
-  mimetype: z.string().nonempty(),
-  filename: z.string().nonempty(),
-  hasTTL: z.boolean().optional()
-});
-export type UploadDatasetImageParams = z.infer<typeof UploadDatasetImageParamsSchema>;
-
 export const ParsedFileContentS3KeyParamsSchema = z.object({
   datasetId: ObjectIdSchema,
   mimetype: z.string().nonempty(),
   filename: z.string().optional(),
-  parentFileKey: z.string().optional() // 被解析的文件的完整key，作为图片的父目录
+  parsedFileKey: z.string().optional() // 被解析的文件的完整 key，作为图片的父目录
 });
 export type ParsedFileContentS3KeyParams = z.infer<typeof ParsedFileContentS3KeyParamsSchema>;
 

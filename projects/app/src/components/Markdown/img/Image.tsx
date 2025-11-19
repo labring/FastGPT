@@ -16,7 +16,6 @@ const MdImage = ({
   const [renderSrc, setRenderSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(false);
 
-  // TODO: 在我迁移完到 JWT 后移除这个 useEffect
   useEffect(() => {
     if (!src || (!src.startsWith('dataset/') && !src.startsWith('chat/'))) {
       setRenderSrc(src);

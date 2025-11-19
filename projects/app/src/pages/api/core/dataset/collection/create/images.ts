@@ -14,13 +14,14 @@ import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import type { NextApiResponse } from 'next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
-import { addSeconds } from 'date-fns';
+import { addDays, addSeconds } from 'date-fns';
 import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { S3Sources } from '@fastgpt/service/common/s3/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 const authUploadLimit = (tmbId: string, num: number) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -66,11 +67,12 @@ async function handler(
       files.map(async (file) => {
         const filename = path.basename(file.filename);
         const uploadKey = [S3Sources.dataset, datasetId, `${getNanoid(6)}-${filename}`].join('/');
-        return getS3DatasetSource().uploadDatasetImage({
+        return uploadImage2S3Bucket('private', {
+          base64Img: (await fsp.readFile(file.path)).toString('base64'),
           uploadKey,
           mimetype: file.mimetype,
           filename,
-          base64Img: (await fsp.readFile(file.path)).toString('base64')
+          expiredTime: addDays(new Date(), 7)
         });
       })
     );

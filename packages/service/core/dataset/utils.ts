@@ -35,21 +35,8 @@ export const filterDatasetsByTmbId = async ({
   return datasetIds.filter((_, index) => permissions[index]);
 };
 
-export async function getFileDatasetInfo(key: string): Promise<{
-  _id: string;
-  datasetId: string;
-  collectionId: string;
-} | null> {
-  return await MongoDatasetData.findOne(
-    { $or: [{ imageKeys: { $in: [key] } }, { imageId: key }] },
-    'datasetId collectionId'
-  )
-    .lean()
-    .exec();
-}
-
 /**
- * 替换数据集引用文本 markdown 中的链接格式的 S3 对象键为 JWT 签名后的 URL
+ * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为 JWT 签名后的 URL
  *
  * @param datasetQuoteText 数据集引用文本
  * @returns 替换后的文本
@@ -80,7 +67,8 @@ export async function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string) {
     const [full, bang, alt, objectKey] = match;
 
     if (s3DatasetSource.isDatasetObjectKey(objectKey) || s3ChatSource.isChatFileKey(objectKey)) {
-      const url = `${EndpointUrl}/api/system/file/${jwtSignS3ObjectKey(objectKey)}`;
+      const token = jwtSignS3ObjectKey(objectKey);
+      const url = `${EndpointUrl}/api/system/file/${token}`;
       const replacement = `${bang}[${alt}](${url})`;
       content =
         content.slice(0, match.index) + replacement + content.slice(match.index + full.length);

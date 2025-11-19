@@ -161,7 +161,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     };
   })();
 
-  const { title, rawText, imageKeys } = await readDatasetSourceRawText({
+  const { title, rawText } = await readDatasetSourceRawText({
     teamId: collection.teamId,
     tmbId: collection.tmbId,
     datasetId: collection.datasetId,
@@ -189,7 +189,6 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         session,
         dataset,
         rawText: rawText,
-        imageKeys,
         createCollectionParams: {
           ...collection,
           name: title || collection.name,

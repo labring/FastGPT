@@ -15,7 +15,6 @@ import { createFileToken } from '@fastgpt/service/support/permission/auth/file';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getFileDatasetInfo } from '@fastgpt/service/core/dataset/utils';
 
 async function handler(req: ApiRequestProps<PresignDatasetFileGetUrlParams>) {
   const parsed = PresignDatasetFileGetUrlSchema.parse(req.body);
@@ -25,26 +24,14 @@ async function handler(req: ApiRequestProps<PresignDatasetFileGetUrlParams>) {
   if ('key' in parsed) {
     const { key } = parsed;
 
-    const dataset = await getFileDatasetInfo(key);
-    if (!dataset) {
-      // 如果 `dataset_datas` 中没有找到记录，则这次的请求应该是图片的预览请求，验证 datasetId 的权限即可
-      const datasetId = key.split('/')[1] || '';
-      await authDataset({
-        datasetId,
-        per: ReadPermissionVal,
-        req,
-        authToken: true,
-        authApiKey: true
-      });
-    } else {
-      await authDatasetCollection({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: ReadPermissionVal,
-        collectionId: dataset.collectionId
-      });
-    }
+    const datasetId = key.split('/')[1] || '';
+    await authDataset({
+      datasetId,
+      per: ReadPermissionVal,
+      req,
+      authToken: true,
+      authApiKey: true
+    });
 
     return await s3DatasetSource.createGetDatasetFileURL({ key, expiredHours: 24 });
   }

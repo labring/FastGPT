@@ -236,27 +236,13 @@ export const datasetParseQueue = async (): Promise<any> => {
           continue;
         }
 
-        // 2. Read source
-        addLog.info('[Parse Queue] === START PARSING ===', {
-          collectionId: collection._id,
-          fileId: collection.fileId,
-          type: collection.type
-        });
-
-        let { title, rawText, imageKeys } = await readDatasetSourceRawText({
+        let { title, rawText } = await readDatasetSourceRawText({
           teamId: data.teamId,
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,
           usageId: data.billId,
           datasetId: data.datasetId,
           ...sourceReadType
-        });
-
-        addLog.info('[Parse Queue] Read source result', {
-          title,
-          rawTextLength: rawText.length,
-          imageKeysCount: imageKeys?.length || 0,
-          imageKeys
         });
 
         // 3. LLM Pargraph
@@ -288,20 +274,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
-          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup,
-          imageKeys
-        });
-
-        addLog.debug('[Parse Queue] After chunk split', {
-          chunksCount: chunks.length,
-          firstChunkImageKeys: chunks[0]?.imageKeys,
-          allChunksHaveImageKeys: chunks.every((chunk) => chunk.imageKeys),
-          detailedChunks: chunks.map((chunk, idx) => ({
-            index: idx,
-            qPreview: chunk.q?.substring(0, 100),
-            imageKeysCount: chunk.imageKeys?.length || 0,
-            imageKeys: chunk.imageKeys
-          }))
+          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
         });
 
         // Check dataset limit
@@ -345,18 +318,6 @@ export const datasetParseQueue = async (): Promise<any> => {
             chunkIndex: index
           }));
 
-          addLog.debug('[Parse Queue] Before push to training queue', {
-            trainingDataCount: trainingData.length,
-            firstItemImageKeys: trainingData[0]?.imageKeys,
-            hasImageKeys: trainingData.some((item) => item.imageKeys && item.imageKeys.length > 0),
-            detailedTrainingData: trainingData.map((item, idx) => ({
-              index: idx,
-              qPreview: item.q?.substring(0, 100),
-              imageKeysCount: item.imageKeys?.length || 0,
-              imageKeys: item.imageKeys
-            }))
-          });
-
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -383,19 +344,9 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
 
           // 8. Remove file TTL (images TTL will be removed after successful insertion to dataset_datas)
-          const s3DatasetSource = getS3DatasetSource();
-
-          addLog.info('[Parse Queue] Before removing file TTL', {
-            hasFileId: !!collection.fileId,
-            isS3File: collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId)
-          });
-
           // 8.1 For S3 files, remove file TTL only
-          if (collection.fileId && s3DatasetSource.isDatasetObjectKey(collection.fileId)) {
-            // Remove file TTL
-            await s3DatasetSource.removeDatasetFileTTL(collection.fileId, session);
-            addLog.info('[Parse Queue] Removed file TTL', { fileId: collection.fileId });
-            // Note: Image TTLs will be removed in generateVector queue after successful insertion
+          if (collection.fileId && getS3DatasetSource().isDatasetObjectKey(collection.fileId)) {
+            // await removeS3TTL({ key: collection.fileId, bucketName: 'private', session });
           }
           // 8.2 For GridFS files (legacy), remove MongoDB image TTL
           else {

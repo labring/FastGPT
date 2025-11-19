@@ -1,4 +1,3 @@
-import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
@@ -9,12 +8,9 @@ import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
-import { getS3DatasetSource } from '../../s3/sources/dataset';
-import type { ParsedFileContentS3KeyParams } from '../../s3/sources/dataset/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import path from 'path';
-import { S3Sources } from '../../s3/type';
-import { randomUUID } from 'crypto';
+import { uploadImage2S3Bucket } from '../../s3/utils';
+import { Mimes } from '../../s3/constants';
+import { addDays } from 'date-fns';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -42,7 +38,8 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     encoding: params.encoding,
     buffer,
     imageKeyOptions: {
-      prefix: params.uploadKey
+      prefix: params.uploadKey,
+      expiredTime: addDays(new Date(), 1)
     }
   });
 };
@@ -71,11 +68,10 @@ export const readS3FileContentByBuffer = async ({
   getFormatText?: boolean;
   imageKeyOptions: {
     prefix: string;
-    hasTTL?: boolean;
+    expiredTime?: Date;
   };
 }): Promise<{
   rawText: string;
-  imageKeys?: string[];
 }> => {
   const systemParse = () =>
     readRawContentFromBuffer({
@@ -171,26 +167,23 @@ export const readS3FileContentByBuffer = async ({
   addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
 
   // markdown data format
-  const uploadedImageKeys: string[] = [];
   if (imageList && imageList.length > 0) {
     addLog.debug(`Processing ${imageList.length} images from parsed document`);
 
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
         try {
-          const { prefix, hasTTL } = imageKeyOptions;
-          const ext = item.mime.split('/')[1].replace('x-', '');
-          const imageKey = await getS3DatasetSource().uploadDatasetImage({
+          const { prefix, expiredTime } = imageKeyOptions;
+          const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+
+          return await uploadImage2S3Bucket('private', {
             base64Img: `data:${item.mime};base64,${item.base64}`,
-            mimetype: `${ext}`,
-            filename: `${item.uuid}.${ext}`,
             uploadKey: `${prefix}/${item.uuid}.${ext}`,
-            hasTTL
+            mimetype: Mimes[ext as keyof typeof Mimes],
+            filename: `${item.uuid}.${ext}`,
+            expiredTime
           });
-          uploadedImageKeys.push(imageKey);
-          return imageKey;
         } catch (error) {
-          // Don't add to uploadedImageKeys if upload failed, but still continue processing
           return `[Image Upload Failed: ${item.uuid}]`;
         }
       })();
@@ -199,63 +192,9 @@ export const readS3FileContentByBuffer = async ({
         formatText = formatText.replace(item.uuid, src);
       }
     });
-
-    // Log summary of image processing
-    addLog.info(`Image processing completed`, {
-      total: imageList.length,
-      successful: uploadedImageKeys.length,
-      failed: imageList.length - uploadedImageKeys.length
-    });
   }
-
-  addLog.debug(`Upload file to S3 success, time: ${Date.now() - start}ms`, {
-    uploadedImageKeysCount: uploadedImageKeys.length,
-    uploadedImageKeys
-  });
 
   return {
-    rawText: getFormatText ? formatText || rawText : rawText,
-    imageKeys: uploadedImageKeys
+    rawText: getFormatText ? formatText || rawText : rawText
   };
-};
-
-export const parsedFileContentS3Key = {
-  // 临时的文件路径（比如 evaluation)
-  temp: (appId: string) => `chat/${appId}/temp/parsed/${randomUUID()}`,
-
-  // 对话中上传的文件的解析结果的图片的 Key
-  chat: ({ appId, chatId, uId }: { chatId: string; uId: string; appId: string }) =>
-    `chat/${appId}/${uId}/${chatId}/parsed`,
-
-  // 上传数据集的文件的解析结果的图片的 Key
-  dataset: (params: ParsedFileContentS3KeyParams) => {
-    const { datasetId, mimetype, filename, parentFileKey } = params;
-
-    const extension = mimetype;
-    const image = (() => {
-      if (filename) {
-        return Boolean(path.extname(filename))
-          ? `${getNanoid(6)}-${filename}`
-          : `${getNanoid(6)}-${filename}.${extension}`;
-      }
-      return `${getNanoid(6)}.${extension}`;
-    })();
-
-    const parentFilename = parentFileKey?.slice().split('/').at(-1);
-    const parsedParentFilename = parentFilename
-      ? `parsed-${path.basename(parentFilename, path.extname(parentFilename))}`
-      : '';
-    const parsedParentFileKey = parentFileKey
-      ?.split('/')
-      .slice(0, -1)
-      .concat(parsedParentFilename)
-      .join('/');
-
-    return {
-      key: parsedParentFileKey
-        ? `${parsedParentFileKey}/${image}`
-        : [S3Sources.dataset, datasetId, image].join('/'),
-      filename: image
-    };
-  }
 };

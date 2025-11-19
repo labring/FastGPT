@@ -20,8 +20,6 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -81,7 +79,7 @@ export async function generateVector(): Promise<any> {
               }
             ])
             .select(
-              'teamId tmbId datasetId collectionId q a imageId imageKeys imageDescMap chunkIndex indexSize billId mode retryCount lockTime indexes'
+              'teamId tmbId datasetId collectionId q a imageId imageDescMap chunkIndex indexSize billId mode retryCount lockTime indexes'
             )
             .lean();
 
@@ -262,13 +260,6 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
-    addLog.debug('[Vector Queue] insertData - before insert', {
-      trainingDataId: trainingData._id,
-      qPreview: trainingData.q?.substring(0, 100),
-      imageKeysCount: trainingData.imageKeys?.length || 0,
-      imageKeys: trainingData.imageKeys
-    });
-
     // insert new data to dataset
     const { tokens } = await insertData2Dataset({
       teamId: trainingData.teamId,
@@ -278,7 +269,6 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       q: trainingData.q,
       a: trainingData.a,
       imageId: trainingData.imageId,
-      imageKeys: trainingData.imageKeys,
       imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
       indexSize:
@@ -291,19 +281,6 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       embeddingModel: trainingData.dataset.vectorModel,
       session
     });
-
-    await (async () => {
-      const s3DatasetSource = getS3DatasetSource();
-      const keys = Array.from(
-        new Set([...(trainingData.imageKeys ?? []), trainingData.imageId ?? ''])
-      )
-        .flat()
-        .filter((key) => s3DatasetSource.isDatasetObjectKey(key));
-
-      if (keys.length <= 0) return;
-
-      await s3DatasetSource.removeDatasetImagesTTL(keys, session);
-    })();
 
     // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });

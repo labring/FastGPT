@@ -42,6 +42,7 @@ import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
+import { ParsedFileContentS3Key } from '../../../../common/s3/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -136,12 +137,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
         usageId,
         runningUserInfo,
-        appId: props.runningAppInfo.id,
-        chatId: props.chatId,
-        uId: props.uid
+        fileS3Prefix: ParsedFileContentS3Key.chat({
+          appId: props.runningAppInfo.id,
+          chatId: props.chatId!,
+          uId: props.uid
+        })
       })
     ]);
-    console.log('documentQuoteText====================', documentQuoteText);
 
     if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
@@ -323,9 +325,7 @@ async function getMultiInput({
   customPdfParse,
   usageId,
   runningUserInfo,
-  appId,
-  chatId,
-  uId
+  fileS3Prefix
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -336,9 +336,7 @@ async function getMultiInput({
   customPdfParse?: boolean;
   usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  appId: string;
-  chatId?: string;
-  uId: string;
+  fileS3Prefix: string;
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -379,9 +377,7 @@ async function getMultiInput({
     tmbId: runningUserInfo.tmbId,
     customPdfParse,
     usageId,
-    appId,
-    chatId,
-    uId
+    fileS3Prefix
   });
 
   return {

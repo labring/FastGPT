@@ -7,6 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { name, text, ...body } = req.body as TextCreateDatasetCollectionParams;
@@ -40,7 +41,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     }
   });
 
-  await s3DatasetSource.removeDatasetFileTTL(key);
+  await removeS3TTL({ key, bucketName: 'private' });
 
   return {
     collectionId,

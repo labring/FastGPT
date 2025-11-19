@@ -150,8 +150,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (content) {
       return {
         title,
-        rawText: content,
-        imageKeys: []
+        rawText: content
       };
     }
     if (previewUrl) {
@@ -160,12 +159,11 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       if (buffer) {
         return {
           title,
-          rawText: buffer.text,
-          imageKeys: buffer.imageKeys || []
+          rawText: buffer.text
         };
       }
 
-      const { rawText, imageKeys } = await readFileRawTextByUrl({
+      const { rawText } = await readFileRawTextByUrl({
         teamId,
         tmbId,
         url: previewUrl,
@@ -179,14 +177,12 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         sourceId: previewUrl,
         sourceName: title || '',
         text: rawText,
-        expiredTime: addMinutes(new Date(), 30),
-        imageKeys
+        expiredTime: addMinutes(new Date(), 30)
       });
 
       return {
         title,
-        rawText,
-        imageKeys
+        rawText
       };
     }
     return Promise.reject('Invalid content type: content or previewUrl is required');

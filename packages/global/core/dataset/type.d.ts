@@ -148,7 +148,6 @@ export type DatasetDataFieldType = {
   q: string; // large chunks or question
   a?: string; // answer or custom content
   imageId?: string;
-  imageKeys?: string[];
 };
 export type DatasetDataSchemaType = DatasetDataFieldType & {
   _id: string;
@@ -193,7 +192,6 @@ export type DatasetTrainingSchemaType = {
   q: string;
   a: string;
   imageId?: string;
-  imageKeys?: string[];
   imageDescMap?: Record<string, string>;
   chunkIndex: number;
   indexSize?: number;

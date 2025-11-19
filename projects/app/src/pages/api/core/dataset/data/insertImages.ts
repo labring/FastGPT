@@ -1,12 +1,11 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
-import { addSeconds } from 'date-fns';
+import { addDays, addSeconds } from 'date-fns';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -16,7 +15,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import path from 'node:path';
 import fsp from 'node:fs/promises';
-import { parsedFileContentS3Key } from '@fastgpt/service/common/file/read/utils';
+import { ParsedFileContentS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 export type insertImagesQuery = {};
 
@@ -66,15 +65,16 @@ async function handler(
     // 1. Upload images to S3
     const imageIds = await Promise.all(
       files.map(async (file) =>
-        getS3DatasetSource().uploadDatasetImage({
-          uploadKey: parsedFileContentS3Key.dataset({
+        uploadImage2S3Bucket('private', {
+          base64Img: (await fsp.readFile(file.path)).toString('base64'),
+          uploadKey: ParsedFileContentS3Key.dataset({
             datasetId: dataset._id,
             mimetype: file.mimetype,
             filename: path.basename(file.filename)
           }).key,
           mimetype: file.mimetype,
           filename: path.basename(file.filename),
-          base64Img: (await fsp.readFile(file.path)).toString('base64')
+          expiredTime: addDays(new Date(), 7)
         })
       )
     );

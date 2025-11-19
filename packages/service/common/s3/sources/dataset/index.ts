@@ -11,9 +11,7 @@ import {
   type GetDatasetFileContentParams,
   GetDatasetFileContentParamsSchema,
   type UploadDatasetFileByBufferParams,
-  UploadDatasetFileByBufferParamsSchema,
-  type UploadDatasetImageParams,
-  UploadDatasetImageParamsSchema
+  UploadDatasetFileByBufferParamsSchema
 } from './type';
 import { MongoS3TTL } from '../../schema';
 import {
@@ -37,7 +35,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 type DatasetObjectKey = `${typeof S3Sources.dataset}/${string}`;
 
 class S3DatasetSource {
-  private bucket: S3PrivateBucket;
+  public bucket: S3PrivateBucket;
   private static instance: S3DatasetSource;
 
   constructor() {
@@ -65,7 +63,11 @@ class S3DatasetSource {
     return await this.bucket.createPostPresignedUrl({ rawKey, filename }, { expiredHours: 3 });
   }
 
-  // 前缀删除
+  /**
+   * 可以根据 datasetId 或者 prefix 删除文件
+   * 如果存在 rawPrefix 则优先使用 rawPrefix 去删除文件，否则使用 datasetId 拼接前缀去删除文件
+   * 比如根据被解析的文档前缀去删除解析出来的图片
+   **/
   deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
     const { datasetId, rawPrefix } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
     const prefix = rawPrefix || [S3Sources.dataset, datasetId].filter(Boolean).join('/');
@@ -132,8 +134,7 @@ class S3DatasetSource {
     if (fileBuffer) {
       return {
         rawText: fileBuffer.text,
-        filename: fileBuffer.sourceName,
-        imageKeys: fileBuffer.imageKeys
+        filename: fileBuffer.sourceName
       };
     }
 
@@ -151,7 +152,7 @@ class S3DatasetSource {
 
     const encoding = detectFileEncoding(buffer);
     const prefix = `${path.dirname(fileId)}/${path.basename(fileId, path.extname(fileId))}-parsed`;
-    const { rawText, imageKeys } = await readS3FileContentByBuffer({
+    const { rawText } = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension,
@@ -169,45 +170,13 @@ class S3DatasetSource {
       sourceId: bufferId,
       sourceName: filename,
       text: rawText,
-      expiredTime: addMinutes(new Date(), 20),
-      imageKeys
+      expiredTime: addMinutes(new Date(), 20)
     });
 
     return {
       rawText,
-      filename,
-      imageKeys
+      filename
     };
-  }
-
-  // 上传图片
-  async uploadDatasetImage(params: UploadDatasetImageParams): Promise<string> {
-    const {
-      uploadKey,
-      base64Img,
-      mimetype,
-      filename,
-      hasTTL = true
-    } = UploadDatasetImageParamsSchema.parse(params);
-
-    const base64Data = base64Img.split(',')[1] || base64Img;
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    await this.bucket.putObject(uploadKey, buffer, buffer.length, {
-      'content-type': mimetype,
-      'upload-time': new Date().toISOString(),
-      'origin-filename': encodeURIComponent(filename)
-    });
-
-    if (hasTTL) {
-      await MongoS3TTL.create({
-        minioKey: uploadKey,
-        bucketName: this.bucket.name,
-        expiredTime: addDays(new Date(), 7)
-      });
-    }
-
-    return uploadKey;
   }
 
   // 根据文件 Buffer 上传文件
@@ -226,37 +195,6 @@ class S3DatasetSource {
       expiredTime: addHours(new Date(), 3)
     });
     return key;
-  }
-
-  // 移除单个文件的 TTL 记录
-  async removeDatasetFileTTL(fileKey: string, session?: ClientSession): Promise<void> {
-    await MongoS3TTL.deleteOne(
-      {
-        minioKey: fileKey,
-        bucketName: this.bucket.name
-      },
-      { session }
-    );
-
-    addLog.debug('Removed TTL for dataset file', { fileKey });
-  }
-
-  // 移除多个图片的 TTL 记录
-  async removeDatasetImagesTTL(imageKeys: string[], session?: ClientSession): Promise<void> {
-    if (imageKeys.length === 0) return;
-
-    const result = await MongoS3TTL.deleteMany(
-      {
-        minioKey: { $in: imageKeys },
-        bucketName: this.bucket.name
-      },
-      { session }
-    );
-
-    addLog.debug('Removed TTL for dataset images', {
-      imageKeysCount: imageKeys.length,
-      deletedCount: result.deletedCount
-    });
   }
 }
 
