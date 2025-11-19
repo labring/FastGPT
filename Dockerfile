@@ -7,9 +7,8 @@ USER root
 # 设置工作目录
 WORKDIR /app
 
-# 直接复制整个components目录（会自动创建目录结构）
-COPY --chown=nextjs:nodejs projects/app/src/components/core/
-     projects/app/src/components/core/
+# 直接复制整个目录（会自动创建目录结构）
+COPY --chown=nextjs:nodejs projects/app/src/components/core/ /app/projects/app/src/components/core/
      
 # 切换回nextjs用户
 USER nextjs
