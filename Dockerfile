@@ -1,5 +1,5 @@
 # 使用官方 FastGPT 镜像作为基础镜像
-FROM registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.12.4
+FROM ghcr.io/labring/fastgpt:v4.14.2
 
 # 设置工作目录
 WORKDIR /app
