@@ -3,9 +3,6 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [ main, master ]
-    paths:
-      - 'projects/app/src/components/core/chat/ChatContainer/ChatBox/components/ChatItem.tsx'
-      - 'Dockerfile'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:  # 允许手动触发
