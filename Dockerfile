@@ -1,4 +1,4 @@
- 使用 FastGPT v4.14.2 镜像作为基础镜像
+# 使用 FastGPT v4.14.2 镜像作为基础镜像
 FROM ghcr.io/labring/fastgpt:v4.14.2
 
 # 切换到root用户进行文件操作
