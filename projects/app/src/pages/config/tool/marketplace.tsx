@@ -133,29 +133,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const [installedPluginsMap, setInstalledPluginsMap] = useState<
-    Record<
-      string,
-      {
-        installed: boolean;
-        version?: string;
-      }
-    >
-  >({});
-  useRequest2(
+  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest2(
     async () => {
       const { list } = await getSystemInstalledPlugins({ type: 'tool' });
-      const data = list.reduce(
-        (acc, item) => {
-          acc[item.id] = {
-            installed: true,
-            version: item.version
-          };
-          return acc;
-        },
-        {} as Record<string, { installed: boolean; version?: string }>
-      );
-      setInstalledPluginsMap(data);
+      return {
+        ids: new Set(list.map((item) => item.id)),
+        map: new Map(list.map((item) => [item.id, item]))
+      };
     },
     {
       manual: false
@@ -185,13 +169,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
           });
-          setInstalledPluginsMap((prev) => ({
-            ...prev,
-            [tool.id]: {
-              installed: true,
-              version: tools.find((t) => t.toolId === tool.id)?.version
-            }
-          }));
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
@@ -199,6 +176,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
+          await refreshInstalledPlugins();
         }
       })();
       operatingPromisesRef.current.set(tool.id, operationPromise);
@@ -231,15 +209,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             downloadUrls: [downloadUrl]
           });
 
-          // 更新安装插件映射
-          setInstalledPluginsMap((prev) => ({
-            ...prev,
-            [tool.id]: {
-              installed: true,
-              version: tool.version
-            }
-          }));
-
           // 如果当前选中的工具是要更新的工具，更新其状态
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
@@ -253,14 +222,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [
-      updatingToolIdsDispatch,
-      selectedTool,
-      getMarketplaceDownloadURL,
-      intallPluginWithUrl,
-      setInstalledPluginsMap
-    ]
+    [updatingToolIdsDispatch, selectedTool, getMarketplaceDownloadURL, intallPluginWithUrl]
   );
+
   const { runAsync: handleDeleteTool } = useRequest2(
     async (tool: ToolCardItemType) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
@@ -274,12 +238,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
         try {
           await deletePkgPlugin({ toolId: tool.id });
-          setInstalledPluginsMap((prev) => ({
-            ...prev,
-            [tool.id]: {
-              installed: false
-            }
-          }));
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
@@ -287,6 +245,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
+          await refreshInstalledPlugins();
         }
       })();
       operatingPromisesRef.current.set(tool.id, operationPromise);
@@ -325,8 +284,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     return (
       tools
         ?.map((tool) => {
-          const isInstalled = !!installedPluginsMap[tool.toolId]?.installed;
-          const update = installedPluginsMap[tool.toolId]?.version !== tool.version;
+          const isInstalled = systemInstalledPlugins?.ids.has(tool.toolId);
+          const update = !isInstalled
+            ? false
+            : systemInstalledPlugins?.map.get(tool.toolId)?.version !== tool.version;
 
           return {
             id: tool.toolId,
@@ -348,7 +309,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           return !tool.installed;
         }) || []
     );
-  }, [tools, installedPluginsMap, i18n.language, allTags, installedFilter]);
+  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins]);
 
   if (toolsError && !loadingTools) {
     return (
