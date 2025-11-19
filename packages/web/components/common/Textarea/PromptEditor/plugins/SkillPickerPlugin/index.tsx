@@ -30,10 +30,9 @@ import { useTranslation } from 'next-i18next';
 export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
-
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
   onClick?: (id: string) => Promise<string | undefined>;
-  onFolderLoad?: (id: string) => Promise<SkillItemType[] | undefined>;
+  onFolderLoad?: (id: string) => Promise<SkillItemType[]>;
 };
 
 export type SkillItemType = {
@@ -41,12 +40,16 @@ export type SkillItemType = {
   id: string;
   label: string;
   icon?: string;
-  showArrow?: boolean;
-  canOpen?: boolean;
-  canUse?: boolean;
+  canClick: boolean;
+
+  // Folder
   open?: boolean;
-  children?: SkillOptionItemType;
+  isFolder?: boolean;
   folderChildren?: SkillItemType[];
+
+  // System tool/ model
+  showArrow?: boolean;
+  children?: SkillOptionItemType;
 };
 
 export default function SkillPickerPlugin({
@@ -75,7 +78,6 @@ export default function SkillPickerPlugin({
   const [currentColumnIndex, setCurrentColumnIndex] = useState<number>(0);
   const [currentRowIndex, setCurrentRowIndex] = useState<number>(0);
   const [interactionMode, setInteractionMode] = useState<'mouse' | 'keyboard'>('mouse');
-  const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
 
   // Refs for scroll management
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -105,10 +107,6 @@ export default function SkillPickerPlugin({
     }
   }, []);
 
-  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
-    minLength: 0
-  });
-
   // Recursively collects all visible items including expanded folder children for keyboard navigation
   const getFlattenedVisibleItems = useCallback(
     (columnIndex: number): SkillItemType[] => {
@@ -119,7 +117,7 @@ export default function SkillPickerPlugin({
         items.forEach((item) => {
           result.push(item);
           // Include folder children only if folder is expanded
-          if (item.canOpen && item.open && item.folderChildren) {
+          if (item.isFolder && item.open && item.folderChildren) {
             result.push(...flatten(item.folderChildren));
           }
         });
@@ -142,7 +140,8 @@ export default function SkillPickerPlugin({
       item?: SkillItemType;
       option?: SkillOptionItemType;
     }) => {
-      if (!item) return;
+      if (!item || !option?.onSelect) return;
+
       const buffer = item.children;
       if (buffer) {
         setSkillOptions((prev) => {
@@ -153,7 +152,7 @@ export default function SkillPickerPlugin({
         return;
       }
 
-      const result = await option?.onSelect?.(item.id);
+      const result = await option.onSelect(item.id);
 
       setSkillOptions((prev) => {
         const newOptions = [...prev];
@@ -173,11 +172,14 @@ export default function SkillPickerPlugin({
   // Handle item click (confirm selection)
   const { runAsync: handleItemClick, loading: isItemClickLoading } = useRequest2(
     async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
+      if (!item.canClick || !option?.onClick) return;
+
       // Step 1: Execute async onClick to get skillId (outside editor.update)
-      const skillId = await option?.onClick?.(item.id);
+      const skillId = await option.onClick(item.id);
 
       // Step 2: Update editor with the skillId (inside a fresh editor.update)
       if (skillId) {
+        console.log(skillId, 2222);
         editor.update(() => {
           // Re-acquire selection in this update cycle to avoid stale node references
           const selection = $getSelection();
@@ -213,7 +215,8 @@ export default function SkillPickerPlugin({
   );
 
   // Handle folder toggle
-  const { runAsync: handleFolderToggle, loading: isFolderLoading } = useRequest2(
+  const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
+  const { runAsync: handleFolderToggle } = useRequest2(
     async ({
       currentColumnIndex,
       item,
@@ -223,7 +226,7 @@ export default function SkillPickerPlugin({
       item?: SkillItemType;
       option?: SkillOptionItemType;
     }) => {
-      if (!item || !item.canOpen) return;
+      if (!item || !item.isFolder || !option?.onFolderLoad) return;
       const currentFolder = item;
 
       // Step 1: Toggle folder open/closed state
@@ -260,7 +263,7 @@ export default function SkillPickerPlugin({
         });
 
         try {
-          const result = await option?.onFolderLoad?.(currentFolder.id);
+          const result = await option.onFolderLoad(currentFolder.id);
 
           setSkillOptions((prev) => {
             const newOptions = [...prev];
@@ -271,7 +274,7 @@ export default function SkillPickerPlugin({
                 if (item.id === currentFolder.id) {
                   return {
                     ...item,
-                    folderChildren: result || []
+                    folderChildren: result
                   };
                 }
                 if (item.folderChildren) {
@@ -482,6 +485,9 @@ export default function SkillPickerPlugin({
     const removeSpaceCommand = editor.registerCommand(
       KEY_SPACE_COMMAND,
       (e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
@@ -490,9 +496,7 @@ export default function SkillPickerPlugin({
         const latestItem = flattenedItems[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
 
-        if (latestItem?.canOpen && !(latestItem.open && latestItem.folderChildren?.length === 0)) {
-          e.preventDefault();
-          e.stopPropagation();
+        if (!(latestItem.open && latestItem.folderChildren?.length === 0)) {
           handleFolderToggle({
             currentColumnIndex,
             item: latestItem,
@@ -509,6 +513,9 @@ export default function SkillPickerPlugin({
     const removeEnterCommand = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
@@ -517,9 +524,7 @@ export default function SkillPickerPlugin({
         const latestItem = flattenedItems[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
 
-        if (latestItem?.canUse && latestOption) {
-          e.preventDefault();
-          e.stopPropagation();
+        if (latestOption?.onClick) {
           handleItemClick({ item: latestItem, option: latestOption });
 
           return true;
@@ -565,7 +570,6 @@ export default function SkillPickerPlugin({
       const result: JSX.Element[] = [];
       const activeRowIndex = selectedRowIndex[columnIndex];
       let currentFlatIndex = startFlatIndex;
-      console.log('items', { selectedRowIndex, columnIndex, activeRowIndex });
 
       items.forEach((item) => {
         const flatIndex = currentFlatIndex;
@@ -596,7 +600,6 @@ export default function SkillPickerPlugin({
             color={isSelected ? 'primary.700' : 'myGray.600'}
             display={'flex'}
             alignItems={'center'}
-            isLoading={loadingFolderIds.has(item.id)}
             size={'sm'}
             onMouseDown={(e) => {
               e.preventDefault();
@@ -609,13 +612,13 @@ export default function SkillPickerPlugin({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (item.canOpen) {
+              if (item.isFolder) {
                 handleFolderToggle({
                   currentColumnIndex: columnIndex,
                   item,
                   option: columnData
                 });
-              } else if (item.canUse) {
+              } else {
                 handleItemClick({
                   item,
                   option: columnData
@@ -639,18 +642,16 @@ export default function SkillPickerPlugin({
 
               setCurrentRowIndex(flatIndex);
               setCurrentColumnIndex(columnIndex);
-              if (item.canUse) {
-                handleItemSelect({
-                  currentColumnIndex: columnIndex,
-                  item,
-                  option: columnData
-                });
-              }
+              handleItemSelect({
+                currentColumnIndex: columnIndex,
+                item,
+                option: columnData
+              });
             }}
           >
-            {item.canOpen && !(item.open && item.folderChildren?.length === 0) ? (
+            {item.isFolder && !(item.open && item.folderChildren?.length === 0) ? (
               <MyIcon
-                name={'core/chat/chevronRight'}
+                name={loadingFolderIds.has(item.id) ? 'common/loading' : 'core/chat/chevronRight'}
                 w={4}
                 color={'myGray.500'}
                 transform={item.open ? 'rotate(90deg)' : 'none'}
@@ -661,9 +662,11 @@ export default function SkillPickerPlugin({
               <Box w={3} flexShrink={0} />
             ) : null}
             {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
-            <Box fontSize={'sm'} fontWeight={'medium'} flex={1}>
+
+            {/* Folder content */}
+            <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
               {item.label}
-              {item.canOpen && item.open && item.folderChildren?.length === 0 && (
+              {item.isFolder && item.open && item.folderChildren?.length === 0 && (
                 <Box as="span" color={'myGray.400'} fontSize={'xs'} ml={2}>
                   {t('app:empty_folder')}
                 </Box>
@@ -676,7 +679,7 @@ export default function SkillPickerPlugin({
         );
 
         // render folderChildren
-        if (item.canOpen && item.open && !!item.folderChildren && item.folderChildren.length > 0) {
+        if (item.isFolder && item.open && !!item.folderChildren && item.folderChildren.length > 0) {
           const { elements, nextFlatIndex } = renderItemList(
             item.folderChildren,
             columnData,
@@ -695,14 +698,14 @@ export default function SkillPickerPlugin({
       selectedRowIndex,
       currentColumnIndex,
       currentRowIndex,
+      loadingFolderIds,
+      t,
+      interactionMode,
       handleFolderToggle,
       handleItemClick,
-      handleItemSelect,
-      interactionMode,
-      loadingFolderIds
+      handleItemSelect
     ]
   );
-
   // Render single column
   const renderColumn = useCallback(
     (columnData: SkillOptionItemType, columnIndex: number) => {
@@ -719,7 +722,7 @@ export default function SkillPickerPlugin({
           boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
           bg={'white'}
           flexShrink={0}
-          maxH={'300px'}
+          maxH={'350px'}
           overflow={'auto'}
         >
           {columnData.description && (
@@ -785,6 +788,9 @@ export default function SkillPickerPlugin({
     },
     [editor]
   );
+  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
+    minLength: 0
+  });
 
   return (
     <LexicalTypeaheadMenuPlugin
