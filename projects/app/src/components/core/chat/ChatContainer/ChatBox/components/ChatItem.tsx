@@ -182,11 +182,9 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
     1. The interactive node is divided into n dialog boxes.
     2. Auto-complete the last textnode
   */
-  const { responses: splitAiResponseResults } = useMemo(() => {
+  const splitAiResponseResults = useMemo(() => {
     if (chat.obj === ChatRoleEnum.Human) {
-      return {
-        responses: [chat.value]
-      };
+      return [chat.value];
     }
 
     if (chat.obj === ChatRoleEnum.AI) {
@@ -203,6 +201,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
       const groupedValues: AIChatItemValueItemType[][] = [];
       let currentGroup: AIChatItemValueItemType[] = [];
+      let currentTaskGroup: AIChatItemValueItemType[] = [];
 
       filterList.forEach((value) => {
         // 每次遇到交互节点，则推送一个全新的分组
@@ -244,14 +243,10 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
         }
       }
 
-      return {
-        responses: groupedValues
-      };
+      return groupedValues;
     }
 
-    return {
-      responses: []
-    };
+    return [];
   }, [chat.obj, chat.value, isChatting]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
