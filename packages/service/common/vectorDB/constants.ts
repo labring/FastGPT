@@ -6,3 +6,5 @@ export const PG_ADDRESS = process.env.PG_URL;
 export const OCEANBASE_ADDRESS = process.env.OCEANBASE_URL;
 export const MILVUS_ADDRESS = process.env.MILVUS_ADDRESS;
 export const MILVUS_TOKEN = process.env.MILVUS_TOKEN;
+export const HNSW_M = process.env.HNSW_M || 32;
+export const HNSW_EF_CONSTRUCTION = process.env.HNSW_EF_CONSTRUCTION || 128;
