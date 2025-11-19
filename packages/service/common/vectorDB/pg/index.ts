@@ -2,7 +2,9 @@
 import {
   DatasetVectorTableName,
   DBDatasetVectorTableName,
-  DBDatasetValueVectorTableName
+  DBDatasetValueVectorTableName,
+  HNSW_EF_CONSTRUCTION,
+  HNSW_M
 } from '../constants';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
@@ -61,7 +63,7 @@ export class PgVectorCtrl {
       `);
 
       await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = ${HNSW_M}, ef_construction = ${HNSW_EF_CONSTRUCTION});`
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`

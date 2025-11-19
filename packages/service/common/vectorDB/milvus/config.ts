@@ -4,7 +4,9 @@ import type { CreateIndexSimpleReq } from '@zilliz/milvus2-sdk-node/dist/milvus/
 import {
   DatasetVectorTableName,
   DBDatasetVectorTableName,
-  DBDatasetValueVectorTableName
+  DBDatasetValueVectorTableName,
+  HNSW_EF_CONSTRUCTION,
+  HNSW_M
 } from '../constants';
 
 export const MILVUS_VECTOR_DIMENSION = 1536;
@@ -45,7 +47,7 @@ const createBaseIndexParams = (): MilvusIndexParam[] => [
     index_name: 'vector_HNSW',
     index_type: 'HNSW',
     metric_type: 'IP',
-    params: { efConstruction: 32, M: 64 }
+    params: { efConstruction: Number(HNSW_EF_CONSTRUCTION), M: Number(HNSW_M) }
   },
   {
     field_name: 'teamId',

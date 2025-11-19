@@ -235,6 +235,7 @@ export class MilvusCtrl {
       client.search({
         collection_name: DatasetVectorTableName,
         data: vector,
+        params: { ef: global.systemEnv?.hnswEfSearch || 100 },
         limit,
         filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${id}"`).join(',')}]) ${collectionIdQuery} ${forbidColQuery}`,
         output_fields: ['collectionId']
