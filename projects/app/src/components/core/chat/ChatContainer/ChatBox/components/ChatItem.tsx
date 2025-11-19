@@ -412,9 +412,8 @@ const ChatItem = (props: Props) => {
                   </MyTooltip>
                 </Box>
               )}
-          </Card>
+         </Card>
           {/* 添加到底部的控制按钮 */}
-          (
           <Flex
             mt={2}
             w="100%"
@@ -429,6 +428,7 @@ const ChatItem = (props: Props) => {
               <ChatController {...props} isLastChild={isLastChild} />
             </Flex>
           </Flex>
+        </Box>
         )
         </Box>
       ))}
