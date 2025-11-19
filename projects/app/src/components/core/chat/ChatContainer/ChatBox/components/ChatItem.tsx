@@ -371,7 +371,7 @@ const ChatItem = (props: Props) => {
                 )}
               </>
             )}
-            {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
+           {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
             {i === splitAiResponseResults.length - 1 && (
               <>
                 {/* error message */}
@@ -383,7 +383,6 @@ const ChatItem = (props: Props) => {
                     </Box>
                   </Box>
                 )}
-                {children}
               </>
             )}
             {/* 对话框底部的复制按钮 */}
@@ -413,21 +412,16 @@ const ChatItem = (props: Props) => {
                 </Box>
               )}
          </Card>
-          {/* 添加到底部的控制按钮 */}
-          <Flex
-            mt={2}
+        {/* 在Card外部添加控制按钮 */}
+        {i === splitAiResponseResults.length - 1 && (
+          <Flex 
+            mt={2} 
             w="100%"
             justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
-            className="bottom-controller"
           >
-            <Flex
-              w="100%"
-              justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
-              maxW={type === ChatRoleEnum.Human ? styleMap.maxW : styleMap.maxW}
-            >
-              <ChatController {...props} isLastChild={isLastChild} />
-            </Flex>
+            {children}
           </Flex>
+        )}
         </Box>
         )
         </Box>
