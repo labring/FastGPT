@@ -8,6 +8,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type CommonRenderProps = {
   placeholder?: string;
@@ -58,8 +59,7 @@ type SpecificProps =
   | {
       // selectDataset
       inputType: InputTypeEnum.selectDataset;
-      list?: { label: string; value: string }[];
-      dataset?: { name: string; datasetId: string; avatar: string }[];
+      datasetOptions?: SelectedDatasetType[];
     }
   | {
       // JSONEditor

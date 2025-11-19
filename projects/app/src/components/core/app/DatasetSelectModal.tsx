@@ -31,12 +31,10 @@ import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/Quic
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
-  isOpen,
   defaultSelectedDatasets = [],
   onChange,
   onClose
 }: {
-  isOpen: boolean;
   defaultSelectedDatasets: SelectedDatasetType[];
   onChange: (e: SelectedDatasetType[]) => void;
   onClose: () => void;
@@ -140,7 +138,7 @@ export const DatasetSelectModal = ({
     <MyModal
       iconSrc="/imgs/workflow/db.png"
       title={t('common:core.chat.Select dataset')}
-      isOpen={isOpen}
+      isOpen={true}
       onClose={onClose}
       minW="800px"
       maxW={'800px'}

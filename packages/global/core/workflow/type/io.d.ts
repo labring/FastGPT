@@ -54,6 +54,9 @@ export type InputComponentPropsType = {
   timeRangeStart?: string;
   timeRangeEnd?: string;
 
+  // dataset select
+  datasetOptions?: SelectedDatasetType[];
+
   // dynamic input
   customInputConfig?: CustomFieldConfigType;
 

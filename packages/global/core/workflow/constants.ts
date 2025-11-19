@@ -363,12 +363,12 @@ export const variableConfigs: VariableConfigType[][] = [
       value: VariableInputEnum.numberInput,
       defaultValueType: WorkflowIOValueTypeEnum.number
     },
-    // {
-    //   icon: 'core/workflow/inputType/jsonEditor',
-    //   label: i18nT('common:core.workflow.inputType.jsonEditor'),
-    //   value: VariableInputEnum.JSONEditor,
-    //   defaultValueType: WorkflowIOValueTypeEnum.object
-    // },
+    {
+      icon: 'core/workflow/inputType/jsonEditor',
+      label: i18nT('common:core.workflow.inputType.jsonEditor'),
+      value: VariableInputEnum.JSONEditor,
+      defaultValueType: WorkflowIOValueTypeEnum.object
+    },
     {
       icon: 'core/workflow/inputType/option',
       label: i18nT('common:core.workflow.inputType.select'),
@@ -398,12 +398,6 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
       value: VariableInputEnum.timeRangeSelect,
       defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    },
-    {
-      icon: 'core/workflow/inputType/model',
-      label: i18nT('common:core.workflow.inputType.modelSelect'),
-      value: VariableInputEnum.llmSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.string
     }
     // {
     //   icon: 'core/workflow/inputType/file',
@@ -412,20 +406,20 @@ export const variableConfigs: VariableConfigType[][] = [
     //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
     // }
   ],
-  // [
-  //   {
-  //     icon: 'core/workflow/inputType/model',
-  //     label: i18nT('common:core.workflow.inputType.modelSelect'),
-  //     value: VariableInputEnum.llmSelect,
-  //     defaultValueType: WorkflowIOValueTypeEnum.string
-  //   },
-  //   {
-  //     icon: 'core/workflow/inputType/dataset',
-  //     label: i18nT('common:core.workflow.inputType.datasetSelect'),
-  //     value: VariableInputEnum.datasetSelect,
-  //     defaultValueType: WorkflowIOValueTypeEnum.selectDataset
-  //   }
-  // ],
+  [
+    {
+      icon: 'core/workflow/inputType/model',
+      label: i18nT('common:core.workflow.inputType.modelSelect'),
+      value: VariableInputEnum.llmSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/dataset',
+      label: i18nT('common:core.workflow.inputType.datasetSelect'),
+      value: VariableInputEnum.datasetSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.selectDataset
+    }
+  ],
   [
     {
       icon: 'core/workflow/inputType/external',

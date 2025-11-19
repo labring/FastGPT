@@ -45,12 +45,19 @@ export const defaultVariable: VariableItemType = {
   description: '',
   required: true,
   valueType: WorkflowIOValueTypeEnum.string,
+
+  // file select
   canSelectFile: true,
   canSelectImg: true,
   maxFiles: 5,
+
+  // time
   timeGranularity: 'day',
   timeRangeStart: undefined,
-  timeRangeEnd: undefined
+  timeRangeEnd: undefined,
+
+  // dataset select
+  datasetOptions: []
 };
 
 export const addVariable = () => {
@@ -106,6 +113,9 @@ const VariableEdit = ({
         (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
       ) {
         setValue('defaultValue', '');
+      }
+      if (newType === VariableInputEnum.datasetSelect) {
+        setValue('datasetOptions', []);
       }
 
       setValue('type', newType);
@@ -177,7 +187,6 @@ const VariableEdit = ({
         }
       });
 
-      console.log(data);
       const onChangeVariable = (() => {
         if (data.key) {
           return variables.map((item) => {

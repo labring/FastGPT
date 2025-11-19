@@ -9,7 +9,8 @@ import {
   Input,
   Stack,
   Switch,
-  Textarea
+  Textarea,
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   VariableInputEnum,
@@ -43,8 +44,8 @@ import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 const InputTypeConfig = ({
   form,
@@ -96,7 +97,8 @@ const InputTypeConfig = ({
     };
   }, [t]);
 
-  const { register, setValue, handleSubmit, control, watch } = form;
+  const { register, setValue, handleSubmit, control, watch, getValues } = form;
+  console.log(getValues());
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
@@ -123,10 +125,12 @@ const InputTypeConfig = ({
   const canLocalUpload = watch('canLocalUpload');
   const canUrlUpload = watch('canUrlUpload');
 
-  const [isDatasetSelectOpen, setIsDatasetSelectOpen] = useState(false);
-  const [datasetList, setDatasetList] = useState<
-    { name: string; datasetId: string; avatar: string }[]
-  >([]);
+  const {
+    isOpen: isOpenDatasetSelect,
+    onOpen: onOpenDatasetSelect,
+    onClose: onCloseDatasetSelect
+  } = useDisclosure();
+  const datasetOptions = watch('datasetOptions');
 
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
@@ -197,7 +201,8 @@ const InputTypeConfig = ({
       [VariableInputEnum.internal]: true,
       [VariableInputEnum.timePointSelect]: true,
       [VariableInputEnum.timeRangeSelect]: true,
-      [VariableInputEnum.llmSelect]: true
+      [VariableInputEnum.llmSelect]: true,
+      [VariableInputEnum.datasetSelect]: true
     };
 
     return map[inputType as keyof typeof map];
@@ -264,9 +269,14 @@ const InputTypeConfig = ({
           commonData.timeGranularity = data.timeGranularity;
           commonData.timeRangeStart = data.timeRangeStart;
           commonData.timeRangeEnd = data.timeRangeEnd;
+          break;
         case FlowNodeInputTypeEnum.password:
           commonData.minLength = data.minLength;
           break;
+      }
+
+      if (inputType === VariableInputEnum.datasetSelect) {
+        commonData.datasetOptions = data.datasetOptions;
       }
 
       if (commonData.timeRangeStart) {
@@ -631,10 +641,36 @@ const InputTypeConfig = ({
                   />
                 </Box>
               )}
+              {inputType === VariableInputEnum.datasetSelect && (
+                <MultipleSelect<string>
+                  bg={'myGray.50'}
+                  h={9}
+                  w={369}
+                  list={
+                    datasetOptions?.map((item: SelectedDatasetType) => ({
+                      label: item.name,
+                      value: item.datasetId,
+                      icon: item.avatar
+                    })) || []
+                  }
+                  placeholder={t('workflow:select_default_option')}
+                  value={defaultValue?.map((item: SelectedDatasetType) => item.datasetId) || []}
+                  onSelect={(selectedIds) => {
+                    const selectedDatasets = selectedIds
+                      .map((id) =>
+                        datasetOptions?.find((item: SelectedDatasetType) => item.datasetId === id)
+                      )
+                      .filter(Boolean);
+                    setValue('defaultValue', selectedDatasets);
+                  }}
+                  isSelectAll={
+                    defaultValue.length === datasetOptions?.length && datasetOptions?.length > 0
+                  }
+                />
+              )}
             </Flex>
           </Flex>
         )}
-
         {inputType === FlowNodeInputTypeEnum.addInputParam && (
           <>
             <Box>
@@ -905,64 +941,60 @@ const InputTypeConfig = ({
 
         {inputType === VariableInputEnum.datasetSelect && (
           <>
-            <Flex minH={'40px'} alignItems={'flex-start'}>
+            <Flex w={'full'} alignItems={'center'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('app:dataset_select')}
               </FormLabel>
+              <Button
+                variant={'primaryOutline'}
+                size={'md'}
+                flex={1}
+                onClick={onOpenDatasetSelect}
+                leftIcon={<MyIcon name={'core/dataset/datasetLightSmall'} w={4} />}
+              >
+                {t('chat:select')}
+              </Button>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 132px'} />
               <Flex flex={1} gap={2} flexDirection={'column'} alignItems={'stretch'}>
-                <Button
-                  variant={'whiteBase'}
-                  size={'md'}
-                  onClick={() => setIsDatasetSelectOpen(true)}
-                  leftIcon={<MyIcon name={'core/workflow/inputType/dataset'} w={'14px'} />}
-                >
-                  {t('chat:select')}
-                </Button>
-                {datasetList.length > 0 && datasetList?.[0].datasetId !== '' && (
-                  <Grid mt={'9px'} gridTemplateColumns={'1fr 1fr'} gap={'12px'}>
-                    {datasetList.map((item) => (
-                      <Flex
-                        key={item.datasetId}
-                        alignItems={'center'}
-                        gap={2}
-                        p={2}
-                        border={'1px solid'}
-                        borderColor={'myGray.200'}
-                        borderRadius={'md'}
-                      >
-                        <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" />
-                        <Box fontSize={'sm'}>{item.name}</Box>
-                      </Flex>
-                    ))}
-                  </Grid>
-                )}
+                <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'}>
+                  {datasetOptions.map((item: SelectedDatasetType) => (
+                    <Flex
+                      key={item.datasetId}
+                      alignItems={'center'}
+                      gap={2}
+                      p={2}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                      borderRadius={'md'}
+                    >
+                      <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" />
+                      <Box fontSize={'sm'}>{item.name}</Box>
+                    </Flex>
+                  ))}
+                </Grid>
               </Flex>
             </Flex>
-            <DatasetSelectModal
-              isOpen={isDatasetSelectOpen}
-              defaultSelectedDatasets={
-                defaultValue && datasetList.length > 0
-                  ? datasetList
-                      .filter((item) => item.datasetId === defaultValue)
-                      .map((item) => ({
-                        datasetId: item.datasetId,
-                        name: item.name,
-                        avatar: item.avatar,
-                        vectorModel: {} as EmbeddingModelItemType
-                      }))
-                  : []
-              }
-              onChange={(selectedDatasets) => {
-                const newDatasetList = selectedDatasets.map((item: any) => ({
-                  name: item.name,
+            {isOpenDatasetSelect && (
+              <DatasetSelectModal
+                defaultSelectedDatasets={datasetOptions.map((item: SelectedDatasetType) => ({
                   datasetId: item.datasetId,
-                  avatar: item.avatar
-                }));
-                setDatasetList(newDatasetList);
-                setValue('dataset', newDatasetList);
-              }}
-              onClose={() => setIsDatasetSelectOpen(false)}
-            />
+                  name: item.name,
+                  avatar: item.avatar,
+                  vectorModel: {} as EmbeddingModelItemType
+                }))}
+                onChange={(selectedDatasets) => {
+                  const newDatasetList = selectedDatasets.map((item: SelectedDatasetType) => ({
+                    name: item.name,
+                    datasetId: item.datasetId,
+                    avatar: item.avatar
+                  }));
+                  setValue('datasetOptions', newDatasetList);
+                }}
+                onClose={onCloseDatasetSelect}
+              />
+            )}
           </>
         )}
 
