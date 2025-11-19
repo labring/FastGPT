@@ -414,15 +414,22 @@ const ChatItem = (props: Props) => {
               )}
           </Card>
           {/* 添加到底部的控制按钮 */}
-          {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+          (
           <Flex
             mt={2}
+            w="100%"
             justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
             className="bottom-controller"
           >
-            <ChatController {...props} isLastChild={isLastChild} />
+            <Flex
+              w="100%"
+              justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
+              maxW={type === ChatRoleEnum.Human ? styleMap.maxW : styleMap.maxW}
+            >
+              <ChatController {...props} isLastChild={isLastChild} />
+            </Flex>
           </Flex>
-        )}
+        )
         </Box>
       ))}
     </Box>
