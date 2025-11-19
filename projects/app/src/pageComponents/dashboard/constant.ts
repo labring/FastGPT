@@ -2,9 +2,9 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const appTypeTagMap = {
-  [AppTypeEnum.agent]: {
-    label: 'Agent',
-    icon: 'core/app/type/mcpTools'
+  [AppTypeEnum.chatAgent]: {
+    label: i18nT('app:type.Chat_Agent_v2'),
+    icon: 'core/app/type/simple'
   },
   [AppTypeEnum.simple]: {
     label: i18nT('app:type.Chat_Agent'),

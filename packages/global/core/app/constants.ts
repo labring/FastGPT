@@ -10,7 +10,7 @@ export enum AppTypeEnum {
   folder = 'folder',
   toolFolder = 'toolFolder',
   simple = 'simple',
-  agent = 'agent',
+  chatAgent = 'chatAgent',
   workflow = 'advanced',
   workflowTool = 'plugin',
   mcpToolSet = 'toolSet', // 'mcp'
@@ -33,7 +33,7 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.agent, AppTypeEnum.workflow];
+export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

@@ -24,7 +24,12 @@ import {
   getToolPreviewNode,
   getTeamAppTemplates
 } from '@/web/core/app/api/tool';
-import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import {
+  AppFolderTypeList,
+  AppTypeEnum,
+  AppTypeList,
+  ToolTypeList
+} from '@fastgpt/global/core/app/constants';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -38,16 +43,18 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   return !!subAppTypeMap[flowNodeType];
 };
 
-type SelectedToolItemType = AppFormEditFormType['selectedTools'][number];
+export type SelectedToolItemType = AppFormEditFormType['selectedTools'][number];
 
 export const useSkillManager = ({
   selectedTools,
-  setSelectedTools,
+  onUpdateOrAddTool,
+  onDeleteTool,
   canSelectFile,
   canSelectImg
 }: {
   selectedTools: SelectedToolItemType[];
-  setSelectedTools: (tools: SelectedToolItemType[]) => void;
+  onDeleteTool: (id: string) => void;
+  onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   canSelectFile?: boolean;
   canSelectImg?: boolean;
 }) => {
@@ -66,7 +73,8 @@ export const useSkillManager = ({
           parentId: item.parentId,
           label: item.name,
           icon: item.avatar,
-          showArrow: item.isFolder
+          showArrow: item.isFolder,
+          canClick: true
         };
       });
     },
@@ -83,15 +91,10 @@ export const useSkillManager = ({
     [systemTools]
   );
 
-  /* ===== Team Apps ===== */
-  const { data: allTeamApps = [] } = useRequest2(
-    async () => {
-      return await getTeamAppTemplates({ parentId: null });
-    },
-    {
-      manual: false
-    }
-  );
+  /* ===== Team agents/tools ===== */
+  const { data: allTeamApps = [] } = useRequest2(() => getTeamAppTemplates({ parentId: null }), {
+    manual: false
+  });
   const myTools = useMemo(
     () =>
       allTeamApps
@@ -100,12 +103,12 @@ export const useSkillManager = ({
           id: item.id,
           label: item.name,
           icon: item.avatar,
-          canOpen: item.isFolder ?? false,
-          canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+          isFolder: item.isFolder ?? false,
+          canClick: !AppFolderTypeList.includes(item.appType)
         })),
     [allTeamApps]
   );
-  const agentApps = useMemo(
+  const myAgents = useMemo(
     () =>
       allTeamApps
         .filter((item) => [AppTypeEnum.folder, ...AppTypeList].includes(item.appType))
@@ -113,8 +116,8 @@ export const useSkillManager = ({
           id: item.id,
           label: item.name,
           icon: item.avatar,
-          canOpen: item.isFolder ?? false,
-          canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+          isFolder: item.isFolder ?? false,
+          canClick: !AppFolderTypeList.includes(item.appType)
         })),
     [allTeamApps]
   );
@@ -132,16 +135,22 @@ export const useSkillManager = ({
         id: item.id,
         label: item.name,
         icon: item.avatar,
-        canOpen: item.isFolder ?? false,
-        canUse: item.appType !== AppTypeEnum.folder && item.appType !== AppTypeEnum.toolFolder
+        isFolder: item.isFolder ?? false,
+        canClick: !AppFolderTypeList.includes(item.appType)
       };
     });
   }, []);
 
-  /* ===== Workflow tool ===== */
-  const { runAsync: onAddAppOrTool } = useRequest2(
+  const onAddAppOrTool = useCallback(
     async (appId: string) => {
+      console.log(appId);
       const toolTemplate = await getToolPreviewNode({ appId });
+      console.log(toolTemplate);
+
+      if (!toolTemplate) {
+        return;
+      }
+
       const checkRes = validateToolConfiguration({
         toolTemplate,
         canSelectFile,
@@ -171,17 +180,14 @@ export const useSkillManager = ({
       };
       const hasFormInput = checkNeedsUserConfiguration(tool);
 
-      setSelectedTools([
-        ...selectedTools,
-        {
-          ...tool,
-          configStatus: hasFormInput ? 'waitingForConfig' : 'active'
-        }
-      ]);
+      onUpdateOrAddTool({
+        ...tool,
+        configStatus: hasFormInput ? 'waitingForConfig' : 'active'
+      });
 
       return tool.id;
     },
-    { manual: true }
+    [canSelectFile, canSelectImg, onUpdateOrAddTool, t, toast]
   );
 
   /* ===== Skill option ===== */
@@ -199,7 +205,8 @@ export const useSkillManager = ({
                 onClick: onAddAppOrTool,
                 list: data.map((item) => ({
                   id: item.id,
-                  label: item.label
+                  label: item.label,
+                  canClick: true
                 }))
               };
             },
@@ -215,7 +222,7 @@ export const useSkillManager = ({
         } else if (id === 'agent') {
           return {
             description: t('app:space_to_expand_folder'),
-            list: agentApps,
+            list: myAgents,
             onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, AppTypeList),
             onClick: onAddAppOrTool
           };
@@ -226,21 +233,24 @@ export const useSkillManager = ({
         {
           id: 'systemTool',
           label: t('app:core.module.template.System Tools'),
-          icon: 'core/workflow/template/toolCall'
+          icon: 'core/workflow/template/toolCall',
+          canClick: false
         },
         {
           id: 'myTools',
           label: t('common:navbar.Tools'),
-          icon: 'core/app/type/pluginFill'
+          icon: 'core/app/type/pluginFill',
+          canClick: false
         },
         {
           id: 'agent',
-          label: 'Agent',
-          icon: 'core/workflow/template/runApp'
+          label: t('app:my_agents'),
+          icon: 'core/workflow/template/runApp',
+          canClick: false
         }
       ]
     };
-  }, [onAddAppOrTool, onLoadSystemTool, myTools, agentApps, onFolderLoadTeamApps, t]);
+  }, [onAddAppOrTool, onLoadSystemTool, myTools, myAgents, onFolderLoadTeamApps, t]);
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
@@ -279,9 +289,9 @@ export const useSkillManager = ({
   const onRemoveSkill = useCallback(
     (id: string) => {
       console.log('onRemoveSkill', id);
-      setSelectedTools(selectedTools.filter((tool) => tool.id !== id));
+      onDeleteTool(id);
     },
-    [selectedTools, setSelectedTools]
+    [onDeleteTool]
   );
 
   const SkillModal = useCallback(() => {
@@ -292,22 +302,16 @@ export const useSkillManager = ({
             configTool={configTool}
             onCloseConfigTool={() => setConfigTool(undefined)}
             onAddTool={(tool) =>
-              setSelectedTools(
-                selectedTools.map((t) =>
-                  t.id === tool.id
-                    ? {
-                        ...tool,
-                        configStatus: 'active'
-                      }
-                    : t
-                )
-              )
+              onUpdateOrAddTool({
+                ...tool,
+                configStatus: 'active'
+              })
             }
           />
         )}
       </>
     );
-  }, [configTool, selectedTools, setSelectedTools]);
+  }, [configTool, onUpdateOrAddTool]);
 
   return {
     skillOption,
