@@ -49,6 +49,12 @@ export const defaultVariable: VariableItemType = {
   // file select
   canSelectFile: true,
   canSelectImg: true,
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: [],
+  canLocalUpload: true,
+  canUrlUpload: false,
   maxFiles: 5,
 
   // time
@@ -110,11 +116,12 @@ const VariableEdit = ({
       if (
         newType === VariableInputEnum.select ||
         newType === VariableInputEnum.multipleSelect ||
+        newType === VariableInputEnum.file ||
         (newType === VariableInputEnum.numberInput && !defaultValIsNumber)
       ) {
         setValue('defaultValue', '');
       }
-      if (newType === VariableInputEnum.datasetSelect) {
+      if (newType === VariableInputEnum.datasetSelect && !value.datasetOptions) {
         setValue('datasetOptions', []);
       }
 

@@ -46,6 +46,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 
 const InputTypeConfig = ({
   form,
@@ -122,6 +123,10 @@ const InputTypeConfig = ({
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
   const canSelectFile = watch('canSelectFile');
   const canSelectImg = watch('canSelectImg');
+  const canSelectVideo = watch('canSelectVideo');
+  const canSelectAudio = watch('canSelectAudio');
+  const canSelectCustomFileExtension = watch('canSelectCustomFileExtension');
+  const customFileExtensionList = watch('customFileExtensionList');
   const canLocalUpload = watch('canLocalUpload');
   const canUrlUpload = watch('canUrlUpload');
 
@@ -277,6 +282,18 @@ const InputTypeConfig = ({
 
       if (inputType === VariableInputEnum.datasetSelect) {
         commonData.datasetOptions = data.datasetOptions;
+      }
+
+      if (inputType === VariableInputEnum.file) {
+        commonData.canSelectFile = data.canSelectFile;
+        commonData.canSelectImg = data.canSelectImg;
+        commonData.canSelectVideo = data.canSelectVideo;
+        commonData.canSelectAudio = data.canSelectAudio;
+        commonData.canSelectCustomFileExtension = data.canSelectCustomFileExtension;
+        commonData.customFileExtensionList = data.customFileExtensionList;
+        commonData.canLocalUpload = data.canLocalUpload;
+        commonData.canUrlUpload = data.canUrlUpload;
+        commonData.maxFiles = data.maxFiles;
       }
 
       if (commonData.timeRangeStart) {
@@ -654,7 +671,11 @@ const InputTypeConfig = ({
                     })) || []
                   }
                   placeholder={t('workflow:select_default_option')}
-                  value={defaultValue?.map((item: SelectedDatasetType) => item.datasetId) || []}
+                  value={
+                    defaultValue
+                      ? defaultValue.map((item: SelectedDatasetType) => item.datasetId)
+                      : []
+                  }
                   onSelect={(selectedIds) => {
                     const selectedDatasets = selectedIds
                       .map((id) =>
@@ -664,7 +685,9 @@ const InputTypeConfig = ({
                     setValue('defaultValue', selectedDatasets);
                   }}
                   isSelectAll={
-                    defaultValue.length === datasetOptions?.length && datasetOptions?.length > 0
+                    defaultValue &&
+                    defaultValue.length === datasetOptions?.length &&
+                    datasetOptions?.length > 0
                   }
                 />
               )}
@@ -819,99 +842,68 @@ const InputTypeConfig = ({
             </Button>
           </>
         )}
-        {/* TODO: 适配新的文件上传 */}
-        {inputType === FlowNodeInputTypeEnum.fileSelect && (
+        {(inputType === FlowNodeInputTypeEnum.fileSelect ||
+          inputType === VariableInputEnum.file) && (
           <>
-            <Flex alignItems={'center'} minH={'40px'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:file_types')}
-              </FormLabel>
-              <Flex gap={'8px'} flex={'1'}>
-                <Checkbox
-                  p={'3'}
-                  h={'32px'}
-                  flex={1}
-                  alignItems={'center'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  borderRadius={'md'}
-                  isChecked={canSelectFile ?? true}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canSelectFile', true);
-                    } else {
-                      setValue('canSelectFile', false);
-                    }
+            <Box alignItems={'flex-start'}>
+              <FormLabel fontWeight={'medium'}>{t('app:upload_file_extension_types')}</FormLabel>
+              <Stack
+                w="full"
+                spacing={3}
+                alignItems={'flex-start'}
+                border="1px solid"
+                borderColor="myGray.200"
+                borderRadius="md"
+                p={4}
+                mt={2}
+              >
+                <FileTypeSelectorPanel
+                  value={{
+                    canSelectFile: canSelectFile,
+                    canSelectImg: canSelectImg,
+                    canSelectVideo: canSelectVideo,
+                    canSelectAudio: canSelectAudio,
+                    canSelectCustomFileExtension: canSelectCustomFileExtension,
+                    customFileExtensionList: customFileExtensionList
                   }}
-                >
-                  <Box fontSize={'sm'}>{t('app:document')}</Box>
-                </Checkbox>
-
-                <Checkbox
-                  p={'3'}
-                  h={'32px'}
-                  flex={1}
-                  alignItems={'center'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  borderRadius={'md'}
-                  isChecked={canSelectImg ?? true}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canSelectImg', true);
-                    } else {
-                      setValue('canSelectImg', false);
-                    }
+                  onChange={(newValue) => {
+                    Object.entries(newValue).forEach(([key, val]) => {
+                      setValue(key as any, val);
+                    });
                   }}
-                >
-                  <Box fontSize={'sm'}>{t('app:image')}</Box>
-                </Checkbox>
-              </Flex>
-            </Flex>
-            <Flex alignItems={'center'} minH={'40px'}>
+                />
+              </Stack>
+            </Box>
+            <Flex alignItems={'flex-start'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('app:upload_method')}
               </FormLabel>
-              <Flex gap={'8px'} flex={'1'}>
+              <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'} flex={1}>
                 <Checkbox
                   p={'3'}
                   h={'32px'}
-                  flex={1}
                   alignItems={'center'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                   borderRadius={'md'}
                   isChecked={canLocalUpload ?? true}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canLocalUpload', true);
-                    } else {
-                      setValue('canLocalUpload', false);
-                    }
-                  }}
+                  onChange={(e) => setValue('canLocalUpload', e.target.checked)}
                 >
                   <Box fontSize={'sm'}>{t('app:local_upload')}</Box>
                 </Checkbox>
                 <Checkbox
                   p={'3'}
                   h={'32px'}
-                  flex={1}
                   alignItems={'center'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                   borderRadius={'md'}
                   isChecked={canUrlUpload ?? false}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setValue('canUrlUpload', true);
-                    } else {
-                      setValue('canUrlUpload', false);
-                    }
-                  }}
+                  onChange={(e) => setValue('canUrlUpload', e.target.checked)}
                 >
                   <Box fontSize={'sm'}>{t('app:url_upload')}</Box>
                 </Checkbox>
-              </Flex>
+              </Grid>
             </Flex>
             <Box>
               <HStack>
