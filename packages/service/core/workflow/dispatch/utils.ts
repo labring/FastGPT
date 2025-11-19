@@ -41,7 +41,7 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  const fn: WorkflowResponseType = ({ id, subAppId, event, data }) => {
+  const fn: WorkflowResponseType = ({ id, subAppId, stepCall, event, data }) => {
     if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
@@ -66,6 +66,7 @@ export const getWorkflowResponseWrite = ({
       data: JSON.stringify({
         ...data,
         ...(subAppId && detail && { subAppId }),
+        ...(stepCall && detail && { stepCall }),
         ...(id && detail && { responseValueId: id })
       })
     });
@@ -75,15 +76,20 @@ export const getWorkflowResponseWrite = ({
 export const getWorkflowChildResponseWrite = ({
   id,
   subAppId,
+  stepCall,
   fn
 }: {
   id: string;
   subAppId: string;
+  stepCall: {
+    taskId: string;
+    stepId: string;
+  };
   fn?: WorkflowResponseType;
 }): WorkflowResponseType | undefined => {
   if (!fn) return;
   return (e: Parameters<WorkflowResponseType>[0]) => {
-    return fn({ ...e, id, subAppId });
+    return fn({ ...e, id, subAppId, stepCall });
   };
 };
 

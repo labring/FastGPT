@@ -14,6 +14,7 @@ export type generatingMessageProps = {
   event: SseResponseEventEnum;
   responseValueId?: string;
   subAppId?: string;
+
   text?: string;
   reasoningText?: string;
   name?: string;
@@ -21,6 +22,11 @@ export type generatingMessageProps = {
   tool?: ToolModuleResponseItemType;
   interactive?: WorkflowInteractiveResponseType;
   agentPlan?: AgentPlanType;
+  stepCall?: {
+    taskId: string;
+    stepId: string;
+  };
+  stepTitle?: string;
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
