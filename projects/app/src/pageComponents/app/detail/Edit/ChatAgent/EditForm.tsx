@@ -33,7 +33,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { useSkillManager } from './hooks/useSkillManager';
+import { type SelectedToolItemType, useSkillManager } from './hooks/useSkillManager';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
@@ -76,18 +76,36 @@ const EditForm = ({
 
   // Skill picker
   const selectedTools = useMemoEnhance(() => appForm.selectedTools, [appForm.selectedTools]);
-  const setSelectedTools = useCallback(
-    (tools: FlowNodeTemplateType[]) => {
+  const onUpdateOrAddTool = useCallback(
+    (tool: SelectedToolItemType) => {
+      setAppForm((state) => {
+        if (state.selectedTools.some((t) => t.id === tool.id)) {
+          return {
+            ...state,
+            selectedTools: state.selectedTools.map((t) => (t.id === tool.id ? tool : t))
+          };
+        }
+        return {
+          ...state,
+          selectedTools: [tool, ...state.selectedTools]
+        };
+      });
+    },
+    [setAppForm]
+  );
+  const onDeleteTool = useCallback(
+    (id: string) => {
       setAppForm((state) => ({
         ...state,
-        selectedTools: tools
+        selectedTools: state.selectedTools.filter((t) => t.id !== id)
       }));
     },
     [setAppForm]
   );
   const { SkillModal, skillOption, selectedSkills, onClickSkill, onRemoveSkill } = useSkillManager({
     selectedTools,
-    setSelectedTools,
+    onUpdateOrAddTool,
+    onDeleteTool,
     canSelectFile: appForm.chatConfig?.fileSelectConfig?.canSelectFile,
     canSelectImg: appForm.chatConfig?.fileSelectConfig?.canSelectImg
   });
