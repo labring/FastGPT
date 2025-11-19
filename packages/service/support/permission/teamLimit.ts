@@ -42,7 +42,7 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
 
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   const type = [
-    AppTypeEnum.agent,
+    AppTypeEnum.chatAgent,
     AppTypeEnum.simple,
     AppTypeEnum.workflow,
     AppTypeEnum.workflowTool,

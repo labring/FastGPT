@@ -296,7 +296,11 @@ const List = () => {
                               />
                             }
                             menuList={[
-                              ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                              ...([
+                                AppTypeEnum.simple,
+                                AppTypeEnum.workflow,
+                                AppTypeEnum.chatAgent
+                              ].includes(app.type)
                                 ? [
                                     {
                                       children: [
@@ -500,7 +504,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    (router.pathname.includes('/agent') ? AppTypeEnum.chatAgent : AppTypeEnum.workflowTool);
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -572,7 +576,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const parentId = router.query.parentId;
   const createAppType =
     createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    (router.pathname.includes('/agent') ? AppTypeEnum.chatAgent : AppTypeEnum.workflowTool);
 
   return (
     <MyBox
