@@ -1,14 +1,13 @@
-name: Build and Push Docker Image
+name: Build and Push Custom FastGPT Docker Image
 
 on:
   push:
     branches: [ main, master ]
     paths:
-      - 'projects/app/src/components/core/chat/ChatContainer/ChatBox/components/ChatItem.tsx'
-      - 'Dockerfile'
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:  # 允许手动触发
+      - 'projects/app/src/**'
+      - 'projects/app/Dockerfile'
+      - 'packages/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -39,7 +38,6 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
-          type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
           type=raw,value=v4.12.4-custom
@@ -48,7 +46,10 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile
+        file: ./projects/app/Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          proxy=
+          base_url=https://fastgpt.run
