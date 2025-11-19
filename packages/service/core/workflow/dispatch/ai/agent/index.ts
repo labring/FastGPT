@@ -35,6 +35,7 @@ import { stepCall } from './master/call';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../../../common/system/log';
 import { checkTaskComplexity } from './master/taskComplexity';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -345,8 +346,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       /* ===== Master agent, 逐步执行 plan ===== */
       if (!agentPlan) return Promise.reject('没有 plan');
 
-      let assistantResponses: AIChatItemValueItemType[] = [];
+      const assistantResponses: AIChatItemValueItemType[] = [];
 
+      const taskId = getNanoid(6);
       while (agentPlan.steps!.filter((item) => !item.response)!.length) {
         for await (const step of agentPlan?.steps) {
           if (step.response) continue;
@@ -354,21 +356,27 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           // Temp code
           workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: `\n # ${step.id}: ${step.title}\n`
-            })
-          });
-          const tmpAssistantResponses: AIChatItemValueItemType = {
-            text: {
-              content: `\n # ${step.id}: ${step.title}\n`
+            event: SseResponseEventEnum.stepCall,
+            stepCall: {
+              taskId,
+              stepId: step.id
+            },
+            data: {
+              stepTitle: step.title
             }
-          };
-          assistantResponses.push(tmpAssistantResponses);
+          });
+          assistantResponses.push({
+            stepCall: {
+              taskId,
+              stepId: step.id
+            },
+            stepTitle: step.title
+          });
 
           // Step call
           const result = await stepCall({
             ...props,
+            taskId,
             getSubAppInfo,
             steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
             subAppList,
@@ -387,7 +395,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             .flat();
           step.response = result.rawResponse;
           step.summary = result.summary;
-          assistantResponses.push(...assistantResponse);
+          assistantResponses.push(
+            ...assistantResponse.map((item) => ({
+              ...item,
+              stepCall: {
+                taskId,
+                stepId: step.id
+              }
+            }))
+          );
         }
 
         // Call replan

@@ -78,6 +78,10 @@ export type SystemChatItemType = {
 
 export type AIChatItemValueItemType = {
   id?: string;
+  stepCall?: {
+    taskId: string;
+    stepId: string;
+  };
 } & RequireOnlyOne<{
   text: {
     content: string;
@@ -87,9 +91,12 @@ export type AIChatItemValueItemType = {
   };
   tool: ToolModuleResponseItemType;
   interactive: WorkflowInteractiveResponseType;
-  agentPlan: AgentPlanType;
 
-  // Abandon
+  // Agent
+  agentPlan: AgentPlanType;
+  stepTitle: string;
+
+  // @deprecated
   tools: ToolModuleResponseItemType[];
 }>;
 export type AIChatItemType = {
