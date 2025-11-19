@@ -13,6 +13,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
+import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -23,35 +24,42 @@ type StreamFetchProps = {
 export type StreamResponseType = {
   responseText: string;
 };
-type ResponseQueueItemType =
-  | {
-      responseValueId?: string;
-      subAppId?: string;
-      event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
-      text?: string;
-      reasoningText?: string;
-    }
-  | {
-      responseValueId?: string;
-      subAppId?: string;
-      event: SseResponseEventEnum.interactive;
-      [key: string]: any;
-    }
-  | {
-      responseValueId?: string;
-      subAppId?: string;
-      event: SseResponseEventEnum.agentPlan;
-      agentPlan: AgentPlanType;
-    }
-  | {
-      responseValueId?: string;
-      subAppId?: string;
-      event:
-        | SseResponseEventEnum.toolCall
-        | SseResponseEventEnum.toolParams
-        | SseResponseEventEnum.toolResponse;
-      tools: any;
-    };
+
+type CommonResponseType = {
+  responseValueId?: string;
+  subAppId?: string;
+  stepCall?: {
+    taskId: string;
+    stepId: string;
+  };
+};
+type ResponseQueueItemType = CommonResponseType &
+  (
+    | {
+        event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
+        text?: string;
+        reasoningText?: string;
+      }
+    | {
+        event: SseResponseEventEnum.interactive;
+        [key: string]: any;
+      }
+    | {
+        event: SseResponseEventEnum.agentPlan;
+        agentPlan: AgentPlanType;
+      }
+    | {
+        event: SseResponseEventEnum.stepCall;
+        stepTitle: string;
+      }
+    | {
+        event:
+          | SseResponseEventEnum.toolCall
+          | SseResponseEventEnum.toolParams
+          | SseResponseEventEnum.toolResponse;
+        tools: any;
+      }
+  );
 
 class FatalError extends Error {}
 
@@ -198,7 +206,7 @@ export const streamFetch = ({
           })();
 
           if (typeof parseJson !== 'object') return;
-          const { responseValueId, subAppId, ...rest } = parseJson;
+          const { responseValueId, subAppId, stepCall, ...rest } = parseJson;
 
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
@@ -206,6 +214,7 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               reasoningText
             });
@@ -215,6 +224,7 @@ export const streamFetch = ({
               pushDataToQueue({
                 responseValueId,
                 subAppId,
+                stepCall,
                 event,
                 text: item
               });
@@ -224,6 +234,7 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               reasoningText
             });
@@ -232,6 +243,7 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               text
             });
@@ -243,6 +255,7 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               ...rest
             });
@@ -260,6 +273,7 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               ...rest
             });
@@ -267,8 +281,17 @@ export const streamFetch = ({
             pushDataToQueue({
               responseValueId,
               subAppId,
+              stepCall,
               event,
               agentPlan: rest.agentPlan
+            });
+          } else if (event === SseResponseEventEnum.stepCall) {
+            pushDataToQueue({
+              responseValueId,
+              subAppId,
+              stepCall,
+              event,
+              stepTitle: rest.stepTitle
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
