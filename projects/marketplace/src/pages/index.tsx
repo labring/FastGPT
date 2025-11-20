@@ -190,7 +190,7 @@ const ToolkitMarketplace = () => {
       }
     } catch (error) {
       console.error('Download failed:', error);
-      // 可以在这里添加错误提示
+      // Can add error prompt here
     }
   }, []);
 
