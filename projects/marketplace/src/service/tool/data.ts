@@ -20,8 +20,10 @@ export const getToolList = async () => {
     // download the file to local
     const res = await fetch(dataFileURL);
     await writeFile(localDataFilePath, Buffer.from(await res.arrayBuffer()));
-    const data = await readFile(localDataFilePath, 'utf-8');
-    const downloadCount = await getDownloadCounts();
+    const [data, downloadCount] = await Promise.all([
+      readFile(localDataFilePath, 'utf-8'),
+      getDownloadCounts()
+    ]);
 
     global.toolListData = JSON.parse(data).map((item: ToolDetailType) => ({
       ...item,
