@@ -1,6 +1,6 @@
 import { getToolList } from '@/service/tool/data';
 import { ToolDetailSchema, type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { getPkgdownloadURL, getReadmeURL } from '@/service/s3';
+import { getReadmeURL } from '@/service/s3';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -11,7 +11,7 @@ export type ToolDetailBody = {};
 
 export type ToolDetailResponse = {
   tools: Array<ToolDetailType & { readme: string }>;
-  downloadUrl: string;
+  downloadCount: number;
 };
 
 async function handler(
@@ -39,7 +39,7 @@ async function handler(
       ...ToolDetailSchema.parse(tool),
       readme: getReadmeURL(toolId)
     })),
-    downloadUrl: getPkgdownloadURL(toolId)
+    downloadCount: tools.find((tool) => !tool.parentId)?.downloadCount ?? 0
   };
 }
 
