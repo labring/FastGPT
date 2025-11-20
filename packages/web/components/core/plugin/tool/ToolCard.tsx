@@ -308,21 +308,21 @@ const ToolCard = ({
               }}
               isLoading={isInstallingOrDeleting}
               {...(!isInstallingOrDeleting ? { display: 'none' } : {})}
-              disabled={isUpdating}
+              isDisabled={isUpdating}
             >
               {item.installed ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
             </Button>
           )}
 
           {/* Update button for admin mode when update is available */}
-          {item.update && mode === 'admin' && (
+          {item.update && mode === 'admin' && onUpdate && (
             <Button
               className="update-button"
               size={'sm'}
               variant={'primary'}
               onClick={async (e) => {
                 e.stopPropagation();
-                return onUpdate?.();
+                return onUpdate();
               }}
               isLoading={isUpdating}
               display={'none'}

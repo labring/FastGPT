@@ -222,7 +222,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [updatingToolIdsDispatch, selectedTool, getMarketplaceDownloadURL, intallPluginWithUrl]
+    [updatingToolIdsDispatch, selectedTool]
   );
 
   const { runAsync: handleDeleteTool } = useRequest2(

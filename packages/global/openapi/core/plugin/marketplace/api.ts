@@ -7,11 +7,8 @@ const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
 
 // Create intersection types for extended schemas
-export const MarketplaceToolListItemSchema = formatToolSimpleSchema.extend({
-  downloadUrl: z.string()
-});
+export const MarketplaceToolListItemSchema = formatToolSimpleSchema;
 export type MarketplaceToolListItemType = ToolSimpleType & {
-  downloadUrl: string;
   downloadCount: number;
 };
 
@@ -19,8 +16,7 @@ export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
   readme: z.string().optional()
 });
 export const MarketplaceToolDetailSchema = z.object({
-  tools: z.array(MarketplaceToolDetailItemSchema),
-  downloadUrl: z.string()
+  tools: z.array(MarketplaceToolDetailItemSchema)
 });
 
 // List

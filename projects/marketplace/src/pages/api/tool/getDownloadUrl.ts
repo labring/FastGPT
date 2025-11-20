@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { getToolList } from '@/service/tool/data';
 import { getPkgdownloadURL } from '@/service/s3';
-import { increseDownloadCount } from '@/service/downloadCount';
+import { increaseDownloadCount } from '@/service/downloadCount';
 
 export type GetDownloadURLQuery = {
   toolId: string;
@@ -14,15 +14,16 @@ async function handler(
   req: ApiRequestProps<GetDownloadURLBody, GetDownloadURLQuery>,
   res: ApiResponseType<any>
 ): Promise<GetDownloadURLResponse> {
-  if (!req.query.toolId) {
+  const { toolId } = req.query;
+  if (!toolId) {
     return Promise.reject('toolId is required');
   }
   const tools = await getToolList();
-  const tool = tools.find((item) => item.toolId === req.query.toolId);
+  const tool = tools.find((item) => item.toolId === toolId);
   if (!tool) {
-    return Promise.reject('tool not found');
+    return Promise.reject(`tool: ${toolId} not found`);
   }
-  await increseDownloadCount(req.query.toolId, 'tool');
-  return getPkgdownloadURL(req.query.toolId);
+  await increaseDownloadCount(toolId, 'tool');
+  return getPkgdownloadURL(toolId);
 }
 export default NextAPI(handler);

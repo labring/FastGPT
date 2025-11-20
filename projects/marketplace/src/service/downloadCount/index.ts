@@ -2,7 +2,7 @@ import { MongoDownloadCount } from '../mongo/models/download';
 import type { pluginTypeEnum } from '../mongo/models/download';
 import type z from 'zod';
 
-export const increseDownloadCount = async (
+export const increaseDownloadCount = async (
   toolId: string,
   type: z.infer<typeof pluginTypeEnum>
 ) => {
