@@ -7,7 +7,8 @@ export const pluginTypeEnum = z.enum(['tool']);
 export const PluginZodSchema = z.object({
   type: z.literal('tool'),
   toolId: z.string(),
-  downloadCount: z.number()
+  downloadCount: z.number(),
+  time: z.date()
 });
 
 export type MongoPluginSchemaType = z.infer<typeof PluginZodSchema>;
@@ -15,9 +16,11 @@ export type MongoPluginSchemaType = z.infer<typeof PluginZodSchema>;
 const downloadCountSchema = new Schema({
   toolId: { type: String, required: true },
   type: { type: String, required: true, enum: Object.values(pluginTypeEnum.enum) },
-  downloadCount: { type: Number, required: true, default: 0 }
+  downloadCount: { type: Number, required: true, default: 0 },
+  time: { type: Date, required: true }
 });
 
-downloadCountSchema.index({ type: 1, toolId: 1 }, { unique: true });
+// 复合索引：type + toolId + time
+downloadCountSchema.index({ type: 1, toolId: 1, time: 1 }, { unique: true });
 
 export const MongoDownloadCount = getMongoModel('download_count', downloadCountSchema);

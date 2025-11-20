@@ -216,13 +216,14 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         } finally {
           updatingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
+          await refreshInstalledPlugins();
         }
       })();
 
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [updatingToolIdsDispatch, selectedTool]
+    [updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
   );
 
   const { runAsync: handleDeleteTool } = useRequest2(

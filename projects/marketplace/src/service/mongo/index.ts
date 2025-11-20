@@ -15,33 +15,9 @@ export const connectionMongo = (() => {
   return global.mongodb;
 })();
 
-const addCommonMiddleware = (schema: Schema) => {
-  const operations = [/^find/, 'save', 'create', /^update/, /^delete/];
-
-  operations.forEach((op: any) => {
-    schema.pre(op, function (this: any, next: () => void) {
-      this._startTime = Date.now();
-      next();
-    });
-
-    schema.post(op, function (this: any, result: any, next: () => void) {
-      if (this._startTime) {
-        const duration = Date.now() - this._startTime;
-        if (duration > 1000) {
-          addLog.warn(`Slow operation ${duration}ms on ${this.collection?.name}`);
-        }
-      }
-      next();
-    });
-  });
-
-  return schema;
-};
-
 export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
   if (connectionMongo.models[name]) return connectionMongo.model<T>(name);
   addLog.info(`Load model: ${name}`);
-  addCommonMiddleware(schema);
 
   const model = connectionMongo.model(name, schema);
 
