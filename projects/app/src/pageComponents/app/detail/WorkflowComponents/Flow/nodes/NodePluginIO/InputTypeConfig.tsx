@@ -99,7 +99,6 @@ const InputTypeConfig = ({
   }, [t]);
 
   const { register, setValue, handleSubmit, control, watch, getValues } = form;
-  console.log(getValues());
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');

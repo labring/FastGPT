@@ -319,7 +319,6 @@ export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
   numberInput = 'numberInput',
-  JSONEditor = 'JSONEditor',
   select = 'select',
   multipleSelect = 'multipleSelect',
   timePointSelect = 'timePointSelect',
@@ -362,12 +361,6 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.number input'),
       value: VariableInputEnum.numberInput,
       defaultValueType: WorkflowIOValueTypeEnum.number
-    },
-    {
-      icon: 'core/workflow/inputType/jsonEditor',
-      label: i18nT('common:core.workflow.inputType.jsonEditor'),
-      value: VariableInputEnum.JSONEditor,
-      defaultValueType: WorkflowIOValueTypeEnum.object
     },
     {
       icon: 'core/workflow/inputType/option',

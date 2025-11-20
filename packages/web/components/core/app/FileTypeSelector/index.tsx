@@ -46,7 +46,7 @@ export const FileTypeSelectorPanel = ({
 
     setIsAdding(false);
     setNewExtension('.');
-  }, [newExtension, value, value.customFileExtensionList, onChange]);
+  }, [newExtension, value, onChange]);
 
   const handleRemoveExtension = useCallback(
     (ext: string) => {
@@ -56,7 +56,7 @@ export const FileTypeSelectorPanel = ({
         customFileExtensionList: currentList.filter((item) => item !== ext)
       });
     },
-    [value, value.customFileExtensionList, onChange]
+    [value, onChange]
   );
 
   return (

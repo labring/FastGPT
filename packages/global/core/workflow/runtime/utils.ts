@@ -21,6 +21,7 @@ import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
+import { isChatFileObjectArray } from '../../../common/file/utils';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
@@ -424,7 +425,12 @@ export const getReferenceVariableValue = ({
 
     if (sourceNodeId === VARIABLE_NODE_ID) {
       if (!outputId) return undefined;
-      return variables[outputId];
+      const variableValue = variables[outputId];
+      if (isChatFileObjectArray(variableValue)) {
+        return variableValue.map((item) => item.url);
+      }
+
+      return variableValue;
     }
 
     // 避免 value 刚好就是二个元素的字符串数组
@@ -539,7 +545,12 @@ export function replaceEditorVariable({
 
     const variableVal = (() => {
       if (nodeId === VARIABLE_NODE_ID) {
-        return variables[id];
+        const variableValue = variables[id];
+        if (isChatFileObjectArray(variableValue)) {
+          return variableValue.map((item) => item.url);
+        }
+
+        return variableValue;
       }
       // Find upstream node input/output
       const node = nodes.find((node) => node.nodeId === nodeId);
