@@ -119,10 +119,12 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 /* remove system variable */
 export const runtimeSystemVar2StoreType = ({
   variables,
+  cloneVariables,
   removeObj = {},
   userVariablesConfigs = []
 }: {
   variables: Record<string, any>;
+  cloneVariables: Record<string, any>;
   removeObj?: Record<string, string>;
   userVariablesConfigs?: VariableItemType[];
 }) => {
@@ -154,10 +156,7 @@ export const runtimeSystemVar2StoreType = ({
     }
     // Remove URL from file variables
     else if (item.type === VariableInputEnum.file) {
-      copyVariables[item.key] = val.map((file: UserChatItemFileItemType) => {
-        const { url, ...cleanFile } = file;
-        return cleanFile;
-      });
+      copyVariables[item.key] = cloneVariables[item.key];
     }
   });
 

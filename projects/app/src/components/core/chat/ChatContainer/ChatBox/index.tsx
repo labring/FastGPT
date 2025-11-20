@@ -479,8 +479,15 @@ const ChatBox = ({
               val = formatTime2YMDHMS(new Date(val));
             } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
               val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
+            } else if (item.type === VariableInputEnum.file && Array.isArray(val)) {
+              val = val.map((item) => ({
+                id: item.id,
+                key: item.key,
+                url: item.key ? undefined : item.url,
+                name: item.name,
+                type: item.type
+              }));
             }
-
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 

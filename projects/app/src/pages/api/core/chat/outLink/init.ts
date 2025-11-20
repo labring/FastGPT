@@ -10,8 +10,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
-import { isChatFileObjectArray } from '@fastgpt/global/common/file/utils';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
@@ -40,23 +39,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
-  const variables = chat?.variables ? { ...chat.variables } : undefined;
-  if (variables) {
-    await Promise.all(
-      Object.values(variables).map(async (val) => {
-        if (isChatFileObjectArray(val)) {
-          await Promise.all(
-            val.map(async (item) => {
-              item.url = await getS3ChatSource().createGetChatFileURL({
-                key: item.key ?? '',
-                external: true
-              });
-            })
-          );
-        }
-      })
-    );
-  }
+  const variables = await presignVariablesFileUrls({
+    variables: chat?.variables,
+    variableConfig: chatConfig.variables
+  });
 
   return {
     chatId,
