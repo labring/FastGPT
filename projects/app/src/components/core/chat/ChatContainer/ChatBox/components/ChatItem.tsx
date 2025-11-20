@@ -288,23 +288,21 @@ const ChatItem = (props: Props) => {
     >
       {/* control icon */}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {null ? null : (
+        {chat.time && (isPc || isChatLog) && (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            {chat.time && (isPc || isChatLog) && (
-              <Box
-                order={type === ChatRoleEnum.AI ? 2 : 0}
-                className={'time-label'}
-                fontSize={styleMap.fontSize}
-                color={styleMap.color}
-                fontWeight={styleMap.fontWeight}
-                display={isChatLog ? 'block' : 'none'}
-              >
-                {t(formatTimeToChatItemTime(chat.time) as any, {
-                  time: dayjs(chat.time).format('HH:mm')
-                }).replace('#', ':')}
-              </Box>
-            )}
-            </Flex>
+            <Box
+              order={type === ChatRoleEnum.AI ? 2 : 0}
+              className={'time-label'}
+              fontSize={styleMap.fontSize}
+              color={styleMap.color}
+              fontWeight={styleMap.fontWeight}
+              display={isChatLog ? 'block' : 'none'}
+            >
+              {t(formatTimeToChatItemTime(chat.time) as any, {
+                time: dayjs(chat.time).format('HH:mm')
+              }).replace('#', ':')}
+            </Box>
+          </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
 
@@ -339,11 +337,6 @@ const ChatItem = (props: Props) => {
           mt={['6px', 2]}
           className="chat-box-card"
           textAlign={styleMap.textAlign}
-          _hover={{
-            '& .footer-copy': {
-              display: 'block'
-            }
-          }}
         >
           <Card
             {...MessageCardStyle}
@@ -371,7 +364,7 @@ const ChatItem = (props: Props) => {
                 )}
               </>
             )}
-           {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
+            {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
             {i === splitAiResponseResults.length - 1 && (
               <>
                 {/* error message */}
@@ -385,45 +378,20 @@ const ChatItem = (props: Props) => {
                 )}
               </>
             )}
-            {/* 对话框底部的复制按钮 */}
-            {type == ChatRoleEnum.AI &&
-              value[0]?.type !== 'interactive' &&
-              (!isChatting || (isChatting && !isLastChild)) && (
-                <Box
-                  className="footer-copy"
-                  display={['block', 'none']}
-                  position={'absolute'}
-                  bottom={0}
-                  right={0}
-                  transform={'translateX(100%)'}
-                >
-                  <MyTooltip label={t('common:Copy')}>
-                    <MyIcon
-                      w={'1rem'}
-                      cursor="pointer"
-                      p="5px"
-                      bg="white"
-                      name={'copy'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.600' }}
-                      onClick={() => copyData(formatChatValue2InputType(value).text ?? '')}
-                    />
-                  </MyTooltip>
-                </Box>
+            </Card>
+          {/* 在Card外部添加控制按钮 */}
+          {i === splitAiResponseResults.length - 1 && (
+            <Flex
+              mt={2}
+              w="100%"
+              justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
+            >
+              {/* 只有在非聊天中或不是最后一条消息时才显示ChatController */}
+              {(!isChatting || (isChatting && !isLastChild)) && (
+                <ChatController {...props} isLastChild={isLastChild} />
               )}
-         </Card>
-        {/* 在Card外部添加控制按钮 */}
-        {i === splitAiResponseResults.length - 1 && (
-          <Flex 
-            mt={2} 
-            w="100%"
-            justifyContent={type === ChatRoleEnum.Human ? 'flex-end' : 'flex-start'}
-          >
-            {children}
-          </Flex>
-        )}
-        </Box>
-        )
+            </Flex>
+          )}
         </Box>
       ))}
     </Box>
