@@ -254,7 +254,6 @@ export const appData2FlowNodeIO = ({
           [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
           [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
-          [VariableInputEnum.JSONEditor]: [FlowNodeInputTypeEnum.JSONEditor],
           [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
           [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
           [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],

@@ -73,8 +73,8 @@ const EditForm = ({
 
   const {
     isOpen: isOpenDatasetSelect,
-    onOpen: onOpenKbSelect,
-    onClose: onCloseKbSelect
+    onOpen: onOpenDatasetSelect,
+    onClose: onCloseDatasetSelect
   } = useDisclosure();
   const {
     isOpen: isOpenDatasetParams,
@@ -238,7 +238,7 @@ const EditForm = ({
               iconSpacing={1}
               size={'sm'}
               fontSize={'sm'}
-              onClick={onOpenKbSelect}
+              onClick={onOpenDatasetSelect}
             >
               {t('common:Choose')}
             </Button>
@@ -426,14 +426,13 @@ const EditForm = ({
 
       {isOpenDatasetSelect && (
         <DatasetSelectModal
-          isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,
             name: item.name,
             avatar: item.avatar
           }))}
-          onClose={onCloseKbSelect}
+          onClose={onCloseDatasetSelect}
           onChange={(e) => {
             setAppForm((state) => ({
               ...state,

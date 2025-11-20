@@ -14,7 +14,7 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.userFiles]: string[];
 }>;
 
-export const dispatchWorkflowStart = (props: Record<string, any>): Response => {
+export const dispatchWorkflowStart = async (props: Record<string, any>): Promise<Response> => {
   const {
     query,
     variables,
