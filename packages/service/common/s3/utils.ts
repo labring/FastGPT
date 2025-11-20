@@ -11,14 +11,20 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
+import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
-export function jwtSignS3ObjectKey(objectKey: string) {
+/**
+ *
+ * @param objectKey
+ * @param expiredTime
+ * @returns
+ */
+export function jwtSignS3ObjectKey(objectKey: string, expiredTime: Date) {
   const secret = process.env.FILE_TOKEN_KEY as string;
-  const now = new Date();
-  const expiresIn = differenceInSeconds(addDays(now, 90), now);
+  const expiresIn = differenceInSeconds(expiredTime, new Date());
   const token = jwt.sign({ objectKey }, secret, { expiresIn });
 
-  return token;
+  return `${EndpointUrl}/api/system/file/${token}`;
 }
 
 export function jwtVerifyS3ObjectKey(token: string) {
@@ -95,15 +101,22 @@ export async function uploadImage2S3Bucket(
   return uploadKey;
 }
 
+export const getFileNameFromPresignedURL = (presignedURL: string) => {
+  const url = new URL(presignedURL);
+  const fullname = url.pathname.split('/').pop()!;
+  const filename = path.basename(fullname, path.extname(fullname));
+  return decodeURIComponent(filename);
+};
+
 export const ParsedFileContentS3Key = {
   // 临时的文件路径（比如 evaluation)
   temp: (appId: string) => {
-    return `${S3Sources.chat}/${appId}/temp/${randomUUID()}`;
+    return `${S3Sources.tmp}/${appId}/temp/${randomUUID()}`;
   },
 
   // 对话中上传的文件的解析结果的图片的 Key
   chat: ({ appId, chatId, uId }: { chatId: string; uId: string; appId: string }) => {
-    return `${S3Sources.chat}/${appId}/${uId}/${chatId}/parsed`;
+    return `${S3Sources.chat}/${appId}/${uId}/${chatId}`;
   },
 
   // 上传数据集的文件的解析结果的图片的 Key

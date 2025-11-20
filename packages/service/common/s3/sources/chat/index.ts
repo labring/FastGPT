@@ -7,6 +7,7 @@ import {
   ChatFileUploadSchema,
   DelChatFileByPrefixSchema
 } from './type';
+import { addHours, differenceInHours } from 'date-fns';
 
 class S3ChatSource {
   private bucket: S3PrivateBucket;
@@ -61,9 +62,12 @@ class S3ChatSource {
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename } = ChatFileUploadSchema.parse(params);
+    const { appId, chatId, uId, filename, expiredTime } = ChatFileUploadSchema.parse(params);
     const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
-    return await this.bucket.createPostPresignedUrl({ rawKey, filename }, { expiredHours: 24 });
+    return await this.bucket.createPostPresignedUrl(
+      { rawKey, filename },
+      { expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24 }
+    );
   }
 
   deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {

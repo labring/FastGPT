@@ -58,15 +58,14 @@ export const formatDatasetDataValue = ({
     };
   }
 
-  const previewUrl =
-    getS3DatasetSource().isDatasetObjectKey(imageId) || getS3ChatSource().isChatFileKey(imageId)
-      ? imageId
-      : getDatasetImagePreviewUrl({
-          imageId,
-          teamId,
-          datasetId,
-          expiredMinutes: 60 * 24 * 7 // 7 days
-        });
+  const previewUrl = getS3DatasetSource().isDatasetObjectKey(imageId)
+    ? imageId
+    : getDatasetImagePreviewUrl({
+        imageId,
+        teamId,
+        datasetId,
+        expiredMinutes: 60 * 24 * 7 // 7 days
+      });
 
   return {
     q: `![${q.replaceAll('\n', '')}](${previewUrl})`,

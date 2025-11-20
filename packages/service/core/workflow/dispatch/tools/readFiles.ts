@@ -13,11 +13,11 @@ import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/glob
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
+import { addDays, addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
-import { ParsedFileContentS3Key } from '../../../../common/s3/utils';
+import { getFileNameFromPresignedURL, ParsedFileContentS3Key } from '../../../../common/s3/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -65,6 +65,23 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
   try {
+    console.dir(
+      {
+        urls: [...fileUrlList, ...filesFromHistories],
+        requestOrigin,
+        maxFiles,
+        teamId,
+        tmbId,
+        customPdfParse,
+        usageId,
+        fileS3Prefix: ParsedFileContentS3Key.chat({
+          appId: props.runningAppInfo.id,
+          chatId: props.chatId!,
+          uId: props.uid
+        })
+      },
+      { depth: null }
+    );
     const { text, readFilesResult } = await getFileContentFromLinks({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
@@ -241,12 +258,12 @@ export const getFileContentFromLinks = async ({
             customPdfParse,
             getFormatText: true,
             imageKeyOptions: {
-              prefix: fileS3Prefix
+              prefix: `${fileS3Prefix}/${getFileNameFromPresignedURL(url)}-parsed`
             },
             usageId
           });
 
-          const replacedText = await replaceDatasetQuoteTextWithJWT(rawText);
+          const replacedText = replaceDatasetQuoteTextWithJWT(rawText, addDays(new Date(), 90));
 
           // Add to buffer
           addRawTextBuffer({

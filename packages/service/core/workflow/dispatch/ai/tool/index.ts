@@ -31,6 +31,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import { ParsedFileContentS3Key } from '../../../../../common/s3/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -326,9 +327,11 @@ const getMultiInput = async ({
     usageId,
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId,
-    appId,
-    chatId,
-    uId
+    fileS3Prefix: ParsedFileContentS3Key.chat({
+      appId,
+      chatId: chatId!,
+      uId
+    })
   });
 
   return {

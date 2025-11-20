@@ -180,7 +180,7 @@ export const readS3FileContentByBuffer = async ({
             base64Img: `data:${item.mime};base64,${item.base64}`,
             uploadKey: `${prefix}/${item.uuid}.${ext}`,
             mimetype: Mimes[ext as keyof typeof Mimes],
-            filename: `${item.uuid}.${ext}`,
+            filename: `${item.uuid}${ext}`,
             expiredTime
           });
         } catch (error) {
@@ -188,6 +188,7 @@ export const readS3FileContentByBuffer = async ({
         }
       })();
       rawText = rawText.replace(item.uuid, src);
+      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
       }

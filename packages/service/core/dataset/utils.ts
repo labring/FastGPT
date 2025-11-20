@@ -39,18 +39,19 @@ export const filterDatasetsByTmbId = async ({
  * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为 JWT 签名后的 URL
  *
  * @param datasetQuoteText 数据集引用文本
+ * @param expiredTime 过期时间
  * @returns 替换后的文本
  *
  * @example
  *
  * ```typescript
  * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
- * const replacedText = await replaceDatasetQuoteTextWithJWT(datasetQuoteText)
+ * const replacedText = await replaceDatasetQuoteTextWithJWT(datasetQuoteText, addDays(new Date(), 90))
  * console.log(replacedText)
  * // '![image.png](http://localhost:3000/api/system/file/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvYmplY3RLZXkiOiJjaGF0LzY5MWFlMjlkNDA0ZDA0Njg3MTdkZDc0Ny82OGFkODVhNzQ2MzAwNmM5NjM3OTlhMDcvalhmWHk4eWZHQUZzOVdKcGNXUmJBaFYyL3BhcnNlZC85YTBmNGZlZC00ZWRmLTQ2MTMtYThkNi01MzNhZjVhZTUxZGMucG5nIiwiaWF0IjoxNzYzMzcwOTYwLCJleHAiOjk1MzkzNzA5NjB9.tMDWg0-ZWRnWPNp9Hakd0w1hhaO8jj2oD98SU0wAQYQ)'
  * ```
  */
-export async function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string) {
+export function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string, expiredTime: Date) {
   if (!datasetQuoteText || typeof datasetQuoteText !== 'string') return datasetQuoteText as string;
 
   const prefixPattern = Object.values(S3Sources)
@@ -67,8 +68,7 @@ export async function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string) {
     const [full, bang, alt, objectKey] = match;
 
     if (s3DatasetSource.isDatasetObjectKey(objectKey) || s3ChatSource.isChatFileKey(objectKey)) {
-      const token = jwtSignS3ObjectKey(objectKey);
-      const url = `${EndpointUrl}/api/system/file/${token}`;
+      const url = jwtSignS3ObjectKey(objectKey, expiredTime);
       const replacement = `${bang}[${alt}](${url})`;
       content =
         content.slice(0, match.index) + replacement + content.slice(match.index + full.length);

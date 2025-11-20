@@ -16,41 +16,41 @@ const MdImage = ({
   const [renderSrc, setRenderSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!src || (!src.startsWith('dataset/') && !src.startsWith('chat/'))) {
-      setRenderSrc(src);
-      return;
-    }
+  // useEffect(() => {
+  //   if (!src || (!src.startsWith('dataset/') && !src.startsWith('chat/'))) {
+  //     setRenderSrc(src);
+  //     return;
+  //   }
 
-    const loadS3Image = async () => {
-      try {
-        setIsLoading(true);
-        if (src.startsWith('dataset/')) {
-          const url = await getPresignedDatasetFileGetUrl({ key: src });
-          setRenderSrc(url);
-        } else if (src.startsWith('chat/')) {
-          const url = await getPresignedChatFileGetUrl({
-            key: src,
-            appId: props.chatAuthData?.appId || '',
-            outLinkAuthData: {
-              shareId: props.chatAuthData?.shareId,
-              outLinkUid: props.chatAuthData?.outLinkUid,
-              teamId: props.chatAuthData?.teamId,
-              teamToken: props.chatAuthData?.teamToken
-            }
-          });
-          setRenderSrc(url);
-        }
-      } catch (error) {
-        console.error('Failed to sign S3 image:', error);
-        setRenderSrc('/imgs/errImg.png');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  //   const loadS3Image = async () => {
+  //     try {
+  //       setIsLoading(true);
+  //       if (src.startsWith('dataset/')) {
+  //         const url = await getPresignedDatasetFileGetUrl({ key: src });
+  //         setRenderSrc(url);
+  //       } else if (src.startsWith('chat/')) {
+  //         const url = await getPresignedChatFileGetUrl({
+  //           key: src,
+  //           appId: props.chatAuthData?.appId || '',
+  //           outLinkAuthData: {
+  //             shareId: props.chatAuthData?.shareId,
+  //             outLinkUid: props.chatAuthData?.outLinkUid,
+  //             teamId: props.chatAuthData?.teamId,
+  //             teamToken: props.chatAuthData?.teamToken
+  //           }
+  //         });
+  //         setRenderSrc(url);
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to sign S3 image:', error);
+  //       setRenderSrc('/imgs/errImg.png');
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
 
-    loadS3Image();
-  }, [src, props.chatAuthData]);
+  //   loadS3Image();
+  // }, [src, props.chatAuthData]);
 
   if (src?.includes('base64') && !src.startsWith('data:image')) {
     return <Box>Invalid base64 image</Box>;
