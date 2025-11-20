@@ -1092,29 +1092,6 @@ const getSystemVariables = async ({
       const val = variables[item.label] || variables[item.key] || item.defaultValue;
       const actualValue = anyValueDecrypt(val);
       variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
-    } else if (item.type === VariableInputEnum.file) {
-      const val = variables[item.label] || variables[item.key] || item.defaultValue;
-      const filesWithUrl = await Promise.all(
-        val.map(async (file: UserChatItemFileItemType) => {
-          if (file.url) return file;
-          if (file.key) {
-            try {
-              const url = await getS3ChatSource().createGetChatFileURL({
-                key: file.key,
-                external: true,
-                expiredHours: 1
-              });
-              return {
-                ...file,
-                url
-              };
-            } catch (error) {}
-          }
-          return file;
-        })
-      );
-
-      variablesMap[item.key] = filesWithUrl;
     }
     // API
     else if (variables[item.label] !== undefined) {
