@@ -367,14 +367,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         flexDirection={'column'}
         isLoading={loadingTools && displayTools.length === 0}
       >
-        <Box px={8} flexShrink={0} position={'relative'}>
+        <Box px={8} flexShrink={0} position={'relative'} zIndex={'999'}>
           <MyIconButton
             icon={'common/closeLight'}
             size={'6'}
             onClick={() => router.push('/config/tool')}
             position={'absolute'}
             top={4}
-            zIndex={'999'}
             {...(showCompactSearch ? { right: 4 } : { left: 4 })}
           />
           {!showCompactSearch && (
