@@ -10,6 +10,8 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { isChatFileObjectArray } from '@fastgpt/global/common/file/utils';
 
 async function handler(
   req: NextApiRequest,
@@ -48,12 +50,30 @@ async function handler(
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
+  const variables = chat?.variables ? { ...chat.variables } : undefined;
+  if (variables) {
+    await Promise.all(
+      Object.values(variables).map(async (val) => {
+        if (isChatFileObjectArray(val)) {
+          await Promise.all(
+            val.map(async (item) => {
+              item.url = await getS3ChatSource().createGetChatFileURL({
+                key: item.key ?? '',
+                external: true
+              });
+            })
+          );
+        }
+      })
+    );
+  }
+
   return {
     chatId,
     appId,
     title: chat?.title,
     userAvatar: undefined,
-    variables: chat?.variables,
+    variables,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

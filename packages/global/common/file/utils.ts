@@ -1,8 +1,7 @@
+import type { UserChatItemFileItemType } from '../../core/chat/type';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
 
-export const isChatFileObjectArray = (
-  value: any
-): value is { type: `${ChatFileTypeEnum}`; key: string; url: string }[] => {
+export const isChatFileObjectArray = (value: any): value is UserChatItemFileItemType[] => {
   return (
     Array.isArray(value) &&
     value.length > 0 &&
