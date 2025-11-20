@@ -23,4 +23,4 @@ const downloadCountSchema = new Schema({
 // 复合索引：type + toolId + time
 downloadCountSchema.index({ type: 1, toolId: 1, time: 1 }, { unique: true });
 
-export const MongoDownloadCount = getMongoModel('download_count', downloadCountSchema);
+export const MongoDownloadCount = getMongoModel('plugin_download_counts', downloadCountSchema);

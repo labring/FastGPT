@@ -21,9 +21,67 @@ if (!global.__downloadCache) {
   global.__downloadCache = [];
 }
 
-if (!global.__batchTimer) {
-  global.__batchTimer = undefined;
-}
+// Start batch timer
+const startBatchTimer = () => {
+  // Batch update to database
+  const batchUpdate = async () => {
+    if (global.__downloadCache!.length === 0) {
+      return;
+    }
+    const batchMap = new Map<
+      string,
+      { toolId: string; type: string; hour: Date; downloadCount: number }
+    >();
+    global.__downloadCache!.forEach((record) => {
+      const key = `${record.toolId}-${record.type}-${record.hour.getTime()}`;
+      if (batchMap.has(key)) {
+        batchMap.get(key)!.downloadCount++;
+      } else {
+        batchMap.set(key, {
+          toolId: record.toolId,
+          type: record.type,
+          hour: record.hour,
+          downloadCount: 1
+        });
+      }
+    });
+
+    const bulkOps = Array.from(batchMap.values()).map((record) => ({
+      updateOne: {
+        filter: {
+          toolId: record.toolId,
+          type: record.type,
+          time: record.hour
+        },
+        update: {
+          $inc: {
+            downloadCount: record.downloadCount
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    try {
+      await MongoDownloadCount.bulkWrite(bulkOps);
+      console.log(`Batch update download counts: ${bulkOps.length} items`);
+    } catch (error) {
+      console.error('Batch update download counts failed:', error);
+    }
+
+    // Clear cache
+    global.__downloadCache = [];
+    global.__batchTimer = undefined;
+  };
+
+  if (global.__batchTimer) {
+    return;
+  }
+
+  global.__batchTimer = setTimeout(() => {
+    batchUpdate();
+  }, BATCH_INTERVAL);
+};
 
 // Get hour start time
 const getHourStart = (date: Date = new Date()): Date => {
@@ -31,50 +89,6 @@ const getHourStart = (date: Date = new Date()): Date => {
   hourStart.setMinutes(0, 0, 0);
   hourStart.setMilliseconds(0);
   return hourStart;
-};
-
-// Batch update to database
-const batchUpdate = async () => {
-  if (global.__downloadCache!.length === 0) {
-    return;
-  }
-
-  const bulkOps = global.__downloadCache!.map((record) => ({
-    updateOne: {
-      filter: {
-        toolId: record.toolId,
-        type: record.type,
-        time: record.hour
-      },
-      update: {
-        $inc: {
-          downloadCount: 1
-        }
-      },
-      upsert: true
-    }
-  }));
-
-  try {
-    await MongoDownloadCount.bulkWrite(bulkOps);
-    console.log(`Batch update download counts: ${bulkOps.length} items`);
-  } catch (error) {
-    console.error('Batch update download counts failed:', error);
-  }
-
-  // Clear cache
-  global.__downloadCache = [];
-};
-
-// Start batch timer
-const startBatchTimer = () => {
-  if (global.__batchTimer) {
-    return;
-  }
-
-  global.__batchTimer = setInterval(() => {
-    batchUpdate();
-  }, BATCH_INTERVAL);
 };
 
 // Increase download count (with cache)
@@ -97,39 +111,26 @@ export const increaseDownloadCount = async (
 
 // Get download counts
 export const getDownloadCounts = async () => {
-  // Get data from database first
-  const dbCounts = await MongoDownloadCount.find({}).lean();
-
-  // Create result map with database data
+  // Aggregate download counts by toolId directly in database
+  const dbCounts = await MongoDownloadCount.aggregate([
+    {
+      $group: {
+        _id: '$toolId',
+        type: { $first: '$type' },
+        downloadCount: { $sum: '$downloadCount' }
+      }
+    }
+  ]);
+  console.log(dbCounts);
+  // Create result map with aggregated data
   const resultMap = new Map<string, { type: string; downloadCount: number }>();
 
-  // Add database data
   dbCounts.forEach((item) => {
-    resultMap.set(item.toolId, {
+    resultMap.set(item._id, {
       type: item.type,
       downloadCount: item.downloadCount
     });
   });
 
-  // Add cache data
-  global.__downloadCache!.forEach((record) => {
-    const existing = resultMap.get(record.toolId);
-    if (existing) {
-      existing.downloadCount++;
-    } else {
-      resultMap.set(record.toolId, {
-        type: record.type,
-        downloadCount: 1
-      });
-    }
-  });
-
   return resultMap;
-};
-
-// Get total download count for specific tool
-export const getToolDownloadCount = async (toolId: string) => {
-  const counts = await getDownloadCounts();
-  const toolCount = counts.get(toolId);
-  return toolCount?.downloadCount || 0;
 };
