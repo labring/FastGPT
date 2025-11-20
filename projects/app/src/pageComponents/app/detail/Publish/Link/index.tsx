@@ -16,7 +16,9 @@ import {
   Switch,
   Link,
   IconButton,
-  HStack
+  HStack,
+  UnorderedList,
+  ListItem
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -77,9 +79,8 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
       <Flex justifyContent={'space-between'}>
         <HStack>
           <Box color={'myGray.900'} fontSize={'lg'}>
-            {t('common:core.app.Share link')}
+            {t('publish:web_version')}
           </Box>
-          <QuestionTip label={t('common:core.app.Share link desc detail')} />
         </HStack>
         <Button
           variant={'whitePrimary'}
@@ -108,6 +109,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
               )}
               <Th>{t('common:support.outlink.Usage points')}</Th>
               <Th>{t('common:core.app.share.Is response quote')}</Th>
+              <Th>{t('publish:anonymous_login')}</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('common:core.app.share.Ip limit title')}</Th>
@@ -142,6 +144,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                     : ''}
                 </Td>
                 <Td>{item.responseDetail ? '✔' : '✖'}</Td>
+                <Td>{item.allowAnonymous ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -187,6 +190,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 showRawSource: item.showRawSource ?? false,
                                 // showFullText: item.showFullText ?? false,
                                 showNodeStatus: item.showNodeStatus ?? false,
+                                allowAnonymous: item.allowAnonymous ?? true,
                                 limit: item.limit
                               })
                           },
@@ -380,7 +384,21 @@ function EditLinkModal({
                   })}
                 />
               </Flex>
-
+              <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+                <Flex alignItems={'center'}>
+                  <FormLabel>{t('publish:anonymous_login')}</FormLabel>
+                  <QuestionTip
+                    ml={1}
+                    label={
+                      <UnorderedList>
+                        <ListItem>{t('publish:anonymous_login_enabled_tip')}</ListItem>
+                        <ListItem>{t('publish:anonymous_login_disabled_tip')}</ListItem>
+                      </UnorderedList>
+                    }
+                  ></QuestionTip>
+                </Flex>
+                <Switch {...register('allowAnonymous')} />
+              </Flex>
               <Flex alignItems={'center'} mt={4}>
                 <Flex flex={'0 0 90px'} alignItems={'center'}>
                   <FormLabel>{t('publish:token_auth')}</FormLabel>

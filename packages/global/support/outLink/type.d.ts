@@ -67,6 +67,8 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   // showFullText?: boolean;
   // whether to show the complete quote
   showRawSource?: boolean;
+  // whether to allow anonymous access
+  allowAnonymous?: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -93,6 +95,7 @@ export type OutLinkEditType<T = undefined> = {
   showNodeStatus?: OutLinkSchema<T>['showNodeStatus'];
   // showFullText?: OutLinkSchema<T>['showFullText'];
   showRawSource?: OutLinkSchema<T>['showRawSource'];
+  allowAnonymous?: OutLinkSchema<T>['allowAnonymous'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation

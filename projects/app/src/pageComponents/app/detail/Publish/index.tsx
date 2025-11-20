@@ -30,8 +30,8 @@ const OutLink = () => {
   const publishList = useRef([
     {
       icon: '/imgs/modal/shareFill.svg',
-      title: t('common:core.app.Share link'),
-      desc: t('common:core.app.Share link desc'),
+      title: t('publish:web_version'),
+      desc: t('publish:web_version_desc'),
       value: PublishChannelEnum.share,
       isProFn: false
     },

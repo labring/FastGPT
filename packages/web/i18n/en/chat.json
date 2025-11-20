@@ -135,5 +135,6 @@
   "database_sql_query": "SQL statement",
   "search_result": "Search result",
   "database_search_results": "Database search results",
-  "other_knowledge_base_search_results": "Search results from other knowledge bases"
+  "other_knowledge_base_search_results": "Search results from other knowledge bases",
+  "no_auth_to_chat": "您没有权限访问该应用"
 }

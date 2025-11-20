@@ -42,6 +42,11 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { getInitChatInfo } from '@/web/core/chat/api';
+import LoginModal from '@/pageComponents/login/LoginModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getTokenLogin } from '@/web/support/user/api';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -57,6 +62,7 @@ type Props = {
   responseDetail: boolean;
   // showFullText: boolean;
   showNodeStatus: boolean;
+  allowAnonymous?: boolean;
 };
 
 const OutLink = (props: Props) => {
@@ -316,10 +322,16 @@ const OutLink = (props: Props) => {
 const Render = (props: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { shareId, authToken, customUid, appId } = props;
+  const { shareId, authToken, customUid, appId, allowAnonymous } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
+
+  // 确认状态管理
+  const [isConfirmed, setIsConfirmed] = useState(() => {
+    // 如果允许匿名访问，默认为已确认
+    return allowAnonymous !== false;
+  });
 
   const chatHistoryProviderParams = useMemo(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId || '' };
@@ -373,6 +385,90 @@ const Render = (props: Props) => {
       });
     }
   });
+  const { feConfigs } = useSystemStore();
+  // 自动登录检查组件
+  const AutoLoginChecker = () => {
+    const [isChecking, setIsChecking] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+
+    const checkAutoLogin = async () => {
+      try {
+        // 1. 尝试通过 tokenLogin 自动登录
+        await getTokenLogin();
+
+        // 2. 登录成功，验证应用权限
+        const response = await getInitChatInfo({ appId });
+
+        if (response.appId === appId) {
+          // 3. 权限验证通过，设置确认状态
+          setIsConfirmed(true);
+        } else {
+          // 4. 无应用权限
+          setShowLoginModal(true);
+        }
+      } catch (error) {
+        // 5. 自动登录失败，显示登录页面
+        setShowLoginModal(true);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    useEffect(() => {
+      checkAutoLogin();
+    }, []);
+
+    const handleLoginSuccess = async () => {
+      try {
+        // 验证应用权限
+        const response = await getInitChatInfo({ appId });
+
+        if (response.appId === appId) {
+          // 权限验证通过，设置确认状态
+          setIsConfirmed(true);
+          return true;
+        } else {
+          // 权限验证失败，显示错误提示
+          toast({ title: t('chat:no_auth_to_chat'), status: 'error' });
+          return false;
+        }
+      } catch (error) {
+        toast({ title: t('login:login_failed'), status: 'error' });
+        return false;
+      }
+    };
+
+    if (isChecking) {
+      return (
+        <>
+          <NextHead title={feConfigs?.systemTitle} />
+          <MyBox
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            h="100vh"
+            isLoading={isChecking}
+          ></MyBox>
+        </>
+      );
+    }
+
+    if (showLoginModal) {
+      return (
+        <>
+          <NextHead title={feConfigs?.systemTitle} />
+          <LoginModal onSuccess={handleLoginSuccess} />
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  // 当不允许匿名访问且未确认时，显示自动登录检查组件
+  if (allowAnonymous === false && !isConfirmed) {
+    return <AutoLoginChecker />;
+  }
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
@@ -406,7 +502,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSource showNodeStatus responseDetail'
+        'appId showRawSource showNodeStatus responseDetail allowAnonymous'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -428,8 +524,9 @@ export async function getServerSideProps(context: any) {
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
+      allowAnonymous: app?.allowAnonymous ?? true,
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login']))
     }
   };
 }
