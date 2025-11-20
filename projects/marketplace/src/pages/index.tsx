@@ -259,6 +259,7 @@ const ToolkitMarketplace = () => {
           </Flex>
 
           <Box
+            zIndex={100}
             h={showCompactSearch ? '90px' : '0'}
             overflow={'hidden'}
             position={'absolute'}
