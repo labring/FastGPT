@@ -200,16 +200,16 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         updatingToolIdsDispatch.add(tool.id);
 
         try {
-          // 获取下载 URL
+          // Get download URL
           const downloadUrl = await getMarketplaceDownloadURL(tool.id);
           if (!downloadUrl) return;
 
-          // 调用安装接口进行更新
+          // Call install interface for update
           await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
           });
 
-          // 如果当前选中的工具是要更新的工具，更新其状态
+          // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
           }
