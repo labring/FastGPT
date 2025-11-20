@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { getDownloadCounts } from '../downloadCount';
+import axios from 'axios';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -16,10 +17,15 @@ const localDataFilePath = join(tmpdir(), 'data.json');
 export const getToolList = async () => {
   if (!global.toolListData || global.toolListData.length === 0 || global.expire < new Date()) {
     global.expire = new Date(Date.now() + 1000 * 10 * 60); // 10 minutes
-
     // download the file to local
-    const res = await fetch(dataFileURL);
-    await writeFile(localDataFilePath, Buffer.from(await res.arrayBuffer()));
+    const res = await axios.get(dataFileURL, {
+      responseType: 'arraybuffer',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    await writeFile(localDataFilePath, Buffer.from(res.data));
+
     const [data, downloadCount] = await Promise.all([
       readFile(localDataFilePath, 'utf-8'),
       getDownloadCounts()

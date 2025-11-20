@@ -456,9 +456,7 @@ const ToolkitMarketplace = () => {
                       key={tool.id}
                       item={tool}
                       mode="marketplace"
-                      onInstall={() => {
-                        onDownload(tool.id);
-                      }}
+                      onInstall={() => onDownload(tool.id)}
                       onClickCard={() => setSelectedTool(tool)}
                     />
                   );

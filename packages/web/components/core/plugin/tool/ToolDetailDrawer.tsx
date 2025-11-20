@@ -187,7 +187,7 @@ const ToolDetailDrawer = ({
   const [toolDetail, setToolDetail] = useState<
     { tools: Array<toolDetailType & { readme: string }>; downloadUrl: string } | undefined
   >(undefined);
-  const [loading, setLoading] = useState(false);
+  const [loadingDetail, setLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string>('');
   const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
 
@@ -336,7 +336,7 @@ const ToolDetailDrawer = ({
                     <Button
                       flex={buttonFlex}
                       variant={isInstalled ? 'primaryOutline' : 'primary'}
-                      isLoading={isLoading || loading}
+                      isLoading={isLoading || loadingDetail}
                       isDisabled={isUpdating}
                       onClick={async () => {
                         onToggleInstall(!isInstalled);
@@ -351,7 +351,12 @@ const ToolDetailDrawer = ({
                           : t('app:toolkit_install')}
                     </Button>
                     {hasUpdateButton && (
-                      <Button variant="primary" flex={1} isLoading={isUpdating} onClick={onUpdate}>
+                      <Button
+                        variant="primary"
+                        flex={1}
+                        isLoading={isUpdating || loadingDetail}
+                        onClick={onUpdate}
+                      >
                         {t('app:custom_plugin_update')}
                       </Button>
                     )}

@@ -121,7 +121,7 @@ export const getDownloadCounts = async () => {
       }
     }
   ]);
-  console.log(dbCounts);
+
   // Create result map with aggregated data
   const resultMap = new Map<string, { type: string; downloadCount: number }>();
 
