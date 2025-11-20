@@ -2,10 +2,11 @@ import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { getDownloadCounts } from '../downloadCount';
 
 declare global {
   // eslint-disable-next-line no-var
-  var toolListData: Array<ToolDetailType>;
+  var toolListData: Array<ToolDetailType & { downloadCount: number }>;
   var expire: Date;
 }
 
@@ -20,7 +21,12 @@ export const getToolList = async () => {
     const res = await fetch(dataFileURL);
     await writeFile(localDataFilePath, Buffer.from(await res.arrayBuffer()));
     const data = await readFile(localDataFilePath, 'utf-8');
-    global.toolListData = JSON.parse(data);
+    const downloadCount = await getDownloadCounts();
+
+    global.toolListData = JSON.parse(data).map((item: ToolDetailType) => ({
+      ...item,
+      downloadCount: downloadCount.get(item.toolId)?.downloadCount ?? 0
+    }));
   }
   return global.toolListData;
 };

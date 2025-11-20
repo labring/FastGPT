@@ -7,19 +7,16 @@ const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
 
 // Create intersection types for extended schemas
-export const MarketplaceToolListItemSchema = formatToolSimpleSchema.extend({
-  downloadUrl: z.string()
-});
+export const MarketplaceToolListItemSchema = formatToolSimpleSchema;
 export type MarketplaceToolListItemType = ToolSimpleType & {
-  downloadUrl: string;
+  downloadCount: number;
 };
 
 export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
   readme: z.string().optional()
 });
 export const MarketplaceToolDetailSchema = z.object({
-  tools: z.array(MarketplaceToolDetailItemSchema),
-  downloadUrl: z.string()
+  tools: z.array(MarketplaceToolDetailItemSchema)
 });
 
 // List
@@ -57,7 +54,12 @@ export type GetSystemInstalledPluginsQueryType = z.infer<
   typeof GetSystemInstalledPluginsQuerySchema
 >;
 export const GetSystemInstalledPluginsResponseSchema = z.object({
-  ids: z.array(z.string())
+  list: z.array(
+    z.object({
+      id: z.string(),
+      version: z.string()
+    })
+  )
 });
 export type GetSystemInstalledPluginsResponseType = z.infer<
   typeof GetSystemInstalledPluginsResponseSchema

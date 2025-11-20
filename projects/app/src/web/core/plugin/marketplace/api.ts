@@ -21,3 +21,6 @@ export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQueryType
 
 export const getMarketPlaceToolTags = () =>
   GET<GetMarketplaceToolTagsResponseType>('/marketplace/api/tool/tags');
+
+export const getMarketplaceDownloadURL = (toolId: string) =>
+  GET<string>('/marketplace/api/tool/getDownloadUrl', { toolId });

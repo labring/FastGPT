@@ -342,9 +342,10 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     item={tool}
                     systemTitle={feConfigs?.systemTitle}
                     mode="team"
-                    onClickButton={(installed) => toggleInstall({ pluginId: tool.id, installed })}
+                    onInstall={() => toggleInstall({ pluginId: tool.id, installed: true })}
+                    onDelete={() => toggleInstall({ pluginId: tool.id, installed: false })}
                     onClickCard={() => setSelectedTool(tool)}
-                    isLoading={loadingPluginIds.has(tool.id)}
+                    isInstallingOrDeleting={loadingPluginIds.has(tool.id)}
                   />
                 );
               })}
