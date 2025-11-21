@@ -84,6 +84,7 @@ export const presignVariablesFileUrls = async ({
           cloneVars[item.key] = await Promise.all(
             val.map(async (item) => {
               if (!item.key) return item;
+
               const url = await getS3ChatSource().createGetChatFileURL({
                 key: item.key,
                 external: true

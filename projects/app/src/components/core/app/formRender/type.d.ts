@@ -73,7 +73,6 @@ type SpecificProps =
   | ({
       // fileSelect
       inputType: InputTypeEnum.fileSelect;
-      setUploading?: React.Dispatch<React.SetStateAction<boolean>>;
       form?: UseFormReturn<any>;
       fieldName?: string;
       canLocalUpload?: boolean;

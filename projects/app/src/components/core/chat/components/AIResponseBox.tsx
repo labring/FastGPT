@@ -32,7 +32,7 @@ import { SelectOptionsComponent, FormInputComponent } from './Interactive/Intera
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
-import { WorkflowAuthContext } from '../ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useCreation } from 'ahooks';
 
 const accordionButtonStyle = {
@@ -99,9 +99,9 @@ const RenderText = React.memo(function RenderText({
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) {
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   const source = useMemo(() => {
     if (!text) return '';

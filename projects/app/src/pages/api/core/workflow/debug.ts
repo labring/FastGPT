@@ -78,7 +78,6 @@ async function handler(
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,
-    cloneVariables: clone(variables),
     query: query,
     chatConfig: chatConfig || app.chatConfig,
     histories: history,

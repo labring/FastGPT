@@ -12,7 +12,7 @@ import AIModelSelector from '../../../Select/AIModelSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
-import FileSelector from '@/components/core/app/formRender/FileSelector';
+import FileSelector from '../FileSelector/index';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -218,7 +218,6 @@ const InputRender = (props: InputRenderProps) => {
         value={files}
         onChange={onChange}
         isDisabled={isDisabled}
-        onUploading={props.setUploading}
         maxFiles={props.maxFiles}
         canSelectFile={props.canSelectFile}
         canSelectImg={props.canSelectImg}

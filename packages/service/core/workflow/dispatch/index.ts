@@ -4,8 +4,7 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
   NodeOutputItemType,
-  ToolRunResponseItemType,
-  UserChatItemFileItemType
+  ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -60,7 +59,10 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { clone } from 'lodash';
 
-type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
+type Props = Omit<
+  ChatDispatchProps,
+  'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'cloneVariables'
+> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -84,16 +86,7 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const {
-    res,
-    stream,
-    runningUserInfo,
-    runningAppInfo,
-    lastInteractive,
-    histories,
-    query,
-    cloneVariables
-  } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
@@ -155,6 +148,7 @@ export async function dispatchWorkFlow({
   }
 
   // Get default variables
+  const cloneVariables = clone(data.variables);
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...(await getSystemVariables({

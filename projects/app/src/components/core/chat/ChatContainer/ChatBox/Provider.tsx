@@ -25,7 +25,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
-import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 export type ChatProviderProps = {
   appId: string;
@@ -73,8 +73,6 @@ type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAut
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
-  variableUploading: boolean;
-  setVariableUploading: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -131,11 +129,7 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     customUrl: ''
   },
   // @ts-ignore
-  variablesForm: undefined,
-  variableUploading: false,
-  setVariableUploading: function (value: React.SetStateAction<boolean>): void {
-    throw new Error('Function not implemented.');
-  }
+  variablesForm: undefined
 });
 
 const Provider = ({
@@ -192,7 +186,6 @@ const Provider = ({
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
-  const [variableUploading, setVariableUploading] = useState<boolean>(false);
   const {
     audioLoading,
     audioPlaying,
@@ -259,9 +252,7 @@ const Provider = ({
     isChatting,
     chatInputGuide,
     getHistoryResponseData,
-    chatType,
-    variableUploading,
-    setVariableUploading
+    chatType
   };
 
   return (

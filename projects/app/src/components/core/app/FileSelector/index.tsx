@@ -29,7 +29,7 @@ import { useContextSelector } from 'use-context-selector';
 import { POST } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 const FileSelector = ({
   value,
@@ -43,12 +43,10 @@ const FileSelector = ({
   customFileExtensionList,
   canLocalUpload,
   canUrlUpload,
-  isDisabled = false,
-  onUploading
+  isDisabled = false
 }: AppFileSelectConfigType & {
   value: UserInputFileItemType[];
   onChange: (e: any[]) => void;
-  onUploading?: (e: boolean) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -57,12 +55,13 @@ const FileSelector = ({
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
-
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const setFileUploadingCount = useContextSelector(
+    WorkflowRuntimeContext,
+    (v) => v.setFileUploadingCount
+  );
 
   const handleChangeFiles = useCallback(
     (files: UserInputFileItemType[]) => {
@@ -100,12 +99,14 @@ const FileSelector = ({
 
       files.forEach((file) => {
         file.status = 1;
+        file.process = 0;
       });
       handleChangeFiles(files);
 
       await Promise.allSettled(
         filterFiles.map(async (file) => {
           if (!file.rawFile) return;
+          setFileUploadingCount((state) => state + 1);
 
           try {
             // Get Upload Post Presigned URL
@@ -127,18 +128,12 @@ const FileSelector = ({
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
-
-                handleChangeFiles(
-                  valueRef.current.map((item) => {
-                    if (item.id === file.id) {
-                      return {
-                        ...item,
-                        process: percent
-                      };
-                    }
-                    return item;
-                  })
-                );
+                files.forEach((item) => {
+                  if (item.id === file.id) {
+                    item.process = percent;
+                  }
+                });
+                handleChangeFiles(files);
               }
             });
             const previewUrl = await getPresignedChatFileGetUrl({
@@ -148,36 +143,28 @@ const FileSelector = ({
             });
 
             // Update file url and key
-            handleChangeFiles(
-              valueRef.current.map((item) => {
-                if (item.id === file.id) {
-                  return {
-                    ...item,
-                    url: previewUrl,
-                    key: fields.key,
-                    process: 100
-                  };
-                }
-                return item;
-              })
-            );
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.url = previewUrl;
+                item.key = fields.key;
+                item.process = 100;
+              }
+            });
+            handleChangeFiles(files);
           } catch (error) {
-            handleChangeFiles(
-              valueRef.current.map((item) => {
-                if (item.id === file.id) {
-                  return {
-                    ...item,
-                    error: getErrText(error)
-                  };
-                }
-                return item;
-              })
-            );
+            files.forEach((item) => {
+              if (item.id === file.id) {
+                item.error = getErrText(error);
+              }
+            });
+            handleChangeFiles(files);
           }
+
+          setFileUploadingCount((state) => state - 1);
         })
       );
     },
-    [handleChangeFiles, appId, chatId, outLinkAuthData]
+    [handleChangeFiles, setFileUploadingCount, appId, chatId, outLinkAuthData]
   );
 
   // Selector props
@@ -233,7 +220,7 @@ const FileSelector = ({
             })
         )
       );
-      const newFiles = [...loadFiles, ...valueRef.current];
+      const newFiles = [...loadFiles, ...value];
       handleChangeFiles(newFiles);
       uploadFiles(newFiles);
     },
@@ -371,10 +358,6 @@ const FileSelector = ({
   const isUploading = value.some((file) => !file.url && !file.error);
   const disabled = isDisabled || isUploading;
 
-  useEffect(() => {
-    onUploading?.(isUploading);
-  }, [isUploading]);
-
   return (
     <>
       {/* Selector */}
@@ -442,7 +425,7 @@ const FileSelector = ({
                 zIndex={10}
               />
               <Input
-                isDisabled={isMaxSelected || isDisabled}
+                isDisabled={isMaxSelected || disabled}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onBlur={(e) => handleAddUrl(e.target.value)}
@@ -486,7 +469,7 @@ const FileSelector = ({
 
                     {/* Status icon */}
                     <>
-                      {!!file?.url || !!file?.error ? (
+                      {!!file?.url || !!file?.error || file.process === undefined ? (
                         <IconButton
                           size={'xsSquare'}
                           borderRadius={'xs'}
@@ -499,7 +482,7 @@ const FileSelector = ({
                       ) : (
                         <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
                           <CircularProgress
-                            value={file?.process}
+                            value={file.process}
                             color="primary.600"
                             bg={'white'}
                             size={'1.2rem'}

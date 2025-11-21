@@ -51,7 +51,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
 
   const variables = await presignVariablesFileUrls({
     variables: chat?.variables,
-    variableConfig: chatConfig.variables
+    variableConfig: chat?.variableList
   });
 
   jsonRes<InitChatResponse>(res, {

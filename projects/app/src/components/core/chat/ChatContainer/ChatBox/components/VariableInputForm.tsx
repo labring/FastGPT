@@ -13,7 +13,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { ChatBoxContext } from '../Provider';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 const VariableInputForm = ({
   chatForm,
@@ -32,6 +32,7 @@ const VariableInputForm = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   const showExternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(
     chatType
@@ -74,21 +75,6 @@ const VariableInputForm = ({
 
   const isDisabled = chatType === ChatTypeEnum.log;
 
-  const setVariableUploading = useContextSelector(ChatBoxContext, (v) => v.setVariableUploading);
-
-  const [uploadingKeys, setUploadingKeys] = useState<Record<string, boolean>>({});
-  const uploading = Object.values(uploadingKeys).some(Boolean);
-  const getSetUploading = (key: string) => (val: boolean | ((prev: boolean) => boolean)) => {
-    setUploadingKeys((prev) => ({
-      ...prev,
-      [key]: typeof val === 'function' ? val(prev[key] || false) : val
-    }));
-  };
-
-  useEffect(() => {
-    setVariableUploading(uploading);
-  }, [uploading, setVariableUploading]);
-
   return hasVariables ? (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
@@ -126,7 +112,6 @@ const VariableInputForm = ({
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
-                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -170,7 +155,6 @@ const VariableInputForm = ({
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
-                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -180,7 +164,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
-                isDisabled={uploading}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -213,7 +197,6 @@ const VariableInputForm = ({
                   bg={'myGray.50'}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
-                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -223,7 +206,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
-                isDisabled={uploading}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}

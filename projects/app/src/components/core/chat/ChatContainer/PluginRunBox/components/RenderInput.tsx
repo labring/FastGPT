@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -21,7 +20,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect } from 'ahooks';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -40,9 +39,9 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   const { llmModelList } = useSystemStore();
 
@@ -169,9 +168,9 @@ const RenderInput = () => {
     });
   }, [histories, formatPluginInputs]);
 
-  const [uploading, setUploading] = useState(false);
+  const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
-  const fileUploading = uploading || hasFileUploading;
+  const fileUploading = formFileUploading || hasFileUploading;
   const hasHistory = histories.length > 0;
   const isDisabledInput = !!hasHistory;
 
@@ -283,7 +282,6 @@ const RenderInput = () => {
                       onChange={onChange}
                       isDisabled={isDisabledInput}
                       isInvalid={!!error}
-                      setUploading={setUploading}
                       inputType={nodeInputTypeToInputType(input.renderTypeList)}
                       form={variablesForm}
                       fieldName={inputKey}

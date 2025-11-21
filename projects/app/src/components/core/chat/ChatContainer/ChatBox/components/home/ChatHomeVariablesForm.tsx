@@ -10,6 +10,7 @@ import { variableInputTypeToInputType } from '@/components/core/app/formRender/u
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { UseFormReturn } from 'react-hook-form';
 import type { ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext';
 
 type Props = {
   chatForm: UseFormReturn<ChatBoxInputFormType>;
@@ -19,7 +20,6 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
   const { t } = useTranslation();
 
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
-  const setVariableUploading = useContextSelector(ChatBoxContext, (v) => v.setVariableUploading);
 
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const externalVariableList = variableList.filter(
@@ -29,18 +29,7 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
 
-  const [uploadingKeys, setUploadingKeys] = useState<Record<string, boolean>>({});
-  const uploading = Object.values(uploadingKeys).some(Boolean);
-  const getSetUploading = (key: string) => (val: boolean | ((prev: boolean) => boolean)) => {
-    setUploadingKeys((prev) => ({
-      ...prev,
-      [key]: typeof val === 'function' ? val(prev[key] || false) : val
-    }));
-  };
-
-  useEffect(() => {
-    setVariableUploading(uploading);
-  }, [uploading, setVariableUploading]);
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   return (
     <Card
@@ -62,7 +51,6 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
                 inputType={variableInputTypeToInputType(item.type, item.valueType)}
                 form={variablesForm}
                 bg={'myGray.50'}
-                setUploading={getSetUploading(item.key)}
               />
             ))}
           </>
@@ -79,7 +67,6 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 bg={'myGray.50'}
-                setUploading={getSetUploading(item.key)}
               />
             ))}
           </>
@@ -89,7 +76,7 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
           w={'100%'}
           mt={6}
           variant={'primaryOutline'}
-          isDisabled={uploading}
+          isDisabled={fileUploading}
           onClick={variablesForm.handleSubmit(() => {
             chatForm.setValue('chatStarted', true);
           })}

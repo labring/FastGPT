@@ -185,7 +185,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
         variables,
-        cloneVariables: clone(variables),
         query: removeEmptyUserInput(userQuestion.value),
         lastInteractive: interactive,
         chatConfig,

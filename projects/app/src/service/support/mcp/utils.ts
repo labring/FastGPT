@@ -234,7 +234,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       variables,
-      cloneVariables: clone(variables),
       query: removeEmptyUserInput(userQuestion.value),
       chatConfig,
       histories: [],

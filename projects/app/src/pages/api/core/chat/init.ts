@@ -51,7 +51,7 @@ async function handler(
 
   const variables = await presignVariablesFileUrls({
     variables: chat?.variables,
-    variableConfig: chatConfig.variables
+    variableConfig: chat?.variableList
   });
 
   return {
