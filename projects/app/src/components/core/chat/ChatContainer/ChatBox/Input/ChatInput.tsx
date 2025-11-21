@@ -66,6 +66,7 @@ const ChatInput = ({
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
   const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
   const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
+  const variableUploading = useContextSelector(ChatBoxContext, (v) => v.variableUploading);
 
   const fileCtrl = useFieldArray({
     control,
@@ -95,7 +96,7 @@ const ChatInput = ({
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const canSendMessage = havInput && !hasFileUploading;
+  const canSendMessage = havInput && !hasFileUploading && !variableUploading;
   const canUploadFile =
     showSelectFile ||
     showSelectImg ||

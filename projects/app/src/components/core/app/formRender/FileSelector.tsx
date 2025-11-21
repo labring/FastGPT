@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { UserInputFileItemType } from '../../chat/ChatContainer/ChatBox/type';
 import {
   Box,
@@ -60,6 +60,9 @@ const FileSelector = ({
   const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const handleChangeFiles = useCallback(
     (files: UserInputFileItemType[]) => {
@@ -124,12 +127,18 @@ const FileSelector = ({
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
-                files.forEach((item) => {
-                  if (item.id === file.id) {
-                    item.process = percent;
-                  }
-                });
-                handleChangeFiles(files);
+
+                handleChangeFiles(
+                  valueRef.current.map((item) => {
+                    if (item.id === file.id) {
+                      return {
+                        ...item,
+                        process: percent
+                      };
+                    }
+                    return item;
+                  })
+                );
               }
             });
             const previewUrl = await getPresignedChatFileGetUrl({
@@ -139,21 +148,31 @@ const FileSelector = ({
             });
 
             // Update file url and key
-            files.forEach((item) => {
-              if (item.id === file.id) {
-                item.url = previewUrl;
-                item.key = fields.key;
-                item.process = 100;
-              }
-            });
-            handleChangeFiles(files);
+            handleChangeFiles(
+              valueRef.current.map((item) => {
+                if (item.id === file.id) {
+                  return {
+                    ...item,
+                    url: previewUrl,
+                    key: fields.key,
+                    process: 100
+                  };
+                }
+                return item;
+              })
+            );
           } catch (error) {
-            files.forEach((item) => {
-              if (item.id === file.id) {
-                item.error = getErrText(error);
-              }
-            });
-            handleChangeFiles(files);
+            handleChangeFiles(
+              valueRef.current.map((item) => {
+                if (item.id === file.id) {
+                  return {
+                    ...item,
+                    error: getErrText(error)
+                  };
+                }
+                return item;
+              })
+            );
           }
         })
       );
@@ -214,7 +233,7 @@ const FileSelector = ({
             })
         )
       );
-      const newFiles = [...loadFiles, ...value];
+      const newFiles = [...loadFiles, ...valueRef.current];
       handleChangeFiles(newFiles);
       uploadFiles(newFiles);
     },

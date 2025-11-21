@@ -49,6 +49,7 @@ import {
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { clone } from 'lodash';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -184,6 +185,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
         variables,
+        cloneVariables: clone(variables),
         query: removeEmptyUserInput(userQuestion.value),
         lastInteractive: interactive,
         chatConfig,

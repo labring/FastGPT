@@ -61,6 +61,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { clone } from 'lodash';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -301,6 +302,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           runtimeNodes,
           runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
           variables,
+          cloneVariables: clone(variables),
           query: removeEmptyUserInput(userQuestion.value),
           lastInteractive: interactive,
           chatConfig,

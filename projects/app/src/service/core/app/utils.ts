@@ -83,6 +83,7 @@ export const getScheduleTriggerApp = async () => {
               runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
               runtimeEdges: storeEdges2RuntimeEdges(edges),
               variables: {},
+              cloneVariables: {},
               query: userQuery,
               chatConfig,
               histories: [],

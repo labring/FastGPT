@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
@@ -13,6 +13,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { ChatBoxContext } from '../Provider';
 
 const VariableInputForm = ({
   chatForm,
@@ -73,6 +74,21 @@ const VariableInputForm = ({
 
   const isDisabled = chatType === ChatTypeEnum.log;
 
+  const setVariableUploading = useContextSelector(ChatBoxContext, (v) => v.setVariableUploading);
+
+  const [uploadingKeys, setUploadingKeys] = useState<Record<string, boolean>>({});
+  const uploading = Object.values(uploadingKeys).some(Boolean);
+  const getSetUploading = (key: string) => (val: boolean | ((prev: boolean) => boolean)) => {
+    setUploadingKeys((prev) => ({
+      ...prev,
+      [key]: typeof val === 'function' ? val(prev[key] || false) : val
+    }));
+  };
+
+  useEffect(() => {
+    setVariableUploading(uploading);
+  }, [uploading, setVariableUploading]);
+
   return hasVariables ? (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
@@ -110,6 +126,7 @@ const VariableInputForm = ({
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
+                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -153,6 +170,7 @@ const VariableInputForm = ({
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
+                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -162,6 +180,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={uploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -194,6 +213,7 @@ const VariableInputForm = ({
                   bg={'myGray.50'}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
+                  setUploading={getSetUploading(item.key)}
                 />
               );
             })}
@@ -203,6 +223,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={uploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
