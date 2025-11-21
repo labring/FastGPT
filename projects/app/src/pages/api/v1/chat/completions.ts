@@ -33,7 +33,6 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUserChatInfo } from '@fastgpt/service/support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -61,6 +60,7 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -185,6 +185,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId
       });
     })();
+
+    if (
+      !(await teamFrequencyLimit({
+        teamId,
+        keyPrefix: 'chat:completions',
+        seconds: 60,
+        limit: 5000,
+        res
+      }))
+    ) {
+      return {};
+    }
     retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
