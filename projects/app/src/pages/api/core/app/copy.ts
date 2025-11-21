@@ -40,7 +40,7 @@ async function handler(
     const avatar = await copyAvatarImage({
       teamId,
       imageUrl: app.avatar,
-      ttl: true,
+      temporary: true,
       session
     });
 

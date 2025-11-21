@@ -7,15 +7,19 @@ import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
+import { addDays, addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
+import { getFileS3Key } from '../../../../common/s3/utils';
+import { S3ChatSource } from '../../../../common/s3/sources/chat';
+import path from 'path';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -185,6 +189,7 @@ export const getFileContentFromLinks = async ({
           if (isInternalAddress(url)) {
             return Promise.reject('Url is invalid');
           }
+
           // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,
@@ -194,20 +199,23 @@ export const getFileContentFromLinks = async ({
           const buffer = Buffer.from(response.data, 'binary');
 
           // Get file name
-          const filename = (() => {
+          const { filename, extension, imageParsePrefix } = (() => {
             const contentDisposition = response.headers['content-disposition'];
             if (contentDisposition) {
               const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
               const matches = filenameRegex.exec(contentDisposition);
               if (matches != null && matches[1]) {
-                return decodeURIComponent(matches[1].replace(/['"]/g, ''));
+                const filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+                return {
+                  filename,
+                  extension: path.extname(filename).replace('.', ''),
+                  imageParsePrefix: ``
+                };
               }
             }
 
-            return url;
+            return S3ChatSource.parseChatUrl(url);
           })();
-          // Extension
-          const extension = parseFileExtensionFromUrl(filename);
 
           // Get encoding
           const encoding = (() => {
@@ -223,8 +231,7 @@ export const getFileContentFromLinks = async ({
             return detectFileEncoding(buffer);
           })();
 
-          // Read file
-          const { rawText } = await readRawContentByFileBuffer({
+          const { rawText } = await readS3FileContentByBuffer({
             extension,
             teamId,
             tmbId,
@@ -232,18 +239,25 @@ export const getFileContentFromLinks = async ({
             encoding,
             customPdfParse,
             getFormatText: true,
+            imageKeyOptions: imageParsePrefix
+              ? {
+                  prefix: imageParsePrefix
+                }
+              : undefined,
             usageId
           });
+
+          const replacedText = replaceDatasetQuoteTextWithJWT(rawText, addDays(new Date(), 90));
 
           // Add to buffer
           addRawTextBuffer({
             sourceId: url,
             sourceName: filename,
-            text: rawText,
+            text: replacedText,
             expiredTime: addMinutes(new Date(), 20)
           });
 
-          return formatResponseObject({ filename, url, content: rawText });
+          return formatResponseObject({ filename, url, content: replacedText });
         } catch (error) {
           return formatResponseObject({
             filename: '',

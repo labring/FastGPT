@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
@@ -13,6 +13,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 const VariableInputForm = ({
   chatForm,
@@ -31,6 +32,7 @@ const VariableInputForm = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   const showExternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(
     chatType
@@ -162,6 +164,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -203,6 +206,7 @@ const VariableInputForm = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}

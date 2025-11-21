@@ -49,6 +49,7 @@ import {
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -91,6 +92,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId,
       per: ReadPermissionVal
     });
+
+    if (
+      !(await teamFrequencyLimit({
+        teamId,
+        type: LimitTypeEnum.chat,
+        res
+      }))
+    ) {
+      return;
+    }
 
     const isPlugin = app.type === AppTypeEnum.workflowTool;
     const isTool = app.type === AppTypeEnum.tool;

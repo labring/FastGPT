@@ -15,6 +15,7 @@ import { removeDatasetSyncJobScheduler } from './datasetSync';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -122,6 +123,10 @@ export async function delDatasetRelevantData({
     teamId,
     datasetId: { $in: datasetIds }
   }).session(session);
+
+  for (const datasetId of datasetIds) {
+    await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
+  }
 }
 
 export const deleteDatasets = async ({

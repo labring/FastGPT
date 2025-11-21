@@ -64,23 +64,28 @@ export async function uploadMongoImg({
 export const copyAvatarImage = async ({
   teamId,
   imageUrl,
-  ttl,
+  temporary,
   session
 }: {
   teamId: string;
   imageUrl: string;
-  ttl: boolean;
+  temporary: boolean;
   session?: ClientSession;
 }) => {
   if (!imageUrl) return;
 
-  // S3
-  if (imageUrl.startsWith(`${imageBaseUrl}/${S3Sources.avatar}`)) {
-    const extendName = path.extname(imageUrl);
+  const avatarSource = getS3AvatarSource();
+  if (avatarSource.isAvatarKey(imageUrl)) {
+    const filename = (() => {
+      const last = imageUrl.split('/').pop()?.split('-')[1];
+      if (!last) return getNanoid(6).concat(path.extname(imageUrl));
+      return `${getNanoid(6)}-${last}`;
+    })();
     const key = await getS3AvatarSource().copyAvatar({
-      sourceKey: imageUrl.slice(imageBaseUrl.length),
-      targetKey: `${S3Sources.avatar}/${teamId}/${getNanoid(6)}${extendName}`,
-      ttl
+      key: imageUrl,
+      teamId,
+      filename,
+      temporary
     });
     return key;
   }
@@ -130,9 +135,13 @@ export const removeImageByPath = (path?: string, session?: ClientSession) => {
   if (!name) return;
 
   const id = name.split('.')[0];
-  if (!id || !Types.ObjectId.isValid(id)) return;
+  if (!id) return;
 
-  return MongoImage.deleteOne({ _id: id }, { session });
+  if (Types.ObjectId.isValid(id)) {
+    return MongoImage.deleteOne({ _id: id }, { session });
+  } else if (getS3AvatarSource().isAvatarKey(path)) {
+    return getS3AvatarSource().deleteAvatar(path, session);
+  }
 };
 
 export async function readMongoImg({ id }: { id: string }) {

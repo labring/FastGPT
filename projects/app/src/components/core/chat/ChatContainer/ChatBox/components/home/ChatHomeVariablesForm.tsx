@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
 import { Box, Flex, Card, Button } from '@chakra-ui/react';
@@ -9,6 +10,7 @@ import { variableInputTypeToInputType } from '@/components/core/app/formRender/u
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { UseFormReturn } from 'react-hook-form';
 import type { ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext';
 
 type Props = {
   chatForm: UseFormReturn<ChatBoxInputFormType>;
@@ -26,6 +28,8 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
   const commonVariableList = variableList.filter(
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
+
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   return (
     <Card
@@ -72,6 +76,7 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
           w={'100%'}
           mt={6}
           variant={'primaryOutline'}
+          isDisabled={fileUploading}
           onClick={variablesForm.handleSubmit(() => {
             chatForm.setValue('chatStarted', true);
           })}

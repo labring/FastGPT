@@ -60,7 +60,7 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -189,14 +189,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (
       !(await teamFrequencyLimit({
         teamId,
-        keyPrefix: 'chat:completions',
-        seconds: 60,
-        limit: 5000,
+        type: LimitTypeEnum.chat,
         res
       }))
     ) {
-      return {};
+      return;
     }
+
     retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 

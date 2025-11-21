@@ -23,7 +23,7 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;

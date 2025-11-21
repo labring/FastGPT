@@ -4,7 +4,6 @@ import { ToolSimpleSchema, type ToolSimpleType } from '@fastgpt/global/sdk/fastg
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { getPkgdownloadURL } from '@/service/s3';
 
 export type ToolListQuery = {};
 export type ToolListBody = PaginationProps<{
@@ -13,7 +12,7 @@ export type ToolListBody = PaginationProps<{
 }>;
 
 export type ToolListItem = ToolSimpleType & {
-  downloadUrl: string;
+  downloadCount: number;
 };
 
 export type ToolListResponse = PaginationResponse<ToolListItem>;
@@ -46,7 +45,7 @@ async function handler(
   return {
     list: filteredData.slice(offset, offset + pageSize).map((item) => ({
       ...ToolSimpleSchema.parse(item),
-      downloadUrl: getPkgdownloadURL(item.toolId)
+      downloadCount: item.downloadCount
     })),
     total: filteredData.length
   };

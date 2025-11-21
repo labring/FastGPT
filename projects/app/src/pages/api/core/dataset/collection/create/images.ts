@@ -14,8 +14,12 @@ import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import type { NextApiResponse } from 'next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
-import { addSeconds } from 'date-fns';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { addDays, addSeconds } from 'date-fns';
+import { S3Sources } from '@fastgpt/service/common/s3/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 const authUploadLimit = (tmbId: string, num: number) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -56,16 +60,18 @@ async function handler(
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
     }
 
-    // 1. Save image to db
+    // 1. Save image to S3
     const imageIds = await Promise.all(
       files.map(async (file) => {
-        return (
-          await createDatasetImage({
-            teamId,
-            datasetId,
-            file
-          })
-        ).imageId;
+        const filename = path.basename(file.filename);
+        const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
+        return uploadImage2S3Bucket('private', {
+          base64Img: (await fsp.readFile(file.path)).toString('base64'),
+          uploadKey: fileKey,
+          mimetype: file.mimetype,
+          filename,
+          expiredTime: addDays(new Date(), 7)
+        });
       })
     );
 

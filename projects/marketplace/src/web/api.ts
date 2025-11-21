@@ -8,17 +8,24 @@ export const getMarketplaceTools = async (body: ToolListBody) => {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' }
   }).then((res) => res.json());
-  return res.data as Promise<ToolListResponse>;
+  return res.data as ToolListResponse;
 };
 
 export const getMarketplaceToolDetail = async ({ toolId }: { toolId: string }) => {
   const res = await fetch(`api/tool/detail?toolId=${toolId}`, { method: 'GET' }).then((res) =>
     res.json()
   );
-  return res.data as Promise<ToolDetailResponse>;
+  return res.data as ToolDetailResponse;
 };
 
 export const getToolTags = async () => {
   const res = await fetch('api/tool/tags', { method: 'GET' }).then((res) => res.json());
-  return res.data as Promise<Array<SystemPluginToolTagType>>;
+  return res.data as Array<SystemPluginToolTagType>;
+};
+
+export const getDownloadURL = async (toolId: string) => {
+  const res = await fetch(`api/tool/getDownloadUrl?toolId=${toolId}`, { method: 'GET' }).then(
+    (res) => res.json()
+  );
+  return res.data as string;
 };

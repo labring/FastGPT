@@ -53,12 +53,16 @@ import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/const
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
-import { addPreviewUrlToChatItems } from '../../chat/utils';
+import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/utils';
 import type { MCPClient } from '../../app/mcp';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
+import { clone } from 'lodash';
 
-type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
+type Props = Omit<
+  ChatDispatchProps,
+  'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'cloneVariables'
+> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -144,7 +148,7 @@ export async function dispatchWorkFlow({
   }
 
   // Get default variables
-
+  const cloneVariables = clone(data.variables);
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...(await getSystemVariables({
@@ -168,7 +172,8 @@ export async function dispatchWorkFlow({
     workflowDispatchDeep: 0,
     usageId: newUsageId,
     concatUsage,
-    mcpClientMemory
+    mcpClientMemory,
+    cloneVariables
   }).finally(() => {
     if (streamCheckTimer) {
       clearInterval(streamCheckTimer);
@@ -203,7 +208,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     usageId,
     concatUsage,
     runningUserInfo: { teamId },
-    mcpClientMemory
+    mcpClientMemory,
+    cloneVariables
   } = data;
 
   // Over max depth
@@ -225,6 +231,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
       [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
         variables,
+        cloneVariables,
         removeObj: externalProvider.externalWorkflowVariables,
         userVariablesConfigs: data.chatConfig?.variables
       }),
@@ -1057,6 +1064,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
     [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
       variables,
+      cloneVariables,
       removeObj: externalProvider.externalWorkflowVariables,
       userVariablesConfigs: data.chatConfig?.variables
     }),
@@ -1091,6 +1099,15 @@ const getSystemVariables = async ({
       const val = variables[item.label] || variables[item.key] || item.defaultValue;
       const actualValue = anyValueDecrypt(val);
       variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
+    }
+    //  文件类型全局变量，签发成 string[] 格式
+    else if (item.type === VariableInputEnum.file) {
+      const vars = await presignVariablesFileUrls({
+        variables,
+        variableConfig: [item]
+      });
+
+      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
     }
     // API
     else if (variables[item.label] !== undefined) {

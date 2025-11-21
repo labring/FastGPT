@@ -31,6 +31,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import { getFileS3Key } from '../../../../../common/s3/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -119,7 +120,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileLinks,
       inputFiles: globalFiles,
       hasReadFilesTool,
-      usageId
+      usageId,
+      appId: props.runningAppInfo.id,
+      chatId: props.chatId,
+      uId: props.uid
     });
 
     const concatenateSystemPrompt = [
@@ -277,7 +281,10 @@ const getMultiInput = async ({
   customPdfParse,
   inputFiles,
   hasReadFilesTool,
-  usageId
+  usageId,
+  appId,
+  chatId,
+  uId
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   histories: ChatItemType[];
@@ -288,6 +295,9 @@ const getMultiInput = async ({
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
   usageId?: string;
+  appId: string;
+  chatId?: string;
+  uId: string;
 }) => {
   // Not file quote
   if (!fileLinks || hasReadFilesTool) {

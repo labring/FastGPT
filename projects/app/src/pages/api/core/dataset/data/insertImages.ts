@@ -1,19 +1,20 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
-import { addSeconds } from 'date-fns';
+import { addDays, addSeconds } from 'date-fns';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { removeDatasetImageExpiredTime } from '@fastgpt/service/core/dataset/image/utils';
+import path from 'node:path';
+import fsp from 'node:fs/promises';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 export type insertImagesQuery = {};
 
@@ -60,17 +61,20 @@ async function handler(
 
     await authUploadLimit(tmbId, files.length);
 
-    // 1. Upload images to db
+    // 1. Upload images to S3
     const imageIds = await Promise.all(
-      files.map(async (file) => {
-        return (
-          await createDatasetImage({
-            teamId,
+      files.map(async (file) =>
+        uploadImage2S3Bucket('private', {
+          base64Img: (await fsp.readFile(file.path)).toString('base64'),
+          uploadKey: getFileS3Key.dataset({
             datasetId: dataset._id,
-            file
-          })
-        ).imageId;
-      })
+            filename: path.basename(file.filename)
+          }).fileKey,
+          mimetype: file.mimetype,
+          filename: path.basename(file.filename),
+          expiredTime: addDays(new Date(), 7)
+        })
+      )
     );
 
     // 2. Insert images to training queue
@@ -102,13 +106,6 @@ async function handler(
         data: imageIds.map((item, index) => ({
           imageId: item
         })),
-        session
-      });
-
-      // 3. Clear ttl
-      await removeDatasetImageExpiredTime({
-        ids: imageIds,
-        collectionId,
         session
       });
     });

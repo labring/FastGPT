@@ -10,6 +10,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 
 async function handler(
   req: NextApiRequest,
@@ -48,12 +49,17 @@ async function handler(
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
+  const variables = await presignVariablesFileUrls({
+    variables: chat?.variables,
+    variableConfig: chat?.variableList
+  });
+
   return {
     chatId,
     appId,
     title: chat?.title,
     userAvatar: undefined,
-    variables: chat?.variables,
+    variables,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

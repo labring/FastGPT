@@ -126,12 +126,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     teamId,
     tmbId,
     apiFileId,
-    customPdfParse
+    customPdfParse,
+    datasetId
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
+    datasetId: string;
   }): Promise<ApiFileReadContentResponse> => {
     const data = await request<
       {
@@ -161,11 +163,12 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         };
       }
 
-      const rawText = await readFileRawTextByUrl({
+      const { rawText } = await readFileRawTextByUrl({
         teamId,
         tmbId,
         url: previewUrl,
         relatedId: apiFileId,
+        datasetId,
         customPdfParse,
         getFormatText: true
       });

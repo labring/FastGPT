@@ -95,7 +95,6 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
         </Grid>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
-            isOpen={isOpenDatasetSelect}
             defaultSelectedDatasets={selectedDatasets.map((item) => ({
               datasetId: item.datasetId,
               vectorModel: item.vectorModel,

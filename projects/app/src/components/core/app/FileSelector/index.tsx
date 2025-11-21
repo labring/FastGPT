@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { UserInputFileItemType } from '../../chat/ChatContainer/ChatBox/type';
 import {
   Box,
@@ -29,7 +29,7 @@ import { useContextSelector } from 'use-context-selector';
 import { POST } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 const FileSelector = ({
   value,
@@ -43,12 +43,10 @@ const FileSelector = ({
   customFileExtensionList,
   canLocalUpload,
   canUrlUpload,
-  isDisabled = false,
-  onUploading
+  isDisabled = false
 }: AppFileSelectConfigType & {
   value: UserInputFileItemType[];
   onChange: (e: any[]) => void;
-  onUploading?: (e: boolean) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -57,9 +55,13 @@ const FileSelector = ({
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const setFileUploadingCount = useContextSelector(
+    WorkflowRuntimeContext,
+    (v) => v.setFileUploadingCount
+  );
 
   const handleChangeFiles = useCallback(
     (files: UserInputFileItemType[]) => {
@@ -97,12 +99,14 @@ const FileSelector = ({
 
       files.forEach((file) => {
         file.status = 1;
+        file.process = 0;
       });
       handleChangeFiles(files);
 
       await Promise.allSettled(
         filterFiles.map(async (file) => {
           if (!file.rawFile) return;
+          setFileUploadingCount((state) => state + 1);
 
           try {
             // Get Upload Post Presigned URL
@@ -155,10 +159,12 @@ const FileSelector = ({
             });
             handleChangeFiles(files);
           }
+
+          setFileUploadingCount((state) => state - 1);
         })
       );
     },
-    [handleChangeFiles, appId, chatId, outLinkAuthData]
+    [handleChangeFiles, setFileUploadingCount, appId, chatId, outLinkAuthData]
   );
 
   // Selector props
@@ -352,10 +358,6 @@ const FileSelector = ({
   const isUploading = value.some((file) => !file.url && !file.error);
   const disabled = isDisabled || isUploading;
 
-  useEffect(() => {
-    onUploading?.(isUploading);
-  }, [isUploading]);
-
   return (
     <>
       {/* Selector */}
@@ -423,7 +425,7 @@ const FileSelector = ({
                 zIndex={10}
               />
               <Input
-                isDisabled={isMaxSelected || isDisabled}
+                isDisabled={isMaxSelected || disabled}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onBlur={(e) => handleAddUrl(e.target.value)}
@@ -467,7 +469,7 @@ const FileSelector = ({
 
                     {/* Status icon */}
                     <>
-                      {!!file?.url || !!file?.error ? (
+                      {!!file?.url || !!file?.error || file.process === undefined ? (
                         <IconButton
                           size={'xsSquare'}
                           borderRadius={'xs'}
@@ -480,7 +482,7 @@ const FileSelector = ({
                       ) : (
                         <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
                           <CircularProgress
-                            value={file?.process}
+                            value={file.process}
                             color="primary.600"
                             bg={'white'}
                             size={'1.2rem'}

@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps<DelCollectionBody, { id?: string }>)
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId datasetId fileId metadata'
+        fields: '_id teamId type datasetId fileId metadata'
       });
     })
   ).then((res) => {

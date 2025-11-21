@@ -32,6 +32,7 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 const requestLLMPargraph = async ({
   rawText,
@@ -230,12 +231,12 @@ export const datasetParseQueue = async (): Promise<any> => {
           continue;
         }
 
-        // 2. Read source
-        const { title, rawText } = await readDatasetSourceRawText({
+        let { title, rawText } = await readDatasetSourceRawText({
           teamId: data.teamId,
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,
           usageId: data.billId,
+          datasetId: data.datasetId,
           ...sourceReadType
         });
 
@@ -303,6 +304,15 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
 
           // 6. Push to chunk queue
+          const trainingData = chunks.map((item, index) => ({
+            ...item,
+            indexes: item.indexes?.map((text) => ({
+              type: DatasetDataIndexTypeEnum.custom,
+              text
+            })),
+            chunkIndex: index
+          }));
+
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -314,14 +324,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: chunks.map((item, index) => ({
-              ...item,
-              indexes: item.indexes?.map((text) => ({
-                type: DatasetDataIndexTypeEnum.custom,
-                text
-              })),
-              chunkIndex: index
-            })),
+            data: trainingData,
             session
           });
 
@@ -334,26 +337,6 @@ export const datasetParseQueue = async (): Promise<any> => {
               session
             }
           );
-
-          // 8. Remove image ttl
-          const relatedImgId = collection.metadata?.relatedImgId;
-          if (relatedImgId) {
-            await MongoImage.updateMany(
-              {
-                teamId: collection.teamId,
-                'metadata.relatedId': relatedImgId
-              },
-              {
-                // Remove expiredTime to avoid ttl expiration
-                $unset: {
-                  expiredTime: 1
-                }
-              },
-              {
-                session
-              }
-            );
-          }
         });
 
         addLog.debug(`[Parse Queue] Finish`, {

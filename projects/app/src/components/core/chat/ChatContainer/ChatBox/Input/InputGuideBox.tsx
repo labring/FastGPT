@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowAuthContext } from '../../context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 export default function InputGuideBox({
   appId,
@@ -23,7 +23,7 @@ export default function InputGuideBox({
 }) {
   const { t } = useTranslation();
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   const { data = [] } = useRequest2(
     async () => {

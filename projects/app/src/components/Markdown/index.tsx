@@ -54,7 +54,7 @@ const MarkdownRender = ({
 }: Props) => {
   const components = useCreation(() => {
     return {
-      img: Image,
+      img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
       pre: RewritePre,
       code: Code,
       a: (props: any) => (
@@ -145,8 +145,8 @@ function Code(e: any) {
   return Component;
 }
 
-function Image({ src }: { src?: string }) {
-  return <MdImage src={src} />;
+function Image({ src, chatAuthData }: { src?: string; chatAuthData?: AProps['chatAuthData'] }) {
+  return <MdImage src={src} chatAuthData={chatAuthData} />;
 }
 
 function RewritePre({ children }: any) {

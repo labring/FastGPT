@@ -56,13 +56,15 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       },
       {
         label: t('dataset:collection_name'),
-        value: collection.file?.filename || collection?.rawLink || collection?.name
+        value: decodeURIComponent(
+          collection.file?.filename || collection?.rawLink || collection?.name
+        )
       },
       ...(collection.file
         ? [
             {
               label: t('common:core.dataset.collection.metadata.source size'),
-              value: formatFileSize(collection.file.length)
+              value: formatFileSize(collection.file.contentLength || 0)
             }
           ]
         : []),

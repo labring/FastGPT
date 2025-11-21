@@ -47,7 +47,11 @@ const options = {
   scrollBeyondLastLine: false,
   folding: false,
   overviewRulerBorder: false,
-  tabSize: 2
+  tabSize: 2,
+  padding: {
+    top: 8,
+    bottom: 8
+  }
 };
 
 const JSONEditor = ({
@@ -245,10 +249,9 @@ const JSONEditor = ({
       borderWidth={'1px'}
       borderRadius={'sm'}
       borderColor={isInvalid ? 'red.500' : 'myGray.200'}
-      py={2}
       height={height}
       position={'relative'}
-      transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
+      transition={'border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out'}
       _focusWithin={
         isInvalid
           ? {
@@ -257,7 +260,8 @@ const JSONEditor = ({
             }
           : {
               borderColor: 'primary.600',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+              bg: 'white'
             }
       }
       {...props}

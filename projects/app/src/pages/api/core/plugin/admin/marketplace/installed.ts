@@ -15,7 +15,7 @@ export type installedBody = {};
 export type installedResponse = GetSystemInstalledPluginsResponseType;
 
 // 目前只有 tool，所以不需要做判断
-async function handler(
+export async function handler(
   req: ApiRequestProps<installedBody, installedQuery>,
   res: ApiResponseType<any>
 ): Promise<installedResponse> {
@@ -26,7 +26,10 @@ async function handler(
   const tools = await APIGetSystemToolList();
 
   return {
-    ids: tools.map((tool) => tool.id.replace(`${AppToolSourceEnum.systemTool}-`, ''))
+    list: tools.map((tool) => ({
+      id: tool.id.replace(`${AppToolSourceEnum.systemTool}-`, ''),
+      version: tool.version
+    }))
   };
 }
 

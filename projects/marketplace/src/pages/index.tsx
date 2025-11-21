@@ -12,7 +12,12 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { ToolListItem } from '@/pages/api/tool/list';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getMarketplaceToolDetail, getMarketplaceTools, getToolTags } from '@/web/api';
+import {
+  getDownloadURL,
+  getMarketplaceToolDetail,
+  getMarketplaceTools,
+  getToolTags
+} from '@/web/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 import Head from 'next/head';
@@ -25,7 +30,6 @@ const ToolkitMarketplace = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [operatingToolId] = useState<string | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -166,10 +170,29 @@ const ToolkitMarketplace = () => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
-        downloadUrl: tool.downloadUrl
+        downloadCount: tool.downloadCount
       };
     });
   }, [tools, i18n.language, toolTags]);
+
+  const onDownload = useCallback(async (toolId: string) => {
+    try {
+      const url = await getDownloadURL(toolId);
+      if (url) {
+        // Create download link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Can add error prompt here
+    }
+  }, []);
 
   // 使用 IntersectionObserver 监听英雄区域是否在视窗中
   useEffect(() => {
@@ -201,6 +224,8 @@ const ToolkitMarketplace = () => {
     <>
       <Head>
         <title>{t('app:fastgpt_marketplace')}</title>
+        <meta name="description" content={t('app:toolkit_marketplace_title')} />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <MyBox
         bg={'white'}
@@ -234,6 +259,7 @@ const ToolkitMarketplace = () => {
           </Flex>
 
           <Box
+            zIndex={100}
             h={showCompactSearch ? '90px' : '0'}
             overflow={'hidden'}
             position={'absolute'}
@@ -430,18 +456,8 @@ const ToolkitMarketplace = () => {
                     <ToolCard
                       key={tool.id}
                       item={tool}
-                      isLoading={operatingToolId === tool.id}
                       mode="marketplace"
-                      onClickButton={() => {
-                        if (tool.downloadUrl) {
-                          const link = document.createElement('a');
-                          link.href = tool.downloadUrl;
-                          link.download = '';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }
-                      }}
+                      onInstall={() => onDownload(tool.id)}
                       onClickCard={() => setSelectedTool(tool)}
                     />
                   );
@@ -463,14 +479,7 @@ const ToolkitMarketplace = () => {
           // @ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
           onToggleInstall={() => {
-            if (selectedTool.downloadUrl) {
-              const link = document.createElement('a');
-              link.href = selectedTool.downloadUrl;
-              link.download = '';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }
+            onDownload(selectedTool.id);
           }}
         />
       )}

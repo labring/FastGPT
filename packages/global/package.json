@@ -2,7 +2,7 @@
   "name": "@fastgpt/global",
   "version": "1.0.0",
   "dependencies": {
-    "@fastgpt-sdk/plugin": "0.2.15",
+    "@fastgpt-sdk/plugin": "0.2.16",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
     "axios": "^1.12.1",

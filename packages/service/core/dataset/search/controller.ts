@@ -33,6 +33,8 @@ import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
+import { replaceDatasetQuoteTextWithJWT } from '../../../core/dataset/utils';
+import { addDays, addHours } from 'date-fns';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -53,7 +55,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
-  /* 
+  /*
     {
       tags: {
         $and: ["str1","str2"],
@@ -230,7 +232,7 @@ export async function searchDatasetData(
     };
   };
 
-  /* 
+  /*
     Collection metadata filter
     标签过滤：
     1. and 先生效
@@ -903,10 +905,15 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  const finalResult = filterMaxTokensResult.map((item) => {
+    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
+    return item;
+  });
+
   pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
-    searchRes: filterMaxTokensResult,
+    searchRes: finalResult,
     embeddingTokens,
     reRankInputTokens,
     searchMode,

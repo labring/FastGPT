@@ -17,8 +17,8 @@ import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { MongoS3TTL } from '../../common/s3/schema';
 import type { ClientSession } from '../../common/mongo';
+import { removeS3TTL } from '../../common/s3/utils';
 
 type Props = {
   chatId: string;
@@ -56,7 +56,6 @@ const afterProcess = async ({
   contents: (UserChatItemType | AIChatItemType)[];
   session: ClientSession;
 }) => {
-  // Remove ttl
   const fileKeys = contents
     .map((item) => {
       if (item.value && Array.isArray(item.value)) {
@@ -70,8 +69,9 @@ const afterProcess = async ({
     })
     .flat()
     .filter(Boolean) as string[];
+
   if (fileKeys.length > 0) {
-    await MongoS3TTL.deleteMany({ minioKey: { $in: fileKeys } }, { session });
+    await removeS3TTL({ key: fileKeys, bucketName: 'private', session });
   }
 };
 
