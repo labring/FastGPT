@@ -24,6 +24,7 @@ async function handler(
   const { type } = req.query;
 
   const tools = await APIGetSystemToolList();
+  console.log(tools);
 
   return {
     list: tools.map((tool) => ({
@@ -34,3 +35,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { handler };
