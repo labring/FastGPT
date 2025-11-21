@@ -75,10 +75,17 @@ export class S3BaseBucket {
     return this._externalClient ?? this._client;
   }
 
-  move(src: string, dst: string, options?: CopyConditions): Promise<void> {
-    const bucket = this.name;
-    this.client.copyObject(bucket, dst, `/${bucket}/${src}`, options);
-    return this.delete(src);
+  // TODO: 加到 MQ 里保障幂等
+  async move(from: string, to: string, options: CopyConditions): Promise<void> {
+    await this.copy({
+      from,
+      to,
+      options: {
+        copyConditions: options,
+        temporary: false
+      }
+    });
+    await this.delete(from);
   }
 
   async copy({
