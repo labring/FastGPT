@@ -91,7 +91,7 @@ const InputFormEditModal = ({
       }
 
       data.key = data.label;
-      data.valueType = defaultValueType;
+      data.valueType = defaultValueType as WorkflowIOValueTypeEnum;
 
       if (action === 'confirm') {
         onSubmit(data);

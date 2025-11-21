@@ -11,6 +11,7 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
+import { clone } from 'lodash';
 
 async function handler(
   req: NextApiRequest,
@@ -77,6 +78,7 @@ async function handler(
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,
+    cloneVariables: clone(variables),
     query: query,
     chatConfig: chatConfig || app.chatConfig,
     histories: history,

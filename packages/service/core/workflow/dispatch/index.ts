@@ -84,7 +84,16 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
+  const {
+    res,
+    stream,
+    runningUserInfo,
+    runningAppInfo,
+    lastInteractive,
+    histories,
+    query,
+    cloneVariables
+  } = data;
 
   await checkTeamAIPoints(runningUserInfo.teamId);
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
@@ -146,7 +155,6 @@ export async function dispatchWorkFlow({
   }
 
   // Get default variables
-  const cloneVariables = clone(data.variables);
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...(await getSystemVariables({
