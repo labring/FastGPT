@@ -397,15 +397,9 @@ const Render = (props: Props) => {
         await getTokenLogin();
 
         // 2. 登录成功，验证应用权限
-        const response = await getInitChatInfo({ appId });
+        await getInitChatInfo({ appId });
 
-        if (response.appId === appId) {
-          // 3. 权限验证通过，设置确认状态
-          setIsConfirmed(true);
-        } else {
-          // 4. 无应用权限
-          setShowLoginModal(true);
-        }
+        setIsConfirmed(true);
       } catch (error) {
         // 5. 自动登录失败，显示登录页面
         setShowLoginModal(true);
@@ -421,19 +415,17 @@ const Render = (props: Props) => {
     const handleLoginSuccess = async () => {
       try {
         // 验证应用权限
-        const response = await getInitChatInfo({ appId });
+        await getInitChatInfo({ appId });
+        setIsConfirmed(true);
 
-        if (response.appId === appId) {
-          // 权限验证通过，设置确认状态
-          setIsConfirmed(true);
-          return true;
-        } else {
-          // 权限验证失败，显示错误提示
+        return true;
+      } catch (e: any) {
+        if (e?.code && e.code >= 502000) {
           toast({ title: t('chat:no_auth_to_chat'), status: 'error' });
-          return false;
+        } else {
+          toast({ title: t('login:login_failed'), status: 'error' });
         }
-      } catch (error) {
-        toast({ title: t('login:login_failed'), status: 'error' });
+
         return false;
       }
     };
