@@ -73,6 +73,8 @@ type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAut
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
+  variableUploading: boolean;
+  setVariableUploading: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -129,7 +131,11 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     customUrl: ''
   },
   // @ts-ignore
-  variablesForm: undefined
+  variablesForm: undefined,
+  variableUploading: false,
+  setVariableUploading: function (value: React.SetStateAction<boolean>): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const Provider = ({
@@ -186,6 +192,7 @@ const Provider = ({
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
+  const [variableUploading, setVariableUploading] = useState<boolean>(false);
   const {
     audioLoading,
     audioPlaying,
@@ -252,7 +259,9 @@ const Provider = ({
     isChatting,
     chatInputGuide,
     getHistoryResponseData,
-    chatType
+    chatType,
+    variableUploading,
+    setVariableUploading
   };
 
   return (
