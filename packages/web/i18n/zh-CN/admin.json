@@ -627,5 +627,22 @@
   "image_compression_error": "压缩图片异常",
   "image_too_large": "图片太大了",
   "password_min_length": "密码至少 8 位",
-  "password_requirement": "至少包含两种组合：数字、字母、特殊字符"
+  "password_requirement": "至少包含两种组合：数字、字母、特殊字符",
+  "hype_index_params": "Hype索引增强参数配置",
+  "hype_similarity_threshold": "相似度阈值",
+  "hype_similarity_threshold_desc": "判断语义漂移的阈值(取值范围(0,1),值越大生成的问题质量越高但数量越少,当Top1文档不是目标文档时生效)",
+  "hype_max_delta_score": "最大分数差阈值",
+  "hype_max_delta_score_desc": "检索召回分数最高的文档与目标文档的分数差值上限(取值范围(0,1),值越小生成的问题质量越高但数量越少,避免语义漂移)",
+  "hype_min_delta_score": "最小分数差阈值",
+  "hype_min_delta_score_desc": "目标文档与次选文档的分数差值下限(取值范围(0,1),值越大生成的问题质量越高但数量越少,确保语义区分度)",
+  "hype_expect_rank": "期望排名阈值",
+  "hype_expect_rank_desc": "目标文档允许的最低排名(≥ 1的整数,值越小生成的问题质量越高但数量越少,排名从1开始)",
+  "hype_default_score": "默认质量分数",
+  "hype_default_score_desc": "问题多样性与发散度的检测指标(取值范围(0,1)，值越大生成的问题质量越高但数量越少)",
+  "hype_top_k": "检索召回文档数量",
+  "hype_top_k_desc": "使用假设问题进行向量检索的文档数量(≥ 1的整数,值越大检索越全面但计算耗时越长)",
+  "hype_rerank": "启用重排序",
+  "hype_rerank_desc": "是否使用重排序模型进行二次排序(启用后生成问题质量更高但耗时增加,需配置重排序模型)",
+  "hype_min_rerank_threshold": "重排序分数阈值",
+  "hype_min_rerank_threshold_desc": "重排序后的最低分数要求(取值范围(0,1),值越大生成的问题质量越高但数量越少,仅在启用重排序时生效)"
 }

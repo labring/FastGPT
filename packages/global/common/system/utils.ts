@@ -5,7 +5,7 @@ export const delay = (ms: number) =>
     }, ms);
   });
 
-export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3, delayMs = 500): Promise<T> => {
   while (true) {
     try {
       return fn();
@@ -13,7 +13,7 @@ export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T>
       if (attempts <= 0) {
         return Promise.reject(error);
       }
-      await delay(500);
+      await delay(delayMs);
       attempts--;
     }
   }
