@@ -1,4 +1,4 @@
-/* 
+/*
     Get one dataset collection detail
 */
 import type { NextApiRequest } from 'next';
@@ -14,6 +14,8 @@ import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collecti
 import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { S3Sources } from '@fastgpt/service/common/s3/type';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -31,10 +33,15 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     per: ReadPermissionVal
   });
 
-  // get file
+  const fileId = collection?.fileId;
   const [file, indexAmount, errorCount] = await Promise.all([
-    collection?.fileId
-      ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
+    fileId
+      ? fileId.startsWith(S3Sources.dataset)
+        ? getS3DatasetSource().getFileMetadata(fileId)
+        : (async () => {
+            const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
+            return { filename: file?.filename, contentLength: file?.length };
+          })()
       : undefined,
     getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
     MongoDatasetTraining.countDocuments(

@@ -41,6 +41,9 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
+import { getFileNameFromPresignedURL, ParsedFileContentS3Key } from '../../../../common/s3/utils';
+import { addDays } from 'date-fns';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -98,6 +101,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText //abandon
     }
   } = props;
+
   const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
   const modelConstantsData = getLLMModel(model);
@@ -133,7 +137,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
         usageId,
-        runningUserInfo
+        runningUserInfo,
+        fileS3Prefix: ParsedFileContentS3Key.chat({
+          appId: props.runningAppInfo.id,
+          chatId: props.chatId!,
+          uId: props.uid
+        })
       })
     ]);
 
@@ -303,6 +312,7 @@ async function filterDatasetQuote({
       : '';
 
   return {
+    // datasetQuoteText: replaceDatasetQuoteTextWithJWT(datasetQuoteText, addDays(new Date(), 90))
     datasetQuoteText
   };
 }
@@ -316,7 +326,8 @@ async function getMultiInput({
   maxFiles,
   customPdfParse,
   usageId,
-  runningUserInfo
+  runningUserInfo,
+  fileS3Prefix
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -327,6 +338,7 @@ async function getMultiInput({
   customPdfParse?: boolean;
   usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
+  fileS3Prefix: string;
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -366,7 +378,8 @@ async function getMultiInput({
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId,
     customPdfParse,
-    usageId
+    usageId,
+    fileS3Prefix
   });
 
   return {

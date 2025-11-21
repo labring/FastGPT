@@ -127,7 +127,7 @@ export const loadRequestMessages = async ({
       const result: ChatCompletionContentPart[] = [];
 
       // 提取所有HTTPS图片URL并添加到result开头
-      const httpsImages = [...new Set(Array.from(input.matchAll(imageRegex), (m) => m[0]))];
+      const httpsImages = Array.from(new Set(input.matchAll(imageRegex)), (m) => m[0]);
       httpsImages.forEach((url) => {
         result.push({
           type: 'image_url',
@@ -379,7 +379,10 @@ export const loadRequestMessages = async ({
 
           return {
             ...item,
-            content: formatContent
+            content:
+              typeof formatContent === 'string'
+                ? formatContent
+                : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
           if (item.tool_calls || item.function_call) {

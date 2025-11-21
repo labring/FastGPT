@@ -7,15 +7,17 @@ import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
+import { addDays, addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
+import { getFileNameFromPresignedURL, ParsedFileContentS3Key } from '../../../../common/s3/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -71,7 +73,12 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       teamId,
       tmbId,
       customPdfParse,
-      usageId
+      usageId,
+      fileS3Prefix: ParsedFileContentS3Key.chat({
+        appId: props.runningAppInfo.id,
+        chatId: props.chatId!,
+        uId: props.uid
+      })
     });
 
     return {
@@ -124,7 +131,8 @@ export const getFileContentFromLinks = async ({
   teamId,
   tmbId,
   customPdfParse,
-  usageId
+  usageId,
+  fileS3Prefix
 }: {
   urls: string[];
   requestOrigin?: string;
@@ -133,6 +141,7 @@ export const getFileContentFromLinks = async ({
   tmbId: string;
   customPdfParse?: boolean;
   usageId?: string;
+  fileS3Prefix: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -203,11 +212,11 @@ export const getFileContentFromLinks = async ({
                 return decodeURIComponent(matches[1].replace(/['"]/g, ''));
               }
             }
-
-            return url;
+            return getFileNameFromPresignedURL(url).filename;
           })();
           // Extension
-          const extension = parseFileExtensionFromUrl(filename);
+          const extension =
+            getFileNameFromPresignedURL(url).extension || parseFileExtensionFromUrl(filename);
 
           // Get encoding
           const encoding = (() => {
@@ -223,8 +232,7 @@ export const getFileContentFromLinks = async ({
             return detectFileEncoding(buffer);
           })();
 
-          // Read file
-          const { rawText } = await readRawContentByFileBuffer({
+          const { rawText } = await readS3FileContentByBuffer({
             extension,
             teamId,
             tmbId,
@@ -232,18 +240,23 @@ export const getFileContentFromLinks = async ({
             encoding,
             customPdfParse,
             getFormatText: true,
+            imageKeyOptions: {
+              prefix: `${fileS3Prefix}/${filename}-parsed`
+            },
             usageId
           });
+
+          const replacedText = replaceDatasetQuoteTextWithJWT(rawText, addDays(new Date(), 90));
 
           // Add to buffer
           addRawTextBuffer({
             sourceId: url,
             sourceName: filename,
-            text: rawText,
+            text: replacedText,
             expiredTime: addMinutes(new Date(), 20)
           });
 
-          return formatResponseObject({ filename, url, content: rawText });
+          return formatResponseObject({ filename, url, content: replacedText });
         } catch (error) {
           return formatResponseObject({
             filename: '',

@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { ParsedFileContentS3Key } from '@fastgpt/service/common/s3/utils';
 
 export type backupQuery = {};
 
@@ -48,7 +49,12 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       tmbId,
       path: file.path,
       encoding: file.encoding,
-      getFormatText: false
+      getFormatText: false,
+      uploadKey: ParsedFileContentS3Key.dataset({
+        datasetId: dataset._id,
+        mimetype: file.mimetype,
+        filename: file.originalname
+      }).key
     });
     if (!rawText.trim().startsWith('q,a,indexes')) {
       return Promise.reject(i18nT('dataset:backup_template_invalid'));

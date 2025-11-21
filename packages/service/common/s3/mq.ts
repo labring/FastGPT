@@ -4,6 +4,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export type S3MQJobData = {
   key?: string;
+  keys?: string[];
   prefix?: string;
   bucketName: string;
 };
@@ -29,9 +30,8 @@ export const startS3DelWorker = async () => {
   return getWorker<S3MQJobData>(
     QueueNames.s3FileDelete,
     async (job) => {
-      const { prefix, bucketName, key } = job.data;
+      const { prefix, bucketName, key, keys } = job.data;
       const limit = pLimit(10);
-      const tasks: Promise<void>[] = [];
       const bucket = s3BucketMap[bucketName];
       if (!bucket) {
         return Promise.reject(`Bucket not found: ${bucketName}`);
@@ -40,7 +40,16 @@ export const startS3DelWorker = async () => {
       if (key) {
         await bucket.delete(key);
       }
+      if (keys) {
+        const tasks: Promise<void>[] = [];
+        for (const key of keys) {
+          const p = limit(() => retryFn(() => bucket.delete(key)));
+          tasks.push(p);
+        }
+        await Promise.all(tasks);
+      }
       if (prefix) {
+        const tasks: Promise<void>[] = [];
         return new Promise<void>(async (resolve, reject) => {
           const stream = bucket.listObjectsV2(prefix, true);
           stream.on('data', async (file) => {

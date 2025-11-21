@@ -151,7 +151,7 @@
   "file_recover": "File will overwrite current content",
   "file_types": "Optional file types",
   "file_upload": "File Upload",
-  "file_upload_tip": "Once enabled, documents/images can be uploaded. Documents are retained for 7 days, images for 15 days. Using this feature may incur additional costs. To ensure a good experience, please choose an AI model with a larger context length when using this feature.",
+  "file_upload_tip": "Once enabled, you can configure the types of files that users can upload. Files are saved along with the conversation; deleting the conversation or deleting the application will clear the files. To ensure a good user experience, please select an AI model with a longer context length when using it.",
   "find_more_tools": "Explore more",
   "go_to_chat": "Go to Conversation",
   "go_to_run": "Go to Execution",

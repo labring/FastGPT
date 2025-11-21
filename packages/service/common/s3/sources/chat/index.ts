@@ -1,4 +1,4 @@
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getNanoid, parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
 import {
@@ -7,8 +7,7 @@ import {
   ChatFileUploadSchema,
   DelChatFileByPrefixSchema
 } from './type';
-import { MongoS3TTL } from '../../schema';
-import { addHours } from 'date-fns';
+import { addHours, differenceInHours } from 'date-fns';
 
 class S3ChatSource {
   private bucket: S3PrivateBucket;
@@ -22,28 +21,53 @@ class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
-  static isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
+  isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
     return key?.startsWith(`${S3Sources.chat}/`) ?? false;
+  }
+
+  // 获取文件流
+  getChatFileStream(key: string) {
+    return this.bucket.getObject(key);
+  }
+
+  // 获取文件状态
+  getChatFileStat(key: string) {
+    return this.bucket.statObject(key);
+  }
+
+  // 获取文件元数据
+  async getFileMetadata(key: string) {
+    const stat = await this.getChatFileStat(key);
+    if (!stat) return { filename: '', extension: '', contentLength: 0, contentType: '' };
+
+    const contentLength = stat.size;
+    const filename: string = decodeURIComponent(stat.metaData['origin-filename']);
+    const extension = parseFileExtensionFromUrl(filename);
+    const contentType: string = stat.metaData['content-type'];
+    return {
+      filename,
+      extension,
+      contentType,
+      contentLength
+    };
   }
 
   async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
     const { key, expiredHours = 1, external = false } = params; // 默认一个小时
 
     if (external) {
-      return await this.bucket.createExtenalUrl({ key, expiredHours });
+      return await this.bucket.createExternalUrl({ key, expiredHours });
     }
-    return await this.bucket.createPreviewlUrl({ key, expiredHours });
+    return await this.bucket.createPreviewUrl({ key, expiredHours });
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename } = ChatFileUploadSchema.parse(params);
+    const { appId, chatId, uId, filename, expiredTime } = ChatFileUploadSchema.parse(params);
     const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
-    await MongoS3TTL.create({
-      minioKey: rawKey,
-      bucketName: this.bucket.name,
-      expiredTime: addHours(new Date(), 24)
-    });
-    return await this.bucket.createPostPresignedUrl({ rawKey, filename });
+    return await this.bucket.createPostPresignedUrl(
+      { rawKey, filename },
+      { expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24 }
+    );
   }
 
   deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {

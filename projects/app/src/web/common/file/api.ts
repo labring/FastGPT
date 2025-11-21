@@ -54,3 +54,10 @@ export const getPresignedChatFileGetUrl = (params: {
 }) => {
   return POST<string>('/core/chat/presignChatFileGetUrl', params);
 };
+
+export const getUploadDatasetFilePresignedUrl = (params: {
+  filename: string;
+  datasetId: string;
+}) => {
+  return POST<CreatePostPresignedUrlResult>('/core/dataset/presignDatasetFilePostUrl', params);
+};
