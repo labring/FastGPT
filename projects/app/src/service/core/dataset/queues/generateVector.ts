@@ -78,9 +78,6 @@ export async function generateVector(): Promise<any> {
                 select: '_id indexes'
               }
             ])
-            .select(
-              'teamId tmbId datasetId collectionId q a imageId imageDescMap chunkIndex indexSize billId mode retryCount lockTime indexes'
-            )
             .lean();
 
           // task preemption

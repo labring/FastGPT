@@ -177,12 +177,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         continue;
       }
 
-      addLog.info(`[Parse Queue] ========== START PROCESSING ==========`, {
-        collectionId: collection._id,
-        datasetId: dataset._id,
-        fileId: collection.fileId,
-        type: collection.type
-      });
+      addLog.info(`[Parse Queue] Start`);
 
       try {
         const trainingMode = getTrainingModeByCollection({
