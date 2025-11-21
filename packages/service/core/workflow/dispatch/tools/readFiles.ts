@@ -194,6 +194,7 @@ export const getFileContentFromLinks = async ({
           if (isInternalAddress(url)) {
             return Promise.reject('Url is invalid');
           }
+
           // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,

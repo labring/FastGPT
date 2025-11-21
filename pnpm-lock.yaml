@@ -602,6 +602,9 @@ importers:
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
+      p-limit:
+        specifier: ^7.2.0
+        version: 7.2.0
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4

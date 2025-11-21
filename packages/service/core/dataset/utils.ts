@@ -36,7 +36,7 @@ export const filterDatasetsByTmbId = async ({
 /**
  * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为 JWT 签名后的 URL
  *
- * @param datasetQuoteText 数据集引用文本
+ * @param documentQuoteText 数据集引用文本
  * @param expiredTime 过期时间
  * @returns 替换后的文本
  *
@@ -49,8 +49,9 @@ export const filterDatasetsByTmbId = async ({
  * // '![image.png](http://localhost:3000/api/system/file/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvYmplY3RLZXkiOiJjaGF0LzY5MWFlMjlkNDA0ZDA0Njg3MTdkZDc0Ny82OGFkODVhNzQ2MzAwNmM5NjM3OTlhMDcvalhmWHk4eWZHQUZzOVdKcGNXUmJBaFYyL3BhcnNlZC85YTBmNGZlZC00ZWRmLTQ2MTMtYThkNi01MzNhZjVhZTUxZGMucG5nIiwiaWF0IjoxNzYzMzcwOTYwLCJleHAiOjk1MzkzNzA5NjB9.tMDWg0-ZWRnWPNp9Hakd0w1hhaO8jj2oD98SU0wAQYQ)'
  * ```
  */
-export function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string, expiredTime: Date) {
-  if (!datasetQuoteText || typeof datasetQuoteText !== 'string') return datasetQuoteText as string;
+export function replaceDatasetQuoteTextWithJWT(documentQuoteText: string, expiredTime: Date) {
+  if (!documentQuoteText || typeof documentQuoteText !== 'string')
+    return documentQuoteText as string;
 
   const prefixPattern = Object.values(S3Sources)
     .map((pattern) => `${pattern}\\/[^\\s)]+`)
@@ -59,8 +60,8 @@ export function replaceDatasetQuoteTextWithJWT(datasetQuoteText: string, expired
   const s3DatasetSource = getS3DatasetSource();
   const s3ChatSource = getS3ChatSource();
 
-  const matches = Array.from(datasetQuoteText.matchAll(regex));
-  let content = datasetQuoteText;
+  const matches = Array.from(documentQuoteText.matchAll(regex));
+  let content = documentQuoteText;
 
   for (const match of matches.slice().reverse()) {
     const [full, bang, alt, objectKey] = match;
