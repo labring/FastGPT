@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { addDays, isAfter, differenceInSeconds } from 'date-fns';
+import { isAfter, differenceInSeconds } from 'date-fns';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ClientSession } from 'mongoose';
 import { MongoS3TTL } from './schema';
@@ -104,14 +104,18 @@ export async function uploadImage2S3Bucket(
 export const getFileNameFromPresignedURL = (presignedURL: string) => {
   const url = new URL(presignedURL);
   const fullname = url.pathname.split('/').pop()!;
-  const filename = path.basename(fullname, path.extname(fullname));
-  return decodeURIComponent(filename);
+  const extension = path.extname(fullname);
+  const filename = decodeURIComponent(path.basename(fullname, extension));
+  return {
+    filename,
+    extension: extension.replace('.', '')
+  };
 };
 
 export const ParsedFileContentS3Key = {
   // 临时的文件路径（比如 evaluation)
-  temp: (appId: string) => {
-    return `${S3Sources.tmp}/${appId}/temp/${randomUUID()}`;
+  temp: ({ teamId, appId }: { teamId: string; appId: string }) => {
+    return `${S3Sources.temp}/${teamId}/${appId}/temp/${randomUUID()}`;
   },
 
   // 对话中上传的文件的解析结果的图片的 Key

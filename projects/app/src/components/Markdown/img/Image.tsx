@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, type ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import { getPresignedDatasetFileGetUrl } from '@/web/core/dataset/api';
-import { getPresignedChatFileGetUrl } from '@/web/common/file/api';
 import type { AProps } from '../A';
 
 const MdImage = ({
@@ -14,43 +12,6 @@ const MdImage = ({
   const { t } = useTranslation();
   const [isLoaded, { setTrue }] = useBoolean(false);
   const [renderSrc, setRenderSrc] = useState(src);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // useEffect(() => {
-  //   if (!src || (!src.startsWith('dataset/') && !src.startsWith('chat/'))) {
-  //     setRenderSrc(src);
-  //     return;
-  //   }
-
-  //   const loadS3Image = async () => {
-  //     try {
-  //       setIsLoading(true);
-  //       if (src.startsWith('dataset/')) {
-  //         const url = await getPresignedDatasetFileGetUrl({ key: src });
-  //         setRenderSrc(url);
-  //       } else if (src.startsWith('chat/')) {
-  //         const url = await getPresignedChatFileGetUrl({
-  //           key: src,
-  //           appId: props.chatAuthData?.appId || '',
-  //           outLinkAuthData: {
-  //             shareId: props.chatAuthData?.shareId,
-  //             outLinkUid: props.chatAuthData?.outLinkUid,
-  //             teamId: props.chatAuthData?.teamId,
-  //             teamToken: props.chatAuthData?.teamToken
-  //           }
-  //         });
-  //         setRenderSrc(url);
-  //       }
-  //     } catch (error) {
-  //       console.error('Failed to sign S3 image:', error);
-  //       setRenderSrc('/imgs/errImg.png');
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   loadS3Image();
-  // }, [src, props.chatAuthData]);
 
   if (src?.includes('base64') && !src.startsWith('data:image')) {
     return <Box>Invalid base64 image</Box>;
@@ -61,7 +22,7 @@ const MdImage = ({
   }
 
   return (
-    <Skeleton isLoaded={isLoaded && !isLoading}>
+    <Skeleton isLoaded={isLoaded}>
       <MyPhotoView
         borderRadius={'md'}
         src={renderSrc}

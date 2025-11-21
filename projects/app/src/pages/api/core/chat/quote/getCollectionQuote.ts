@@ -17,6 +17,8 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
+import { addDays } from 'date-fns';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
@@ -169,8 +171,16 @@ async function handleInitialLoad({
 
   const resultList = [...prevList, centerNode, ...nextList];
 
+  const finalList = resultList.map((item) => {
+    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
+    if (item.a) {
+      item.a = replaceDatasetQuoteTextWithJWT(item.a, addDays(new Date(), 90));
+    }
+    return item;
+  });
+
   return {
-    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime),
+    list: processChatTimeFilter(getFormatDatasetCiteList(finalList), chatTime),
     hasMorePrev,
     hasMoreNext
   };

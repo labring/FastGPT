@@ -41,13 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream.on('error', (error) => {
           addLog.error('Error reading dataset file', { error });
           if (!res.headersSent) {
-            res.status(500).end();
+            return jsonRes(res, {
+              code: 500,
+              error
+            });
           }
         });
 
         stream.on('end', () => {
           res.end();
         });
+
         return;
       } catch (error) {
         return jsonRes(res, {

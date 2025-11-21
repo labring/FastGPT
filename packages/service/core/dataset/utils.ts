@@ -1,10 +1,8 @@
-import { MongoDatasetData } from './data/schema';
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3Sources } from '../../common/s3/type';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import { jwtSignS3ObjectKey } from '../../common/s3/utils';
 
 // TODO: 需要优化成批量获取权限

@@ -11,7 +11,7 @@ import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/sch
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { addDays } from 'date-fns';
+import { addHours } from 'date-fns';
 import { jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
 
@@ -58,9 +58,12 @@ async function handler(
     MongoDatasetData.countDocuments(match)
   ]);
 
-  list.forEach(
-    (item) => void (item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 1)))
-  );
+  list.forEach((item) => {
+    item.q = replaceDatasetQuoteTextWithJWT(item.q, addHours(new Date(), 1));
+    if (item.a) {
+      item.a = replaceDatasetQuoteTextWithJWT(item.a, addHours(new Date(), 1));
+    }
+  });
 
   const imageIds = list.map((item) => item.imageId!).filter(Boolean);
   const imageSizeMap = new Map<string, number>();
@@ -91,7 +94,7 @@ async function handler(
         const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
         const imagePreviewUrl = item.imageId
           ? s3DatasetSource.isDatasetObjectKey(item.imageId)
-            ? jwtSignS3ObjectKey(item.imageId, addDays(new Date(), 1))
+            ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
             : getDatasetImagePreviewUrl({
                 imageId: item.imageId,
                 teamId,

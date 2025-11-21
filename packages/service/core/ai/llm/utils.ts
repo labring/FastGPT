@@ -14,12 +14,6 @@ import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
-import { S3Sources } from '../../../common/s3/type';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { getGlobalRedisConnection } from '../../../common/redis';
-import { randomUUID } from 'node:crypto';
-import { TempFileURL } from '@fastgpt/global/common/file/image/constants';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],

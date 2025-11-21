@@ -42,7 +42,7 @@ export const ParsedFileContentS3KeyParamsSchema = z.object({
   datasetId: ObjectIdSchema,
   mimetype: z.string().nonempty(),
   filename: z.string().optional(),
-  parsedFileKey: z.string().optional() // 被解析的文件的完整 key，作为图片的父目录
+  parsedFileKey: z.string().optional() // Complete key of the parsed file, used as parent directory for images
 });
 export type ParsedFileContentS3KeyParams = z.infer<typeof ParsedFileContentS3KeyParamsSchema>;
 

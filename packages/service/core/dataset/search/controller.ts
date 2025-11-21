@@ -34,7 +34,7 @@ import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceDatasetQuoteTextWithJWT } from '../../../core/dataset/utils';
-import { addHours } from 'date-fns';
+import { addDays, addHours } from 'date-fns';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -906,7 +906,7 @@ export async function searchDatasetData(
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
   const finalResult = filterMaxTokensResult.map((item) => {
-    item.q = replaceDatasetQuoteTextWithJWT(item.q, addHours(new Date(), 1));
+    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
     return item;
   });
 

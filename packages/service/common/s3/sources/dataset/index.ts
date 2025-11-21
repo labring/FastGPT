@@ -14,23 +14,13 @@ import {
   UploadDatasetFileByBufferParamsSchema
 } from './type';
 import { MongoS3TTL } from '../../schema';
-import {
-  addDays,
-  addHours,
-  addMinutes,
-  differenceInDays,
-  differenceInMilliseconds
-} from 'date-fns';
+import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../../system/log';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readS3FileContentByBuffer } from '../../../file/read/utils';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../buffer/rawText/controller';
-import type { ClientSession } from '../../../mongo';
-import { MongoDatasetData } from '../../../../core/dataset/data/schema';
 import path from 'node:path';
 import { Mimes } from '../../constants';
-import jwt from 'jsonwebtoken';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 type DatasetObjectKey = `${typeof S3Sources.dataset}/${string}`;
 
@@ -51,9 +41,9 @@ class S3DatasetSource {
     const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
 
     if (external) {
-      return await this.bucket.createExtenalUrl({ key, expiredHours });
+      return await this.bucket.createExternalUrl({ key, expiredHours });
     }
-    return await this.bucket.createPreviewlUrl({ key, expiredHours });
+    return await this.bucket.createPreviewUrl({ key, expiredHours });
   }
 
   // 上传链接
@@ -126,7 +116,7 @@ class S3DatasetSource {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, datasetId } =
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
       GetDatasetFileContentParamsSchema.parse(params);
 
     const bufferId = `${fileId}-${customPdfParse}`;

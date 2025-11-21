@@ -56,9 +56,9 @@ class S3ChatSource {
     const { key, expiredHours = 1, external = false } = params; // 默认一个小时
 
     if (external) {
-      return await this.bucket.createExtenalUrl({ key, expiredHours });
+      return await this.bucket.createExternalUrl({ key, expiredHours });
     }
-    return await this.bucket.createPreviewlUrl({ key, expiredHours });
+    return await this.bucket.createPreviewUrl({ key, expiredHours });
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {

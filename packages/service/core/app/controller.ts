@@ -28,7 +28,6 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { getS3AvatarSource } from '../../common/s3/sources/avatar';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;

@@ -65,23 +65,6 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
   try {
-    console.dir(
-      {
-        urls: [...fileUrlList, ...filesFromHistories],
-        requestOrigin,
-        maxFiles,
-        teamId,
-        tmbId,
-        customPdfParse,
-        usageId,
-        fileS3Prefix: ParsedFileContentS3Key.chat({
-          appId: props.runningAppInfo.id,
-          chatId: props.chatId!,
-          uId: props.uid
-        })
-      },
-      { depth: null }
-    );
     const { text, readFilesResult } = await getFileContentFromLinks({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
@@ -229,11 +212,11 @@ export const getFileContentFromLinks = async ({
                 return decodeURIComponent(matches[1].replace(/['"]/g, ''));
               }
             }
-
-            return url;
+            return getFileNameFromPresignedURL(url).filename;
           })();
           // Extension
-          const extension = parseFileExtensionFromUrl(filename);
+          const extension =
+            getFileNameFromPresignedURL(url).extension || parseFileExtensionFromUrl(filename);
 
           // Get encoding
           const encoding = (() => {
@@ -258,7 +241,7 @@ export const getFileContentFromLinks = async ({
             customPdfParse,
             getFormatText: true,
             imageKeyOptions: {
-              prefix: `${fileS3Prefix}/${getFileNameFromPresignedURL(url)}-parsed`
+              prefix: `${fileS3Prefix}/${filename}-parsed`
             },
             usageId
           });

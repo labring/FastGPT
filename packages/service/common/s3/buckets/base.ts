@@ -1,10 +1,4 @@
-import {
-  Client,
-  type RemoveOptions,
-  type CopyConditions,
-  InvalidObjectNameError,
-  S3Error
-} from 'minio';
+import { Client, type RemoveOptions, type CopyConditions, S3Error } from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -210,20 +204,25 @@ export class S3BaseBucket {
     }
   }
 
-  async createExtenalUrl(params: createPreviewUrlParams) {
+  async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.externalClient.presignedGetObject(this.name, key, expires);
+    return await this.externalClient.presignedGetObject(this.name, key, expires, {
+      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
+    });
   }
-  async createPreviewlUrl(params: createPreviewUrlParams) {
+
+  async createPreviewUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.client.presignedGetObject(this.name, key, expires);
+    return await this.client.presignedGetObject(this.name, key, expires, {
+      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
+    });
   }
 }

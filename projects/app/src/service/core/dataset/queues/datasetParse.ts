@@ -342,33 +342,6 @@ export const datasetParseQueue = async (): Promise<any> => {
               session
             }
           );
-
-          // 8. Remove file TTL (images TTL will be removed after successful insertion to dataset_datas)
-          // 8.1 For S3 files, remove file TTL only
-          if (collection.fileId && getS3DatasetSource().isDatasetObjectKey(collection.fileId)) {
-            // await removeS3TTL({ key: collection.fileId, bucketName: 'private', session });
-          }
-          // 8.2 For GridFS files (legacy), remove MongoDB image TTL
-          else {
-            const relatedImgId = collection.metadata?.relatedImgId;
-            if (relatedImgId) {
-              await MongoImage.updateMany(
-                {
-                  teamId: collection.teamId,
-                  'metadata.relatedId': relatedImgId
-                },
-                {
-                  // Remove expiredTime to avoid ttl expiration
-                  $unset: {
-                    expiredTime: 1
-                  }
-                },
-                {
-                  session
-                }
-              );
-            }
-          }
         });
 
         addLog.debug(`[Parse Queue] Finish`, {

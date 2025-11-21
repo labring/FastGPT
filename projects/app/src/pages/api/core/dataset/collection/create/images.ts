@@ -15,8 +15,6 @@ import type { NextApiResponse } from 'next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addDays, addSeconds } from 'date-fns';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { S3Sources } from '@fastgpt/service/common/s3/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import fsp from 'node:fs/promises';

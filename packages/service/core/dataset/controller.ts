@@ -16,7 +16,6 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
-import { getS3AvatarSource } from '../../common/s3/sources/avatar';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
