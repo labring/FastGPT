@@ -95,7 +95,7 @@ const ModelTable = () => {
       priceLabel: (
         <Flex color={'myGray.700'}>
           {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+          <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
             {item.charsPointsPrice || 0}
           </Box>
           {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
@@ -135,7 +135,7 @@ const ModelTable = () => {
       priceLabel: item.charsPointsPrice ? (
         <Flex color={'myGray.700'}>
           {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+          <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
             {item.charsPointsPrice}
           </Box>
           {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
