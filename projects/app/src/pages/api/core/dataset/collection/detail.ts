@@ -15,7 +15,7 @@ import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorDB/c
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { S3Sources } from '@fastgpt/service/common/s3/type';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -36,7 +36,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   const fileId = collection?.fileId;
   const [file, indexAmount, errorCount] = await Promise.all([
     fileId
-      ? fileId.startsWith(S3Sources.dataset)
+      ? S3DatasetSource.isDatasetObjectKey(fileId)
         ? getS3DatasetSource().getFileMetadata(fileId)
         : (async () => {
             const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });

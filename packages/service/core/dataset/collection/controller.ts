@@ -34,7 +34,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { clearCollectionImages } from '../image/utils';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
 import path from 'node:path';
 import { removeS3TTL } from '../../../common/s3/utils';
 
@@ -299,7 +299,7 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     { session, ordered: true }
   );
 
-  if (getS3DatasetSource().isDatasetObjectKey(fileId)) {
+  if (S3DatasetSource.isDatasetObjectKey(fileId)) {
     await removeS3TTL({ key: fileId, bucketName: 'private', session });
   }
 
@@ -383,7 +383,7 @@ export async function delCollection({
   ).lean();
   const imageIds = imageDatas
     .map((item) => item.imageId)
-    .filter((key) => s3DatasetSource.isDatasetObjectKey(key));
+    .filter((key) => S3DatasetSource.isDatasetObjectKey(key));
 
   await retryFn(async () => {
     await Promise.all([
@@ -439,14 +439,6 @@ export async function delCollection({
       },
       { session }
     ).lean();
-
-    // delete s3 images which are parsed from docs
-    // Delete all images parsed from the document by prefix
-    collections
-      .map((item) => item.fileId)
-      .filter((fileId): fileId is string => !!fileId && s3DatasetSource.isDatasetObjectKey(fileId))
-      .map((key) => `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`)
-      .forEach((prefix) => s3DatasetSource.deleteDatasetFilesByPrefix({ rawPrefix: prefix }));
 
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);

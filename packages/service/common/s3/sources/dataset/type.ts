@@ -40,9 +40,7 @@ export type UploadParsedDatasetImagesParams = z.infer<typeof UploadParsedDataset
 
 export const ParsedFileContentS3KeyParamsSchema = z.object({
   datasetId: ObjectIdSchema,
-  mimetype: z.string().nonempty(),
-  filename: z.string().optional(),
-  parsedFileKey: z.string().optional() // Complete key of the parsed file, used as parent directory for images
+  filename: z.string()
 });
 export type ParsedFileContentS3KeyParams = z.infer<typeof ParsedFileContentS3KeyParamsSchema>;
 

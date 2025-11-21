@@ -15,6 +15,7 @@ import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../system/log';
 import { addS3DelJob } from '../mq';
 import { type Readable } from 'node:stream';
+import { getFileS3Key } from '../utils';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -110,6 +111,11 @@ export class S3BaseBucket {
   async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
     try {
       if (!objectKey) return Promise.resolve();
+
+      // 把连带的 parsed 数据一起删除
+      const { fileParsedPrefix } = getFileS3Key.s3Key(objectKey);
+      await this.addDeleteJob({ prefix: fileParsedPrefix });
+
       return await this.client.removeObject(this.name, objectKey, options);
     } catch (error) {
       if (error instanceof S3Error) {

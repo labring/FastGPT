@@ -23,7 +23,7 @@ import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -242,7 +242,6 @@ export async function authDatasetData({
     collectionId: datasetData.collectionId
   });
 
-  const s3DatasetSource = getS3DatasetSource();
   const data: DatasetDataItemType = {
     id: String(datasetData._id),
     teamId: datasetData.teamId,
@@ -251,8 +250,8 @@ export async function authDatasetData({
     a: datasetData.a,
     imageId: datasetData.imageId,
     imagePreivewUrl: datasetData.imageId
-      ? s3DatasetSource.isDatasetObjectKey(datasetData.imageId)
-        ? await s3DatasetSource.createGetDatasetFileURL({
+      ? S3DatasetSource.isDatasetObjectKey(datasetData.imageId)
+        ? await getS3DatasetSource().createGetDatasetFileURL({
             key: datasetData.imageId,
             expiredHours: 1
           })

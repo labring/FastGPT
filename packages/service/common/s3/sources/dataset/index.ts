@@ -21,10 +21,11 @@ import { readS3FileContentByBuffer } from '../../../file/read/utils';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../buffer/rawText/controller';
 import path from 'node:path';
 import { Mimes } from '../../constants';
+import { getFileS3Key } from '../../utils';
 
 type DatasetObjectKey = `${typeof S3Sources.dataset}/${string}`;
 
-class S3DatasetSource {
+export class S3DatasetSource {
   public bucket: S3PrivateBucket;
   private static instance: S3DatasetSource;
 
@@ -49,8 +50,11 @@ class S3DatasetSource {
   // 上传链接
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
     const { filename, datasetId } = CreateUploadDatasetFileParamsSchema.parse(params);
-    const rawKey = [S3Sources.dataset, datasetId, `${getNanoid(6)}-${filename}`].join('/');
-    return await this.bucket.createPostPresignedUrl({ rawKey, filename }, { expiredHours: 3 });
+    const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
+    return await this.bucket.createPostPresignedUrl(
+      { rawKey: fileKey, filename },
+      { expiredHours: 3 }
+    );
   }
 
   /**
@@ -101,7 +105,7 @@ class S3DatasetSource {
     };
   }
 
-  isDatasetObjectKey(key?: string): key is DatasetObjectKey {
+  static isDatasetObjectKey(key?: string): key is DatasetObjectKey {
     return typeof key === 'string' && key.startsWith(`${S3Sources.dataset}/`);
   }
 
@@ -141,7 +145,7 @@ class S3DatasetSource {
     addLog.debug('get dataset file buffer', { time: Date.now() - start });
 
     const encoding = detectFileEncoding(buffer);
-    const prefix = `${path.dirname(fileId)}/${path.basename(fileId, path.extname(fileId))}-parsed`;
+    const { fileParsedPrefix } = getFileS3Key.s3Key(fileId);
     const { rawText } = await readS3FileContentByBuffer({
       teamId,
       tmbId,
@@ -152,7 +156,7 @@ class S3DatasetSource {
       usageId,
       getFormatText,
       imageKeyOptions: {
-        prefix: prefix
+        prefix: fileParsedPrefix
       }
     });
 
@@ -173,7 +177,7 @@ class S3DatasetSource {
   async uploadDatasetFileByBuffer(params: UploadDatasetFileByBufferParams): Promise<string> {
     const { datasetId, buffer, filename } = UploadDatasetFileByBufferParamsSchema.parse(params);
 
-    const key = [S3Sources.dataset, datasetId, `${getNanoid(6)}-${filename}`].join('/');
+    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename });
     await this.bucket.putObject(key, buffer, buffer.length, {
       'content-type': Mimes[path.extname(filename) as keyof typeof Mimes],
       'upload-time': new Date().toISOString(),

@@ -101,56 +101,83 @@ export async function uploadImage2S3Bucket(
   return uploadKey;
 }
 
-export const getFileNameFromPresignedURL = (presignedURL: string) => {
-  const url = new URL(presignedURL);
-  const fullname = url.pathname.split('/').pop()!;
-  const extension = path.extname(fullname);
-  const filename = decodeURIComponent(path.basename(fullname, extension));
+const getFormatedFilename = (filename?: string) => {
+  if (!filename) {
+    return {
+      formatedFilename: getNanoid(12),
+      extension: ''
+    };
+  }
+
+  const id = getNanoid(6);
+  const extension = path.extname(filename); // 带.
+  const name = path.basename(filename, extension);
   return {
-    filename,
+    formatedFilename: `${id}-${name}`,
     extension: extension.replace('.', '')
   };
 };
-
-export const ParsedFileContentS3Key = {
+export const getFileS3Key = {
   // 临时的文件路径（比如 evaluation)
-  temp: ({ teamId, appId }: { teamId: string; appId: string }) => {
-    return `${S3Sources.temp}/${teamId}/${appId}/temp/${randomUUID()}`;
+  temp: ({ teamId, filename }: { teamId: string; filename?: string }) => {
+    const { formatedFilename, extension } = getFormatedFilename(filename);
+
+    return {
+      fileKey: [
+        S3Sources.temp,
+        teamId,
+        `${formatedFilename}${extension ? `.${extension}` : ''}`
+      ].join('/'),
+      fileParsedPrefix: [S3Sources.temp, teamId, `${formatedFilename}-parsed`].join('/')
+    };
   },
 
   // 对话中上传的文件的解析结果的图片的 Key
-  chat: ({ appId, chatId, uId }: { chatId: string; uId: string; appId: string }) => {
-    return `${S3Sources.chat}/${appId}/${uId}/${chatId}`;
+  chat: ({
+    appId,
+    chatId,
+    uId,
+    filename
+  }: {
+    chatId: string;
+    uId: string;
+    appId: string;
+    filename: string;
+  }) => {
+    const { formatedFilename, extension } = getFormatedFilename(filename);
+
+    return {
+      fileKey: [
+        S3Sources.chat,
+        appId,
+        uId,
+        chatId,
+        `${formatedFilename}${extension ? `.${extension}` : ''}`
+      ].join('/'),
+      fileParsedPrefix: [S3Sources.chat, appId, uId, chatId, `${formatedFilename}-parsed`].join('/')
+    };
   },
 
   // 上传数据集的文件的解析结果的图片的 Key
   dataset: (params: ParsedFileContentS3KeyParams) => {
-    const { datasetId, mimetype: ext, filename, parsedFileKey } = params;
-
-    const imageName = (() => {
-      const id = getNanoid(6);
-      if (!filename) return `${id}.${ext}`;
-      return !!path.extname(filename) ? `${id}-${filename}` : `${id}-${filename}.${ext}`;
-    })();
-
-    if (!parsedFileKey) {
-      return {
-        key: [S3Sources.dataset, datasetId, imageName].join('/'),
-        filename: imageName
-      };
-    }
-
-    const parsedFileName = parsedFileKey.split('/').at(-1)!;
-    const parsedContentPrefix = `parsed-${path.basename(parsedFileName, path.extname(parsedFileName))}`;
-    const parsedContentKey = parsedFileKey
-      .split('/')
-      .slice(0, -1)
-      .concat(parsedContentPrefix)
-      .join('/');
+    const { datasetId, filename } = params;
+    const { formatedFilename, extension } = getFormatedFilename(filename);
 
     return {
-      key: parsedContentKey,
-      filename: imageName
+      fileKey: [
+        S3Sources.dataset,
+        datasetId,
+        `${formatedFilename}${extension ? `.${extension}` : ''}`
+      ].join('/'),
+      fileParsedPrefix: [S3Sources.dataset, datasetId, `${formatedFilename}-parsed`].join('/')
+    };
+  },
+
+  s3Key: (key: string) => {
+    const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
+    return {
+      fileKey: key,
+      fileParsedPrefix: prefix
     };
   }
 };

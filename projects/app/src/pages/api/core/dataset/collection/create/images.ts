@@ -19,7 +19,7 @@ import { S3Sources } from '@fastgpt/service/common/s3/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 const authUploadLimit = (tmbId: string, num: number) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -64,10 +64,10 @@ async function handler(
     const imageIds = await Promise.all(
       files.map(async (file) => {
         const filename = path.basename(file.filename);
-        const uploadKey = [S3Sources.dataset, datasetId, `${getNanoid(6)}-${filename}`].join('/');
+        const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
         return uploadImage2S3Bucket('private', {
           base64Img: (await fsp.readFile(file.path)).toString('base64'),
-          uploadKey,
+          uploadKey: fileKey,
           mimetype: file.mimetype,
           filename,
           expiredTime: addDays(new Date(), 7)

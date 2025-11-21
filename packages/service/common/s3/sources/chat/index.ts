@@ -1,4 +1,4 @@
-import { getNanoid, parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
 import {
@@ -7,9 +7,12 @@ import {
   ChatFileUploadSchema,
   DelChatFileByPrefixSchema
 } from './type';
-import { addHours, differenceInHours } from 'date-fns';
+import { differenceInHours } from 'date-fns';
+import { S3Buckets } from '../../constants';
+import path from 'path';
+import { getFileS3Key } from '../../utils';
 
-class S3ChatSource {
+export class S3ChatSource {
   private bucket: S3PrivateBucket;
   private static instance: S3ChatSource;
 
@@ -23,6 +26,37 @@ class S3ChatSource {
 
   isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
     return key?.startsWith(`${S3Sources.chat}/`) ?? false;
+  }
+
+  // 可能不是 S3 的 url
+  static parseChatUrl(url: string) {
+    try {
+      const parseUrl = new URL(url);
+      const pathname = parseUrl.pathname;
+
+      // 非 S3 key
+      if (!pathname.startsWith(`${S3Buckets.private}/${S3Sources.chat}/`)) {
+        return {
+          filename: '',
+          extension: '',
+          imageParsePrefix: ''
+        };
+      }
+
+      const filename = decodeURIComponent(pathname.split('/').pop() || 'file');
+      const extension = path.extname(filename);
+      return {
+        filename,
+        extension: extension.replace('.', ''),
+        imageParsePrefix: `${pathname.replace(`${S3Buckets.private}/`, '').replace(`.${extension}`, '')}-parsed`
+      };
+    } catch (error) {
+      return {
+        filename: '',
+        extension: '',
+        imageParsePrefix: ''
+      };
+    }
   }
 
   // 获取文件流
@@ -63,9 +97,9 @@ class S3ChatSource {
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
     const { appId, chatId, uId, filename, expiredTime } = ChatFileUploadSchema.parse(params);
-    const rawKey = [S3Sources.chat, appId, uId, chatId, `${getNanoid(6)}-${filename}`].join('/');
+    const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
     return await this.bucket.createPostPresignedUrl(
-      { rawKey, filename },
+      { rawKey: fileKey, filename },
       { expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24 }
     );
   }

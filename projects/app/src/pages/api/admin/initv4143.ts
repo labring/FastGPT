@@ -14,7 +14,7 @@ import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/t
 import { randomUUID } from 'crypto';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { addDays } from 'date-fns';
 import path from 'path';
 import { S3Sources } from '@fastgpt/service/common/s3/type';
@@ -65,11 +65,12 @@ async function convertFileIdToString(batchId: string) {
     limit(async () => {
       try {
         // 确保 fileId 存在
-        if (!collection.fileId) {
+        if (!collection.fileId || typeof collection.fileId === 'string') {
           return;
         }
 
         // 将 ObjectId 转换为字符串
+        // @ts-ignore
         const fileIdStr = collection.fileId.toString();
 
         // 更新为字符串类型
@@ -237,7 +238,7 @@ async function walkDatasetFiles(batchId: string) {
 
   if (files.length === 0) return { collectionIndexPairs: [], collections: [], skippedCount: 0 };
 
-  const collectionIndexPairs = files.slice(0, 1000).map((file) => ({
+  const collectionIndexPairs = files.map((file) => ({
     fileId: file._id,
     teamId: file.metadata.teamId as string
   }));
@@ -381,11 +382,12 @@ async function convertImageIdToString(batchId: string) {
     limit(async () => {
       try {
         // 确保 imageId 存在
-        if (!data.imageId) {
+        if (!data.imageId || typeof data.imageId === 'string') {
           return;
         }
 
         // 将 ObjectId 转换为字符串
+        // @ts-ignore
         const imageIdStr = data.imageId.toString();
 
         // 更新为字符串类型
@@ -570,7 +572,7 @@ async function migrateDatasetImage({
       const filename = imageFile.filename || 'image.png';
 
       // 构造 S3 key
-      const s3Key = [S3Sources.dataset, datasetId, `${getNanoid(6)}-${filename}`].join('/');
+      const { fileKey: s3Key } = getFileS3Key.dataset({ datasetId, filename });
 
       // 使用 uploadImage2S3Bucket 上传图片
       key = await uploadImage2S3Bucket('private', {

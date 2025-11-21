@@ -10,7 +10,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
@@ -67,11 +67,10 @@ async function handler(
 
   const imageIds = list.map((item) => item.imageId!).filter(Boolean);
   const imageSizeMap = new Map<string, number>();
-  const s3DatasetSource = getS3DatasetSource();
 
   if (imageIds.length > 0) {
     const imageInfos = await MongoDatasetImageSchema.find(
-      { _id: { $in: imageIds.filter((id) => !s3DatasetSource.isDatasetObjectKey(id)) } },
+      { _id: { $in: imageIds.filter((id) => !S3DatasetSource.isDatasetObjectKey(id)) } },
       '_id length',
       {
         ...readFromSecondary
@@ -82,9 +81,9 @@ async function handler(
       imageSizeMap.set(String(item._id), item.length);
     });
 
-    const s3ImageIds = imageIds.filter((id) => s3DatasetSource.isDatasetObjectKey(id));
+    const s3ImageIds = imageIds.filter((id) => S3DatasetSource.isDatasetObjectKey(id));
     for (const id of s3ImageIds) {
-      imageSizeMap.set(id, (await s3DatasetSource.getFileMetadata(id)).contentLength);
+      imageSizeMap.set(id, (await getS3DatasetSource().getFileMetadata(id)).contentLength);
     }
   }
 
@@ -93,7 +92,7 @@ async function handler(
       list.map(async (item) => {
         const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
         const imagePreviewUrl = item.imageId
-          ? s3DatasetSource.isDatasetObjectKey(item.imageId)
+          ? S3DatasetSource.isDatasetObjectKey(item.imageId)
             ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
             : getDatasetImagePreviewUrl({
                 imageId: item.imageId,

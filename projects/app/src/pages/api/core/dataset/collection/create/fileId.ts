@@ -9,8 +9,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { S3Sources } from '@fastgpt/service/common/s3/type';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
@@ -26,7 +25,7 @@ async function handler(
   });
 
   const filename = await (async () => {
-    if (fileId.startsWith(S3Sources.dataset)) {
+    if (S3DatasetSource.isDatasetObjectKey(fileId)) {
       const metadata = await getS3DatasetSource().getFileMetadata(fileId);
       if (!metadata) return Promise.reject(CommonErrEnum.fileNotFound);
       return metadata.filename;

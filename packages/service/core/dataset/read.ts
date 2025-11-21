@@ -15,10 +15,8 @@ import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getS3DatasetSource } from '../../common/s3/sources/dataset';
-import { Mimes } from '../../common/s3/constants';
-import path from 'node:path';
-import { ParsedFileContentS3Key } from '../../common/s3/utils';
+import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
+import { getFileS3Key } from '../../common/s3/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -112,12 +110,10 @@ export const readFileRawTextByUrl = async ({
         chunks.length = 0;
 
         const { rawText } = await retryFn(() => {
-          const { key } = ParsedFileContentS3Key.dataset({
+          const { fileParsedPrefix } = getFileS3Key.dataset({
             datasetId,
-            filename: 'file',
-            mimetype: Mimes[extension as keyof typeof Mimes]
+            filename: 'file'
           });
-          const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
           return readS3FileContentByBuffer({
             customPdfParse,
             getFormatText,
@@ -127,7 +123,8 @@ export const readFileRawTextByUrl = async ({
             buffer,
             encoding: 'utf-8',
             imageKeyOptions: {
-              prefix: prefix
+              // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
+              prefix: fileParsedPrefix
             }
           });
         });
@@ -187,7 +184,7 @@ export const readDatasetSourceRawText = async ({
   rawText: string;
 }> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
-    if (!datasetId || !getS3DatasetSource().isDatasetObjectKey(sourceId)) {
+    if (!datasetId || !S3DatasetSource.isDatasetObjectKey(sourceId)) {
       return Promise.reject('datasetId is required for S3 files');
     }
 

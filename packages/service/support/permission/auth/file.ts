@@ -11,7 +11,7 @@ import { parseHeaderCert } from './common';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { S3Sources } from '../../../common/s3/type';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
 
 export const authCollectionFile = async ({
   fileId,
@@ -23,7 +23,7 @@ export const authCollectionFile = async ({
   const authRes = await parseHeaderCert(props);
   const { teamId, tmbId } = authRes;
 
-  if (fileId.startsWith(S3Sources.dataset)) {
+  if (S3DatasetSource.isDatasetObjectKey(fileId)) {
     const stat = await getS3DatasetSource().getDatasetFileStat(fileId);
     if (!stat) return Promise.reject(CommonErrEnum.fileNotFound);
   } else {

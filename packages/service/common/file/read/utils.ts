@@ -10,7 +10,6 @@ import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
 import { uploadImage2S3Bucket } from '../../s3/utils';
 import { Mimes } from '../../s3/constants';
-import { addDays } from 'date-fns';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -19,7 +18,7 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
-  uploadKey: string;
+  fileParsedPrefix?: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -37,10 +36,11 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    imageKeyOptions: {
-      prefix: params.uploadKey,
-      expiredTime: addDays(new Date(), 1)
-    }
+    imageKeyOptions: params.fileParsedPrefix
+      ? {
+          prefix: params.fileParsedPrefix
+        }
+      : undefined
   });
 };
 
@@ -66,7 +66,7 @@ export const readS3FileContentByBuffer = async ({
   customPdfParse?: boolean;
   usageId?: string;
   getFormatText?: boolean;
-  imageKeyOptions: {
+  imageKeyOptions?: {
     prefix: string;
     expiredTime?: Date;
   };
@@ -172,6 +172,7 @@ export const readS3FileContentByBuffer = async ({
 
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
+        if (!imageKeyOptions) return '';
         try {
           const { prefix, expiredTime } = imageKeyOptions;
           const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;

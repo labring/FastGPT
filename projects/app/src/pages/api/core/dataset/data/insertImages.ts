@@ -14,7 +14,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
 import fsp from 'node:fs/promises';
-import { ParsedFileContentS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 
 export type insertImagesQuery = {};
 
@@ -66,11 +66,10 @@ async function handler(
       files.map(async (file) =>
         uploadImage2S3Bucket('private', {
           base64Img: (await fsp.readFile(file.path)).toString('base64'),
-          uploadKey: ParsedFileContentS3Key.dataset({
+          uploadKey: getFileS3Key.dataset({
             datasetId: dataset._id,
-            mimetype: file.mimetype,
             filename: path.basename(file.filename)
-          }).key,
+          }).fileKey,
           mimetype: file.mimetype,
           filename: path.basename(file.filename),
           expiredTime: addDays(new Date(), 7)

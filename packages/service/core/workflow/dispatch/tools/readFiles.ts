@@ -17,7 +17,9 @@ import { addDays, addMinutes } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
-import { getFileNameFromPresignedURL, ParsedFileContentS3Key } from '../../../../common/s3/utils';
+import { getFileS3Key } from '../../../../common/s3/utils';
+import { S3ChatSource } from '../../../../common/s3/sources/chat';
+import path from 'path';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -73,12 +75,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       teamId,
       tmbId,
       customPdfParse,
-      usageId,
-      fileS3Prefix: ParsedFileContentS3Key.chat({
-        appId: props.runningAppInfo.id,
-        chatId: props.chatId!,
-        uId: props.uid
-      })
+      usageId
     });
 
     return {
@@ -131,8 +128,7 @@ export const getFileContentFromLinks = async ({
   teamId,
   tmbId,
   customPdfParse,
-  usageId,
-  fileS3Prefix
+  usageId
 }: {
   urls: string[];
   requestOrigin?: string;
@@ -141,7 +137,6 @@ export const getFileContentFromLinks = async ({
   tmbId: string;
   customPdfParse?: boolean;
   usageId?: string;
-  fileS3Prefix: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -204,20 +199,23 @@ export const getFileContentFromLinks = async ({
           const buffer = Buffer.from(response.data, 'binary');
 
           // Get file name
-          const filename = (() => {
+          const { filename, extension, imageParsePrefix } = (() => {
             const contentDisposition = response.headers['content-disposition'];
             if (contentDisposition) {
               const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
               const matches = filenameRegex.exec(contentDisposition);
               if (matches != null && matches[1]) {
-                return decodeURIComponent(matches[1].replace(/['"]/g, ''));
+                const filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+                return {
+                  filename,
+                  extension: path.extname(filename).replace('.', ''),
+                  imageParsePrefix: ``
+                };
               }
             }
-            return getFileNameFromPresignedURL(url).filename;
+
+            return S3ChatSource.parseChatUrl(url);
           })();
-          // Extension
-          const extension =
-            getFileNameFromPresignedURL(url).extension || parseFileExtensionFromUrl(filename);
 
           // Get encoding
           const encoding = (() => {
@@ -241,9 +239,11 @@ export const getFileContentFromLinks = async ({
             encoding,
             customPdfParse,
             getFormatText: true,
-            imageKeyOptions: {
-              prefix: `${fileS3Prefix}/${filename}-parsed`
-            },
+            imageKeyOptions: imageParsePrefix
+              ? {
+                  prefix: imageParsePrefix
+                }
+              : undefined,
             usageId
           });
 
