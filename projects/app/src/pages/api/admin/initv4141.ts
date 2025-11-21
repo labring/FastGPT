@@ -108,18 +108,21 @@ async function appSplitMigration(teamId: string) {
         const obj = appMap.get(folder._id)!;
         const newParentId = obj?.parentId ? appMap.get(obj!.parentId)?.newId : null;
 
-        const oldRps = RPMap.get(folder._id)!;
-        rpOps.push(
-          ...oldRps.map((oldRp) => ({
-            insertOne: {
-              document: {
-                ...oldRp,
-                resourceId: obj.newId!,
-                _id: undefined
+        const oldRps = RPMap.get(folder._id);
+
+        if (oldRps) {
+          rpOps.push(
+            ...oldRps.map((oldRp) => ({
+              insertOne: {
+                document: {
+                  ...oldRp,
+                  resourceId: obj.newId!,
+                  _id: undefined
+                }
               }
-            }
-          }))
-        );
+            }))
+          );
+        }
 
         if (!newParentId) {
           continue;
