@@ -42,5 +42,10 @@
   "dingtalk.create_modal_title": "Create DingTalk bot",
   "dingtalk.edit_modal_title": "Edit DingTalk bot",
   "dingtalk.title": "DingTalk bots",
-  "dingtalk.api": "DingTalk API"
+  "dingtalk.api": "DingTalk API",
+  "web_version": "网页版",
+  "web_version_desc": "分享链接给其他用户，可在网页直接对话",
+  "anonymous_login": "免登录",
+  "anonymous_login_enabled_tip": "开启免登录时，用户可通过链接直接进行对话。",
+  "anonymous_login_disabled_tip": "未开启时，用户需使用本平台账号进行登录，拥有应用权限的用户可通过链接进行对话。"
 }

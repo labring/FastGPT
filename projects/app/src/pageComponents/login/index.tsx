@@ -197,9 +197,9 @@ export const LoginContainer = ({
 
   // login success handler
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    async (res: ResLogin) => {
       setUserInfo(res.user);
-      onSuccess?.(res);
+      return onSuccess ? await onSuccess(res) : undefined;
     },
     [setUserInfo, onSuccess]
   );

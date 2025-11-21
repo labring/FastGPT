@@ -13,7 +13,7 @@ import PolicyTip from './PolicyTip';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: ResLogin) => void;
+  loginSuccess: (e: ResLogin) => void | Promise<boolean>;
 }
 
 interface LoginFormType {
@@ -34,17 +34,21 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { runAsync: onclickLogin, loading: requesting } = useRequest2(
     async ({ username, password }: LoginFormType) => {
       const { code } = await getPreLogin(username);
-      loginSuccess(
-        await postLogin({
-          username,
-          password,
-          code
-        })
-      );
-      toast({
-        title: t('login:login_success'),
-        status: 'success'
+      const res = await postLogin({
+        username,
+        password,
+        code
       });
+
+      // 等待 loginSuccess 执行完成
+      const result = await loginSuccess(res);
+
+      if (result !== false) {
+        toast({
+          title: t('login:login_success'),
+          status: 'success'
+        });
+      }
     },
     {
       refreshDeps: [loginSuccess]

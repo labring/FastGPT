@@ -57,6 +57,10 @@ const OutLinkSchema = new Schema({
   showRawSource: {
     type: Boolean
   },
+  allowAnonymous: {
+    type: Boolean,
+    default: true
+  },
   limit: {
     maxUsagePoints: {
       type: Number,
