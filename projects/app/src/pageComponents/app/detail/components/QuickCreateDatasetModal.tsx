@@ -19,14 +19,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateDatasetWithFiles, getDatasetById } from '@/web/core/dataset/api';
-import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
-import { uploadFile2DB } from '@/web/common/file/controller';
+import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
+import { POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 import FileSelector, {
@@ -82,11 +82,21 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const { fileId: uploadFileId } = await uploadFile2DB({
-              file,
-              bucketName: BucketNameEnum.dataset,
-              data: { datasetId: '' },
-              percentListen: (percent) => {
+            const { url, fields, maxSize } = await getUploadTempFilePresignedUrl({
+              filename: file.name
+            });
+
+            const formData = new FormData();
+            Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
+            formData.set('file', file);
+
+            await POST(url, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data; charset=utf-8'
+              },
+              onUploadProgress: (e) => {
+                if (!e.total) return;
+                const percent = Math.round((e.loaded / e.total) * 100);
                 setSelectFiles((state) =>
                   state.map((item) =>
                     item.id === fileId
@@ -100,20 +110,22 @@ const QuickCreateDatasetModal = ({
                   )
                 );
               }
-            });
-
-            setSelectFiles((state) =>
-              state.map((item) =>
-                item.id === fileId
-                  ? {
-                      ...item,
-                      dbFileId: uploadFileId,
-                      isUploading: false,
-                      uploadedFileRate: 100
-                    }
-                  : item
-              )
-            );
+            })
+              .then(() => {
+                setSelectFiles((state) =>
+                  state.map((item) =>
+                    item.id === fileId
+                      ? {
+                          ...item,
+                          dbFileId: fields.key,
+                          isUploading: false,
+                          uploadedFileRate: 100
+                        }
+                      : item
+                  )
+                );
+              })
+              .catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
           } catch (error) {
             setSelectFiles((state) =>
               state.map((item) =>

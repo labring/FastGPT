@@ -4,12 +4,9 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ClientSession } from 'mongoose';
 import { MongoS3TTL } from './schema';
 import { S3Buckets } from './constants';
-import { S3PrivateBucket } from './buckets/private';
 import { S3Sources, type UploadImage2S3BucketParams } from './type';
-import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
@@ -77,6 +74,10 @@ export async function uploadImage2S3Bucket(
   params: UploadImage2S3BucketParams
 ) {
   const { base64Img, filename, mimetype, uploadKey, expiredTime } = params;
+
+  // 懒加载以避免循环依赖
+  const { S3PrivateBucket } = await import('./buckets/private');
+  const { S3PublicBucket } = await import('./buckets/public');
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
 
