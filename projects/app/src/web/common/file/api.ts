@@ -61,3 +61,7 @@ export const getUploadDatasetFilePresignedUrl = (params: {
 }) => {
   return POST<CreatePostPresignedUrlResult>('/core/dataset/presignDatasetFilePostUrl', params);
 };
+
+export const getUploadTempFilePresignedUrl = (params: { filename: string }) => {
+  return POST<CreatePostPresignedUrlResult>('/common/file/presignTempFilePostUrl', params);
+};
