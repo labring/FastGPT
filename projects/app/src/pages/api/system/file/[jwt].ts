@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { jwtVerifyS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtVerifyS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,11 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { objectKey } = await jwtVerifyS3ObjectKey(jwt);
 
-    if (S3DatasetSource.isDatasetObjectKey(objectKey) || s3ChatSource.isChatFileKey(objectKey)) {
+    if (isS3ObjectKey(objectKey, 'dataset') || isS3ObjectKey(objectKey, 'chat')) {
       try {
         const [stream, metadata] = await Promise.all(
           (() => {
-            if (S3DatasetSource.isDatasetObjectKey(objectKey)) {
+            if (isS3ObjectKey(objectKey, 'dataset')) {
               return [
                 s3DatasetSource.getDatasetFileStream(objectKey),
                 s3DatasetSource.getFileMetadata(objectKey)

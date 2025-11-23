@@ -10,6 +10,7 @@ import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
+import { isS3ObjectKey, jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 export type GetQuoteProps = {
   datasetDataIdList: string[];
@@ -67,15 +68,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
 
   const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 
-  const finalList = quoteList.map((item) => {
-    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
-    if (item.a) {
-      item.a = replaceDatasetQuoteTextWithJWT(item.a, addDays(new Date(), 90));
-    }
-    return item;
-  });
-
-  return finalList;
+  return quoteList;
 }
 
 export default NextAPI(handler);

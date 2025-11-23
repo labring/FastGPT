@@ -36,7 +36,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { clearCollectionImages } from '../image/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
 import path from 'node:path';
-import { removeS3TTL } from '../../../common/s3/utils';
+import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -299,7 +299,7 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     { session, ordered: true }
   );
 
-  if (S3DatasetSource.isDatasetObjectKey(fileId)) {
+  if (isS3ObjectKey(fileId, 'dataset')) {
     await removeS3TTL({ key: fileId, bucketName: 'private', session });
   }
 
@@ -383,7 +383,7 @@ export async function delCollection({
   ).lean();
   const imageIds = imageDatas
     .map((item) => item.imageId)
-    .filter((key) => S3DatasetSource.isDatasetObjectKey(key));
+    .filter((key) => isS3ObjectKey(key, 'dataset'));
 
   await retryFn(async () => {
     await Promise.all([

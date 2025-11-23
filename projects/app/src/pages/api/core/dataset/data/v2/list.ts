@@ -12,7 +12,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
 import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
-import { jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
 
 export type GetDatasetDataListProps = PaginationProps & {
@@ -70,7 +70,7 @@ async function handler(
 
   if (imageIds.length > 0) {
     const imageInfos = await MongoDatasetImageSchema.find(
-      { _id: { $in: imageIds.filter((id) => !S3DatasetSource.isDatasetObjectKey(id)) } },
+      { _id: { $in: imageIds.filter((id) => !isS3ObjectKey(id, 'dataset')) } },
       '_id length',
       {
         ...readFromSecondary
@@ -81,7 +81,7 @@ async function handler(
       imageSizeMap.set(String(item._id), item.length);
     });
 
-    const s3ImageIds = imageIds.filter((id) => S3DatasetSource.isDatasetObjectKey(id));
+    const s3ImageIds = imageIds.filter((id) => isS3ObjectKey(id, 'dataset'));
     for (const id of s3ImageIds) {
       imageSizeMap.set(id, (await getS3DatasetSource().getFileMetadata(id)).contentLength);
     }
@@ -92,7 +92,7 @@ async function handler(
       list.map(async (item) => {
         const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
         const imagePreviewUrl = item.imageId
-          ? S3DatasetSource.isDatasetObjectKey(item.imageId)
+          ? isS3ObjectKey(item.imageId, 'dataset')
             ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
             : getDatasetImagePreviewUrl({
                 imageId: item.imageId,

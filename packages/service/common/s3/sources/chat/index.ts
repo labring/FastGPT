@@ -24,18 +24,14 @@ export class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
-  isChatFileKey(key?: string): key is `${typeof S3Sources.chat}/${string}` {
-    return key?.startsWith(`${S3Sources.chat}/`) ?? false;
-  }
-
   // 可能不是 S3 的 url
   static parseChatUrl(url: string) {
     try {
       const parseUrl = new URL(url);
-      const pathname = parseUrl.pathname;
+      const pathname = decodeURIComponent(parseUrl.pathname);
 
       // 非 S3 key
-      if (!pathname.startsWith(`${S3Buckets.private}/${S3Sources.chat}/`)) {
+      if (!pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`)) {
         return {
           filename: '',
           extension: '',
@@ -43,12 +39,13 @@ export class S3ChatSource {
         };
       }
 
-      const filename = decodeURIComponent(pathname.split('/').pop() || 'file');
+      const filename = pathname.split('/').pop() || 'file';
       const extension = path.extname(filename);
+
       return {
         filename,
         extension: extension.replace('.', ''),
-        imageParsePrefix: `${pathname.replace(`${S3Buckets.private}/`, '').replace(`.${extension}`, '')}-parsed`
+        imageParsePrefix: `${pathname.replace(`/${S3Buckets.private}/`, '').replace(extension, '')}-parsed`
       };
     } catch (error) {
       return {

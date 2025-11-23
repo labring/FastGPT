@@ -179,7 +179,7 @@ export const readS3FileContentByBuffer = async ({
 
           return await uploadImage2S3Bucket('private', {
             base64Img: `data:${item.mime};base64,${item.base64}`,
-            uploadKey: `${prefix}/${item.uuid}.${ext}`,
+            uploadKey: `${prefix}/${item.uuid}${ext}`,
             mimetype: Mimes[ext as keyof typeof Mimes],
             filename: `${item.uuid}${ext}`,
             expiredTime

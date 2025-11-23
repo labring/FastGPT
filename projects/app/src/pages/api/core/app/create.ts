@@ -29,6 +29,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
@@ -167,7 +168,8 @@ export const onCreateApp = async ({
       if (!template?.avatar) return avatar;
 
       const s3AvatarSource = getS3AvatarSource();
-      if (!s3AvatarSource.isAvatarKey(template.avatar)) return template.avatar;
+      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar'))
+        return template.avatar;
 
       const filename = (() => {
         const last = template.avatar.split('/').pop()?.split('-')[1];

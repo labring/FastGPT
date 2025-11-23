@@ -9,7 +9,8 @@ import { computeGridFsChunSize, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
 import { Readable } from 'stream';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getS3DatasetSource, S3DatasetSource } from '../../s3/sources/dataset';
+import { getS3DatasetSource } from '../../s3/sources/dataset';
+import { isS3ObjectKey } from '../../s3/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -162,7 +163,7 @@ export async function delFileByFileIdList({
 
     for await (const fileId of fileIdList) {
       try {
-        if (S3DatasetSource.isDatasetObjectKey(fileId)) {
+        if (isS3ObjectKey(fileId, 'dataset')) {
           await getS3DatasetSource().deleteDatasetFileByKey(fileId);
         } else {
           await bucket.delete(new Types.ObjectId(String(fileId)));

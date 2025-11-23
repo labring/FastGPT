@@ -18,6 +18,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
@@ -250,7 +251,7 @@ export async function insertData2Dataset({
   );
 
   // 只移除图片数据集的图片的 TTL
-  if (S3DatasetSource.isDatasetObjectKey(imageId)) {
+  if (isS3ObjectKey(imageId, 'dataset')) {
     await removeS3TTL({ key: imageId, bucketName: 'private', session });
   }
 

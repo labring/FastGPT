@@ -16,6 +16,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { S3Sources } from '@fastgpt/service/common/s3/type';
 import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -36,7 +37,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   const fileId = collection?.fileId;
   const [file, indexAmount, errorCount] = await Promise.all([
     fileId
-      ? S3DatasetSource.isDatasetObjectKey(fileId)
+      ? isS3ObjectKey(fileId, 'dataset')
         ? getS3DatasetSource().getFileMetadata(fileId)
         : (async () => {
             const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });

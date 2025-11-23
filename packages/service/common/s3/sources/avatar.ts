@@ -83,15 +83,6 @@ class S3AvatarSource {
     await this.bucket.copy({ from, to, options: { temporary } });
     return this.prefix.concat(to);
   }
-
-  isAvatarKey(
-    key?: string,
-    options?: { prefix?: string }
-  ): key is `${typeof S3Sources.avatar}/${string}` {
-    const { prefix = this.prefix } = options ?? {};
-    const objectKey = prefix ? key?.slice(prefix.length) : key;
-    return objectKey?.startsWith(`${S3Sources.avatar}/`) ?? false;
-  }
 }
 
 export function getS3AvatarSource() {

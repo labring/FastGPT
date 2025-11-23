@@ -171,16 +171,8 @@ async function handleInitialLoad({
 
   const resultList = [...prevList, centerNode, ...nextList];
 
-  const finalList = resultList.map((item) => {
-    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
-    if (item.a) {
-      item.a = replaceDatasetQuoteTextWithJWT(item.a, addDays(new Date(), 90));
-    }
-    return item;
-  });
-
   return {
-    list: processChatTimeFilter(getFormatDatasetCiteList(finalList), chatTime),
+    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime),
     hasMorePrev,
     hasMoreNext
   };

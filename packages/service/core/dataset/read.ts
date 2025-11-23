@@ -16,7 +16,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
-import { getFileS3Key } from '../../common/s3/utils';
+import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -184,7 +184,7 @@ export const readDatasetSourceRawText = async ({
   rawText: string;
 }> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
-    if (!datasetId || !S3DatasetSource.isDatasetObjectKey(sourceId)) {
+    if (!datasetId || !isS3ObjectKey(sourceId, 'dataset')) {
       return Promise.reject('datasetId is required for S3 files');
     }
 
