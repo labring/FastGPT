@@ -216,6 +216,7 @@ export const getFileContentFromLinks = async ({
 
             return S3ChatSource.parseChatUrl(url);
           })();
+          console.log('imageParsePrefix ========================', imageParsePrefix);
 
           // Get encoding
           const encoding = (() => {

@@ -3,7 +3,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3Sources } from '../../common/s3/type';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { jwtSignS3ObjectKey } from '../../common/s3/utils';
+import { jwtSignS3ObjectKey, isS3ObjectKey } from '../../common/s3/utils';
 
 // TODO: 需要优化成批量获取权限
 export const filterDatasetsByTmbId = async ({
@@ -57,7 +57,6 @@ export function replaceDatasetQuoteTextWithJWT(documentQuoteText: string, expire
     .map((pattern) => `${pattern}\\/[^\\s)]+`)
     .join('|');
   const regex = new RegExp(String.raw`(!?)\[([^\]]+)\]\((?!https?:\/\/)(${prefixPattern})\)`, 'g');
-  const s3ChatSource = getS3ChatSource();
 
   const matches = Array.from(documentQuoteText.matchAll(regex));
   let content = documentQuoteText;
@@ -65,7 +64,7 @@ export function replaceDatasetQuoteTextWithJWT(documentQuoteText: string, expire
   for (const match of matches.slice().reverse()) {
     const [full, bang, alt, objectKey] = match;
 
-    if (S3DatasetSource.isDatasetObjectKey(objectKey) || s3ChatSource.isChatFileKey(objectKey)) {
+    if (isS3ObjectKey(objectKey, 'dataset') || isS3ObjectKey(objectKey, 'chat')) {
       const url = jwtSignS3ObjectKey(objectKey, expiredTime);
       const replacement = `${bang}[${alt}](${url})`;
       content =

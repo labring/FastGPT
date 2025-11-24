@@ -1,8 +1,8 @@
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { replaceDatasetQuoteTextWithJWT } from '../../../core/dataset/utils';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
-import { getDatasetImagePreviewUrl } from '../image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { addDays } from 'date-fns';
+import { isS3ObjectKey, jwtSignS3ObjectKey } from '../../../common/s3/utils';
 
 export const formatDatasetDataValue = ({
   teamId,
@@ -53,15 +53,19 @@ export const formatDatasetDataValue = ({
 
   if (!imageId) {
     return {
-      q,
-      a
+      q: replaceDatasetQuoteTextWithJWT(q, addDays(new Date(), 90)),
+      a: a ? replaceDatasetQuoteTextWithJWT(a, addDays(new Date(), 90)) : undefined
     };
   }
 
+  const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
+    ? jwtSignS3ObjectKey(imageId, addDays(new Date(), 90))
+    : imageId;
+
   return {
-    q: `![${q.replaceAll('\n', '')}](${imageId})`,
+    q: `![${q.replaceAll('\n', '')}](${imagePreivewUrl})`,
     a,
-    imagePreivewUrl: imageId
+    imagePreivewUrl
   };
 };
 

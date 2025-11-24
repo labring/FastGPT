@@ -1,6 +1,6 @@
 import { S3Sources } from '../../type';
 import { S3PrivateBucket } from '../../buckets/private';
-import { getNanoid, parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import {
   type CreateGetDatasetFileURLParams,
   CreateGetDatasetFileURLParamsSchema,
@@ -22,8 +22,6 @@ import { addRawTextBuffer, getRawTextBuffer } from '../../../buffer/rawText/cont
 import path from 'node:path';
 import { Mimes } from '../../constants';
 import { getFileS3Key } from '../../utils';
-
-type DatasetObjectKey = `${typeof S3Sources.dataset}/${string}`;
 
 export class S3DatasetSource {
   public bucket: S3PrivateBucket;
@@ -103,10 +101,6 @@ export class S3DatasetSource {
       contentType,
       contentLength
     };
-  }
-
-  static isDatasetObjectKey(key?: string): key is DatasetObjectKey {
-    return typeof key === 'string' && key.startsWith(`${S3Sources.dataset}/`);
   }
 
   async getDatasetBase64Image(key: string): Promise<string> {

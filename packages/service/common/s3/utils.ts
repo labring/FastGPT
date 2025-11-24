@@ -9,7 +9,6 @@ import { S3Sources, type UploadImage2S3BucketParams } from './type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
@@ -117,6 +116,7 @@ const getFormatedFilename = (filename?: string) => {
     extension: extension.replace('.', '')
   };
 };
+
 export const getFileS3Key = {
   // 临时的文件路径（比如 evaluation)
   temp: ({ teamId, filename }: { teamId: string; filename?: string }) => {
@@ -145,16 +145,11 @@ export const getFileS3Key = {
     filename: string;
   }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
+    const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
 
     return {
-      fileKey: [
-        S3Sources.chat,
-        appId,
-        uId,
-        chatId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/'),
-      fileParsedPrefix: [S3Sources.chat, appId, uId, chatId, `${formatedFilename}-parsed`].join('/')
+      fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
+      fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')
     };
   },
 
@@ -181,3 +176,16 @@ export const getFileS3Key = {
     };
   }
 };
+
+/**
+ * Check if a key is a valid S3 object key
+ * @param key - The key to check
+ * @param source - The source of the key
+ * @returns True if the key is a valid S3 object key
+ */
+export function isS3ObjectKey<T extends keyof typeof S3Sources>(
+  key: string | undefined | null,
+  source: T
+): key is `${T}/${string}` {
+  return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
+}

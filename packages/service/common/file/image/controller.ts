@@ -10,6 +10,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { S3Sources } from '../../s3/type';
 import { getS3AvatarSource } from '../../s3/sources/avatar';
+import { isS3ObjectKey } from '../../s3/utils';
 import path from 'path';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -75,7 +76,7 @@ export const copyAvatarImage = async ({
   if (!imageUrl) return;
 
   const avatarSource = getS3AvatarSource();
-  if (avatarSource.isAvatarKey(imageUrl)) {
+  if (isS3ObjectKey(imageUrl?.slice(avatarSource.prefix.length), 'avatar')) {
     const filename = (() => {
       const last = imageUrl.split('/').pop()?.split('-')[1];
       if (!last) return getNanoid(6).concat(path.extname(imageUrl));
@@ -139,7 +140,7 @@ export const removeImageByPath = (path?: string, session?: ClientSession) => {
 
   if (Types.ObjectId.isValid(id)) {
     return MongoImage.deleteOne({ _id: id }, { session });
-  } else if (getS3AvatarSource().isAvatarKey(path)) {
+  } else if (isS3ObjectKey(path?.slice(getS3AvatarSource().prefix.length), 'avatar')) {
     return getS3AvatarSource().deleteAvatar(path, session);
   }
 };
