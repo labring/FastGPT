@@ -156,11 +156,9 @@ export const getFileContentFromLinks = async ({
     .map((url) => {
       try {
         // Check is system upload file
-        if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
-          //  Remove the origin(Make intranet requests directly)
-          if (requestOrigin && url.startsWith(requestOrigin)) {
-            url = url.replace(requestOrigin, '');
-          }
+        const parsedURL = new URL(url, 'http://localhost:3000');
+        if (requestOrigin && parsedURL.origin === requestOrigin) {
+          url = url.replace(requestOrigin, '');
         }
 
         return url;
@@ -216,7 +214,6 @@ export const getFileContentFromLinks = async ({
 
             return S3ChatSource.parseChatUrl(url);
           })();
-          console.log('imageParsePrefix ========================', imageParsePrefix);
 
           // Get encoding
           const encoding = (() => {
