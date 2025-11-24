@@ -6,12 +6,15 @@ import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from './InputTypeConfig';
+import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
+import {
+  getPluginInputTypeList,
+  getPluginInputTypeRawList
+} from '@fastgpt/web/components/common/InputTypeSelector/configs';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
@@ -46,95 +49,28 @@ const FieldEditModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  const handleFormError = useCallback(
+    (errors: Record<string, any>) => {
+      const firstError = Object.values(errors).find((error) => error?.message);
+      if (firstError) {
+        toast({
+          status: 'warning',
+          title: firstError.message
+        });
+      }
+    },
+    [toast]
+  );
+
+  // rawInputTypeList: full renderTypeList array, used for onTypeChange
+  const rawInputTypeList = useMemo(
+    () => getPluginInputTypeRawList({ hasDynamicInput }),
+    [hasDynamicInput]
+  );
+  // inputTypeList: for InputTypeSelector display
   const inputTypeList = useMemo(
-    () =>
-      [
-        [
-          {
-            icon: 'core/workflow/inputType/reference',
-            label: t('common:core.workflow.inputType.Reference'),
-            value: [FlowNodeInputTypeEnum.reference],
-            defaultValueType: WorkflowIOValueTypeEnum.string
-          },
-          {
-            icon: 'core/workflow/inputType/input',
-            label: t('common:core.workflow.inputType.textInput'),
-            value: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            defaultValueType: WorkflowIOValueTypeEnum.string
-          },
-          {
-            icon: 'core/workflow/inputType/password',
-            label: t('common:core.workflow.inputType.password'),
-            value: [FlowNodeInputTypeEnum.password],
-            defaultValueType: WorkflowIOValueTypeEnum.string
-          },
-          {
-            icon: 'core/workflow/inputType/numberInput',
-            label: t('common:core.workflow.inputType.number input'),
-            value: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-            defaultValueType: WorkflowIOValueTypeEnum.number
-          },
-          {
-            icon: 'core/workflow/inputType/option',
-            label: t('common:core.workflow.inputType.select'),
-            value: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
-            defaultValueType: WorkflowIOValueTypeEnum.string
-          },
-          {
-            icon: 'core/workflow/inputType/switch',
-            label: t('common:core.workflow.inputType.switch'),
-            value: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference],
-            defaultValueType: WorkflowIOValueTypeEnum.boolean
-          }
-        ],
-        [
-          {
-            icon: 'core/workflow/inputType/selectLLM',
-            label: t('common:core.workflow.inputType.selectLLMModel'),
-            value: [FlowNodeInputTypeEnum.selectLLMModel],
-            defaultValueType: WorkflowIOValueTypeEnum.string
-          },
-          {
-            icon: 'core/workflow/inputType/selectDataset',
-            label: t('common:core.workflow.inputType.selectDataset'),
-            value: [FlowNodeInputTypeEnum.selectDataset],
-            defaultValueType: WorkflowIOValueTypeEnum.selectDataset
-          },
-          ...(hasDynamicInput
-            ? []
-            : [
-                {
-                  icon: 'core/workflow/inputType/dynamic',
-                  label: t('common:core.workflow.inputType.dynamicTargetInput'),
-                  value: [FlowNodeInputTypeEnum.addInputParam],
-                  defaultValueType: WorkflowIOValueTypeEnum.dynamic
-                }
-              ])
-        ],
-        [
-          {
-            icon: 'core/workflow/inputType/file',
-            label: t('app:file_upload'),
-            value: [FlowNodeInputTypeEnum.fileSelect],
-            defaultValueType: WorkflowIOValueTypeEnum.arrayString,
-            description: t('app:file_upload_tip')
-          },
-          {
-            icon: 'core/workflow/inputType/customVariable',
-            label: t('common:core.workflow.inputType.custom'),
-            value: [FlowNodeInputTypeEnum.customVariable],
-            defaultValueType: WorkflowIOValueTypeEnum.string,
-            description: t('app:variable.select type_desc')
-          }
-        ]
-      ] as {
-        icon: string;
-        label: string;
-        value: FlowNodeInputTypeEnum[];
-        defaultValueType: WorkflowIOValueTypeEnum;
-        description?: string;
-      }[][],
-    [hasDynamicInput, t]
+    () => getPluginInputTypeList({ hasDynamicInput }),
+    [hasDynamicInput]
   );
 
   const isEdit = !!defaultValue.key;
@@ -148,7 +84,7 @@ const FieldEditModal = ({
 
   const defaultValueType = useMemo(
     () =>
-      inputTypeList.flat().find((item) => item.value[0] === inputType)?.defaultValueType ||
+      inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType ||
       WorkflowIOValueTypeEnum.string,
     [inputType, inputTypeList]
   );
@@ -236,21 +172,6 @@ const FieldEditModal = ({
     },
     [defaultValue.key, keys, toast, t, defaultValueType, isEdit, onSubmit, onClose, reset]
   );
-  const onSubmitError = useCallback(
-    (e: Object) => {
-      console.log('e', e);
-      for (const item of Object.values(e)) {
-        if (item.message) {
-          toast({
-            status: 'warning',
-            title: item.message
-          });
-          break;
-        }
-      }
-    },
-    [toast]
-  );
 
   return (
     <MyModal
@@ -258,7 +179,7 @@ const FieldEditModal = ({
       onClose={onClose}
       iconSrc="/imgs/workflow/extract.png"
       title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
-      maxW={['90vw', '1028px']}
+      maxW={['90vw', '1078px']}
       w={'100%'}
       isCentered
     >
@@ -268,67 +189,19 @@ const FieldEditModal = ({
             <FormLabel color={'myGray.600'} fontWeight={'medium'}>
               {t('common:core.module.Input Type')}
             </FormLabel>
-            <Flex flexDirection={'column'} gap={4}>
-              {inputTypeList.map((list, index) => {
-                return (
-                  <Box
-                    key={index}
-                    display={'grid'}
-                    gridTemplateColumns={'repeat(3, 1fr)'}
-                    gap={4}
-                    mt={5}
-                  >
-                    {list.map((item) => {
-                      const isSelected = inputType === item.value[0];
-                      return (
-                        <Box
-                          display={'flex'}
-                          key={item.label}
-                          border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
-                          p={3}
-                          rounded={'6px'}
-                          fontWeight={'medium'}
-                          fontSize={'14px'}
-                          alignItems={'center'}
-                          cursor={'pointer'}
-                          boxShadow={
-                            isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'
-                          }
-                          _hover={{
-                            '& > svg': {
-                              color: 'primary.600'
-                            },
-                            '& > span': {
-                              color: 'myGray.900'
-                            },
-                            border: '1px solid #3370FF',
-                            boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                          }}
-                          onClick={() => {
-                            setValue('renderTypeList', item.value);
-                            setValue('defaultValue', '');
-                          }}
-                        >
-                          <MyIcon
-                            name={item.icon as any}
-                            w={'20px'}
-                            mr={1.5}
-                            color={isSelected ? 'primary.600' : 'myGray.400'}
-                          />
-                          <Box as="span" color={isSelected ? 'myGray.900' : 'inherit'}>
-                            {item.label}
-                          </Box>
-                          {item.description && <QuestionTip label={item.description} ml={1} />}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                );
-              })}
-            </Flex>
+            <InputTypeSelector
+              inputTypeList={inputTypeList}
+              selectedType={inputType}
+              onTypeChange={(type) => {
+                const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
+                if (targetItem) {
+                  setValue('renderTypeList', targetItem.value);
+                  setValue('defaultValue', '');
+                }
+              }}
+            />
           </Box>
         </Stack>
-        {/* input type config */}
         <InputTypeConfig
           form={form}
           type={'plugin'}
@@ -337,7 +210,7 @@ const FieldEditModal = ({
           inputType={inputType}
           defaultValueType={defaultValueType}
           onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={onSubmitError}
+          onSubmitError={handleFormError}
         />
       </Flex>
     </MyModal>

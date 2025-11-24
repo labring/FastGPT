@@ -173,13 +173,29 @@ const ChatBox = ({
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
-      input: '',
+      input:
+        typeof window !== 'undefined' ? sessionStorage.getItem(`chatInput_${chatId}`) || '' : '',
       files: [],
       chatStarted: false
     }
   });
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
+  const inputValue = watch('input');
+
+  useDebounceEffect(
+    () => {
+      if (typeof window !== 'undefined' && chatId) {
+        if (inputValue) {
+          sessionStorage.setItem(`chatInput_${chatId}`, inputValue);
+        } else {
+          sessionStorage.removeItem(`chatInput_${chatId}`);
+        }
+      }
+    },
+    [inputValue, chatId],
+    { wait: 300 }
+  );
 
   const commonVariableList = variableList.filter(
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
@@ -385,6 +401,10 @@ const ChatBox = ({
     if (!TextareaDom.current) return;
     setValue('files', files);
     setValue('input', text);
+
+    if (text === '' && typeof window !== 'undefined' && chatId) {
+      sessionStorage.removeItem(`chatInput_${chatId}`);
+    }
 
     setTimeout(() => {
       /* 回到最小高度 */

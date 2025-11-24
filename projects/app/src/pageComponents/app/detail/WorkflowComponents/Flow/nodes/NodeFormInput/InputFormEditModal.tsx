@@ -1,14 +1,15 @@
-import { Box, Flex, FormLabel, Stack } from '@chakra-ui/react';
+import { Flex, FormLabel, Stack } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
+import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
+import { getFormInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 
 export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
@@ -39,6 +40,20 @@ const InputFormEditModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  // 表单错误处理
+  const handleFormError = useCallback(
+    (errors: Record<string, any>) => {
+      const firstError = Object.values(errors).find((error) => error?.message);
+      if (firstError) {
+        toast({
+          status: 'warning',
+          title: firstError.message
+        });
+      }
+    },
+    [toast]
+  );
+
   const form = useForm({
     defaultValues: defaultValue
   });
@@ -46,36 +61,12 @@ const InputFormEditModal = ({
 
   const inputType = watch('type') || FlowNodeInputTypeEnum.input;
 
-  const inputTypeList = [
-    {
-      icon: 'core/workflow/inputType/input',
-      label: t('common:core.workflow.inputType.textInput'),
-      value: FlowNodeInputTypeEnum.input,
-      defaultValueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      icon: 'core/workflow/inputType/numberInput',
-      label: t('common:core.workflow.inputType.number input'),
-      value: FlowNodeInputTypeEnum.numberInput,
-      defaultValueType: WorkflowIOValueTypeEnum.number
-    },
-    {
-      icon: 'core/workflow/inputType/option',
-      label: t('common:core.workflow.inputType.select'),
-      value: FlowNodeInputTypeEnum.select,
-      defaultValueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      icon: 'core/workflow/inputType/option',
-      label: t('workflow:input_type_multiple_select'),
-      value: FlowNodeInputTypeEnum.multipleSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    }
-  ];
+  const inputTypeList = useMemo(() => getFormInputTypeList(), []);
 
-  const defaultValueType = inputTypeList
-    .flat()
-    .find((item) => item.value === inputType)?.defaultValueType;
+  const defaultValueType = useMemo(
+    () => inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType,
+    [inputTypeList, inputType]
+  );
 
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
@@ -108,81 +99,29 @@ const InputFormEditModal = ({
     [defaultValue.key, keys, defaultValueType, isEdit, toast, t, onSubmit, onClose, reset]
   );
 
-  const onSubmitError = useCallback(
-    (e: Object) => {
-      for (const item of Object.values(e)) {
-        if (item.message) {
-          toast({
-            status: 'warning',
-            title: item.message
-          });
-          break;
-        }
-      }
-    },
-    [toast]
-  );
-
   return (
     <MyModal
       isOpen={true}
       onClose={onClose}
       iconSrc="file/fill/manual"
       title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
-      maxW={['90vw', '878px']}
+      maxW={['90vw', '1078px']}
       w={'100%'}
       isCentered
     >
-      <Flex h={'494px'}>
+      <Flex h={'560px'}>
         <Stack gap={4} p={8}>
           <FormLabel color={'myGray.600'} fontWeight={'medium'}>
             {t('common:core.module.Input Type')}
           </FormLabel>
-          <Flex flexDirection={'column'} gap={4}>
-            <Box display={'grid'} gridTemplateColumns={'repeat(2, 1fr)'} gap={4}>
-              {inputTypeList.map((item) => {
-                const isSelected = inputType === item.value;
-                return (
-                  <Box
-                    display={'flex'}
-                    key={item.label}
-                    border={isSelected ? '1px solid #3370FF' : '1px solid #DFE2EA'}
-                    p={3}
-                    rounded={'6px'}
-                    fontWeight={'medium'}
-                    fontSize={'14px'}
-                    alignItems={'center'}
-                    cursor={'pointer'}
-                    boxShadow={isSelected ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
-                    _hover={{
-                      '& > svg': {
-                        color: 'primary.600'
-                      },
-                      '& > span': {
-                        color: 'myGray.900'
-                      },
-                      border: '1px solid #3370FF',
-                      boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-                    }}
-                    onClick={() => {
-                      setValue('type', item.value);
-                      setValue('defaultValue', '');
-                    }}
-                  >
-                    <MyIcon
-                      name={item.icon as any}
-                      w={'20px'}
-                      mr={1.5}
-                      color={isSelected ? 'primary.600' : 'myGray.400'}
-                    />
-                    <Box as="span" color={isSelected ? 'myGray.900' : 'inherit'} pr={4}>
-                      {item.label}
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Flex>
+          <InputTypeSelector
+            inputTypeList={inputTypeList}
+            selectedType={inputType}
+            onTypeChange={(type) => {
+              setValue('type', type as FlowNodeInputTypeEnum);
+              setValue('defaultValue', '');
+            }}
+          />
         </Stack>
         <InputTypeConfig
           form={form}
@@ -191,7 +130,7 @@ const InputFormEditModal = ({
           inputType={inputType}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={onSubmitError}
+          onSubmitError={handleFormError}
         />
       </Flex>
     </MyModal>

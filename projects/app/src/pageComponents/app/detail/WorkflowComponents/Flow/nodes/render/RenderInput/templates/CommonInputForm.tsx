@@ -125,17 +125,11 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       inputType={inputType}
       value={value}
       onChange={handleChange}
-      isRichText={item.isRichText}
-      placeholder={item.placeholder}
-      maxLength={item.maxLength}
-      minLength={item.minLength}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
-      min={item.min}
-      max={item.max}
-      list={item.list}
       modelList={modelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
+      {...item}
     />
   );
 };

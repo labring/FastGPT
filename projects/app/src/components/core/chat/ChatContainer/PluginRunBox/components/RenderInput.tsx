@@ -223,7 +223,11 @@ const RenderInput = () => {
       {formatPluginInputs
         .filter((input) => {
           if (outLinkAuthData && Object.keys(outLinkAuthData).length > 0) {
-            return input.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable;
+            const inputType = input.renderTypeList[0];
+            return (
+              inputType !== FlowNodeInputTypeEnum.customVariable &&
+              inputType !== FlowNodeInputTypeEnum.hidden
+            );
           }
           return true;
         })
@@ -237,7 +241,8 @@ const RenderInput = () => {
                 {input.required && <Box color={'red.500'}>*</Box>}
                 <FormLabel>{input.label}</FormLabel>
                 {input.description && <QuestionTip ml={1} label={input.description} />}
-                {inputType === FlowNodeInputTypeEnum.customVariable && (
+                {(inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) && (
                   <Flex
                     color={'primary.600'}
                     bg={'primary.100'}
@@ -249,7 +254,9 @@ const RenderInput = () => {
                     rounded={'sm'}
                   >
                     <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                    {t('chat:variable_invisable_in_share')}
+                    {inputType === FlowNodeInputTypeEnum.customVariable
+                      ? t('chat:variable_invisable_in_share')
+                      : t('chat:internal_variables_tip')}
                   </Flex>
                 )}
               </Flex>
