@@ -132,6 +132,7 @@ export type SystemEnvType = {
   parseMaxProcess?: number;
   vectorMaxProcess: number;
   qaMaxProcess: number;
+  hypeMaxProcess?: number;
   vlmMaxProcess: number;
   tokenWorkers: number; // token count max worker
 
@@ -145,6 +146,9 @@ export type SystemEnvType = {
 
   // Evaluation configurations
   evalConfig?: EvaluationConfigType;
+
+  // Hype index parameters
+  hypeParams?: HypeParamsType;
 };
 
 export type customPdfParseType = {
@@ -165,6 +169,17 @@ export type EvaluationConfigType = {
   datasetDataSynthesizeConcurrency?: number;
   datasetSmartGenerateConcurrency?: number;
   maxStalledCount?: number;
+};
+
+export type HypeParamsType = {
+  similarityThreshold: number; // use to judg semantic drift, CosineSimilarity(candicateQuery,top1Doc),top1Doc!=tarDoc
+  maxDeltaScore: number; // use to judg semantic drift, Score(Top1Doc) - Score(tarDoc) must be lower than this value
+  minDeltaScore: number; // use to judg semantic distinction,Score(tarDoc)- Score(nextDoc) must be lower than this value
+  expectRank: number; // tarDoc ranking must higher than this value
+  defaultScore: number; // Default score for non-retrieved targets with low top1 similarity (indicating that the candicate has a good dispersion/diversity)
+  topK: number;
+  rerank: boolean;
+  min_rerank_threshold: number;
 };
 
 export type LicenseDataType = {

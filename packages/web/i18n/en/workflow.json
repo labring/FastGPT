@@ -176,7 +176,7 @@
   "template.ai_chat": "AI chat",
   "template.ai_chat_intro": "Chat with an AI model.",
   "template.dataset_search": "Knowledge base search",
-  "template.dataset_search_intro": "Use semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
+  "template.dataset_search_intro": "Uses semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
   "template.forbid_stream": "Disable output in streaming mode",
   "template.forbid_stream_desc": "Force nested apps to run in non-streaming mode.",
   "template.plugin_output": "Plugin output",

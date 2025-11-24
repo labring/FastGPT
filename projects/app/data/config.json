@@ -7,6 +7,7 @@
   "systemEnv": {
     "vectorMaxProcess": 10, // 向量处理线程数量
     "qaMaxProcess": 10, // 问答拆分线程数量
+    "hypeMaxProcess": 5, // 索引增强线程数量
     "vlmMaxProcess": 10, // 图片理解模型最大处理进程
     "tokenWorkers": 30, // Token 计算线程保持数，会持续占用内存，不能设置太大。
     "hnswEfSearch": 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
@@ -27,6 +28,16 @@
       "datasetDataSynthesizeConcurrency": 5,
       "datasetSmartGenerateConcurrency": 2,
       "maxStalledCount": 3
+    },
+    "hypeParams": {
+      "similarityThreshold": 0.85, // 用于判断语义漂移, CosineSimilarity(candidateQuery,top1Doc),top1Doc!=tarDoc
+      "maxDeltaScore": 0.15, // 用于判断语义漂移, Score(Top1Doc) - Score(tarDoc) 必须低于此值
+      "minDeltaScore": 0.05, // 用于判断语义区分度,Score(tarDoc)- Score(nextDoc) 必须低于此值
+      "expectRank": 3, // 目标文档排名必须高于此值
+      "defaultScore": 0.8, // 对于低top1相似度的未检索目标的默认分数(表示候选具有良好的离散性/多样性)
+      "topK": 20, // 召回的文档数量
+      "rerank": false, // 是否使用重排序
+      "min_rerank_threshold": 0.85 // 重排序最小阈值
     }
   }
 }
