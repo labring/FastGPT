@@ -71,6 +71,10 @@ export type UserInputFormItemType = {
 
   // input & textarea
   maxLength?: number;
+
+  // password
+  minLength?: number;
+
   // numberInput
   max?: number;
   min?: number;

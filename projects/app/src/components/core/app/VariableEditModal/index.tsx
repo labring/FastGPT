@@ -13,6 +13,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 import { addVariable } from '../VariableEdit';
+import { useValidateFieldName, useSubmitErrorHandler } from '../utils/formValidation';
 
 const VariableEditModal = ({
   onClose,
@@ -27,71 +28,8 @@ const VariableEditModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-
-  const handleFormError = useCallback(
-    (errors: Record<string, any>) => {
-      const firstError = Object.values(errors).find((error) => error?.message);
-      if (firstError) {
-        toast({
-          status: 'warning',
-          title: firstError.message
-        });
-      }
-    },
-    [toast]
-  );
-
-  const validateFieldName = useCallback(
-    (
-      label: string,
-      options: {
-        existingKeys: string[];
-        systemVariables?: { key: string; label: string }[];
-        currentKey?: string;
-      }
-    ): boolean => {
-      const { existingKeys, systemVariables = [], currentKey } = options;
-
-      // 1. 检查是否为空
-      const trimmedLabel = label?.trim();
-      if (!trimmedLabel) {
-        toast({
-          status: 'warning',
-          title: t('app:variable_name_required')
-        });
-        return false;
-      }
-
-      // 2. 检查是否与现有字段重复（排除自身）
-      const isDuplicate = existingKeys.some((key) => {
-        return key !== currentKey && trimmedLabel === key;
-      });
-
-      if (isDuplicate) {
-        toast({
-          status: 'warning',
-          title: t('app:variable_repeat')
-        });
-        return false;
-      }
-
-      // 3. 检查是否与系统变量冲突
-      const isSystemConflict = systemVariables.some(
-        (item) => item.key === trimmedLabel || t(item.label as any) === trimmedLabel
-      );
-
-      if (isSystemConflict) {
-        toast({
-          status: 'warning',
-          title: t('app:systemval_conflict_globalval')
-        });
-        return false;
-      }
-
-      return true;
-    },
-    [t, toast]
-  );
+  const validateFieldName = useValidateFieldName();
+  const onSubmitError = useSubmitErrorHandler();
 
   const form = useForm<VariableItemType>({
     defaultValues: variable
@@ -197,7 +135,7 @@ const VariableEditModal = ({
       isCentered
     >
       <Flex h={'560px'}>
-        <Stack gap={4} p={8}>
+        <Stack p={8}>
           <FormLabel color={'myGray.600'} fontWeight={'medium'}>
             {t('workflow:Variable.Variable type')}
           </FormLabel>
@@ -215,7 +153,7 @@ const VariableEditModal = ({
           defaultValueType={defaultValueType}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={handleFormError}
+          onSubmitError={onSubmitError}
         />
       </Flex>
     </MyModal>

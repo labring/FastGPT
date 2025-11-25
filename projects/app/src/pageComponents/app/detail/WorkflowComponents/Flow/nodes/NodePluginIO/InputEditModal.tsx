@@ -15,6 +15,10 @@ import {
   getPluginInputTypeList,
   getPluginInputTypeRawList
 } from '@fastgpt/web/components/common/InputTypeSelector/configs';
+import {
+  useValidateFieldName,
+  useSubmitErrorHandler
+} from '@/components/core/app/utils/formValidation';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
@@ -48,19 +52,8 @@ const FieldEditModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-
-  const handleFormError = useCallback(
-    (errors: Record<string, any>) => {
-      const firstError = Object.values(errors).find((error) => error?.message);
-      if (firstError) {
-        toast({
-          status: 'warning',
-          title: firstError.message
-        });
-      }
-    },
-    [toast]
-  );
+  const validateFieldName = useValidateFieldName();
+  const onSubmitError = useSubmitErrorHandler();
 
   // rawInputTypeList: full renderTypeList array, used for onTypeChange
   const rawInputTypeList = useMemo(
@@ -91,20 +84,23 @@ const FieldEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
-      console.log('data', data);
       data.label = data?.label?.trim();
 
-      if (!data.label) {
-        return toast({
-          status: 'warning',
-          title: t('common:core.module.edit.Field Name Cannot Be Empty')
-        });
+      const isChangeKey = defaultValue.key !== data.key;
+      const isValid = validateFieldName(data.label, {
+        existingKeys: isEdit && !isChangeKey ? keys.filter((k) => k !== defaultValue.key) : keys,
+        currentKey: defaultValue.key
+      });
+
+      if (!isValid) {
+        return;
       }
 
       // Auto set valueType
       if (
         data.renderTypeList[0] !== FlowNodeInputTypeEnum.reference &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable
+        data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable &&
+        data.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden
       ) {
         data.valueType = defaultValueType;
       }
@@ -112,21 +108,10 @@ const FieldEditModal = ({
       // Remove required
       if (
         data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable ||
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden
       ) {
         data.required = false;
-      }
-
-      const isChangeKey = defaultValue.key !== data.key;
-      // create check key
-      if (keys.includes(data.key)) {
-        if (!isEdit || isChangeKey) {
-          toast({
-            status: 'warning',
-            title: t('workflow:field_name_already_exists')
-          });
-          return;
-        }
       }
 
       if (data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam) {
@@ -158,11 +143,10 @@ const FieldEditModal = ({
         }
       });
 
+      onSubmit(data);
       if (action === 'confirm') {
-        onSubmit(data);
         onClose();
       } else if (action === 'continue') {
-        onSubmit(data);
         toast({
           status: 'success',
           title: t('common:add_success')
@@ -170,7 +154,18 @@ const FieldEditModal = ({
         reset(defaultInput);
       }
     },
-    [defaultValue.key, keys, toast, t, defaultValueType, isEdit, onSubmit, onClose, reset]
+    [
+      defaultValue.key,
+      keys,
+      toast,
+      t,
+      defaultValueType,
+      isEdit,
+      onSubmit,
+      onClose,
+      reset,
+      validateFieldName
+    ]
   );
 
   return (
@@ -184,23 +179,21 @@ const FieldEditModal = ({
       isCentered
     >
       <Flex h={'560px'}>
-        <Stack gap={4} p={8}>
-          <Box alignItems={'center'}>
-            <FormLabel color={'myGray.600'} fontWeight={'medium'}>
-              {t('common:core.module.Input Type')}
-            </FormLabel>
-            <InputTypeSelector
-              inputTypeList={inputTypeList}
-              selectedType={inputType}
-              onTypeChange={(type) => {
-                const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
-                if (targetItem) {
-                  setValue('renderTypeList', targetItem.value);
-                  setValue('defaultValue', '');
-                }
-              }}
-            />
-          </Box>
+        <Stack p={8}>
+          <FormLabel color={'myGray.600'} fontWeight={'medium'}>
+            {t('common:core.module.Input Type')}
+          </FormLabel>
+          <InputTypeSelector
+            inputTypeList={inputTypeList}
+            selectedType={inputType}
+            onTypeChange={(type) => {
+              const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
+              if (targetItem) {
+                setValue('renderTypeList', targetItem.value);
+                setValue('defaultValue', '');
+              }
+            }}
+          />
         </Stack>
         <InputTypeConfig
           form={form}
@@ -210,7 +203,7 @@ const FieldEditModal = ({
           inputType={inputType}
           defaultValueType={defaultValueType}
           onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={handleFormError}
+          onSubmitError={onSubmitError}
         />
       </Flex>
     </MyModal>

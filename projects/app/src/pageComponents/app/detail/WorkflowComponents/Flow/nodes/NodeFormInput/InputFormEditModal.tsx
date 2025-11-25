@@ -1,4 +1,4 @@
-import { Flex, FormLabel, Stack } from '@chakra-ui/react';
+import { Flex, Stack } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -10,6 +10,11 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getFormInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
+import {
+  useValidateFieldName,
+  useSubmitErrorHandler
+} from '@/components/core/app/utils/formValidation';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
@@ -39,20 +44,8 @@ const InputFormEditModal = ({
   const isEdit = !!defaultValue.key;
   const { t } = useTranslation();
   const { toast } = useToast();
-
-  // 表单错误处理
-  const handleFormError = useCallback(
-    (errors: Record<string, any>) => {
-      const firstError = Object.values(errors).find((error) => error?.message);
-      if (firstError) {
-        toast({
-          status: 'warning',
-          title: firstError.message
-        });
-      }
-    },
-    [toast]
-  );
+  const validateFieldName = useValidateFieldName();
+  const onSubmitError = useSubmitErrorHandler();
 
   const form = useForm({
     defaultValues: defaultValue
@@ -71,24 +64,23 @@ const InputFormEditModal = ({
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
       const isChangeKey = defaultValue.key !== data.key;
-      if (keys.includes(data.key)) {
-        if (!isEdit || isChangeKey) {
-          toast({
-            status: 'warning',
-            title: t('workflow:field_name_already_exists')
-          });
-          return;
-        }
+      const isValid = validateFieldName(data.label, {
+        existingKeys: isEdit && !isChangeKey ? keys.filter((k) => k !== defaultValue.key) : keys,
+        currentKey: defaultValue.key
+      });
+
+      if (!isValid) {
+        return;
       }
 
       data.key = data.label;
       data.valueType = defaultValueType as WorkflowIOValueTypeEnum;
 
+      onSubmit(data);
+
       if (action === 'confirm') {
-        onSubmit(data);
         onClose();
       } else if (action === 'continue') {
-        onSubmit(data);
         toast({
           status: 'success',
           title: t('common:add_success')
@@ -96,7 +88,18 @@ const InputFormEditModal = ({
         reset(defaultFormInput);
       }
     },
-    [defaultValue.key, keys, defaultValueType, isEdit, toast, t, onSubmit, onClose, reset]
+    [
+      defaultValue.key,
+      keys,
+      defaultValueType,
+      isEdit,
+      toast,
+      t,
+      onSubmit,
+      onClose,
+      reset,
+      validateFieldName
+    ]
   );
 
   return (
@@ -110,7 +113,7 @@ const InputFormEditModal = ({
       isCentered
     >
       <Flex h={'560px'}>
-        <Stack gap={4} p={8}>
+        <Stack p={8}>
           <FormLabel color={'myGray.600'} fontWeight={'medium'}>
             {t('common:core.module.Input Type')}
           </FormLabel>
@@ -130,7 +133,7 @@ const InputFormEditModal = ({
           inputType={inputType}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={handleFormError}
+          onSubmitError={onSubmitError}
         />
       </Flex>
     </MyModal>

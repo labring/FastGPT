@@ -11,7 +11,10 @@ import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
@@ -20,6 +23,8 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
+import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 
 type Props = {
   chatId: string;
@@ -444,12 +449,30 @@ export const updateInteractiveChat = async (props: Props) => {
   ) {
     finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
       const itemValue = parsedUserInteractiveVal[item.label];
-      return itemValue !== undefined
-        ? {
+      if (itemValue === undefined) return item;
+
+      // 如果是密码类型，加密后存储
+      if (item.type === FlowNodeInputTypeEnum.password) {
+        const decryptedVal = anyValueDecrypt(itemValue);
+        if (typeof decryptedVal === 'string') {
+          return {
             ...item,
-            value: itemValue
-          }
-        : item;
+            value: encryptSecretValue({
+              value: decryptedVal,
+              secret: ''
+            } as SecretValueType)
+          };
+        }
+        return {
+          ...item,
+          value: itemValue
+        };
+      }
+
+      return {
+        ...item,
+        value: itemValue
+      };
     });
     finalInteractive.params.submitted = true;
   } else if (finalInteractive.type === 'paymentPause') {

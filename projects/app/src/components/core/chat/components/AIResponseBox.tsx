@@ -275,11 +275,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
             }
           }
         });
-        sessionStorage.setItem(
-          `interactiveForm_${chatItemDataId}_submitted`,
-          JSON.stringify(dataToSave)
-        );
-        sessionStorage.removeItem(`interactiveForm_${chatItemDataId}`);
+        sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(dataToSave));
       }
 
       onSendPrompt({
@@ -296,8 +292,14 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
         chatItemDataId={chatItemDataId}
-        SubmitButton={({ onSubmit }) => (
-          <Button onClick={() => onSubmit(handleFormSubmit)()}>{t('common:Submit')}</Button>
+        SubmitButton={({ onSubmit, isFileUploading }) => (
+          <Button
+            onClick={() => onSubmit(handleFormSubmit)()}
+            isDisabled={isFileUploading}
+            isLoading={isFileUploading}
+          >
+            {t('common:Submit')}
+          </Button>
         )}
       />
     </Flex>

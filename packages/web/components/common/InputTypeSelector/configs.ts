@@ -185,7 +185,6 @@ export const getPluginInputTypeRawList = (options?: {
         value: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
         defaultValueType: WorkflowIOValueTypeEnum.selectDataset
       },
-      // 动态输入选项（根据条件显示）
       ...(hasDynamicInput
         ? []
         : [
@@ -224,7 +223,7 @@ export const getPluginInputTypeList = (options?: {
     group.map((item) => ({
       icon: item.icon,
       label: item.label,
-      value: item.value[0], // 取第一个值作为标识
+      value: item.value[0],
       defaultValueType: item.defaultValueType,
       description: item.description
     }))
