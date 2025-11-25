@@ -1,5 +1,5 @@
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -14,6 +14,7 @@ import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { runtimeSystemVar2StoreType } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -63,11 +64,16 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
         return valueTypeFormat(val, item.valueType);
       } else {
-        return getReferenceVariableValue({
+        const val = getReferenceVariableValue({
           value: item.value,
           variables,
           nodes: runtimeNodes
         });
+
+        if (Array.isArray(val)) {
+          return val.map((url: string) => parseUrlToFileType(url)).filter(Boolean);
+        }
+        return val;
       }
     })();
 
