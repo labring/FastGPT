@@ -1,5 +1,5 @@
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { VARIABLE_NODE_ID, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -15,6 +15,7 @@ import { runtimeSystemVar2StoreType } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { z } from 'zod';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -35,6 +36,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   const { updateList } = params;
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
+  const urlSchema = z.string().url();
 
   const result = updateList.map((item) => {
     const variable = item.variable;
@@ -70,8 +72,11 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
           nodes: runtimeNodes
         });
 
-        if (Array.isArray(val)) {
-          return val.map((url: string) => parseUrlToFileType(url)).filter(Boolean);
+        if (
+          Array.isArray(val) &&
+          val.every((url) => typeof url === 'string' && urlSchema.safeParse(url).success)
+        ) {
+          return val.map((url) => parseUrlToFileType(url)).filter(Boolean);
         }
         return val;
       }
