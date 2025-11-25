@@ -62,12 +62,11 @@ async function convertFileIdToString(batchId: string) {
     limit(async () => {
       try {
         // 确保 fileId 存在
-        if (!collection.fileId || typeof collection.fileId === 'string') {
+        if (!collection.fileId) {
           return;
         }
 
         // 将 ObjectId 转换为字符串
-        // @ts-ignore
         const fileIdStr = collection.fileId.toString();
 
         // 更新为字符串类型
@@ -458,12 +457,11 @@ async function convertImageIdToString(batchId: string) {
     limit(async () => {
       try {
         // 确保 imageId 存在
-        if (!data.imageId || typeof data.imageId === 'string') {
+        if (!data.imageId) {
           return;
         }
 
         // 将 ObjectId 转换为字符串
-        // @ts-ignore
         const imageIdStr = data.imageId.toString();
 
         // 更新为字符串类型

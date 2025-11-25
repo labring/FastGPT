@@ -243,9 +243,6 @@ try {
   // 查询某个团队的迁移情况
   DatasetMigrationLogSchema.index({ teamId: 1, status: 1 });
 
-  // 清理旧日志（按创建时间）
-  DatasetMigrationLogSchema.index({ createdAt: 1 });
-
   // 唯一索引：同一个资源在同一个批次只能有一条记录
   DatasetMigrationLogSchema.index({ batchId: 1, resourceType: 1, resourceId: 1 }, { unique: true });
 } catch (error) {
