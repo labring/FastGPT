@@ -14,7 +14,12 @@ import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/t
 import { randomUUID } from 'crypto';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { uploadImage2S3Bucket, removeS3TTL, getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import {
+  uploadImage2S3Bucket,
+  removeS3TTL,
+  getFileS3Key,
+  truncateFilename
+} from '@fastgpt/service/common/s3/utils';
 import { addDays } from 'date-fns';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 
@@ -720,15 +725,18 @@ async function migrateDatasetImage({
       const mimetype = imageFile.contentType || 'image/png';
       const filename = imageFile.filename || 'image.png';
 
+      // 截断文件名以避免S3 key过长的问题
+      const truncatedFilename = truncateFilename(filename);
+
       // 构造 S3 key
-      const { fileKey: s3Key } = getFileS3Key.dataset({ datasetId, filename });
+      const { fileKey: s3Key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
 
       // 使用 uploadImage2S3Bucket 上传图片
       key = await uploadImage2S3Bucket('private', {
         base64Img: buffer.toString('base64'),
         uploadKey: s3Key,
         mimetype,
-        filename,
+        filename: truncatedFilename,
         expiredTime: addDays(new Date(), 7)
       });
 

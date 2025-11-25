@@ -12,6 +12,45 @@ import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 
+// S3文件名最大长度配置
+export const S3_FILENAME_MAX_LENGTH = 50;
+
+/**
+ * 截断文件名，确保不超过最大长度，同时保留扩展名
+ * @param filename 原始文件名
+ * @param maxLength 最大长度限制
+ * @returns 截断后的文件名
+ */
+export function truncateFilename(
+  filename: string,
+  maxLength: number = S3_FILENAME_MAX_LENGTH
+): string {
+  if (!filename) return filename;
+
+  // 如果文件名长度已经符合要求，直接返回
+  if (filename.length <= maxLength) {
+    return filename;
+  }
+
+  const extension = path.extname(filename); // 包含点的扩展名，如 ".pdf"
+  const nameWithoutExt = path.basename(filename, extension); // 不包含扩展名的文件名
+
+  // 计算名称部分的最大长度（总长度减去扩展名长度）
+  const maxNameLength = maxLength - extension.length;
+
+  // 如果扩展名本身就很长导致没有空间放名称，则截断扩展名
+  if (maxNameLength <= 0) {
+    // 保留扩展名的开头部分，至少保留一个点
+    const truncatedExt = extension.substring(0, Math.min(maxLength, extension.length));
+    return truncatedExt;
+  }
+
+  // 截断文件名部分
+  const truncatedName = nameWithoutExt.substring(0, maxNameLength);
+
+  return truncatedName + extension;
+}
+
 /**
  *
  * @param objectKey
@@ -109,8 +148,10 @@ const getFormatedFilename = (filename?: string) => {
   }
 
   const id = getNanoid(6);
-  const extension = path.extname(filename); // 带.
-  const name = path.basename(filename, extension);
+  // 先截断文件名，再进行格式化
+  const truncatedFilename = truncateFilename(filename);
+  const extension = path.extname(truncatedFilename); // 带.
+  const name = path.basename(truncatedFilename, extension);
   return {
     formatedFilename: `${id}-${name}`,
     extension: extension.replace('.', '')
