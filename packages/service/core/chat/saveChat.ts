@@ -81,11 +81,29 @@ const afterProcess = async ({
           if (valueItem.type === 'text' && valueItem.text?.content) {
             try {
               const parsed = JSON.parse(valueItem.text.content);
+              // 2.1 plugin input - 数组格式
               if (Array.isArray(parsed)) {
                 parsed.forEach((field) => {
                   if (field.value && Array.isArray(field.value)) {
                     field.value.forEach((file: { key: string }) => {
                       if (file.key && typeof file.key === 'string') {
+                        keys.push(file.key);
+                      }
+                    });
+                  }
+                });
+              }
+              // 2.2 form input - 对象格式 { "字段名": [{ key, url, ... }] }
+              else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                Object.values(parsed).forEach((fieldValue) => {
+                  if (Array.isArray(fieldValue)) {
+                    fieldValue.forEach((file: any) => {
+                      if (
+                        file &&
+                        typeof file === 'object' &&
+                        file.key &&
+                        typeof file.key === 'string'
+                      ) {
                         keys.push(file.key);
                       }
                     });
@@ -448,7 +466,7 @@ export const updateInteractiveChat = async (props: Props) => {
     typeof parsedUserInteractiveVal === 'object'
   ) {
     finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
-      const itemValue = parsedUserInteractiveVal[item.label];
+      const itemValue = parsedUserInteractiveVal[item.key];
       if (itemValue === undefined) return item;
 
       // 如果是密码类型，加密后存储

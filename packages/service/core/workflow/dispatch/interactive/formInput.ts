@@ -49,7 +49,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   node.isEntry = false;
 
   const { text } = chatValue2RuntimePrompt(query);
-  const rawUserInputVal = (() => {
+  const rawUserInputVal: Record<string, any> = (() => {
     try {
       return JSON.parse(text);
     } catch (error) {
@@ -64,6 +64,17 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
 
       if (inputConfig?.type === FlowNodeInputTypeEnum.password) {
         acc[key] = anyValueDecrypt(value);
+      } else if (inputConfig?.type === FlowNodeInputTypeEnum.fileSelect) {
+        if (Array.isArray(value)) {
+          acc[key] = value.map((file: any) => {
+            if (typeof file === 'object' && file.url) {
+              return file.url;
+            }
+            return file;
+          });
+        } else {
+          acc[key] = value;
+        }
       } else {
         acc[key] = value;
       }
