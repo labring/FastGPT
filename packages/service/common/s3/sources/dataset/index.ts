@@ -21,7 +21,7 @@ import { readS3FileContentByBuffer } from '../../../file/read/utils';
 import { addRawTextBuffer, getRawTextBuffer } from '../../../buffer/rawText/controller';
 import path from 'node:path';
 import { Mimes } from '../../constants';
-import { getFileS3Key } from '../../utils';
+import { getFileS3Key, truncateFilename } from '../../utils';
 
 export class S3DatasetSource {
   public bucket: S3PrivateBucket;
@@ -171,11 +171,14 @@ export class S3DatasetSource {
   async uploadDatasetFileByBuffer(params: UploadDatasetFileByBufferParams): Promise<string> {
     const { datasetId, buffer, filename } = UploadDatasetFileByBufferParamsSchema.parse(params);
 
-    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename });
+    // 截断文件名以避免S3 key过长的问题
+    const truncatedFilename = truncateFilename(filename);
+
+    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
     await this.bucket.putObject(key, buffer, buffer.length, {
-      'content-type': Mimes[path.extname(filename) as keyof typeof Mimes],
+      'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
       'upload-time': new Date().toISOString(),
-      'origin-filename': encodeURIComponent(filename)
+      'origin-filename': encodeURIComponent(filename) // 保持原始文件名在元数据中
     });
     await MongoS3TTL.create({
       minioKey: key,
