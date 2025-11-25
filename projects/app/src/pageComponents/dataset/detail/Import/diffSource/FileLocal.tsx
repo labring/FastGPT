@@ -9,8 +9,6 @@ import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';

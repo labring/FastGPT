@@ -391,12 +391,6 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
       value: VariableInputEnum.timeRangeSelect,
       defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    },
-    {
-      icon: 'core/workflow/inputType/file',
-      label: i18nT('common:core.workflow.inputType.file'),
-      value: VariableInputEnum.file,
-      defaultValueType: WorkflowIOValueTypeEnum.arrayString
     }
   ],
   [
@@ -407,10 +401,10 @@ export const variableConfigs: VariableConfigType[][] = [
       defaultValueType: WorkflowIOValueTypeEnum.string
     },
     {
-      icon: 'core/workflow/inputType/dataset',
-      label: i18nT('common:core.workflow.inputType.datasetSelect'),
-      value: VariableInputEnum.datasetSelect,
-      defaultValueType: WorkflowIOValueTypeEnum.selectDataset
+      icon: 'core/workflow/inputType/file',
+      label: i18nT('common:core.workflow.inputType.file'),
+      value: VariableInputEnum.file,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
     }
   ],
   [

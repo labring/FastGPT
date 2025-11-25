@@ -75,7 +75,15 @@ export class S3BaseBucket {
   }
 
   // TODO: 加到 MQ 里保障幂等
-  async move(from: string, to: string, options: CopyConditions): Promise<void> {
+  async move({
+    from,
+    to,
+    options
+  }: {
+    from: string;
+    to: string;
+    options?: CopyConditions;
+  }): Promise<void> {
     await this.copy({
       from,
       to,

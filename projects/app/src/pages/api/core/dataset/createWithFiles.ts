@@ -136,12 +136,9 @@ async function handler(
           filename: file.name
         });
 
-        await bucket.copy({
+        await bucket.move({
           from: file.fileId,
-          to: newKey,
-          options: {
-            temporary: false
-          }
+          to: newKey
         });
 
         await createCollectionAndInsertData({
