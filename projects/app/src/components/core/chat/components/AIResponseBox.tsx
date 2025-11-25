@@ -210,16 +210,19 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   );
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
-  interactive
+  interactive,
+  chatItemDataId
 }: {
   interactive: InteractiveBasicType & UserInputInteractive;
+  chatItemDataId: string;
 }) {
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
-        acc[item.key] = !!item.value ? item.value : item.defaultValue;
+        // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
+        acc[item.key] = item.value ?? item.defaultValue;
         return acc;
       }, {});
     }
@@ -231,25 +234,72 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       const finalData: Record<string, any> = {};
       interactive.params.inputForm?.forEach((item, index) => {
         if (item.key in data) {
-          finalData[item.key] = data[item.key];
+          // 对于文件类型，将文件对象数组转换为 URL 数组
+          if (
+            item.type === 'fileSelect' &&
+            Array.isArray(data[item.key]) &&
+            data[item.key].length > 0
+          ) {
+            const files = data[item.key];
+            if (files[0]?.url !== undefined) {
+              // 提取 URL 列表
+              finalData[item.key] = files.map((file: any) => file.url).filter((url: string) => url);
+            } else {
+              // 如果已经是 URL 数组，直接使用
+              finalData[item.key] = data[item.key];
+            }
+          } else {
+            finalData[item.key] = data[item.key];
+          }
         }
       });
+
+      if (typeof window !== 'undefined') {
+        const dataToSave = { ...data };
+        interactive.params.inputForm?.forEach((item) => {
+          if (
+            item.type === 'fileSelect' &&
+            Array.isArray(dataToSave[item.key]) &&
+            dataToSave[item.key].length > 0
+          ) {
+            const files = dataToSave[item.key];
+            if (files[0]?.url !== undefined) {
+              dataToSave[item.key] = files
+                .map((file: any) => ({
+                  url: file.url,
+                  key: file.key,
+                  name: file.name,
+                  type: file.type
+                }))
+                .filter((file: any) => file.url);
+            }
+          }
+        });
+        sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(dataToSave));
+      }
 
       onSendPrompt({
         text: JSON.stringify(finalData),
         isInteractivePrompt: true
       });
     },
-    [interactive.params.inputForm]
+    [interactive.params.inputForm, chatItemDataId]
   );
 
   return (
-    <Flex flexDirection={'column'} gap={2} w={'250px'}>
+    <Flex flexDirection={'column'} gap={2} minW={'250px'}>
       <FormInputComponent
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
-        SubmitButton={({ onSubmit }) => (
-          <Button onClick={() => onSubmit(handleFormSubmit)()}>{t('common:Submit')}</Button>
+        chatItemDataId={chatItemDataId}
+        SubmitButton={({ onSubmit, isFileUploading }) => (
+          <Button
+            onClick={() => onSubmit(handleFormSubmit)()}
+            isDisabled={isFileUploading}
+            isLoading={isFileUploading}
+          >
+            {t('common:Submit')}
+          </Button>
         )}
       />
     </Flex>
@@ -323,7 +373,9 @@ const AIResponseBox = ({
       return <RenderUserSelectInteractive interactive={finalInteractive} />;
     }
     if (finalInteractive.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={finalInteractive} />;
+      return (
+        <RenderUserFormInteractive interactive={finalInteractive} chatItemDataId={chatItemDataId} />
+      );
     }
     if (finalInteractive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={finalInteractive} />;

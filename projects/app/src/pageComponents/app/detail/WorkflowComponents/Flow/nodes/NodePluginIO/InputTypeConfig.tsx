@@ -168,6 +168,7 @@ const InputTypeConfig = ({
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
     inputType === FlowNodeInputTypeEnum.customVariable ||
+    inputType === FlowNodeInputTypeEnum.hidden ||
     inputType === VariableInputEnum.custom ||
     inputType === VariableInputEnum.internal;
 
@@ -175,6 +176,7 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
+      FlowNodeInputTypeEnum.hidden,
       VariableInputEnum.timePointSelect,
       VariableInputEnum.timeRangeSelect,
       VariableInputEnum.custom,
@@ -201,6 +203,9 @@ const InputTypeConfig = ({
       [FlowNodeInputTypeEnum.switch]: true,
       [FlowNodeInputTypeEnum.select]: true,
       [FlowNodeInputTypeEnum.multipleSelect]: true,
+      [FlowNodeInputTypeEnum.selectLLMModel]: true,
+      [FlowNodeInputTypeEnum.customVariable]: true,
+      [FlowNodeInputTypeEnum.hidden]: true,
       [VariableInputEnum.custom]: true,
       [VariableInputEnum.internal]: true,
       [VariableInputEnum.timePointSelect]: true,
@@ -508,7 +513,9 @@ const InputTypeConfig = ({
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
@@ -522,7 +529,9 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   value={defaultValue}
@@ -536,7 +545,9 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
@@ -554,7 +565,9 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Flex h={10} alignItems={'center'}>
                   <Switch {...register('defaultValue')} />
@@ -646,7 +659,8 @@ const InputTypeConfig = ({
                   </Box>
                 </Flex>
               )}
-              {inputType === VariableInputEnum.llmSelect && (
+              {(inputType === VariableInputEnum.llmSelect ||
+                inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
                 <Box flex={'1'}>
                   <AIModelSelector
                     value={defaultValue}

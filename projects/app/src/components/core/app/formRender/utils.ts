@@ -41,6 +41,8 @@ export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = [
   if (inputType === FlowNodeInputTypeEnum.JSONEditor) return InputTypeEnum.JSONEditor;
   if (inputType === FlowNodeInputTypeEnum.selectLLMModel) return InputTypeEnum.selectLLMModel;
   if (inputType === FlowNodeInputTypeEnum.fileSelect) return InputTypeEnum.fileSelect;
+  if (inputType === FlowNodeInputTypeEnum.timePointSelect) return InputTypeEnum.timePointSelect;
+  if (inputType === FlowNodeInputTypeEnum.timeRangeSelect) return InputTypeEnum.timeRangeSelect;
   return InputTypeEnum.textarea;
 };
 

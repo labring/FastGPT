@@ -248,7 +248,7 @@ export type DispatchNodeResponseType = {
   loopOutputValue?: any;
 
   // form input
-  formInputResult?: string;
+  formInputResult?: Record<string, any>;
 
   // tool params
   toolParamsResult?: Record<string, any>;
