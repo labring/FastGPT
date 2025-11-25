@@ -8,7 +8,7 @@ import { addLog } from '../../common/system/log';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,6 +19,7 @@ import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 type Props = {
   chatId: string;
@@ -51,18 +52,45 @@ const beforProcess = (props: Props) => {
 };
 const afterProcess = async ({
   contents,
+  variables,
+  variableList,
   session
 }: {
   contents: (UserChatItemType | AIChatItemType)[];
+  variables?: Record<string, any>;
+  variableList?: VariableItemType[];
   session: ClientSession;
 }) => {
-  const fileKeys = contents
+  const contentFileKeys = contents
     .map((item) => {
       if (item.value && Array.isArray(item.value)) {
-        return item.value.map((valueItem) => {
+        return item.value.flatMap((valueItem) => {
+          const keys: string[] = [];
+
+          // 1. chat file
           if (valueItem.type === ChatItemValueTypeEnum.file && valueItem.file?.key) {
-            return valueItem.file.key;
+            keys.push(valueItem.file.key);
           }
+
+          // 2. plugin input
+          if (valueItem.type === 'text' && valueItem.text?.content) {
+            try {
+              const parsed = JSON.parse(valueItem.text.content);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((field) => {
+                  if (field.value && Array.isArray(field.value)) {
+                    field.value.forEach((file: { key: string }) => {
+                      if (file.key && typeof file.key === 'string') {
+                        keys.push(file.key);
+                      }
+                    });
+                  }
+                });
+              }
+            } catch (err) {}
+          }
+
+          return keys;
         });
       }
       return [];
@@ -70,8 +98,22 @@ const afterProcess = async ({
     .flat()
     .filter(Boolean) as string[];
 
-  if (fileKeys.length > 0) {
-    await removeS3TTL({ key: fileKeys, bucketName: 'private', session });
+  const variableFileKeys: string[] = [];
+  if (variables && variableList) {
+    variableList.forEach((varItem) => {
+      if (varItem.type === VariableInputEnum.file) {
+        const varValue = variables[varItem.key];
+        if (Array.isArray(varValue)) {
+          variableFileKeys.push(...varValue.map((item) => item.key));
+        }
+      }
+    });
+  }
+
+  const allFileKeys = [...new Set([...contentFileKeys, ...variableFileKeys])];
+
+  if (allFileKeys.length > 0) {
+    await removeS3TTL({ key: allFileKeys, bucketName: 'private', session });
   }
 };
 
@@ -254,7 +296,12 @@ export async function saveChat(props: Props) {
         }
       );
 
-      await afterProcess({ contents: processedContent, session });
+      await afterProcess({
+        contents: processedContent,
+        variables,
+        variableList,
+        session
+      });
 
       pushChatLog({
         chatId,
@@ -336,8 +383,18 @@ export async function saveChat(props: Props) {
 export const updateInteractiveChat = async (props: Props) => {
   beforProcess(props);
 
-  const { teamId, chatId, appId, userContent, aiContent, variables, durationSeconds, errorMsg } =
-    props;
+  const {
+    teamId,
+    chatId,
+    appId,
+    nodes,
+    appChatConfig,
+    userContent,
+    aiContent,
+    variables,
+    durationSeconds,
+    errorMsg
+  } = props;
   if (!chatId) return;
 
   const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
@@ -369,6 +426,12 @@ export const updateInteractiveChat = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg
+  });
+
+  const { variables: variableList } = getAppChatConfig({
+    chatConfig: appChatConfig,
+    systemConfigNode: getGuideModule(nodes),
+    isPublicFetch: false
   });
 
   let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
@@ -460,7 +523,12 @@ export const updateInteractiveChat = async (props: Props) => {
       );
     }
 
-    await afterProcess({ contents: [userContent, aiContent], session });
+    await afterProcess({
+      contents: [userContent, aiContent],
+      variables,
+      variableList,
+      session
+    });
   });
 
   // Push chat data logs

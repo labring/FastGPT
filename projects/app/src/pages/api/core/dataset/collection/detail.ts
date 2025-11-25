@@ -14,8 +14,7 @@ import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collecti
 import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { S3Sources } from '@fastgpt/service/common/s3/type';
-import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {

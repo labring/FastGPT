@@ -33,10 +33,9 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { getFileById, delFileByFileIdList } from '@fastgpt/service/common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
+import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 
 export type DatasetCreateWithFilesQuery = {};
 export type DatasetCreateWithFilesBody = {
@@ -124,16 +123,23 @@ async function handler(
       // 3. Refresh avatar
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
-      // 4. Create collections for each file
+      // 4. Move temp files to dataset directory and create collections
+      const bucket = new S3PrivateBucket();
+
       for (const file of files) {
-        const gridFile = await getFileById({
-          bucketName: BucketNameEnum.dataset,
-          fileId: file.fileId
+        if (!file.fileId.startsWith('temp/')) {
+          return Promise.reject('Only temp files are supported');
+        }
+
+        const { fileKey: newKey } = getFileS3Key.dataset({
+          datasetId: String(dataset._id),
+          filename: file.name
         });
 
-        if (!gridFile) {
-          return Promise.reject(CommonErrEnum.fileNotFound);
-        }
+        await bucket.move({
+          from: file.fileId,
+          to: newKey
+        });
 
         await createCollectionAndInsertData({
           dataset,
@@ -142,10 +148,10 @@ async function handler(
             teamId,
             tmbId,
             type: DatasetCollectionTypeEnum.file,
-            name: file.name || gridFile.filename,
-            fileId: file.fileId,
+            name: file.name,
+            fileId: newKey,
             metadata: {
-              relatedImgId: file.fileId
+              relatedImgId: newKey
             },
             trainingType: DatasetCollectionDataProcessModeEnum.chunk,
             chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
@@ -190,12 +196,6 @@ async function handler(
 
     return result;
   } catch (error) {
-    const fileIds = files.map((file) => file.fileId);
-    await delFileByFileIdList({
-      bucketName: BucketNameEnum.dataset,
-      fileIdList: fileIds
-    });
-
     return Promise.reject(error);
   }
 }
