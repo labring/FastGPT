@@ -10,7 +10,8 @@ export enum DatasetTypeEnum {
   apiDataset = 'apiDataset',
   feishu = 'feishu',
   yuque = 'yuque',
-  database = 'database'
+  database = 'database',
+  structureDocument = 'structureDocument' // file database
 }
 interface DatasetTypeConfig {
   icon: string;
@@ -38,7 +39,8 @@ export enum DatabaseTypeEnum {
   mysql = 'mysql',
   postgresql = 'postgresql',
   mssql = 'mssql',
-  sqlite = 'sqlite'
+  sqlite = 'sqlite',
+  duckdb = 'duckdb'
 }
 
 // @ts-ignore
@@ -109,6 +111,23 @@ export const DatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
     avatar: 'core/dataset/externalDatasetColor',
     label: i18nT('dataset:external_file'),
     collectionLabel: i18nT('common:File')
+  },
+  [DatasetTypeEnum.structureDocument]: {
+    icon: 'core/dataset/databaseOutline',
+    avatar: 'core/dataset/databaseColor',
+    label: 'Structured Document',
+    collectionLabel: i18nT('common:File'),
+    formConfig: {
+      agentModel: {
+        isHidden: true
+      },
+      vlmModel: {
+        isHidden: true
+      },
+      vectorModel: {
+        isHidden: true
+      }
+    }
   }
 };
 

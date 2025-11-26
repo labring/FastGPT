@@ -21,6 +21,7 @@
     "chalk": "^5.3.0",
     "cheerio": "1.0.0-rc.12",
     "chinese-conv": "^3.2.2",
+    "combined-stream": "^1.0.8",
     "cookie": "^0.7.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
@@ -59,6 +60,7 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@types/combined-stream": "^1.0.6",
     "@types/cookie": "^0.5.2",
     "@types/decompress": "^4.2.7",
     "@types/jsonwebtoken": "^9.0.3",

@@ -303,7 +303,7 @@ export type DatasetListItemType = {
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {
   status: `${DatasetStatusEnum}`;
   errorMsg?: string;
-  vectorModel: EmbeddingModelItemType;
+  vectorModel?: EmbeddingModelItemType;
   agentModel: LLMModelItemType;
   vlmModel?: LLMModelItemType;
   permission: DatasetPermission;

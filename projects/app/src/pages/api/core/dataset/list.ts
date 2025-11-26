@@ -195,7 +195,10 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         name: dataset.name,
         intro: dataset.intro,
         type: dataset.type,
-        vectorModel: getEmbeddingModel(dataset.vectorModel),
+        vectorModel:
+          dataset.type !== DatasetTypeEnum.structureDocument
+            ? getEmbeddingModel(dataset.vectorModel)
+            : undefined,
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,
