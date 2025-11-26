@@ -85,7 +85,11 @@ const VariableEditModal = ({
         return;
       }
 
-      if (data.type === VariableInputEnum.custom || data.type === VariableInputEnum.internal) {
+      if (
+        data.type === VariableInputEnum.custom ||
+        data.type === VariableInputEnum.internal ||
+        data.type === VariableInputEnum.switch
+      ) {
         data.required = false;
       } else {
         data.valueType = inputTypeList

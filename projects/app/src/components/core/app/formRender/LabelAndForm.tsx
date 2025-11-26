@@ -1,5 +1,5 @@
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import React from 'react';
@@ -66,9 +66,19 @@ const LabelAndFormRender = ({
             if (typeof value === 'number' || typeof value === 'boolean') return true;
             if (inputType === InputTypeEnum.password && props.minLength) {
               if (!value || typeof value !== 'object' || !value.value) return false;
-              return value.value.length >= props.minLength;
+              if (value.value.length < props.minLength) {
+                return t(`common:min_length`, { minLenth: props.minLength });
+              }
+              return true;
             }
             if (!required) return true;
+
+            if (inputType === InputTypeEnum.fileSelect) {
+              if (!value || !Array.isArray(value) || value.length === 0) {
+                return t('common:required');
+              }
+              return true;
+            }
 
             return !!value;
           },
@@ -76,22 +86,25 @@ const LabelAndFormRender = ({
             ? {
                 minLength: {
                   value: props.minLength,
-                  message: t(`common:min_length`, { minLength: props.minLength })
+                  message: t(`common:min_length`, { minLenth: props.minLength })
                 }
               }
             : {})
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (
-            <InputRender
-              inputType={inputType}
-              isRichText={false}
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              isInvalid={!!error}
-              {...props}
-            />
+            <FormControl isInvalid={!!error}>
+              <InputRender
+                inputType={inputType}
+                isRichText={false}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                isInvalid={!!error}
+                {...props}
+              />
+              {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+            </FormControl>
           );
         }}
       />
