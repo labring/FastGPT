@@ -56,7 +56,7 @@ export function replaceDatasetQuoteTextWithJWT(documentQuoteText: string, expire
   const prefixPattern = Object.values(S3Sources)
     .map((pattern) => `${pattern}\\/[^\\s)]+`)
     .join('|');
-  const regex = new RegExp(String.raw`(!?)\[([^\]]+)\]\((?!https?:\/\/)(${prefixPattern})\)`, 'g');
+  const regex = new RegExp(String.raw`(!?)\[([^\]]*)\]\((?!https?:\/\/)(${prefixPattern})\)`, 'g');
 
   const matches = Array.from(documentQuoteText.matchAll(regex));
   let content = documentQuoteText;
