@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -15,6 +15,7 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { getPresignedChatFileGetUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { useTranslation } from 'next-i18next';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -79,6 +80,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     isFileUploading: boolean;
   }) => React.JSX.Element;
 }) {
+  const { t } = useTranslation();
   const savedFormData = React.useMemo(() => {
     const saved = sessionStorage.getItem(`interactiveForm_${chatItemDataId}`);
     if (saved) {
@@ -187,32 +189,37 @@ export const FormInputComponent = React.memo(function FormInputComponent({
           const inputType = nodeInputTypeToInputType([input.type]);
 
           return (
-            <Box key={input.key}>
-              <Flex alignItems={'center'} mb={1}>
-                {input.required && <Box color={'red.500'}>*</Box>}
-                <FormLabel>{input.label}</FormLabel>
-                {input.description && <QuestionTip ml={1} label={input.description} />}
-              </Flex>
-              <Controller
-                key={input.key}
-                control={control}
-                name={input.key}
-                rules={{
-                  required: input.required,
-                  validate: (value) => {
-                    if (input.type === 'password' && input.minLength) {
-                      if (!value || typeof value !== 'object' || !value.value) {
-                        return false;
-                      }
-                      if (value.value.length < input.minLength) {
-                        return false;
-                      }
+            <Controller
+              key={input.key}
+              control={control}
+              name={input.key}
+              rules={{
+                required: input.required,
+                validate: (value) => {
+                  if (input.type === 'password' && input.minLength) {
+                    if (!value || typeof value !== 'object' || !value.value) {
+                      return false;
                     }
-                    return true;
+                    if (value.value.length < input.minLength) {
+                      return t('common:min_length', { minLenth: input.minLength });
+                    }
                   }
-                }}
-                render={({ field: { onChange, value }, fieldState: { error } }) => {
-                  return (
+                  if (input.type === 'fileSelect' && input.required) {
+                    if (!value || !Array.isArray(value) || value.length === 0) {
+                      return t('common:required');
+                    }
+                  }
+                  return true;
+                }
+              }}
+              render={({ field: { onChange, value }, fieldState: { error } }) => {
+                return (
+                  <FormControl isInvalid={!!error}>
+                    <Flex alignItems={'center'} mb={1}>
+                      {input.required && <Box color={'red.500'}>*</Box>}
+                      <FormLabel>{input.label}</FormLabel>
+                      {input.description && <QuestionTip ml={1} label={input.description} />}
+                    </Flex>
                     <InputRender
                       {...input}
                       inputType={inputType}
@@ -228,10 +235,11 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       canLocalUpload={true}
                       canSelectFile={true}
                     />
-                  );
-                }}
-              />
-            </Box>
+                    {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+                  </FormControl>
+                );
+              }}
+            />
           );
         })}
       </Flex>

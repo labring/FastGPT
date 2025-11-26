@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
@@ -222,18 +222,26 @@ const RenderInput = () => {
       {/* Filed */}
       {formatPluginInputs
         .filter((input) => {
-          if (outLinkAuthData && Object.keys(outLinkAuthData).length > 0) {
-            const inputType = input.renderTypeList[0];
+          const inputType = input.renderTypeList[0];
+          const isOutLink = outLinkAuthData && Object.keys(outLinkAuthData).length > 0;
+
+          if (isOutLink) {
             return (
               inputType !== FlowNodeInputTypeEnum.customVariable &&
               inputType !== FlowNodeInputTypeEnum.hidden
             );
           }
+
+          if (inputType === FlowNodeInputTypeEnum.hidden) {
+            return false;
+          }
+
           return true;
         })
         .map((input) => {
           const inputType = input.renderTypeList[0];
           const inputKey = `variables.${input.key}` as const;
+          const isOutLink = outLinkAuthData && Object.keys(outLinkAuthData).length > 0;
 
           return (
             <Box _notLast={{ mb: 4 }} key={inputKey}>
@@ -241,8 +249,7 @@ const RenderInput = () => {
                 {input.required && <Box color={'red.500'}>*</Box>}
                 <FormLabel>{input.label}</FormLabel>
                 {input.description && <QuestionTip ml={1} label={input.description} />}
-                {(inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) && (
+                {isOutLink && inputType === FlowNodeInputTypeEnum.customVariable && (
                   <Flex
                     color={'primary.600'}
                     bg={'primary.100'}
@@ -254,9 +261,7 @@ const RenderInput = () => {
                     rounded={'sm'}
                   >
                     <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                    {inputType === FlowNodeInputTypeEnum.customVariable
-                      ? t('chat:variable_invisable_in_share')
-                      : t('chat:internal_variables_tip')}
+                    {t('chat:variable_invisable_in_share')}
                   </Flex>
                 )}
               </Flex>
@@ -272,30 +277,43 @@ const RenderInput = () => {
                       input.minLength
                     ) {
                       if (!value || typeof value !== 'object' || !value.value) return false;
-                      return value.value.length >= input.minLength;
+                      if (value.value.length < input.minLength) {
+                        return t('common:min_length', { minLenth: input.minLength });
+                      }
+                      return true;
                     }
                     if (typeof value === 'number' || typeof value === 'boolean') return true;
                     if (!input.required) return true;
+
+                    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                      if (!value || !Array.isArray(value) || value.length === 0) {
+                        return t('common:required');
+                      }
+                      return true;
+                    }
 
                     return !!value;
                   }
                 }}
                 render={({ field: { onChange, value }, fieldState: { error } }) => {
                   return (
-                    <InputRender
-                      {...input}
-                      key={inputKey}
-                      value={value}
-                      onChange={onChange}
-                      isDisabled={isDisabledInput}
-                      isInvalid={!!error}
-                      inputType={nodeInputTypeToInputType(input.renderTypeList)}
-                      form={variablesForm}
-                      fieldName={inputKey}
-                      modelList={llmModelList}
-                      isRichText={false}
-                      canLocalUpload={input.canLocalUpload ?? true}
-                    />
+                    <FormControl isInvalid={!!error}>
+                      <InputRender
+                        {...input}
+                        key={inputKey}
+                        value={value}
+                        onChange={onChange}
+                        isDisabled={isDisabledInput}
+                        isInvalid={!!error}
+                        inputType={nodeInputTypeToInputType(input.renderTypeList)}
+                        form={variablesForm}
+                        fieldName={inputKey}
+                        modelList={llmModelList}
+                        isRichText={false}
+                        canLocalUpload={input.canLocalUpload ?? true}
+                      />
+                      {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+                    </FormControl>
                   );
                 }}
               />

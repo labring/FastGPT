@@ -201,6 +201,7 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <AIModelSelector
         {...commonProps}
+        cacheModel={false}
         list={
           llmModelList?.map((item) => ({
             value: item.model,

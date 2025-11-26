@@ -177,8 +177,10 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
       FlowNodeInputTypeEnum.hidden,
+      FlowNodeInputTypeEnum.switch,
       VariableInputEnum.timePointSelect,
       VariableInputEnum.timeRangeSelect,
+      VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal
     ];
@@ -639,7 +641,20 @@ const InputTypeConfig = ({
                       popPosition="top"
                       timeGranularity={timeGranularity}
                       minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
-                      maxDate={timeRangeEndDefault ? new Date(timeRangeEndDefault) : undefined}
+                      maxDate={
+                        timeRangeEndDefault && timeRangeEnd
+                          ? new Date(
+                              Math.min(
+                                new Date(timeRangeEndDefault).getTime(),
+                                new Date(timeRangeEnd).getTime()
+                              )
+                            )
+                          : timeRangeEndDefault
+                            ? new Date(timeRangeEndDefault)
+                            : timeRangeEnd
+                              ? new Date(timeRangeEnd)
+                              : undefined
+                      }
                     />
                   </Box>
                   <Box>
@@ -653,7 +668,20 @@ const InputTypeConfig = ({
                       }}
                       popPosition="top"
                       timeGranularity={timeGranularity}
-                      minDate={timeRangeStartDefault ? new Date(timeRangeStartDefault) : undefined}
+                      minDate={
+                        timeRangeStartDefault && timeRangeStart
+                          ? new Date(
+                              Math.max(
+                                new Date(timeRangeStartDefault).getTime(),
+                                new Date(timeRangeStart).getTime()
+                              )
+                            )
+                          : timeRangeStartDefault
+                            ? new Date(timeRangeStartDefault)
+                            : timeRangeStart
+                              ? new Date(timeRangeStart)
+                              : undefined
+                      }
                       maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
                     />
                   </Box>

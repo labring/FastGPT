@@ -109,7 +109,8 @@ const FieldEditModal = ({
       if (
         data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
         data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden ||
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.switch
       ) {
         data.required = false;
       }
