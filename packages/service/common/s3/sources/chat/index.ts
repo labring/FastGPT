@@ -24,12 +24,10 @@ export class S3ChatSource {
     return (this.instance ??= new S3ChatSource());
   }
 
-  // 可能不是 S3 的 url
-  static parseChatUrl(url: string) {
+  static parseChatUrl(url: string | URL) {
     try {
       const parseUrl = new URL(url);
       const pathname = decodeURIComponent(parseUrl.pathname);
-
       // 非 S3 key
       if (!pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`)) {
         return {

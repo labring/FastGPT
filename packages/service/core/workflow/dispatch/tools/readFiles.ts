@@ -20,6 +20,8 @@ import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
 import path from 'path';
+import { S3Buckets } from '../../../../common/s3/constants';
+import { S3Sources } from '../../../../common/s3/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -196,6 +198,11 @@ export const getFileContentFromLinks = async ({
 
           const buffer = Buffer.from(response.data, 'binary');
 
+          const urlObj = new URL(url, 'http://localhost:3000');
+          const isChatExternalUrl = urlObj.pathname.startsWith(
+            `/${S3Buckets.private}/${S3Sources.chat}/`
+          );
+
           // Get file name
           const { filename, extension, imageParsePrefix } = (() => {
             const contentDisposition = response.headers['content-disposition'];
@@ -207,9 +214,19 @@ export const getFileContentFromLinks = async ({
                 return {
                   filename,
                   extension: path.extname(filename).replace('.', ''),
-                  imageParsePrefix: ``
+                  imageParsePrefix: `` // TODO: 需要根据是否是聊天对话里面的外部链接来决定
                 };
               }
+            }
+
+            if (isChatExternalUrl) {
+              const filename = urlObj.pathname.split('/').pop() || 'file';
+              const extension = path.extname(filename).replace('.', '');
+              return {
+                filename,
+                extension,
+                imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
+              };
             }
 
             return S3ChatSource.parseChatUrl(url);
@@ -239,7 +256,9 @@ export const getFileContentFromLinks = async ({
             getFormatText: true,
             imageKeyOptions: imageParsePrefix
               ? {
-                  prefix: imageParsePrefix
+                  prefix: imageParsePrefix,
+                  // 聊天对话里面上传的外部链接，解析出来的图片过期时间设置为1天，而且是存储在临时文件夹的
+                  expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
                 }
               : undefined,
             usageId
