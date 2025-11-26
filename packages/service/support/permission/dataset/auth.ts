@@ -253,7 +253,12 @@ export async function authDatasetData({
     imageId: datasetData.imageId,
     imagePreivewUrl: datasetData.imageId
       ? isS3ObjectKey(datasetData.imageId, 'dataset')
-        ? jwtSignS3ObjectKey(datasetData.imageId, addHours(new Date(), 1))
+        ? // jwtSignS3ObjectKey(datasetData.imageId, addHours(new Date(), 1))
+          await getS3DatasetSource().createGetDatasetFileURL({
+            key: datasetData.imageId,
+            expiredHours: 1,
+            external: true
+          })
         : getDatasetImagePreviewUrl({
             imageId: datasetData.imageId,
             teamId: datasetData.teamId,

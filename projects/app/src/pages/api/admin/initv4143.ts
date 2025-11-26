@@ -20,7 +20,6 @@ import {
   getFileS3Key,
   truncateFilename
 } from '@fastgpt/service/common/s3/utils';
-import { addDays } from 'date-fns';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 
 // 将 GridFS 的流转换为 Buffer
@@ -175,6 +174,9 @@ async function migrateDatasetCollection({
         datasetId,
         filename: name
       });
+
+      // 立即删除 TTL（uploadDatasetFileByBuffer 会创建 3 小时的 TTL）
+      await removeS3TTL({ key, bucketName: 'private' });
 
       await MongoDatasetMigrationLog.updateOne(
         { batchId, resourceId: _id },
@@ -681,7 +683,6 @@ async function migrateDatasetImage({
       const bucket = getDatasetImageGridBucket();
       const stream = bucket.openDownloadStream(new Types.ObjectId(imageId!));
       buffer = await gridFSStreamToBuffer(stream);
-
       await MongoDatasetMigrationLog.updateOne(
         { batchId, resourceId: _id },
         {
@@ -731,13 +732,13 @@ async function migrateDatasetImage({
       // 构造 S3 key
       const { fileKey: s3Key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
 
-      // 使用 uploadImage2S3Bucket 上传图片
+      // 使用 uploadImage2S3Bucket 上传图片（不设置过期时间）
       key = await uploadImage2S3Bucket('private', {
         base64Img: buffer.toString('base64'),
         uploadKey: s3Key,
         mimetype,
         filename: truncatedFilename,
-        expiredTime: addDays(new Date(), 7)
+        expiredTime: undefined // 不设置过期时间
       });
 
       await MongoDatasetMigrationLog.updateOne(
