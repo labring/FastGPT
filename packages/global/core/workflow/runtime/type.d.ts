@@ -67,6 +67,7 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>; // global variable
+  cloneVariables: Record<string, any>;
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
@@ -247,7 +248,7 @@ export type DispatchNodeResponseType = {
   loopOutputValue?: any;
 
   // form input
-  formInputResult?: string;
+  formInputResult?: Record<string, any>;
 
   // tool params
   toolParamsResult?: Record<string, any>;

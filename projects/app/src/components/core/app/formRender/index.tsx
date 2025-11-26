@@ -12,10 +12,11 @@ import AIModelSelector from '../../../Select/AIModelSelector';
 import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
-import FileSelector from '@/components/core/app/formRender/FileSelector';
+import FileSelector from '../FileSelector/index';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -200,6 +201,7 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <AIModelSelector
         {...commonProps}
+        cacheModel={false}
         list={
           llmModelList?.map((item) => ({
             value: item.model,
@@ -217,7 +219,6 @@ const InputRender = (props: InputRenderProps) => {
         value={files}
         onChange={onChange}
         isDisabled={isDisabled}
-        onUploading={props.setUploading}
         maxFiles={props.maxFiles}
         canSelectFile={props.canSelectFile}
         canSelectImg={props.canSelectImg}
@@ -232,7 +233,7 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.selectDataset) {
-    const list = props.dataset?.map((item: any) => ({
+    const list = props.datasetOptions?.map((item: SelectedDatasetType) => ({
       label: item.name,
       value: item.datasetId,
       icon: item.avatar,
@@ -240,7 +241,7 @@ const InputRender = (props: InputRenderProps) => {
     }));
 
     const selectedValues = Array.isArray(value)
-      ? value.map((item: any) => (typeof item === 'string' ? item : item.datasetId))
+      ? value.map((item: SelectedDatasetType) => item.datasetId)
       : [];
 
     return (
@@ -252,14 +253,12 @@ const InputRender = (props: InputRenderProps) => {
         onSelect={(selectedVals) => {
           onChange(
             selectedVals.map((val) => {
-              const item = list?.find((l) => l.value === val);
-              return item
-                ? {
-                    name: item.label,
-                    datasetId: item.value,
-                    icon: item.icon
-                  }
-                : { name: val, datasetId: val, icon: '' };
+              const selectedItem = list?.find((item) => item.value === val);
+              return {
+                name: selectedItem?.label || '',
+                datasetId: selectedItem?.value || '',
+                icon: selectedItem?.icon || ''
+              };
             })
           );
         }}

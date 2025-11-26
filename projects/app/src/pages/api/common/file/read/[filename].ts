@@ -4,6 +4,8 @@ import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gri
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { stream2Encoding } from '@fastgpt/service/common/file/gridfs/utils';
 import { authFileToken } from '@fastgpt/service/support/permission/auth/file';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 const previewableExtensions = [
   'jpg',
@@ -28,17 +30,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('fileId is empty');
     }
 
-    const [file, fileStream] = await Promise.all([
-      getFileById({ bucketName, fileId }),
-      getDownloadStream({ bucketName, fileId })
-    ]);
+    const [file, fileStream] = await (() => {
+      if (isS3ObjectKey(fileId, 'dataset')) {
+        return Promise.all([
+          getS3DatasetSource().getFileMetadata(fileId),
+          getS3DatasetSource().getDatasetFileStream(fileId)
+        ]);
+      }
+
+      return Promise.all([
+        getFileById({ bucketName, fileId }),
+        getDownloadStream({ bucketName, fileId })
+      ]);
+    })();
 
     if (!file) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
 
     const { stream, encoding } = await (async () => {
-      if (file.metadata?.encoding) {
+      if ('metadata' in file && file.metadata?.encoding) {
         return {
           stream: fileStream,
           encoding: file.metadata.encoding
@@ -56,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       'Content-Disposition',
       `${disposition}; filename="${encodeURIComponent(filename)}"`
     );
-    res.setHeader('Content-Length', file.length);
+    res.setHeader('Content-Length', 'contentLength' in file ? file.contentLength : file.length);
 
     stream.pipe(res);
 

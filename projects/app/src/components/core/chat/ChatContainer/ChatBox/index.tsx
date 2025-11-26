@@ -48,7 +48,7 @@ import {
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
-import { WorkflowAuthContext } from '../context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
@@ -145,9 +145,9 @@ const ChatBox = ({
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
@@ -173,13 +173,26 @@ const ChatBox = ({
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
-      input: '',
+      input: sessionStorage.getItem(`chatInput_${chatId}`) || '',
       files: [],
       chatStarted: false
     }
   });
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
+  const inputValue = watch('input');
+
+  useDebounceEffect(
+    () => {
+      if (inputValue) {
+        sessionStorage.setItem(`chatInput_${chatId}`, inputValue);
+      } else {
+        sessionStorage.removeItem(`chatInput_${chatId}`);
+      }
+    },
+    [inputValue, chatId],
+    { wait: 300 }
+  );
 
   const commonVariableList = variableList.filter(
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
@@ -386,6 +399,8 @@ const ChatBox = ({
     setValue('files', files);
     setValue('input', text);
 
+    sessionStorage.removeItem(`chatInput_${chatId}`);
+
     setTimeout(() => {
       /* 回到最小高度 */
       if (TextareaDom.current) {
@@ -479,8 +494,15 @@ const ChatBox = ({
               val = formatTime2YMDHMS(new Date(val));
             } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
               val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
+            } else if (item.type === VariableInputEnum.file && Array.isArray(val)) {
+              val = val.map((item) => ({
+                id: item.id,
+                key: item.key,
+                url: item.key ? undefined : item.url,
+                name: item.name,
+                type: item.type
+              }));
             }
-
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 

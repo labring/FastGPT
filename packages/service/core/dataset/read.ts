@@ -1,13 +1,11 @@
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import {
   ChunkTriggerConfigTypeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
-import { readRawContentByFileBuffer } from '../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
@@ -17,6 +15,8 @@ import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
+import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -25,6 +25,7 @@ export const readFileRawTextByUrl = async ({
   customPdfParse,
   getFormatText,
   relatedId,
+  datasetId,
   maxFileSize = getFileMaxSize()
 }: {
   teamId: string;
@@ -33,6 +34,7 @@ export const readFileRawTextByUrl = async ({
   customPdfParse?: boolean;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
+  datasetId: string;
   maxFileSize?: number;
 }) => {
   const extension = parseFileExtensionFromUrl(url);
@@ -64,7 +66,7 @@ export const readFileRawTextByUrl = async ({
   const chunks: Buffer[] = [];
   let totalLength = 0;
 
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<{ rawText: string }>((resolve, reject) => {
     let isAborted = false;
 
     const cleanup = () => {
@@ -107,8 +109,12 @@ export const readFileRawTextByUrl = async ({
         // 立即清理 chunks 数组释放内存
         chunks.length = 0;
 
-        const { rawText } = await retryFn(() =>
-          readRawContentByFileBuffer({
+        const { rawText } = await retryFn(() => {
+          const { fileParsedPrefix } = getFileS3Key.dataset({
+            datasetId,
+            filename: 'file'
+          });
+          return readS3FileContentByBuffer({
             customPdfParse,
             getFormatText,
             extension,
@@ -116,13 +122,14 @@ export const readFileRawTextByUrl = async ({
             tmbId,
             buffer,
             encoding: 'utf-8',
-            metadata: {
-              relatedId
+            imageKeyOptions: {
+              // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
+              prefix: fileParsedPrefix
             }
-          })
-        );
+          });
+        });
 
-        resolve(rawText);
+        resolve({ rawText });
       } catch (error) {
         cleanup();
         reject(error);
@@ -142,7 +149,7 @@ export const readFileRawTextByUrl = async ({
   });
 };
 
-/* 
+/*
   fileId - local file, read from mongo
   link - request
   externalFile/apiFile = request read
@@ -157,7 +164,8 @@ export const readDatasetSourceRawText = async ({
   apiDatasetServer,
   customPdfParse,
   getFormatText,
-  usageId
+  usageId,
+  datasetId
 }: {
   teamId: string;
   tmbId: string;
@@ -170,20 +178,26 @@ export const readDatasetSourceRawText = async ({
   externalFileId?: string; // external file dataset
   apiDatasetServer?: ApiDatasetServerType; // api dataset
   usageId?: string;
+  datasetId: string; // For S3 image upload
 }): Promise<{
   title?: string;
   rawText: string;
 }> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
-    const { filename, rawText } = await readFileContentFromMongo({
+    if (!datasetId || !isS3ObjectKey(sourceId, 'dataset')) {
+      return Promise.reject('datasetId is required for S3 files');
+    }
+
+    const { filename, rawText } = await getS3DatasetSource().getDatasetFileRawText({
       teamId,
       tmbId,
-      bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
       getFormatText,
       customPdfParse,
-      usageId
+      usageId,
+      datasetId
     });
+
     return {
       title: filename,
       rawText
@@ -205,11 +219,12 @@ export const readDatasetSourceRawText = async ({
     };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     if (!externalFileId) return Promise.reject(new UserError('FileId not found'));
-    const rawText = await readFileRawTextByUrl({
+    const { rawText } = await readFileRawTextByUrl({
       teamId,
       tmbId,
       url: sourceId,
       relatedId: externalFileId,
+      datasetId,
       customPdfParse
     });
     return {
@@ -221,7 +236,8 @@ export const readDatasetSourceRawText = async ({
       apiFileId: sourceId,
       teamId,
       tmbId,
-      customPdfParse
+      customPdfParse,
+      datasetId
     });
     return {
       title,
@@ -239,13 +255,15 @@ export const readApiServerFileContent = async ({
   apiFileId,
   teamId,
   tmbId,
-  customPdfParse
+  customPdfParse,
+  datasetId
 }: {
   apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  datasetId: string;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -254,7 +272,8 @@ export const readApiServerFileContent = async ({
     teamId,
     tmbId,
     apiFileId,
-    customPdfParse
+    customPdfParse,
+    datasetId
   });
 };
 
@@ -285,7 +304,6 @@ export const rawText2Chunks = async ({
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
-
     const chunks = csvArr
       .slice(1)
       .map((item) => ({

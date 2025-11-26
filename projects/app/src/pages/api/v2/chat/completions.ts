@@ -61,6 +61,7 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -185,6 +186,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId
       });
     })();
+
+    if (
+      !(await teamFrequencyLimit({
+        teamId,
+        type: LimitTypeEnum.chat,
+        res
+      }))
+    ) {
+      return;
+    }
+
     retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 

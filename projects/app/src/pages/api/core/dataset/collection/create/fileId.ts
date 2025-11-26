@@ -8,8 +8,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
-import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
@@ -24,17 +25,23 @@ async function handler(
     datasetId: body.datasetId
   });
 
-  // 1. read file
-  const file = await getFileById({
-    bucketName: BucketNameEnum.dataset,
-    fileId
-  });
+  const filename = await (async () => {
+    if (isS3ObjectKey(fileId, 'dataset')) {
+      const metadata = await getS3DatasetSource().getFileMetadata(fileId);
+      if (!metadata) return Promise.reject(CommonErrEnum.fileNotFound);
+      return metadata.filename;
+    }
 
-  if (!file) {
-    return Promise.reject(CommonErrEnum.fileNotFound);
-  }
+    const file = await getFileById({
+      bucketName: BucketNameEnum.dataset,
+      fileId
+    });
+    if (!file) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
 
-  const filename = file.filename;
+    return file.filename;
+  })();
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
@@ -44,16 +51,10 @@ async function handler(
       tmbId,
       type: DatasetCollectionTypeEnum.file,
       name: filename,
-      fileId,
-      metadata: {
-        relatedImgId: fileId
-      },
+      fileId, // ObjectId -> ObjectKey
       customPdfParse
     }
   });
-
-  // remove buffer
-  await deleteRawTextBuffer(fileId);
 
   return {
     collectionId,

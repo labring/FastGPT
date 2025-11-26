@@ -75,6 +75,7 @@
   "query_extension_result": "问题优化结果",
   "question_tip": "从上到下，为各个模块的响应顺序",
   "read_raw_source": "打开原文",
+  "images_collection_not_supported": "图片数据集不支持打开原文",
   "reasoning_text": "思考过程",
   "release_cancel": "松开取消",
   "release_send": "松开发送，上滑取消",

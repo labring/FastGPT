@@ -11,6 +11,7 @@ export type ToolDetailBody = {};
 
 export type ToolDetailResponse = {
   tools: Array<ToolDetailType & { readme: string }>;
+  downloadCount: number;
   downloadUrl: string;
 };
 
@@ -39,6 +40,7 @@ async function handler(
       ...ToolDetailSchema.parse(tool),
       readme: getReadmeURL(toolId)
     })),
+    downloadCount: tools.find((tool) => !tool.parentId)?.downloadCount ?? 0,
     downloadUrl: getPkgdownloadURL(toolId)
   };
 }

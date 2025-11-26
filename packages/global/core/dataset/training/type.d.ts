@@ -9,7 +9,6 @@ export type PushDataToTrainingQueueProps = {
 
   data: PushDatasetDataChunkProps[];
   mode?: TrainingModeEnum;
-  data: PushDatasetDataChunkProps[];
 
   agentModel: string;
   vectorModel: string;

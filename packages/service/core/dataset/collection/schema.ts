@@ -58,10 +58,8 @@ const DatasetCollectionSchema = new Schema({
 
   // Metadata
   // local file collection
-  fileId: {
-    type: Schema.Types.ObjectId,
-    ref: 'dataset.files'
-  },
+  // Support both GridFS ObjectId (string) and S3 key (string)
+  fileId: String,
   // web link collection
   rawLink: String,
   // Api collection
@@ -72,6 +70,7 @@ const DatasetCollectionSchema = new Schema({
 
   rawTextLength: Number,
   hashRawText: String,
+
   metadata: {
     type: Object,
     default: {}

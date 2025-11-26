@@ -10,6 +10,9 @@ import { addMinutes } from 'date-fns';
 import { parseHeaderCert } from './common';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { S3Sources } from '../../../common/s3/type';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 export const authCollectionFile = async ({
   fileId,
@@ -17,28 +20,24 @@ export const authCollectionFile = async ({
   ...props
 }: AuthModeType & {
   fileId: string;
-}): Promise<
-  AuthResponseType & {
-    file: DatasetFileSchema;
-  }
-> => {
+}): Promise<AuthResponseType> => {
   const authRes = await parseHeaderCert(props);
   const { teamId, tmbId } = authRes;
 
-  const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
-
-  if (!file) {
-    return Promise.reject(CommonErrEnum.fileNotFound);
+  if (isS3ObjectKey(fileId, 'dataset')) {
+    const stat = await getS3DatasetSource().getDatasetFileStat(fileId);
+    if (!stat) return Promise.reject(CommonErrEnum.fileNotFound);
+  } else {
+    const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
+    if (!file) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
+    if (file.metadata?.teamId !== teamId) {
+      return Promise.reject(CommonErrEnum.unAuthFile);
+    }
   }
 
-  if (file.metadata?.teamId !== teamId) {
-    return Promise.reject(CommonErrEnum.unAuthFile);
-  }
-
-  const permission = new Permission({
-    role: ReadRoleVal,
-    isOwner: file.metadata?.uid === tmbId || file.metadata?.tmbId === tmbId
-  });
+  const permission = new Permission({ role: ReadRoleVal, isOwner: true });
 
   if (!permission.checkPer(per)) {
     return Promise.reject(CommonErrEnum.unAuthFile);
@@ -46,8 +45,7 @@ export const authCollectionFile = async ({
 
   return {
     ...authRes,
-    permission,
-    file
+    permission
   };
 };
 

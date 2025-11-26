@@ -32,6 +32,7 @@ declare global {
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
       PASSWORD_EXPIRED_MONTH?: string;
       MAX_LOGIN_SESSION?: string;
+      CHAT_MAX_QPM?: string;
 
       // 安全配置
       // 密码登录锁定时间

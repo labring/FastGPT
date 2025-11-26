@@ -10,6 +10,10 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
+import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { addHours } from 'date-fns';
+import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
 
 export type GetDatasetDataListProps = PaginationProps & {
   searchText?: string;
@@ -54,12 +58,19 @@ async function handler(
     MongoDatasetData.countDocuments(match)
   ]);
 
+  list.forEach((item) => {
+    item.q = replaceDatasetQuoteTextWithJWT(item.q, addHours(new Date(), 1));
+    if (item.a) {
+      item.a = replaceDatasetQuoteTextWithJWT(item.a, addHours(new Date(), 1));
+    }
+  });
+
   const imageIds = list.map((item) => item.imageId!).filter(Boolean);
   const imageSizeMap = new Map<string, number>();
 
   if (imageIds.length > 0) {
     const imageInfos = await MongoDatasetImageSchema.find(
-      { _id: { $in: imageIds } },
+      { _id: { $in: imageIds.filter((id) => !isS3ObjectKey(id, 'dataset')) } },
       '_id length',
       {
         ...readFromSecondary
@@ -69,26 +80,35 @@ async function handler(
     imageInfos.forEach((item) => {
       imageSizeMap.set(String(item._id), item.length);
     });
+
+    const s3ImageIds = imageIds.filter((id) => isS3ObjectKey(id, 'dataset'));
+    for (const id of s3ImageIds) {
+      imageSizeMap.set(id, (await getS3DatasetSource().getFileMetadata(id)).contentLength);
+    }
   }
 
   return {
-    list: list.map((item) => {
-      const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
-      const imagePreviewUrl = item.imageId
-        ? getDatasetImagePreviewUrl({
-            imageId: item.imageId,
-            teamId,
-            datasetId: collection.datasetId,
-            expiredMinutes: 30
-          })
-        : undefined;
+    list: await Promise.all(
+      list.map(async (item) => {
+        const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
+        const imagePreviewUrl = item.imageId
+          ? isS3ObjectKey(item.imageId, 'dataset')
+            ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
+            : getDatasetImagePreviewUrl({
+                imageId: item.imageId,
+                teamId,
+                datasetId: collection.datasetId,
+                expiredMinutes: 30
+              })
+          : undefined;
 
-      return {
-        ...item,
-        imageSize,
-        imagePreviewUrl
-      };
-    }),
+        return {
+          ...item,
+          imageSize,
+          imagePreviewUrl
+        };
+      })
+    ),
     total
   };
 }

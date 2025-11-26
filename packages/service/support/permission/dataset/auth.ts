@@ -19,11 +19,13 @@ import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey, jwtSignS3ObjectKey } from '../../../common/s3/utils';
+import { addHours } from 'date-fns';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -250,12 +252,19 @@ export async function authDatasetData({
     a: datasetData.a,
     imageId: datasetData.imageId,
     imagePreivewUrl: datasetData.imageId
-      ? getDatasetImagePreviewUrl({
-          imageId: datasetData.imageId,
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
-          expiredMinutes: 30
-        })
+      ? isS3ObjectKey(datasetData.imageId, 'dataset')
+        ? // jwtSignS3ObjectKey(datasetData.imageId, addHours(new Date(), 1))
+          await getS3DatasetSource().createGetDatasetFileURL({
+            key: datasetData.imageId,
+            expiredHours: 1,
+            external: true
+          })
+        : getDatasetImagePreviewUrl({
+            imageId: datasetData.imageId,
+            teamId: datasetData.teamId,
+            datasetId: datasetData.datasetId,
+            expiredMinutes: 30
+          })
       : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,

@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -21,7 +20,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { WorkflowAuthContext } from '@/components/core/chat/ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect } from 'ahooks';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -40,9 +39,9 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   const { llmModelList } = useSystemStore();
 
@@ -169,9 +168,9 @@ const RenderInput = () => {
     });
   }, [histories, formatPluginInputs]);
 
-  const [uploading, setUploading] = useState(false);
+  const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
-  const fileUploading = uploading || hasFileUploading;
+  const fileUploading = formFileUploading || hasFileUploading;
   const hasHistory = histories.length > 0;
   const isDisabledInput = !!hasHistory;
 
@@ -223,39 +222,49 @@ const RenderInput = () => {
       {/* Filed */}
       {formatPluginInputs
         .filter((input) => {
-          if (outLinkAuthData && Object.keys(outLinkAuthData).length > 0) {
-            return input.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable;
+          const inputType = input.renderTypeList[0];
+          const isOutLink = outLinkAuthData && Object.keys(outLinkAuthData).length > 0;
+
+          if (isOutLink) {
+            return (
+              inputType !== FlowNodeInputTypeEnum.customVariable &&
+              inputType !== FlowNodeInputTypeEnum.hidden
+            );
           }
+
+          if (inputType === FlowNodeInputTypeEnum.hidden) {
+            return false;
+          }
+
           return true;
         })
         .map((input) => {
           const inputType = input.renderTypeList[0];
           const inputKey = `variables.${input.key}` as const;
+          const isOutLink = outLinkAuthData && Object.keys(outLinkAuthData).length > 0;
 
           return (
             <Box _notLast={{ mb: 4 }} key={inputKey}>
-              {inputType !== FlowNodeInputTypeEnum.fileSelect && (
-                <Flex alignItems={'center'} mb={1}>
-                  {input.required && <Box color={'red.500'}>*</Box>}
-                  <FormLabel>{input.label}</FormLabel>
-                  {input.description && <QuestionTip ml={1} label={input.description} />}
-                  {inputType === FlowNodeInputTypeEnum.customVariable && (
-                    <Flex
-                      color={'primary.600'}
-                      bg={'primary.100'}
-                      px={2}
-                      py={1}
-                      gap={1}
-                      ml={2}
-                      fontSize={'mini'}
-                      rounded={'sm'}
-                    >
-                      <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                      {t('chat:variable_invisable_in_share')}
-                    </Flex>
-                  )}
-                </Flex>
-              )}
+              <Flex alignItems={'center'} mb={1}>
+                {input.required && <Box color={'red.500'}>*</Box>}
+                <FormLabel>{input.label}</FormLabel>
+                {input.description && <QuestionTip ml={1} label={input.description} />}
+                {isOutLink && inputType === FlowNodeInputTypeEnum.customVariable && (
+                  <Flex
+                    color={'primary.600'}
+                    bg={'primary.100'}
+                    px={2}
+                    py={1}
+                    gap={1}
+                    ml={2}
+                    fontSize={'mini'}
+                    rounded={'sm'}
+                  >
+                    <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                    {t('chat:variable_invisable_in_share')}
+                  </Flex>
+                )}
+              </Flex>
               <Controller
                 key={inputKey}
                 control={control}
@@ -268,31 +277,43 @@ const RenderInput = () => {
                       input.minLength
                     ) {
                       if (!value || typeof value !== 'object' || !value.value) return false;
-                      return value.value.length >= input.minLength;
+                      if (value.value.length < input.minLength) {
+                        return t('common:min_length', { minLenth: input.minLength });
+                      }
+                      return true;
                     }
                     if (typeof value === 'number' || typeof value === 'boolean') return true;
                     if (!input.required) return true;
+
+                    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                      if (!value || !Array.isArray(value) || value.length === 0) {
+                        return t('common:required');
+                      }
+                      return true;
+                    }
 
                     return !!value;
                   }
                 }}
                 render={({ field: { onChange, value }, fieldState: { error } }) => {
                   return (
-                    <InputRender
-                      {...input}
-                      key={inputKey}
-                      value={value}
-                      onChange={onChange}
-                      isDisabled={isDisabledInput}
-                      isInvalid={!!error}
-                      setUploading={setUploading}
-                      inputType={nodeInputTypeToInputType(input.renderTypeList)}
-                      form={variablesForm}
-                      fieldName={inputKey}
-                      modelList={llmModelList}
-                      isRichText={false}
-                      canLocalUpload={input.canLocalUpload ?? true}
-                    />
+                    <FormControl isInvalid={!!error}>
+                      <InputRender
+                        {...input}
+                        key={inputKey}
+                        value={value}
+                        onChange={onChange}
+                        isDisabled={isDisabledInput}
+                        isInvalid={!!error}
+                        inputType={nodeInputTypeToInputType(input.renderTypeList)}
+                        form={variablesForm}
+                        fieldName={inputKey}
+                        modelList={llmModelList}
+                        isRichText={false}
+                        canLocalUpload={input.canLocalUpload ?? true}
+                      />
+                      {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+                    </FormControl>
                   );
                 }}
               />

@@ -1,4 +1,3 @@
-import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
@@ -9,6 +8,8 @@ import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { uploadImage2S3Bucket } from '../../s3/utils';
+import { Mimes } from '../../s3/constants';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -17,6 +18,7 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
+  fileParsedPrefix?: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -26,7 +28,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const buffer = await fs.promises.readFile(path);
 
-  return readRawContentByFileBuffer({
+  return readS3FileContentByBuffer({
     extension,
     customPdfParse: params.customPdfParse,
     getFormatText: params.getFormatText,
@@ -34,21 +36,25 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata
+    imageKeyOptions: params.fileParsedPrefix
+      ? {
+          prefix: params.fileParsedPrefix
+        }
+      : undefined
   });
 };
 
-export const readRawContentByFileBuffer = async ({
+export const readS3FileContentByBuffer = async ({
   teamId,
   tmbId,
 
   extension,
   buffer,
   encoding,
-  metadata,
   customPdfParse = false,
   usageId,
-  getFormatText = true
+  getFormatText = true,
+  imageKeyOptions
 }: {
   teamId: string;
   tmbId: string;
@@ -56,11 +62,14 @@ export const readRawContentByFileBuffer = async ({
   extension: string;
   buffer: Buffer;
   encoding: string;
-  metadata?: Record<string, any>;
 
   customPdfParse?: boolean;
   usageId?: string;
   getFormatText?: boolean;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
 }): Promise<{
   rawText: string;
 }> => {
@@ -158,31 +167,36 @@ export const readRawContentByFileBuffer = async ({
   addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
 
   // markdown data format
-  if (imageList) {
+  if (imageList && imageList.length > 0) {
+    addLog.debug(`Processing ${imageList.length} images from parsed document`);
+
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
+        if (!imageKeyOptions) return '';
         try {
-          return await uploadMongoImg({
+          const { prefix, expiredTime } = imageKeyOptions;
+          const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+
+          return await uploadImage2S3Bucket('private', {
             base64Img: `data:${item.mime};base64,${item.base64}`,
-            teamId,
-            metadata: {
-              ...metadata,
-              mime: item.mime
-            }
+            uploadKey: `${prefix}/${item.uuid}${ext}`,
+            mimetype: Mimes[ext as keyof typeof Mimes],
+            filename: `${item.uuid}${ext}`,
+            expiredTime
           });
         } catch (error) {
-          addLog.warn('Upload file image error', { error });
-          return 'Upload load image error';
+          return `[Image Upload Failed: ${item.uuid}]`;
         }
       })();
       rawText = rawText.replace(item.uuid, src);
+      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
       }
     });
   }
 
-  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
-
-  return { rawText: getFormatText ? formatText || rawText : rawText };
+  return {
+    rawText: getFormatText ? formatText || rawText : rawText
+  };
 };

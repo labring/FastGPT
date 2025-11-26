@@ -27,7 +27,8 @@ export default defineConfig({
       'test/test.ts',
       'test/cases/**/*.test.ts',
       'projects/app/test/**/*.test.ts',
-      'projects/sandbox/test/**/*.test.ts'
+      'projects/sandbox/test/**/*.test.ts',
+      'projects/marketplace/test/**/*.test.ts'
     ],
     testTimeout: 20000,
     reporters: ['github-actions', 'default']

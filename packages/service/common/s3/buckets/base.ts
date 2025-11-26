@@ -1,4 +1,4 @@
-import { Client, type RemoveOptions, type CopyConditions, InvalidObjectNameError } from 'minio';
+import { Client, type RemoveOptions, type CopyConditions, S3Error } from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -11,9 +11,10 @@ import { defaultS3Options, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { addHours } from 'date-fns';
+import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../system/log';
 import { addS3DelJob } from '../mq';
+import { type Readable } from 'node:stream';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -73,31 +74,48 @@ export class S3BaseBucket {
     return this._externalClient ?? this._client;
   }
 
-  move(src: string, dst: string, options?: CopyConditions): Promise<void> {
-    const bucket = this.name;
-    this.client.copyObject(bucket, dst, `/${bucket}/${src}`, options);
-    return this.delete(src);
+  // TODO: 加到 MQ 里保障幂等
+  async move({
+    from,
+    to,
+    options
+  }: {
+    from: string;
+    to: string;
+    options?: CopyConditions;
+  }): Promise<void> {
+    await this.copy({
+      from,
+      to,
+      options: {
+        copyConditions: options,
+        temporary: false
+      }
+    });
+    await this.delete(from);
   }
 
   async copy({
-    src,
-    dst,
-    ttl,
+    from,
+    to,
     options
   }: {
-    src: string;
-    dst: string;
-    ttl: boolean;
-    options?: CopyConditions;
+    from: string;
+    to: string;
+    options?: {
+      temporary?: boolean;
+      copyConditions?: CopyConditions;
+    };
   }): ReturnType<Client['copyObject']> {
-    if (ttl) {
+    const bucket = this.name;
+    if (options?.temporary) {
       await MongoS3TTL.create({
-        minioKey: dst,
+        minioKey: to,
         bucketName: this.name,
         expiredTime: addHours(new Date(), 24)
       });
     }
-    return this.client.copyObject(this.name, src, dst, options);
+    return this.client.copyObject(bucket, to, `${bucket}/${from}`, options?.copyConditions);
   }
 
   exist(): Promise<boolean> {
@@ -107,24 +125,51 @@ export class S3BaseBucket {
   async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
     try {
       if (!objectKey) return Promise.resolve();
+
+      // 把连带的 parsed 数据一起删除
+      const fileParsedPrefix = `${path.dirname(objectKey)}/${path.basename(objectKey, path.extname(objectKey))}-parsed`;
+      await this.addDeleteJob({ prefix: fileParsedPrefix });
+
       return await this.client.removeObject(this.name, objectKey, options);
     } catch (error) {
-      if (error instanceof InvalidObjectNameError) {
-        addLog.warn(`${this.name} delete object not found: ${objectKey}`, error);
-        return Promise.resolve();
+      if (error instanceof S3Error) {
+        if (error.code === 'InvalidObjectName') {
+          addLog.warn(`${this.name} delete object not found: ${objectKey}`, error);
+          return Promise.resolve();
+        }
       }
       return Promise.reject(error);
     }
-  }
-
-  addDeleteJob({ prefix, key }: { prefix?: string; key?: string }): Promise<void> {
-    return addS3DelJob({ prefix, key, bucketName: this.name });
   }
 
   listObjectsV2(
     ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
   ) {
     return this.client.listObjectsV2(this.name, ...params);
+  }
+
+  putObject(...params: Parameters<Client['putObject']> extends [string, ...infer R] ? R : never) {
+    return this.client.putObject(this.name, ...params);
+  }
+
+  getObject(...params: Parameters<Client['getObject']> extends [string, ...infer R] ? R : never) {
+    return this.client.getObject(this.name, ...params);
+  }
+
+  statObject(...params: Parameters<Client['statObject']> extends [string, ...infer R] ? R : never) {
+    return this.client.statObject(this.name, ...params);
+  }
+
+  async fileStreamToBuffer(stream: Readable): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
+
+  addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {
+    return addS3DelJob({ ...params, bucketName: this.name });
   }
 
   async createPostPresignedUrl(
@@ -140,8 +185,7 @@ export class S3BaseBucket {
 
       const key = (() => {
         if ('rawKey' in params) return params.rawKey;
-
-        return `${params.source}/${params.teamId}/${getNanoid(6)}-${filename}`;
+        return [params.source, params.teamId, `${getNanoid(6)}-${filename}`].join('/');
       })();
 
       const policy = this.externalClient.newPostPolicy();
@@ -151,11 +195,12 @@ export class S3BaseBucket {
       if (formatMaxFileSize) {
         policy.setContentLengthRange(1, formatMaxFileSize);
       }
-      policy.setExpires(new Date(Date.now() + 10 * 60 * 1000));
+      policy.setExpires(addMinutes(new Date(), 10));
       policy.setUserMetaData({
         'content-disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'origin-filename': encodeURIComponent(filename),
-        'upload-time': new Date().toISOString()
+        'upload-time': new Date().toISOString(),
+        ...params.metadata
       });
 
       const { formData, postURL } = await this.externalClient.presignedPostPolicy(policy);
@@ -179,20 +224,25 @@ export class S3BaseBucket {
     }
   }
 
-  async createExtenalUrl(params: createPreviewUrlParams) {
+  async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.externalClient.presignedGetObject(this.name, key, expires);
+    return await this.externalClient.presignedGetObject(this.name, key, expires, {
+      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
+    });
   }
-  async createPreviewlUrl(params: createPreviewUrlParams) {
+
+  async createPreviewUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.client.presignedGetObject(this.name, key, expires);
+    return await this.client.presignedGetObject(this.name, key, expires, {
+      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
+    });
   }
 }

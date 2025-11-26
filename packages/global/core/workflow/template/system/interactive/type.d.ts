@@ -1,7 +1,7 @@
 import type { NodeOutputItemType } from '../../../../chat/type';
 import type { FlowNodeOutputItemType } from '../../../type/io';
-import type { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
-import type { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
+import type { FlowNodeInputTypeEnum } from '../../../node/constant';
+import type { WorkflowIOValueTypeEnum } from '../../../constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
 
 type InteractiveBasicType = {
@@ -71,6 +71,10 @@ export type UserInputFormItemType = {
 
   // input & textarea
   maxLength?: number;
+
+  // password
+  minLength?: number;
+
   // numberInput
   max?: number;
   min?: number;

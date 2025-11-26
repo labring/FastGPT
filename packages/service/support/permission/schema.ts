@@ -240,6 +240,13 @@ try {
   console.log(error);
 }
 
+ResourcePermissionSchema.pre('save', function (next) {
+  if (!this.tmbId && !this.groupId && !this.orgId) {
+    return next(new Error('At least one of tmbId, groupId, orgId must be present'));
+  }
+  next();
+});
+
 export const MongoResourcePermission = getMongoModel<ResourcePermissionType>(
   ResourcePermissionCollectionName,
   ResourcePermissionSchema

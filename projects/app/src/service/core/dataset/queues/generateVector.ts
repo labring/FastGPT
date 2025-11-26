@@ -278,6 +278,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       embeddingModel: trainingData.dataset.vectorModel,
       session
     });
+
     // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 

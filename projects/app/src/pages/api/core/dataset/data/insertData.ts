@@ -1,4 +1,4 @@
-/* 
+/*
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
@@ -60,9 +60,7 @@ async function handler(req: NextApiRequest) {
     text: simpleText(item.text)
   }));
 
-  const token = await countPromptTokens(formatQ + formatA, '');
   const vectorModelData = getEmbeddingModel(vectorModel);
-  const llmModelData = getLLMModel(agentModel);
 
   await hasSameValue({
     teamId,
