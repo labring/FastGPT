@@ -13,7 +13,7 @@ export type ToolListBody = PaginationProps<{
 }>;
 
 export type ToolListItem = ToolSimpleType & {
-  downloadUrl: string;
+  downloadCount: number;
 };
 
 export type ToolListResponse = PaginationResponse<ToolListItem>;
@@ -46,6 +46,7 @@ async function handler(
   return {
     list: filteredData.slice(offset, offset + pageSize).map((item) => ({
       ...ToolSimpleSchema.parse(item),
+      downloadCount: item.downloadCount,
       downloadUrl: getPkgdownloadURL(item.toolId)
     })),
     total: filteredData.length

@@ -68,20 +68,20 @@ class S3AvatarSource {
   }
 
   async copyAvatar({
-    sourceKey,
-    targetKey,
-    ttl
+    key,
+    teamId,
+    filename,
+    temporary = false
   }: {
-    sourceKey: string;
-    targetKey: string;
-    ttl: boolean;
+    key: string;
+    teamId: string;
+    filename: string;
+    temporary: boolean;
   }) {
-    await this.bucket.copy({
-      src: sourceKey,
-      dst: targetKey,
-      ttl
-    });
-    return targetKey;
+    const from = key.slice(this.prefix.length);
+    const to = `${S3Sources.avatar}/${teamId}/${filename}`;
+    await this.bucket.copy({ from, to, options: { temporary } });
+    return this.prefix.concat(to);
   }
 }
 

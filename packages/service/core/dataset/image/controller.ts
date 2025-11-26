@@ -10,6 +10,8 @@ import { checkTimerLock } from '../../../common/system/timerLock/utils';
 import { TimerIdEnum } from '../../../common/system/timerLock/constants';
 import { addLog } from '../../../common/system/log';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 const getGridBucket = () => {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
@@ -116,7 +118,11 @@ export const deleteDatasetImage = async (imageId: string) => {
   const gridBucket = getGridBucket();
 
   try {
-    await gridBucket.delete(new Types.ObjectId(imageId));
+    if (isS3ObjectKey(imageId, 'dataset')) {
+      await getS3DatasetSource().deleteDatasetFileByKey(imageId);
+    } else {
+      await gridBucket.delete(new Types.ObjectId(imageId));
+    }
   } catch (error: any) {
     const msg = error?.message;
     if (msg.includes('File not found')) {

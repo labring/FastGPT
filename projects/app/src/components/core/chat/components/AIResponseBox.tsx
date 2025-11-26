@@ -32,7 +32,7 @@ import { SelectOptionsComponent, FormInputComponent } from './Interactive/Intera
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
-import { WorkflowAuthContext } from '../ChatContainer/context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useCreation } from 'ahooks';
 
 const accordionButtonStyle = {
@@ -99,9 +99,9 @@ const RenderText = React.memo(function RenderText({
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) {
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   const source = useMemo(() => {
     if (!text) return '';
@@ -210,16 +210,19 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   );
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
-  interactive
+  interactive,
+  chatItemDataId
 }: {
   interactive: InteractiveBasicType & UserInputInteractive;
+  chatItemDataId: string;
 }) {
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
-        acc[item.key] = !!item.value ? item.value : item.defaultValue;
+        // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
+        acc[item.key] = item.value ?? item.defaultValue;
         return acc;
       }, {});
     }
@@ -235,21 +238,52 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         }
       });
 
+      if (typeof window !== 'undefined') {
+        const dataToSave = { ...data };
+        interactive.params.inputForm?.forEach((item) => {
+          if (
+            item.type === 'fileSelect' &&
+            Array.isArray(dataToSave[item.key]) &&
+            dataToSave[item.key].length > 0
+          ) {
+            const files = dataToSave[item.key];
+            if (files[0]?.url !== undefined) {
+              dataToSave[item.key] = files
+                .map((file: any) => ({
+                  url: file.url,
+                  key: file.key,
+                  name: file.name,
+                  type: file.type
+                }))
+                .filter((file: any) => file.url);
+            }
+          }
+        });
+        sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(dataToSave));
+      }
+
       onSendPrompt({
         text: JSON.stringify(finalData),
         isInteractivePrompt: true
       });
     },
-    [interactive.params.inputForm]
+    [interactive.params.inputForm, chatItemDataId]
   );
 
   return (
-    <Flex flexDirection={'column'} gap={2} w={'250px'}>
+    <Flex flexDirection={'column'} gap={2} minW={'250px'}>
       <FormInputComponent
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
-        SubmitButton={({ onSubmit }) => (
-          <Button onClick={() => onSubmit(handleFormSubmit)()}>{t('common:Submit')}</Button>
+        chatItemDataId={chatItemDataId}
+        SubmitButton={({ onSubmit, isFileUploading }) => (
+          <Button
+            onClick={() => onSubmit(handleFormSubmit)()}
+            isDisabled={isFileUploading}
+            isLoading={isFileUploading}
+          >
+            {t('common:Submit')}
+          </Button>
         )}
       />
     </Flex>
@@ -323,7 +357,9 @@ const AIResponseBox = ({
       return <RenderUserSelectInteractive interactive={finalInteractive} />;
     }
     if (finalInteractive.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={finalInteractive} />;
+      return (
+        <RenderUserFormInteractive interactive={finalInteractive} chatItemDataId={chatItemDataId} />
+      );
     }
     if (finalInteractive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={finalInteractive} />;

@@ -14,7 +14,7 @@ import {
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowAuthContext } from '../../context/workflowAuthContext';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -159,9 +159,9 @@ const ChatItem = (props: Props) => {
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
 
-  const appId = useContextSelector(WorkflowAuthContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowAuthContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowAuthContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
 
   const { totalQuoteList: quoteList = [] } = useMemo(

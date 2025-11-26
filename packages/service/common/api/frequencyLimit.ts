@@ -1,24 +1,28 @@
+/* 基于 Team 的限流 */
 import { getGlobalRedisConnection } from '../../common/redis';
 import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
 
+export enum LimitTypeEnum {
+  chat = 'chat'
+}
+const limitMap = {
+  [LimitTypeEnum.chat]: {
+    seconds: 60,
+    limit: Number(process.env.CHAT_MAX_QPM || 5000)
+  }
+};
+
 type FrequencyLimitOption = {
   teamId: string;
-  seconds: number;
-  limit: number;
-  keyPrefix: string;
+  type: LimitTypeEnum;
   res: NextApiResponse;
 };
 
-export const teamFrequencyLimit = async ({
-  teamId,
-  seconds,
-  limit,
-  keyPrefix,
-  res
-}: FrequencyLimitOption) => {
+export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOption) => {
+  const { seconds, limit } = limitMap[type];
   const redis = getGlobalRedisConnection();
-  const key = `${keyPrefix}:${teamId}`;
+  const key = `frequency:${type}:${teamId}`;
 
   const result = await redis
     .multi()

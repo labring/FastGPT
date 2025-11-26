@@ -17,7 +17,7 @@ export type ExtensionType = keyof typeof Mimes;
 
 export type S3OptionsType = typeof defaultS3Options;
 
-export const S3SourcesSchema = z.enum(['avatar', 'chat']);
+export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp']);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
@@ -25,13 +25,15 @@ export const CreatePostPresignedUrlParamsSchema = z.union([
   // Option 1: Only rawKey
   z.object({
     filename: z.string().min(1),
-    rawKey: z.string().min(1)
+    rawKey: z.string().min(1),
+    metadata: z.record(z.string(), z.string()).optional()
   }),
   // Option 2: filename with optional source and teamId
   z.object({
     filename: z.string().min(1),
     source: S3SourcesSchema.optional(),
-    teamId: z.string().length(16).optional()
+    teamId: z.string().length(16).optional(),
+    metadata: z.record(z.string(), z.string()).optional()
   })
 ]);
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;
@@ -54,6 +56,15 @@ export const CreateGetPresignedUrlParamsSchema = z.object({
   expiredHours: z.number().positive().optional()
 });
 export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
+
+export const UploadImage2S3BucketParamsSchema = z.object({
+  base64Img: z.string().nonempty(),
+  uploadKey: z.string().nonempty(),
+  mimetype: z.string().nonempty(),
+  filename: z.string().nonempty(),
+  expiredTime: z.date().optional()
+});
+export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
 declare global {
   var s3BucketMap: {

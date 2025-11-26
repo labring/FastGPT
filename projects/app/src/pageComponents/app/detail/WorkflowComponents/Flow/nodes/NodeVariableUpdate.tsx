@@ -6,7 +6,11 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import {
   FlowNodeInputMap,
@@ -120,8 +124,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           const variableList = appDetail.chatConfig.variables || [];
           const variable = variableList.find((item) => item.key === value[1]);
           if (variable) {
+            // 文件类型在变量更新节点中使用文本框,因为不在运行时上下文中,无法使用文件选择器
+            const inputType =
+              variable.type === VariableInputEnum.file
+                ? InputTypeEnum.textarea
+                : variableInputTypeToInputType(variable.type);
+
             return {
-              inputType: variableInputTypeToInputType(variable.type),
+              inputType,
               formParams: {
                 // 获取变量中一些表单配置
                 maxLength: variable.maxLength,

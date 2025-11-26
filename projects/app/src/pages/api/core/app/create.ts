@@ -29,6 +29,10 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import path from 'node:path';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -157,11 +161,35 @@ export const onCreateApp = async ({
   }
 
   const create = async (session: ClientSession) => {
+    const _avatar = await (async () => {
+      if (!templateId) return avatar;
+
+      const template = await MongoAppTemplate.findOne({ templateId }, 'avatar').lean();
+      if (!template?.avatar) return avatar;
+
+      const s3AvatarSource = getS3AvatarSource();
+      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar'))
+        return template.avatar;
+
+      const filename = (() => {
+        const last = template.avatar.split('/').pop()?.split('-')[1];
+        if (!last) return getNanoid(6).concat(path.extname(template.avatar));
+        return `${getNanoid(6)}-${last}`;
+      })();
+
+      return await s3AvatarSource.copyAvatar({
+        key: template.avatar,
+        teamId,
+        filename,
+        temporary: true
+      });
+    })();
+
     const [app] = await MongoApp.create(
       [
         {
           ...parseParentIdInMongo(parentId),
-          avatar,
+          avatar: _avatar,
           name,
           intro,
           teamId,
@@ -207,7 +235,7 @@ export const onCreateApp = async ({
       resourceType: PerResourceTypeEnum.app
     });
 
-    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+    await getS3AvatarSource().refreshAvatar(_avatar, undefined, session);
 
     (async () => {
       addAuditLog({

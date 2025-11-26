@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 
 export type backupQuery = {};
 

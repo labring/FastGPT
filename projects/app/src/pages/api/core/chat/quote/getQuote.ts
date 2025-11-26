@@ -8,6 +8,9 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
+import { addDays } from 'date-fns';
+import { isS3ObjectKey, jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 export type GetQuoteProps = {
   datasetDataIdList: string[];

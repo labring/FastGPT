@@ -13,6 +13,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 
 async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResponse) {
   let { teamId, appId, chatId, teamToken } = req.query;
@@ -48,13 +49,18 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
+  const variables = await presignVariablesFileUrls({
+    variables: chat?.variables,
+    variableConfig: chat?.variableList
+  });
+
   jsonRes<InitChatResponse>(res, {
     data: {
       chatId,
       appId,
       title: chat?.title,
       userAvatar: team?.avatar,
-      variables: chat?.variables,
+      variables,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

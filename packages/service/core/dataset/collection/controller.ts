@@ -1,4 +1,7 @@
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -30,7 +33,10 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { clearCollectionImages, removeDatasetImageExpiredTime } from '../image/utils';
+import { clearCollectionImages } from '../image/utils';
+import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
+import path from 'node:path';
+import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -232,13 +238,6 @@ export const createCollectionAndInsertData = async ({
       }
     })();
 
-    // 6. Remove images ttl index
-    await removeDatasetImageExpiredTime({
-      ids: imageIds,
-      collectionId,
-      session
-    });
-
     return {
       collectionId: String(collectionId),
       insertResults
@@ -299,6 +298,10 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     ],
     { session, ordered: true }
   );
+
+  if (isS3ObjectKey(fileId, 'dataset')) {
+    await removeS3TTL({ key: fileId, bucketName: 'private', session });
+  }
 
   return collection;
 }
@@ -363,8 +366,24 @@ export async function delCollection({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
+  const s3DatasetSource = getS3DatasetSource();
   const datasetIds = Array.from(new Set(collections.map((item) => String(item.datasetId))));
   const collectionIds = collections.map((item) => String(item._id));
+
+  const imageCollectionIds = collections
+    .filter((item) => item.type === DatasetCollectionTypeEnum.images)
+    .map((item) => String(item._id));
+  const imageDatas = await MongoDatasetData.find(
+    {
+      teamId,
+      datasetId: { $in: datasetIds },
+      collectionId: { $in: imageCollectionIds }
+    },
+    { imageId: 1 }
+  ).lean();
+  const imageIds = imageDatas
+    .map((item) => item.imageId)
+    .filter((key) => isS3ObjectKey(key, 'dataset'));
 
   await retryFn(async () => {
     await Promise.all([
@@ -419,6 +438,9 @@ export async function delCollection({
         _id: { $in: collectionIds }
       },
       { session }
-    );
+    ).lean();
+
+    // delete s3 images which are uploaded by users
+    await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
   });
 }

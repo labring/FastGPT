@@ -10,27 +10,21 @@ import {
   ModalFooter,
   type BoxProps,
   Checkbox,
-  VStack,
-  Input
+  VStack
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MySlider from '@/components/Slider';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import type { FileExtensionKeyType } from '@fastgpt/global/core/app/constants';
-import {
-  defaultAppSelectFileConfig,
-  defaultFileExtensionTypes
-} from '@fastgpt/global/core/app/constants';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
-import { shadowLight } from '@fastgpt/web/styles/theme';
+import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 
 const FileSelect = ({
   forbidVision = false,
@@ -48,8 +42,6 @@ const FileSelect = ({
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
 
   const [localValue, setLocalValue] = useState(value);
-  const [isAddingCustomFileExtension, setIsAddingCustomFileExtension] = useState(false);
-  const [customFileExtension, setCustomFileExtension] = useState('.');
 
   const canUploadFile =
     value.canSelectFile ||
@@ -60,48 +52,6 @@ const FileSelect = ({
   const formLabel = canUploadFile
     ? t('common:core.app.whisper.Open')
     : t('common:core.app.whisper.Close');
-
-  const handleCheckboxChange = (type: FileExtensionKeyType, checked: boolean) => {
-    if (type === 'canSelectFile') {
-      setLocalValue((state) => ({
-        ...state,
-        canSelectFile: checked
-      }));
-    } else if (type === 'canSelectImg') {
-      setLocalValue((state) => ({
-        ...state,
-        canSelectImg: checked
-      }));
-    } else if (type === 'canSelectVideo') {
-      setLocalValue((state) => ({
-        ...state,
-        canSelectVideo: checked
-      }));
-    } else if (type === 'canSelectAudio') {
-      setLocalValue((state) => ({
-        ...state,
-        canSelectAudio: checked
-      }));
-    } else if (type === 'canSelectCustomFileExtension') {
-      setLocalValue((state) => ({
-        ...state,
-        canSelectCustomFileExtension: checked
-      }));
-    }
-  };
-
-  const handleConfirmCustomFileExtension = () => {
-    const exists = localValue?.customFileExtensionList?.includes(customFileExtension);
-    if (customFileExtension !== '.' && !exists) {
-      setLocalValue((state) => ({
-        ...state,
-        customFileExtensionList: [...(state.customFileExtensionList || []), customFileExtension]
-      }));
-      handleCheckboxChange('canSelectCustomFileExtension', true);
-    }
-    setCustomFileExtension('.');
-    setIsAddingCustomFileExtension(false);
-  };
 
   // Close select img switch when vision is forbidden
   useMount(() => {
@@ -178,174 +128,7 @@ const FileSelect = ({
               borderRadius="md"
               p={4}
             >
-              {Object.entries(defaultFileExtensionTypes).map(([type, exts]) =>
-                type === 'canSelectCustomFileExtension' ? (
-                  <VStack key={type} w="full" spacing={2} alignItems={'flex-start'}>
-                    <Checkbox
-                      w="full"
-                      alignItems={'flex-start'}
-                      cursor="pointer"
-                      isChecked={localValue.canSelectCustomFileExtension}
-                      onChange={(e) => {
-                        handleCheckboxChange('canSelectCustomFileExtension', e.target.checked);
-                      }}
-                    >
-                      <Box color={'myGray.900'} lineHeight={1} mb={2}>
-                        {t('app:upload_file_extension_type_canSelectCustomFileExtension')}
-                      </Box>
-                      <Flex
-                        gap={1}
-                        alignItems={'center'}
-                        flexWrap={'wrap'}
-                        fontSize={'xs'}
-                        color={'myGray.500'}
-                        whiteSpace={'wrap'}
-                        w="full"
-                      >
-                        {localValue.customFileExtensionList?.map((ext) => (
-                          <Box
-                            position={'relative'}
-                            key={ext}
-                            border="base"
-                            borderRadius={'sm'}
-                            color={'myGray.600'}
-                            userSelect="none"
-                            px={1}
-                            py={0.5}
-                            fontSize={'xs'}
-                            minW={'50px'}
-                            h={'22px'}
-                            textAlign={'center'}
-                          >
-                            <Box>{ext}</Box>
-                            <Flex
-                              position="absolute"
-                              top={0}
-                              left={0}
-                              right={0}
-                              bottom={0}
-                              alignItems="center"
-                              justifyContent="center"
-                              bg="rgba(255, 255, 255, 0.85)"
-                              borderRadius={'sm'}
-                              opacity={0}
-                              cursor="pointer"
-                              transition="opacity 0.2s"
-                              _hover={{
-                                opacity: 1
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                setLocalValue((state) => ({
-                                  ...state,
-                                  customFileExtensionList: (
-                                    state.customFileExtensionList || []
-                                  ).filter((prev) => prev !== ext)
-                                }));
-                              }}
-                            >
-                              <MyIcon
-                                name={'delete'}
-                                w={'14px'}
-                                h={'14px'}
-                                color={'red.600'}
-                                _hover={{
-                                  color: 'red.700'
-                                }}
-                              />
-                            </Flex>
-                          </Box>
-                        ))}
-
-                        <Flex
-                          gap={1}
-                          alignItems={'center'}
-                          border="base"
-                          borderRadius={'sm'}
-                          cursor="pointer"
-                          color={'myGray.600'}
-                          _hover={{
-                            color: 'primary.600',
-                            borderColor: 'primary.600'
-                          }}
-                          _focusWithin={{
-                            borderColor: 'primary.600',
-                            boxShadow: shadowLight
-                          }}
-                          userSelect="none"
-                          px={1}
-                          py={0.5}
-                          h={'22px'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setIsAddingCustomFileExtension(true);
-                          }}
-                        >
-                          {isAddingCustomFileExtension ? (
-                            <Input
-                              variant={'unstyled'}
-                              value={customFileExtension}
-                              autoFocus
-                              fontSize={'xs'}
-                              w={'50px'}
-                              maxLength={7}
-                              onChange={(e) =>
-                                setCustomFileExtension(
-                                  `.${e.target.value.replace(/^\./, '').trim()}`
-                                )
-                              }
-                              onBlur={handleConfirmCustomFileExtension}
-                              onKeyDown={(e) => {
-                                if (e.key.toLowerCase() !== 'enter') return;
-                                handleConfirmCustomFileExtension();
-                              }}
-                            />
-                          ) : (
-                            <Flex gap={1} alignItems={'center'} h={'22px'}>
-                              <MyIcon name={'common/add2'} w={'12px'} h={'12px'} />
-                              <Box fontSize={'xs'}>
-                                {t(
-                                  'app:upload_file_extension_type_canSelectCustomFileExtension_placeholder'
-                                )}
-                              </Box>
-                            </Flex>
-                          )}
-                        </Flex>
-                      </Flex>
-                    </Checkbox>
-                  </VStack>
-                ) : (
-                  <VStack key={type} w="full" spacing={2} alignItems={'flex-start'}>
-                    <Checkbox
-                      w="full"
-                      alignItems={'flex-start'}
-                      borderBottom="1px solid"
-                      borderColor="myGray.200"
-                      pb={3}
-                      cursor="pointer"
-                      isChecked={localValue[type as FileExtensionKeyType]}
-                      onChange={(e) =>
-                        handleCheckboxChange(type as FileExtensionKeyType, e.target.checked)
-                      }
-                    >
-                      <Box color={'myGray.900'} lineHeight={1}>
-                        {t(`app:upload_file_extension_type_${type}`)}
-                      </Box>
-                      <Box
-                        mt={1}
-                        fontSize={'xs'}
-                        color={'myGray.500'}
-                        wordBreak={'break-word'}
-                        w="full"
-                      >
-                        {exts.map((ext) => ext.slice(1)).join('/')}
-                      </Box>
-                    </Checkbox>
-                  </VStack>
-                )
-              )}
+              <FileTypeSelectorPanel value={localValue} onChange={setLocalValue} />
             </VStack>
           </VStack>
 

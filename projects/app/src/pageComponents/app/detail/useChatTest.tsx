@@ -129,18 +129,16 @@ export const useChatTest = ({
 
   // 新增变量时候，自动加入默认值
   useEffect(() => {
-    const values = variablesForm.getValues();
-    if (values.variables && variableList) {
+    if (variableList) {
       variableList.forEach((item) => {
         const val = variablesForm.getValues(`variables.${item.key}`);
         if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-          values.variables[item.key] = item.defaultValue;
+          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
         }
       });
-
-      variablesForm.reset(values);
     }
-  }, [variableList, variablesForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variableList]);
 
   const CustomChatContainer = useCallback(
     () =>

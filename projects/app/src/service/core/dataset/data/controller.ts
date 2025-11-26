@@ -18,7 +18,10 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
+import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 
 const formatIndexes = async ({
   indexes = [],
@@ -215,7 +218,6 @@ export async function insertData2Dataset({
     dataId: insertIds[index]
   }));
 
-  // 2. Create mongo data
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -247,6 +249,11 @@ export async function insertData2Dataset({
     ],
     { session, ordered: true }
   );
+
+  // 只移除图片数据集的图片的 TTL
+  if (isS3ObjectKey(imageId, 'dataset')) {
+    await removeS3TTL({ key: imageId, bucketName: 'private', session });
+  }
 
   return {
     insertId: _id,
@@ -423,6 +430,8 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     if (data.imageId) {
       await deleteDatasetImage(data.imageId);
     }
+
+    // Note: We don't delete parsed images from S3 here - they will be cleaned up when the collection is deleted
 
     // 3. Delete vector data
     await deleteDatasetDataVector({

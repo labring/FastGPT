@@ -4,16 +4,13 @@ import fsp from 'fs/promises';
 import fs from 'fs';
 import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
-import { detectFileEncoding, detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { readRawContentByFileBuffer } from '../read/utils';
-import { computeGridFsChunSize, gridFsStream2Buffer, stream2Encoding } from './utils';
+import { detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
+import { computeGridFsChunSize, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { Readable } from 'stream';
-import { addRawTextBuffer, getRawTextBuffer } from '../../buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { getS3DatasetSource } from '../../s3/sources/dataset';
+import { isS3ObjectKey } from '../../s3/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -85,59 +82,6 @@ export async function uploadFile({
 
   return String(stream.id);
 }
-export async function uploadFileFromBase64Img({
-  bucketName,
-  teamId,
-  tmbId,
-  base64,
-  filename,
-  metadata = {}
-}: {
-  bucketName: `${BucketNameEnum}`;
-  teamId: string;
-  tmbId: string;
-  base64: string;
-  filename: string;
-  metadata?: Record<string, any>;
-}) {
-  if (!base64) return Promise.reject(`filePath is empty`);
-  if (!filename) return Promise.reject(`filename is empty`);
-
-  const base64Data = base64.split(',')[1];
-  const contentType = base64.split(',')?.[0]?.split?.(':')?.[1];
-  const buffer = Buffer.from(base64Data, 'base64');
-  const readableStream = new Readable({
-    read() {
-      this.push(buffer);
-      this.push(null);
-    }
-  });
-
-  const { stream: readStream, encoding } = await stream2Encoding(readableStream);
-
-  // Add default metadata
-  metadata.teamId = teamId;
-  metadata.tmbId = tmbId;
-  metadata.encoding = encoding;
-
-  // create a gridfs bucket
-  const bucket = getGridBucket(bucketName);
-
-  const stream = bucket.openUploadStream(filename, {
-    metadata,
-    contentType
-  });
-
-  // save to gridfs
-  await new Promise((resolve, reject) => {
-    readStream
-      .pipe(stream as any)
-      .on('finish', resolve)
-      .on('error', reject);
-  });
-
-  return String(stream.id);
-}
 
 export async function getFileById({
   bucketName,
@@ -166,7 +110,11 @@ export async function delFileByFileIdList({
 
     for await (const fileId of fileIdList) {
       try {
-        await bucket.delete(new Types.ObjectId(String(fileId)));
+        if (isS3ObjectKey(fileId, 'dataset')) {
+          await getS3DatasetSource().deleteDatasetFileByKey(fileId);
+        } else {
+          await bucket.delete(new Types.ObjectId(String(fileId)));
+        }
       } catch (error: any) {
         if (typeof error?.message === 'string' && error.message.includes('File not found')) {
           addLog.warn('File not found', { fileId });
@@ -189,78 +137,3 @@ export async function getDownloadStream({
 
   return bucket.openDownloadStream(new Types.ObjectId(fileId));
 }
-
-export const readFileContentFromMongo = async ({
-  teamId,
-  tmbId,
-  bucketName,
-  fileId,
-  customPdfParse = false,
-  getFormatText,
-  usageId
-}: {
-  teamId: string;
-  tmbId: string;
-  bucketName: `${BucketNameEnum}`;
-  fileId: string;
-  customPdfParse?: boolean;
-  getFormatText?: boolean; // 数据类型都尽可能转化成 markdown 格式
-  usageId?: string;
-}): Promise<{
-  rawText: string;
-  filename: string;
-}> => {
-  const bufferId = `${String(fileId)}-${customPdfParse}`;
-  // read buffer
-  const fileBuffer = await getRawTextBuffer(bufferId);
-  if (fileBuffer) {
-    return {
-      rawText: fileBuffer.text,
-      filename: fileBuffer?.sourceName
-    };
-  }
-
-  const [file, fileStream] = await Promise.all([
-    getFileById({ bucketName, fileId }),
-    getDownloadStream({ bucketName, fileId })
-  ]);
-  if (!file) {
-    return Promise.reject(CommonErrEnum.fileNotFound);
-  }
-
-  const extension = parseFileExtensionFromUrl(file?.filename);
-
-  const start = Date.now();
-  const fileBuffers = await gridFsStream2Buffer(fileStream);
-  addLog.debug('get file buffer', { time: Date.now() - start });
-
-  const encoding = file?.metadata?.encoding || detectFileEncoding(fileBuffers);
-
-  // Get raw text
-  const { rawText } = await readRawContentByFileBuffer({
-    customPdfParse,
-    usageId,
-    getFormatText,
-    extension,
-    teamId,
-    tmbId,
-    buffer: fileBuffers,
-    encoding,
-    metadata: {
-      relatedId: fileId
-    }
-  });
-
-  // Add buffer
-  addRawTextBuffer({
-    sourceId: bufferId,
-    sourceName: file.filename,
-    text: rawText,
-    expiredTime: addMinutes(new Date(), 20)
-  });
-
-  return {
-    rawText,
-    filename: file.filename
-  };
-};
