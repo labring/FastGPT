@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -37,27 +37,42 @@ const Standard = ({
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
+  const NEW_PLAN_LEVELS = [
+    StandardSubLevelEnum.free,
+    StandardSubLevelEnum.basic,
+    StandardSubLevelEnum.advanced,
+    StandardSubLevelEnum.custom
+  ];
+
   const standardSubList = useMemo(() => {
     return subPlans?.standard
-      ? Object.entries(subPlans.standard).map(([level, value]) => {
-          return {
-            price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
-            level: level as `${StandardSubLevelEnum}`,
-            ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-            label: value.name || standardSubLevelMap[level as `${StandardSubLevelEnum}`].label, // custom label
-            maxTeamMember: value.maxTeamMember,
-            maxAppAmount: value.maxAppAmount,
-            maxDatasetAmount: value.maxDatasetAmount,
-            chatHistoryStoreDuration: value.chatHistoryStoreDuration,
-            maxDatasetSize: value.maxDatasetSize,
-            permissionCustomApiKey: value.permissionCustomApiKey,
-            permissionCustomCopyright: value.permissionCustomCopyright,
-            trainingWeight: value.trainingWeight,
-            totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-            permissionWebsiteSync: value.permissionWebsiteSync,
-            permissionTeamOperationLog: value.permissionTeamOperationLog
-          };
-        })
+      ? Object.entries(subPlans.standard)
+          .filter(([level]) => {
+            return NEW_PLAN_LEVELS.includes(level as StandardSubLevelEnum);
+          })
+          .map(([level, value]) => {
+            return {
+              price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
+              level: level as `${StandardSubLevelEnum}`,
+              ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
+              maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
+              maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
+              maxDatasetAmount: myStandardPlan?.maxDataset || value.maxDatasetAmount,
+              chatHistoryStoreDuration: value.chatHistoryStoreDuration,
+              maxDatasetSize: value.maxDatasetSize,
+              permissionCustomApiKey: value.permissionCustomApiKey,
+              permissionCustomCopyright: value.permissionCustomCopyright,
+              trainingWeight: value.trainingWeight,
+              totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
+              permissionWebsiteSync: value.permissionWebsiteSync,
+              permissionTeamOperationLog: value.permissionTeamOperationLog,
+
+              // custom plan
+              priceDescription: value.priceDescription,
+              customDescriptions: value.customDescriptions,
+              customFormUrl: value.customFormUrl
+            };
+          })
       : [];
   }, [subPlans?.standard, selectSubMode]);
 
@@ -167,9 +182,15 @@ const Standard = ({
                 <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
                   {t(item.label as any)}
                 </Box>
-                <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
-                  ￥{item.price}
-                </Box>
+                {item.level === StandardSubLevelEnum.custom ? (
+                  <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
+                    {item.priceDescription || '定制化计费'}
+                  </Box>
+                ) : (
+                  <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
+                    ￥{item.price}
+                  </Box>
+                )}
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
@@ -190,6 +211,23 @@ const Standard = ({
                         variant={'whiteBase'}
                       >
                         {t('common:free')}
+                      </Button>
+                    );
+                  }
+                  if (item.level === StandardSubLevelEnum.custom) {
+                    return (
+                      <Button
+                        mt={4}
+                        mb={6}
+                        w={'100%'}
+                        variant={'primaryGhost'}
+                        onClick={() => {
+                          if (item.customFormUrl) {
+                            window.open(item.customFormUrl, '_blank');
+                          }
+                        }}
+                      >
+                        {'联系商务'}
                       </Button>
                     );
                   }
@@ -257,7 +295,18 @@ const Standard = ({
                 })()}
 
                 {/* function list */}
-                <StandardPlanContentList level={item.level} mode={selectSubMode} />
+                {item.level === StandardSubLevelEnum.custom ? (
+                  <Grid gap={4} fontSize={'sm'}>
+                    {item.customDescriptions?.map((desc, index) => (
+                      <Flex key={index} alignItems={'center'}>
+                        <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                        <Box color={'myGray.600'}>{desc}</Box>
+                      </Flex>
+                    ))}
+                  </Grid>
+                ) : (
+                  <StandardPlanContentList level={item.level} mode={selectSubMode} />
+                )}
               </Box>
             );
           })}

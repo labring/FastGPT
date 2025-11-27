@@ -3,25 +3,48 @@ import type { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants
 // Content of plan
 export type TeamStandardSubPlanItemType = {
   name?: string;
+  desc?: string; // Plan description
   price: number; // read price / month
+
   pointPrice: number; // read price/ one thousand
+
   totalPoints: number; // n
   maxTeamMember: number;
   maxAppAmount: number; // max app or plugin amount
   maxDatasetAmount: number;
-  chatHistoryStoreDuration: number; // n day
   maxDatasetSize: number;
-  trainingWeight: number; // 1~4
-  permissionCustomApiKey: boolean;
-  permissionCustomCopyright: boolean; // feature
-  permissionWebsiteSync: boolean;
-  permissionTeamOperationLog: boolean;
+
+  requestsPerMinute?: number;
+  appRegistrationCount?: number;
+  chatHistoryStoreDuration: number; // n day
+  websiteSyncPerDataset?: number;
+  auditLogStoreDuration?: number;
+  ticketResponseTime?: string;
+
+  // Custom plan specific fields
+  priceDescription?: string;
+  customFormUrl?: string;
+  customDescriptions?: string[];
+
+  // deprecated
+  trainingWeight?: number; // 1~4
+  permissionCustomApiKey?: boolean;
+  permissionCustomCopyright?: boolean; // feature
+  permissionWebsiteSync?: boolean;
+  permissionTeamOperationLog?: boolean;
 };
 
 export type StandSubPlanLevelMapType = Record<
   `${StandardSubLevelEnum}`,
   TeamStandardSubPlanItemType
 >;
+
+// Extra points package item
+export type PointsPackageItem = {
+  points: number; // 积分数量（千分）
+  duration: number; // 有效期（月）
+  price: number; // 价格（元）
+};
 
 export type SubPlanType = {
   [SubTypeEnum.standard]: StandSubPlanLevelMapType;
@@ -30,7 +53,8 @@ export type SubPlanType = {
     price: number;
   };
   [SubTypeEnum.extraPoints]: {
-    price: number;
+    price?: number; // Deprecated: 旧的单价格字段，向后兼容
+    packages?: PointsPackageItem[];
   };
 };
 
