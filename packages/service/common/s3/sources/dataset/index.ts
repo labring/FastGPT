@@ -178,7 +178,7 @@ export class S3DatasetSource {
     await this.bucket.putObject(key, buffer, buffer.length, {
       'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
       'upload-time': new Date().toISOString(),
-      'origin-filename': encodeURIComponent(filename) // 保持原始文件名在元数据中
+      'origin-filename': encodeURIComponent(truncatedFilename)
     });
     await MongoS3TTL.create({
       minioKey: key,
