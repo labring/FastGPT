@@ -151,6 +151,7 @@ export const iconPaths = {
   'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
   'core/app/publish/offiaccount': () => import('./icons/core/app/publish/offiaccount.svg'),
   'core/app/publish/wechat': () => import('./icons/core/app/publish/wechat.svg'),
+  'core/app/publish/tuitui': () => import('./icons/core/app/publish/tuitui.svg'),
   'core/app/publish/wecom': () => import('./icons/core/app/publish/wecom.svg'),
   'core/app/questionGuide': () => import('./icons/core/app/questionGuide.svg'),
   'core/app/schedulePlan': () => import('./icons/core/app/schedulePlan.svg'),

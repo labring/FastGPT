@@ -3,7 +3,8 @@ import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
 import type {
   DingtalkAppType,
   FeishuAppType,
-  OutLinkEditType
+  OutLinkEditType,
+  TuituiAppType
 } from '@fastgpt/global/support/outLink/type.d';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 export const defaultApp: AppDetailType = {
@@ -45,6 +46,14 @@ export const defaultFeishuOutLinkForm: OutLinkEditType<FeishuAppType> = {
 };
 
 export const defaultDingtalkOutlinkForm: OutLinkEditType<DingtalkAppType> = {
+  name: '',
+  limit: {
+    QPM: 100,
+    maxUsagePoints: -1
+  }
+};
+
+export const defaultTuituiOutlinkForm: OutLinkEditType<TuituiAppType> = {
   name: '',
   limit: {
     QPM: 100,
