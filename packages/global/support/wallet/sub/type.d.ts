@@ -52,6 +52,7 @@ export type SubPlanType = {
     price: number;
   };
   [SubTypeEnum.extraPoints]: {
+    price: number; // deprecated
     packages: PointsPackageItem[];
   };
 };
