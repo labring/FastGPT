@@ -5,5 +5,6 @@ export enum PublishChannelEnum {
   feishu = 'feishu',
   dingtalk = 'dingtalk',
   wecom = 'wecom',
+  tuitui = 'tuitui',
   officialAccount = 'official_account'
 }

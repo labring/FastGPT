@@ -18,6 +18,7 @@ const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
 const DingTalk = dynamic(() => import('./DingTalk'));
 const Wecom = dynamic(() => import('./Wecom'));
+const Tuitui = dynamic(() => import('./Tuitui'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
 
 const OutLink = () => {
@@ -71,6 +72,17 @@ const OutLink = () => {
             title: t('publish:wecom.bot'),
             desc: t('publish:wecom.bot_desc'),
             value: PublishChannelEnum.wecom,
+            isProFn: true
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_publish_tuitui !== false
+      ? [
+          {
+            icon: 'core/app/publish/tuitui',
+            title: t('publish:tuitui.bot'),
+            desc: t('publish:tuitui.bot_desc'),
+            value: PublishChannelEnum.tuitui,
             isProFn: true
           }
         ]
@@ -140,6 +152,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
         {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
+        {linkType === PublishChannelEnum.tuitui && <Tuitui appId={appId} />}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
       </Flex>
     </Box>

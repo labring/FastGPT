@@ -8,7 +8,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 export type ShowShareLinkModalProps = {
   shareLink: string;
   onClose: () => void;
-  img: string;
+  img?: string;
 };
 
 function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps) {
@@ -40,9 +40,17 @@ function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps
             {shareLink}
           </Box>
         </Box>
-        <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
-          <MyImage src={img} borderRadius="0.5rem" alt="" />
-        </Box>
+        {img && (
+          <Box
+            mt="4"
+            borderRadius="0.5rem"
+            border="1px"
+            borderStyle="solid"
+            borderColor="myGray.200"
+          >
+            <MyImage src={img} borderRadius="0.5rem" alt="" />
+          </Box>
+        )}
       </ModalBody>
     </MyModal>
   );

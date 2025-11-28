@@ -1,16 +1,14 @@
-import React, { useCallback, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { clearToken } from '@/web/support/user/auth';
-import { oauthLogin } from '@/web/support/user/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'next-i18next';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
+import { useCallback, useEffect } from 'react';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
+import { serviceSideProps } from '@/web/common/i18n/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   getBdVId,
   getFastGPTSem,
@@ -19,8 +17,10 @@ import {
   getSourceDomain,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
+import { oauthLogin } from '@/web/support/user/api';
+import { clearToken } from '@/web/support/user/auth';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 let isOauthLogging = false;
 
@@ -71,9 +71,20 @@ const provider = () => {
   const authProps = useCallback(
     async (props: Record<string, string>) => {
       try {
+        // 如果是 360 SSO (有 sid 参数)，添加 ref 参数
+        // ref 应该是完整的回调 URL（不包含 sid 参数）
+        const requestProps = props.sid
+          ? {
+              ...props,
+              ref: props.__qihoo_state
+                ? `${location.origin}/login/provider?__qihoo_state=${props.__qihoo_state}`
+                : `${location.origin}/login/provider`
+            }
+          : props;
+
         const res = await oauthLogin({
           type: loginStore?.provider || OAuthEnum.sso,
-          props,
+          props: requestProps,
           callbackUrl: `${location.origin}/login/provider`,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
@@ -127,6 +138,12 @@ const provider = () => {
     (async () => {
       await retryFn(async () => clearToken());
       router.prefetch('/dashboard/agent');
+
+      // 通用 SSO 不验证 state（因为可能使用 sid 等其他参数）
+      if (loginStore && loginStore.provider === 'sso') {
+        authProps(props);
+        return;
+      }
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({

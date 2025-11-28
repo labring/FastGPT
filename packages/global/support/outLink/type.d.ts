@@ -14,6 +14,11 @@ export interface FeishuAppType {
   verificationToken?: string;
 }
 
+export interface TuituiAppType {
+  appId: string;
+  appSecret: string;
+}
+
 export interface DingtalkAppType {
   clientId: string;
   clientSecret: string;
@@ -46,6 +51,7 @@ export type OutlinkAppType =
   | WecomAppType
   | OffiAccountAppType
   | DingtalkAppType
+  | TuituiAppType
   | undefined;
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = {

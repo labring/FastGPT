@@ -41,5 +41,11 @@
   "dingtalk.create_modal_title": "建立釘釘聊天機器人",
   "dingtalk.edit_modal_title": "編輯釘釘聊天機器人",
   "dingtalk.title": "發布至釘釘聊天機器人",
-  "dingtalk.api": "釘釘 API"
+  "dingtalk.api": "釘釘 API",
+  "tuitui.bot": "推推聊天機器人",
+  "tuitui.bot_desc": "透過 API 直接連結推推聊天機器人",
+  "tuitui.create_modal_title": "建立推推聊天機器人",
+  "tuitui.edit_modal_title": "編輯推推聊天機器人",
+  "tuitui.title": "發布至推推聊天機器人",
+  "tuitui.api": "推推 API"
 }
