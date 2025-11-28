@@ -189,8 +189,13 @@ const Standard = ({
                   {t(item.label as any)}
                 </Box>
                 {item.level === StandardSubLevelEnum.custom ? (
-                  <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
-                    {item.priceDescription || '定制化计费'}
+                  <Box
+                    fontSize={['32px', '36px']}
+                    py={1.5}
+                    fontWeight={'bold'}
+                    color={'myGray.900'}
+                  >
+                    {item.priceDescription || t('common:custom_plan_price')}
                   </Box>
                 ) : (
                   <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
@@ -233,7 +238,7 @@ const Standard = ({
                           }
                         }}
                       >
-                        {'联系商务'}
+                        {t('common:contact_business')}
                       </Button>
                     );
                   }

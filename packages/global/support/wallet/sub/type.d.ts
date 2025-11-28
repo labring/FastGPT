@@ -39,11 +39,10 @@ export type StandSubPlanLevelMapType = Record<
   TeamStandardSubPlanItemType
 >;
 
-// Extra points package item
 export type PointsPackageItem = {
-  points: number; // 积分数量（千分）
-  duration: number; // 有效期（月）
-  price: number; // 价格（元）
+  points: number;
+  duration: number;
+  price: number;
 };
 
 export type SubPlanType = {
@@ -53,8 +52,7 @@ export type SubPlanType = {
     price: number;
   };
   [SubTypeEnum.extraPoints]: {
-    price?: number; // Deprecated: 旧的单价格字段，向后兼容
-    packages?: PointsPackageItem[];
+    packages: PointsPackageItem[];
   };
 };
 

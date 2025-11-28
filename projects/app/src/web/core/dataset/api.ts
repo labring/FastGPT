@@ -115,7 +115,7 @@ export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${
 export const postDatasetSync = (data: PostDatasetSyncParams) =>
   POST(`/proApi/core/dataset/datasetSync`, data, {
     timeout: 600000
-  });
+  }).catch();
 
 export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
   POST(`/core/dataset/folder/create`, data);

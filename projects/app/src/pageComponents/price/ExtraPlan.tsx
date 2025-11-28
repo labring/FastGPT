@@ -76,13 +76,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const extraPointsPackages = subPlans?.extraPoints?.packages || [];
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number>(0);
 
-  // 获取有效期文本
   const getDurationText = (duration: number) => {
-    if (duration === 1) return t('common:date_1_month');
-    if (duration === 3) return t('common:date_3_months');
-    if (duration === 6) return t('common:date_6_months');
-    if (duration === 12) return t('common:date_12_months');
-    return t('common:date_1_month');
+    if (duration < 12) return `${duration} ${t('common:month_text')}`;
+    return t('common:one_year');
   };
 
   const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(

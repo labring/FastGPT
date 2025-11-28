@@ -202,45 +202,35 @@ export const parseFileExtensionFromUrl = (url = '') => {
   return (extension || '').toLowerCase();
 };
 
-export const formatNumberWithUnit = (
-  num: number,
-  locale: string = 'zh-CN',
-  maxDecimalPlaces: number = 1
-): string => {
+export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
   if (num === 0) return '0';
   if (!num || isNaN(num)) return '-';
-
   const absNum = Math.abs(num);
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  // Chinese locales: use "万" (10,000)
   if (locale === 'zh-CN' || locale === 'zh-Hant' || locale === 'zh-TW') {
     if (absNum >= 10000) {
       const value = absNum / 10000;
-      // Remove trailing zeros and unnecessary decimal points
-      const formatted = Number(value.toFixed(maxDecimalPlaces)).toString();
+      const formatted = Number(value.toFixed(2)).toString();
+      console.log(value);
       return `${prefix}${formatted}万`;
     }
-    // For numbers < 10000, use toLocaleString to add thousand separators
     return num.toLocaleString(locale);
   }
-
-  // English locale: use K (1,000) and M (1,000,000)
   if (locale === 'en' || locale.startsWith('en-')) {
     if (absNum >= 1000000) {
       const value = absNum / 1000000;
-      const formatted = Number(value.toFixed(maxDecimalPlaces)).toString();
+      const formatted = Number(value.toFixed(2)).toString();
       return `${prefix}${formatted}M`;
     }
     if (absNum >= 1000) {
       const value = absNum / 1000;
-      const formatted = Number(value.toFixed(maxDecimalPlaces)).toString();
+      const formatted = Number(value.toFixed(2)).toString();
       return `${prefix}${formatted}K`;
     }
     return num.toLocaleString(locale);
   }
 
-  // Default: use toLocaleString
   return num.toLocaleString(locale);
 };

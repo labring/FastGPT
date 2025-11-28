@@ -3,13 +3,13 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { CouponTypeEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
 import {
-  CouponSceneEnum,
-  CouponStatusEnum,
-  CouponTypeEnum as DiscountCouponTypeEnum
-} from '@fastgpt/global/support/wallet/coupon/constants';
-import type { CouponSchemaType } from '@fastgpt/global/support/wallet/coupon/type';
+  DiscountCouponStatusEnum,
+  DiscountCouponSceneEnum,
+  CouponTypeEnum
+} from '@fastgpt/global/support/wallet/sub/coupon/constants';
+import type { DiscountCouponSchemaType } from '@fastgpt/global/support/wallet/sub/coupon/type';
+import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 export const couponCollectionName = 'team_sub_coupons';
 
@@ -70,13 +70,13 @@ const DiscountCouponSchema = new Schema({
   },
   scenes: {
     type: [String],
-    enum: Object.values(CouponSceneEnum),
+    enum: Object.values(DiscountCouponSceneEnum),
     required: true
   },
   status: {
     type: String,
-    enum: Object.values(CouponStatusEnum),
-    default: CouponStatusEnum.unused
+    enum: Object.values(DiscountCouponStatusEnum),
+    default: DiscountCouponStatusEnum.unused
   },
   startTime: {
     type: Date,
@@ -98,7 +98,7 @@ const DiscountCouponSchema = new Schema({
   },
   type: {
     type: [String],
-    enum: Object.values(DiscountCouponTypeEnum),
+    enum: Object.values(BillTypeEnum),
     required: true
   },
   level: {
@@ -114,7 +114,7 @@ try {
   console.log(error);
 }
 
-export const MongoTeamDiscountCoupon = getMongoModel<CouponSchemaType>(
+export const MongoTeamDiscountCoupon = getMongoModel<DiscountCouponSchemaType>(
   discountCouponCollectionName,
   DiscountCouponSchema
 );
