@@ -34,17 +34,19 @@ const StandardPlanContentList = ({
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-      totalPoints: plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
-      requestsPerMinute: plan.requestsPerMinute,
+      totalPoints:
+        standplan?.totalPoints || plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
+      requestsPerMinute: standplan?.requestsPerMinute || plan.requestsPerMinute || 2000,
       maxTeamMember: standplan?.maxTeamMember || plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp || plan.maxAppAmount,
       maxDatasetAmount: standplan?.maxDataset || plan.maxDatasetAmount,
-      maxDatasetSize: plan.maxDatasetSize,
-      websiteSyncPerDataset: plan.websiteSyncPerDataset,
-      chatHistoryStoreDuration: plan.chatHistoryStoreDuration,
-      auditLogStoreDuration: plan.auditLogStoreDuration,
-      appRegistrationCount: plan.appRegistrationCount,
-      ticketResponseTime: plan.ticketResponseTime,
+      maxDatasetSize: standplan?.maxDatasetSize || plan.maxDatasetSize,
+      websiteSyncPerDataset: standplan?.websiteSyncPerDataset || plan.websiteSyncPerDataset,
+      chatHistoryStoreDuration:
+        standplan?.chatHistoryStoreDuration || plan.chatHistoryStoreDuration,
+      auditLogStoreDuration: standplan?.auditLogStoreDuration || plan.auditLogStoreDuration,
+      appRegistrationCount: standplan?.appRegistrationCount || plan.appRegistrationCount,
+      ticketResponseTime: standplan?.ticketResponseTime || plan.ticketResponseTime,
 
       // deprecated
       trainingWeight: plan.trainingWeight,
@@ -85,7 +87,7 @@ const StandardPlanContentList = ({
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
         <Box color={'myGray.600'}>
           {t('common:support.wallet.subscription.function.Requests per minute', {
-            amount: planContent.requestsPerMinute || 2000
+            amount: planContent.requestsPerMinute
           })}
         </Box>
       </Flex>

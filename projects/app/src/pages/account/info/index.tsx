@@ -554,7 +554,7 @@ const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
-              mode={standardPlan.currentMode}
+              mode={'month'}
               standplan={standardPlan}
             />
           </Box>

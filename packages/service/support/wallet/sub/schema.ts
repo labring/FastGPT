@@ -56,6 +56,15 @@ const SubSchema = new Schema({
   maxApp: Number,
   maxDataset: Number,
 
+  // custom level configurations
+  requestsPerMinute: Number,
+  chatHistoryStoreDuration: Number,
+  maxDatasetSize: Number,
+  websiteSyncPerDataset: Number,
+  appRegistrationCount: Number,
+  auditLogStoreDuration: Number,
+  ticketResponseTime: String,
+
   // stand sub and extra points sub. Plan total points
   totalPoints: {
     type: Number

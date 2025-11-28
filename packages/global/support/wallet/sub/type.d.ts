@@ -73,6 +73,15 @@ export type TeamSubSchema = {
   maxApp?: number;
   maxDataset?: number;
 
+  // custom level configurations
+  requestsPerMinute?: number;
+  chatHistoryStoreDuration?: number;
+  maxDatasetSize?: number;
+  websiteSyncPerDataset?: number;
+  appRegistrationCount?: number;
+  auditLogStoreDuration?: number;
+  ticketResponseTime?: string;
+
   totalPoints: number;
   surplusPoints: number;
 
