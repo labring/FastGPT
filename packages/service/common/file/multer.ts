@@ -16,7 +16,7 @@ export type FileType = {
   size: number;
 };
 
-/*
+/* 
   maxSize: File max size (MB)
 */
 export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
@@ -142,43 +142,6 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
                 return {};
               }
             })()
-          });
-        });
-      });
-    }
-
-    uploaderMemory = multer({
-      storage: multer.memoryStorage(),
-      limits: {
-        fileSize: maxSize
-      }
-    }).single('file');
-
-    async getFileBuffer(req: NextApiRequest, res: NextApiResponse) {
-      return new Promise<{
-        buffer: Buffer;
-        originalname: string;
-        encoding: string;
-        mimetype: string;
-      }>((resolve, reject) => {
-        // @ts-ignore
-        this.uploaderMemory(req, res, (error) => {
-          if (error) {
-            return reject(error);
-          }
-
-          // @ts-ignore
-          const file = req.file;
-
-          if (!file?.buffer) {
-            return reject(new Error('File empty'));
-          }
-
-          resolve({
-            buffer: file.buffer,
-            originalname: decodeURIComponent(file.originalname),
-            encoding: file.encoding,
-            mimetype: file.mimetype
           });
         });
       });
