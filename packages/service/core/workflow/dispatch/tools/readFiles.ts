@@ -199,7 +199,7 @@ export const getFileContentFromLinks = async ({
           const buffer = Buffer.from(response.data, 'binary');
 
           const urlObj = new URL(url, 'http://localhost:3000');
-          const isChatExternalUrl = urlObj.pathname.startsWith(
+          const isChatExternalUrl = !urlObj.pathname.startsWith(
             `/${S3Buckets.private}/${S3Sources.chat}/`
           );
 
