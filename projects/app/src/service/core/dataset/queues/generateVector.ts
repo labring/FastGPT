@@ -122,7 +122,7 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (data.dataId) {
+          if (data.dataId && data.data) {
             return rebuildData({ trainingData: data });
           } else {
             return insertData({ trainingData: data });
@@ -167,7 +167,7 @@ export async function generateVector(): Promise<any> {
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   if (!trainingData.data) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
-    return Promise.reject('Not data');
+    return Promise.reject(`Not data, dataId: ${trainingData.dataId}`);
   }
 
   // Old vectorId
@@ -259,6 +259,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
   return mongoSessionRun(async (session) => {
     // insert new data to dataset
     const { tokens, insertId } = await insertData2Dataset({
+      id: trainingData.dataId,
       teamId: trainingData.teamId,
       tmbId: trainingData.tmbId,
       datasetId: trainingData.datasetId,
