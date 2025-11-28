@@ -7,6 +7,7 @@ import {
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { Types } from '@fastgpt/service/common/mongo';
 import {
   type DatasetDataIndexItemType,
   type DatasetDataItemType
@@ -293,6 +294,7 @@ const formatIndexes = async ({
  * 3. create mongo data
  */
 export async function insertData2Dataset({
+  id,
   teamId,
   tmbId,
   datasetId,
@@ -415,6 +417,7 @@ export async function insertData2Dataset({
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
+        ...(id && { _id: new Types.ObjectId(id) }),
         teamId,
         tmbId,
         datasetId,
