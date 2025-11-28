@@ -90,7 +90,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (vectorModel: EmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
-        vectorModel: vectorModel.model
+        vectorModel: vectorModel?.model
       });
     },
     {
@@ -185,7 +185,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               {!isDatabase && (
                 <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
                   <Box fontSize={'mini'}>
-                    {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
+                    {t('dataset:chunk_max_tokens')}: {vectorModel?.maxToken}
                   </Box>
                 </MyTooltip>
               )}
@@ -193,7 +193,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box pt={2}>
               <AIModelSelector
                 w={'100%'}
-                value={vectorModel.model}
+                value={vectorModel?.model}
                 fontSize={'mini'}
                 disableTip={
                   isTraining

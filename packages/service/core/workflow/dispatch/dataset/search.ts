@@ -141,11 +141,16 @@ export async function dispatchDatasetSearch(
     if (datasetIds.length === 0) {
       return emptyResult;
     }
-
-    // get vector
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
+    const useVectorModelDataset = datasets.find(
+      (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
+    // get vector
+    const vectorModel = useVectorModelDataset
+      ? getEmbeddingModel(
+          (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
+            ?.vectorModel
+        )
+      : undefined;
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);
 
@@ -234,7 +239,7 @@ export async function dispatchDatasetSearch(
               histories,
               teamId,
               queries: [userChatInput],
-              model: vectorModel.model,
+              model: vectorModel!.model,
               limit: dynamicLimit,
               datasetIds: [datasetId]
             });
@@ -319,7 +324,7 @@ export async function dispatchDatasetSearch(
         teamId,
         reRankQuery: userChatInput,
         queries: [userChatInput],
-        model: vectorModel.model,
+        model: vectorModel!.model,
         similarity,
         limit,
         datasetIds: commonDatasetIds,
@@ -373,16 +378,18 @@ export async function dispatchDatasetSearch(
     // vector
     const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
       formatModelChars2Points({
-        model: vectorModel.model,
+        model: vectorModel!.model,
         inputTokens: embeddingTokens,
         modelType: ModelTypeEnum.embedding
       });
-    nodeDispatchUsages.push({
-      totalPoints: embeddingTotalPoints,
-      moduleName: node.name,
-      model: embeddingModelName,
-      inputTokens: embeddingTokens
-    });
+    if (vectorModel) {
+      nodeDispatchUsages.push({
+        totalPoints: embeddingTotalPoints,
+        moduleName: node.name,
+        model: embeddingModelName,
+        inputTokens: embeddingTokens
+      });
+    }
     // Rerank
     const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
       model: rerankModelData?.model,
@@ -452,7 +459,7 @@ export async function dispatchDatasetSearch(
         let totalSqlPoints = 0;
         sqlResult.forEach((result) => {
           const { totalPoints, modelName } = formatModelChars2Points({
-            model: vectorModel.model, // Use the same model as vector search
+            model: vectorModel!.model, // Use the same model as vector search
             inputTokens: result.input_tokens,
             outputTokens: result.output_tokens,
             modelType: ModelTypeEnum.llm
@@ -487,7 +494,7 @@ export async function dispatchDatasetSearch(
     const responseData: DispatchNodeResponseType & { totalPoints: number } = {
       totalPoints,
       query: userChatInput,
-      embeddingModel: vectorModel.name,
+      embeddingModel: vectorModel?.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? similarity : undefined,
       limit,

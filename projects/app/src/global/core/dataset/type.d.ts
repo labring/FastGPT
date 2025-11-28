@@ -32,6 +32,10 @@ export type DatasetCollectionsListItemType = {
   // For database type datasets, include table schema description
   tableSchemaDescription?: string;
   tableSchema?: DatasetCollectionSchemaType['tableSchema'];
+
+  // For structureDocument type datasets, include row and column count
+  rows?: number;
+  cols?: number;
 };
 
 /* ================= data ===================== */

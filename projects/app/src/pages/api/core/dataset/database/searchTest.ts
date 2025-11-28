@@ -65,7 +65,7 @@ async function handler(
       histories: [],
       teamId: teamId,
       queries: [query],
-      model: vectorModel.model,
+      model: vectorModel?.model,
       limit: dynamicLimit,
       datasetIds: [datasetId]
     });

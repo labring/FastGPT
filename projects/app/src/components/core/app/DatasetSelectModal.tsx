@@ -76,7 +76,7 @@ export const DatasetSelectModal = ({
   const isDatasetDisabled = (item: DatasetListItemType) => {
     return isSmartGenerateScene
       ? isEmptyDatabase(item)
-      : !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
+      : !!activeVectorModel && activeVectorModel !== item.vectorModel?.model;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
@@ -97,7 +97,7 @@ export const DatasetSelectModal = ({
     }
 
     return visibleDatasets.filter(
-      (item: DatasetListItemType) => item.vectorModel.model === targetModel
+      (item: DatasetListItemType) => item.vectorModel?.model === targetModel
     );
   }, [datasets, activeVectorModel]);
 
@@ -295,7 +295,7 @@ export const DatasetSelectModal = ({
                             <>{t('common:Folder')}</>
                           ) : (
                             <>
-                              {t('app:Index')}: {item.vectorModel.name}
+                              {t('app:Index')}: {item.vectorModel?.name}
                             </>
                           )}
                         </Box>
