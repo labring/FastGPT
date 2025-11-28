@@ -95,4 +95,5 @@ export type ClientTeamPlanStatusType = TeamPlanStatusType & {
   usedAppAmount: number;
   usedDatasetSize: number;
   usedDatasetIndexSize: number;
+  usedRegistrationCount: number;
 };

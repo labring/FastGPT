@@ -62,7 +62,9 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // 上限校验
-  await checkTeamAppLimit(teamId);
+  if (type !== AppTypeEnum.workflowTool) {
+    await checkTeamAppLimit(teamId);
+  }
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
     .populate<{
       user: { username: string };

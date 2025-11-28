@@ -47,8 +47,14 @@ const Standard = ({
   const standardSubList = useMemo(() => {
     return subPlans?.standard
       ? Object.entries(subPlans.standard)
-          .filter(([level]) => {
-            return NEW_PLAN_LEVELS.includes(level as StandardSubLevelEnum);
+          .filter(([level, value]) => {
+            if (!NEW_PLAN_LEVELS.includes(level as StandardSubLevelEnum)) {
+              return false;
+            }
+            if (level === StandardSubLevelEnum.custom && !value.customFormUrl) {
+              return false;
+            }
+            return true;
           })
           .map(([level, value]) => {
             return {
@@ -131,7 +137,7 @@ const Standard = ({
         {/* card */}
         <Grid
           mt={[10, '48px']}
-          gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']}
+          gridTemplateColumns={['1fr', 'repeat(2,1fr)', `repeat(${standardSubList.length},1fr)`]}
           gap={[4, 6, 8]}
           w={'100%'}
           maxW={'1440px'}

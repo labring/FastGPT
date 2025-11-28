@@ -44,7 +44,12 @@ const StandardPlanContentList = ({
       chatHistoryStoreDuration: plan.chatHistoryStoreDuration,
       auditLogStoreDuration: plan.auditLogStoreDuration,
       appRegistrationCount: plan.appRegistrationCount,
-      ticketResponseTime: plan.ticketResponseTime
+      ticketResponseTime: plan.ticketResponseTime,
+
+      // deprecated
+      trainingWeight: plan.trainingWeight,
+      permissionWebsiteSync: plan.permissionWebsiteSync,
+      permissionTeamOperationLog: plan.permissionTeamOperationLog
     };
   }, [
     subPlans?.standard,
@@ -79,11 +84,9 @@ const StandardPlanContentList = ({
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
         <Box color={'myGray.600'}>
-          {planContent.requestsPerMinute
-            ? t('common:support.wallet.subscription.function.Requests per minute', {
-                amount: planContent.requestsPerMinute
-              })
-            : '无上限'}
+          {t('common:support.wallet.subscription.function.Requests per minute', {
+            amount: planContent.requestsPerMinute || 2000
+          })}
         </Box>
       </Flex>
       <Flex alignItems={'center'}>
@@ -164,6 +167,32 @@ const StandardPlanContentList = ({
             {t('common:support.wallet.subscription.function.Ticket response time', {
               amount: planContent.ticketResponseTime
             })}
+          </Box>
+        </Flex>
+      )}
+
+      {/* deprecated */}
+      {!!planContent.trainingWeight && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.Training weight', {
+              weight: planContent.trainingWeight
+            })}
+          </Box>
+        </Flex>
+      )}
+      {!!planContent.permissionWebsiteSync && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
+        </Flex>
+      )}
+      {!!planContent.permissionTeamOperationLog && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.team_operation_log')}
           </Box>
         </Flex>
       )}

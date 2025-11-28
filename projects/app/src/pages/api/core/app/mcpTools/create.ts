@@ -37,8 +37,6 @@ async function handler(
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await checkTeamAppLimit(teamId);
-
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
   const mcpToolsId = await mongoSessionRun(async (session) => {

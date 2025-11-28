@@ -46,18 +46,12 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     MongoApp.countDocuments({
       teamId,
       type: {
-        $in: [
-          AppTypeEnum.simple,
-          AppTypeEnum.workflow,
-          AppTypeEnum.workflowTool,
-          AppTypeEnum.mcpToolSet,
-          AppTypeEnum.httpToolSet
-        ]
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
       }
     })
   ]);
 
-  if (standardConstants && appCount + amount >= standardConstants.maxAppAmount) {
+  if (standardConstants && appCount + amount > standardConstants.maxAppAmount) {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
   }
 
@@ -65,12 +59,7 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
     const totalApps = await MongoApp.countDocuments({
       type: {
-        $in: [
-          AppTypeEnum.simple,
-          AppTypeEnum.workflow,
-          AppTypeEnum.workflowTool,
-          AppTypeEnum.mcpToolSet
-        ]
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
       }
     });
     if (totalApps >= global.licenseData.maxApps) {
@@ -131,7 +120,11 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
     teamId
   });
 
-  if (standardConstants && !standardConstants?.permissionWebsiteSync) {
+  if (
+    standardConstants &&
+    !standardConstants?.permissionWebsiteSync &&
+    !standardConstants?.websiteSyncPerDataset
+  ) {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
   }
 };

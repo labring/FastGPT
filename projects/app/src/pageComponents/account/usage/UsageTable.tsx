@@ -8,7 +8,8 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  useDisclosure
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -30,6 +31,9 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
+const RechargeModal = dynamic(() =>
+  import('@/components/support/wallet/NotSufficientModal/index').then((mod) => mod.RechargeModal)
+);
 
 const UsageTableList = ({
   filterParams,
@@ -41,6 +45,11 @@ const UsageTableList = ({
   filterParams: UsageFilterParams;
 }) => {
   const { t } = useSafeTranslation();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
@@ -112,10 +121,22 @@ const UsageTableList = ({
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'100%'} isLoading={isLoading}>
-      <Box>{Tabs}</Box>
+      <Flex>
+        <Box>{Tabs}</Box>
+        <Box flex={1} />
+        <Button
+          size={'md'}
+          variant={'transparentBase'}
+          color={'primary.700'}
+          onClick={onOpenRecharge}
+        >
+          {t('account_usage:check_left_points')}
+        </Button>
+      </Flex>
       <Flex mt={4} w={'100%'}>
         <Box>{Selectors}</Box>
         <Box flex={'1'} />
+
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
@@ -170,6 +191,8 @@ const UsageTableList = ({
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
+
+      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
     </MyBox>
   );
 };

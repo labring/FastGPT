@@ -27,8 +27,6 @@ async function handler(
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await checkTeamAppLimit(teamId);
-
   const httpToolsetId = await mongoSessionRun(async (session) => {
     const httpToolsetId = await onCreateApp({
       parentId,

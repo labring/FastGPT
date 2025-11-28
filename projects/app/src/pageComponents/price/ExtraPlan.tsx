@@ -11,11 +11,7 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import {
-  getMonthByPoints,
-  getMinPointsByMonth,
-  calculatePrice
-} from '@fastgpt/global/support/wallet/bill/tools';
+import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
@@ -70,41 +66,23 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     }
   );
 
-  // extra ai points
   const expireSelectorOptions: { label: string; value: number }[] = [
     { label: t('common:date_1_month'), value: 1 },
     { label: t('common:date_3_months'), value: 3 },
     { label: t('common:date_6_months'), value: 6 },
     { label: t('common:date_12_months'), value: 12 }
   ];
-  const extraPointsPrice = subPlans?.extraPoints?.price || 0;
+
   const extraPointsPackages = subPlans?.extraPoints?.packages || [];
-  const [selectedPackageIndex, setSelectedPackageIndex] = useState<number | undefined>();
-
-  const {
-    watch: watchExtraPoints,
-    setValue: setValueExtraPoints,
-    getValues: getValuesExtraPoints
-  } = useForm({
-    defaultValues: {
-      points: 1,
-      month: 1
-    }
-  });
-
-  // 监听积分和月份变化
-  const watchedPoints = watchExtraPoints('points');
-  const watchedMonth = watchExtraPoints('month');
+  const [selectedPackageIndex, setSelectedPackageIndex] = useState<number>(0);
 
   // 获取有效期文本
   const getDurationText = (duration: number) => {
-    const monthText = '月';
-    if (duration === 1) return t('common:date_1_month') || `1${monthText}`;
-    if (duration === 2) return `2${monthText}`;
-    if (duration === 3) return t('common:date_3_months') || `3${monthText}`;
-    if (duration === 6) return t('common:date_6_months') || `6${monthText}`;
-    if (duration === 12) return t('common:date_12_months') || `12${monthText}`;
-    return `${duration}${monthText}`;
+    if (duration === 1) return t('common:date_1_month');
+    if (duration === 3) return t('common:date_3_months');
+    if (duration === 6) return t('common:date_6_months');
+    if (duration === 12) return t('common:date_12_months');
+    return t('common:date_1_month');
   };
 
   const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(
@@ -125,7 +103,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     },
     {
       manual: true,
-      refreshDeps: [extraPointsPrice]
+      refreshDeps: [extraPointsPackages]
     }
   );
 
@@ -152,7 +130,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           >
             {t('common:support.wallet.subscription.Extra ai points')}
           </Box>
-          <Grid gridTemplateColumns={'repeat(3, 1fr)'} gap={3} py={4}>
+          <Grid gridTemplateColumns={'repeat(3, 1fr)'} gap={3} py={4} minHeight={'220px'}>
             {extraPointsPackages.map((pkg, index) => (
               <Flex
                 key={index}

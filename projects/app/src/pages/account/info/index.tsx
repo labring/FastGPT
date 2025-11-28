@@ -8,7 +8,6 @@ import {
   useTheme,
   Input,
   Link,
-  Progress,
   Grid,
   type BoxProps
 } from '@chakra-ui/react';
@@ -64,7 +63,7 @@ const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
-const Info = () => {
+const Info = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
   const { isPc } = useSystem();
   const { teamPlanStatus, initUserInfo } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
@@ -87,14 +86,14 @@ const Info = () => {
             </Box>
             {!!standardPlan && (
               <Box ml={'45px'} flex={'1'} maxW={'600px'}>
-                <PlanUsage />
+                <PlanUsage appRegistrationUrl={appRegistrationUrl} />
               </Box>
             )}
           </Flex>
         ) : (
           <>
             <MyInfo onOpenContact={onOpenContact} />
-            {standardPlan && <PlanUsage />}
+            {standardPlan && <PlanUsage appRegistrationUrl={appRegistrationUrl} />}
             <Other onOpenContact={onOpenContact} />
           </>
         )}
@@ -107,7 +106,8 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_info', 'user'])),
+      appRegistrationUrl: process.env.APP_REGISTRATION_URL || ''
     }
   };
 }
@@ -347,7 +347,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   );
 };
 
-const PlanUsage = () => {
+const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
@@ -386,41 +386,45 @@ const PlanUsage = () => {
     return false;
   }, [teamPlanStatus]);
 
-  const valueColorSchema = useCallback((val: number) => {
-    if (val < 50) return 'green';
-    if (val < 80) return 'yellow';
-    return 'red';
-  }, []);
-
   const datasetIndexUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        remaining: 0,
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
-    const rate = teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize;
+    const remaining = Math.max(
+      teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize,
+      0
+    );
+    const rate = teamPlanStatus.datasetMaxSize
+      ? (remaining / teamPlanStatus.datasetMaxSize) * 100
+      : 0;
 
     return {
-      value: teamPlanStatus.usedDatasetIndexSize,
-      rate: rate * 100,
-      max: teamPlanStatus.datasetMaxSize || 1
+      remaining: Math.round(remaining),
+      total: teamPlanStatus.datasetMaxSize || t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
+
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        remaining: 0,
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
 
+    const remaining = Math.max(teamPlanStatus.totalPoints - teamPlanStatus.usedPoints, 0);
+    const rate = teamPlanStatus.totalPoints ? (remaining / teamPlanStatus.totalPoints) * 100 : 0;
+
     return {
-      value: Math.round(teamPlanStatus.usedPoints),
-      max: teamPlanStatus.totalPoints,
-      rate: (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      remaining: Math.round(remaining),
+      total: teamPlanStatus.totalPoints || t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
 
@@ -429,7 +433,7 @@ const PlanUsage = () => {
       return [];
     }
 
-    return [
+    const data = [
       {
         label: t('account_info:member_amount'),
         value: teamPlanStatus.usedMember,
@@ -456,6 +460,20 @@ const PlanUsage = () => {
           100
       }
     ];
+
+    if (teamPlanStatus?.standardConstants?.appRegistrationCount) {
+      data.push({
+        label: t('account_info:app_registration_count'),
+        value: teamPlanStatus.usedRegistrationCount || 0,
+        max: teamPlanStatus.standardConstants.appRegistrationCount,
+        rate:
+          ((teamPlanStatus.usedRegistrationCount || 0) /
+            teamPlanStatus.standardConstants.appRegistrationCount) *
+          100
+      });
+    }
+
+    return data;
   }, [t, teamPlanStatus]);
 
   return standardPlan ? (
@@ -575,87 +593,90 @@ const PlanUsage = () => {
           </Link>
         </Flex>
         <Box width={'100%'} mt={5} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:knowledge_base_capacity')}
-              </Box>
-              <Box color={'myGray.600'} ml={2}>
-                {datasetIndexUsageMap.value}/{datasetIndexUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('common:support.wallet.subscription.AI points left')}
+            </Box>
+            <QuestionTip label={t('account_info:ai_points_usage_tip')} />
+            <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {aiPointsUsageMap.remaining} / {aiPointsUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={datasetIndexUsageMap.rate}
-              colorScheme={valueColorSchema(datasetIndexUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${aiPointsUsageMap.rate}%`}
+              bg={`${aiPointsUsageMap.rate > 50 ? 'primary' : aiPointsUsageMap.rate > 20 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
+
         <Box mt="6" width={'100%'} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:ai_points_usage')}
-              </Box>
-              <QuestionTip ml={1} label={t('account_info:ai_points_usage_tip')}></QuestionTip>
-              <Box color={'myGray.600'} ml={2}>
-                {aiPointsUsageMap.value}/{aiPointsUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex gap={4} alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('common:support.user.team.Dataset left')}
+            </Box>
+            <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {datasetIndexUsageMap.remaining} / {datasetIndexUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={aiPointsUsageMap.rate}
-              colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${datasetIndexUsageMap.rate}%`}
+              bg={`${datasetIndexUsageMap.rate > 50 ? 'primary' : datasetIndexUsageMap.rate > 20 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
 
         <MyDivider />
 
         {limitData.map((item) => {
+          const isAppRegistration = item.label === t('account_info:app_registration_count');
+
           return (
             <Box
               key={item.label}
               _notFirst={{
-                mt: 4
+                mt: 6
               }}
               width={'100%'}
               fontSize={'sm'}
             >
-              <Flex alignItems={'center'}>
-                <Box fontWeight={'bold'} color={'myGray.900'}>
+              <Flex gap={4} alignItems={'center'} mb={2}>
+                <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
                   {item.label}
                 </Box>
-                <Box color={'myGray.600'} ml={2}>
+                <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
                   {item.value}/{item.max}
                 </Box>
+                {isAppRegistration && appRegistrationUrl && (
+                  <Link
+                    href={appRegistrationUrl}
+                    target="_blank"
+                    ml={'auto'}
+                    display={'flex'}
+                    alignItems={'center'}
+                    color={'primary.600'}
+                    cursor={'pointer'}
+                    fontSize={'sm'}
+                    _hover={{ textDecoration: 'none' }}
+                  >
+                    {t('account_info:apply_app_registration')}
+                    <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
+                  </Link>
+                )}
               </Flex>
-              <Box mt={1}>
-                <Progress
-                  size={'sm'}
-                  value={item.rate}
-                  colorScheme={valueColorSchema(item.rate)}
-                  borderRadius={'md'}
-                  isAnimated
-                  hasStripe
-                  borderWidth={'1px'}
-                  borderColor={'borderColor.low'}
+              <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+                <Box
+                  borderRadius={'sm'}
+                  transition="width 0.3s"
+                  w={`${item.rate}%`}
+                  bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
-              </Box>
+              </Flex>
             </Box>
           );
         })}

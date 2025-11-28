@@ -35,7 +35,7 @@ const OperationLogSchema = new Schema({
 });
 
 OperationLogSchema.index({ teamId: 1, tmbId: 1, event: 1 });
-OperationLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 14 * 24 * 60 * 60 }); // Auto delete after 14 days
+OperationLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 730 * 24 * 60 * 60 });
 
 export const MongoOperationLog = getMongoLogModel<OperationLogSchema>(
   OperationLogCollectionName,
