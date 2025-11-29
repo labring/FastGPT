@@ -70,7 +70,8 @@ export const getHistoryPreview = (
                 item.text?.content || item?.tools?.map((item) => item.toolName).join(',') || ''
               );
             })
-            .join('') || ''
+            .join('')
+            .trim() || ''
         );
       }
       return '';
