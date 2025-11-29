@@ -265,7 +265,7 @@ export const loadRequestMessages = async ({
       | undefined
   ) => {
     if (typeof content === 'string') {
-      return content || '';
+      return content?.trim() || '';
     }
     // 交互节点
     if (!content) return '';
@@ -273,7 +273,10 @@ export const loadRequestMessages = async ({
     const result = content.filter((item) => item?.type === 'text');
     if (result.length === 0) return '';
 
-    return result.map((item) => item.text).join('\n');
+    return result
+      .map((item) => item.text)
+      .join('\n')
+      .trim();
   };
 
   if (messages.length === 0) {

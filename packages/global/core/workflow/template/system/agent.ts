@@ -53,6 +53,13 @@ export const AgentNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.number
     },
     {
+      key: NodeInputKeyEnum.aiChatIsResponseText,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: true,
+      valueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
       key: NodeInputKeyEnum.aiChatVision,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
