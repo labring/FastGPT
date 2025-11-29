@@ -33,7 +33,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       aiChatStopSign,
       aiChatResponseFormat,
       aiChatJsonSchema,
-      aiChatReasoning
+      aiChatReasoning,
+      isResponseAnswerText = true
     }
   } = workflowProps;
 
@@ -141,6 +142,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       });
     },
     onStreaming({ text }) {
+      if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
@@ -150,6 +152,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       });
     },
     onToolCall({ call }) {
+      if (!isResponseAnswerText) return;
       const toolNode = toolNodesMap.get(call.function.name);
       if (toolNode) {
         workflowStreamResponse?.({
@@ -168,6 +171,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       }
     },
     onToolParam({ tool, params }) {
+      if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.toolParams,
@@ -209,18 +213,20 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       // Format tool response
       const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            id: call.id,
-            toolName: '',
-            toolAvatar: '',
-            params: '',
-            response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+      if (isResponseAnswerText) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              id: call.id,
+              toolName: '',
+              toolAvatar: '',
+              params: '',
+              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+            }
           }
-        }
-      });
+        });
+      }
 
       toolRunResponses.push(toolRunResponse);
 
@@ -258,18 +264,20 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       // console.dir(runtimeEdges, { depth: null });
       const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            id: toolParams.toolCallId,
-            toolName: '',
-            toolAvatar: '',
-            params: '',
-            response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+      if (isResponseAnswerText) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              id: toolParams.toolCallId,
+              toolName: '',
+              toolAvatar: '',
+              params: '',
+              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+            }
           }
-        }
-      });
+        });
+      }
 
       toolRunResponses.push(toolRunResponse);
       const assistantMessages = chats2GPTMessages({
