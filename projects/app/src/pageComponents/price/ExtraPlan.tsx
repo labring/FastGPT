@@ -151,7 +151,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   {t('common:support.wallet.subscription.point')}
                 </Box>
                 <Box fontSize={'12px'} fontWeight={'medium'} color={'myGray.500'} mt={2}>
-                  {t('common:invalid_time')}
+                  {t('common:invalid_time') + ' '}
                   {getDurationText(pkg.duration)}
                 </Box>
               </Flex>
