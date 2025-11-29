@@ -19,7 +19,7 @@ export type TeamStandardSubPlanItemType = {
   chatHistoryStoreDuration: number; // n day
   websiteSyncPerDataset?: number;
   auditLogStoreDuration?: number;
-  ticketResponseTime?: string;
+  ticketResponseTime?: number;
 
   // Custom plan specific fields
   priceDescription?: string;
@@ -79,7 +79,7 @@ export type TeamSubSchema = {
   websiteSyncPerDataset?: number;
   appRegistrationCount?: number;
   auditLogStoreDuration?: number;
-  ticketResponseTime?: string;
+  ticketResponseTime?: number;
 
   totalPoints: number;
   surplusPoints: number;

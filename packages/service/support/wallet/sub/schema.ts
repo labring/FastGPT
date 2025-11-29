@@ -63,7 +63,7 @@ const SubSchema = new Schema({
   websiteSyncPerDataset: Number,
   appRegistrationCount: Number,
   auditLogStoreDuration: Number,
-  ticketResponseTime: String,
+  ticketResponseTime: Number,
 
   // stand sub and extra points sub. Plan total points
   totalPoints: {

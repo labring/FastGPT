@@ -15,7 +15,7 @@ export type CustomSubConfig = {
   websiteSyncPerDataset: number;
   appRegistrationCount: number;
   auditLogStoreDuration: number;
-  ticketResponseTime: string;
+  ticketResponseTime: number;
 };
 
 export type TeamCouponSub = {
