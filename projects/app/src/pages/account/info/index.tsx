@@ -366,8 +366,12 @@ const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {

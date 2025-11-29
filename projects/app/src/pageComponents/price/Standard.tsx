@@ -58,9 +58,11 @@ const Standard = ({
           })
           .map(([level, value]) => {
             return {
+              ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
+              ...(value.desc ? { desc: value.desc } : {}),
+              ...(value.name ? { label: value.name } : {}),
               price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
-              ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
               maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
               maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
               maxDatasetAmount: myStandardPlan?.maxDataset || value.maxDatasetAmount,

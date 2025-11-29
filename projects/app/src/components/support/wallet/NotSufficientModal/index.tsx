@@ -73,6 +73,7 @@ export const RechargeModal = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { subPlans } = useSystemStore();
 
   useMount(() => {
     initTeamPlanStatus();
@@ -80,8 +81,11 @@ export const RechargeModal = ({
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      t(standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label as any)
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
 
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
 

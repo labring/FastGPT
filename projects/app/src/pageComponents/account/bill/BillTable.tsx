@@ -33,10 +33,12 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { subPlans } = useSystemStore();
   const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
   const [billDetail, setBillDetail] = useState<BillSchemaType>();
 
@@ -233,7 +235,10 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {!!bill.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_package')}:</FormLabel>
-            <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
+            <Box>
+              {subPlans?.standard?.[bill.metadata.standSubLevel]?.name ||
+                t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}
+            </Box>
           </Flex>
         )}
         {bill.metadata?.month !== undefined && (
