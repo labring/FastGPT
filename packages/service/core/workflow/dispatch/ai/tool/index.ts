@@ -120,20 +120,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       fileLinks,
       inputFiles: globalFiles,
-<<<<<<< HEAD
-<<<<<<< HEAD
       hasReadFilesTool,
       usageId,
       appId: props.runningAppInfo.id,
       chatId: props.chatId,
       uId: props.uid
-=======
-      hasReadFilesTool
->>>>>>> a48ad2abe (squash: compress all commits into one)
-=======
-      hasReadFilesTool,
-      usageId
->>>>>>> daaea654e (feat: plan response in ui)
     });
 
     const concatenateSystemPrompt = [
@@ -245,19 +236,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         (sum, item) => sum + item.runTimes,
         0
       ),
-<<<<<<< HEAD
-<<<<<<< HEAD
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? previewAssistantResponses
         : undefined,
-=======
-=======
-      [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
->>>>>>> 757253617 (squash: compress all commits into one)
-=======
->>>>>>> daaea654e (feat: plan response in ui)
-      [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
->>>>>>> a48ad2abe (squash: compress all commits into one)
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗
         totalPoints: totalPointsUsage,
@@ -302,20 +283,11 @@ const getMultiInput = async ({
   maxFiles,
   customPdfParse,
   inputFiles,
-<<<<<<< HEAD
-<<<<<<< HEAD
   hasReadFilesTool,
   usageId,
   appId,
   chatId,
   uId
-=======
-  hasReadFilesTool
->>>>>>> a48ad2abe (squash: compress all commits into one)
-=======
-  hasReadFilesTool,
-  usageId
->>>>>>> daaea654e (feat: plan response in ui)
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   histories: ChatItemType[];
@@ -325,17 +297,10 @@ const getMultiInput = async ({
   customPdfParse?: boolean;
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
-<<<<<<< HEAD
-<<<<<<< HEAD
   usageId?: string;
   appId: string;
   chatId?: string;
   uId: string;
-=======
->>>>>>> a48ad2abe (squash: compress all commits into one)
-=======
-  usageId?: string;
->>>>>>> daaea654e (feat: plan response in ui)
 }) => {
   // Not file quote
   if (!fileLinks || hasReadFilesTool) {
@@ -386,15 +351,15 @@ const toolCallMessagesAdapt = ({
 }): UserChatItemValueItemType[] => {
   if (skip) return userInput;
 
-  const files = userInput.filter((item) => item.file);
+  const files = userInput.filter((item) => 'file' in item && item.file);
 
   if (files.length > 0) {
     const filesCount = files.filter((file) => file.file?.type === 'file').length;
     const imgCount = files.filter((file) => file.file?.type === 'image').length;
 
-    if (userInput.some((item) => item.text)) {
+    if (userInput.some((item) => 'text' in item && item.text)) {
       return userInput.map((item) => {
-        if (item.text) {
+        if ('text' in item && item.text) {
           const text = item.text?.content || '';
 
           return {
