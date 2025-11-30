@@ -20,6 +20,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;
+  [NodeInputKeyEnum.aiChatIsResponseText]?: boolean;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatTopP]?: number;
