@@ -51,13 +51,6 @@ const BoxStyles: BoxProps = {
   borderBottomWidth: '1px',
   borderBottomColor: 'borderColor.low'
 };
-const LabelStyles: BoxProps = {
-  w: ['60px', '100px'],
-  whiteSpace: 'nowrap',
-  flexShrink: 0,
-  fontSize: 'sm',
-  color: 'myGray.900'
-};
 
 const EditForm = ({
   appForm,
@@ -75,40 +68,40 @@ const EditForm = ({
   const [, startTst] = useTransition();
 
   // Skill picker
-  const selectedTools = useMemoEnhance(() => appForm.selectedTools, [appForm.selectedTools]);
-  const onUpdateOrAddTool = useCallback(
-    (tool: SelectedToolItemType) => {
-      setAppForm((state) => {
-        if (state.selectedTools.some((t) => t.id === tool.id)) {
-          return {
-            ...state,
-            selectedTools: state.selectedTools.map((t) => (t.id === tool.id ? tool : t))
-          };
-        }
-        return {
-          ...state,
-          selectedTools: [tool, ...state.selectedTools]
-        };
-      });
-    },
-    [setAppForm]
-  );
-  const onDeleteTool = useCallback(
-    (id: string) => {
-      setAppForm((state) => ({
-        ...state,
-        selectedTools: state.selectedTools.filter((t) => t.id !== id)
-      }));
-    },
-    [setAppForm]
-  );
-  const { SkillModal, skillOption, selectedSkills, onClickSkill, onRemoveSkill } = useSkillManager({
-    selectedTools,
-    onUpdateOrAddTool,
-    onDeleteTool,
-    canSelectFile: appForm.chatConfig?.fileSelectConfig?.canSelectFile,
-    canSelectImg: appForm.chatConfig?.fileSelectConfig?.canSelectImg
-  });
+  // const selectedTools = useMemoEnhance(() => appForm.selectedTools, [appForm.selectedTools]);
+  // const onUpdateOrAddTool = useCallback(
+  //   (tool: SelectedToolItemType) => {
+  //     setAppForm((state) => {
+  //       if (state.selectedTools.some((t) => t.id === tool.id)) {
+  //         return {
+  //           ...state,
+  //           selectedTools: state.selectedTools.map((t) => (t.id === tool.id ? tool : t))
+  //         };
+  //       }
+  //       return {
+  //         ...state,
+  //         selectedTools: [tool, ...state.selectedTools]
+  //       };
+  //     });
+  //   },
+  //   [setAppForm]
+  // );
+  // const onDeleteTool = useCallback(
+  //   (id: string) => {
+  //     setAppForm((state) => ({
+  //       ...state,
+  //       selectedTools: state.selectedTools.filter((t) => t.id !== id)
+  //     }));
+  //   },
+  //   [setAppForm]
+  // );
+  // const { SkillModal, skillOption, selectedSkills, onClickSkill, onRemoveSkill } = useSkillManager({
+  //   selectedTools,
+  //   onUpdateOrAddTool,
+  //   onDeleteTool,
+  //   canSelectFile: appForm.chatConfig?.fileSelectConfig?.canSelectFile,
+  //   canSelectImg: appForm.chatConfig?.fileSelectConfig?.canSelectImg
+  // });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -199,7 +192,7 @@ const EditForm = ({
             </FormLabel>
           </Flex>
           <Flex alignItems={'center'} mt={5}>
-            <Box {...LabelStyles}>{t('common:core.ai.Model')}</Box>
+            <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
                 bg="myGray.50"
@@ -215,6 +208,8 @@ const EditForm = ({
                   aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
                   aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
+                showStopSign={false}
+                showResponseFormat={false}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
@@ -229,17 +224,18 @@ const EditForm = ({
             </Box>
           </Flex>
 
+          {/* Prompt */}
           <Box mt={4}>
-            <HStack {...LabelStyles} w={'100%'}>
-              <Box>{t('common:core.ai.Prompt')}</Box>
-              <QuestionTip label={t('common:agent_prompt_tips')} />
+            <HStack w={'100%'}>
+              <FormLabel>{t('app:ai_role')}</FormLabel>
+              <QuestionTip label={t('app:ai_role_placeholder')} />
 
               <Box flex={1} />
-              <VariableTip color={'myGray.500'} />
+              {/* <VariableTip color={'myGray.500'} /> */}
             </HStack>
             <Box mt={1}>
               <PromptEditor
-                minH={150}
+                minH={120}
                 value={appForm.aiSettings.systemPrompt}
                 bg={'myGray.50'}
                 onChange={(text) => {
@@ -253,12 +249,8 @@ const EditForm = ({
                     }));
                   });
                 }}
-                variableLabels={formatVariables}
-                skillOption={skillOption}
-                selectedSkills={selectedSkills}
-                onClickSkill={onClickSkill}
-                onRemoveSkill={onRemoveSkill}
-                placeholder={t('common:agent_prompt_tips')}
+                // variableLabels={formatVariables}
+                placeholder={t('app:ai_role_placeholder')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPromptPopverComponent]}
                 isRichText={true}
@@ -267,12 +259,17 @@ const EditForm = ({
           </Box>
         </Box>
 
+        {/* tool choice */}
+        <Box {...BoxStyles}>
+          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
+        </Box>
+
         {/* dataset */}
         <Box {...BoxStyles}>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-              <FormLabel ml={2}>{t('common:core.dataset.Choose Dataset')}</FormLabel>
+              <FormLabel ml={2}>{t('app:dataset')}</FormLabel>
             </Flex>
             <Button
               variant={'transparentBase'}
@@ -345,11 +342,6 @@ const EditForm = ({
           </Grid>
         </Box>
 
-        {/* tool choice */}
-        <Box {...BoxStyles}>
-          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
-        </Box>
-
         {/* File select */}
         <Box {...BoxStyles}>
           <FileSelectConfig
@@ -368,7 +360,7 @@ const EditForm = ({
         </Box>
 
         {/* variable */}
-        <Box {...BoxStyles}>
+        {/* <Box {...BoxStyles}>
           <VariableEdit
             variables={appForm.chatConfig.variables}
             onChange={(e) => {
@@ -381,7 +373,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box>
+        </Box> */}
 
         {/* welcome */}
         <Box {...BoxStyles}>
@@ -468,7 +460,6 @@ const EditForm = ({
 
       {isOpenDatasetSelect && (
         <DatasetSelectModal
-          isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,
@@ -503,7 +494,6 @@ const EditForm = ({
           }}
         />
       )}
-      <SkillModal />
     </>
   );
 };
