@@ -1,5 +1,4 @@
 import React, { useCallback, useState, useMemo } from 'react';
-
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -26,25 +25,24 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { SelectedToolItemType, AppFormEditFormType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import ConfigToolModal from '../../component/ConfigToolModal';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import { types } from 'util';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { checkNeedsUserConfiguration, validateToolConfiguration } from '../../ChatAgent/utils';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
   chatConfig: AppFormEditFormType['chatConfig'];
   selectedModel: LLMModelItemType;
-  onAddTool: (tool: FlowNodeTemplateType) => void;
+  onAddTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
 
@@ -110,8 +108,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         setTemplateType(type);
         setParentId(parentId);
       },
-      refreshDeps: [templateType, searchKey, parentId],
-      errorToast: t('common:core.module.templates.Load plugin error')
+      refreshDeps: [templateType, searchKey, parentId]
     }
   );
 
@@ -159,7 +156,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   return (
     <MyModal
       isOpen
-      title={t('common:core.app.Tool call')}
+      title={t('app:tool_select')}
       iconSrc="core/app/toolCall"
       onClose={onClose}
       maxW={['90vw', '700px']}
@@ -257,97 +254,28 @@ const RenderList = React.memo(function RenderList({
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const router = useRouter();
-
-  const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
-  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
 
-      /* Invalid plugin check
-        1. Reference type. but not tool description;
-        2. Has dataset select
-        3. Has dynamic external data
-      */
-      const oneFileInput =
-        res.inputs.filter((input) =>
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-        ).length === 1;
-      const canUploadFile =
-        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
-      const invalidFileInput = oneFileInput && !!canUploadFile;
-      if (
-        res.inputs.some(
-          (input) =>
-            (input.renderTypeList.length === 1 &&
-              input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
-              !input.toolDescription) ||
-            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
-            input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
-            (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !invalidFileInput)
-        )
-      ) {
+      const toolValid = validateToolConfiguration({
+        toolTemplate: res,
+        canSelectFile: chatConfig?.fileSelectConfig?.canSelectFile,
+        canSelectImg: chatConfig?.fileSelectConfig?.canSelectImg
+      });
+      if (!toolValid) {
         return toast({
           title: t('app:simple_tool_tips'),
           status: 'warning'
         });
       }
 
-      // 判断是否可以直接添加工具,满足以下任一条件:
-      // 1. 有工具描述
-      // 2. 是模型选择类型
-      // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
-      const hasInputForm =
-        res.inputs.length > 0 &&
-        res.inputs.some((input) => {
-          if (input.toolDescription) {
-            return false;
-          }
-          if (input.key === NodeInputKeyEnum.forbidStream) {
-            return false;
-          }
-          if (input.key === NodeInputKeyEnum.systemInputConfig) {
-            return true;
-          }
-
-          // Check if input has any of the form render types
-          const formRenderTypes = [
-            FlowNodeInputTypeEnum.input,
-            FlowNodeInputTypeEnum.textarea,
-            FlowNodeInputTypeEnum.numberInput,
-            FlowNodeInputTypeEnum.switch,
-            FlowNodeInputTypeEnum.select,
-            FlowNodeInputTypeEnum.JSONEditor
-          ];
-
-          return formRenderTypes.some((type) => input.renderTypeList.includes(type));
-        });
-
-      // 构建默认表单数据
-      const defaultForm = {
+      onAddTool({
         ...res,
-        inputs: res.inputs.map((input) => {
-          // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-            return {
-              ...input,
-              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
-            };
-          }
-          return input;
-        })
-      };
-
-      if (hasInputForm) {
-        setConfigTool(defaultForm);
-      } else {
-        onAddTool(defaultForm);
-      }
-    },
-    {
-      errorToast: t('common:core.module.templates.Load plugin error')
+        configStatus: checkNeedsUserConfiguration(res) ? 'waitingForConfig' : 'active'
+      });
     }
   );
 
@@ -504,7 +432,7 @@ const RenderList = React.memo(function RenderList({
           _hover={{
             color: 'primary.600'
           }}
-          onClick={() => router.push('/plugin/tool')}
+          onClick={() => router.push('/dashboard/tool')}
           gap={1}
           bottom={0}
           right={[3, 6]}
@@ -514,13 +442,6 @@ const RenderList = React.memo(function RenderList({
           <Box fontSize="sm">{t('app:find_more_tools')}</Box>
           <MyIcon name="common/rightArrowLight" w="0.9rem" />
         </Flex>
-      )}
-      {!!configTool && (
-        <ConfigToolModal
-          configTool={configTool}
-          onCloseConfigTool={onCloseConfigTool}
-          onAddTool={onAddTool}
-        />
       )}
     </Flex>
   );

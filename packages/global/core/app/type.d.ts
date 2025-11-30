@@ -97,6 +97,9 @@ export type AppDatasetSearchParamsType = {
   datasetSearchExtensionBg?: string;
 };
 
+export type SelectedToolItemType = FlowNodeTemplateType & {
+  configStatus?: 'active' | 'waitingForConfig' | 'invalid';
+};
 export type AppFormEditFormType = {
   // templateId: string;
   aiSettings: {
@@ -115,9 +118,7 @@ export type AppFormEditFormType = {
   dataset: {
     datasets: SelectedDatasetType[];
   } & AppDatasetSearchParamsType;
-  selectedTools: (FlowNodeTemplateType & {
-    configStatus?: 'active' | 'waitingForConfig' | 'invalid';
-  })[];
+  selectedTools: SelectedToolItemType[];
   chatConfig: AppChatConfigType;
 };
 
