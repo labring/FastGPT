@@ -230,7 +230,7 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-              <FormLabel ml={2}>{t('common:core.dataset.Choose Dataset')}</FormLabel>
+              <FormLabel ml={2}>{t('app:dataset')}</FormLabel>
             </Flex>
             <Button
               variant={'transparentBase'}

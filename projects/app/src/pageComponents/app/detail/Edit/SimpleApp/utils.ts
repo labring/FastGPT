@@ -551,6 +551,9 @@ export function form2AppWorkflow(
                   value: formData.aiSettings.maxHistories
                 };
               }
+              if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
+              }
               return input;
             }),
             outputs: tool.outputs

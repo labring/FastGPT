@@ -7,7 +7,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useState } from 'react';
-import { checkNeedsUserConfiguration, validateToolConfiguration } from './utils';
+import { checkNeedsUserConfiguration, validateToolConfiguration } from '../utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   FlowNodeInputTypeEnum,
@@ -143,9 +143,7 @@ export const useSkillManager = ({
 
   const onAddAppOrTool = useCallback(
     async (appId: string) => {
-      console.log(appId);
       const toolTemplate = await getToolPreviewNode({ appId });
-      console.log(toolTemplate);
 
       if (!toolTemplate) {
         return;
