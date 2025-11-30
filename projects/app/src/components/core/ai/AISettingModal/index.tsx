@@ -54,13 +54,18 @@ const LabelStyles: BoxProps = {
   mr: 5
 };
 
-export type AIChatSettingsModalProps = {};
+export type AIChatSettingsModalProps = {
+  showStopSign?: boolean;
+  showResponseFormat?: boolean;
+};
 
 const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = []
+  llmModels = [],
+  showStopSign = true,
+  showResponseFormat = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -335,7 +340,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportStopSign && (
+        {showStopSign && llmSupportStopSign && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -360,7 +365,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportResponseFormat && selectedModel?.responseFormatList && (
+        {showResponseFormat && llmSupportResponseFormat && selectedModel?.responseFormatList && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
@@ -393,7 +398,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {/* Json schema */}
-        {responseFormat === 'json_schema' && (
+        {showResponseFormat && responseFormat === 'json_schema' && (
           <Flex {...FlexItemStyles} h="auto">
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>JSON Schema</Flex>

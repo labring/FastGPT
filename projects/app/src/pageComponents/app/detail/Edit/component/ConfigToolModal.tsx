@@ -52,7 +52,7 @@ const ConfigToolModal = ({
     <MyModal
       isOpen
       isCentered
-      title={t('common:core.app.ToolCall.Parameter setting')}
+      title={t('app:tool_param_config')}
       iconSrc="core/app/toolCall"
       overflow={'auto'}
     >

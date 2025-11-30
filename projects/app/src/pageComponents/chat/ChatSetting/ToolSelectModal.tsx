@@ -69,8 +69,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       onSuccess(_, [{ parentId = '' }]) {
         setParentId(parentId);
       },
-      refreshDeps: [searchKey, parentId],
-      errorToast: t('common:core.module.templates.Load plugin error')
+      refreshDeps: [searchKey, parentId]
     }
   );
 
@@ -268,9 +267,6 @@ const RenderList = React.memo(function RenderList({
       } else {
         onAddTool(defaultForm);
       }
-    },
-    {
-      errorToast: t('common:core.module.templates.Load plugin error')
     }
   );
 
