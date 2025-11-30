@@ -46,7 +46,7 @@ const QGConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('common:core.app.Question Guide')}</FormLabel>
+      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_question_guide')}>
