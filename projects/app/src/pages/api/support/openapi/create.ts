@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
   }
 
   const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
-  const apiKey = `${global.systemEnv?.openapiPrefix || 'alopegpt'}-${nanoid}`;
+  const apiKey = `${global.systemEnv?.openapiPrefix || 'alope'}-${nanoid}`;
 
   await MongoOpenApi.create({
     teamId,

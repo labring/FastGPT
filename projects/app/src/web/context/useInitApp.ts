@@ -61,7 +61,7 @@ export const useInitApp = () => {
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
-  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AlopeGpt');
+  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'Alope');
 
   const getPathWithoutMarketingParams = () => {
     const filteredQuery = { ...router.query };
@@ -88,7 +88,7 @@ export const useInitApp = () => {
       feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData();
 
-    setTitle(systemTitle || 'AlopeGpt');
+    setTitle(systemTitle || 'Alope');
 
     loadGitStar();
 
