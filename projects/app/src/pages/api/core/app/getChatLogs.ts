@@ -23,7 +23,7 @@ async function handler(
   req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, regionSearch } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -39,7 +39,7 @@ async function handler(
     per: AppReadChatLogPerVal
   });
 
-  const where = {
+  const where: any = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
     source: sources ? { $in: sources } : { $exists: true },
@@ -47,15 +47,22 @@ async function handler(
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
-    },
-    ...(chatSearch && {
-      $or: [
-        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-      ]
-    })
+    }
   };
+
+  // Add chat search filter
+  if (chatSearch) {
+    where.$or = [
+      { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+      { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+      { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+    ];
+  }
+
+  // Add region search filter
+  if (regionSearch) {
+    where['metadata.region'] = { $regex: new RegExp(replaceRegChars(regionSearch), 'i') };
+  }
 
   const [list, total] = await Promise.all([
     MongoChat.aggregate(
@@ -277,7 +284,8 @@ async function handler(
             errorCount: 1,
             totalPoints: 1,
             outLinkUid: 1,
-            tmbId: 1
+            tmbId: 1,
+            region: '$metadata.region'
           }
         }
       ],

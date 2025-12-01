@@ -49,6 +49,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     sources,
     tmbIds,
     chatSearch,
+    regionSearch,
     title,
     sourcesMap,
     logKeys = []
@@ -95,7 +96,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     }
   ]);
 
-  const where = {
+  const where: any = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
     updateTime: {
@@ -103,15 +104,22 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       $lte: new Date(dateEnd)
     },
     ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds } }),
-    ...(chatSearch && {
-      $or: [
-        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-      ]
-    })
+    ...(tmbIds && { tmbId: { $in: tmbIds } })
   };
+
+  // Add chat search filter
+  if (chatSearch) {
+    where.$or = [
+      { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+      { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+      { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+    ];
+  }
+
+  // Add region search filter
+  if (regionSearch) {
+    where['metadata.region'] = { $regex: new RegExp(replaceRegChars(regionSearch), 'i') };
+  }
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
   res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');

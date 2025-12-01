@@ -62,7 +62,9 @@ const LogTable = ({
   dateRange,
   setDateRange,
   showSourceSelector = true,
-  px = [4, 8]
+  px = [4, 8],
+  regionSearch,
+  setRegionSearch
 }: HeaderControlProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -154,6 +156,7 @@ const LogTable = ({
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
+          regionSearch,
 
           title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
           logKeys: enabledKeys,
@@ -179,7 +182,8 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch
+      chatSearch,
+      regionSearch
     }),
     [
       appId,
@@ -189,9 +193,11 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch
+      chatSearch,
+      regionSearch
     ]
   );
+
   const {
     data: logs,
     isLoading,
@@ -203,7 +209,8 @@ const LogTable = ({
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
     params,
-    refreshDeps: [params]
+    refreshDeps: [params],
+    throttleWait: 500
   });
 
   const HeaderRenderMap = useMemo(
@@ -245,7 +252,8 @@ const LogTable = ({
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
       ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
+      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>
     }),
     [t]
   );
@@ -337,7 +345,8 @@ const LogTable = ({
       <Td key={AppLogKeysEnum.POINTS}>
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
-    )
+    ),
+    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>
   });
 
   return (
@@ -443,9 +452,44 @@ const LogTable = ({
             }}
           />
         </Flex>
+
+        <Flex
+          flex={'0 1 230px'}
+          h={10}
+          alignItems={'center'}
+          rounded={'8px'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          _focusWithin={{
+            borderColor: 'primary.600',
+            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
+          }}
+          pl={3}
+        >
+          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
+            {t('app:logs_keys_region')}
+          </Box>
+          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+          <Input
+            placeholder={t('app:logs_search_region')}
+            value={regionSearch}
+            onChange={(e) => setRegionSearch && setRegionSearch(e.target.value)}
+            fontSize={'sm'}
+            border={'none'}
+            pl={0}
+            _focus={{
+              boxShadow: 'none'
+            }}
+            _placeholder={{
+              fontSize: 'sm'
+            }}
+          />
+        </Flex>
+
         <Box flex={'1'} />
         {showSyncPopover && (
           <SyncLogKeysPopover
+            appId={appId}
             logKeys={logKeys}
             setLogKeys={setLogKeys}
             teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys}

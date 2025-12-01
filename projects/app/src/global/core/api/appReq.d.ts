@@ -9,6 +9,7 @@ export type GetAppChatLogsProps = {
   sources?: ChatSourceEnum[];
   tmbIds?: string[];
   chatSearch?: string;
+  regionSearch?: string;
 };
 
 export type GetAppChatLogsParams = PaginationProps<GetAppChatLogsProps>;

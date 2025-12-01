@@ -168,13 +168,18 @@ export const onCreateApp = async ({
       if (!template?.avatar) return avatar;
 
       const s3AvatarSource = getS3AvatarSource();
-      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar'))
+      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar')) {
         return template.avatar;
+      }
 
       const filename = (() => {
-        const last = template.avatar.split('/').pop()?.split('-')[1];
-        if (!last) return getNanoid(6).concat(path.extname(template.avatar));
-        return `${getNanoid(6)}-${last}`;
+        const last = template.avatar.split('/').pop();
+        if (!last) {
+          return getNanoid(6).concat(path.extname(template.avatar));
+        }
+        const firstDashIndex = last.indexOf('-');
+        const filename = last.slice(firstDashIndex === -1 ? 0 : firstDashIndex + 1);
+        return `${getNanoid(6)}-${filename}`;
       })();
 
       return await s3AvatarSource.copyAvatar({

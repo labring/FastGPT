@@ -25,6 +25,8 @@ const Logs = () => {
     to: new Date(new Date().setHours(23, 59, 59, 999))
   });
 
+  const [regionSearch, setRegionSearch] = useState<string>('');
+
   const {
     value: chatSources,
     setValue: setChatSources,
@@ -104,6 +106,8 @@ const Logs = () => {
           setIsSelectAllSource={setIsSelectAllSource}
           dateRange={dateRange}
           setDateRange={setDateRange}
+          regionSearch={regionSearch}
+          setRegionSearch={setRegionSearch}
         />
       ) : (
         <LogChart
