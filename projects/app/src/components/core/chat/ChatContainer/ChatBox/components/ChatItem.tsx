@@ -86,7 +86,6 @@ const HumanContentCard = React.memo(
 );
 const AIContentCard = React.memo(function AIContentCard({
   chatValue,
-  subAppsValue = {},
   dataId,
   isLastChild,
   isChatting,
@@ -95,7 +94,6 @@ const AIContentCard = React.memo(function AIContentCard({
 }: {
   dataId: string;
   chatValue: AIChatItemValueItemType[];
-  subAppsValue?: AIChatItemType['subAppsValue'];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
@@ -104,14 +102,13 @@ const AIContentCard = React.memo(function AIContentCard({
   return (
     <Flex flexDirection={'column'} gap={2}>
       {chatValue.map((value, i) => {
-        const key = value.id || `${dataId}-ai-${i}`;
+        const key = `${dataId}-ai-${i}`;
 
         return (
           <AIResponseBox
             chatItemDataId={dataId}
             key={key}
             value={value}
-            subAppValue={value.tool ? subAppsValue[value.tool.id] : undefined}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
             onOpenCiteModal={onOpenCiteModal}
@@ -188,24 +185,18 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
     }
 
     if (chat.obj === ChatRoleEnum.AI) {
-      // Remove empty text node
-      const filterList = chat.value.filter((item, i) => {
-        if (item.text && !item.text.content?.trim()) {
-          return false;
-        }
-        if (item.reasoning && !item.reasoning.content?.trim()) {
-          return false;
-        }
-        return item;
-      });
-
       const groupedValues: AIChatItemValueItemType[][] = [];
       let currentGroup: AIChatItemValueItemType[] = [];
-      let currentTaskGroup: AIChatItemValueItemType[] = [];
+      chat.value.forEach((value) => {
+        if (value.text && !value.text.content?.trim()) {
+          return false;
+        }
+        if (value.reasoning && !value.reasoning.content?.trim()) {
+          return false;
+        }
 
-      filterList.forEach((value) => {
-        // 每次遇到交互节点，则推送一个全新的分组
         if (value.interactive) {
+          // 每次遇到交互节点，则推送一个全新的分组
           if (value.interactive.type === 'agentPlanCheck') {
             return;
           }
@@ -248,7 +239,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
     return [];
   }, [chat.obj, chat.value, isChatting]);
-
+  console.log(chat.value, splitAiResponseResults, 232);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
     (item?: {
@@ -371,7 +362,6 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
                 <>
                   <AIContentCard
                     chatValue={value as AIChatItemValueItemType[]}
-                    subAppsValue={chat.subAppsValue}
                     dataId={chat.dataId}
                     isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                     isChatting={isChatting}

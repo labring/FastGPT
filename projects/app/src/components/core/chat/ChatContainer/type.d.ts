@@ -2,18 +2,16 @@ import type { StreamResponseType } from '@/web/common/api/fetch';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
-  AIChatItemValueItemType,
-  ToolModuleResponseItemType
+  type AIChatItemValueItemType,
+  type ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
   responseValueId?: string;
-  subAppId?: string;
+  stepId?: string;
 
   text?: string;
   reasoningText?: string;
@@ -21,12 +19,7 @@ export type generatingMessageProps = {
   status?: 'running' | 'finish';
   tool?: ToolModuleResponseItemType;
   interactive?: WorkflowInteractiveResponseType;
-  agentPlan?: AgentPlanType;
-  stepCall?: {
-    taskId: string;
-    stepId: string;
-  };
-  stepTitle?: string;
+  agentPlan?: AIChatItemValueItemType['agentPlan'];
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;

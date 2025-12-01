@@ -245,8 +245,7 @@ const ChatBox = ({
   const generatingMessage = useMemoizedFn(
     ({
       responseValueId,
-      subAppId,
-      stepCall,
+      stepId,
 
       event,
       text = '',
@@ -256,7 +255,6 @@ const ChatBox = ({
       tool,
       interactive,
       agentPlan,
-      stepTitle,
       variables,
       nodeResponse,
       durationSeconds,
@@ -277,8 +275,8 @@ const ChatBox = ({
             if (index !== -1) return index;
             return item.value.length - 1;
           })();
-          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
-          updateValue.id = responseValueId;
+          const updateValue: AIChatItemValueItemType = item.value[updateIndex];
+          updateValue.stepId = stepId;
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -310,7 +308,7 @@ const ChatBox = ({
               } else {
                 const val: AIChatItemValueItemType = {
                   id: responseValueId,
-                  stepCall,
+                  stepId,
                   reasoning: {
                     content: reasoningText
                   }
@@ -335,7 +333,7 @@ const ChatBox = ({
               } else {
                 const newValue: AIChatItemValueItemType = {
                   id: responseValueId,
-                  stepCall,
+                  stepId,
                   text: {
                     content: text
                   }
@@ -352,7 +350,7 @@ const ChatBox = ({
           if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
               id: responseValueId,
-              stepCall,
+              stepId,
               tool: {
                 ...tool,
                 response: ''
@@ -404,7 +402,7 @@ const ChatBox = ({
 
             return {
               ...item,
-              stepCall,
+              stepId,
               value: item.value.concat(val)
             };
           }
@@ -415,18 +413,8 @@ const ChatBox = ({
               ...item,
               value: item.value.concat({
                 id: responseValueId,
-                stepCall,
+                stepId,
                 agentPlan
-              })
-            };
-          }
-          if (event === SseResponseEventEnum.stepCall && stepTitle) {
-            return {
-              ...item,
-              value: item.value.concat({
-                id: responseValueId,
-                stepCall,
-                stepTitle
               })
             };
           }

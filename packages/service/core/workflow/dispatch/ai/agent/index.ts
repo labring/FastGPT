@@ -200,7 +200,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             ...(plan
               ? [
                   {
-                    agentPlan: plan
+                    agentPlan: {
+                      replan: false,
+                      steps: plan.steps.map((step) => {
+                        return {
+                          id: step.id,
+                          title: step.title,
+                          description: step.description,
+                          status: 'pending' as const,
+                          value: []
+                        };
+                      })
+                    }
                   }
                 ]
               : [])
@@ -284,7 +295,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           ...(rePlan
             ? [
                 {
-                  agentPlan: plan
+                  agentPlan: {
+                    replan: false,
+                    steps: plan.steps.map((step) => {
+                      return {
+                        id: step.id,
+                        title: step.title,
+                        description: step.description,
+                        status: 'pending' as const,
+                        value: []
+                      };
+                    })
+                  }
                 }
               ]
             : [])
@@ -348,35 +370,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
       const assistantResponses: AIChatItemValueItemType[] = [];
 
-      const taskId = getNanoid(6);
       while (agentPlan.steps!.filter((item) => !item.response)!.length) {
         for await (const step of agentPlan?.steps) {
           if (step.response) continue;
           addLog.debug(`Step call: ${step.id}`, step);
 
-          // Temp code
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.stepCall,
-            stepCall: {
-              taskId,
-              stepId: step.id
-            },
-            data: {
-              stepTitle: step.title
-            }
-          });
-          assistantResponses.push({
-            stepCall: {
-              taskId,
-              stepId: step.id
-            },
-            stepTitle: step.title
-          });
-
           // Step call
           const result = await stepCall({
             ...props,
-            taskId,
             getSubAppInfo,
             steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
             subAppList,
@@ -398,10 +399,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           assistantResponses.push(
             ...assistantResponse.map((item) => ({
               ...item,
-              stepCall: {
-                taskId,
-                stepId: step.id
-              }
+              stepId: step.id
             }))
           );
         }
