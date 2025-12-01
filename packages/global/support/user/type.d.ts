@@ -1,4 +1,4 @@
-import type { LangEnum } from 'common/i18n/type';
+import type { LangEnum } from '../common/i18n/type';
 import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import type { TeamMemberStatusEnum } from './team/constant';
@@ -28,7 +28,7 @@ export type UserType = {
   username: string;
   avatar: string; // it should be team member's avatar after 4.8.18
   timezone: string;
-  language: string;
+  language?: `${LangEnum}`;
   promotionRate: UserModelSchema['promotionRate'];
   team: TeamTmbItemType;
   notificationAccount?: string;
