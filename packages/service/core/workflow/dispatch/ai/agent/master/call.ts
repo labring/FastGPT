@@ -29,7 +29,6 @@ import { getStepDependon } from './dependon';
 import { getResponseSummary } from './responseSummary';
 
 export const stepCall = async ({
-  taskId,
   getSubAppInfo,
   subAppList,
   steps,
@@ -38,7 +37,6 @@ export const stepCall = async ({
   subAppsMap,
   ...props
 }: DispatchAgentModuleProps & {
-  taskId: string;
   getSubAppInfo: GetSubAppInfoFnType;
   subAppList: ChatCompletionTool[];
   steps: AgentPlanStepType[];
@@ -60,10 +58,6 @@ export const stepCall = async ({
     usagePush,
     params: { userChatInput, systemPrompt, model, temperature, aiChatTopP }
   } = props;
-  const stepCallParams = {
-    taskId,
-    stepId: step.id
-  };
 
   // Get depends on step ids
   if (!step.depends_on) {
@@ -134,7 +128,7 @@ export const stepCall = async ({
 
       onReasoning({ text }) {
         workflowStreamResponse?.({
-          stepCall: stepCallParams,
+          stepId: step.id,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             reasoning_content: text
@@ -143,7 +137,7 @@ export const stepCall = async ({
       },
       onStreaming({ text }) {
         workflowStreamResponse?.({
-          stepCall: stepCallParams,
+          stepId: step.id,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             text
@@ -154,7 +148,7 @@ export const stepCall = async ({
         const subApp = getSubAppInfo(call.function.name);
         workflowStreamResponse?.({
           id: call.id,
-          stepCall: stepCallParams,
+          stepId: step.id,
           event: SseResponseEventEnum.toolCall,
           data: {
             tool: {
@@ -170,7 +164,7 @@ export const stepCall = async ({
       onToolParam({ tool, params }) {
         workflowStreamResponse?.({
           id: tool.id,
-          stepCall: stepCallParams,
+          stepId: step.id,
           event: SseResponseEventEnum.toolParams,
           data: {
             tool: {
@@ -185,8 +179,7 @@ export const stepCall = async ({
         const toolId = call.function.name;
         const childWorkflowStreamResponse = getWorkflowChildResponseWrite({
           id: call.id,
-          subAppId: `${nodeId}/${toolId}`,
-          stepCall: stepCallParams,
+          stepId: step.id,
           fn: workflowStreamResponse
         });
 

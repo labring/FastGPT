@@ -43,11 +43,7 @@ export type DispatchFlowResponse = {
 
 export type WorkflowResponseType = (e: {
   id?: string;
-  subAppId?: string;
-  stepCall?: {
-    taskId: string;
-    stepId: string;
-  };
+  stepId?: string;
 
   event: SseResponseEventEnum;
   data: Record<string, any>;
