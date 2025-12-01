@@ -17,8 +17,7 @@ export enum SseResponseEventEnum {
 
   interactive = 'interactive',
 
-  agentPlan = 'agentPlan', // agent plan
-  stepCall = 'stepCall' // step call
+  agentPlan = 'agentPlan' // agent plan
 }
 
 export enum DispatchNodeResponseKeyEnum {
