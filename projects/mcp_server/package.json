@@ -19,7 +19,7 @@
     "chalk": "^5.3.0",
     "dayjs": "^1.11.7",
     "dotenv": "^16.5.0",
-    "express": "^4.21.2"
+    "express": "^4.22.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1"
