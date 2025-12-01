@@ -104,7 +104,7 @@ async function handler(
       teamId,
       tmbId,
       inputTokens: embeddingTokens,
-      model: dataset.vectorModel,
+      model: dataset.vectorModel!,
       source
     });
     const { totalPoints: generateSqlTotalPoints } = pushGenerateSqlUsage({

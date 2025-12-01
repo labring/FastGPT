@@ -194,7 +194,7 @@ async function handler(
         ? { tableSchemaDescription: item.tableSchema.description }
         : {}),
       ...(isStructureDocument && item.metadata
-        ? { rows: item.metadata.rows, cols: item.metadata.cols }
+        ? { rowCount: item.metadata.rows, columnCount: item.metadata.cols }
         : {})
     }))
   );

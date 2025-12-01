@@ -8,7 +8,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { chunk } from 'lodash';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 export type GetQuoteProps = {
   datasetDataIdList: string[];

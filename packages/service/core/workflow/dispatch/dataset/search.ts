@@ -376,13 +376,13 @@ export async function dispatchDatasetSearch(
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
     // vector
-    const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
-      formatModelChars2Points({
-        model: vectorModel!.model,
-        inputTokens: embeddingTokens,
-        modelType: ModelTypeEnum.embedding
-      });
     if (vectorModel) {
+      const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
+        formatModelChars2Points({
+          model: vectorModel!.model,
+          inputTokens: embeddingTokens,
+          modelType: ModelTypeEnum.embedding
+        });
       nodeDispatchUsages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: node.name,
@@ -459,7 +459,7 @@ export async function dispatchDatasetSearch(
         let totalSqlPoints = 0;
         sqlResult.forEach((result) => {
           const { totalPoints, modelName } = formatModelChars2Points({
-            model: vectorModel!.model, // Use the same model as vector search
+            model: generateSqlModel!,
             inputTokens: result.input_tokens,
             outputTokens: result.output_tokens,
             modelType: ModelTypeEnum.llm

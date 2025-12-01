@@ -43,14 +43,14 @@ async function handler(req: NextApiRequest): Promise<PreviewDataResponse> {
   });
 
   // Extract rows and cols from collection metadata if available
-  const rows = collection.metadata?.rows;
-  const totalCols = collection.metadata?.cols;
+  const rowCount = collection.metadata?.rows;
+  const columnCount = collection.metadata?.cols;
 
   return {
     cols,
     data,
-    ...(rows !== undefined ? { rows } : {}),
-    ...(totalCols !== undefined ? { totalCols } : {})
+    ...(rowCount !== undefined ? { rowCount } : {}),
+    ...(columnCount !== undefined ? { columnCount } : {})
   };
 }
 

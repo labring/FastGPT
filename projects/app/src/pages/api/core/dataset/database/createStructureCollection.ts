@@ -119,11 +119,7 @@ async function handler(req: NextApiRequest): Promise<CreateCollectionResponse> {
               });
 
               const errorMsg =
-                errorData.detail?.msg ||
-                errorData.detail ||
-                errorData.message ||
-                responseData ||
-                'Unknown error';
+                errorData.detail || errorData.message || responseData || 'Unknown error';
 
               return reject(new Error(`File upload failed: ${errorMsg}`));
             }
