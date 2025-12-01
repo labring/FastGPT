@@ -18,10 +18,10 @@ const logMap = {
     levelLog: chalk.green('[Debug]')
   },
   [LogLevelEnum.info]: {
-    levelLog: chalk.blue('[Info]')
+    levelLog: chalk.blue('[ Info]')
   },
   [LogLevelEnum.warn]: {
-    levelLog: chalk.yellow('[Warn]')
+    levelLog: chalk.yellow('[ Warn]')
   },
   [LogLevelEnum.error]: {
     levelLog: chalk.red('[Error]')

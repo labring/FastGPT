@@ -59,7 +59,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
         };
 
         if (duration > 1000) {
-          addLog.warn(`Slow operation ${duration}ms`, warnLogData);
+          console.warn(`Slow operation ${duration}ms`, warnLogData);
         }
       }
       next();
