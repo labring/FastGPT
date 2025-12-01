@@ -201,15 +201,13 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs?.isPlus && (
-          <Flex mt={4} alignItems={'center'}>
+         <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
             <Box flex={1}>*****</Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+            <Button size={'sm'}  onClick={onOpenUpdatePsw}>
               {t('account_info:change')}
             </Button>
           </Flex>
-        )}
         {feConfigs?.isPlus && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:contact_way')}&nbsp;</Box>

@@ -15,13 +15,10 @@ async function handler(
   res: ApiResponseType<getTimeResponse>
 ): Promise<getTimeResponse> {
   const { userId } = await authCert({ req, authToken: true });
-
   const user = await MongoUser.findById(userId, 'passwordUpdateTime');
-
   if (!user) {
     return false;
   }
-
   return checkPswExpired({ updateTime: user.passwordUpdateTime });
 }
 
