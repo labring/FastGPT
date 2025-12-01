@@ -12,8 +12,7 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
-import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -27,11 +26,7 @@ export type StreamResponseType = {
 
 type CommonResponseType = {
   responseValueId?: string;
-  subAppId?: string;
-  stepCall?: {
-    taskId: string;
-    stepId: string;
-  };
+  stepId?: string;
 };
 type ResponseQueueItemType = CommonResponseType &
   (
@@ -46,11 +41,7 @@ type ResponseQueueItemType = CommonResponseType &
       }
     | {
         event: SseResponseEventEnum.agentPlan;
-        agentPlan: AgentPlanType;
-      }
-    | {
-        event: SseResponseEventEnum.stepCall;
-        stepTitle: string;
+        agentPlan: AIChatItemValueItemType['agentPlan'];
       }
     | {
         event:
@@ -206,15 +197,14 @@ export const streamFetch = ({
           })();
 
           if (typeof parseJson !== 'object') return;
-          const { responseValueId, subAppId, stepCall, ...rest } = parseJson;
+          const { responseValueId, stepId, ...rest } = parseJson;
 
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
             const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               reasoningText
             });
@@ -223,8 +213,7 @@ export const streamFetch = ({
             for (const item of text) {
               pushDataToQueue({
                 responseValueId,
-                subAppId,
-                stepCall,
+                stepId,
                 event,
                 text: item
               });
@@ -233,8 +222,7 @@ export const streamFetch = ({
             const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               reasoningText
             });
@@ -242,8 +230,7 @@ export const streamFetch = ({
             const text = rest.choices?.[0]?.delta?.content || '';
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               text
             });
@@ -254,8 +241,7 @@ export const streamFetch = ({
           ) {
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               ...rest
             });
@@ -272,26 +258,16 @@ export const streamFetch = ({
           } else if (event === SseResponseEventEnum.interactive) {
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               ...rest
             });
           } else if (event === SseResponseEventEnum.agentPlan) {
             pushDataToQueue({
               responseValueId,
-              subAppId,
-              stepCall,
+              stepId,
               event,
               agentPlan: rest.agentPlan
-            });
-          } else if (event === SseResponseEventEnum.stepCall) {
-            pushDataToQueue({
-              responseValueId,
-              subAppId,
-              stepCall,
-              event,
-              stepTitle: rest.stepTitle
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {

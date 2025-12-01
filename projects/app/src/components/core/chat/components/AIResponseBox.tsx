@@ -128,20 +128,10 @@ const RenderText = React.memo(function RenderText({
 const RenderTool = React.memo(
   function RenderTool({
     showAnimation,
-    tool,
-    subAppValue,
-
-    chatItemDataId,
-    isChatting,
-    onOpenCiteModal
+    tool
   }: {
     showAnimation: boolean;
     tool: ToolModuleResponseItemType;
-    subAppValue?: AIChatItemValueItemType[];
-
-    chatItemDataId: string;
-    isChatting: boolean;
-    onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   }) {
     const { t } = useSafeTranslation();
     const formatJson = (string: string) => {
@@ -187,20 +177,6 @@ ${params}`}
                 source={`~~~json#Response
 ${response}`}
               />
-            )}
-            {subAppValue && subAppValue.length > 0 && (
-              <Box bg={'white'} p={2}>
-                {subAppValue.map((value, index) => (
-                  <AIResponseBox
-                    key={index}
-                    chatItemDataId={chatItemDataId}
-                    isChatting={isChatting}
-                    onOpenCiteModal={onOpenCiteModal}
-                    isLastResponseValue={index === subAppValue.length - 1}
-                    value={value}
-                  />
-                ))}
-              </Box>
             )}
           </AccordionPanel>
         </AccordionItem>
@@ -332,15 +308,21 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
 });
 
 const RenderAgentPlan = React.memo(function RenderAgentPlan({
-  agentPlan
+  agentPlan,
+  chatItemDataId,
+  isChatting,
+  onOpenCiteModal
 }: {
-  agentPlan: AgentPlanType;
+  agentPlan: NonNullable<AIChatItemValueItemType['agentPlan']>;
+  chatItemDataId: string;
+  isChatting: boolean;
+  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) {
   const { t } = useTranslation();
   return (
     <Box>
       <Box fontSize={'xl'} color={'myGray.900'} fontWeight={'bold'}>
-        {agentPlan.task}
+        任务
       </Box>
       <Box>
         {agentPlan.steps.map((step, index) => (
@@ -349,6 +331,22 @@ const RenderAgentPlan = React.memo(function RenderAgentPlan({
               {`${index + 1}. ${step.title}`}
             </Box>
             <Box>{step.description}</Box>
+            {/* <Flex flexDirection={'column'}>
+              {step.value.map((value, i) => {
+                const key = `${step.id}-ai-${i}`;
+
+                return (
+                  <AIResponseBox
+                    chatItemDataId={chatItemDataId}
+                    key={key}
+                    value={value}
+                    isLastResponseValue={index === step.value.length - 1}
+                    isChatting={isChatting}
+                    onOpenCiteModal={onOpenCiteModal}
+                  />
+                );
+              })}
+            </Flex> */}
           </Box>
         ))}
       </Box>
@@ -361,14 +359,12 @@ const RenderAgentPlan = React.memo(function RenderAgentPlan({
 const AIResponseBox = ({
   chatItemDataId,
   value,
-  subAppValue,
   isLastResponseValue,
   isChatting,
   onOpenCiteModal
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
-  subAppValue?: AIChatItemValueItemType[];
   isLastResponseValue: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
@@ -393,16 +389,7 @@ const AIResponseBox = ({
     );
   }
   if ('tool' in value && value.tool) {
-    return (
-      <RenderTool
-        showAnimation={isChatting}
-        tool={value.tool}
-        subAppValue={subAppValue}
-        chatItemDataId={chatItemDataId}
-        isChatting={isChatting}
-        onOpenCiteModal={onOpenCiteModal}
-      />
-    );
+    return <RenderTool showAnimation={isChatting} tool={value.tool} />;
   }
   if ('interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);
@@ -425,21 +412,21 @@ const AIResponseBox = ({
     }
   }
   if ('agentPlan' in value && value.agentPlan) {
-    return <RenderAgentPlan agentPlan={value.agentPlan} />;
+    return (
+      <RenderAgentPlan
+        agentPlan={value.agentPlan}
+        chatItemDataId={chatItemDataId}
+        isChatting={isChatting}
+        onOpenCiteModal={onOpenCiteModal}
+      />
+    );
   }
 
   // Abandon
   if ('tools' in value && value.tools) {
     return value.tools.map((tool) => (
       <Box key={tool.id} _notLast={{ mb: 2 }}>
-        <RenderTool
-          showAnimation={isChatting}
-          tool={tool}
-          subAppValue={subAppValue}
-          chatItemDataId={chatItemDataId}
-          isChatting={isChatting}
-          onOpenCiteModal={onOpenCiteModal}
-        />
+        <RenderTool showAnimation={isChatting} tool={tool} />
       </Box>
     ));
   }

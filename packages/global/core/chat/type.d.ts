@@ -15,7 +15,6 @@ import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { FlowNodeTemplateType } from '../workflow/type/node.d';
 import { ChatCompletionMessageParam } from '../ai/type';
 import type { RequireOnlyOne } from '../../common/type/utils';
-import type { AgentPlanType } from '../../../service/core/workflow/dispatch/ai/agent/sub/plan/type';
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -87,10 +86,7 @@ export type SystemChatItemType = {
 
 export type AIChatItemValueItemType = {
   id?: string;
-  stepCall?: {
-    taskId: string;
-    stepId: string;
-  };
+  stepId?: string;
 } & RequireOnlyOne<{
   text: {
     content: string;
@@ -102,8 +98,16 @@ export type AIChatItemValueItemType = {
   interactive: WorkflowInteractiveResponseType;
 
   // Agent
-  agentPlan: AgentPlanType;
-  stepTitle: string;
+  agentPlan: {
+    replan?: boolean;
+    steps: {
+      id: string;
+      title: string;
+      description: string;
+      status: 'pending' | 'running' | 'completed';
+      value: AIChatItemValueItemType[];
+    }[];
+  };
 
   // @deprecated
   tools: ToolModuleResponseItemType[];
@@ -111,7 +115,6 @@ export type AIChatItemValueItemType = {
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
-  subAppsValue?: Record<string, AIChatItemValueItemType[]>;
   memories?: Record<string, any>;
   userGoodFeedback?: string;
   userBadFeedback?: string;
