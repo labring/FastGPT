@@ -134,7 +134,8 @@ const FileSelector = ({
                   }
                 });
                 handleChangeFiles(files);
-              }
+              },
+              timeout: 5 * 60 * 1000 // 5 minutes
             });
             const previewUrl = await getPresignedChatFileGetUrl({
               key: fields.key,

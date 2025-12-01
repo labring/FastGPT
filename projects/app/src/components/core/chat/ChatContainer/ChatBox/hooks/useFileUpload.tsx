@@ -196,7 +196,8 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
               const percent = Math.round((e.loaded / e.total) * 100);
               copyFile.process = percent;
               updateFiles(fileIndex, copyFile);
-            }
+            },
+            timeout: 5 * 60 * 1000 // 5 minutes
           }).catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
 
           const previewUrl = await getPresignedChatFileGetUrl({
