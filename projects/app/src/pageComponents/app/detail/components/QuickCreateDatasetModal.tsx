@@ -109,7 +109,8 @@ const QuickCreateDatasetModal = ({
                       : item
                   )
                 );
-              }
+              },
+              timeout: 5 * 60 * 1000 // 5 minutes
             })
               .then(() => {
                 setSelectFiles((state) =>
