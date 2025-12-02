@@ -4,6 +4,9 @@
 
 # FastGPT
 
+[![Run in Smithery](https://smithery.ai/badge/skills/labring)](https://smithery.ai/skills?ns=labring&utm_source=github&utm_medium=badge)
+
+
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
