@@ -15,12 +15,12 @@ import { webPushTrack } from '@/web/common/middle/tracks/utils';
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
-  const { operationalAd, loadOperationalAd } = useSystemStore();
+  const { operationalAd, loadOperationalAd, feConfigs } = useSystemStore();
   const router = useRouter();
 
   // Load data
   useEffect(() => {
-    if (!operationalAd) {
+    if (!operationalAd && feConfigs?.isPlus) {
       loadOperationalAd();
     }
     if (operationalAd?.id) {
