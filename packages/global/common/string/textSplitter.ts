@@ -62,8 +62,8 @@ const strIsMdTable = (str: string) => {
 
   return true;
 };
-const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize } = props;
+const markdownTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitResponse => {
+  let { text = '', chunkSize, headerPrefix = '' } = props;
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -82,7 +82,7 @@ const markdownTableSplit = (props: SplitProps): SplitResponse => {
     .join(' | ')} |`;
 
   const chunks: string[] = [];
-  let chunk = `${header}
+  let chunk = `${headerPrefix}${header}
 ${mdSplitString}
 `;
 
@@ -93,7 +93,7 @@ ${mdSplitString}
     // Over size
     if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
-      chunk = `${header}
+      chunk = `${headerPrefix}${header}
 ${mdSplitString}
 `;
     }
@@ -108,6 +108,105 @@ ${mdSplitString}
     chunks,
     chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
   };
+};
+
+// 判断字符串是否为HTML的表格形式
+const strIsHtmlTable = (str: string) => {
+  const trimmedStr = str.trim();
+  
+  // 检查是否以 <table 开头（严格检查）
+  if (!trimmedStr.match(/^<table[\s>]/i)) {
+    return false;
+  }
+  
+  // 检查是否以 </table> 结尾（严格检查）
+  if (!trimmedStr.endsWith('</table>')) {
+    return false;
+  }
+
+  // 检查是否包含 tr 标签
+  if (!str.includes('<tr')) {
+    return false;
+  }
+
+  // 简单验证：至少包含一个 td 或 th
+  if (!str.includes('<td') && !str.includes('<th')) {
+    return false;
+  }
+
+  return true;
+};
+const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitResponse => {
+  let { text = '', chunkSize, headerPrefix = '' } = props;
+
+  try {
+    // 提取完整的 table 标签及其属性
+    const tableMatch = text.match(/<table[^>]*>/);
+    const tableOpenTag = tableMatch ? tableMatch[0] : '<table>';
+    const tableCloseTag = '</table>';
+
+    // 提取所有 tr 标签
+    const trMatches = text.match(/<tr[^>]*>[\s\S]*?<\/tr>/g);
+    if (!trMatches || trMatches.length === 0) {
+      return { chunks: [text], chars: text.length };
+    }
+
+    // 第一个 tr 作为表头（可能在 thead 中，也可能直接在 tbody 中）
+    const headerRow = trMatches[0];
+
+    // 提取 thead（如果存在）
+    const theadMatch = text.match(/<thead[^>]*>[\s\S]*?<\/thead>/);
+    const theadContent = theadMatch ? theadMatch[0] : '';
+
+    const chunks: string[] = [];
+    let chunk = `${headerPrefix}${tableOpenTag}\n`;
+
+    // 如果有 thead，使用 thead；否则使用第一个 tr
+    if (theadContent) {
+      chunk += `${theadContent}\n<tbody>\n`;
+    } else {
+      chunk += `<tbody>\n${headerRow}\n`;
+    }
+
+    // 从第二个 tr 开始遍历（如果有 thead 则从第一个开始）
+    const startIndex = theadContent ? 0 : 1;
+
+    for (let i = startIndex; i < trMatches.length; i++) {
+      const currentRow = trMatches[i];
+      const chunkLength = getTextValidLength(chunk);
+      const rowLength = getTextValidLength(currentRow);
+
+      // 超过大小限制，创建新块
+      if (chunkLength + rowLength > chunkSize && i > startIndex) {
+        chunk += `</tbody>\n${tableCloseTag}`;
+        chunks.push(chunk);
+
+        // 开始新块，重新添加表头
+        chunk = `${headerPrefix}${tableOpenTag}\n`;
+        if (theadContent) {
+          chunk += `${theadContent}\n<tbody>\n`;
+        } else {
+          chunk += `<tbody>\n${headerRow}\n`;
+        }
+      }
+
+      chunk += `${currentRow}\n`;
+    }
+
+    // 添加最后一个块
+    if (chunk) {
+      chunk += `</tbody>\n${tableCloseTag}`;
+      chunks.push(chunk);
+    }
+
+    return {
+      chunks,
+      chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+    };
+  } catch (error) {
+    // 如果解析失败，返回原文本
+    return { chunks: [text], chars: text.length };
+  }
 };
 
 /* 
@@ -141,6 +240,9 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
+  
+  // 确保 HTML 表格前有换行符
+  text = text.replace(/([^\n])(<table)/gi, '$1\n$2');
 
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const customRegLen = customReg.length;
@@ -172,7 +274,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     ...markdownHeaderRules,
 
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
-    // HTML Table tag 尽可能保障完整
+    { reg: /([\n]<table[\s\S]*?<\/table>)/gi, maxLen: chunkSize }, // HTML Table 尽可能保障完整
     {
       reg: /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g,
       maxLen: chunkSize
@@ -237,7 +339,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
-    return splitTexts
+    const result = splitTexts
       .map((text) => {
         const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
         // 如果一个分块没有匹配到，则使用默认块大小，否则使用最大块大小
@@ -250,6 +352,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         };
       })
       .filter((item) => !!item.title || !!item.text?.trim());
+    
+    return result;
   };
 
   /* Gets the overlap at the end of a text as the beginning of the next block */
@@ -326,20 +430,39 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const newTextLen = getTextValidLength(newText);
 
       // split the current table if it will exceed after adding
-      if (strIsMdTable(currentText) && newTextLen > maxLen) {
+      const tableHandlers = [
+        { check: strIsHtmlTable, split: htmlTableSplit },
+        { check: strIsMdTable, split: markdownTableSplit }
+      ];
+
+      const matchedHandler = tableHandlers.find((handler) =>
+        handler.check(currentText) && newTextLen > maxLen
+      );
+
+      if (matchedHandler) {
+        // 与原始版本逻辑一致：先推出 lastText，再处理表格
         if (lastTextLen > 0) {
           chunks.push(lastText);
           lastText = '';
         }
 
-        const { chunks: tableChunks } = markdownTableSplit({
+        // 构建完整的 headerPrefix
+        // 如果在 Markdown 步骤中，需要包含当前的 item.title（因为它还没有被添加到 parentTitle）
+        let headerPrefix = parentTitle;
+        if (isMarkdownStep && item.title) {
+          headerPrefix = parentTitle + item.title;
+        }
+        
+        const { chunks: tableChunks } = matchedHandler.split({
           text: currentText,
-          chunkSize: chunkSize * 1.2
+          chunkSize: chunkSize * 1.2,
+          headerPrefix: headerPrefix
         });
-
+        
         chunks.push(...tableChunks);
         continue;
       }
+      
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
@@ -359,8 +482,14 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         // 在合并最深级标题时，需要补充标题
         chunks.push(
           ...innerChunks.map(
-            (chunk) =>
-              step === markdownIndex + customRegLen ? `${parentTitle}${item.title}${chunk}` : chunk // 合并进 Markdown 分块时，需要补标题
+            (chunk) => {
+              // 如果 chunk 已经包含 parentTitle（来自表格分块），则不重复添加
+              const fullTitle = parentTitle + item.title;
+              if (step === markdownIndex + customRegLen) {
+                return chunk.startsWith(fullTitle) ? chunk : `${fullTitle}${chunk}`;
+              }
+              return chunk;
+            }
           )
         );
 
@@ -471,10 +600,13 @@ const commonSplit = (props: SplitProps): SplitResponse => {
  * markdown
  */
 export const splitText2Chunks = (props: SplitProps): SplitResponse => {
-  let { text = '' } = props;
+  let { text = '', chunkSize } = props;
   const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
 
   const splitResult = splitWithCustomSign.map((item) => {
+    if (strIsHtmlTable(item)) {
+      return htmlTableSplit({ ...props, text: item });
+    }
     if (strIsMdTable(item)) {
       return markdownTableSplit({ ...props, text: item });
     }
@@ -482,11 +614,182 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     return commonSplit({ ...props, text: item });
   });
 
+  let chunks = splitResult
+    .map((item) => item.chunks)
+    .flat()
+    .map((chunk) => simpleText(chunk));
+
+  // 特判：第一个分块如果小于400，直接合并到第二个分块
+  if (chunks.length >= 2 && getTextValidLength(chunks[0]) < 400) {
+    chunks[1] = chunks[0] + '\n' + chunks[1];
+    chunks = chunks.slice(1);
+  }
+
+  // 辅助函数：提取文本开头的连续 Markdown 标题（返回数组）
+  const extractLeadingHeadersArray = (text: string): string[] => {
+    const lines = text.split('\n');
+    const headers: string[] = [];
+    for (const line of lines) {
+      if (/^#{1,6}\s/.test(line.trim())) {
+        headers.push(line);
+      } else if (line.trim()) {
+        // 遇到非标题的非空行就停止
+        break;
+      }
+    }
+    return headers;
+  };
+
+  // 辅助函数：找出两个标题数组的共同前缀长度
+  const getCommonHeaderPrefixLength = (headers1: string[], headers2: string[]): number => {
+    let count = 0;
+    const minLen = Math.min(headers1.length, headers2.length);
+    for (let i = 0; i < minLen; i++) {
+      if (headers1[i].trim() === headers2[i].trim()) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  };
+
+  // 辅助函数：移除文本开头指定数量的 Markdown 标题
+  const removeLeadingHeadersCount = (text: string, count: number): string => {
+    if (count === 0) return text;
+    const lines = text.split('\n');
+    let removed = 0;
+    let startIndex = 0;
+    for (let i = 0; i < lines.length && removed < count; i++) {
+      if (/^#{1,6}\s/.test(lines[i].trim())) {
+        removed++;
+        startIndex = i + 1;
+      } else if (lines[i].trim()) {
+        // 遇到非标题的非空行就停止
+        break;
+      }
+    }
+    return lines.slice(startIndex).join('\n');
+  };
+
+  // 第一步：对小于400的连续小块进行两两合并（多轮迭代直到无法继续合并）
+  const smallChunkThreshold = 400;
+  let preProcessedChunks = [...chunks];
+  let hasSmallChunks = true;
+
+  while (hasSmallChunks) {
+    const tempChunks: string[] = [];
+    let i = 0;
+    hasSmallChunks = false;
+
+    while (i < preProcessedChunks.length) {
+      const currentChunk = preProcessedChunks[i];
+      const currentLength = getTextValidLength(currentChunk);
+
+      // 如果当前块小于阈值且还有下一个块
+      if (currentLength < smallChunkThreshold && i + 1 < preProcessedChunks.length) {
+        const nextChunk = preProcessedChunks[i + 1];
+        const nextLength = getTextValidLength(nextChunk);
+
+        // 如果下一个块也小于阈值，则合并
+        if (nextLength < smallChunkThreshold) {
+          // 检测并去除重复的父标题
+          const currentHeaders = extractLeadingHeadersArray(currentChunk);
+          const nextHeaders = extractLeadingHeadersArray(nextChunk);
+          const commonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
+          
+          const nextChunkToAdd = commonPrefixLength > 0 
+            ? removeLeadingHeadersCount(nextChunk, commonPrefixLength)
+            : nextChunk;
+
+          const mergedChunk = currentChunk + '\n\n' + nextChunkToAdd;
+          tempChunks.push(mergedChunk);
+          i += 2; // 跳过下一个块
+          hasSmallChunks = true; // 标记还有小块，可能需要继续合并
+          continue;
+        }
+      }
+
+      // 无法合并，直接添加当前块
+      tempChunks.push(currentChunk);
+      i++;
+    }
+
+    preProcessedChunks = tempChunks;
+  }
+
+  // 第二步：装箱式合并 - 避免小块单独成块
+  const maxBoxSize = chunkSize * 1.2;
+  const mergedChunks: string[] = [];
+  let currentBox = '';
+
+  for (let i = 0; i < preProcessedChunks.length; i++) {
+    const chunk = preProcessedChunks[i];
+    const chunkLength = getTextValidLength(chunk);
+    
+    // 检测并去除重复的父标题
+    let chunkToAdd = chunk;
+    if (currentBox) {
+      const currentBoxHeaders = extractLeadingHeadersArray(currentBox);
+      const chunkHeaders = extractLeadingHeadersArray(chunk);
+      
+      // 找出共同的父标题前缀长度
+      const commonPrefixLength = getCommonHeaderPrefixLength(currentBoxHeaders, chunkHeaders);
+      
+      // 如果有共同的父标题，去除 chunk 中的重复父标题
+      if (commonPrefixLength > 0) {
+        chunkToAdd = removeLeadingHeadersCount(chunk, commonPrefixLength);
+      }
+    }
+    
+    const testBox = currentBox ? currentBox + '\n\n' + chunkToAdd : chunk;
+    const testBoxLength = getTextValidLength(testBox);
+
+    // 如果装入当前chunk后不超过盒子最大容量，则装入
+    if (testBoxLength <= maxBoxSize) {
+      currentBox = testBox;
+    } else {
+      // 装不下了，需要判断当前盒子是否太小
+      const currentBoxLength = getTextValidLength(currentBox);
+      
+      // 如果当前盒子小于400，强制装入当前chunk（即使超过maxBoxSize）
+      if (currentBoxLength < smallChunkThreshold && currentBox) {
+        currentBox = testBox;
+      } else {
+        // 当前盒子足够大，可以独立成块
+        if (currentBox) {
+          mergedChunks.push(currentBox);
+        }
+        
+        // 开始新盒子，装入当前chunk（使用原始chunk，保留标题）
+        currentBox = chunk;
+        
+        // 检查当前chunk是否太小，如果是最后一个chunk则无所谓，否则强制与下一个合并
+        if (chunkLength < smallChunkThreshold && i < preProcessedChunks.length - 1) {
+          // 当前chunk太小，尝试与下一个chunk合并
+          const nextChunk = preProcessedChunks[i + 1];
+          const nextHeaders = extractLeadingHeadersArray(nextChunk);
+          const currentHeaders = extractLeadingHeadersArray(chunk);
+          const nextCommonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
+          
+          const nextChunkToAdd = nextCommonPrefixLength > 0
+            ? removeLeadingHeadersCount(nextChunk, nextCommonPrefixLength)
+            : nextChunk;
+          
+          currentBox = chunk + '\n\n' + nextChunkToAdd;
+          i++; // 跳过下一个chunk
+        }
+      }
+    }
+  }
+
+  // 最后一个盒子
+  if (currentBox) {
+    mergedChunks.push(currentBox);
+  }
+
   return {
-    chunks: splitResult
-      .map((item) => item.chunks)
-      .flat()
-      .map((chunk) => simpleText(chunk)),
-    chars: splitResult.reduce((sum, item) => sum + item.chars, 0)
+    chunks: mergedChunks,
+    chars: mergedChunks.reduce((sum, chunk) => sum + chunk.length, 0)
   };
 };
