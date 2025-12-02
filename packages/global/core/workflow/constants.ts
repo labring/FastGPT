@@ -167,6 +167,8 @@ export enum NodeInputKeyEnum {
   aiChatStopSign = 'aiChatStopSign',
   aiChatResponseFormat = 'aiChatResponseFormat',
   aiChatJsonSchema = 'aiChatJsonSchema',
+  aiRole = 'aiRole',
+  aiTaskObject = 'aiTaskObject',
 
   // agent
   subApps = 'subApps',

@@ -46,7 +46,7 @@ const Edit = ({
             <AppCard appForm={appForm} setPast={setPast} form2WorkflowFn={agentForm2AppWorkflow} />
           </Box>
 
-          <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
+          <Box pb={4}>
             <EditForm appForm={appForm} setAppForm={setAppForm} />
           </Box>
         </Box>
