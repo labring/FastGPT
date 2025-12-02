@@ -15,5 +15,14 @@ export const CountLimitConfig = {
   },
   [CountLimitTypeEnum.enum['notice:LackOfPoints']]: {
     maxCount: 5
+  },
+  [CountLimitTypeEnum.enum['notice:30PercentDatasetIndexes']]: {
+    maxCount: 3
+  },
+  [CountLimitTypeEnum.enum['notice:10PercentDatasetIndexes']]: {
+    maxCount: 5
+  },
+  [CountLimitTypeEnum.enum['notice:NoDatasetIndexes']]: {
+    maxCount: 5
   }
 } satisfies z.infer<typeof CountLimitConfigType>;
