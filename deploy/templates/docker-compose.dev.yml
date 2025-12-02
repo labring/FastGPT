@@ -162,6 +162,7 @@ services:
       - fastgpt
     environment:
       - AUTH_TOKEN=token
+      - S3_ENDPOINT=http://127.0.0.1:9000 # TODO: 改为你 Minio 的实际的 ip 地址
       - S3_ENDPOINT=fastgpt-minio
       - S3_PORT=9000
       - S3_USE_SSL=false
