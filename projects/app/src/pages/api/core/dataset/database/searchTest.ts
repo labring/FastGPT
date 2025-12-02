@@ -20,9 +20,9 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { DatabaseSearchTestBody } from '@fastgpt/global/core/dataset/database/api';
 import {
   getMetadataWithValueExamples,
-  queryByNL,
-  getDuckDBStoreConfig
+  queryByNL
 } from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
+import { getDuckDBStoreConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
 
 async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>

@@ -205,6 +205,25 @@ export type DativeExcelUploadResponse = {
   cols: number;
 };
 
+export interface ExcelUploadSourceConfig {
+  type: string;
+  bucket: BucketNameEnum | string;
+  kid: string;
+  metadata?: {
+    teamId: string;
+    uid: string;
+    [key: string]: any;
+  };
+}
+
+export interface ExcelUploadRequest {
+  fileStream: Readable;
+  contentType: string;
+  sourceConfig: ExcelUploadSourceConfig;
+  // Optional request timeout in milliseconds (default: 300000)
+  timeout?: number;
+}
+
 /*-------Preview Data Types-------*/
 export type PreviewDataQuery = {
   collectionId: string;
@@ -213,8 +232,8 @@ export type PreviewDataQuery = {
 export type PreviewDataResponse = {
   cols: string[];
   data: Array<Array<any>>;
-  rows?: number;
-  totalCols?: number;
+  rowCount: number;
+  columnCount: number;
 };
 
 /*-------SQL Query Types-------*/

@@ -4,16 +4,8 @@ import axios, {
   type AxiosResponse
 } from 'axios';
 import { addLog } from '../../../../../common/system/log';
-
-interface DativeErrorResponse {
-  detail?: {
-    msg?: string;
-    error?: string;
-    detail?: string;
-  };
-  message?: string;
-  error?: string;
-}
+import { parseDativeErrorResponse } from '../utils';
+import { dativeUrl } from '../../../search/controller';
 
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   addLog.debug('Dative request', {
@@ -52,49 +44,15 @@ function responseError(err: any) {
       endpoint: err.config?.url
     });
   }
-
-  // HTTP error with response
-  const { response } = err;
-  const endpoint = response.config?.url;
-
-  addLog.error('Dative API error', {
-    endpoint,
-    status: response.status,
-    statusText: response.statusText,
-    data: response.data
-  });
-
-  const code = err?.response?.data?.statusCode;
-  if (code >= 500) {
-    return Promise.reject({
-      message: `Dative server error: ${response.statusText || 'Internal Server Error'}`,
-      statusCode: response.status,
-      endpoint
-    });
-  }
-  const errorData: DativeErrorResponse = response.data;
-  let errorMessage: string;
-
-  errorMessage = errorData.detail?.msg || 'Dative error';
-
+  const { message, code } = parseDativeErrorResponse(err.response);
   return Promise.reject({
-    message: errorMessage,
-    statusCode: response.status,
-    endpoint,
-    responseBody: errorData
+    message: message,
+    statusCode: code
   });
-}
-
-function getDativeBaseURL(): string {
-  const dativeUrl = process.env.DATIVE_BASE_URL;
-  if (!dativeUrl) {
-    throw new Error('Dative service URL is not configured (DATIVE_BASE_URL)');
-  }
-  return dativeUrl;
 }
 
 export const http: AxiosInstance = axios.create({
-  baseURL: getDativeBaseURL(),
+  baseURL: dativeUrl,
   timeout: 300000, // 5 minutes for potentially long SQL operations
   headers: {
     'Content-Type': 'application/json',

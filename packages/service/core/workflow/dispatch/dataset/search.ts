@@ -20,8 +20,7 @@ import {
 } from '../../../dataset/search/controller';
 import {
   getMetadataWithValueExamples,
-  queryByNL,
-  getDuckDBStoreConfig
+  queryByNL
 } from '../../../dataset/database/dative/client/dativeApiServer';
 import { calculateDynamicLimit } from '../../../dataset/search/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -39,6 +38,7 @@ import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
+import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;

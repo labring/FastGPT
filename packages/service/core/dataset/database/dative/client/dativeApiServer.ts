@@ -6,21 +6,12 @@ import type {
   SqlGenerationResponse,
   DatabaseMetadataRequest,
   DatabaseMetadata,
-  DuckDBStoreConfigType
+  ExcelUploadRequest,
+  DativeExcelUploadResponse
 } from '@fastgpt/global/core/dataset/database/api';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { forwardMultipartStream } from '../transport/stream-forward';
+import { dativeUrl } from '../../../search/controller';
 
-export function getDuckDBStoreConfig(datasetId: string) {
-  return {
-    type: DatabaseTypeEnum.duckdb,
-    store: {
-      type: 'mongo',
-      bucket: BucketNameEnum.dataset,
-      kid: datasetId
-    }
-  } as DuckDBStoreConfigType;
-}
 export async function sqlQuery(req: SqlQueryRequest): Promise<SqlQueryResponse> {
   return request<SqlQueryResponse, SqlQueryRequest>({
     url: '/api/v1/data_source/sql_query',
@@ -53,4 +44,33 @@ export async function getMetadataWithValueExamples(
     method: 'POST',
     data: req
   });
+}
+
+export async function uploadExcel(request: ExcelUploadRequest): Promise<DativeExcelUploadResponse> {
+  const { fileStream, contentType, sourceConfig, timeout = 300000 } = request;
+
+  const endpoint = `${dativeUrl}/api/v1/data_source/excel_upload`;
+
+  // Forward the multipart stream with injected source_config field
+  const response = await forwardMultipartStream<DativeExcelUploadResponse>({
+    url: endpoint,
+    method: 'POST',
+    requestStream: fileStream,
+    contentType,
+    injectFields: [
+      {
+        name: 'source_config',
+        value: sourceConfig
+      }
+    ],
+    timeout
+  });
+
+  // Validate Dative response
+  const result = response.body;
+  if (!result || result.msg !== 'success') {
+    return Promise.reject(`Excel upload failed: ${result?.msg || 'Unknown error'}`);
+  }
+
+  return result;
 }

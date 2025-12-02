@@ -57,6 +57,7 @@
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
     "turndown": "^7.1.2",
+    "undici": "^6.21.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {

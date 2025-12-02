@@ -3,12 +3,10 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import {
-  sqlQuery,
-  getDuckDBStoreConfig
-} from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
+import { sqlQuery } from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
 import type { PreviewDataResponse } from '@fastgpt/global/core/dataset/database/api';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDuckDBStoreConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
 
 async function handler(req: NextApiRequest): Promise<PreviewDataResponse> {
   // Extract collectionId from query or body
@@ -49,8 +47,8 @@ async function handler(req: NextApiRequest): Promise<PreviewDataResponse> {
   return {
     cols,
     data,
-    ...(rowCount !== undefined ? { rowCount } : {}),
-    ...(columnCount !== undefined ? { columnCount } : {})
+    rowCount: rowCount,
+    columnCount: columnCount
   };
 }
 

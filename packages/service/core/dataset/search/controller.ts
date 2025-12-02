@@ -56,7 +56,7 @@ import type {
 import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
 import { queryByNL } from '../database/dative/client/dativeApiServer';
 
-export const dativeUrl = process.env.DATIVE_BASE_URL;
+export const dativeUrl = process.env.DATIVE_BASE_URL || '';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
