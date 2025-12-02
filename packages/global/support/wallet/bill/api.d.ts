@@ -1,5 +1,5 @@
 import type { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
-import type { BillTypeEnum, BillPayWayEnum } from './constants';
+import type { BillTypeEnum, BillPayWayEnum, BillStatusEnum } from './constants';
 import { DrawBillQRItem } from './constants';
 
 export type CreateOrderResponse = {
@@ -12,15 +12,18 @@ export type CreateStandPlanBill = {
   type: BillTypeEnum.standSubPlan;
   level: `${StandardSubLevelEnum}`;
   subMode: `${SubModeEnum}`;
+  discountCouponId?: string;
 };
 type CreateExtractPointsBill = {
   type: BillTypeEnum.extraPoints;
   extraPoints: number;
+  discountCouponId?: string; // not used
 };
 type CreateExtractDatasetBill = {
   type: BillTypeEnum.extraDatasetSub;
   extraDatasetSize: number;
   month: number;
+  discountCouponId?: string; // not used
 };
 export type CreateBillProps =
   | CreateStandPlanBill
@@ -41,4 +44,8 @@ export type UpdatePaymentProps = {
 export type CheckPayResultResponse = {
   status: BillStatusEnum;
   description?: string;
+};
+
+export type BillDetailResponse = BillSchemaType & {
+  couponName?: string;
 };

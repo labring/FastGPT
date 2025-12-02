@@ -32,7 +32,6 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
-
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -51,6 +50,10 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
 });
+const DiscountCouponsModal = dynamic(
+  () => import('@/pageComponents/account/info/DiscountCouponsModal'),
+  { ssr: false }
+);
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
@@ -67,6 +70,7 @@ const ModelPriceModal = dynamic(() =>
 const Info = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus, initUserInfo } = useUserStore();
+  console.log('teamPlanStatus', teamPlanStatus);
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
@@ -107,7 +111,7 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_info', 'account_bill', 'user']))
     }
   };
 }
@@ -364,6 +368,12 @@ const PlanUsage = () => {
     onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
+  const {
+    isOpen: isOpenDiscountCouponsModal,
+    onClose: onCloseDiscountCouponsModal,
+    onOpen: onOpenDiscountCouponsModal
+  } = useDisclosure();
+
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
     return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
@@ -487,6 +497,11 @@ const PlanUsage = () => {
         {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
           <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
             {t('account_info:redeem_coupon')}
+          </Button>
+        )}
+        {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
+          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenDiscountCouponsModal}>
+            {t('account_info:discount_coupon')}
           </Button>
         )}
       </Flex>
@@ -667,6 +682,7 @@ const PlanUsage = () => {
           onSuccess={() => initTeamPlanStatus()}
         />
       )}
+      {isOpenDiscountCouponsModal && <DiscountCouponsModal onClose={onCloseDiscountCouponsModal} />}
     </Box>
   ) : null;
 };
