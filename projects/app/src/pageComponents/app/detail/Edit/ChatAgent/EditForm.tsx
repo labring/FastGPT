@@ -7,7 +7,8 @@ import {
   useTheme,
   useDisclosure,
   Button,
-  HStack
+  HStack,
+  Input
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
@@ -35,6 +36,7 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { type SelectedToolItemType, useSkillManager } from './hooks/useSkillManager';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { cardStyles } from '../../constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -66,42 +68,6 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-
-  // Skill picker
-  // const selectedTools = useMemoEnhance(() => appForm.selectedTools, [appForm.selectedTools]);
-  // const onUpdateOrAddTool = useCallback(
-  //   (tool: SelectedToolItemType) => {
-  //     setAppForm((state) => {
-  //       if (state.selectedTools.some((t) => t.id === tool.id)) {
-  //         return {
-  //           ...state,
-  //           selectedTools: state.selectedTools.map((t) => (t.id === tool.id ? tool : t))
-  //         };
-  //       }
-  //       return {
-  //         ...state,
-  //         selectedTools: [tool, ...state.selectedTools]
-  //       };
-  //     });
-  //   },
-  //   [setAppForm]
-  // );
-  // const onDeleteTool = useCallback(
-  //   (id: string) => {
-  //     setAppForm((state) => ({
-  //       ...state,
-  //       selectedTools: state.selectedTools.filter((t) => t.id !== id)
-  //     }));
-  //   },
-  //   [setAppForm]
-  // );
-  // const { SkillModal, skillOption, selectedSkills, onClickSkill, onRemoveSkill } = useSkillManager({
-  //   selectedTools,
-  //   onUpdateOrAddTool,
-  //   onDeleteTool,
-  //   canSelectFile: appForm.chatConfig?.fileSelectConfig?.canSelectFile,
-  //   canSelectImg: appForm.chatConfig?.fileSelectConfig?.canSelectImg
-  // });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -159,30 +125,9 @@ const EditForm = ({
     }
   }, [selectedModel, setAppForm]);
 
-  const OptimizerPromptPopverComponent = useCallback(
-    ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
-      return (
-        <OptimizerPopover
-          iconButtonStyle={iconButtonStyle}
-          defaultPrompt={appForm.aiSettings.systemPrompt}
-          onChangeText={(e) => {
-            setAppForm((state) => ({
-              ...state,
-              aiSettings: {
-                ...state.aiSettings,
-                systemPrompt: e
-              }
-            }));
-          }}
-        />
-      );
-    },
-    [appForm.aiSettings.systemPrompt, setAppForm]
-  );
-
   return (
     <>
-      <Box>
+      <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
         {/* ai */}
         <Box {...BoxStyles}>
           <Flex alignItems={'center'}>
@@ -228,15 +173,12 @@ const EditForm = ({
           <Box mt={4}>
             <HStack w={'100%'}>
               <FormLabel>{t('app:ai_role')}</FormLabel>
-              <QuestionTip label={t('app:ai_role_placeholder')} />
-
-              <Box flex={1} />
-              {/* <VariableTip color={'myGray.500'} /> */}
             </HStack>
             <Box mt={1}>
               <PromptEditor
-                minH={120}
-                value={appForm.aiSettings.systemPrompt}
+                minH={36}
+                maxH={100}
+                value={appForm.aiSettings.aiRole}
                 bg={'myGray.50'}
                 onChange={(text) => {
                   startTst(() => {
@@ -244,16 +186,41 @@ const EditForm = ({
                       ...state,
                       aiSettings: {
                         ...state.aiSettings,
-                        systemPrompt: text
+                        aiRole: text
                       }
                     }));
                   });
                 }}
                 // variableLabels={formatVariables}
-                placeholder={t('app:ai_role_placeholder')}
-                title={t('common:core.ai.Prompt')}
-                ExtensionPopover={[OptimizerPromptPopverComponent]}
-                isRichText={true}
+                title={t('app:ai_role')}
+                isRichText={false}
+              />
+            </Box>
+          </Box>
+          <Box mt={2}>
+            <HStack w={'100%'}>
+              <FormLabel>{t('app:task_object')}</FormLabel>
+            </HStack>
+            <Box mt={1}>
+              <PromptEditor
+                minH={36}
+                maxH={100}
+                value={appForm.aiSettings.aiTaskObject}
+                bg={'myGray.50'}
+                onChange={(text) => {
+                  startTst(() => {
+                    setAppForm((state) => ({
+                      ...state,
+                      aiSettings: {
+                        ...state.aiSettings,
+                        aiTaskObject: text
+                      }
+                    }));
+                  });
+                }}
+                // variableLabels={formatVariables}
+                title={t('app:task_object')}
+                isRichText={false}
               />
             </Box>
           </Box>
@@ -374,7 +341,8 @@ const EditForm = ({
             }}
           />
         </Box> */}
-
+      </Box>
+      <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
         {/* welcome */}
         <Box {...BoxStyles}>
           <WelcomeTextConfig
