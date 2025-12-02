@@ -21,7 +21,6 @@ const CountLimitSchema = new Schema({
 });
 
 try {
-  CountLimitSchema.index({ type: 1 });
   CountLimitSchema.index({ type: 1, key: 1 }, { unique: true });
 } catch (error) {
   console.log(error);

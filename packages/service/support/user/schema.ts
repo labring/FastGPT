@@ -49,8 +49,7 @@ const UserSchema = new Schema({
   },
   language: {
     type: String,
-    enum: LangEnum,
-    default: 'zh-CN'
+    default: LangEnum.zh_CN
   },
   lastLoginTmbId: {
     type: Schema.Types.ObjectId,
