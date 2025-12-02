@@ -140,6 +140,7 @@ export type PgSearchRawType = {
   score: number;
 };
 export type PushDatasetDataChunkProps = {
+  id?: string;
   q?: string;
   a?: string;
   imageId?: string;

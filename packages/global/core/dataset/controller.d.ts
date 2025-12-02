@@ -1,6 +1,7 @@
 import type { DatasetDataIndexItemType, DatasetDataSchemaType } from './type';
 
 export type CreateDatasetDataProps = {
+  id?: string;
   teamId: string;
   tmbId: string;
   datasetId: string;

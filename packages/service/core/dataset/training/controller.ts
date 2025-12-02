@@ -122,6 +122,7 @@ export async function pushDataListToTrainingQueue({
           ...(item.q && { q: item.q }),
           ...(item.a && { a: item.a }),
           ...(item.imageId && { imageId: item.imageId }),
+          ...(item.id && { dataId: item.id }),
           chunkIndex: item.chunkIndex ?? 0,
           indexSize,
           weight: weight ?? 0,
