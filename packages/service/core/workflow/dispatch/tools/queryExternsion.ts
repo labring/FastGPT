@@ -3,7 +3,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getLLMModel } from '../../../../core/ai/model';
+import { getLLMModel, getEmbeddingModel } from '../../../../core/ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
@@ -31,9 +31,10 @@ export const dispatchQueryExtension = async ({
   }
 
   const queryExtensionModel = getLLMModel(model);
+  const embeddingModel = getEmbeddingModel();
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, inputTokens, outputTokens } = await queryExtension({
+  const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
@@ -42,11 +43,18 @@ export const dispatchQueryExtension = async ({
 
   extensionQueries.unshift(userChatInput);
 
-  const { totalPoints, modelName } = formatModelChars2Points({
+  const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
     model: queryExtensionModel.model,
     inputTokens,
     outputTokens
   });
+
+  const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points({
+    model: embeddingModel.model,
+    inputTokens: embeddingTokens
+  });
+
+  const totalPoints = llmPoints + embeddingPoints;
 
   const set = new Set<string>();
   const filterSameQueries = extensionQueries.filter((item) => {
@@ -63,19 +71,27 @@ export const dispatchQueryExtension = async ({
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
-      model: modelName,
+      model: llmModelName,
       inputTokens,
       outputTokens,
+      embeddingTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: node.name,
-        totalPoints,
-        model: modelName,
+        totalPoints: llmPoints,
+        model: llmModelName,
         inputTokens,
         outputTokens
+      },
+      {
+        moduleName: `${node.name} - Embedding`,
+        totalPoints: embeddingPoints,
+        model: embeddingModelName,
+        inputTokens: embeddingTokens,
+        outputTokens: 0
       }
     ]
   };

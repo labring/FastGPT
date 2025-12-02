@@ -83,6 +83,11 @@ Human: ${query}
     extensionQueries,
     concatQueries: queries,
     rewriteQuery,
-    aiExtensionResult
+    aiExtensionResult: aiExtensionResult
+      ? {
+          ...aiExtensionResult,
+          embeddingTokens: aiExtensionResult.embeddingTokens
+        }
+      : undefined
   };
 };

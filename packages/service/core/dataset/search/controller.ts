@@ -84,6 +84,7 @@ export type SearchDatasetDataResponse = {
     model: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
@@ -963,6 +964,7 @@ export const defaultSearchDatasetData = async ({
           model: aiExtensionResult.model,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
+          embeddingTokens: aiExtensionResult.embeddingTokens,
           query: extensionQueries.join('\n')
         }
       : undefined

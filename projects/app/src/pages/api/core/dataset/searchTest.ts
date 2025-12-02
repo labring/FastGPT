@@ -116,7 +116,9 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       ? {
           model: queryExtensionResult.model,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          embeddingTokens: queryExtensionResult.embeddingTokens,
+          embeddingModel: dataset.vectorModel
         }
       : undefined
   });

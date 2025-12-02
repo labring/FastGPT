@@ -193,20 +193,38 @@ export async function dispatchDatasetSearch(
     // Query extension
     (() => {
       if (queryExtensionResult) {
-        const { totalPoints, modelName } = formatModelChars2Points({
+        const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
           model: queryExtensionResult.model,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
         });
         nodeDispatchUsages.push({
-          totalPoints,
+          totalPoints: llmPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
-          model: modelName,
+          model: llmModelName,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
         });
+
+        let embeddingPoints = 0;
+        if (queryExtensionResult.embeddingTokens && queryExtensionResult.embeddingTokens > 0) {
+          const { totalPoints: points, modelName: embeddingModelName } = formatModelChars2Points({
+            model: vectorModel.model,
+            inputTokens: queryExtensionResult.embeddingTokens
+          });
+          embeddingPoints = points;
+
+          nodeDispatchUsages.push({
+            totalPoints: embeddingPoints,
+            moduleName: `${i18nT('common:core.module.template.Query extension')} - Embedding`,
+            model: embeddingModelName,
+            inputTokens: queryExtensionResult.embeddingTokens,
+            outputTokens: 0
+          });
+        }
+
         return {
-          totalPoints
+          totalPoints: llmPoints + embeddingPoints
         };
       }
       return {
@@ -236,7 +254,7 @@ export async function dispatchDatasetSearch(
         totalPoints: 0
       };
     })();
-
+    console.log('bill node usages:', nodeDispatchUsages);
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
 
     const responseData: DispatchNodeResponseType & { totalPoints: number } = {
