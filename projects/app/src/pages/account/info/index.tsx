@@ -70,7 +70,6 @@ const ModelPriceModal = dynamic(() =>
 const Info = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus, initUserInfo } = useUserStore();
-  console.log('teamPlanStatus', teamPlanStatus);
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
