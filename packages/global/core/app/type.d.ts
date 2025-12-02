@@ -105,6 +105,9 @@ export type AppFormEditFormType = {
   aiSettings: {
     [NodeInputKeyEnum.aiModel]: string;
     [NodeInputKeyEnum.aiSystemPrompt]?: string | undefined;
+    [NodeInputKeyEnum.aiRole]?: string | undefined;
+    [NodeInputKeyEnum.aiTaskObject]?: string | undefined;
+
     [NodeInputKeyEnum.aiChatTemperature]?: number;
     [NodeInputKeyEnum.aiChatMaxToken]?: number;
     [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
