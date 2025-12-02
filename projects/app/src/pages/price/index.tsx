@@ -69,7 +69,7 @@ const PriceBox = () => {
       backgroundSize={'cover'}
       backgroundRepeat={'no-repeat'}
     >
-      {userInfo && (
+      {teamSubPlan?.standard?.teamId && (
         <Button
           ref={backButtonRef}
           variant={'transparentBase'}
@@ -82,7 +82,7 @@ const PriceBox = () => {
           {t('common:back')}
         </Button>
       )}
-      {!isButtonInView && userInfo && (
+      {!isButtonInView && teamSubPlan?.standard?.teamId && (
         <IconButton
           aria-label={t('common:back')}
           position={'fixed'}

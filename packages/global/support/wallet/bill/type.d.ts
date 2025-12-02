@@ -13,6 +13,9 @@ export type BillSchemaType = {
   status: `${BillStatusEnum}`;
   type: BillTypeEnum;
   price: number;
+
+  couponId?: string;
+
   hasInvoice: boolean;
   metadata: {
     payWay: `${BillPayWayEnum}`;

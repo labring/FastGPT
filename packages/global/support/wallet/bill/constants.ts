@@ -25,6 +25,7 @@ export enum BillStatusEnum {
   SUCCESS = 'SUCCESS',
   REFUND = 'REFUND',
   NOTPAY = 'NOTPAY',
+  CANCELLED = 'CANCELLED',
   CLOSED = 'CLOSED'
 }
 export const billStatusMap = {
@@ -36,6 +37,9 @@ export const billStatusMap = {
   },
   [BillStatusEnum.NOTPAY]: {
     label: i18nT('common:support.wallet.bill.status.notpay')
+  },
+  [BillStatusEnum.CANCELLED]: {
+    label: i18nT('common:support.wallet.bill.status.cancelled')
   },
   [BillStatusEnum.CLOSED]: {
     label: i18nT('common:support.wallet.bill.status.closed')

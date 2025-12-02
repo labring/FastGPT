@@ -1,5 +1,5 @@
 import type { SubTypeEnum, StandardSubLevelEnum } from '../constants';
-import type { CouponTypeEnum } from './constants';
+import type { CouponTypeEnum, DiscountCouponTypeEnum } from './constants';
 
 export type CustomSubConfig = {
   requestsPerMinute: number;
@@ -32,4 +32,16 @@ export type TeamCouponSchema = {
   type: CouponTypeEnum;
   price?: number;
   description?: string;
+};
+
+export type DiscountCouponSchema = {
+  _id: string;
+  teamId: string;
+  type: `${DiscountCouponTypeEnum}`;
+
+  startTime?: Date;
+  expiredTime: Date;
+  usedAt?: Date;
+
+  createTime: Date;
 };

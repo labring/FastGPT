@@ -1,5 +1,6 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
+  BillDetailResponse,
   CheckPayResultResponse,
   CreateBillProps,
   CreateBillResponse,
@@ -10,6 +11,7 @@ import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants
 import { BillStatusEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { DiscountCouponListResponse } from '@fastgpt/global/support/wallet/sub/coupon/api';
 
 export const getBills = (
   data: PaginationProps<{
@@ -36,3 +38,12 @@ export const putUpdatePayment = (data: UpdatePaymentProps) =>
   PUT<CreateOrderResponse>(`/proApi/support/wallet/bill/pay/updatePayment`, data);
 
 export const balanceConversion = () => GET<string>(`/proApi/support/wallet/bill/balanceConversion`);
+
+export const cancelBill = (data: { billId: string }) =>
+  POST(`/proApi/support/wallet/bill/cancel`, data);
+
+export const getDiscountCouponList = (teamId: string) =>
+  GET<DiscountCouponListResponse>(`/proApi/support/wallet/discountCoupon/list`, { teamId });
+
+export const getBillDetail = (billId: string) =>
+  GET<BillDetailResponse>(`/proApi/support/wallet/bill/detail`, { billId });

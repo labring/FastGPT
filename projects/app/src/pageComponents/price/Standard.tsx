@@ -8,9 +8,14 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { type TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
-import { postCreatePayBill } from '@/web/support/wallet/bill/api';
+import { getDiscountCouponList, postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
+import {
+  DiscountCouponStatusEnum,
+  DiscountCouponTypeEnum
+} from '@fastgpt/global/support/wallet/sub/coupon/constants';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -43,6 +48,27 @@ const Standard = ({
     StandardSubLevelEnum.advanced,
     StandardSubLevelEnum.custom
   ];
+  const { data: coupons = [], loading } = useRequest2(
+    async () => {
+      if (!myStandardPlan?.teamId) return [];
+      return getDiscountCouponList(myStandardPlan.teamId);
+    },
+    {
+      manual: !myStandardPlan?.teamId,
+      refreshDeps: [myStandardPlan?.teamId]
+    }
+  );
+
+  const matchedCoupons = useMemo(() => {
+    const targetType =
+      selectSubMode === SubModeEnum.month
+        ? DiscountCouponTypeEnum.monthStandardDiscount70
+        : DiscountCouponTypeEnum.yearStandardDiscount90;
+
+    return coupons.filter(
+      (coupon) => coupon.type === targetType && coupon.status === DiscountCouponStatusEnum.active
+    );
+  }, [coupons, selectSubMode]);
 
   const standardSubList = useMemo(() => {
     return subPlans?.standard
@@ -185,20 +211,41 @@ const Standard = ({
                 <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
                   {t(item.label as any)}
                 </Box>
-                {item.level === StandardSubLevelEnum.custom ? (
-                  <Box
-                    fontSize={['32px', '36px']}
-                    py={1.5}
-                    fontWeight={'bold'}
-                    color={'myGray.900'}
-                  >
-                    {item.priceDescription || t('common:custom_plan_price')}
-                  </Box>
-                ) : (
-                  <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
-                    ￥{item.price}
-                  </Box>
-                )}
+                <Flex alignItems={'center'} gap={2.5}>
+                  {item.level === StandardSubLevelEnum.custom ? (
+                    <Box
+                      fontSize={['32px', '36px']}
+                      py={1.5}
+                      fontWeight={'bold'}
+                      color={'myGray.900'}
+                    >
+                      {item.priceDescription || t('common:custom_plan_price')}
+                    </Box>
+                  ) : (
+                    <MyBox
+                      isLoading={loading}
+                      fontSize={['32px', '42px']}
+                      fontWeight={'bold'}
+                      color={'myGray.900'}
+                    >
+                      ￥
+                      {matchedCoupons[0]?.discount
+                        ? (matchedCoupons[0].discount * item.price).toFixed(1)
+                        : item.price}
+                    </MyBox>
+                  )}
+                  {item.level !== StandardSubLevelEnum.free && matchedCoupons.length > 0 && (
+                    <Box
+                      h={4}
+                      color={'primary.600'}
+                      fontSize={'18px'}
+                      fontWeight={'500'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {`${(matchedCoupons[0].discount * 10).toFixed(0)} 折`}
+                    </Box>
+                  )}
+                </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
@@ -252,7 +299,8 @@ const Standard = ({
                           onPay({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
-                            subMode: selectSubMode
+                            subMode: selectSubMode,
+                            discountCouponId: matchedCoupons[0]?._id
                           });
                         }}
                       >
@@ -273,7 +321,8 @@ const Standard = ({
                           onPay({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
-                            subMode: selectSubMode
+                            subMode: selectSubMode,
+                            discountCouponId: matchedCoupons[0]?._id
                           });
                         }}
                       >
@@ -293,7 +342,8 @@ const Standard = ({
                         onPay({
                           type: BillTypeEnum.standSubPlan,
                           level: item.level,
-                          subMode: selectSubMode
+                          subMode: selectSubMode,
+                          discountCouponId: matchedCoupons[0]?._id
                         });
                       }}
                     >
