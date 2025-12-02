@@ -71,6 +71,7 @@ const SettingLLMModel = ({
       <HStack spacing={1}>
         <Box flex={'1 0 0'}>
           <AIModelSelector
+            {...props}
             w={'100%'}
             value={model}
             list={llmModelList.map((item) => ({
