@@ -54,8 +54,6 @@ export type HeaderControlProps = {
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
   px?: [number, number];
-  regionSearch?: string;
-  setRegionSearch?: (value: string) => void;
 };
 
 const chartBoxStyles = {

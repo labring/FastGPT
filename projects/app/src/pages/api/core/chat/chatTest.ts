@@ -50,7 +50,7 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
-import { getIpAndregionByRequest } from '@fastgpt/service/common/ip2region';
+import { getIpFromRequest } from '@fastgpt/service/common/geo';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -83,7 +83,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(edges)) {
       throw new Error('Edges is not array');
     }
-    const { ip: originIp, region } = await getIpAndregionByRequest(req);
+
+    const originIp = getIpFromRequest(req);
 
     const chatMessages = GPTMessages2Chats({ messages });
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
@@ -251,8 +252,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       aiContent: aiResponse,
       durationSeconds,
       metadata: {
-        originIp,
-        region
+        originIp
       }
     };
 

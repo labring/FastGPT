@@ -15,6 +15,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -23,7 +24,7 @@ async function handler(
   req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, regionSearch } = req.body;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -39,7 +40,7 @@ async function handler(
     per: AppReadChatLogPerVal
   });
 
-  const where: any = {
+  const where = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
     source: sources ? { $in: sources } : { $exists: true },
@@ -47,22 +48,17 @@ async function handler(
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
-    }
+    },
+    ...(chatSearch
+      ? {
+          $or: [
+            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+          ]
+        }
+      : undefined)
   };
-
-  // Add chat search filter
-  if (chatSearch) {
-    where.$or = [
-      { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-      { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-      { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-    ];
-  }
-
-  // Add region search filter
-  if (regionSearch) {
-    where['metadata.region'] = { $regex: new RegExp(replaceRegChars(regionSearch), 'i') };
-  }
 
   const [list, total] = await Promise.all([
     MongoChat.aggregate(
@@ -285,7 +281,7 @@ async function handler(
             totalPoints: 1,
             outLinkUid: 1,
             tmbId: 1,
-            region: '$metadata.region'
+            region: '$metadata.originIp'
           }
         }
       ],
@@ -296,11 +292,21 @@ async function handler(
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
 
-  const listWithSourceMember = await addSourceMember({
-    list
+  const listWithRegion = list.map((item) => {
+    const ip = item.region;
+    const region = ip ? getLocationFromIp(ip) : undefined;
+
+    return {
+      ...item,
+      region: region || ip
+    };
   });
 
-  const listWithoutTmbId = list.filter((item) => !item.tmbId);
+  const listWithSourceMember = await addSourceMember({
+    list: listWithRegion
+  });
+
+  const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
 
   return {
     list: listWithSourceMember.concat(listWithoutTmbId),

@@ -1,13 +1,12 @@
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { addDays } from 'date-fns';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
-import { type GetAppChatLogsProps } from '@/global/core/api/appReq';
+import type { GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -49,7 +48,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     sources,
     tmbIds,
     chatSearch,
-    regionSearch,
     title,
     sourcesMap,
     logKeys = []
@@ -96,7 +94,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     }
   ]);
 
-  const where: any = {
+  const where = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
     updateTime: {
@@ -104,22 +102,17 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       $lte: new Date(dateEnd)
     },
     ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds } })
+    ...(tmbIds && { tmbId: { $in: tmbIds } }),
+    ...(chatSearch
+      ? {
+          $or: [
+            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+          ]
+        }
+      : undefined)
   };
-
-  // Add chat search filter
-  if (chatSearch) {
-    where.$or = [
-      { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-      { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-      { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-    ];
-  }
-
-  // Add region search filter
-  if (regionSearch) {
-    where['metadata.region'] = { $regex: new RegExp(replaceRegChars(regionSearch), 'i') };
-  }
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
   res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');

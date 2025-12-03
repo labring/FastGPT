@@ -62,11 +62,9 @@ const LogTable = ({
   dateRange,
   setDateRange,
   showSourceSelector = true,
-  px = [4, 8],
-  regionSearch,
-  setRegionSearch
+  px = [4, 8]
 }: HeaderControlProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
@@ -156,7 +154,6 @@ const LogTable = ({
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
-          regionSearch,
 
           title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
           logKeys: enabledKeys,
@@ -182,8 +179,7 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch,
-      regionSearch
+      chatSearch
     }),
     [
       appId,
@@ -193,8 +189,7 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch,
-      regionSearch
+      chatSearch
     ]
   );
 
@@ -346,7 +341,20 @@ const LogTable = ({
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
     ),
-    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>
+    [AppLogKeysEnum.REGION]: (
+      <Td key={AppLogKeysEnum.REGION}>
+        {(() => {
+          const region = item.region;
+          if (!region) return '-';
+          if (typeof region === 'string') return region;
+          const lng = i18n.language === 'zh-CN' ? 'zh' : 'en';
+          const country = region.country?.[lng] || region.country?.zh || region.country?.en;
+          const province = region.province?.[lng] || region.province?.zh || region.province?.en;
+          const city = region.city?.[lng] || region.city?.zh || region.city?.en;
+          return [country, province, city].filter(Boolean).join(lng === 'zh' ? '，' : ', ');
+        })()}
+      </Td>
+    )
   });
 
   return (
@@ -453,39 +461,6 @@ const LogTable = ({
           />
         </Flex>
 
-        <Flex
-          flex={'0 1 230px'}
-          h={10}
-          alignItems={'center'}
-          rounded={'8px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusWithin={{
-            borderColor: 'primary.600',
-            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
-          }}
-          pl={3}
-        >
-          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
-            {t('app:logs_keys_region')}
-          </Box>
-          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-          <Input
-            placeholder={t('app:logs_search_region')}
-            value={regionSearch}
-            onChange={(e) => setRegionSearch && setRegionSearch(e.target.value)}
-            fontSize={'sm'}
-            border={'none'}
-            pl={0}
-            _focus={{
-              boxShadow: 'none'
-            }}
-            _placeholder={{
-              fontSize: 'sm'
-            }}
-          />
-        </Flex>
-
         <Box flex={'1'} />
         {showSyncPopover && (
           <SyncLogKeysPopover
@@ -534,7 +509,7 @@ const LogTable = ({
                 >
                   {logKeys
                     .filter((logKey) => logKey.enable)
-                    .map((logKey) => cellRenderMap[logKey.key])}
+                    .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
                 </Tr>
               );
             })}

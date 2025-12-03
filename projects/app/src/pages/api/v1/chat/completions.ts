@@ -60,7 +60,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
-import { getIpAndregionByRequest } from '@fastgpt/service/common/ip2region';
+import { getIpFromRequest } from '@fastgpt/service/common/geo';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -114,9 +114,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     metadata
   } = req.body as Props;
 
-  const { ip: originIp, region } = await getIpAndregionByRequest(req);
-
   const startTime = Date.now();
+
+  const originIp = getIpFromRequest(req);
 
   try {
     if (!Array.isArray(messages)) {
@@ -360,9 +360,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: userQuestion,
       aiContent: aiResponse,
       metadata: {
-        originIp,
-        region,
-        ...metadata
+        ...metadata,
+        originIp
       },
       durationSeconds
     };
