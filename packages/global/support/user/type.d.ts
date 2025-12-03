@@ -31,7 +31,6 @@ export type UserType = {
   language?: `${LangEnum}`;
   promotionRate: UserModelSchema['promotionRate'];
   team: TeamTmbItemType;
-  notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
 };

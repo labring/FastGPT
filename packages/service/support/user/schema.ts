@@ -20,7 +20,6 @@ const UserSchema = new Schema({
     required: true,
     unique: true // 唯一
   },
-  phonePrefix: Number,
   password: {
     type: String,
     required: true,
@@ -63,6 +62,8 @@ const UserSchema = new Schema({
   },
   fastgpt_sem: Object,
   sourceDomain: String,
+
+  phonePrefix: Number,
   contact: String,
 
   /** @deprecated */
