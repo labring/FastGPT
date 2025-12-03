@@ -231,7 +231,6 @@ export async function dispatchDatasetSearch(
         outputTokens: deepSearchResult.outputTokens
       });
     }
-    console.log('bill node usages:', nodeDispatchUsages);
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
 
     return {
