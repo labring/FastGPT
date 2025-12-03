@@ -2,6 +2,7 @@ import type z from 'zod';
 import type { CountLimitTypeEnum } from './type';
 import { CountLimitConfig } from './const';
 import { MongoCountLimit } from './schema';
+import { mongoSessionRun } from 'common/mongo/sessionRun';
 
 /**
  * Update the count limit for a specific type and key.
@@ -16,45 +17,58 @@ export const updateCountLimit = async ({
   type: z.infer<typeof CountLimitTypeEnum>;
   key: string;
   update: number;
-}) => {
-  const maxCount = CountLimitConfig[type].maxCount;
-  const countLimit = await MongoCountLimit.findOne({
-    type,
-    key
-  }).lean();
-  if (!countLimit) {
-    // do not exist, create a new one
-    await MongoCountLimit.create({
-      type,
-      key,
-      count: update // 0 + update
-    });
+}) =>
+  mongoSessionRun(async (session) => {
+    const maxCount = CountLimitConfig[type].maxCount;
+    const countLimit = await MongoCountLimit.findOne(
+      {
+        type,
+        key
+      },
+      undefined,
+      {
+        session
+      }
+    ).lean();
+    if (!countLimit) {
+      // do not exist, create a new one
+      await MongoCountLimit.create(
+        {
+          type,
+          key,
+          count: update // 0 + update
+        },
+        {
+          session
+        }
+      );
+      return {
+        maxCount,
+        nowCount: update,
+        remain: maxCount - update
+      };
+    }
+    if (countLimit && countLimit.count >= maxCount) {
+      return Promise.reject(`Max Count Reached, type: ${type}, key: ${key}`);
+    }
+
+    await MongoCountLimit.updateOne(
+      {
+        type,
+        key
+      },
+      {
+        $inc: { count: update }
+      },
+      { session }
+    );
+
     return {
       maxCount,
-      nowCount: update,
-      remain: maxCount - update
+      nowCount: countLimit.count + update,
+      remain: maxCount - (countLimit.count + update)
     };
-  }
-  if (countLimit && countLimit.count >= maxCount) {
-    return Promise.reject(`Max Count Reached, type: ${type}, key: ${key}`);
-  }
-
-  await MongoCountLimit.updateOne(
-    {
-      type,
-      key
-    },
-    {
-      $inc: { count: update }
-    }
-  );
-
-  return {
-    maxCount,
-    nowCount: countLimit.count + update,
-    remain: maxCount - (countLimit.count + update)
-  };
-};
+  });
 
 /** Clean the Count limit, if no key provided, clean all the type */
 export const cleanCountLimit = async ({ type, key }: { type: CountLimitTypeEnum; key?: string }) =>

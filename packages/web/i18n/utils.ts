@@ -47,6 +47,9 @@ export const getLangMapping = (lng: string): string => {
     if (langPrefix === 'zh') {
       lang = LangEnum.zh_CN;
     }
+    if (langPrefix === 'en') {
+      lang = LangEnum.en;
+    }
   }
 
   return lang || LangEnum.zh_CN;
