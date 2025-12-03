@@ -81,9 +81,11 @@ export type SearchDatasetDataResponse = {
   usingSimilarityFilter: boolean;
 
   queryExtensionResult?: {
-    model: string;
+    llmModel: string;
+    embeddingModel: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
@@ -938,32 +940,30 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-  const extensionModel = datasetSearchUsingExtensionQuery
-    ? getLLMModel(datasetSearchExtensionModel)
-    : undefined;
-
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
-    await datasetSearchQueryExtension({
-      query,
-      extensionModel,
-      extensionBg: datasetSearchExtensionBg,
-      histories
-    });
+  const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query,
+    llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
+    embeddingModel: props.model,
+    extensionBg: datasetSearchExtensionBg,
+    histories
+  });
 
   const result = await searchDatasetData({
     ...props,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries
+    reRankQuery: reRankQuery,
+    queries: searchQueries
   });
 
   return {
     ...result,
     queryExtensionResult: aiExtensionResult
       ? {
-          model: aiExtensionResult.model,
+          llmModel: aiExtensionResult.llmModel,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: extensionQueries.join('\n')
+          embeddingModel: aiExtensionResult.embeddingModel,
+          embeddingTokens: aiExtensionResult.embeddingTokens,
+          query: searchQueries.join('\n')
         }
       : undefined
   };

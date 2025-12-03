@@ -1,4 +1,5 @@
 {
+  "ai.query_extension_embedding": "Problem optimization-embedding",
   "ai_model": "AI model",
   "all": "all",
   "app_name": "Application name",
