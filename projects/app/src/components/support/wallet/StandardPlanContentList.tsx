@@ -46,12 +46,7 @@ const StandardPlanContentList = ({
         standplan?.chatHistoryStoreDuration || plan.chatHistoryStoreDuration,
       auditLogStoreDuration: standplan?.auditLogStoreDuration || plan.auditLogStoreDuration,
       appRegistrationCount: standplan?.appRegistrationCount || plan.appRegistrationCount,
-      ticketResponseTime: standplan?.ticketResponseTime || plan.ticketResponseTime,
-
-      // deprecated
-      trainingWeight: plan.trainingWeight,
-      permissionWebsiteSync: plan.permissionWebsiteSync,
-      permissionTeamOperationLog: plan.permissionTeamOperationLog
+      ticketResponseTime: standplan?.ticketResponseTime || plan.ticketResponseTime
     };
   }, [
     subPlans?.standard,
@@ -169,32 +164,6 @@ const StandardPlanContentList = ({
             {t('common:support.wallet.subscription.function.Ticket response time', {
               amount: planContent.ticketResponseTime
             })}
-          </Box>
-        </Flex>
-      )}
-
-      {/* deprecated */}
-      {!!planContent.trainingWeight && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>
-            {t('common:support.wallet.subscription.Training weight', {
-              weight: planContent.trainingWeight
-            })}
-          </Box>
-        </Flex>
-      )}
-      {!!planContent.permissionWebsiteSync && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
-        </Flex>
-      )}
-      {!!planContent.permissionTeamOperationLog && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>
-            {t('common:support.wallet.subscription.team_operation_log')}
           </Box>
         </Flex>
       )}

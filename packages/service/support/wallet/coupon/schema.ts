@@ -3,13 +3,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import {
-  DiscountCouponStatusEnum,
-  DiscountCouponSceneEnum,
-  CouponTypeEnum
-} from '@fastgpt/global/support/wallet/sub/coupon/constants';
-import type { DiscountCouponSchemaType } from '@fastgpt/global/support/wallet/sub/coupon/type';
-import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { CouponTypeEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
 
 export const couponCollectionName = 'team_sub_coupons';
 
@@ -49,72 +43,3 @@ try {
 }
 
 export const MongoTeamCoupon = getMongoModel<TeamCouponSchema>(couponCollectionName, CouponSchema);
-
-export const discountCouponCollectionName = 'team_discount_coupons';
-
-const DiscountCouponSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName,
-    required: true
-  },
-  name: {
-    type: String,
-    required: true
-  },
-  discount: {
-    type: Number,
-    required: true,
-    min: 0.01,
-    max: 1
-  },
-  scenes: {
-    type: [String],
-    enum: Object.values(DiscountCouponSceneEnum),
-    required: true
-  },
-  status: {
-    type: String,
-    enum: Object.values(DiscountCouponStatusEnum),
-    default: DiscountCouponStatusEnum.unused
-  },
-  startTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  expiredTime: {
-    type: Date,
-    required: true
-  },
-  usedTime: {
-    type: Date
-  },
-  billId: {
-    type: Schema.Types.ObjectId
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  type: {
-    type: [String],
-    enum: Object.values(BillTypeEnum),
-    required: true
-  },
-  level: {
-    type: [String]
-  }
-});
-
-try {
-  DiscountCouponSchema.index({ teamId: 1, status: 1, expiredTime: -1 });
-  DiscountCouponSchema.index({ teamId: 1, type: 1, status: 1, expiredTime: -1 });
-  DiscountCouponSchema.index({ status: 1, expiredTime: -1 });
-} catch (error) {
-  console.log(error);
-}
-
-export const MongoTeamDiscountCoupon = getMongoModel<DiscountCouponSchemaType>(
-  discountCouponCollectionName,
-  DiscountCouponSchema
-);

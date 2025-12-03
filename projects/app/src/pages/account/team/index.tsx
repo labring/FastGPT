@@ -59,7 +59,6 @@ const Team = () => {
     const plan = level !== undefined ? subPlans?.standard?.[level] : undefined;
     if (!plan) return;
     return {
-      permissionTeamOperationLog: plan.permissionTeamOperationLog,
       auditLogStoreDuration: plan?.auditLogStoreDuration
     };
   }, [subPlans?.standard, level]);
@@ -82,12 +81,7 @@ const Team = () => {
         px={'1rem'}
         value={teamTab}
         onChange={(e) => {
-          if (
-            e === TeamTabEnum.audit &&
-            planContent &&
-            !planContent?.permissionTeamOperationLog &&
-            !planContent?.auditLogStoreDuration
-          ) {
+          if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
             toast({
               status: 'warning',
               title: t('common:not_permission')

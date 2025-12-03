@@ -25,13 +25,6 @@ export type TeamStandardSubPlanItemType = {
   priceDescription?: string;
   customFormUrl?: string;
   customDescriptions?: string[];
-
-  // deprecated
-  trainingWeight?: number; // 1~4
-  permissionCustomApiKey?: boolean;
-  permissionCustomCopyright?: boolean; // feature
-  permissionWebsiteSync?: boolean;
-  permissionTeamOperationLog?: boolean;
 };
 
 export type StandSubPlanLevelMapType = Record<

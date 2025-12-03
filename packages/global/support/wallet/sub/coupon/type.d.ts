@@ -1,9 +1,5 @@
 import type { SubTypeEnum, StandardSubLevelEnum } from '../constants';
-import type {
-  CouponTypeEnum,
-  DiscountCouponSceneEnum,
-  DiscountCouponStatusEnum
-} from './constants';
+import type { CouponTypeEnum } from './constants';
 
 export type CustomSubConfig = {
   requestsPerMinute: number;
@@ -36,31 +32,4 @@ export type TeamCouponSchema = {
   type: CouponTypeEnum;
   price?: number;
   description?: string;
-};
-
-export type DiscountCouponSchemaType = {
-  _id: string;
-  teamId: string;
-  name: string;
-  discount: number;
-  scenes: DiscountCouponSceneEnum[];
-  status: DiscountCouponStatusEnum;
-  startTime: Date;
-  expiredTime: Date;
-  usedTime?: Date;
-  billId?: string; // 关联的账单ID
-  createTime: Date;
-  type: BillTypeEnum[]; // 优惠券类型
-  level?: `${StandardSubLevelEnum}`[];
-};
-
-export type CreateDiscountCouponParams = {
-  teamId: string;
-  name: string;
-  discount: number;
-  scenes: DiscountCouponSceneEnum[];
-  type: BillTypeEnum[];
-  level?: `${StandardSubLevelEnum}`[];
-  startTime?: Date;
-  expiredTime?: Date;
 };

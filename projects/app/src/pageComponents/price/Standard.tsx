@@ -68,12 +68,7 @@ const Standard = ({
               maxDatasetAmount: myStandardPlan?.maxDataset || value.maxDatasetAmount,
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
-              permissionCustomApiKey: value.permissionCustomApiKey,
-              permissionCustomCopyright: value.permissionCustomCopyright,
-              trainingWeight: value.trainingWeight,
               totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-              permissionWebsiteSync: value.permissionWebsiteSync,
-              permissionTeamOperationLog: value.permissionTeamOperationLog,
 
               // custom plan
               priceDescription: value.priceDescription,

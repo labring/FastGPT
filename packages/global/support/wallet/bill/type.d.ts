@@ -14,7 +14,6 @@ export type BillSchemaType = {
   type: BillTypeEnum;
   price: number;
   hasInvoice: boolean;
-  couponId?: string;
   metadata: {
     payWay: `${BillPayWayEnum}`;
     subMode?: `${SubModeEnum}`;
@@ -22,7 +21,6 @@ export type BillSchemaType = {
     month?: number;
     datasetSize?: number;
     extraPoints?: number;
-    couponDiscount?: number;
   };
   refundData?: {
     amount: number;

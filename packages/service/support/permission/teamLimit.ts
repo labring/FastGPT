@@ -120,11 +120,7 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
     teamId
   });
 
-  if (
-    standardConstants &&
-    !standardConstants?.permissionWebsiteSync &&
-    !standardConstants?.websiteSyncPerDataset
-  ) {
+  if (standardConstants && !standardConstants?.websiteSyncPerDataset) {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
   }
 };
