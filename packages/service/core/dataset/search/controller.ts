@@ -943,18 +943,17 @@ export const defaultSearchDatasetData = async ({
     ? getLLMModel(datasetSearchExtensionModel)
     : undefined;
 
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
-    await datasetSearchQueryExtension({
-      query,
-      extensionModel,
-      extensionBg: datasetSearchExtensionBg,
-      histories
-    });
+  const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query,
+    extensionModel,
+    extensionBg: datasetSearchExtensionBg,
+    histories
+  });
 
   const result = await searchDatasetData({
     ...props,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries
+    reRankQuery: reRankQuery,
+    queries: searchQueries
   });
 
   return {
@@ -965,7 +964,7 @@ export const defaultSearchDatasetData = async ({
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           embeddingTokens: aiExtensionResult.embeddingTokens,
-          query: extensionQueries.join('\n')
+          query: searchQueries.join('\n')
         }
       : undefined
   };

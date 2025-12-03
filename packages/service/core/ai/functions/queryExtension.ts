@@ -1,161 +1,18 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getEmbeddingModel, getLLMModel } from '../model';
+import { getLLMModel } from '../model';
 import { addLog } from '../../../common/system/log';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
-import { getVectorsByText } from '../embedding';
+import { useTextCosine } from '../hooks/useTextCosine';
 
 /*
-    Query Extension - Semantic Search Enhancement
-    This module can eliminate referential ambiguity and expand queries based on context to improve retrieval.
-    Submodular Optimization Mode: Generate multiple candidate queries, then use submodular algorithm to select the optimal query combination
+  Query Extension - Semantic Search Enhancement
+  This module can eliminate referential ambiguity and expand queries based on context to improve retrieval.
+  Submodular Optimization Mode: Generate multiple candidate queries, then use submodular algorithm to select the optimal query combination
 */
-class PriorityQueue<T> {
-  private heap: Array<{ item: T; priority: number }> = [];
-
-  enqueue(item: T, priority: number): void {
-    this.heap.push({ item, priority });
-    this.heap.sort((a, b) => b.priority - a.priority);
-  }
-
-  dequeue(): T | undefined {
-    return this.heap.shift()?.item;
-  }
-
-  isEmpty(): boolean {
-    return this.heap.length === 0;
-  }
-
-  size(): number {
-    return this.heap.length;
-  }
-}
-
-// Calculate cosine similarity
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    throw new Error('Vectors must have the same length');
-  }
-
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// Calculate marginal gain
-function computeMarginalGain(
-  candidateEmbedding: number[],
-  selectedEmbeddings: number[][],
-  originalEmbedding: number[],
-  alpha: number = 0.3
-): number {
-  if (selectedEmbeddings.length === 0) {
-    return alpha * cosineSimilarity(originalEmbedding, candidateEmbedding);
-  }
-
-  let maxSimilarity = 0;
-  for (const selectedEmbedding of selectedEmbeddings) {
-    const similarity = cosineSimilarity(candidateEmbedding, selectedEmbedding);
-    maxSimilarity = Math.max(maxSimilarity, similarity);
-  }
-
-  const relevance = alpha * cosineSimilarity(originalEmbedding, candidateEmbedding);
-  const diversity = 1 - maxSimilarity;
-
-  return relevance + diversity;
-}
-
-// Lazy greedy query selection algorithm
-function lazyGreedyQuerySelection(
-  candidates: string[],
-  embeddings: number[][],
-  originalEmbedding: number[],
-  k: number,
-  alpha: number = 0.3
-): string[] {
-  const n = candidates.length;
-  const selected: string[] = [];
-  const selectedEmbeddings: number[][] = [];
-
-  // Initialize priority queue
-  const pq = new PriorityQueue<{ index: number; gain: number }>();
-
-  // Calculate initial marginal gain for all candidates
-  for (let i = 0; i < n; i++) {
-    const gain = computeMarginalGain(embeddings[i], selectedEmbeddings, originalEmbedding, alpha);
-    pq.enqueue({ index: i, gain }, gain);
-  }
-
-  // Greedy selection
-  for (let iteration = 0; iteration < k; iteration++) {
-    if (pq.isEmpty()) break;
-
-    let bestCandidate: { index: number; gain: number } | undefined;
-
-    // Find candidate with maximum marginal gain
-    while (!pq.isEmpty()) {
-      const candidate = pq.dequeue()!;
-      const currentGain = computeMarginalGain(
-        embeddings[candidate.index],
-        selectedEmbeddings,
-        originalEmbedding,
-        alpha
-      );
-
-      if (currentGain >= candidate.gain) {
-        bestCandidate = { index: candidate.index, gain: currentGain };
-        break;
-      } else {
-        pq.enqueue(candidate, currentGain);
-      }
-    }
-
-    if (bestCandidate) {
-      selected.push(candidates[bestCandidate.index]);
-      selectedEmbeddings.push(embeddings[bestCandidate.index]);
-    }
-  }
-
-  return selected;
-}
-
-// Generate embeddings for input texts
-async function generateEmbeddings(
-  texts: string[],
-  model: string
-): Promise<{ tokens: number; vectors: number[][] }> {
-  try {
-    const vectorModel = getEmbeddingModel(model);
-
-    // Use batch processing - pass all texts at once
-    const embedding = await getVectorsByText({
-      model: vectorModel,
-      input: texts,
-      type: 'query'
-    });
-
-    return {
-      tokens: embedding.tokens,
-      vectors: embedding.vectors
-    };
-  } catch (error) {
-    addLog.warn('Failed to generate embeddings', { error, model });
-    throw error;
-  }
-}
-
 const title = global.feConfigs?.systemTitle || 'FastAI';
 const defaultPrompt = `## 你的任务
 你作为一个向量检索助手，你的任务是结合历史记录，为"原问题"生成{{count}}个不同版本的"检索词"。这些检索词应该从不同角度探索主题，以提高向量检索的语义丰富度和精度。
@@ -287,6 +144,7 @@ assistant: ${chatBg}
 `
     : '';
 
+  // 1. Request model
   const modelData = getLLMModel(model);
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
@@ -343,6 +201,7 @@ assistant: ${chatBg}
     };
   }
 
+  // 2. Parse answer
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
   if (start === -1 || end === -1) {
@@ -379,31 +238,14 @@ assistant: ${chatBg}
       };
     }
 
-    // Generate embeddings for original query and candidate queries
-    const allQueries = [query, ...queries];
-
-    const embeddingStartTime = Date.now();
-    const { tokens: embeddingTokens, vectors: embeddingVectors } = await generateEmbeddings(
-      allQueries,
-      model
-    );
-    const embeddingEndTime = Date.now();
-    const embeddingDuration = embeddingEndTime - embeddingStartTime;
-    console.log(
-      `[Embedding Performance] Generated ${allQueries.length} embeddings in ${embeddingDuration}ms (avg: ${(embeddingDuration / allQueries.length).toFixed(2)}ms per query), tokens used: ${embeddingTokens}`
-    );
-
-    const originalEmbedding = embeddingVectors[0];
-    const candidateEmbeddings = embeddingVectors.slice(1);
-
-    // Select optimal queries using lazy greedy algorithm
-    const selectedQueries = lazyGreedyQuerySelection(
-      queries,
-      candidateEmbeddings,
-      originalEmbedding,
-      Math.min(5, queries.length), // Select top 5 queries or less
-      0.3 // alpha parameter for balancing relevance and diversity
-    );
+    // 3. 通过计算获取到最优的检索词
+    const { lazyGreedyQuerySelection } = useTextCosine({ model });
+    const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
+      originnalText: query,
+      candidates: queries,
+      k: Math.min(3, queries.length), // 至多 3 个
+      alpha: 0.3
+    });
 
     return {
       rawQuery: query,

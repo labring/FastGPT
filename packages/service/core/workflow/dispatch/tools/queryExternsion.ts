@@ -9,7 +9,6 @@ import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;

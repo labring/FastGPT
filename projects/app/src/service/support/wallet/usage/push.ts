@@ -260,8 +260,8 @@ export const pushDatasetTestUsage = ({
     model: string;
     inputTokens: number;
     outputTokens: number;
-    embeddingTokens?: number;
-    embeddingModel?: string;
+    embeddingTokens: number;
+    embeddingModel: string;
   };
 }) => {
   const list: UsageItemType[] = [];
@@ -282,20 +282,19 @@ export const pushDatasetTestUsage = ({
       outputTokens: extensionUsage.outputTokens
     });
 
-    if (extensionUsage.embeddingTokens && extensionUsage.embeddingModel) {
-      const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
-        formatModelChars2Points({
-          model: extensionUsage.embeddingModel,
-          inputTokens: extensionUsage.embeddingTokens
-        });
-      points += embeddingPoints;
-      list.push({
-        moduleName: `${i18nT('common:core.module.template.Query extension')} - Embedding`,
-        amount: embeddingPoints,
-        model: embeddingModelName,
+    const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points(
+      {
+        model: extensionUsage.embeddingModel,
         inputTokens: extensionUsage.embeddingTokens
-      });
-    }
+      }
+    );
+    points += embeddingPoints;
+    list.push({
+      moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+      amount: embeddingPoints,
+      model: embeddingModelName,
+      inputTokens: extensionUsage.embeddingTokens
+    });
   }
   if (embUsage) {
     const { totalPoints, modelName } = formatModelChars2Points({
