@@ -1,4 +1,5 @@
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { ReadStream } from 'fs';
 import { z } from 'zod';
 
 export const CreateUploadDatasetFileParamsSchema = z.object({
@@ -44,9 +45,18 @@ export const ParsedFileContentS3KeyParamsSchema = z.object({
 });
 export type ParsedFileContentS3KeyParams = z.infer<typeof ParsedFileContentS3KeyParamsSchema>;
 
-export const UploadDatasetFileByBufferParamsSchema = z.object({
-  datasetId: ObjectIdSchema,
-  buffer: z.instanceof(Buffer),
-  filename: z.string().nonempty()
-});
-export type UploadDatasetFileByBufferParams = z.infer<typeof UploadDatasetFileByBufferParamsSchema>;
+export const UploadParamsSchema = z.union([
+  z.object({
+    datasetId: ObjectIdSchema,
+    filename: z.string().nonempty(),
+    buffer: z.instanceof(Buffer)
+  }),
+
+  z.object({
+    datasetId: ObjectIdSchema,
+    filename: z.string().nonempty(),
+    stream: z.instanceof(ReadStream),
+    size: z.int().positive().optional()
+  })
+]);
+export type UploadParams = z.infer<typeof UploadParamsSchema>;

@@ -10,8 +10,8 @@ import {
   DeleteDatasetFilesByPrefixParamsSchema,
   type GetDatasetFileContentParams,
   GetDatasetFileContentParamsSchema,
-  type UploadDatasetFileByBufferParams,
-  UploadDatasetFileByBufferParamsSchema
+  type UploadParams,
+  UploadParamsSchema
 } from './type';
 import { MongoS3TTL } from '../../schema';
 import { addHours, addMinutes } from 'date-fns';
@@ -168,23 +168,38 @@ export class S3DatasetSource {
   }
 
   // 根据文件 Buffer 上传文件
-  async uploadDatasetFileByBuffer(params: UploadDatasetFileByBufferParams): Promise<string> {
-    const { datasetId, buffer, filename } = UploadDatasetFileByBufferParamsSchema.parse(params);
+  async upload(params: UploadParams): Promise<string> {
+    const { datasetId, filename, ...file } = UploadParamsSchema.parse(params);
 
-    // 截断文件名以避免S3 key过长的问题
+    // 截断文件名以避免 S3 key 过长的问题
     const truncatedFilename = truncateFilename(filename);
-
     const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
-    await this.bucket.putObject(key, buffer, buffer.length, {
+
+    const { stream, size } = (() => {
+      if ('buffer' in file) {
+        return {
+          stream: file.buffer,
+          size: file.buffer.length
+        };
+      }
+      return {
+        stream: file.stream,
+        size: file.size
+      };
+    })();
+
+    await this.bucket.putObject(key, stream, size, {
       'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
       'upload-time': new Date().toISOString(),
       'origin-filename': encodeURIComponent(truncatedFilename)
     });
+
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucket.name,
       expiredTime: addHours(new Date(), 3)
     });
+
     return key;
   }
 }
