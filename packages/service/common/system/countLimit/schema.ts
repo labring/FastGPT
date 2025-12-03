@@ -3,7 +3,7 @@ import type { CountLimitType } from './type';
 
 const { Schema } = connectionMongo;
 
-const collectionName = 'count_limits';
+const collectionName = 'system_count_limits';
 const CountLimitSchema = new Schema({
   key: {
     type: String,
@@ -17,11 +17,16 @@ const CountLimitSchema = new Schema({
     type: Number,
     required: true,
     default: 0
+  },
+  createTime: {
+    type: Date,
+    default: () => new Date()
   }
 });
 
 try {
   CountLimitSchema.index({ type: 1, key: 1 }, { unique: true });
+  CountLimitSchema.index({ createTime: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 }); // ttl 30天
 } catch (error) {
   console.log(error);
 }

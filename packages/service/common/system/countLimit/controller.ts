@@ -73,8 +73,8 @@ export const updateCountLimit = async ({
   });
 
 /** Clean the Count limit, if no key provided, clean all the type */
-export const cleanCountLimit = async ({ type, key }: { type: CountLimitTypeEnum; key?: string }) =>
+export const cleanCountLimit = async ({ type, key }: { type: CountLimitTypeEnum; key: string }) =>
   MongoCountLimit.deleteMany({
     type,
-    ...(key ? { key } : {})
+    key
   });
