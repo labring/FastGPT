@@ -191,7 +191,7 @@ export async function dispatchDatasetSearch(
     // 3. Query extension
     if (queryExtensionResult) {
       const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-        model: queryExtensionResult.model,
+        model: queryExtensionResult.llmModel,
         inputTokens: queryExtensionResult.inputTokens,
         outputTokens: queryExtensionResult.outputTokens
       });
@@ -205,7 +205,7 @@ export async function dispatchDatasetSearch(
 
       const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: vectorModel.model,
+          model: queryExtensionResult.embeddingModel,
           inputTokens: queryExtensionResult.embeddingTokens
         });
       nodeDispatchUsages.push({
@@ -255,7 +255,14 @@ export async function dispatchDatasetSearch(
           reRankInputTokens
         }),
         searchUsingReRank,
-        queryExtensionResult,
+        queryExtensionResult: queryExtensionResult
+          ? {
+              model: queryExtensionResult.llmModel,
+              inputTokens: queryExtensionResult.inputTokens,
+              outputTokens: queryExtensionResult.outputTokens,
+              query: queryExtensionResult.query
+            }
+          : undefined,
         deepSearchResult,
         // Results
         quoteList: searchRes

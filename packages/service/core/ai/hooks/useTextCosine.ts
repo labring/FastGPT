@@ -26,7 +26,8 @@ class PriorityQueue<T> {
     return this.heap.length;
   }
 }
-export const useTextCosine = ({ model }: { model: string }) => {
+export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) => {
+  const vectorModel = getEmbeddingModel(embeddingModel);
   // Calculate marginal gain
   const computeMarginalGain = (
     candidateEmbedding: number[],
@@ -82,7 +83,6 @@ export const useTextCosine = ({ model }: { model: string }) => {
     k: number;
     alpha?: number;
   }) => {
-    const vectorModel = getEmbeddingModel(model);
     const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectorsByText({
       model: vectorModel,
       input: [originnalText, ...candidates],
@@ -130,7 +130,8 @@ export const useTextCosine = ({ model }: { model: string }) => {
           bestCandidate = { index: candidate.index, gain: currentGain };
           break;
         } else {
-          pq.enqueue(candidate, currentGain);
+          // Create new object with updated gain to avoid infinite loop
+          pq.enqueue({ index: candidate.index, gain: currentGain }, currentGain);
         }
       }
 
@@ -147,6 +148,7 @@ export const useTextCosine = ({ model }: { model: string }) => {
   };
 
   return {
-    lazyGreedyQuerySelection
+    lazyGreedyQuerySelection,
+    embeddingModel: vectorModel.model
   };
 };

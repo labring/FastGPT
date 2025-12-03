@@ -33,23 +33,31 @@ export const dispatchQueryExtension = async ({
   const embeddingModel = getEmbeddingModel();
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({
+  const {
+    extensionQueries,
+    inputTokens,
+    outputTokens,
+    embeddingTokens,
+    llmModel,
+    embeddingModel: useEmbeddingModel
+  } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
-    model: queryExtensionModel.model
+    llmModel: queryExtensionModel.model,
+    embeddingModel: embeddingModel.model
   });
 
   extensionQueries.unshift(userChatInput);
 
   const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-    model: queryExtensionModel.model,
+    model: llmModel,
     inputTokens,
     outputTokens
   });
 
   const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points({
-    model: embeddingModel.model,
+    model: useEmbeddingModel,
     inputTokens: embeddingTokens
   });
 

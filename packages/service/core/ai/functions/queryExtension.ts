@@ -122,18 +122,21 @@ export const queryExtension = async ({
   chatBg,
   query,
   histories = [],
-  model,
+  llmModel,
+  embeddingModel,
   generateCount = 10 // 生成优化问题集的数量，默认为10个
 }: {
   chatBg?: string;
   query: string;
   histories: ChatItemType[];
-  model: string;
+  llmModel: string;
+  embeddingModel: string;
   generateCount?: number;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
-  model: string;
+  llmModel: string;
+  embeddingModel: string;
   inputTokens: number;
   outputTokens: number;
   embeddingTokens: number;
@@ -145,7 +148,7 @@ assistant: ${chatBg}
     : '';
 
   // 1. Request model
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModel(llmModel);
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
     maxContext: modelData.maxContext - 1000
@@ -194,7 +197,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      model,
+      llmModel: modelData.model,
+      embeddingModel,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       embeddingTokens: 0
@@ -211,7 +215,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      model,
+      llmModel: modelData.model,
+      embeddingModel,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       embeddingTokens: 0
@@ -231,7 +236,8 @@ assistant: ${chatBg}
       return {
         rawQuery: query,
         extensionQueries: [],
-        model,
+        llmModel: modelData.model,
+        embeddingModel,
         inputTokens,
         outputTokens,
         embeddingTokens: 0
@@ -239,7 +245,9 @@ assistant: ${chatBg}
     }
 
     // 3. 通过计算获取到最优的检索词
-    const { lazyGreedyQuerySelection } = useTextCosine({ model });
+    const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
+      embeddingModel
+    });
     const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
       originnalText: query,
       candidates: queries,
@@ -250,7 +258,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: selectedQueries,
-      model,
+      llmModel: modelData.model,
+      embeddingModel: useEmbeddingModel,
       inputTokens,
       outputTokens,
       embeddingTokens
@@ -263,7 +272,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      model,
+      llmModel: modelData.model,
+      embeddingModel,
       inputTokens,
       outputTokens,
       embeddingTokens: 0

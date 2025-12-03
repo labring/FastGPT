@@ -81,7 +81,8 @@ export type SearchDatasetDataResponse = {
   usingSimilarityFilter: boolean;
 
   queryExtensionResult?: {
-    model: string;
+    llmModel: string;
+    embeddingModel: string;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
@@ -939,13 +940,10 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-  const extensionModel = datasetSearchUsingExtensionQuery
-    ? getLLMModel(datasetSearchExtensionModel)
-    : undefined;
-
   const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
     query,
-    extensionModel,
+    llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
+    embeddingModel: props.model,
     extensionBg: datasetSearchExtensionBg,
     histories
   });
@@ -960,9 +958,10 @@ export const defaultSearchDatasetData = async ({
     ...result,
     queryExtensionResult: aiExtensionResult
       ? {
-          model: aiExtensionResult.model,
+          llmModel: aiExtensionResult.llmModel,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
+          embeddingModel: aiExtensionResult.embeddingModel,
           embeddingTokens: aiExtensionResult.embeddingTokens,
           query: searchQueries.join('\n')
         }

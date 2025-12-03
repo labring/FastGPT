@@ -1,4 +1,3 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -6,12 +5,14 @@ import { addLog } from '../../../common/system/log';
 
 export const datasetSearchQueryExtension = async ({
   query,
-  extensionModel,
+  llmModel,
+  embeddingModel,
   extensionBg = '',
   histories = []
 }: {
   query: string;
-  extensionModel?: LLMModelItemType;
+  llmModel?: string;
+  embeddingModel?: string;
   extensionBg?: string;
   histories?: ChatItemType[];
 }) => {
@@ -51,14 +52,15 @@ export const datasetSearchQueryExtension = async ({
 
   // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!extensionModel || alreadyExtension) return;
+    if (!llmModel || !embeddingModel || alreadyExtension) return;
 
     try {
       const result = await queryExtension({
         chatBg: extensionBg,
         query,
         histories,
-        model: extensionModel.model
+        llmModel,
+        embeddingModel
       });
       if (result.extensionQueries?.length === 0) return;
       return result;
