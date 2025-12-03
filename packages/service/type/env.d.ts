@@ -3,6 +3,7 @@ declare global {
     interface ProcessEnv {
       LOG_DEPTH: string;
       DB_MAX_LINK: string;
+      NL2SQL_RESULT_LIMIT?: string;
       FILE_TOKEN_KEY: string;
       AES256_SECRET_KEY: string;
       ROOT_KEY: string;

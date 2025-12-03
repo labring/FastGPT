@@ -11,11 +11,7 @@ import type {
   SqlResultWithDatasetId
 } from '@fastgpt/global/core/dataset/database/api';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getEmbeddingModel,
-  getLLMModel,
-  getRerankModel
-} from '../../../ai/model';
+import { getEmbeddingModel, getLLMModel, getRerankModel } from '../../../ai/model';
 import {
   deepRagSearch,
   defaultSearchDatasetData,
@@ -96,7 +92,7 @@ export async function dispatchDatasetSearch(
       datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
-
+  const resultLimitNumber = Number(process.env.NL2SQL_RESULT_LIMIT || 50);
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
   }
@@ -219,17 +215,17 @@ export async function dispatchDatasetSearch(
             totalEmbeddingTokens += singleResult.tokens;
             if (Object.keys(singleResult.schema).length > 0) {
               const key = sqlLLM.requestAuth || undefined;
-              const url =  sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
+              const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
               const singleSqlResult = await generateAndExecuteSQL({
                 datasetId,
                 query: userChatInput,
                 schema: singleResult.schema,
                 teamId,
-                limit,
+                limit: resultLimitNumber,
                 generate_sql_llm: {
                   model: sqlLLM.model,
                   api_key: key,
-                  base_url:url
+                  base_url: url
                 },
                 evaluate_sql_llm: {
                   model: sqlLLM.model,
