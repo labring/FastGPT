@@ -4,6 +4,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const userCollectionName = 'users';
 
@@ -45,6 +46,10 @@ const UserSchema = new Schema({
   timezone: {
     type: String,
     default: 'Asia/Shanghai'
+  },
+  language: {
+    type: String,
+    default: LangEnum.zh_CN
   },
   lastLoginTmbId: {
     type: Schema.Types.ObjectId,
