@@ -4,22 +4,21 @@ import { Box, Flex, Button, ModalBody } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import dayjs from 'dayjs';
-import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getDiscountCouponList, getBillDetail } from '@/web/support/wallet/bill/api';
+import { getDiscountCouponList } from '@/web/support/wallet/bill/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRouter } from 'next/router';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import BillDetailModal from '@/pageComponents/account/bill/BillDetailModal';
-import type { BillDetailResponse } from '@fastgpt/global/support/wallet/bill/api';
+import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/discountCoupon/constants';
 
 const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
   const router = useRouter();
   const isZh = i18n.language === 'zh-CN';
-  const [billDetail, setBillDetail] = useState<BillDetailResponse>();
+  const [billId, setBillId] = useState<string>();
 
   const { data: coupons = [], loading } = useRequest2(
     async () => {
@@ -29,18 +28,6 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
     {
       manual: !userInfo?.team?.teamId,
       refreshDeps: [userInfo?.team?.teamId]
-    }
-  );
-
-  const { runAsync: handleViewBill, loading: isLoadingBill } = useRequest2(
-    async (billId: string) => {
-      const bill = await getBillDetail(billId);
-      if (bill) {
-        setBillDetail(bill);
-      }
-    },
-    {
-      manual: true
     }
   );
 
@@ -213,8 +200,8 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           cursor={coupon.billId ? 'pointer' : 'not-allowed'}
                           color={coupon.billId ? 'primary.600' : 'myGray.500'}
                           onClick={() => {
-                            if (coupon.billId && !isLoadingBill) {
-                              handleViewBill(coupon.billId);
+                            if (coupon.billId) {
+                              setBillId(coupon.billId);
                             }
                           }}
                         >
@@ -236,9 +223,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </Flex>
       </ModalBody>
-      {!!billDetail && (
-        <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
-      )}
+      {!!billId && <BillDetailModal billId={billId} onClose={() => setBillId(undefined)} />}
     </MyModal>
   );
 };

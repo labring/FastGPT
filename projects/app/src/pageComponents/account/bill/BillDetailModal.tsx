@@ -11,15 +11,21 @@ import {
 } from '@fastgpt/global/support/wallet/bill/constants';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
-import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getBillDetail } from '@/web/support/wallet/bill/api';
 
-interface BillDetailModalProps {
-  bill: BillSchemaType & { couponName?: string };
+type BillDetailModalProps = {
+  billId: string;
   onClose: () => void;
-}
+};
 
-const BillDetailModal = ({ bill, onClose }: BillDetailModalProps) => {
+const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
   const { t } = useTranslation();
+
+  const { data: bill, loading } = useRequest2(() => getBillDetail(billId), {
+    refreshDeps: [billId],
+    manual: false
+  });
 
   return (
     <MyModal
@@ -28,77 +34,82 @@ const BillDetailModal = ({ bill, onClose }: BillDetailModalProps) => {
       iconSrc="/imgs/modal/bill.svg"
       title={t('account_bill:bill_detail')}
       maxW={['90vw', '700px']}
+      isLoading={loading}
     >
-      <ModalBody>
+      <ModalBody minH={400}>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('account_bill:order_number')}:</FormLabel>
-          <Box>{bill.orderId}</Box>
+          <Box>{bill?.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('account_bill:generation_time')}:</FormLabel>
-          <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
+          <Box>{dayjs(bill?.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_type')}:</FormLabel>
-          <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
-        </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:status')}:</FormLabel>
-          <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
-        </Flex>
-        {!!bill.couponName && (
+        {bill?.type && (
+          <Flex alignItems={'center'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:order_type')}:</FormLabel>
+            <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
+          </Flex>
+        )}
+        {bill?.status && (
+          <Flex alignItems={'center'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:status')}:</FormLabel>
+            <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
+          </Flex>
+        )}
+        {!!bill?.couponName && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_info:discount_coupon')}:</FormLabel>
-            <Box>{t(bill.couponName as any)}</Box>
+            <Box>{t(bill?.couponName as any)}</Box>
           </Flex>
         )}
-        {!!bill.metadata?.payWay && (
+        {!!bill?.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:payment_method')}:</FormLabel>
-            <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
+            <Box>{t(billPayWayMap[bill?.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
-        {!!bill.price && (
+        {!!bill?.price && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
-            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
+            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill?.price) })}</Box>
           </Flex>
         )}
-        {bill.metadata && !!bill.price && (
+        {bill?.metadata && !!bill?.price && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
-            {bill.metadata.payWay === 'balance' ? (
+            {bill?.metadata.payWay === 'balance' ? (
               t('user:bill.not_need_invoice')
             ) : (
               <Box>{bill.hasInvoice ? t('account_bill:yes') : t('account_bill:no')}</Box>
             )}
           </Flex>
         )}
-        {!!bill.metadata?.subMode && (
+        {!!bill?.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_period')}:</FormLabel>
             <Box>{t(subModeMap[bill.metadata.subMode]?.label as any)}</Box>
           </Flex>
         )}
-        {!!bill.metadata?.standSubLevel && (
+        {!!bill?.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_package')}:</FormLabel>
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
           </Flex>
         )}
-        {bill.metadata?.month !== undefined && (
+        {bill?.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
             <Box>{`${bill.metadata?.month} ${t('account_bill:month')}`}</Box>
           </Flex>
         )}
-        {bill.metadata?.datasetSize !== undefined && (
+        {bill?.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_dataset_size')}:</FormLabel>
             <Box>{bill.metadata?.datasetSize}</Box>
           </Flex>
         )}
-        {bill.metadata?.extraPoints !== undefined && (
+        {bill?.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_ai_points')}:</FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>

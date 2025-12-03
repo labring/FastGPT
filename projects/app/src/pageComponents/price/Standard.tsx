@@ -11,11 +11,11 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import { getDiscountCouponList, postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
   DiscountCouponStatusEnum,
   DiscountCouponTypeEnum
-} from '@fastgpt/global/support/wallet/sub/coupon/constants';
-import MyBox from '@fastgpt/web/components/common/MyBox';
+} from '@fastgpt/global/support/wallet/discountCoupon/constants';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -59,13 +59,13 @@ const Standard = ({
     }
   );
 
-  const matchedCoupons = useMemo(() => {
+  const matchedCoupon = useMemo(() => {
     const targetType =
       selectSubMode === SubModeEnum.month
         ? DiscountCouponTypeEnum.monthStandardDiscount70
         : DiscountCouponTypeEnum.yearStandardDiscount90;
 
-    return coupons.filter(
+    return coupons.find(
       (coupon) => coupon.type === targetType && coupon.status === DiscountCouponStatusEnum.active
     );
   }, [coupons, selectSubMode]);
@@ -229,22 +229,24 @@ const Standard = ({
                       color={'myGray.900'}
                     >
                       ￥
-                      {matchedCoupons[0]?.discount
-                        ? (matchedCoupons[0].discount * item.price).toFixed(1)
+                      {matchedCoupon?.discount && item.price > 0
+                        ? (matchedCoupon.discount * item.price).toFixed(1)
                         : item.price}
                     </MyBox>
                   )}
-                  {item.level !== StandardSubLevelEnum.free && matchedCoupons.length > 0 && (
-                    <Box
-                      h={4}
-                      color={'primary.600'}
-                      fontSize={'18px'}
-                      fontWeight={'500'}
-                      whiteSpace={'nowrap'}
-                    >
-                      {`${(matchedCoupons[0].discount * 10).toFixed(0)} 折`}
-                    </Box>
-                  )}
+                  {item.level !== StandardSubLevelEnum.free &&
+                    item.level !== StandardSubLevelEnum.custom &&
+                    matchedCoupon && (
+                      <Box
+                        h={4}
+                        color={'primary.600'}
+                        fontSize={'18px'}
+                        fontWeight={'500'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
+                      </Box>
+                    )}
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {t(item.desc as any, { title: feConfigs?.systemTitle })}
@@ -300,7 +302,7 @@ const Standard = ({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
                             subMode: selectSubMode,
-                            discountCouponId: matchedCoupons[0]?._id
+                            discountCouponId: matchedCoupon?._id
                           });
                         }}
                       >
@@ -322,7 +324,7 @@ const Standard = ({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
                             subMode: selectSubMode,
-                            discountCouponId: matchedCoupons[0]?._id
+                            discountCouponId: matchedCoupon?._id
                           });
                         }}
                       >
@@ -343,7 +345,7 @@ const Standard = ({
                           type: BillTypeEnum.standSubPlan,
                           level: item.level,
                           subMode: selectSubMode,
-                          discountCouponId: matchedCoupons[0]?._id
+                          discountCouponId: matchedCoupon?._id
                         });
                       }}
                     >

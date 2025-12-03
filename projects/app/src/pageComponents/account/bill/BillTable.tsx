@@ -15,8 +15,7 @@ import {
   getBills,
   checkBalancePayResult,
   cancelBill,
-  putUpdatePayment,
-  getBillDetail
+  putUpdatePayment
 } from '@/web/support/wallet/bill/api';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
@@ -37,13 +36,12 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import BillDetailModal from './BillDetailModal';
-import type { BillDetailResponse } from '@fastgpt/global/support/wallet/bill/api';
 
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
-  const [billDetail, setBillDetail] = useState<BillDetailResponse>();
+  const [billDetailId, setBillDetailId] = useState<string>();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   const billTypeList = useMemo(
@@ -130,18 +128,6 @@ const BillTable = () => {
     }
   );
 
-  const { runAsync: handleViewDetail, loading: isLoadingDetail } = useRequest2(
-    async (billId: string) => {
-      const detail = await getBillDetail(billId);
-      if (detail) {
-        setBillDetail(detail);
-      }
-    },
-    {
-      manual: true
-    }
-  );
-
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'100%'}>
       <TableContainer flex={'1 0 0'} h={0} overflowY={'auto'}>
@@ -203,8 +189,7 @@ const BillTable = () => {
                   <Button
                     variant={'whiteBase'}
                     size={'sm'}
-                    isLoading={isLoadingDetail}
-                    onClick={() => handleViewDetail(item._id)}
+                    onClick={() => setBillDetailId(item._id)}
                   >
                     {t('account_bill:detail')}
                   </Button>
@@ -233,8 +218,8 @@ const BillTable = () => {
           <Pagination />
         </Flex>
       )}
-      {!!billDetail && (
-        <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
+      {!!billDetailId && (
+        <BillDetailModal billId={billDetailId} onClose={() => setBillDetailId(undefined)} />
       )}
       {!!qrPayData && (
         <QRCodePayModal
