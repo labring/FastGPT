@@ -6,6 +6,7 @@ export const CountLimitConfigType = z.record(
   z.object({ maxCount: z.number() })
 );
 
+// 只会发送 n 次通知，如需自动发送，需要主动清除记录
 export const CountLimitConfig = {
   [CountLimitTypeEnum.enum['notice:30PercentPoints']]: {
     maxCount: 3
