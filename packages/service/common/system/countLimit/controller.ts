@@ -30,6 +30,7 @@ export const updateCountLimit = async ({
         session
       }
     ).lean();
+
     if (!countLimit) {
       // do not exist, create a new one
       await MongoCountLimit.create(
@@ -48,7 +49,8 @@ export const updateCountLimit = async ({
         remain: maxCount - update
       };
     }
-    if (countLimit && countLimit.count >= maxCount) {
+
+    if (countLimit.count >= maxCount) {
       return Promise.reject(`Max Count Reached, type: ${type}, key: ${key}`);
     }
 
