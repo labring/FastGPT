@@ -4,9 +4,6 @@
 
 # FastGPT
 
-[![Run in Smithery](https://smithery.ai/badge/skills/labring)](https://smithery.ai/skills?ns=labring&utm_source=github&utm_medium=badge)
-
-
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
@@ -16,6 +13,13 @@
 FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、模型调用等能力，同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的应用场景！
 
 </div>
+
+<div align="center" style="margin-bottom: 10px;">
+  <a href="https://smithery.ai/skills?ns=labring&utm_source=github&utm_medium=badge">
+    <img height="21" src="https://smithery.ai/badge/skills/labring" alt="cloud">
+  </a>
+</div>
+
 
 <p align="center">
   <a href="https://fastgpt.io/">
