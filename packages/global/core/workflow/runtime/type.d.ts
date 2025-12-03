@@ -181,7 +181,7 @@ export type DispatchNodeResponseType = {
   reRankInputTokens?: number;
   searchUsingReRank?: boolean;
   queryExtensionResult?: {
-    model?: string;
+    model: string;
     inputTokens: number;
     outputTokens: number;
     query: string;
