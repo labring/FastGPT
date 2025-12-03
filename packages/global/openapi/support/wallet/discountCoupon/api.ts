@@ -5,7 +5,6 @@ import {
   DiscountCouponTypeEnum
 } from '../../../../support/wallet/discountCoupon/constants';
 
-// 优惠券列表项 Schema
 export const DiscountCouponItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '优惠券 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
@@ -24,10 +23,19 @@ export const DiscountCouponItemSchema = z.object({
   }),
   createTime: z.coerce.date().meta({ description: '创建时间' })
 });
-
-// 优惠券列表响应 Schema
 export const DiscountCouponListResponseSchema = z.array(DiscountCouponItemSchema);
 
-// 类型导出
 export type DiscountCouponItemType = z.infer<typeof DiscountCouponItemSchema>;
 export type DiscountCouponListResponseType = z.infer<typeof DiscountCouponListResponseSchema>;
+
+export const DiscountCouponSchema = z.object({
+  _id: ObjectIdSchema.meta({ description: '优惠券 ID' }),
+  teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
+  type: z.nativeEnum(DiscountCouponTypeEnum).meta({ description: '优惠券类型' }),
+  startTime: z.coerce.date().optional().meta({ description: '生效时间' }),
+  expiredTime: z.coerce.date().meta({ description: '过期时间' }),
+  usedAt: z.coerce.date().optional().meta({ description: '使用时间' }),
+  createTime: z.coerce.date().meta({ description: '创建时间' })
+});
+
+export type DiscountCouponSchemaType = z.infer<typeof DiscountCouponSchema>;
