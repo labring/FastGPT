@@ -119,7 +119,7 @@ describe('useTextCosine', () => {
       });
 
       expect(mockGetVectorsByText).toHaveBeenCalledWith({
-        embeddingModel: expect.anything(),
+        model: expect.anything(),
         input: ['test query', 'candidate'],
         type: 'query'
       });
