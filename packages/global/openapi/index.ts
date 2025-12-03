@@ -3,6 +3,7 @@ import { ChatPath } from './core/chat';
 import { ApiKeyPath } from './support/openapi';
 import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
+import { WalletPath } from './support/wallet';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -14,7 +15,8 @@ export const openAPIDocument = createDocument({
   paths: {
     ...ChatPath,
     ...ApiKeyPath,
-    ...PluginPath
+    ...PluginPath,
+    ...WalletPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
@@ -33,6 +35,10 @@ export const openAPIDocument = createDocument({
     {
       name: 'ApiKey',
       tags: [TagsMap.apiKey]
+    },
+    {
+      name: '订单 & 支付',
+      tags: [TagsMap.wallet]
     }
   ]
 });

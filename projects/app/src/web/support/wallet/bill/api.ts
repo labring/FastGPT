@@ -10,7 +10,7 @@ import type {
 import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { BillStatusEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
-import type { DiscountCouponListResponse } from '@fastgpt/global/support/wallet/discountCoupon/api';
+import type { DiscountCouponListResponseType } from '@fastgpt/global/openapi/support/wallet/discountCoupon/api';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export const getBills = (
@@ -46,4 +46,4 @@ export const getBillDetail = (billId: string) =>
   GET<BillDetailResponse>(`/proApi/support/wallet/bill/detail`, { billId });
 
 export const getDiscountCouponList = (teamId: string) =>
-  GET<DiscountCouponListResponse>(`/proApi/support/wallet/discountCoupon/list`, { teamId });
+  GET<DiscountCouponListResponseType>(`/proApi/support/wallet/discountCoupon/list`, { teamId });
