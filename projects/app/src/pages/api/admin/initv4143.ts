@@ -169,7 +169,7 @@ async function migrateDatasetCollection({
     const uploadStartTime = Date.now();
     let key: string;
     try {
-      key = await getS3DatasetSource().uploadDatasetFileByBuffer({
+      key = await getS3DatasetSource().upload({
         buffer,
         datasetId,
         filename: name
