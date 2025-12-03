@@ -18,6 +18,10 @@ import {
   SearchDatabaseData,
   generateAndExecuteSQL
 } from '../../../dataset/search/controller';
+import {
+  getMetadataWithValueExamples,
+  queryByNL
+} from '../../../dataset/database/dative/client/dativeApiServer';
 import { calculateDynamicLimit } from '../../../dataset/search/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -34,6 +38,7 @@ import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
+import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -136,11 +141,16 @@ export async function dispatchDatasetSearch(
     if (datasetIds.length === 0) {
       return emptyResult;
     }
-
-    // get vector
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
+    const useVectorModelDataset = datasets.find(
+      (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
+    // get vector
+    const vectorModel = useVectorModelDataset
+      ? getEmbeddingModel(
+          (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
+            ?.vectorModel
+        )
+      : undefined;
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);
 
@@ -150,10 +160,14 @@ export async function dispatchDatasetSearch(
     );
 
     const databaseDatasetIds = datasetIds.filter(
-      (_, index) => datasetDetails[index]?.type === DatasetTypeEnum.database
+      (_, index) =>
+        datasetDetails[index]?.type === DatasetTypeEnum.database ||
+        datasetDetails[index]?.type === DatasetTypeEnum.structureDocument
     );
     const commonDatasetIds = datasetIds.filter(
-      (_, index) => datasetDetails[index]?.type !== DatasetTypeEnum.database
+      (_, index) =>
+        datasetDetails[index]?.type !== DatasetTypeEnum.database &&
+        datasetDetails[index]?.type !== DatasetTypeEnum.structureDocument
     );
 
     // Results from different search types
@@ -206,56 +220,100 @@ export async function dispatchDatasetSearch(
         calculatedLimit: dynamicLimit
       });
 
-      // Process each database dataset sequentially
+      // Process each database/structure dataset sequentially
       await Promise.all(
-        datasetIds.map(async (datasetId) => {
-          const singleResult = await SearchDatabaseData({
-            histories,
-            teamId,
-            queries: [userChatInput],
-            model: vectorModel.model,
-            limit: dynamicLimit,
-            datasetIds: [datasetId]
-          });
-          if (singleResult) {
-            totalEmbeddingTokens += singleResult.tokens;
-            if (Object.keys(singleResult.schema).length > 0) {
-              const key = sqlLLM.requestAuth || undefined;
-              const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
-              const singleSqlResult = await generateAndExecuteSQL({
-                datasetId,
-                query: userChatInput,
-                schema: singleResult.schema,
-                teamId,
-                limit,
-                generate_sql_llm: {
-                  model: sqlLLM.model,
-                  api_key: key,
-                  base_url: url
-                },
-                evaluate_sql_llm: {
-                  model: sqlLLM.model,
-                  api_key: key,
-                  base_url: url
-                }
-              });
+        databaseDatasetIds.map(async (datasetId) => {
+          const datasetDetail = datasetDetails.find((d) => String(d?._id) === datasetId);
+          const datasetType = datasetDetail?.type;
 
-              if (singleSqlResult) {
-                // Collect for billing and response data
-                sqlResult.push({
-                  ...singleSqlResult,
-                  datasetId
-                } as SqlResultWithDatasetId);
-                // convertSqlResultsToChunks
-                searchRes.push(await convertSqlResultsToChunks(singleSqlResult, datasetId));
+          // Common SQL generation config
+          const key = sqlLLM.requestAuth || undefined;
+          const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
+
+          let singleSqlResult: SqlGenerationResponse | null = null;
+
+          // Handle different dataset types
+          if (datasetType === DatasetTypeEnum.database) {
+            // Database type: vector search + SQL generation
+            const singleResult = await SearchDatabaseData({
+              histories,
+              teamId,
+              queries: [userChatInput],
+              model: vectorModel!.model,
+              limit: dynamicLimit,
+              datasetIds: [datasetId]
+            });
+
+            if (singleResult) {
+              totalEmbeddingTokens += singleResult.tokens;
+              if (Object.keys(singleResult.schema).length > 0) {
+                singleSqlResult = await generateAndExecuteSQL({
+                  datasetId,
+                  query: userChatInput,
+                  schema: singleResult.schema,
+                  teamId,
+                  limit,
+                  generate_sql_llm: {
+                    model: sqlLLM.model,
+                    api_key: key,
+                    base_url: url
+                  },
+                  evaluate_sql_llm: {
+                    model: sqlLLM.model,
+                    api_key: key,
+                    base_url: url
+                  }
+                });
               } else {
-                addLog.warn('Dataset Search - SQL Generation Failed', { datasetId });
+                addLog.warn('Dataset Search - No schema found', { datasetId });
               }
             } else {
-              addLog.warn('Dataset Search - No schema found', { datasetId });
+              addLog.warn('Dataset Search - Database search failed', { datasetId });
             }
+          } else if (datasetType === DatasetTypeEnum.structureDocument) {
+            // Structure document type: get metadata + SQL generation
+            try {
+              const metadata = await getMetadataWithValueExamples(getDuckDBStoreConfig(datasetId));
+
+              if (metadata.tables && metadata.tables.length > 0) {
+                singleSqlResult = await queryByNL({
+                  source_config: getDuckDBStoreConfig(datasetId),
+                  generate_sql_llm: {
+                    model: sqlLLM.model,
+                    api_key: key,
+                    base_url: url
+                  },
+                  evaluate_sql_llm: {
+                    model: sqlLLM.model,
+                    api_key: key,
+                    base_url: url
+                  },
+                  query: userChatInput,
+                  result_num_limit: 50,
+                  retrieved_metadata: metadata
+                });
+              } else {
+                addLog.warn('Dataset Search - No table metadata found', { datasetId });
+              }
+            } catch (error) {
+              addLog.error('Dataset Search - Structure document search failed', {
+                datasetId,
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+
+          // Collect SQL result
+          if (singleSqlResult) {
+            // Collect for billing and response data
+            sqlResult.push({
+              ...singleSqlResult,
+              datasetId
+            } as SqlResultWithDatasetId);
+            // convertSqlResultsToChunks
+            searchRes.push(await convertSqlResultsToChunks(singleSqlResult, datasetId));
           } else {
-            addLog.warn('Dataset Search - Database search failed', { datasetId });
+            addLog.warn('Dataset Search - SQL Generation Failed', { datasetId, datasetType });
           }
         })
       );
@@ -266,7 +324,7 @@ export async function dispatchDatasetSearch(
         teamId,
         reRankQuery: userChatInput,
         queries: [userChatInput],
-        model: vectorModel.model,
+        model: vectorModel!.model,
         similarity,
         limit,
         datasetIds: commonDatasetIds,
@@ -318,18 +376,20 @@ export async function dispatchDatasetSearch(
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
     // vector
-    const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
-      formatModelChars2Points({
-        model: vectorModel.model,
-        inputTokens: embeddingTokens,
-        modelType: ModelTypeEnum.embedding
+    if (vectorModel) {
+      const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
+        formatModelChars2Points({
+          model: vectorModel!.model,
+          inputTokens: embeddingTokens,
+          modelType: ModelTypeEnum.embedding
+        });
+      nodeDispatchUsages.push({
+        totalPoints: embeddingTotalPoints,
+        moduleName: node.name,
+        model: embeddingModelName,
+        inputTokens: embeddingTokens
       });
-    nodeDispatchUsages.push({
-      totalPoints: embeddingTotalPoints,
-      moduleName: node.name,
-      model: embeddingModelName,
-      inputTokens: embeddingTokens
-    });
+    }
     // Rerank
     const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
       model: rerankModelData?.model,
@@ -397,9 +457,9 @@ export async function dispatchDatasetSearch(
     (() => {
       if (sqlResult.length > 0) {
         let totalSqlPoints = 0;
-        sqlResult.forEach((result, index) => {
+        sqlResult.forEach((result) => {
           const { totalPoints, modelName } = formatModelChars2Points({
-            model: vectorModel.model, // Use the same model as vector search
+            model: generateSqlModel!,
             inputTokens: result.input_tokens,
             outputTokens: result.output_tokens,
             modelType: ModelTypeEnum.llm
@@ -434,7 +494,7 @@ export async function dispatchDatasetSearch(
     const responseData: DispatchNodeResponseType & { totalPoints: number } = {
       totalPoints,
       query: userChatInput,
-      embeddingModel: vectorModel.name,
+      embeddingModel: vectorModel?.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? similarity : undefined,
       limit,

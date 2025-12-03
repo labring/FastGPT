@@ -115,13 +115,17 @@ const DatasetSchema = new Schema({
   },
   vectorModel: {
     type: String,
-    required: true,
+    required: function (this: any) {
+      return this.type !== DatasetTypeEnum.structureDocument;
+    },
     default: 'text-embedding-3-small'
   },
   agentModel: {
     type: String,
     required: function (this: any) {
-      return this.type !== DatasetTypeEnum.database;
+      return (
+        this.type !== DatasetTypeEnum.database && this.type !== DatasetTypeEnum.structureDocument
+      );
     },
     default: 'gpt-4o-mini'
   },

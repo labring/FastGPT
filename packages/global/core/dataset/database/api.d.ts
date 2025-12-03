@@ -1,5 +1,6 @@
 import type { ColumnSchemaType, TableSchemaType, DatabaseConfig } from '../type';
 import { ConstraintSchemaType, ForeignKeySchemaType } from '../type';
+import type { DatabaseTypeEnum } from '../constants';
 /*-------API Request & Response Types-------*/
 
 export type CheckConnectionBody = {
@@ -112,22 +113,60 @@ export type DativeTable = {
   score: number;
 };
 
-export type DativeSchema = {
+export type DatabaseMetadata = {
   name: string; // databaseName
   comments?: string;
   tables: Array<DativeTable>;
 };
 
+export type DativeDBConfigType = {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  db_name: string;
+};
+
+export type MysqlConfigType = DativeDBConfigType & {
+  type: DatabaseTypeEnum.mysql;
+  conn_pool_size?: number;
+};
+
+export type PostgresqlConfigType = DativeDBConfigType & {
+  type: DatabaseTypeEnum.postgresql;
+  ns_name?: string;
+  conn_pool_size?: number;
+};
+
+export type MssqlConfigType = DativeDBConfigType & { type: DatabaseTypeEnum.mssql };
+
+export type SqliteConfigType = DativeDBConfigType & {
+  type: DatabaseTypeEnum.sqlite;
+  db_path?: string;
+};
+
+export type DuckDBMongoStoreType = {
+  type: 'mongo';
+  kid: string;
+  bucket: string;
+};
+
+export type DuckDBStoreConfigType = {
+  type: DatabaseTypeEnum.duckdb;
+  store: DuckDBMongoStoreType;
+};
+
+// databse source config type
+export type DativeSourceConfigType =
+  | MysqlConfigType
+  | DuckDBStoreConfigType
+  | PostgresqlConfigType
+  | MssqlConfigType
+  | SqliteConfigType;
+
 // SQL Generation types
 export type SqlGenerationRequest = {
-  source_config: {
-    type: string;
-    host: string;
-    port: number;
-    username: string;
-    password: string;
-    db_name: string;
-  };
+  source_config: DativeSourceConfigType;
   generate_sql_llm: {
     model: string;
     api_key?: string;
@@ -140,7 +179,7 @@ export type SqlGenerationRequest = {
   };
   query: string;
   result_num_limit: number;
-  retrieved_metadata?: DativeSchema;
+  retrieved_metadata?: DatabaseMetadata;
   evidence?: string;
 };
 
@@ -156,3 +195,57 @@ export type SqlGenerationResponse = {
 };
 
 export type SqlResultWithDatasetId = SqlGenerationResponse & { datasetId: string };
+
+/*-------Excel Upload Types-------*/
+export type DativeExcelUploadResponse = {
+  msg: string;
+  file_id: string;
+  filename: string;
+  rows: number;
+  cols: number;
+};
+
+export interface ExcelUploadSourceConfig {
+  type: string;
+  bucket: BucketNameEnum | string;
+  kid: string;
+  metadata?: {
+    teamId: string;
+    uid: string;
+    [key: string]: any;
+  };
+}
+
+export interface ExcelUploadRequest {
+  fileStream: Readable;
+  contentType: string;
+  sourceConfig: ExcelUploadSourceConfig;
+  // Optional request timeout in milliseconds (default: 300000)
+  timeout?: number;
+}
+
+/*-------Preview Data Types-------*/
+export type PreviewDataQuery = {
+  collectionId: string;
+};
+
+export type PreviewDataResponse = {
+  cols: string[];
+  data: Array<Array<any>>;
+  rowCount: number;
+  columnCount: number;
+};
+
+/*-------SQL Query Types-------*/
+export type SqlQueryRequest = {
+  source_config: DativeSourceConfigType;
+  sql: string;
+};
+
+export type SqlQueryResponse = {
+  cols: string[];
+  data: Array<Array<any>>;
+};
+
+/*-------Database Metadata Types-------*/
+export type DatabaseMetadataRequest = DativeSourceConfigType;

@@ -41,9 +41,10 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Get dataset type to check if it's database
+  // Get dataset type to check if it's database or structureDocument
   const dataset = await MongoDataset.findById(datasetId).select('type').lean();
   const isDatabaseDataset = dataset?.type === DatasetTypeEnum.database;
+  const isStructureDocument = dataset?.type === DatasetTypeEnum.structureDocument;
 
   const match = {
     teamId: new Types.ObjectId(teamId),
@@ -76,7 +77,8 @@ async function handler(
     rawLink: 1,
     tags: 1,
     externalFileId: 1,
-    ...(isDatabaseDataset ? { tableSchema: 1 } : {})
+    ...(isDatabaseDataset ? { tableSchema: 1 } : {}),
+    ...(isStructureDocument ? { metadata: 1 } : {})
   };
 
   // not count data amount
@@ -107,6 +109,9 @@ async function handler(
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
+            : {}),
+          ...(isStructureDocument && item.metadata
+            ? { rows: item.metadata.rows, cols: item.metadata.cols }
             : {})
         }))
       ),
@@ -187,6 +192,9 @@ async function handler(
       permission,
       ...(isDatabaseDataset && item.tableSchema
         ? { tableSchemaDescription: item.tableSchema.description }
+        : {}),
+      ...(isStructureDocument && item.metadata
+        ? { rowCount: item.metadata.rows, columnCount: item.metadata.cols }
         : {})
     }))
   );

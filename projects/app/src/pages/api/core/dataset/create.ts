@@ -60,11 +60,14 @@ async function handler(
   // check model valid
   const vectorModelStore = getEmbeddingModel(vectorModel);
   const agentModelStore = getLLMModel(agentModel);
-  if (!vectorModelStore) {
+
+  const skipVecModelCheckTypes = new Set([DatasetTypeEnum.structureDocument]);
+  const skipLMCheckTypes = new Set([DatasetTypeEnum.database, DatasetTypeEnum.structureDocument]);
+
+  if (!skipVecModelCheckTypes.has(type) && !vectorModelStore) {
     return Promise.reject(`System not embedding model`);
   }
-  if (!agentModelStore && type !== DatasetTypeEnum.database) {
-    // database type not check llm model
+  if (!skipLMCheckTypes.has(type) && !agentModelStore) {
     return Promise.reject(`System not llm model`);
   }
 
@@ -80,7 +83,7 @@ async function handler(
           intro,
           teamId,
           tmbId,
-          vectorModel,
+          ...(!skipVecModelCheckTypes.has(type) && { vectorModel }),
           agentModel,
           vlmModel,
           avatar,

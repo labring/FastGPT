@@ -47,14 +47,16 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import type {
   DativeForeignKey,
+  DativeSourceConfigType,
   DativeTable,
   DativeTableColumns,
   SqlGenerationRequest,
   SqlGenerationResponse
 } from '@fastgpt/global/core/dataset/database/api';
 import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
+import { queryByNL } from '../database/dative/client/dativeApiServer';
 
-export const dativeUrl = process.env.DATIVE_BASE_URL;
+export const dativeUrl = process.env.DATIVE_BASE_URL || '';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -1261,7 +1263,7 @@ const mergeAndGetSchema = async ({
   return schema;
 };
 
-// Generate SQL and execute query with Dative Plugin
+// Generate SQL and execute query (Schema Embedding + SQL Generation mode)
 export const generateAndExecuteSQL = async ({
   datasetId,
   query,
@@ -1378,7 +1380,7 @@ export const generateAndExecuteSQL = async ({
       username: dbConfig.user,
       password: dbConfig.password,
       db_name: dbConfig.database
-    },
+    } as DativeSourceConfigType,
     generate_sql_llm,
     evaluate_sql_llm,
     query,
@@ -1389,32 +1391,12 @@ export const generateAndExecuteSQL = async ({
       tables: retrievedMetadata
     }
   };
-  let response: Response;
 
   try {
-    response = await fetch(`${dativeUrl}/api/v1/data_source/query_by_nl`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestPayload)
-    });
+    const result = await queryByNL(requestPayload);
+    return result;
   } catch (error: any) {
-    addLog.error('Error connecting to Dative service', error);
+    addLog.error('Error calling Dative queryByNL', error);
     return Promise.reject(DatabaseErrEnum.dativeServiceError);
   }
-  if (!response.ok) {
-    const errorText = await response.text();
-    addLog.error('[generateAndExecuteSQL]:', {
-      status: response.status,
-      statusText: response.statusText,
-      error: errorText
-    });
-    const detail = JSON.parse(errorText).detail?.error;
-
-    return Promise.reject(`dative error: ${detail ?? 'Request failed'}`);
-  }
-
-  const result: SqlGenerationResponse = await response.json();
-  return result;
 };

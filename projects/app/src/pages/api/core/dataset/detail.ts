@@ -7,6 +7,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Query = {
   id: string;
@@ -38,7 +39,10 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     status,
     errorMsg,
     permission,
-    vectorModel: getEmbeddingModel(dataset.vectorModel),
+    vectorModel:
+      dataset.type !== DatasetTypeEnum.structureDocument
+        ? getEmbeddingModel(dataset.vectorModel)
+        : undefined,
     agentModel: getLLMModel(dataset.agentModel),
     vlmModel: getVlmModel(dataset.vlmModel),
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
