@@ -249,7 +249,7 @@ export const LoginContainer = ({
         {children}
 
         {/* help link for login */}
-        {feConfigs?.concatMd && (
+        {/*{feConfigs?.concatMd && (
           <Box
             mt={[9, '6']}
             color={'primary.700'}
@@ -261,7 +261,7 @@ export const LoginContainer = ({
           >
             {t('common:support.user.login.can_not_login')}
           </Box>
-        )}
+        )}*/}
       </Flex>
 
       <CookiesModal />
