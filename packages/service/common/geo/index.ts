@@ -25,7 +25,10 @@ export function getGeoReader() {
   return reader;
 }
 
-export function getLocationFromIp(ip: string, locale: keyof I18nName) {
+export function getLocationFromIp(ip?: string, locale: keyof I18nName = 'zh') {
+  if (!ip) {
+    return privateOrOtherLocationName.country?.[locale];
+  }
   const reader = getGeoReader();
 
   let locationName = locationIpMap.get(ip);

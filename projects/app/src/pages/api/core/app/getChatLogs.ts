@@ -294,7 +294,7 @@ async function handler(
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
-    const region = ip ? getLocationFromIp(ip, locale) : undefined;
+    const region = getLocationFromIp(ip, locale);
 
     return {
       ...item,

@@ -400,7 +400,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
-    const region = doc.originIp ? getLocationFromIp(doc.originIp, locale) : 'Other';
+    const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,

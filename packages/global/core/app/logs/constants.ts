@@ -48,7 +48,7 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.POINTS, enable: false },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
   { key: AppLogKeysEnum.ERROR_COUNT, enable: false },
-  { key: AppLogKeysEnum.REGION, enable: false }
+  { key: AppLogKeysEnum.REGION, enable: true }
 ];
 
 export enum AppLogTimespanEnum {
