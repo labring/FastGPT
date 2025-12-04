@@ -1,5 +1,6 @@
 export const TagsMap = {
   /* Core */
+  helperBot: '辅助助手',
   // Agent - log
   appLog: 'Agent 日志',
   // Agent - common

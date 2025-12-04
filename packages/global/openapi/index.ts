@@ -55,6 +55,10 @@ export const openAPIDocument = createDocument({
     {
       name: '管理员-插件管理',
       tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
+    },
+    {
+      name: '系统接口',
+      tags: [TagsMap.helperBot]
     }
   ]
 });
