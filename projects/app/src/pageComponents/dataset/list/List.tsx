@@ -32,6 +32,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -276,14 +277,16 @@ function List() {
                     </HStack>
 
                     <HStack>
-                      {isPc && dataset.type !== DatasetTypeEnum.folder && (
-                        <HStack spacing={1} className="time">
-                          <Avatar src={vectorModelAvatar} w={'0.85rem'} />
-                          <Box color={'myGray.500'} fontSize={'mini'}>
-                            {dataset.vectorModel?.name}
-                          </Box>
-                        </HStack>
-                      )}
+                      {isPc &&
+                        dataset.type !== DatasetTypeEnum.folder &&
+                        dataset.type !== DatasetTypeEnum.structureDocument && (
+                          <HStack spacing={1} className="time">
+                            <Avatar src={vectorModelAvatar} w={'0.85rem'} />
+                            <Box color={'myGray.500'} fontSize={'mini'}>
+                              {dataset.vectorModel?.name}
+                            </Box>
+                          </HStack>
+                        )}
                       {(dataset.type === DatasetTypeEnum.folder
                         ? dataset.permission.hasManagePer
                         : dataset.permission.hasWritePer) && (
@@ -353,7 +356,7 @@ function List() {
                                 ]
                               },
                               ...(dataset.type != DatasetTypeEnum.folder &&
-                              dataset.type != DatasetTypeEnum.database
+                              !isDatabaseDataset(dataset.type)
                                 ? [
                                     {
                                       children: [

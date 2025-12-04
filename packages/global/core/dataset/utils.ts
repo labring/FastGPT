@@ -2,6 +2,10 @@ import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
+export function isDatabaseSource(sourceId?: string) {
+  return sourceId?.startsWith('sql');
+}
+
 export function getCollectionIcon({
   type = DatasetCollectionTypeEnum.file,
   name = '',
@@ -33,8 +37,8 @@ export function getSourceNameIcon({
   sourceId?: string;
 }) {
   try {
-    if (sourceId?.startsWith('sql')) {
-      return 'core/dataset/database'
+    if (isDatabaseSource(sourceId)) {
+      return 'core/dataset/databaseColor';
     }
     const fileIcon = getFileIcon(decodeURIComponent(sourceName.replace(/%/g, '%25')), '');
     if (fileIcon) {
@@ -43,7 +47,7 @@ export function getSourceNameIcon({
     if (strIsLink(sourceId)) {
       return 'common/linkBlue';
     }
-  } catch (error) { }
+  } catch (error) {}
 
   return 'file/fill/file';
 }

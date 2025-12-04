@@ -29,6 +29,7 @@ import dynamic from 'next/dynamic';
 import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
@@ -123,6 +124,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     vlmModel: showVlmModel
   } = DatasetTypeMap[datasetDetail.type]?.formConfig || {};
 
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
+
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
@@ -176,7 +179,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box fontSize={'mini'}>{datasetDetail._id}</Box>
         </Flex>
 
-        {!showVectorModel?.isHidden && (
+        {!showVectorModel?.isHidden && !isStructureDocument && (
           <Box mt={5} w={'100%'}>
             <Flex alignItems={'center'}>
               <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
@@ -185,7 +188,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               {!isDatabase && (
                 <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
                   <Box fontSize={'mini'}>
-                    {t('dataset:chunk_max_tokens')}: {vectorModel?.maxToken}
+                    {t('dataset:chunk_max_tokens')}: {vectorModel?.maxToken || 0}
                   </Box>
                 </MyTooltip>
               )}
@@ -269,7 +272,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Box>
         )}
 
-        {feConfigs?.isPlus && !isDatabase && (
+        {feConfigs?.isPlus && !isDatabaseDataset(datasetDetail?.type || '') && (
           <Flex alignItems={'center'} pt={5}>
             <FormLabel fontSize={'mini'} fontWeight={'500'}>
               {t('dataset:sync_schedule')}

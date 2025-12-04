@@ -22,7 +22,7 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { isEmpty } from 'lodash';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -149,7 +149,7 @@ export const WholeResponseContent = ({
   }, [activeModule.searchMode, activeModule.sqlResult, t]);
 
   const otherKnowledgeBaseDataList = useMemo(
-    () => (activeModule?.quoteList || []).filter((item) => !item.id.startsWith('sql')),
+    () => (activeModule?.quoteList || []).filter((item) => !isDatabaseSource(item.id)),
     [activeModule.quoteList]
   );
   const hasOtherKnowledgeBase = useMemo(
@@ -158,7 +158,7 @@ export const WholeResponseContent = ({
   );
 
   const databaseDataList = useMemo(
-    () => (activeModule?.quoteList || []).filter((item) => item.id.startsWith('sql')),
+    () => (activeModule?.quoteList || []).filter((item) => isDatabaseSource(item.id)),
     [activeModule.quoteList]
   );
   const hasDatabase = useMemo(() => databaseDataList.length > 0, [databaseDataList]);

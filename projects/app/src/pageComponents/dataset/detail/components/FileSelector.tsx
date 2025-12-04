@@ -24,14 +24,16 @@ const FileSelector = ({
   maxSize,
   FileTypeNode,
   autoFilterOverSize,
+  fileTipNode,
   ...props
 }: {
   fileType: string;
   selectFiles: SelectFileItemType[];
   setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
-  maxSize?: string;
+  maxSize?: number;
   FileTypeNode?: React.ReactNode;
+  fileTipNode?: React.ReactNode;
   autoFilterOverSize?: boolean;
 } & FlexProps) => {
   const { t } = useTranslation();
@@ -40,7 +42,7 @@ const FileSelector = ({
   const { feConfigs } = useSystemStore();
 
   const systemMaxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
-  const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
+  const displayMaxSize = maxSize ? formatFileSize(maxSize) : formatFileSize(systemMaxSize);
   const formatMaxCount = feConfigs.uploadFileMaxAmount
     ? Math.min(maxCount, feConfigs.uploadFileMaxAmount)
     : maxCount;
@@ -51,7 +53,7 @@ const FileSelector = ({
     maxCount: formatMaxCount,
     ...(autoFilterOverSize
       ? {
-          maxSize: systemMaxSize
+          maxSize: maxSize || systemMaxSize
         }
       : {})
   });
@@ -78,7 +80,18 @@ const FileSelector = ({
         size: formatFileSize(file.size)
       }));
 
-      const newFiles = [...fileList, ...selectFiles].slice(0, formatMaxCount);
+      // 过滤掉重复的文件（基于文件名、大小和最后修改时间）
+      const existingFilesKey = new Set(
+        selectFiles.map((f) => `${f.file.name}-${f.file.size}-${f.file.lastModified}`)
+      );
+      const uniqueNewFiles = fileList.filter(
+        (newFile) =>
+          !existingFilesKey.has(
+            `${newFile.file.name}-${newFile.file.size}-${newFile.file.lastModified}`
+          )
+      );
+
+      const newFiles = [...selectFiles, ...uniqueNewFiles].slice(0, formatMaxCount);
       setSelectFiles(newFiles);
     },
     [formatMaxCount, selectFiles, setSelectFiles]
@@ -215,10 +228,18 @@ const FileSelector = ({
               </Box>
             )}
             <Box color={'myGray.500'} fontSize={'xs'}>
-              {/* max count */}
-              {formatMaxCount && <>{t('file:support_max_count', { maxCount: formatMaxCount })} </>}
-              {/* max size */}
-              {t('file:support_max_size', { maxSize: displayMaxSize })}
+              {fileTipNode ? (
+                fileTipNode
+              ) : (
+                <>
+                  {/* max count */}
+                  {formatMaxCount && (
+                    <>{t('file:support_max_count', { maxCount: formatMaxCount })} </>
+                  )}
+                  {/* max size */}
+                  {t('file:support_max_size', { maxSize: displayMaxSize })}
+                </>
+              )}
             </Box>
           </>
 

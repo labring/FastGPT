@@ -164,10 +164,28 @@ const Dataset = () => {
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
                         {
-                          icon: 'core/dataset/databaseColor',
-                          label: t('dataset:enterprise_database'),
-                          description: t('dataset:enterprise_database_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                          icon: 'core/dataset/datasetDb',
+                          label: t('dataset:database'),
+                          description: t('dataset:file_database_desc'),
+                          menuList: [
+                            {
+                              children: [
+                                {
+                                  icon: 'core/dataset/fileDbColor',
+                                  label: t('dataset:file_database'),
+                                  description: t('dataset:file_database_desc'),
+                                  onClick: () =>
+                                    onSelectDatasetType(DatasetTypeEnum.structureDocument)
+                                },
+                                {
+                                  icon: 'core/dataset/databaseColor',
+                                  label: t('dataset:direct_database'),
+                                  description: t('dataset:enterprise_database_desc'),
+                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           icon: 'core/dataset/otherDataset',

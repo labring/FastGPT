@@ -106,16 +106,10 @@ export const DatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
       }
     }
   },
-  [DatasetTypeEnum.externalFile]: {
-    icon: 'core/dataset/externalDatasetOutline',
-    avatar: 'core/dataset/externalDatasetColor',
-    label: i18nT('dataset:external_file'),
-    collectionLabel: i18nT('common:File')
-  },
   [DatasetTypeEnum.structureDocument]: {
-    icon: 'core/dataset/databaseOutline',
-    avatar: 'core/dataset/databaseColor',
-    label: 'Structured Document',
+    icon: 'core/dataset/fileDb',
+    avatar: 'core/dataset/fileDbColor',
+    label: i18nT('dataset:file_database'),
     collectionLabel: i18nT('common:File'),
     formConfig: {
       agentModel: {
@@ -128,6 +122,12 @@ export const DatasetTypeMap: Record<`${DatasetTypeEnum}`, DatasetTypeConfig> = {
         isHidden: true
       }
     }
+  },
+  [DatasetTypeEnum.externalFile]: {
+    icon: 'core/dataset/externalDatasetOutline',
+    avatar: 'core/dataset/externalDatasetColor',
+    label: i18nT('dataset:external_file'),
+    collectionLabel: i18nT('common:File')
   }
 };
 
@@ -325,7 +325,7 @@ export const DatasetSearchModeMap = {
     value: DatasetSearchModeEnum.mixedRecall
   },
   [DatasetSearchModeEnum.database]: {
-    icon: 'core/dataset/database',
+    icon: 'core/dataset/databaseColor',
     title: i18nT('common:core.dataset.search.mode.database'),
     desc: i18nT('common:core.dataset.search.mode.database desc'),
     value: DatasetSearchModeEnum.database

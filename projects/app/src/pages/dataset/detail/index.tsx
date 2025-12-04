@@ -25,12 +25,14 @@ const CollectionCard = dynamic(
   () => import('@/pageComponents/dataset/detail/CollectionCard/index')
 );
 const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'));
+const FileDataCard = dynamic(() => import('@/pageComponents/dataset/detail/FileDataCard'));
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
 const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
 const Import = dynamic(() => import('@/pageComponents/dataset/detail/Import'));
 
 export enum TabEnum {
   dataCard = 'dataCard',
+  fileDataCard = 'fileDataCard',
   collectionCard = 'collectionCard',
   test = 'test',
   info = 'info',
@@ -80,13 +82,14 @@ const Detail = ({ datasetId, currentTab }: Props) => {
               )}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
               {currentTab === TabEnum.dataCard && <DataCard />}
+              {currentTab === TabEnum.fileDataCard && <FileDataCard />}
               {currentTab === TabEnum.import && <Import />}
             </Box>
           </Flex>
 
           {/* Slider */}
           <>
-            {currentTab === TabEnum.dataCard && (
+            {[TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab) && (
               <Flex {...sliderStyles} flex={'0 0 20rem'}>
                 <MetaDataCard datasetId={datasetId} />
               </Flex>
@@ -111,6 +114,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                   </CollectionPageContextProvider>
                 )}
                 {currentTab === TabEnum.dataCard && <DataCard />}
+                {currentTab === TabEnum.fileDataCard && <FileDataCard />}
                 {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
                 {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
                 {currentTab === TabEnum.import && <Import />}

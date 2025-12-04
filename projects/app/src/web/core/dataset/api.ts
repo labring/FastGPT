@@ -90,7 +90,7 @@ import type {
   DetectChangesResponse,
   CreateDatabaseCollectionsBody,
   DatabaseSearchTestBody,
-  CreateDatabaseCollectionsResponse
+  PreviewDataResponse
 } from '@fastgpt/global/core/dataset/database/api';
 import type { DatabaseCollectionsBody as GetConfigurationResponse } from '@fastgpt/global/core/dataset/database/api';
 import type {
@@ -397,3 +397,42 @@ export const postCheckDatabaseConnection = (data: CheckConnectionBody) => {
  * 更新知识库配置
  */
 export const updateDatasetConfig = (data: DatasetUpdateBody) => POST(`/core/dataset/update`, data);
+
+/**
+ * 创建结构化文档集合
+ */
+export const postCreateStructureCollection = ({
+  file,
+  datasetId,
+  percentListen
+}: {
+  file: File;
+  datasetId: string;
+  percentListen?: (percent: number) => void;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+
+  return POST<{ collectionId: string }>(
+    `/core/dataset/database/createStructureCollection?datasetId=${datasetId}`,
+    formData,
+    {
+      timeout: 600000,
+      onUploadProgress: (e) => {
+        if (!e.total) return;
+
+        const percent = Math.round((e.loaded / e.total) * 100);
+        percentListen?.(percent);
+      },
+      headers: {
+        'Content-Type': 'multipart/form-data; charset=utf-8'
+      }
+    }
+  );
+};
+
+/**
+ * 获取结构化文档集合预览数据
+ */
+export const getStructureCollectionPreview = (data: { collectionId: string }) =>
+  GET<PreviewDataResponse>(`/core/dataset/database/preview`, data);

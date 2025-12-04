@@ -44,6 +44,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { isEmpty } from 'lodash';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -244,7 +245,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               onChange={(e) => setInputType(e)}
             />
 
-            {datasetDetail.type === DatasetTypeEnum.database ? (
+            {isDatabaseDataset(datasetDetail.type) ? (
               <HStack>
                 <AIModelSelector
                   _hover={{
@@ -348,14 +349,12 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             <Button
               size={'sm'}
               isLoading={
-                datasetDetail.type === DatasetTypeEnum.database
-                  ? databaseTestIsLoading
-                  : textTestIsLoading
+                isDatabaseDataset(datasetDetail.type) ? databaseTestIsLoading : textTestIsLoading
               }
               isDisabled={inputType === 'file' && !selectFile}
               onClick={() => {
                 if (inputType === 'text') {
-                  if (datasetDetail.type === DatasetTypeEnum.database) {
+                  if (isDatabaseDataset(datasetDetail.type)) {
                     handleSubmit((data) => onDatabaseTest({ inputText: data.inputText }))();
                   } else {
                     handleSubmit((data) => onTextTest(data))();
@@ -379,7 +378,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       </Box>
       {/* result show */}
       <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'} bg={'white'}>
-        {datasetDetail.type === DatasetTypeEnum.database ? (
+        {isDatabaseDataset(datasetDetail.type) ? (
           <TestResultDatabase datasetTestItem={datasetTestItem} />
         ) : (
           <TestResults datasetTestItem={datasetTestItem} />
@@ -465,7 +464,7 @@ const TestHistories = React.memo(function TestHistories({
                   <MyIcon
                     name={DatasetSearchModeMap[item.searchMode].icon as any}
                     w={'12px'}
-                    mr={'1px'}
+                    mr={'4px'}
                   />
                   {t(DatasetSearchModeMap[item.searchMode].title as any)}
                 </Flex>

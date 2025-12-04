@@ -223,8 +223,11 @@
   "yuque_dataset": "語雀知識庫",
   "yuque_dataset_config": "設定語雀知識庫",
   "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存",
-  "enterprise_database": "資料庫",
+  "enterprise_database": "直連資料庫",
   "enterprise_database_desc": "授權 MySQL 資料庫後讀取選定的資料表，檢索時連接資料庫獲取相關資訊",
+  "file_database": "文件資料庫",
+  "file_database_desc": "上傳excel或csv文件構建資料庫",
+  "direct_database": "直連資料庫",
   "enterprise_database_embedding_model_tip": "索引模型可將資料庫關鍵資訊（截取部分資料的表名、表描述、列名、列描述）轉成向量，用於進行語義檢索。",
   "database_structure_change_tip": "資料結構發生變化時，如資料表名稱變更或其中的列名變更等，請手動重新整理資料來源。",
   "refresh_data_source": "重新整理資料來源",
@@ -315,7 +318,7 @@
   "database_address_required": "資料庫地址不能為空",
   "ip_format_invalid_range": "IP地址格式不正確，每段數值應在0-255之間",
   "database_address_format_invalid": "資料庫地址格式不正確，請輸入有效的IP地址或域名",
-  "data_index_column_value":"SQL欄位範例值索引",
+  "data_index_column_value": "SQL欄位範例值索引",
   "error_create_datasetcollection": "建立資料集失敗，請聯絡管理員",
   "tables_modified_and_deleted": "發現 {{modifiedTables}} 個數據表存在列的變更，{{deletedTables}} 個數據表已不存在，",
   "tables_no_longer_exist_comma": "個數據表已不存在，",
@@ -351,5 +354,10 @@
   "template_csv_format_tip": "模板採用 CSV 格式,包含以下列:\nq: 問題列,存放用戶可能提出的問題\na: 答案列,存放對應問題的標準答案\nmetadata:元數據列,列名自定義,非必須,用於存放數據相關屬性,可在檢索後返回,根據需要調用屬性參數\nindexes: 索引列,用於存放與該問題相關的索引",
   "segment_enhanced_index": "分段增強索引",
   "segment_enhanced_index_tips": "將數據中的“回答（A）”部分進行進一步分段作為索引內容，提高檢索的精度。",
-  "process.segment_enhanced_index": "分段增强索引生成"
+  "process.segment_enhanced_index": "分段增强索引生成",
+  "start_upload": "開始上傳",
+  "uploading_progress_with_count": "上傳中 {{completedCount}}/{{totalCount}}",
+  "file_upload_tip": "最多支援 {{maxCount}} 個檔案，單個檔案最大 {{maxSize}}，僅讀取第一個sheet",
+  "file_data_preview_info": "共 {{rows}} 行，{{cols}} 列，僅支援預覽前20行",
+  "data_structure_rows_cols": "{{rows}}行, {{cols}}列"
 }

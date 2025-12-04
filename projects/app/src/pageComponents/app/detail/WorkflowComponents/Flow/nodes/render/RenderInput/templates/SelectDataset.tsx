@@ -11,7 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -110,10 +110,12 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               );
               if (searchModeInfo) {
                 const hasDatabaseKnowledge = e.some(
-                  (v) => v.datasetType === DatasetTypeEnum.database
+                  (v) => v.datasetType && isDatabaseDataset(v.datasetType)
                 );
 
-                const hasOtherKnowledge = e.some((v) => v.datasetType !== DatasetTypeEnum.database);
+                const hasOtherKnowledge = e.some(
+                  (v) => v.datasetType && !isDatabaseDataset(v.datasetType)
+                );
                 let value = searchModeInfo.value;
 
                 // 如果当前是database模式
