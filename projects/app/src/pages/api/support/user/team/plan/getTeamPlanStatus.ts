@@ -10,6 +10,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
 
 async function handler(
   req: NextApiRequest,
@@ -21,39 +22,44 @@ async function handler(
       authToken: true
     });
 
-    const [planStatus, usedMember, usedAppAmount, usedDatasetSize, usedDatasetIndexSize] =
-      await Promise.all([
-        getTeamPlanStatus({
-          teamId
-        }),
-        MongoTeamMember.countDocuments({
-          teamId,
-          status: { $ne: TeamMemberStatusEnum.leave }
-        }),
-        MongoApp.countDocuments({
-          teamId,
-          type: {
-            $in: [
-              AppTypeEnum.simple,
-              AppTypeEnum.workflow,
-              AppTypeEnum.workflowTool,
-              AppTypeEnum.mcpToolSet
-            ]
-          }
-        }),
-        MongoDataset.countDocuments({
-          teamId,
-          type: { $ne: DatasetTypeEnum.folder }
-        }),
-        getVectorCountByTeamId(teamId)
-      ]);
+    const [
+      planStatus,
+      usedMember,
+      usedAppAmount,
+      usedDatasetSize,
+      usedDatasetIndexSize,
+      usedRegistrationCount
+    ] = await Promise.all([
+      getTeamPlanStatus({
+        teamId
+      }),
+      MongoTeamMember.countDocuments({
+        teamId,
+        status: { $ne: TeamMemberStatusEnum.leave }
+      }),
+      MongoApp.countDocuments({
+        teamId,
+        type: {
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
+        }
+      }),
+      MongoDataset.countDocuments({
+        teamId,
+        type: { $ne: DatasetTypeEnum.folder }
+      }),
+      getVectorCountByTeamId(teamId),
+      MongoAppRegistration.countDocuments({
+        teamId
+      })
+    ]);
 
     return {
       ...planStatus,
       usedMember,
       usedAppAmount,
       usedDatasetSize,
-      usedDatasetIndexSize
+      usedDatasetIndexSize,
+      usedRegistrationCount
     };
   } catch (error) {}
 }
