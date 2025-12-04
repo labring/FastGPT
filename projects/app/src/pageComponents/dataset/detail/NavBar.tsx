@@ -11,9 +11,11 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import FolderPath from '@/components/common/folder/Path';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 export enum TabEnum {
   dataCard = 'dataCard',
+  fileDataCard = 'fileDataCard',
   collectionCard = 'collectionCard',
   test = 'test',
   info = 'info',
@@ -26,7 +28,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
-  const { datasetDetail, rebuildingCount, paths, isDatabaseType } = useContextSelector(
+  const { datasetDetail, rebuildingCount, paths } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
@@ -112,6 +114,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     [query, router]
   );
 
+  const showNavTab = useMemo(
+    () => ![TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab),
+    [currentTab]
+  );
+
   return (
     <>
       {isPc ? (
@@ -120,11 +127,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           pt={3}
           px={4}
           justify={'space-between'}
-          borderBottom={currentTab === TabEnum.dataCard ? 'none' : theme.borders.base}
+          borderBottom={!showNavTab ? 'none' : theme.borders.base}
           borderColor={'myGray.200'}
           position={'relative'}
         >
-          {currentTab === TabEnum.dataCard ? (
+          {!showNavTab ? (
             <>
               <Flex
                 alignItems={'center'}
@@ -179,7 +186,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             <LightRowTabs<TabEnum>
               px={4}
               py={1}
-              visibility={currentTab === TabEnum.dataCard ? 'hidden' : 'visible'}
+              visibility={!showNavTab ? 'hidden' : 'visible'}
               flex={1}
               mx={'auto'}
               w={'100%'}
@@ -201,7 +208,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           </Box>
 
           {/* 训练情况hover弹窗 */}
-          {!isDatabaseType && (
+          {!isDatabaseDataset(datasetDetail.type) && (
             <MyPopover
               placement="bottom-end"
               visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}

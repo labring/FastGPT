@@ -6,6 +6,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const EmptyCollectionTip = () => {
   const { t, i18n } = useTranslation();
@@ -19,7 +20,7 @@ const EmptyCollectionTip = () => {
 
   return (
     <>
-      {(datasetDetail.type === DatasetTypeEnum.dataset ||
+      {(isDatabaseDataset(datasetDetail.type) ||
         datasetDetail.type === DatasetTypeEnum.externalFile) && (
         <EmptyTip text={t('common:core.dataset.collection.Empty Tip')} />
       )}

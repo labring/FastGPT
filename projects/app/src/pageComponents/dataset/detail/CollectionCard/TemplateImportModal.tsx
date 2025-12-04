@@ -179,10 +179,11 @@ const TemplateImportModal = ({
 
           <FileSelector
             maxCount={1}
-            maxSize="100 MB"
+            maxSize={100 * 1024 * 1024}
             fileType=".csv"
             selectFiles={selectFiles}
             setSelectFiles={setSelectFiles}
+            autoFilterOverSize={true}
             FileTypeNode={
               <Box fontSize={'xs'}>
                 <Trans

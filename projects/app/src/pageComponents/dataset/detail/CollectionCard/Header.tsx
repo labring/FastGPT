@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -51,8 +51,10 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
+import { postCreateStructureCollection } from '@/web/core/dataset/api';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
+const FileUploadModal = dynamic(() => import('../components/FileUploadModal/index'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
@@ -63,6 +65,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const isDatabase = useContextSelector(DatasetPageContext, (v) => v.isDatabaseType);
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -98,6 +101,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     onOpen: onOpenFileSourceSelector,
     onClose: onCloseFileSourceSelector
   } = useDisclosure();
+
+  // File upload modal for structure documents
+  const {
+    isOpen: isOpenFileUploadModal,
+    onOpen: onOpenFileUploadModal,
+    onClose: onCloseFileUploadModal
+  } = useDisclosure();
   // Backup import modal
   const {
     isOpen: isOpenBackupImportModal,
@@ -128,6 +138,25 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed')
     }
+  );
+
+  // File upload handler for structure documents
+  const handleFileUpload = useCallback(
+    async (file: File, onProgress?: (progress: number) => void) => {
+      try {
+        const result = await postCreateStructureCollection({
+          file,
+          datasetId: datasetDetail._id,
+          percentListen: onProgress
+        });
+
+        return result;
+      } catch (error) {
+        console.error('File upload error:', error);
+        throw error;
+      }
+    },
+    [datasetDetail._id]
   );
 
   const { runAsync: onDetectDatabaseChanges, loading: isDetecting } = useRequest2(
@@ -255,9 +284,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
 
   const showHeaderTagPopOver = React.useMemo(
     () =>
-      ![DatasetTypeEnum.websiteDataset, DatasetTypeEnum.database].includes(
-        datasetDetail.type as DatasetTypeEnum
-      ) &&
+      ![
+        DatasetTypeEnum.websiteDataset,
+        DatasetTypeEnum.database,
+        DatasetTypeEnum.structureDocument
+      ].includes(datasetDetail.type as DatasetTypeEnum) &&
       datasetDetail.permission.hasWritePer &&
       feConfigs?.isPlus,
     [datasetDetail.type, datasetDetail.permission.hasWritePer, feConfigs?.isPlus]
@@ -639,6 +670,15 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               )}
             </>
           )}
+          {isStructureDocument && (
+            <Button
+              ml={1}
+              onClick={onOpenFileUploadModal}
+              leftIcon={<Icon name="common/folderImport" w={'18px'} />}
+            >
+              {t('dataset:add_file')}
+            </Button>
+          )}
           {/* apiDataset */}
           {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
             <>
@@ -760,6 +800,23 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         closeBtnText={t('common:Cancel')}
       />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
+
+      {/* File Upload Modal for Structure Documents */}
+      {isOpenFileUploadModal && (
+        <FileUploadModal
+          isOpen={isOpenFileUploadModal}
+          onClose={onCloseFileUploadModal}
+          onSuccess={() => {
+            getData(pageNum); // 刷新列表
+          }}
+          uploadApi={handleFileUpload}
+          maxFiles={10}
+          maxFileSize={50 * 1024 * 1024} // 50MB
+          acceptedTypes={['.xlsx', '.xls', '.csv']}
+          concurrency={1}
+        />
+      )}
+
       {isOpenBackupImportModal && (
         <BackupImportModal
           onFinish={() => {

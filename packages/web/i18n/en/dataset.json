@@ -223,8 +223,11 @@
   "yuque_dataset": "Yuque knowledge base",
   "yuque_dataset_config": "Configure Yuque knowledge base",
   "yuque_dataset_desc": "Build a knowledge base using Yuque documents. These documents will not be stored again.",
-  "enterprise_database": "Database",
+  "enterprise_database": "直连数据库",
   "enterprise_database_desc": "Create a knowledge base and connect it to a MySQL database to retrieve related information.",
+  "file_database": "文件数据库",
+  "file_database_desc": "上传excel或csv文件构建数据库",
+  "direct_database": "直连数据库",
   "enterprise_database_embedding_model_tip": "The index model can convert key database information (such as table name, table description, column name, and column description) into vectors for semantic search.",
   "database_structure_change_tip": "When the data structure changes, including changes to the table or column name, please refresh the data source.",
   "refresh_data_source": "Refresh",
@@ -316,7 +319,7 @@
   "database_address_required": "Database address is required.",
   "ip_format_invalid_range": "Invalid IP address. Each octet must be 0-255.",
   "database_address_format_invalid": "Invalid database address. Please enter a valid IP address or domain name.",
-  "data_index_column_value":"SQL field example value index",
+  "data_index_column_value": "SQL field example value index",
   "error_create_datasetcollection": "Failed to create the dataset. Please contact the administrator.",
   "tables_modified_and_deleted": "{{modifiedTables}} tables have column changes, and {{deletedTables}} no longer exist. ",
   "tables_no_longer_exist_comma": " tables no longer exist. ",
@@ -352,6 +355,10 @@
   "template_csv_format_tip": "The template uses CSV format and contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question",
   "segment_enhanced_index": "Segment Enhanced Index",
   "segment_enhanced_index_tips": "Further segment the 'Answer (A)' part of the data to be used as index content, improving retrieval accuracy.",
-  "process.segment_enhanced_index": "Segment Enhanced Index Generation"
+  "process.segment_enhanced_index": "Segment Enhanced Index Generation",
+  "start_upload": "开始上传",
+  "uploading_progress_with_count": "上传中 {{completedCount}}/{{totalCount}}",
+  "file_upload_tip": "最多支持 {{maxCount}} 个文件，单个文件最大 {{maxSize}}，仅读取第一个sheet",
+  "file_data_preview_info": "共 {{rows}} 行，{{cols}} 列，仅支持预览前20行",
+  "data_structure_rows_cols": "{{rows}}行, {{cols}}列"
 }
-

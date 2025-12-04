@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
@@ -103,7 +104,7 @@ const QuoteItem = ({
   const score = useMemo(() => {
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
-  const isDatabaseAnswer = useMemo(() => quoteItem.id.startsWith('sql'), [quoteItem.id]);
+  const isDatabaseAnswer = useMemo(() => isDatabaseSource(quoteItem.id), [quoteItem.id]);
   const datasetDetailUrl = useMemo(
     () =>
       isDatabaseAnswer

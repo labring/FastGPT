@@ -221,8 +221,9 @@ export const iconPaths = {
   'core/chat/think': () => import('./icons/core/chat/think.svg'),
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/commonDatasetColor': () => import('./icons/core/dataset/commonDatasetColor.svg'),
-  'core/dataset/database': () =>
-    import('./icons/core/dataset/database.svg'),
+  'core/dataset/database': () => import('./icons/core/dataset/database.svg'),
+  'core/dataset/fileDbColor': () => import('./icons/core/dataset/fileDbColor.svg'),
+  'core/dataset/fileDb': () => import('./icons/core/dataset/fileDb.svg'),
   'core/dataset/commonDatasetOutline': () =>
     import('./icons/core/dataset/commonDatasetOutline.svg'),
   'core/dataset/datasetFill': () => import('./icons/core/dataset/datasetFill.svg'),
@@ -257,6 +258,7 @@ export const iconPaths = {
   'core/dataset/yuqueDatasetOutline': () => import('./icons/core/dataset/yuqueDatasetOutline.svg'),
   'core/dataset/databaseOutline': () => import('./icons/core/dataset/databaseOutline.svg'),
   'core/dataset/databaseColor': () => import('./icons/core/dataset/databaseColor.svg'),
+  'core/dataset/datasetDb': () => import('./icons/core/dataset/datasetDb.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),

@@ -13,7 +13,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -63,12 +63,13 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
     return {
       hasDatabaseKnowledge: knowledgeInfoList.some(
-        (item) => item.datasetType === DatasetTypeEnum.database
+        (item) => item.datasetType && isDatabaseDataset(item.datasetType)
       ),
       // 没选择知识库时展示通用知识库配置
       hasOtherKnowledge:
-        knowledgeInfoList.some((item) => item.datasetType !== DatasetTypeEnum.database) ||
-        knowledgeInfoList.length === 0
+        knowledgeInfoList.some(
+          (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
+        ) || knowledgeInfoList.length === 0
     };
   }, [nodeList, nodeId]);
 

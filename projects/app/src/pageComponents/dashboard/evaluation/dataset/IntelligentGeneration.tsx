@@ -24,13 +24,13 @@ import dynamic from 'next/dynamic';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { postSmartGenerateEvaluationDataset } from '@/web/core/evaluation/dataset';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
 const formatDatasetList = (datasetList: DatasetListItemType[]) =>
-  datasetList.filter((v) => v.type !== DatasetTypeEnum.database);
+  datasetList.filter((v) => !isDatabaseDataset(v.type));
 
 /**
  * 智能生成表单数据接口

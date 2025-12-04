@@ -72,6 +72,18 @@ const CollectionCard = () => {
     collectionId: string;
   }>();
 
+  // 格式化数据量的函数
+  const formatDataAmount = (collection: any, isStructureDocument: boolean) => {
+    if (isStructureDocument && collection.metadata) {
+      const metadata = collection.metadata;
+      if (metadata.rows && metadata.cols) {
+        return t('dataset:data_structure_rows_cols', { rows: metadata.rows, cols: metadata.cols });
+      }
+    }
+
+    return collection.dataAmount || '-';
+  };
+
   const {
     collections,
     Pagination,
@@ -157,6 +169,7 @@ const CollectionCard = () => {
   );
 
   const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
@@ -276,12 +289,12 @@ const CollectionCard = () => {
                       <Box>{t('common:Name')}</Box>
                     </HStack>
                   </Th>
-                  <Th py={4}>{t('dataset:collection.training_type')}</Th>
+                  {!isStructureDocument && <Th py={4}>{t('dataset:collection.training_type')}</Th>}
                   <Th py={4}>{t('dataset:collection_data_count')}</Th>
                   <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                  <Th py={4}>{t('common:Status')}</Th>
+                  {!isStructureDocument && <Th py={4}>{t('common:Status')}</Th>}
                   <Th py={4}>{t('dataset:Enable')}</Th>
-                  <Th py={4} />
+                  {!isStructureDocument && <Th py={4} />}
                 </Tr>
               </Thead>
               <Tbody>
@@ -309,7 +322,9 @@ const CollectionCard = () => {
                           query: {
                             datasetId: datasetDetail._id,
                             collectionId: collection._id,
-                            currentTab: TabEnum.dataCard
+                            currentTab: isStructureDocument
+                              ? TabEnum.fileDataCard
+                              : TabEnum.dataCard
                           }
                         });
                       }
@@ -341,49 +356,55 @@ const CollectionCard = () => {
                         </Box>
                       </HStack>
                     </Td>
-                    <Td py={2}>
-                      {collection.trainingType
-                        ? t(
-                            (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                              '-') as any
-                          )
-                        : '-'}
-                    </Td>
-                    <Td py={2}>{collection.dataAmount || '-'}</Td>
+                    {!isStructureDocument && (
+                      <Td py={2}>
+                        {collection.trainingType
+                          ? t(
+                              (DatasetCollectionDataProcessModeMap[collection.trainingType]
+                                ?.label || '-') as any
+                            )
+                          : '-'}
+                      </Td>
+                    )}
+                    <Td py={2}>{formatDataAmount(collection, isStructureDocument)}</Td>
                     <Td fontSize={'xs'} py={2} color={'myGray.500'}>
                       <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                       <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                     </Td>
-                    <Td py={2}>
-                      <MyTooltip label={t('common:Click_to_expand')}>
-                        <MyTag
-                          showDot
-                          colorSchema={collection.colorSchema as any}
-                          type={'fill'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTrainingStatesCollection({ collectionId: collection._id });
-                          }}
-                        >
-                          <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                            {t(collection.statusText as any)}
-                            <MyIcon name={'common/maximize'} w={'11px'} />
-                          </Flex>
-                        </MyTag>
-                      </MyTooltip>
-                    </Td>
-                    <Td py={2} onClick={(e) => e.stopPropagation()}>
-                      <Switch
-                        isChecked={!collection.forbid}
-                        size={'sm'}
-                        onChange={(e) =>
-                          onUpdateCollection({
-                            id: collection._id,
-                            forbid: !e.target.checked
-                          })
-                        }
-                      />
-                    </Td>
+                    {!isStructureDocument && (
+                      <Td py={2}>
+                        <MyTooltip label={t('common:Click_to_expand')}>
+                          <MyTag
+                            showDot
+                            colorSchema={collection.colorSchema as any}
+                            type={'fill'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTrainingStatesCollection({ collectionId: collection._id });
+                            }}
+                          >
+                            <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                              {t(collection.statusText as any)}
+                              <MyIcon name={'common/maximize'} w={'11px'} />
+                            </Flex>
+                          </MyTag>
+                        </MyTooltip>
+                      </Td>
+                    )}
+                    {!isStructureDocument && (
+                      <Td py={2} onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                          isChecked={!collection.forbid}
+                          size={'sm'}
+                          onChange={(e) =>
+                            onUpdateCollection({
+                              id: collection._id,
+                              forbid: !e.target.checked
+                            })
+                          }
+                        />
+                      </Td>
+                    )}
                     <Td py={2} onClick={(e) => e.stopPropagation()}>
                       {collection.permission.hasWritePer && (
                         <MyMenu
@@ -416,26 +437,28 @@ const CollectionCard = () => {
                           menuList={[
                             {
                               children: [
-                                ...(collectionCanSync(collection.type)
-                                  ? [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon
-                                              name={'common/refreshLight'}
-                                              w={'0.9rem'}
-                                              mr={2}
-                                            />
-                                            {t('dataset:collection_sync')}
-                                          </Flex>
-                                        ),
-                                        onClick: () =>
-                                          openSyncConfirm(() => {
-                                            onclickStartSync(collection._id);
-                                          })()
-                                      }
-                                    ]
-                                  : []),
+                                ...(isStructureDocument
+                                  ? []
+                                  : collectionCanSync(collection.type)
+                                    ? [
+                                        {
+                                          label: (
+                                            <Flex alignItems={'center'}>
+                                              <MyIcon
+                                                name={'common/refreshLight'}
+                                                w={'0.9rem'}
+                                                mr={2}
+                                              />
+                                              {t('dataset:collection_sync')}
+                                            </Flex>
+                                          ),
+                                          onClick: () =>
+                                            openSyncConfirm(() => {
+                                              onclickStartSync(collection._id);
+                                            })()
+                                        }
+                                      ]
+                                    : []),
                                 {
                                   label: (
                                     <Flex alignItems={'center'}>

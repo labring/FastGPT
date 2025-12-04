@@ -10,8 +10,7 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import { type GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getQuoteDataList } from '@/web/core/chat/api';
-
-const isDatabaseQuote = (str: string) => str.startsWith('sql');
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 
 const QuoteReader = ({
   rawSearch,
@@ -29,20 +28,20 @@ const QuoteReader = ({
   }, [rawSearch, metadata.collectionIdList]);
 
   const datasetDataIdList = useMemo(
-    () => filterRawSearch.map((item) => item.id).filter((v) => !isDatabaseQuote(v)),
+    () => filterRawSearch.map((item) => item.id).filter((v) => !isDatabaseSource(v)),
     [filterRawSearch]
   );
   const collectionIdList = useMemo(
-    () => metadata.collectionIdList?.filter((v) => !isDatabaseQuote(v)),
+    () => metadata.collectionIdList?.filter((v) => !isDatabaseSource(v)),
     [metadata.collectionIdList]
   );
 
   const hasDatabase = useMemo(
-    () => rawSearch.some((item) => isDatabaseQuote(item.id)),
+    () => rawSearch.some((item) => isDatabaseSource(item.id)),
     [rawSearch]
   );
   const hasOtherKnowledgeBase = useMemo(
-    () => rawSearch.some((item) => !isDatabaseQuote(item.id)),
+    () => rawSearch.some((item) => !isDatabaseSource(item.id)),
     [rawSearch]
   );
 
@@ -85,11 +84,11 @@ const QuoteReader = ({
   }, [quoteList, filterRawSearch]);
 
   const otherKnowledgeBaseDataList = useMemo(
-    () => formatedDataList.filter((v) => !isDatabaseQuote(v.id)),
+    () => formatedDataList.filter((v) => !isDatabaseSource(v.id)),
     [formatedDataList]
   );
   const databaseDataList = useMemo(
-    () => formatedDataList.filter((v) => isDatabaseQuote(v.id)),
+    () => formatedDataList.filter((v) => isDatabaseSource(v.id)),
     [formatedDataList]
   );
 
@@ -168,7 +167,7 @@ const QuoteReader = ({
               </Flex>
               <Flex px={1.5}>
                 <MyIcon
-                  name="core/workflow/inputType/selectDataset"
+                  name="core/dataset/databaseColor"
                   color={'myGray.600'}
                   mr={1}
                   flexShrink={0}

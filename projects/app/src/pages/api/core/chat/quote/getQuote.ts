@@ -9,6 +9,7 @@ import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/con
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 export type GetQuoteProps = {
   datasetDataIdList: string[];
 
@@ -39,7 +40,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     datasetDataIdList
   } = req.body;
   let filterCollectionIdList = collectionIdList.filter((id) => id?.trim());
-  let filterdatasetDataIdList = datasetDataIdList.filter((id) => !id?.startsWith('sql'));
+  let filterdatasetDataIdList = datasetDataIdList.filter((id) => !isDatabaseSource(id));
   const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
     authChatCrud({
       req,

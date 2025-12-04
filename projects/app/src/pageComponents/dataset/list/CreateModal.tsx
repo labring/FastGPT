@@ -27,7 +27,8 @@ export type CreateDatasetType =
   | DatasetTypeEnum.websiteDataset
   | DatasetTypeEnum.feishu
   | DatasetTypeEnum.yuque
-  | DatasetTypeEnum.database;
+  | DatasetTypeEnum.database
+  | DatasetTypeEnum.structureDocument;
 
 const CreateModal = ({
   onClose,
@@ -78,7 +79,16 @@ const CreateModal = ({
 
   /* create a new kb and router to it */
   const { runAsync: onclickCreate, loading: creating } = useRequest2(
-    async (data: CreateDatasetParams) => await postCreateDataset(data),
+    async (data: CreateDatasetParams) => {
+      // 对于文件数据库类型，移除不需要的参数
+      const submitData = { ...data };
+      if (isStructureDocument) {
+        delete submitData.vectorModel;
+        delete submitData.agentModel;
+        delete submitData.vlmModel;
+      }
+      return await postCreateDataset(submitData);
+    },
     {
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed'),
@@ -93,6 +103,8 @@ const CreateModal = ({
     vlmModel: vlmModelShowConfig,
     vectorModel: vectorModelShowConfig
   } = DatasetTypeMap[type].formConfig || {};
+
+  const isStructureDocument = type === DatasetTypeEnum.structureDocument;
 
   return (
     <MyModal

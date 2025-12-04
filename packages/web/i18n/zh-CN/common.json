@@ -1377,5 +1377,6 @@
   "search_result": "检索结果",
   "comma": "、",
   "set_avatar_in_edit_modal": "点击设置头像",
-  "select_time": "请选择时间"
+  "select_time": "请选择时间",
+  "comma_symbol": "，"
 }

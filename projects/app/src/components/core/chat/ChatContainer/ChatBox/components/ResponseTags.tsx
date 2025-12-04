@@ -14,6 +14,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -93,12 +94,12 @@ const ResponseTags = ({
         type: 'dataset' as const,
         key: item.collectionId,
         displayText: item.sourceName,
-        disabled: item.sourceId?.startsWith('sql'),
+        disabled: isDatabaseSource(item.sourceId),
         icon: item.imageId
           ? 'core/dataset/imageFill'
           : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         onClick: () => {
-          if (item.sourceId?.startsWith('sql')) {
+          if (isDatabaseSource(item.sourceId)) {
             return;
           }
           onOpenCiteModal({

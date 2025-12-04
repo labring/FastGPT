@@ -33,8 +33,8 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -78,11 +78,11 @@ const EditForm = ({
   const knowledgeTypeConfig = useMemo(() => {
     return {
       hasDatabaseKnowledge: selectDatasets.some(
-        (item) => item.datasetType === DatasetTypeEnum.database
+        (item) => item.datasetType && isDatabaseDataset(item.datasetType)
       ),
       // 若没选择知识库，保留之前的展示逻辑
       hasOtherKnowledge:
-        selectDatasets.some((item) => item.datasetType !== DatasetTypeEnum.database) ||
+        selectDatasets.some((item) => item.datasetType && !isDatabaseDataset(item.datasetType)) ||
         selectDatasets.length === 0
     };
   }, [selectDatasets]);
