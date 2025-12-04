@@ -4,9 +4,10 @@ import type {
   ChatItemValueItemType,
   RuntimeUserPromptType,
   SystemChatItemValueItemType,
+  UserChatItemFileItemType,
   UserChatItemType,
   UserChatItemValueItemType
-} from '../../core/chat/type.d';
+} from './type';
 import { ChatFileTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
   ChatCompletionContentPart,
@@ -18,7 +19,7 @@ import type {
 } from '../../core/ai/type.d';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 
-const GPT2Chat = {
+export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
@@ -385,9 +386,10 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   return prompt;
 };
 
-export const runtimePrompt2ChatsValue = (
-  prompt: RuntimeUserPromptType
-): UserChatItemType['value'] => {
+export const runtimePrompt2ChatsValue = (prompt: {
+  files?: UserChatItemFileItemType[];
+  text?: string;
+}): UserChatItemType['value'] => {
   const value: UserChatItemType['value'] = [];
   if (prompt.files) {
     prompt.files.forEach((file) => {

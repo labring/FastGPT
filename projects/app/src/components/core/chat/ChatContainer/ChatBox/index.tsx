@@ -11,7 +11,7 @@ import type {
   AIChatItemValueItemType,
   ChatSiteItemType,
   UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';

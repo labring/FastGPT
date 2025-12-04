@@ -14,7 +14,8 @@
     "**/*.d.ts",
     "../../packages/**/*.d.ts",
     "../../test/list.test.ts",
-    "../../packages/service/core/workflow/dispatch/ai/agent/type.ts"
+    "../../packages/service/core/workflow/dispatch/ai/agent/type.ts",
+    "../../packages/service/core/workflow/dispatch/type.ts"
   ],
   "exclude": ["**/*.test.ts"]
 }

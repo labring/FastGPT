@@ -1,5 +1,5 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -319,7 +319,7 @@ async function getMultiInput({
   runningUserInfo
 }: {
   histories: ChatItemType[];
-  inputFiles: UserChatItemValueItemType['file'][];
+  inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
@@ -371,7 +371,9 @@ async function getMultiInput({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
+    userFiles: fileLinks
+      .map((url) => parseUrlToFileType(url))
+      .filter(Boolean) as UserChatItemFileItemType[]
   };
 }
 
@@ -402,7 +404,7 @@ async function getChatMessages({
   systemPrompt: string;
   userChatInput: string;
 
-  userFiles: UserChatItemValueItemType['file'][];
+  userFiles: UserChatItemFileItemType[];
   documentQuoteText?: string; // document quote
 }) {
   // Dataset prompt ====>

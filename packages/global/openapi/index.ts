@@ -33,6 +33,10 @@ export const openAPIDocument = createDocument({
     {
       name: 'ApiKey',
       tags: [TagsMap.apiKey]
+    },
+    {
+      name: '系统接口',
+      tags: [TagsMap.helperBot]
     }
   ]
 });

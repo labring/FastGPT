@@ -35,7 +35,7 @@
 		"scope": "typescriptreact",
 		"prefix": "context",
 		"body": [
-			"import React, { ReactNode } from 'react';",
+			"import React, { type ReactNode } from 'react';",
 			"import { createContext } from 'use-context-selector';",
 			"",
 			"type ContextType = {$1};",
