@@ -17,7 +17,6 @@ import {
   cancelBill,
   putUpdatePayment
 } from '@/web/support/wallet/bill/api';
-import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -36,6 +35,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import BillDetailModal from './BillDetailModal';
+import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 
 const BillTable = () => {
   const { t } = useTranslation();

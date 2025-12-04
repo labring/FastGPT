@@ -1,7 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { DiscountCouponTypeEnum } from '@fastgpt/global/support/wallet/discountCoupon/constants';
+import { DiscountCouponTypeEnum } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import type { DiscountCouponSchemaType } from '@fastgpt/global/openapi/support/wallet/discountCoupon/api';
 
 export const discountCouponCollectionName = 'team_discount_coupons';

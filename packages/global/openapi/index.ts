@@ -37,8 +37,8 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.apiKey]
     },
     {
-      name: '订单 & 支付',
-      tags: [TagsMap.wallet]
+      name: '支付',
+      tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     }
   ]
 });

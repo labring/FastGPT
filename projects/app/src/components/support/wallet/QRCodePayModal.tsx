@@ -15,9 +15,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { type CreateBillResponse } from '@fastgpt/global/support/wallet/bill/api';
+import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 
-export type QRPayProps = CreateBillResponse & {
+export type QRPayProps = CreateBillResponseType & {
   tip?: string;
 };
 

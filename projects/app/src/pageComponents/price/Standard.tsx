@@ -16,7 +16,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
   DiscountCouponStatusEnum,
   DiscountCouponTypeEnum
-} from '@fastgpt/global/support/wallet/discountCoupon/constants';
+} from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -301,8 +301,8 @@ const Standard = ({
                           setPackageChange(PackageChangeStatusEnum.renewal);
                           onPay({
                             type: BillTypeEnum.standSubPlan,
-                            level: item.level,
-                            subMode: selectSubMode,
+                            level: item.level as StandardSubLevelEnum,
+                            subMode: selectSubMode as SubModeEnum,
                             discountCouponId: matchedCoupon?._id
                           });
                         }}
@@ -323,8 +323,8 @@ const Standard = ({
                           setPackageChange(PackageChangeStatusEnum.upgrade);
                           onPay({
                             type: BillTypeEnum.standSubPlan,
-                            level: item.level,
-                            subMode: selectSubMode,
+                            level: item.level as StandardSubLevelEnum,
+                            subMode: selectSubMode as SubModeEnum,
                             discountCouponId: matchedCoupon?._id
                           });
                         }}
@@ -344,8 +344,8 @@ const Standard = ({
                         setPackageChange(PackageChangeStatusEnum.buy);
                         onPay({
                           type: BillTypeEnum.standSubPlan,
-                          level: item.level,
-                          subMode: selectSubMode,
+                          level: item.level as StandardSubLevelEnum,
+                          subMode: selectSubMode as SubModeEnum,
                           discountCouponId: matchedCoupon?._id
                         });
                       }}

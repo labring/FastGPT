@@ -209,15 +209,14 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  if (locale === 'zh-CN' || locale === 'zh-Hant' || locale === 'zh-TW') {
+  if (locale === 'zh-CN') {
     if (absNum >= 10000) {
       const value = absNum / 10000;
       const formatted = Number(value.toFixed(2)).toString();
       return `${prefix}${formatted}万`;
     }
     return num.toLocaleString(locale);
-  }
-  if (locale === 'en' || locale.startsWith('en-')) {
+  } else {
     if (absNum >= 1000000) {
       const value = absNum / 1000000;
       const formatted = Number(value.toFixed(2)).toString();
@@ -230,6 +229,4 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
     }
     return num.toLocaleString(locale);
   }
-
-  return num.toLocaleString(locale);
 };

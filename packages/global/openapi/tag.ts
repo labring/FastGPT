@@ -7,5 +7,6 @@ export const TagsMap = {
   pluginToolAdmin: '管理员系统工具管理',
   pluginTeam: '团队插件管理',
   apiKey: 'APIKey',
-  wallet: '订单 & 支付'
+  walletBill: '订单',
+  walletDiscountCoupon: '优惠券'
 };

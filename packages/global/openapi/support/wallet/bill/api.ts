@@ -6,6 +6,19 @@ import {
   BillPayWayEnum
 } from '../../../../support/wallet/bill/constants';
 import { StandardSubLevelEnum, SubModeEnum } from '../../../../support/wallet/sub/constants';
+import { BillSchema } from '../../../../support/wallet/bill/type';
+import { PaginationSchema } from '../../../api';
+
+export const BillListQuerySchema = PaginationSchema.extend({
+  type: z.enum(Object.values(BillTypeEnum)).optional().meta({ description: '订单类型筛选' })
+});
+export type GetBillListQueryType = z.infer<typeof BillListQuerySchema>;
+
+export const BillListResponseSchema = z.object({
+  total: z.number(),
+  list: z.array(BillSchema)
+});
+export type GetBillListResponseType = z.infer<typeof BillListResponseSchema>;
 
 export const CreateStandPlanBillSchema = z.object({
   type: z.literal(BillTypeEnum.standSubPlan).meta({ description: '订单类型：标准订阅套餐' }),
@@ -13,93 +26,56 @@ export const CreateStandPlanBillSchema = z.object({
   subMode: z.enum(Object.values(SubModeEnum)).meta({ description: '订阅周期' }),
   discountCouponId: z.string().optional().meta({ description: '优惠券 ID' })
 });
-
 export const CreateExtractPointsBillSchema = z.object({
   type: z.literal(BillTypeEnum.extraPoints).meta({ description: '订单类型：额外积分' }),
   extraPoints: z.number().meta({ description: '额外积分数量' }),
   duration: z.number().meta({ description: '有效期（月）' }),
   discountCouponId: z.string().optional().meta({ description: '优惠券 ID（未使用）' })
 });
-
 export const CreateExtractDatasetBillSchema = z.object({
   type: z.literal(BillTypeEnum.extraDatasetSub).meta({ description: '订单类型：额外数据集存储' }),
   extraDatasetSize: z.number().meta({ description: '额外数据集大小' }),
   month: z.number().meta({ description: '订阅月数' }),
   discountCouponId: z.string().optional().meta({ description: '优惠券 ID（未使用）' })
 });
-
 export const CreateBillPropsSchema = z.discriminatedUnion('type', [
   CreateStandPlanBillSchema,
   CreateExtractPointsBillSchema,
   CreateExtractDatasetBillSchema
 ]);
+export type CreateBillPropsType = z.infer<typeof CreateBillPropsSchema>;
 
 export const CreateOrderResponseSchema = z.object({
   qrCode: z.string().optional().meta({ description: '支付二维码 URL' }),
   iframeCode: z.string().optional().meta({ description: '支付 iframe 代码' }),
   markdown: z.string().optional().meta({ description: 'Markdown 格式的支付信息' })
 });
-
+export type CreateOrderResponseType = z.infer<typeof CreateOrderResponseSchema>;
 export const CreateBillResponseSchema = CreateOrderResponseSchema.extend({
   billId: z.string().meta({ description: '订单 ID' }),
   readPrice: z.number().meta({ description: '实际支付价格' }),
   payment: z.enum(Object.values(BillPayWayEnum)).meta({ description: '支付方式' })
 });
-
-export const UpdatePaymentPropsSchema = z.object({
-  billId: ObjectIdSchema.meta({ description: '订单 ID' }),
-  payWay: z.enum(Object.values(BillPayWayEnum)).meta({ description: '新的支付方式' })
-});
+export type CreateBillResponseType = z.infer<typeof CreateBillResponseSchema>;
 
 export const CheckPayResultResponseSchema = z.object({
-  status: z.enum(Object.values(BillStatusEnum)).meta({ description: '支付状态' }),
-  description: z.string().optional().meta({ description: '状态描述' })
+  status: z.enum(Object.values(BillStatusEnum)),
+  description: z.string().optional()
 });
+export type CheckPayResultResponseType = z.infer<typeof CheckPayResultResponseSchema>;
 
-export const BillDetailResponseSchema = z.object({
-  _id: ObjectIdSchema.meta({ description: '订单 ID' }),
-  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
-  teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
-  tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
-  createTime: z.coerce.date().meta({ description: '创建时间' }),
-  orderId: z.string().meta({ description: '订单 ID' }),
-  status: z.enum(Object.values(BillStatusEnum)).meta({ description: '订单状态' }),
-  type: z.enum(Object.values(BillTypeEnum)).meta({ description: '订单类型' }),
-  price: z.number().meta({ description: '价格（分）' }),
-  couponId: ObjectIdSchema.optional().meta({
-    description: '优惠券 ID'
-  }),
-  hasInvoice: z.boolean().meta({ description: '是否已开发票' }),
-  metadata: z
-    .object({
-      payWay: z.enum(Object.values(BillPayWayEnum)).meta({ description: '支付方式' }),
-      subMode: z.enum(Object.values(SubModeEnum)).optional().meta({ description: '订阅周期' }),
-      standSubLevel: z
-        .enum(Object.values(StandardSubLevelEnum))
-        .optional()
-        .meta({ description: '订阅等级' }),
-      month: z.number().optional().meta({ description: '月数' }),
-      datasetSize: z.number().optional().meta({ description: '数据集大小' }),
-      extraPoints: z.number().optional().meta({ description: '额外积分' })
-    })
-    .meta({ description: '元数据' }),
-  refundData: z
-    .object({
-      amount: z.number().meta({ description: '退款金额' }),
-      refundId: z.string().meta({ description: '退款 ID' }),
-      refundTime: z.coerce.date().meta({ description: '退款时间' })
-    })
-    .optional()
-    .meta({ description: '退款数据' }),
-  couponName: z.string().optional().meta({ description: '优惠券名称' })
+export const UpdatePaymentPropsSchema = z.object({
+  billId: ObjectIdSchema,
+  payWay: z.enum(Object.values(BillPayWayEnum))
 });
+export type UpdatePaymentPropsType = z.infer<typeof UpdatePaymentPropsSchema>;
 
-export const BillListQuerySchema = z.object({
-  type: z.enum(Object.values(BillTypeEnum)).optional().meta({ description: '订单类型筛选' }),
-  offset: z.coerce.number().optional().meta({ description: '偏移量' }),
-  pageSize: z.coerce.number().optional().meta({ description: '每页数量' })
+export const BillDetailResponseSchema = BillSchema.extend({
+  couponName: z.string().optional()
 });
+export type BillDetailResponseType = z.infer<typeof BillDetailResponseSchema>;
 
 export const CancelBillPropsSchema = z.object({
   billId: ObjectIdSchema.meta({ description: '订单 ID' })
 });
+export type CancelBillPropsType = z.infer<typeof CancelBillPropsSchema>;

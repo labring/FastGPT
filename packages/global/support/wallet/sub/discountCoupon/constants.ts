@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export enum DiscountCouponTypeEnum {
   monthStandardDiscount70 = 'monthStandardDiscount70',
@@ -12,6 +12,7 @@ export enum DiscountCouponStatusEnum {
   notStart = 'notStart'
 }
 
+// Discount coupon type config table, modify to add or update types.
 export const discountCouponTypeMap = {
   [DiscountCouponTypeEnum.monthStandardDiscount70]: {
     type: DiscountCouponTypeEnum.monthStandardDiscount70,

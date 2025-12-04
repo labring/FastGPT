@@ -11,7 +11,7 @@ import { useRouter } from 'next/router';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import BillDetailModal from '@/pageComponents/account/bill/BillDetailModal';
-import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/discountCoupon/constants';
+import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 
 const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const { t, i18n } = useTranslation();
