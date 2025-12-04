@@ -57,10 +57,9 @@ const Team = () => {
   const { subPlans } = useSystemStore();
   const planContent = useMemo(() => {
     const plan = level !== undefined ? subPlans?.standard?.[level] : undefined;
-
     if (!plan) return;
     return {
-      permissionTeamOperationLog: plan.permissionTeamOperationLog
+      auditLogStoreDuration: plan?.auditLogStoreDuration
     };
   }, [subPlans?.standard, level]);
   const { toast } = useToast();
@@ -82,7 +81,7 @@ const Team = () => {
         px={'1rem'}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.audit && planContent && !planContent?.permissionTeamOperationLog) {
+          if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
             toast({
               status: 'warning',
               title: t('common:not_permission')

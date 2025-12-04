@@ -2,7 +2,7 @@ import type z from 'zod';
 import type { CountLimitTypeEnum } from './type';
 import { CountLimitConfig } from './const';
 import { MongoCountLimit } from './schema';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { mongoSessionRun } from '../../mongo/sessionRun';
 
 /**
  * Update the count limit for a specific type and key.
