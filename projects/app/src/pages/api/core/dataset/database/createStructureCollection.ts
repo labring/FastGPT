@@ -9,8 +9,10 @@ import { addLog } from '@fastgpt/service/common/system/log';
 
 import { uploadExcel } from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
 import type { Readable } from 'stream';
-import { dativeUrl } from '@fastgpt/service/core/dataset/search/controller';
-import { createBucketSourceConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
+import {
+  dativeUrl,
+  createBucketSourceConfig
+} from '@fastgpt/service/core/dataset/database/dative/utils';
 
 async function handler(req: NextApiRequest): Promise<CreateCollectionResponse> {
   if (!dativeUrl) {

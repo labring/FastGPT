@@ -1,6 +1,11 @@
-import { BucketNameEnum } from "@fastgpt/global/common/file/constants";
-import { DatabaseTypeEnum } from "@fastgpt/global/core/dataset/constants";
-import type { DuckDBStoreConfigType, ExcelUploadSourceConfig } from "@fastgpt/global/core/dataset/database/api";
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type {
+  DuckDBStoreConfigType,
+  ExcelUploadSourceConfig
+} from '@fastgpt/global/core/dataset/database/api';
+
+export const dativeUrl = process.env.DATIVE_BASE_URL || '';
 
 export interface DativeErrorResponse {
   detail?: {
