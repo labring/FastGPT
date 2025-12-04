@@ -1145,7 +1145,7 @@ const ChatBox = ({
         pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
+          {/*{showEmpty && <Empty  />}*/}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
