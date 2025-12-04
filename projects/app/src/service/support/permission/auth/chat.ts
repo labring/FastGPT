@@ -11,6 +11,9 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
+import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 /* 
   检查chat的权限：
@@ -263,4 +266,19 @@ export const authCollectionInChat = async ({
     }
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+};
+
+export const authHelperBotChatCrud = async ({
+  type,
+  chatId,
+  ...props
+}: AuthModeType & {
+  type: `${HelperBotTypeEnum}`;
+  chatId: string;
+}) => {
+  const { userId } = await authCert(props);
+
+  const chat = await MongoHelperBotChat.findOne({ type, userId, chatId }).lean();
+
+  return { chat, userId };
 };

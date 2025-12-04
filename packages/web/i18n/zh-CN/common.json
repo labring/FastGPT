@@ -103,11 +103,8 @@
   "add_new": "新增",
   "add_new_param": "新增参数",
   "add_success": "添加成功",
-<<<<<<< HEAD
   "aipoint_desc": "每次调用 AI 模型时，都会消耗一定的 AI 积分（类似于 token）。点击可查看详细计算规则。",
   "agent_prompt_tips": "建议按照以下模板填写，以获得最佳效果。\n「角色身份」\n「任务目标」\n「任务流程与技能」\n输入“/”插入全局变量；输入“@”插入特定技能，包括应用、工具、知识库、模型。",
-=======
->>>>>>> e4b2fca6d (tool select ux)
   "all_quotes": "全部引用",
   "all_result": "完整结果",
   "app_evaluation": "Agent 评测(Beta)",

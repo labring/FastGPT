@@ -27,3 +27,26 @@ export const formatSuccessResponse = <T>(data: T) => {
     data
   });
 };
+
+export const PaginationPropsSchema = z
+  .object({
+    pageSize: z.union([z.number(), z.string()]),
+    // offset 和 pageNum 只能传其一
+    offset: z.union([z.number(), z.string()]).optional(),
+    pageNum: z.union([z.number(), z.string()]).optional()
+  })
+  .refine(
+    (data) => (typeof data.offset !== 'undefined') !== (typeof data.pageNum !== 'undefined'),
+    { message: 'offset 和 pageNum 必须且只能传一个' }
+  );
+export type PaginationPropsType = z.infer<typeof PaginationPropsSchema>;
+
+export const PaginationResponseSchema = <T extends z.ZodType>(item: T) =>
+  z.object({
+    total: z.number(),
+    list: z.array(item)
+  });
+export type PaginationResponseType<T = any> = {
+  total: number;
+  list: T[];
+};

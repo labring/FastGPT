@@ -9,7 +9,11 @@ import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  UserChatItemFileItemType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
@@ -121,10 +125,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileLinks,
       inputFiles: globalFiles,
       hasReadFilesTool,
-      usageId,
-      appId: props.runningAppInfo.id,
-      chatId: props.chatId,
-      uId: props.uid
+      usageId
     });
 
     const concatenateSystemPrompt = [
@@ -284,10 +285,7 @@ const getMultiInput = async ({
   customPdfParse,
   inputFiles,
   hasReadFilesTool,
-  usageId,
-  appId,
-  chatId,
-  uId
+  usageId
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   histories: ChatItemType[];
@@ -295,12 +293,9 @@ const getMultiInput = async ({
   requestOrigin?: string;
   maxFiles: number;
   customPdfParse?: boolean;
-  inputFiles: UserChatItemValueItemType['file'][];
+  inputFiles: UserChatItemFileItemType[];
   hasReadFilesTool: boolean;
   usageId?: string;
-  appId: string;
-  chatId?: string;
-  uId: string;
 }) => {
   // Not file quote
   if (!fileLinks || hasReadFilesTool) {
@@ -334,7 +329,9 @@ const getMultiInput = async ({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
+    userFiles: fileLinks
+      .map((url) => parseUrlToFileType(url))
+      .filter(Boolean) as UserChatItemFileItemType[]
   };
 };
 

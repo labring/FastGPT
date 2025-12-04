@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';

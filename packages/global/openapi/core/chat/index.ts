@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
 import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from '../../../core/chat/api';
 import { TagsMap } from '../../tag';
+import { HelperBotPath } from './helperBot';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
@@ -14,6 +15,7 @@ export const ChatPath: OpenAPIPath = {
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
 
+  ...HelperBotPath,
   '/core/chat/presignChatFileGetUrl': {
     post: {
       summary: '获取对话文件预签名 URL',

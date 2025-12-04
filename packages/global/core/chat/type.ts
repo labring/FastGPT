@@ -1,20 +1,29 @@
-import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
 import type { SearchDataResponseItemType } from '../dataset/type';
-import type { ChatFileTypeEnum, ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
+import type { ChatSourceEnum, ChatStatusEnum } from './constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants';
+import { NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchema, VariableItemType } from '../app/type';
-import { AppChatConfigType } from '../app/type';
-import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
-import { DatasetSearchModeEnum } from '../dataset/constants';
-import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import type { DispatchNodeResponseType } from '../workflow/runtime/type';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
-import type { FlowNodeTemplateType } from '../workflow/type/node.d';
-import { ChatCompletionMessageParam } from '../ai/type';
 import type { RequireOnlyOne } from '../../common/type/utils';
+import z from 'zod';
+
+/* One tool run response  */
+export type ToolRunResponseItemType = any;
+/* tool module response */
+export const ToolModuleResponseItemSchema = z.object({
+  id: z.string(),
+  toolName: z.string(),
+  toolAvatar: z.string(),
+  params: z.string(),
+  response: z.string(),
+  functionName: z.string()
+});
+export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -56,33 +65,57 @@ export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
 };
 
 /* --------- chat item ---------- */
-export type UserChatItemFileItemType = {
-  type: `${ChatFileTypeEnum}`;
-  name?: string;
-  key?: string;
-  url: string;
-};
-export type UserChatItemValueItemType = {
-  text?: {
-    content: string;
-  };
-  file?: UserChatItemFileItemType;
-};
-export type UserChatItemType = {
-  obj: ChatRoleEnum.Human;
-  value: UserChatItemValueItemType[];
-  hideInUI?: boolean;
-};
+// User
+export const UserChatItemFileItemSchema = z.object({
+  type: z.enum(Object.values(ChatFileTypeEnum)),
+  name: z.string().optional(),
+  key: z.string().optional(),
+  url: z.string()
+});
+export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;
 
-export type SystemChatItemValueItemType = {
-  text?: {
-    content: string;
-  };
-};
-export type SystemChatItemType = {
-  obj: ChatRoleEnum.System;
-  value: SystemChatItemValueItemType[];
-};
+export const UserChatItemValueItemSchema = z.object({
+  text: z
+    .object({
+      content: z.string()
+    })
+    .optional(),
+  file: UserChatItemFileItemSchema.optional()
+});
+export type UserChatItemValueItemType = z.infer<typeof UserChatItemValueItemSchema>;
+
+export const UserChatItemSchema = z.object({
+  obj: z.literal(ChatRoleEnum.Human),
+  value: z.array(UserChatItemValueItemSchema),
+  hideInUI: z.boolean().optional()
+});
+export type UserChatItemType = z.infer<typeof UserChatItemSchema>;
+
+// System
+export const SystemChatItemValueItemSchema = z.object({
+  text: z
+    .object({
+      content: z.string()
+    })
+    .nullish()
+});
+export type SystemChatItemValueItemType = z.infer<typeof SystemChatItemValueItemSchema>;
+
+export const SystemChatItemSchema = z.object({
+  obj: z.literal(ChatRoleEnum.System),
+  value: z.array(SystemChatItemValueItemSchema)
+});
+export type SystemChatItemType = z.infer<typeof SystemChatItemSchema>;
+
+// AI
+export const AdminFbkSchema = z.object({
+  feedbackDataId: z.string(),
+  datasetId: z.string(),
+  collectionId: z.string(),
+  q: z.string(),
+  a: z.string().optional()
+});
+export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 
 export type AIChatItemValueItemType = {
   id?: string;
@@ -146,14 +179,6 @@ export type ChatItemSchema = ChatItemObjItemType & {
   time: Date;
 };
 
-export type AdminFbkType = {
-  feedbackDataId: string;
-  datasetId: string;
-  collectionId: string;
-  q: string;
-  a?: string;
-};
-
 export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
@@ -191,8 +216,8 @@ export type ChatItemResponseSchemaType = {
 
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
-  apps: AppType[];
-  teamInfo: teamInfoSchema;
+  apps: AppSchema[];
+  teamInfo: any;
   uid?: string;
 };
 
@@ -217,30 +242,22 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
 };
 
 /* ---------- node outputs ------------ */
-export type NodeOutputItemType = {
-  nodeId: string;
-  key: NodeOutputKeyEnum;
-  value: any;
-};
+export const NodeOutputItemSchema = z.object({
+  nodeId: z.string(),
+  key: z.enum(Object.values(NodeOutputKeyEnum)),
+  value: z.any()
+});
+export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;
 
-/* One tool run response  */
-export type ToolRunResponseItemType = any;
-/* tool module response */
-export type ToolModuleResponseItemType = {
-  id: string;
-  toolName: string; // tool name
-  toolAvatar: string;
-  params: string; // tool params
-  response: string;
-  functionName: string;
-};
+export const ToolCiteLinksSchema = z.object({
+  name: z.string(),
+  url: z.string()
+});
+export type ToolCiteLinksType = z.infer<typeof ToolCiteLinksSchema>;
 
-export type ToolCiteLinksType = {
-  name: string;
-  url: string;
-};
 /* dispatch run time */
-export type RuntimeUserPromptType = {
-  files: UserChatItemValueItemType['file'][];
-  text: string;
-};
+export const RuntimeUserPromptSchema = z.object({
+  files: z.array(UserChatItemFileItemSchema),
+  text: z.string()
+});
+export type RuntimeUserPromptType = z.infer<typeof RuntimeUserPromptSchema>;

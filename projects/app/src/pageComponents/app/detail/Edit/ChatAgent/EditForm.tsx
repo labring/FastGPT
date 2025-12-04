@@ -249,6 +249,7 @@ const EditForm = ({
               {t('common:Choose')}
             </Button>
             <Button
+              mr={'-5px'}
               variant={'transparentBase'}
               leftIcon={<MyIcon name={'edit'} w={'14px'} />}
               iconSpacing={1}
