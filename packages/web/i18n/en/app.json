@@ -364,5 +364,6 @@
   "logs_user_callback": "Feedback",
   "team.menu.plugin": "Plugins",
   "team.menu.app": "Simple apps",
-  "team.menu.workflow": "Workflows"
+  "team.menu.workflow": "Workflows",
+  "template.customer_service_assistant": "Customer Service Assistant"
 }
