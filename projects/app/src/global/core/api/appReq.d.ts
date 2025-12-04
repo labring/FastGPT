@@ -1,6 +1,7 @@
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { PaginationProps } from '@fastgpt/web/common/fetch/type';
+import type { I18nName } from '@fastgpt/service/common/geo/type';
 
 export type GetAppChatLogsProps = {
   appId: string;
@@ -9,6 +10,7 @@ export type GetAppChatLogsProps = {
   sources?: ChatSourceEnum[];
   tmbIds?: string[];
   chatSearch?: string;
+  locale?: keyof I18nName;
 };
 
 export type GetAppChatLogsParams = PaginationProps<GetAppChatLogsProps>;

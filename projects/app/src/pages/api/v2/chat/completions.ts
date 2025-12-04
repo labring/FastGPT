@@ -22,7 +22,6 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
-import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
@@ -62,6 +61,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { getIpFromRequest } from '@fastgpt/service/common/geo';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -115,7 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     metadata
   } = req.body as Props;
 
-  const originIp = requestIp.getClientIp(req);
+  const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
 
