@@ -222,6 +222,7 @@ const LogTable = ({
         </Th>
       ),
       [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>,
       [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
       [AppLogKeysEnum.SESSION_ID]: (
         <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
@@ -249,8 +250,7 @@ const LogTable = ({
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
       ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
-      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
     }),
     [t]
   );
@@ -277,6 +277,7 @@ const LogTable = ({
         </Box>
       </Td>
     ),
+    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>,
     [AppLogKeysEnum.TITLE]: (
       <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
         {item.customTitle || item.title}
@@ -342,8 +343,7 @@ const LogTable = ({
       <Td key={AppLogKeysEnum.POINTS}>
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
-    ),
-    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>
+    )
   });
 
   return (
