@@ -41,11 +41,11 @@ export type PointsPackageItem = {
 export type SubPlanType = {
   [SubTypeEnum.standard]: StandSubPlanLevelMapType;
   planDescriptionUrl?: string;
+  appRegistrationUrl?: string;
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };
   [SubTypeEnum.extraPoints]: {
-    price: number; // deprecated
     packages: PointsPackageItem[];
   };
 };

@@ -17,7 +17,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { checkTeamAppFolderLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await checkTeamAppFolderLimit(teamId);
+  await checkTeamAppTypeLimit({ teamId, appCheckType: 'folder' });
 
   // Create app
   await mongoSessionRun(async (session) => {

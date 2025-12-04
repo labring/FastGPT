@@ -9,7 +9,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { type TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { postCreatePayBill } from '@/web/support/wallet/bill/api';
-import { getDiscountCouponList } from '@/web/support/wallet/sub/api';
+import { getDiscountCouponList } from '@/web/support/wallet/sub/discountCoupon/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import MyBox from '@fastgpt/web/components/common/MyBox';

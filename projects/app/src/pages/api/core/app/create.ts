@@ -18,11 +18,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import {
-  checkTeamAppLimit,
-  checkTeamToolsLimit,
-  checkTeamAppFolderLimit
-} from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -66,11 +62,10 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // 上限校验
-  if (type === AppTypeEnum.workflowTool) {
-    await checkTeamToolsLimit(teamId);
-  } else {
-    await checkTeamAppLimit(teamId);
-  }
+  await checkTeamAppTypeLimit({
+    teamId,
+    appCheckType: type === AppTypeEnum.workflowTool ? 'tool' : 'app'
+  });
 
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
     .populate<{

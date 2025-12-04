@@ -32,28 +32,28 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('account_bill:bill_detail')}
+      title={t('account:bill_detail')}
       maxW={['90vw', '700px']}
       isLoading={loading}
     >
       <ModalBody minH={400}>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_number')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account:order_number')}:</FormLabel>
           <Box>{bill?.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:generation_time')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account:generation_time')}:</FormLabel>
           <Box>{dayjs(bill?.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         {bill?.type && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:order_type')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:order_type')}:</FormLabel>
             <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
           </Flex>
         )}
         {bill?.status && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:status')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:status')}:</FormLabel>
             <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
           </Flex>
         )}
@@ -65,53 +65,53 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
         )}
         {!!bill?.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:payment_method')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:payment_method')}:</FormLabel>
             <Box>{t(billPayWayMap[bill?.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
         {!!bill?.price && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
-            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill?.price) })}</Box>
+            <FormLabel flex={'0 0 120px'}>{t('account:support_wallet_amount')}:</FormLabel>
+            <Box>{t('account:yuan', { amount: formatStorePrice2Read(bill?.price) })}</Box>
           </Flex>
         )}
         {bill?.metadata && !!bill?.price && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:has_invoice')}:</FormLabel>
             {bill?.metadata.payWay === 'balance' ? (
               t('user:bill.not_need_invoice')
             ) : (
-              <Box>{bill.hasInvoice ? t('account_bill:yes') : t('account_bill:no')}</Box>
+              <Box>{bill.hasInvoice ? t('account:yes') : t('account:no')}</Box>
             )}
           </Flex>
         )}
         {!!bill?.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_period')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:subscription_period')}:</FormLabel>
             <Box>{t(subModeMap[bill.metadata.subMode]?.label as any)}</Box>
           </Flex>
         )}
         {!!bill?.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_package')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:subscription_package')}:</FormLabel>
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
           </Flex>
         )}
         {bill?.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
-            <Box>{`${bill.metadata?.month} ${t('account_bill:month')}`}</Box>
+            <FormLabel flex={'0 0 120px'}>{t('account:subscription_mode_month')}:</FormLabel>
+            <Box>{`${bill.metadata?.month} ${t('account:month')}`}</Box>
           </Flex>
         )}
         {bill?.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_dataset_size')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:extra_dataset_size')}:</FormLabel>
             <Box>{bill.metadata?.datasetSize}</Box>
           </Flex>
         )}
         {bill?.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_ai_points')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account:extra_ai_points')}:</FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>
           </Flex>
         )}

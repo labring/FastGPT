@@ -87,5 +87,22 @@
   "reset_default": "恢复默认配置",
   "team": "团队管理",
   "third_party": "第三方账号",
-  "usage_records": "使用记录"
+  "usage_records": "使用记录",
+  "bill_detail": "账单详情",
+  "order_number": "订单号",
+  "generation_time": "生成时间",
+  "order_type": "订单类型",
+  "status": "状态",
+  "payment_method": "支付方式",
+  "support_wallet_amount": "金额",
+  "yuan": "{{amount}}元",
+  "has_invoice": "是否已开票",
+  "yes": "是",
+  "no": "否",
+  "subscription_period": "订阅周期",
+  "subscription_package": "订阅套餐",
+  "subscription_mode_month": "时长",
+  "month": "月",
+  "extra_dataset_size": "额外知识库容量",
+  "extra_ai_points": "额外 AI 积分"
 }

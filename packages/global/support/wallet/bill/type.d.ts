@@ -3,7 +3,7 @@ import { SubTypeEnum } from '../sub/constants';
 import { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
 import type { TeamInvoiceHeaderType } from '../../user/team/type';
 import { z } from 'zod';
-import { ObjectIdSchema } from '../../common/type/mongo';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 
 export const BillSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '订单 ID' }),

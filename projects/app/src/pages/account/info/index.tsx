@@ -66,7 +66,7 @@ const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
-const Info = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
+const Info = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus, initUserInfo } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
@@ -89,14 +89,14 @@ const Info = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
             </Box>
             {!!standardPlan && (
               <Box ml={'45px'} flex={'1'} maxW={'600px'}>
-                <PlanUsage appRegistrationUrl={appRegistrationUrl} />
+                <PlanUsage />
               </Box>
             )}
           </Flex>
         ) : (
           <>
             <MyInfo onOpenContact={onOpenContact} />
-            {standardPlan && <PlanUsage appRegistrationUrl={appRegistrationUrl} />}
+            {standardPlan && <PlanUsage />}
             <Other onOpenContact={onOpenContact} />
           </>
         )}
@@ -109,8 +109,7 @@ const Info = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'account_bill', 'user'])),
-      appRegistrationUrl: process.env.APP_REGISTRATION_URL
+      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
     }
   };
 }
@@ -350,7 +349,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   );
 };
 
-const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
+const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
@@ -670,9 +669,9 @@ const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
                 <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
                   {item.value}/{item.max}
                 </Box>
-                {isAppRegistration && appRegistrationUrl && (
+                {isAppRegistration && subPlans?.appRegistrationUrl && (
                   <Link
-                    href={appRegistrationUrl}
+                    href={subPlans?.appRegistrationUrl}
                     target="_blank"
                     ml={'auto'}
                     display={'flex'}

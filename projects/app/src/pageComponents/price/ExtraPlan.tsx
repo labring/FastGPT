@@ -164,7 +164,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Box>
             <Box color={'myGray.600'} fontSize={'20px'} fontWeight={'medium'}>
               {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
-                ? `${extraPointsPackages[selectedPackageIndex].price} 元`
+                ? t('common:extraPointsPrice', {
+                    price: extraPointsPackages[selectedPackageIndex].price
+                  })
                 : '--'}
             </Box>
           </Flex>

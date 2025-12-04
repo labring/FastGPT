@@ -6,8 +6,8 @@ import {
   BillPayWayEnum
 } from '../../../../support/wallet/bill/constants';
 import { StandardSubLevelEnum, SubModeEnum } from '../../../../support/wallet/sub/constants';
-import { BillSchema } from '../../../../support/wallet/bill/type';
 import { PaginationSchema } from '../../../api';
+import { BillSchema } from '../../../../support/wallet/bill/type.d';
 
 export const BillListQuerySchema = PaginationSchema.extend({
   type: z.enum(Object.values(BillTypeEnum)).optional().meta({ description: '订单类型筛选' })
