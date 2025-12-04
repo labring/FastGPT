@@ -109,7 +109,8 @@ const Info = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'account_bill', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_info', 'account_bill', 'user'])),
+      appRegistrationUrl: process.env.APP_REGISTRATION_URL
     }
   };
 }
@@ -679,7 +680,6 @@ const PlanUsage = ({ appRegistrationUrl }: { appRegistrationUrl?: string }) => {
                     color={'primary.600'}
                     cursor={'pointer'}
                     fontSize={'sm'}
-                    _hover={{ textDecoration: 'none' }}
                   >
                     {t('account_info:apply_app_registration')}
                     <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
