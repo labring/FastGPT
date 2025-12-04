@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box } from '@chakra-ui/react';
 
-import ChatTest from '../FormComponent/ChatTest';
+import ChatTest from './ChatTest';
 import AppCard from '../FormComponent/AppCard';
 import EditForm from './EditForm';
 import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';

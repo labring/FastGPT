@@ -39,6 +39,10 @@ export const openAPIDocument = createDocument({
     {
       name: '支付',
       tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+    },
+    {
+      name: '系统接口',
+      tags: [TagsMap.helperBot]
     }
   ]
 });

@@ -239,7 +239,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
     return [];
   }, [chat.obj, chat.value, isChatting]);
-  console.log(chat.value, splitAiResponseResults, 232);
+
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
     (item?: {
