@@ -377,3 +377,9 @@ export enum DatasetSourceReadTypeEnum {
   apiFile = 'apiFile',
   reTraining = 'reTraining'
 }
+
+/* ------------ synonym -------------- */
+// 同义词文件集合名称
+export const DatasetSynonymCollectionName = 'dataset_synonyms';
+// 同义词映射集合名称
+export const DatasetSynonymMappingCollectionName = 'dataset_synonym_mappings';

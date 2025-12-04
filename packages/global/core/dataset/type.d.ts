@@ -147,6 +147,9 @@ export type DatasetSchemaType = {
 
   inheritPermission: boolean;
 
+  // 同义词文件ID数组（当前版本仅支持单个文件）
+  synonymFiles?: string[];
+
   apiDatasetServer?: ApiDatasetServerType;
 
   databaseConfig?: DatabaseConfig;
@@ -380,4 +383,36 @@ export type DatasetCiteItemType = {
   updateTime: DatasetDataSchemaType['updateTime'];
   index: DatasetDataSchemaType['chunkIndex'];
   updated?: boolean;
+};
+
+/* ============= synonym =============== */
+/**
+ * 同义词文件元数据
+ * 存储上传到知识库的同义词CSV文件的元信息
+ */
+export type DatasetSynonymSchemaType = {
+  _id: string;
+  teamId: string;
+  datasetId: string;
+  fileName: string;
+  fileId: string; // GridFS 文件ID
+  size: number; // 文件大小（字节）
+  uploadTime: Date;
+  uploaderId: string;
+};
+
+/**
+ * 同义词映射记录
+ * 存储标准化词到同义词的映射关系,支持全文检索
+ */
+export type DatasetSynonymMappingSchemaType = {
+  _id: string;
+  teamId: string;
+  datasetId: string;
+  synonymFileId: string; // 关联的同义词文件ID
+  standardizedTerm: string; // 标准化词
+  synonymTerms: string[]; // 同义词数组
+  allTerms: string; // 组合搜索字段: "{标准词} {同义词1} {同义词2}..."
+  createdTime: Date;
+  updatedTime: Date;
 };

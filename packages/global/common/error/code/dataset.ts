@@ -15,7 +15,14 @@ export enum DatasetErrEnum {
   notSupportSync = 'notSupportSync',
   sameApiCollection = 'sameApiCollection',
   noApiServer = 'noApiServer',
-  canNotEditAdminPermission = 'canNotEditAdminPermission'
+  canNotEditAdminPermission = 'canNotEditAdminPermission',
+  // Synonym errors
+  synonymFileNotExist = 'synonymFileNotExist',
+  synonymFileEmpty = 'synonymFileEmpty',
+  synonymFileInvalidFormat = 'synonymFileInvalidFormat',
+  synonymFileNoValidData = 'synonymFileNoValidData',
+  synonymFileOnlyCSV = 'synonymFileOnlyCSV',
+  synonymFileParseFailed = 'synonymFileParseFailed'
 }
 const datasetErr = [
   {
@@ -65,6 +72,30 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.canNotEditAdminPermission,
     message: 'core.dataset.error.canNotEditAdminPermission'
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileNotExist,
+    message: i18nT('common:core.dataset.error.synonymFileNotExist')
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileEmpty,
+    message: i18nT('common:core.dataset.error.synonymFileEmpty')
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileInvalidFormat,
+    message: i18nT('common:core.dataset.error.synonymFileInvalidFormat')
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileNoValidData,
+    message: i18nT('common:core.dataset.error.synonymFileNoValidData')
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileOnlyCSV,
+    message: i18nT('common:core.dataset.error.synonymFileOnlyCSV')
+  },
+  {
+    statusText: DatasetErrEnum.synonymFileParseFailed,
+    message: i18nT('common:core.dataset.error.synonymFileParseFailed')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {
