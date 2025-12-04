@@ -189,6 +189,7 @@
   "code_error.team_error.org_parent_not_exist": "父部门不存在",
   "code_error.team_error.over_size": "团队成员超出限制",
   "code_error.team_error.plugin_amount_not_enough": "插件数量已达上限~",
+  "code_error.team_error.app_folder_amount_not_enough": "文件夹数量已达上限~",
   "code_error.team_error.re_rank_not_enough": "免费版无法使用检索重排~",
   "code_error.team_error.too_many_invitations": "您的有效邀请链接数已达上限，请先清理链接",
   "code_error.team_error.un_auth": "无权操作该团队",

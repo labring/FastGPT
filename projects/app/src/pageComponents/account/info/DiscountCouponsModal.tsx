@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import dayjs from 'dayjs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getDiscountCouponList } from '@/web/support/wallet/bill/api';
+import { getDiscountCouponList } from '@/web/support/wallet/sub/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRouter } from 'next/router';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
@@ -19,15 +19,16 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
   const isZh = i18n.language === 'zh-CN';
   const [billId, setBillId] = useState<string>();
+  const teamId = userInfo?.team?.teamId;
 
   const { data: coupons = [], loading } = useRequest2(
     async () => {
-      if (!userInfo?.team?.teamId) return [];
-      return getDiscountCouponList(userInfo?.team?.teamId);
+      if (!teamId) return [];
+      return getDiscountCouponList(teamId);
     },
     {
-      manual: !userInfo?.team?.teamId,
-      refreshDeps: [userInfo?.team?.teamId]
+      manual: !teamId,
+      refreshDeps: [teamId]
     }
   );
 

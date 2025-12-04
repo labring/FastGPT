@@ -188,6 +188,7 @@
   "code_error.team_error.org_parent_not_exist": "父組織不存在",
   "code_error.team_error.over_size": "團隊成員超出限制",
   "code_error.team_error.plugin_amount_not_enough": "已達外掛程式數量上限",
+  "code_error.team_error.app_folder_amount_not_enough": "已達資料夾數量上限",
   "code_error.team_error.re_rank_not_enough": "免費版無法使用檢索重排~",
   "code_error.team_error.too_many_invitations": "您的有效邀請連結數已達上限，請先清理連結",
   "code_error.team_error.un_auth": "無權操作此團隊",

@@ -213,7 +213,6 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
     if (absNum >= 10000) {
       const value = absNum / 10000;
       const formatted = Number(value.toFixed(2)).toString();
-      console.log(value);
       return `${prefix}${formatted}万`;
     }
     return num.toLocaleString(locale);

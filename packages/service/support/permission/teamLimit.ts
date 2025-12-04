@@ -4,7 +4,7 @@ import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
@@ -65,6 +65,36 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     if (totalApps >= global.licenseData.maxApps) {
       return Promise.reject(SystemErrEnum.licenseAppAmountLimit);
     }
+  }
+};
+
+export const checkTeamToolsLimit = async (teamId: string, amount = 1) => {
+  const toolCount = await MongoApp.countDocuments({
+    teamId,
+    type: {
+      $in: ToolTypeList
+    }
+  });
+
+  const maxToolAmount = 1000;
+
+  if (toolCount + amount > maxToolAmount) {
+    return Promise.reject(TeamErrEnum.pluginAmountNotEnough);
+  }
+};
+
+export const checkTeamAppFolderLimit = async (teamId: string, amount = 1) => {
+  const folderCount = await MongoApp.countDocuments({
+    teamId,
+    type: {
+      $in: AppFolderTypeList
+    }
+  });
+
+  const maxAppFolderAmount = 1000;
+
+  if (folderCount + amount > maxAppFolderAmount) {
+    return Promise.reject(TeamErrEnum.appFolderAmountNotEnough);
   }
 };
 

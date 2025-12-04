@@ -17,7 +17,6 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
-import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';

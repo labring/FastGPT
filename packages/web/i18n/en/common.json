@@ -189,6 +189,7 @@
   "code_error.team_error.org_parent_not_exist": "Parent organization does not exist",
   "code_error.team_error.over_size": "Team members exceed limit",
   "code_error.team_error.plugin_amount_not_enough": "Plugin Limit Reached",
+  "code_error.team_error.app_folder_amount_not_enough": "Folder Limit Reached",
   "code_error.team_error.re_rank_not_enough": "Search rearrangement cannot be used in the free version~",
   "code_error.team_error.too_many_invitations": "You have reached the maximum number of active invitation links, please clean up some links first",
   "code_error.team_error.un_auth": "Unauthorized to Operate This Team",
