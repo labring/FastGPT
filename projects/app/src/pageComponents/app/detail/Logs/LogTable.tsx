@@ -50,6 +50,7 @@ import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import type { I18nName } from '@fastgpt/service/common/geo/type';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -64,7 +65,7 @@ const LogTable = ({
   showSourceSelector = true,
   px = [4, 8]
 }: HeaderControlProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
@@ -154,7 +155,7 @@ const LogTable = ({
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
-
+          locale: i18n.language === 'zh-CN' ? 'zh' : 'en',
           title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
           logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
@@ -179,7 +180,8 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch
+      chatSearch,
+      locale: (i18n.language === 'zh-CN' ? 'zh' : 'en') as keyof I18nName
     }),
     [
       appId,
@@ -189,9 +191,11 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch
+      chatSearch,
+      i18n.language
     ]
   );
+
   const {
     data: logs,
     isLoading,
@@ -245,7 +249,8 @@ const LogTable = ({
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
       ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
+      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>
     }),
     [t]
   );
@@ -337,7 +342,8 @@ const LogTable = ({
       <Td key={AppLogKeysEnum.POINTS}>
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
-    )
+    ),
+    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>
   });
 
   return (
@@ -443,9 +449,11 @@ const LogTable = ({
             }}
           />
         </Flex>
+
         <Box flex={'1'} />
         {showSyncPopover && (
           <SyncLogKeysPopover
+            appId={appId}
             logKeys={logKeys}
             setLogKeys={setLogKeys}
             teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys}
@@ -490,7 +498,7 @@ const LogTable = ({
                 >
                   {logKeys
                     .filter((logKey) => logKey.enable)
-                    .map((logKey) => cellRenderMap[logKey.key])}
+                    .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
                 </Tr>
               );
             })}
