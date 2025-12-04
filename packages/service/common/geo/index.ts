@@ -64,7 +64,7 @@ export function getLocationFromIp(ip: string, locale: keyof I18nName) {
       locationName.city?.[locale]
     ]
       .filter(Boolean)
-      .join(locale === 'zh' ? '，' : ',');
+      .join(locale === 'zh' ? '，' : ', ');
   } catch (error) {
     locationIpMap.set(ip, privateOrOtherLocationName);
     return privateOrOtherLocationName.country?.[locale];
