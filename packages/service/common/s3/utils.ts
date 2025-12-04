@@ -218,6 +218,10 @@ export const getFileS3Key = {
       fileKey: key,
       fileParsedPrefix: prefix
     };
+  },
+
+  rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
+    return [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/');
   }
 };
 

@@ -2,6 +2,8 @@ import { S3Sources } from '../../type';
 import { S3PrivateBucket } from '../../buckets/private';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import {
+  type AddRawTextBufferParams,
+  AddRawTextBufferParamsSchema,
   type CreateGetDatasetFileURLParams,
   CreateGetDatasetFileURLParamsSchema,
   type CreateUploadDatasetFileParams,
@@ -10,6 +12,7 @@ import {
   DeleteDatasetFilesByPrefixParamsSchema,
   type GetDatasetFileContentParams,
   GetDatasetFileContentParamsSchema,
+  type GetRawTextBufferParams,
   type UploadParams,
   UploadParamsSchema
 } from './type';
@@ -18,10 +21,11 @@ import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../../system/log';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readS3FileContentByBuffer } from '../../../file/read/utils';
-import { addRawTextBuffer, getRawTextBuffer } from '../../../buffer/rawText/controller';
 import path from 'node:path';
 import { Mimes } from '../../constants';
 import { getFileS3Key, truncateFilename } from '../../utils';
+import { createHash } from 'node:crypto';
+import { S3Error } from 'minio';
 
 export class S3DatasetSource {
   public bucket: S3PrivateBucket;
@@ -83,7 +87,14 @@ export class S3DatasetSource {
 
   // 获取文件状态
   getDatasetFileStat(key: string) {
-    return this.bucket.statObject(key);
+    try {
+      return this.bucket.statObject(key);
+    } catch (error) {
+      if (error instanceof S3Error && error.message === 'Not Found') {
+        return null;
+      }
+      return Promise.reject(error);
+    }
   }
 
   // 获取文件元数据
@@ -114,15 +125,14 @@ export class S3DatasetSource {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, datasetId } =
       GetDatasetFileContentParamsSchema.parse(params);
 
-    const bufferId = `${fileId}-${customPdfParse}`;
-    const fileBuffer = await getRawTextBuffer(bufferId);
-    if (fileBuffer) {
+    const rawTextBuffer = await this.getRawTextBuffer({ customPdfParse, sourceId: fileId });
+    if (rawTextBuffer) {
       return {
-        rawText: fileBuffer.text,
-        filename: fileBuffer.sourceName
+        rawText: rawTextBuffer.text,
+        filename: rawTextBuffer.filename
       };
     }
 
@@ -154,11 +164,11 @@ export class S3DatasetSource {
       }
     });
 
-    addRawTextBuffer({
-      sourceId: bufferId,
+    this.addRawTextBuffer({
+      sourceId: fileId,
       sourceName: filename,
       text: rawText,
-      expiredTime: addMinutes(new Date(), 20)
+      customPdfParse
     });
 
     return {
@@ -201,6 +211,51 @@ export class S3DatasetSource {
     });
 
     return key;
+  }
+
+  async addRawTextBuffer(params: AddRawTextBufferParams) {
+    const { sourceId, sourceName, text, customPdfParse } =
+      AddRawTextBufferParamsSchema.parse(params);
+
+    // 因为 Key 唯一对应一个 Object 所以不需要根据文件内容计算 Hash 直接用 Key 计算 Hash 就行了
+    const hash = createHash('md5').update(sourceId).digest('hex');
+    const key = getFileS3Key.rawText({ hash, customPdfParse });
+
+    const buffer = Buffer.from(text);
+    await this.bucket.putObject(key, buffer, buffer.length, {
+      'content-type': 'text/plain',
+      'upload-time': new Date().toISOString(),
+      'origin-filename': sourceName
+    });
+
+    await MongoS3TTL.create({
+      minioKey: key,
+      bucketName: this.bucket.name,
+      expiredTime: addMinutes(new Date(), 20)
+    });
+
+    return key;
+  }
+
+  async getRawTextBuffer(params: GetRawTextBufferParams) {
+    const { customPdfParse, sourceId } = params;
+
+    const hash = createHash('md5').update(sourceId).digest('hex');
+    const key = getFileS3Key.rawText({ hash, customPdfParse });
+
+    if (!(await this.bucket.isObjectExists(key))) return null;
+
+    const [stream, metadata] = await Promise.all([
+      this.bucket.getObject(key),
+      this.getFileMetadata(key)
+    ]);
+
+    const buffer = await this.bucket.fileStreamToBuffer(stream);
+
+    return {
+      text: buffer.toString('utf-8'),
+      filename: metadata.filename
+    };
   }
 }
 

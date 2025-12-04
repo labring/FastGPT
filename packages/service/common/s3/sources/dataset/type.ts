@@ -59,4 +59,13 @@ export const UploadParamsSchema = z.union([
     size: z.int().positive().optional()
   })
 ]);
-export type UploadParams = z.infer<typeof UploadParamsSchema>;
+export type UploadParams = z.input<typeof UploadParamsSchema>;
+
+export const AddRawTextBufferParamsSchema = z.object({
+  customPdfParse: z.boolean().optional(),
+  sourceId: z.string().nonempty(),
+  sourceName: z.string().nonempty(),
+  text: z.string().nonempty()
+});
+export type AddRawTextBufferParams = z.input<typeof AddRawTextBufferParamsSchema>;
+export type GetRawTextBufferParams = Pick<AddRawTextBufferParams, 'customPdfParse' | 'sourceId'>;

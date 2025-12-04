@@ -56,6 +56,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,
       stream: result.getReadStream(),
+      size: result.fileMetadata.size,
       filename: result.fileMetadata.originalname
     });
 

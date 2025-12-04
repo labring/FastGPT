@@ -3,8 +3,6 @@
 */
 import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -34,15 +32,13 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   const fileId = collection?.fileId;
+
+  if (!isS3ObjectKey(fileId, 'dataset')) {
+    return Promise.reject('Invalid dataset file key');
+  }
+
   const [file, indexAmount, errorCount] = await Promise.all([
-    fileId
-      ? isS3ObjectKey(fileId, 'dataset')
-        ? getS3DatasetSource().getFileMetadata(fileId)
-        : (async () => {
-            const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
-            return { filename: file?.filename, contentLength: file?.length };
-          })()
-      : undefined,
+    getS3DatasetSource().getFileMetadata(fileId),
     getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
     MongoDatasetTraining.countDocuments(
       {
@@ -55,6 +51,10 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
       readFromSecondary
     )
   ]);
+
+  if (!file) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
 
   return {
     ...collection,

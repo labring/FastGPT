@@ -1,7 +1,5 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { getFileById } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
+import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -10,8 +8,7 @@ import { addMinutes } from 'date-fns';
 import { parseHeaderCert } from './common';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { S3Sources } from '../../../common/s3/type';
-import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 
 export const authCollectionFile = async ({
@@ -22,19 +19,12 @@ export const authCollectionFile = async ({
   fileId: string;
 }): Promise<AuthResponseType> => {
   const authRes = await parseHeaderCert(props);
-  const { teamId, tmbId } = authRes;
 
   if (isS3ObjectKey(fileId, 'dataset')) {
     const stat = await getS3DatasetSource().getDatasetFileStat(fileId);
     if (!stat) return Promise.reject(CommonErrEnum.fileNotFound);
   } else {
-    const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
-    if (!file) {
-      return Promise.reject(CommonErrEnum.fileNotFound);
-    }
-    if (file.metadata?.teamId !== teamId) {
-      return Promise.reject(CommonErrEnum.unAuthFile);
-    }
+    return Promise.reject('Invalid dataset file key');
   }
 
   const permission = new Permission({ role: ReadRoleVal, isOwner: true });
