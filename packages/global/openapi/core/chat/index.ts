@@ -7,12 +7,14 @@ import { z } from 'zod';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
 import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from './api';
 import { TagsMap } from '../../tag';
+import { HelperBotPath } from './helperBot';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
+  ...HelperBotPath,
 
   '/core/chat/presignChatFilePostUrl': {
     post: {

@@ -6,7 +6,7 @@ import {
   type ChatHistoryItemResType,
   type ChatItemType,
   type UserChatItemValueItemType
-} from './type.d';
+} from './type';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
