@@ -12,12 +12,14 @@ import {
   StopV2ChatResponseSchema
 } from './api';
 import { TagsMap } from '../../tag';
+import { HelperBotPath } from './helperBot';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
+  ...HelperBotPath,
 
   '/v2/chat/stop': {
     post: {

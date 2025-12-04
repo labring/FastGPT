@@ -5,7 +5,7 @@ import type {
   ChatHistoryItemResType,
   NodeOutputItemType,
   ToolRunResponseItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {

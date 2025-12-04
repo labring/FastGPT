@@ -1,5 +1,6 @@
 export const TagsMap = {
   /* Core */
+  helperBot: '辅助助手',
   // Agent - log
   appLog: 'Agent 日志',
 
@@ -28,6 +29,7 @@ export const TagsMap = {
   pluginMarketplace: '插件市场',
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
-  // Data
+
+  // Admin
   adminDashboard: '管理员仪表盘'
 };
