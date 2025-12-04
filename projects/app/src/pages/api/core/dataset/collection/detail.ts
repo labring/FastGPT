@@ -32,13 +32,12 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   const fileId = collection?.fileId;
-
-  if (!isS3ObjectKey(fileId, 'dataset')) {
+  if (fileId && !isS3ObjectKey(fileId, 'dataset')) {
     return Promise.reject('Invalid dataset file key');
   }
 
   const [file, indexAmount, errorCount] = await Promise.all([
-    getS3DatasetSource().getFileMetadata(fileId),
+    fileId ? getS3DatasetSource().getFileMetadata(fileId) : undefined,
     getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
     MongoDatasetTraining.countDocuments(
       {
@@ -51,10 +50,6 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
       readFromSecondary
     )
   ]);
-
-  if (!file) {
-    return Promise.reject(CommonErrEnum.fileNotFound);
-  }
 
   return {
     ...collection,

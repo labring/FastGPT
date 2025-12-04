@@ -1,5 +1,6 @@
 import type { BucketNameEnum } from './constants';
 
+// DEBUG:
 export type FileTokenQuery = {
   bucketName: `${BucketNameEnum}`;
   teamId: string;

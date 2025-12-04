@@ -39,27 +39,6 @@ export const authCollectionFile = async ({
   };
 };
 
-/* file permission */
-export const createFileToken = (data: FileTokenQuery) => {
-  if (!process.env.FILE_TOKEN_KEY) {
-    return Promise.reject('System unset FILE_TOKEN_KEY');
-  }
-
-  const expireMinutes =
-    data.customExpireMinutes ?? bucketNameMap[data.bucketName].previewExpireMinutes;
-  const expiredTime = Math.floor(addMinutes(new Date(), expireMinutes).getTime() / 1000);
-
-  const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
-  const token = jwt.sign(
-    {
-      ...data,
-      exp: expiredTime
-    },
-    key
-  );
-  return Promise.resolve(token);
-};
-
 export const authFileToken = (token?: string) =>
   new Promise<FileTokenQuery>((resolve, reject) => {
     if (!token) {

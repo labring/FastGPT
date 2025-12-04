@@ -1,23 +1,16 @@
 import { Types, connectionMongo, ReadPreference } from '../../mongo';
 import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import fsp from 'fs/promises';
-import fs from 'fs';
-import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
-import { detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
-import { computeGridFsChunSize, stream2Encoding } from './utils';
-import { addLog } from '../../system/log';
-import { Readable } from 'stream';
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getS3DatasetSource } from '../../s3/sources/dataset';
-import { isS3ObjectKey } from '../../s3/utils';
 
+// FIXME: 兼容 `initv4143` 迁移数据
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
   MongoChatFileSchema;
 
   return connectionMongo.connection.db!.collection(`${bucket}.files`);
 }
+
+// FIXME: 兼容 `initv4143` 迁移数据
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
     bucketName: bucket,
@@ -26,49 +19,7 @@ export function getGridBucket(bucket: `${BucketNameEnum}`) {
   });
 }
 
-export async function getFileById({
-  bucketName,
-  fileId
-}: {
-  bucketName: `${BucketNameEnum}`;
-  fileId: string;
-}) {
-  const db = getGFSCollection(bucketName);
-  const file = await db.findOne<DatasetFileSchema>({
-    _id: new Types.ObjectId(fileId)
-  });
-
-  return file || undefined;
-}
-
-export async function delFileByFileIdList({
-  bucketName,
-  fileIdList
-}: {
-  bucketName: `${BucketNameEnum}`;
-  fileIdList: string[];
-}): Promise<any> {
-  return retryFn(async () => {
-    const bucket = getGridBucket(bucketName);
-
-    for await (const fileId of fileIdList) {
-      try {
-        if (isS3ObjectKey(fileId, 'dataset')) {
-          await getS3DatasetSource().deleteDatasetFileByKey(fileId);
-        } else {
-          await bucket.delete(new Types.ObjectId(String(fileId)));
-        }
-      } catch (error: any) {
-        if (typeof error?.message === 'string' && error.message.includes('File not found')) {
-          addLog.warn('File not found', { fileId });
-          return;
-        }
-        return Promise.reject(error);
-      }
-    }
-  });
-}
-
+// FIXME: 兼容 `initv4143` 迁移数据
 export async function getDownloadStream({
   bucketName,
   fileId
