@@ -400,7 +400,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
-    const region = doc.originIp ? getLocationFromIp(doc.originIp) : undefined;
+    const region = doc.originIp ? getLocationFromIp(doc.originIp, locale) : 'Other';
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
@@ -439,12 +439,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
-      [AppLogKeysEnum.REGION]: () =>
-        region
-          ? [region.country?.[locale], region.province?.[locale], region.city?.[locale]]
-              .filter(Boolean)
-              .join(locale === 'zh' ? '，' : ',')
-          : '-',
+      [AppLogKeysEnum.REGION]: () => region,
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 

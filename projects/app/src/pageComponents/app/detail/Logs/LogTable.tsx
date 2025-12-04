@@ -50,6 +50,7 @@ import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import type { I18nName } from '@fastgpt/service/common/geo/type';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -179,7 +180,8 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch
+      chatSearch,
+      locale: (i18n.language === 'zh-CN' ? 'zh' : 'en') as keyof I18nName
     }),
     [
       appId,
@@ -189,7 +191,8 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch
+      chatSearch,
+      i18n.language
     ]
   );
 
@@ -340,20 +343,7 @@ const LogTable = ({
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
     ),
-    [AppLogKeysEnum.REGION]: (
-      <Td key={AppLogKeysEnum.REGION}>
-        {(() => {
-          const region = item.region;
-          if (!region) return '-';
-          if (typeof region === 'string') return region;
-          const lng = i18n.language === 'zh-CN' ? 'zh' : 'en';
-          const country = region.country?.[lng] || region.country?.zh || region.country?.en;
-          const province = region.province?.[lng] || region.province?.zh || region.province?.en;
-          const city = region.city?.[lng] || region.city?.zh || region.city?.en;
-          return [country, province, city].filter(Boolean).join(lng === 'zh' ? '，' : ', ');
-        })()}
-      </Td>
-    )
+    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>
   });
 
   return (

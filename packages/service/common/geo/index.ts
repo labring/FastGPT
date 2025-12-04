@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import type { ReaderModel } from '@maxmind/geoip2-node';
 import { Reader } from '@maxmind/geoip2-node';
 import { cleanupIntervalMs, dbPath, privateOrOtherLocationName } from './constants';
-import type { LocationName } from './type';
+import type { I18nName, LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
@@ -25,12 +25,18 @@ export function getGeoReader() {
   return reader;
 }
 
-export function getLocationFromIp(ip: string): LocationName {
+export function getLocationFromIp(ip: string, locale: keyof I18nName) {
   const reader = getGeoReader();
 
   let locationName = locationIpMap.get(ip);
   if (locationName) {
-    return locationName;
+    return [
+      locationName.country?.[locale],
+      locationName.province?.[locale],
+      locationName.city?.[locale]
+    ]
+      .filter(Boolean)
+      .join(locale === 'zh' ? '，' : ',');
   }
 
   try {
@@ -51,10 +57,17 @@ export function getLocationFromIp(ip: string): LocationName {
       }
     };
     locationIpMap.set(ip, locationName);
-    return locationName;
+
+    return [
+      locationName.country?.[locale],
+      locationName.province?.[locale],
+      locationName.city?.[locale]
+    ]
+      .filter(Boolean)
+      .join(locale === 'zh' ? '，' : ',');
   } catch (error) {
     locationIpMap.set(ip, privateOrOtherLocationName);
-    return privateOrOtherLocationName;
+    return privateOrOtherLocationName.country?.[locale];
   }
 }
 

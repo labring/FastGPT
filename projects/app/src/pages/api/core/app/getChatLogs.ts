@@ -24,7 +24,7 @@ async function handler(
   req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, locale = 'en' } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -294,7 +294,7 @@ async function handler(
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
-    const region = ip ? getLocationFromIp(ip) : undefined;
+    const region = ip ? getLocationFromIp(ip, locale) : undefined;
 
     return {
       ...item,
