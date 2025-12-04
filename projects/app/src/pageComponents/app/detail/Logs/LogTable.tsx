@@ -154,7 +154,7 @@ const LogTable = ({
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
-
+          locale: i18n.language === 'zh-CN' ? 'zh' : 'en',
           title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
           logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
@@ -204,8 +204,7 @@ const LogTable = ({
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
     params,
-    refreshDeps: [params],
-    throttleWait: 500
+    refreshDeps: [params]
   });
 
   const HeaderRenderMap = useMemo(

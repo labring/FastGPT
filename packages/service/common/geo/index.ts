@@ -71,15 +71,14 @@ export function clearCleanupInterval() {
 }
 
 export function initGeo() {
-  if (!cleanupInterval) {
-    cleanupInterval = setInterval(cleanupIpMap, cleanupIntervalMs);
-  }
+  cleanupInterval = setInterval(cleanupIpMap, cleanupIntervalMs);
 
   try {
     loadGeoDB();
   } catch (error) {
-    addLog.error(`Failed to load geo db`, error);
     clearCleanupInterval();
+    addLog.error(`Failed to load geo db`, error);
+    throw error;
   }
 }
 

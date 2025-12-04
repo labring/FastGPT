@@ -25,6 +25,8 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
+import { getLocationFromIp } from '@fastgpt/service/common/geo';
+import type { I18nName } from '@fastgpt/service/common/geo/type';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -38,6 +40,7 @@ export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
   sourcesMap: Record<string, { label: string }>;
   logKeys: AppLogKeysEnum[];
+  locale?: keyof I18nName;
 };
 
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
@@ -48,6 +51,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     sources,
     tmbIds,
     chatSearch,
+    locale = 'en',
     title,
     sourcesMap,
     logKeys = []
@@ -365,7 +369,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           customFeedbackItems: 1,
           markItems: 1,
           chatDetails: 1,
-          variables: 1
+          variables: 1,
+          originIp: '$metadata.originIp'
         }
       }
     ],
@@ -395,6 +400,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
+    const region = doc.originIp ? getLocationFromIp(doc.originIp) : undefined;
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
@@ -433,6 +439,12 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
+      [AppLogKeysEnum.REGION]: () =>
+        region
+          ? [region.country?.[locale], region.province?.[locale], region.city?.[locale]]
+              .filter(Boolean)
+              .join(locale === 'zh' ? '，' : ',')
+          : '-',
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 
