@@ -4,8 +4,7 @@ import axios, {
   type AxiosResponse
 } from 'axios';
 import { addLog } from '../../../../../common/system/log';
-import { parseDativeErrorResponse } from '../utils';
-import { dativeUrl } from '../../../search/controller';
+import { parseDativeErrorResponse, dativeUrl } from '../utils';
 
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   addLog.debug('Dative request', {

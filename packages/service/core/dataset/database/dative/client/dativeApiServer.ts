@@ -10,7 +10,7 @@ import type {
   DativeExcelUploadResponse
 } from '@fastgpt/global/core/dataset/database/api';
 import { forwardMultipartStream } from '../transport/stream-forward';
-import { dativeUrl } from '../../../search/controller';
+import { dativeUrl } from '../utils';
 
 export async function sqlQuery(req: SqlQueryRequest): Promise<SqlQueryResponse> {
   return request<SqlQueryResponse, SqlQueryRequest>({
