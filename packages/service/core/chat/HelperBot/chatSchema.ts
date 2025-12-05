@@ -25,7 +25,8 @@ const HelperBotChatSchema = new Schema({
   updateTime: {
     type: Date,
     default: () => new Date()
-  }
+  },
+  metadata: Object
 });
 
 HelperBotChatSchema.index({ type: 1, userId: 1, chatId: 1 }, { unique: true });

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { HelperBotCompletionsParamsSchema } from '../../../../../global/openapi/core/chat/helperBot/api';
-import { HelperBotChatItemSchema } from '@fastgpt/global/core/chat/helperBot/type';
+import {
+  AIChatItemValueItemSchema,
+  HelperBotChatItemSchema
+} from '@fastgpt/global/core/chat/helperBot/type';
 import { WorkflowResponseFnSchema } from '../../../workflow/dispatch/type';
 
 export const HelperBotDispatchParamsSchema = z.object({
@@ -12,5 +15,7 @@ export const HelperBotDispatchParamsSchema = z.object({
 });
 export type HelperBotDispatchParamsType = z.infer<typeof HelperBotDispatchParamsSchema>;
 
-export const HelperBotDispatchResponseSchema = z.object({});
+export const HelperBotDispatchResponseSchema = z.object({
+  aiResponse: z.array(AIChatItemValueItemSchema)
+});
 export type HelperBotDispatchResponseType = z.infer<typeof HelperBotDispatchResponseSchema>;
