@@ -49,7 +49,11 @@ const Standard = ({
     StandardSubLevelEnum.advanced,
     StandardSubLevelEnum.custom
   ];
-  const { data: coupons = [], loading } = useRequest2(
+  const {
+    data: coupons = [],
+    loading,
+    runAsync: getCoupons
+  } = useRequest2(
     async () => {
       if (!myStandardPlan?.teamId) return [];
       return getDiscountCouponList(myStandardPlan.teamId);
@@ -377,6 +381,11 @@ const Standard = ({
           <QRCodePayModal
             tip={packagePayTextMap[packageChange]}
             onSuccess={onPaySuccess}
+            discountCouponName={matchedCoupon?.name}
+            onClose={async () => {
+              setQRPayData(undefined);
+              await getCoupons();
+            }}
             {...qrPayData}
           />
         )}

@@ -201,9 +201,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
                           cursor={coupon.billId ? 'pointer' : 'not-allowed'}
                           color={coupon.billId ? 'primary.600' : 'myGray.500'}
                           onClick={() => {
-                            if (coupon.billId) {
-                              setBillId(coupon.billId);
-                            }
+                            router.push('/account/bill');
                           }}
                         >
                           {t('account_info:check_purchase_history')}

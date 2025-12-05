@@ -223,6 +223,11 @@ const BillTable = () => {
       )}
       {!!qrPayData && (
         <QRCodePayModal
+          onClose={() => {
+            setQRPayData(undefined);
+            getData(1);
+          }}
+          discountCouponName={qrPayData.discountCouponName}
           {...qrPayData}
           onSuccess={() => {
             setQRPayData(undefined);
