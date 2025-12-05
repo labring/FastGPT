@@ -10,7 +10,7 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { S3Multer } from '@fastgpt/service/common/s3/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 export type templateImportQuery = {};
@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
   const filepaths: string[] = [];
 
   try {
-    const result = await S3Multer.resolveFormData({
+    const result = await multer.resolveFormData({
       request: req,
       maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
@@ -80,7 +80,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
     addLog.error(`Backup dataset collection create error: ${error}`);
     return Promise.reject(error);
   } finally {
-    S3Multer.clearDiskTempFiles(filepaths);
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

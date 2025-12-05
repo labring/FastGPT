@@ -238,129 +238,129 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
 }
 
-export const S3Multer = {
-  _storage: multer.diskStorage({
-    filename: (_, file, cb) => {
-      if (!file?.originalname) {
-        cb(new Error('File not found'), '');
-      } else {
-        const ext = path.extname(decodeURIComponent(file.originalname));
-        cb(null, `${getNanoid()}${ext}`);
-      }
-    }
-  }),
+// export const multer = {
+//   _storage: multer.diskStorage({
+//     filename: (_, file, cb) => {
+//       if (!file?.originalname) {
+//         cb(new Error('File not found'), '');
+//       } else {
+//         const ext = path.extname(decodeURIComponent(file.originalname));
+//         cb(null, `${getNanoid()}${ext}`);
+//       }
+//     }
+//   }),
 
-  singleStore(maxFileSize: number = 500) {
-    const fileSize = maxFileSize * 1024 * 1024;
+//   singleStore(maxFileSize: number = 500) {
+//     const fileSize = maxFileSize * 1024 * 1024;
 
-    return multer({
-      limits: {
-        fileSize
-      },
-      preservePath: true,
-      storage: this._storage
-    }).single('file');
-  },
+//     return multer({
+//       limits: {
+//         fileSize
+//       },
+//       preservePath: true,
+//       storage: this._storage
+//     }).single('file');
+//   },
 
-  multipleStore(maxFileSize: number = 500) {
-    const fileSize = maxFileSize * 1024 * 1024;
+//   multipleStore(maxFileSize: number = 500) {
+//     const fileSize = maxFileSize * 1024 * 1024;
 
-    return multer({
-      limits: {
-        fileSize
-      },
-      preservePath: true,
-      storage: this._storage
-    }).array('file', global.feConfigs?.uploadFileMaxSize);
-  },
+//     return multer({
+//       limits: {
+//         fileSize
+//       },
+//       preservePath: true,
+//       storage: this._storage
+//     }).array('file', global.feConfigs?.uploadFileMaxSize);
+//   },
 
-  resolveFormData({ request, maxFileSize }: { request: NextApiRequest; maxFileSize?: number }) {
-    return new Promise<{
-      data: Record<string, any>;
-      fileMetadata: Express.Multer.File;
-      getBuffer: () => Buffer;
-      getReadStream: () => fs.ReadStream;
-    }>((resolve, reject) => {
-      const handler = this.singleStore(maxFileSize);
+//   resolveFormData({ request, maxFileSize }: { request: NextApiRequest; maxFileSize?: number }) {
+//     return new Promise<{
+//       data: Record<string, any>;
+//       fileMetadata: Express.Multer.File;
+//       getBuffer: () => Buffer;
+//       getReadStream: () => fs.ReadStream;
+//     }>((resolve, reject) => {
+//       const handler = this.singleStore(maxFileSize);
 
-      // @ts-expect-error it can accept a NextApiRequest
-      handler(request, null, (error) => {
-        if (error) {
-          return reject(error);
-        }
+//       // @ts-expect-error it can accept a NextApiRequest
+//       handler(request, null, (error) => {
+//         if (error) {
+//           return reject(error);
+//         }
 
-        // @ts-expect-error `file` will be injected by multer
-        const file = request.file as Express.Multer.File;
+//         // @ts-expect-error `file` will be injected by multer
+//         const file = request.file as Express.Multer.File;
 
-        if (!file) {
-          return reject(new Error('File not found'));
-        }
+//         if (!file) {
+//           return reject(new Error('File not found'));
+//         }
 
-        const data = (() => {
-          if (!request.body?.data) return {};
-          try {
-            return JSON.parse(request.body.data);
-          } catch {
-            return {};
-          }
-        })();
+//         const data = (() => {
+//           if (!request.body?.data) return {};
+//           try {
+//             return JSON.parse(request.body.data);
+//           } catch {
+//             return {};
+//           }
+//         })();
 
-        resolve({
-          data,
-          fileMetadata: file,
-          getBuffer: () => fs.readFileSync(file.path),
-          getReadStream: () => fs.createReadStream(file.path)
-        });
-      });
-    });
-  },
+//         resolve({
+//           data,
+//           fileMetadata: file,
+//           getBuffer: () => fs.readFileSync(file.path),
+//           getReadStream: () => fs.createReadStream(file.path)
+//         });
+//       });
+//     });
+//   },
 
-  resolveMultipleFormData({
-    request,
-    maxFileSize
-  }: {
-    request: NextApiRequest;
-    maxFileSize?: number;
-  }) {
-    return new Promise<{
-      data: Record<string, any>;
-      fileMetadata: Array<Express.Multer.File>;
-    }>((resolve, reject) => {
-      const handler = this.multipleStore(maxFileSize);
+//   resolveMultipleFormData({
+//     request,
+//     maxFileSize
+//   }: {
+//     request: NextApiRequest;
+//     maxFileSize?: number;
+//   }) {
+//     return new Promise<{
+//       data: Record<string, any>;
+//       fileMetadata: Array<Express.Multer.File>;
+//     }>((resolve, reject) => {
+//       const handler = this.multipleStore(maxFileSize);
 
-      // @ts-expect-error it can accept a NextApiRequest
-      handler(request, null, (error) => {
-        if (error) {
-          return reject(error);
-        }
+//       // @ts-expect-error it can accept a NextApiRequest
+//       handler(request, null, (error) => {
+//         if (error) {
+//           return reject(error);
+//         }
 
-        // @ts-expect-error `files` will be injected by multer
-        const files = request.files as Array<Express.Multer.File>;
+//         // @ts-expect-error `files` will be injected by multer
+//         const files = request.files as Array<Express.Multer.File>;
 
-        if (!files || files.length === 0) {
-          return reject(new Error('File not found'));
-        }
+//         if (!files || files.length === 0) {
+//           return reject(new Error('File not found'));
+//         }
 
-        const data = (() => {
-          if (!request.body?.data) return {};
-          try {
-            return JSON.parse(request.body.data);
-          } catch {
-            return {};
-          }
-        })();
+//         const data = (() => {
+//           if (!request.body?.data) return {};
+//           try {
+//             return JSON.parse(request.body.data);
+//           } catch {
+//             return {};
+//           }
+//         })();
 
-        resolve({
-          data,
-          fileMetadata: files
-        });
-      });
-    });
-  },
+//         resolve({
+//           data,
+//           fileMetadata: files
+//         });
+//       });
+//     });
+//   },
 
-  clearDiskTempFiles(filepaths: string[]) {
-    for (const filepath of filepaths) {
-      fs.unlink(filepath, (_) => {});
-    }
-  }
-};
+//   clearDiskTempFiles(filepaths: string[]) {
+//     for (const filepath of filepaths) {
+//       fs.unlink(filepath, (_) => {});
+//     }
+//   }
+// };

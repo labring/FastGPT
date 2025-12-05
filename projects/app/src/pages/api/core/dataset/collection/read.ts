@@ -8,8 +8,8 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import { isS3ObjectKey, jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { addHours } from 'date-fns';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 export type readCollectionSourceQuery = {};
 
@@ -79,7 +79,11 @@ async function handler(
       collection.fileId &&
       isS3ObjectKey(collection.fileId, 'dataset')
     ) {
-      return jwtSignS3ObjectKey(collection.fileId, addHours(new Date(), 1));
+      return getS3DatasetSource().createGetDatasetFileURL({
+        key: collection.fileId,
+        expiredHours: 1,
+        external: true
+      });
     }
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;

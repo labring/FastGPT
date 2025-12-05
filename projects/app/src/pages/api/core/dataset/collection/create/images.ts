@@ -14,7 +14,8 @@ import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addDays, addSeconds } from 'date-fns';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getFileS3Key, S3Multer, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
 
 const authUploadLimit = (tmbId: string, num: number) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -32,7 +33,7 @@ async function handler(
   const filepaths: string[] = [];
 
   try {
-    const result = await S3Multer.resolveMultipleFormData({
+    const result = await multer.resolveMultipleFormData({
       request: req,
       maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
@@ -88,7 +89,7 @@ async function handler(
   } catch (error) {
     return Promise.reject(error);
   } finally {
-    S3Multer.clearDiskTempFiles(filepaths);
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

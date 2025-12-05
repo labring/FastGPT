@@ -6,13 +6,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
-import { S3Multer } from '@fastgpt/service/common/s3/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const filepaths: string[] = [];
 
   try {
-    const result = await S3Multer.resolveFormData({ request: req });
+    const result = await multer.resolveFormData({ request: req });
     filepaths.push(result.fileMetadata.path);
     let { appId, duration, shareId, outLinkUid, teamId: spaceTeamId, teamToken } = result.data;
 
@@ -60,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       error: err
     });
   } finally {
-    S3Multer.clearDiskTempFiles(filepaths);
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

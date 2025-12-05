@@ -221,17 +221,17 @@ export class S3DatasetSource {
     const hash = createHash('md5').update(sourceId).digest('hex');
     const key = getFileS3Key.rawText({ hash, customPdfParse });
 
+    await MongoS3TTL.create({
+      minioKey: key,
+      bucketName: this.bucket.name,
+      expiredTime: addMinutes(new Date(), 20)
+    });
+
     const buffer = Buffer.from(text);
     await this.bucket.putObject(key, buffer, buffer.length, {
       'content-type': 'text/plain',
       'upload-time': new Date().toISOString(),
       'origin-filename': sourceName
-    });
-
-    await MongoS3TTL.create({
-      minioKey: key,
-      bucketName: this.bucket.name,
-      expiredTime: addMinutes(new Date(), 20)
     });
 
     return key;
