@@ -230,8 +230,8 @@ export class S3DatasetSource {
     const buffer = Buffer.from(text);
     await this.bucket.putObject(key, buffer, buffer.length, {
       'content-type': 'text/plain',
-      'upload-time': new Date().toISOString(),
-      'origin-filename': sourceName
+      'origin-filename': encodeURIComponent(sourceName),
+      'upload-time': new Date().toISOString()
     });
 
     return key;
