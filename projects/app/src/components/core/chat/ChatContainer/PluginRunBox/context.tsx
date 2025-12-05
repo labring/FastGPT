@@ -191,6 +191,8 @@ const PluginRunContextProvider = ({
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
 
+      const responseChatItemId = getNanoid(24);
+
       setChatRecords([
         {
           ...clientGetWorkflowToolRunUserQuery({
@@ -201,7 +203,7 @@ const PluginRunContextProvider = ({
           status: 'finish'
         },
         {
-          dataId: getNanoid(24),
+          dataId: responseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [
             {
@@ -231,6 +233,7 @@ const PluginRunContextProvider = ({
       try {
         await onStartChat({
           messages,
+          responseChatItemId,
           controller: chatController.current,
           generatingMessage,
           variables: {
