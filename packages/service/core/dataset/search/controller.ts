@@ -942,7 +942,9 @@ export const defaultSearchDatasetData = async ({
 
   const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
     query,
-    llmModel: datasetSearchUsingExtensionQuery ? datasetSearchExtensionModel : undefined,
+    llmModel: datasetSearchUsingExtensionQuery
+      ? getLLMModel(datasetSearchExtensionModel).model
+      : undefined,
     embeddingModel: props.model,
     extensionBg: datasetSearchExtensionBg,
     histories
