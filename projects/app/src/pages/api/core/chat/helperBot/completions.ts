@@ -8,6 +8,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoHelperBotChatItem } from '@fastgpt/service/core/chat/HelperBot/chatItemSchema';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchMap } from '@fastgpt/service/core/chat/HelperBot/dispatch/index';
+import { pushChatRecords } from '@fastgpt/service/core/chat/HelperBot/utils';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -37,9 +38,24 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
 
   // 执行不同逻辑
   const fn = dispatchMap[metadata.type];
-  const result = await fn({});
+  const result = await fn({
+    query,
+    files,
+    metadata,
+    histories,
+    workflowResponseWrite
+  });
 
   // Save chat
+  await pushChatRecords({
+    type: metadata.type,
+    userId,
+    chatId,
+    chatItemId,
+    query,
+    files,
+    aiResponse: result.aiResponse
+  });
   // Push usage
 }
 
