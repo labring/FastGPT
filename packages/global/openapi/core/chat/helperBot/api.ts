@@ -1,11 +1,13 @@
 import { PaginationPropsSchema, PaginationResponseSchema } from '../../../type';
 import {
   type HelperBotChatItemSiteType,
+  HelperBotTypeEnum,
   HelperBotTypeEnumSchema,
   topAgentParamsSchema
 } from '../../../../core/chat/helperBot/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';
+import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 
 // 分页获取记录
 export const GetHelperBotChatRecordsParamsSchema = z
@@ -46,7 +48,7 @@ export const HelperBotCompletionsParamsSchema = z.object({
   query: z.string(),
   files: z.array(
     z.object({
-      type: z.enum(['image', 'file']),
+      type: z.enum(ChatFileTypeEnum),
       key: z.string(),
       url: z.string().optional(),
       name: z.string()
@@ -54,7 +56,7 @@ export const HelperBotCompletionsParamsSchema = z.object({
   ),
   metadata: z.discriminatedUnion('type', [
     z.object({
-      type: z.literal('topAgent'),
+      type: z.literal(HelperBotTypeEnum.topAgent),
       data: topAgentParamsSchema
     })
   ])

@@ -67,7 +67,7 @@ export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
 /* --------- chat item ---------- */
 // User
 export const UserChatItemFileItemSchema = z.object({
-  type: z.enum(Object.values(ChatFileTypeEnum)),
+  type: z.enum(ChatFileTypeEnum),
   name: z.string().optional(),
   key: z.string().optional(),
   url: z.string()

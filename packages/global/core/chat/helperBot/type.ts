@@ -21,12 +21,13 @@ export const HelperBotChatSchema = z.object({
   type: HelperBotTypeEnum,
   userId: z.string(),
   createTime: z.date(),
-  updateTime: z.date()
+  updateTime: z.date(),
+  metadata: z.record(z.string(), z.any()).optional()
 });
 export type HelperBotChatType = z.infer<typeof HelperBotChatSchema>;
 
 // AI schema
-const AIChatItemValueItemSchema = z.union([
+export const AIChatItemValueItemSchema = z.union([
   z.object({
     text: z.object({
       content: z.string()
@@ -41,10 +42,12 @@ const AIChatItemValueItemSchema = z.union([
     tool: ToolModuleResponseItemSchema
   })
 ]);
+export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueItemSchema>;
 const AIChatItemSchema = z.object({
   obj: z.literal(ChatRoleEnum.AI),
   value: z.array(AIChatItemValueItemSchema)
 });
+export type AIChatItemType = z.infer<typeof AIChatItemSchema>;
 
 const HelperBotChatRoleSchema = z.union([
   UserChatItemSchema,
