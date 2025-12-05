@@ -178,12 +178,9 @@ export const onCreateApp = async ({
 
       const filename = (() => {
         const last = template.avatar.split('/').pop();
-        if (!last) {
-          return getNanoid(6).concat(path.extname(template.avatar));
-        }
+        if (!last) return getNanoid(6).concat(path.extname(template.avatar));
         const firstDashIndex = last.indexOf('-');
-        const filename = last.slice(firstDashIndex === -1 ? 0 : firstDashIndex + 1);
-        return `${getNanoid(6)}-${filename}`;
+        return `${getNanoid(6)}-${firstDashIndex === -1 ? last : last.slice(firstDashIndex + 1)}`;
       })();
 
       return await s3AvatarSource.copyAvatar({

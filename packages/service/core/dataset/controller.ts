@@ -9,7 +9,6 @@ import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { clearDatasetImages } from './image/utils';
 import { MongoDatasetCollectionTags } from './tag/schema';
 import { removeDatasetSyncJobScheduler } from './datasetSync';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -111,8 +110,6 @@ export async function delDatasetRelevantData({
       MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }),
       // Delete collection image and file
       delCollectionRelatedSource({ collections }),
-      // Delete dataset Image
-      clearDatasetImages(datasetIds),
       // Delete vector data
       deleteDatasetDataVector({ teamId, datasetIds })
     ]);

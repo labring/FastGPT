@@ -160,6 +160,18 @@ export class S3BaseBucket {
     return this.client.statObject(this.name, ...params);
   }
 
+  async isObjectExists(key: string): Promise<boolean> {
+    try {
+      await this.client.statObject(this.name, key);
+      return true;
+    } catch (err) {
+      if (err instanceof S3Error && err.message === 'Not Found') {
+        return false;
+      }
+      return Promise.reject(err);
+    }
+  }
+
   async fileStreamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {

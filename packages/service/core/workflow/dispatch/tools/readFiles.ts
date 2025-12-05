@@ -10,18 +10,17 @@ import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/f
 import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
-import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addDays, addMinutes } from 'date-fns';
+import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
-import path from 'path';
+import path from 'node:path';
 import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
+import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -176,12 +175,15 @@ export const getFileContentFromLinks = async ({
     parseUrlList
       .map(async (url) => {
         // Get from buffer
-        const fileBuffer = await getRawTextBuffer(url);
-        if (fileBuffer) {
+        const rawTextBuffer = await getS3DatasetSource().getRawTextBuffer({
+          sourceId: url,
+          customPdfParse
+        });
+        if (rawTextBuffer) {
           return formatResponseObject({
-            filename: fileBuffer.sourceName || url,
+            filename: rawTextBuffer.filename || url,
             url,
-            content: fileBuffer.text
+            content: rawTextBuffer.text
           });
         }
 
@@ -267,11 +269,11 @@ export const getFileContentFromLinks = async ({
           const replacedText = replaceDatasetQuoteTextWithJWT(rawText, addDays(new Date(), 90));
 
           // Add to buffer
-          addRawTextBuffer({
+          getS3DatasetSource().addRawTextBuffer({
             sourceId: url,
             sourceName: filename,
             text: replacedText,
-            expiredTime: addMinutes(new Date(), 20)
+            customPdfParse
           });
 
           return formatResponseObject({ filename, url, content: replacedText });
