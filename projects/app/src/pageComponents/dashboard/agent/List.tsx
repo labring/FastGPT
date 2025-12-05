@@ -368,8 +368,8 @@ const List = () => {
                                                 label: t('common:move_to'),
                                                 onClick: () => setMoveAppId(app._id)
                                               }
-                                            ]),
-                                        ...(app.permission.hasManagePer
+                                            ])
+                                        /*...(app.permission.hasManagePer
                                           ? [
                                               {
                                                 icon: 'key',
@@ -378,7 +378,7 @@ const List = () => {
                                                 onClick: () => setEditPerAppId(app._id)
                                               }
                                             ]
-                                          : [])
+                                          : [])*/
                                       ]
                                     }
                                   ]
