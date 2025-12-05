@@ -198,16 +198,16 @@ export class S3DatasetSource {
       };
     })();
 
-    await this.bucket.putObject(key, stream, size, {
-      'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
-      'upload-time': new Date().toISOString(),
-      'origin-filename': encodeURIComponent(truncatedFilename)
-    });
-
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucket.name,
       expiredTime: addHours(new Date(), 3)
+    });
+
+    await this.bucket.putObject(key, stream, size, {
+      'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
+      'upload-time': new Date().toISOString(),
+      'origin-filename': encodeURIComponent(truncatedFilename)
     });
 
     return key;
