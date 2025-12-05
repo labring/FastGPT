@@ -76,12 +76,25 @@ const BillTable = () => {
   });
 
   const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest2(
-    async (payId: string) => {
-      const { status, description } = await checkBalancePayResult(payId);
+    async (bill: BillSchemaType) => {
+      const { status, description } = await checkBalancePayResult(bill._id);
       if (status === BillStatusEnum.SUCCESS) {
         toast({
           title: t('common:pay_success'),
           status: 'success'
+        });
+      } else if (status === BillStatusEnum.NOTPAY) {
+        const payWay = bill.metadata?.payWay as BillPayWayEnum;
+        const paymentData = await putUpdatePayment({
+          billId: bill._id,
+          payWay
+        });
+
+        setQRPayData({
+          billId: bill._id,
+          readPrice: formatStorePrice2Read(bill.price),
+          payment: payWay,
+          ...paymentData
         });
       } else {
         toast({
@@ -105,26 +118,6 @@ const BillTable = () => {
       onSuccess: () => {
         getData(1);
       }
-    }
-  );
-
-  const { runAsync: handleRepay, loading: isRepaying } = useRequest2(
-    async (bill: BillSchemaType) => {
-      const payWay = bill.metadata?.payWay as BillPayWayEnum;
-      const paymentData = await putUpdatePayment({
-        billId: bill._id,
-        payWay
-      });
-
-      setQRPayData({
-        billId: bill._id,
-        readPrice: formatStorePrice2Read(bill.price),
-        payment: payWay,
-        ...paymentData
-      });
-    },
-    {
-      manual: true
     }
   );
 
@@ -166,13 +159,13 @@ const BillTable = () => {
                   {item.status === 'NOTPAY' && (
                     <>
                       <Button
-                        isLoading={isRepaying}
+                        isLoading={isRefreshing}
                         mr={2}
-                        onClick={() => handleRepay(item)}
+                        onClick={() => handleRefreshPayOrder(item)}
                         size={'sm'}
                         variant={'primary'}
                       >
-                        {t('common:pay_bill')}
+                        {t('common:Update')}
                       </Button>
                       <PopoverConfirm
                         content={t('common:cancel_bill_confirm')}

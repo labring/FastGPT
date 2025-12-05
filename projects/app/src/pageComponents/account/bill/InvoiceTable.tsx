@@ -162,7 +162,7 @@ function InvoiceDetailModal({
         <Flex w={'100%'} h={'100%'} flexDir={'column'} gap={'1rem'}>
           <LabelItem
             label={t('account_bill:invoice_amount')}
-            value={t('account_bill:yuan', { amount: formatStorePrice2Read(invoice.amount) })}
+            value={t('account:yuan', { amount: formatStorePrice2Read(invoice.amount) })}
           />
           <LabelItem label={t('account_bill:organization_name')} value={invoice.teamName} />
           <LabelItem label={t('account_bill:unit_code')} value={invoice.unifiedCreditCode} />
@@ -172,7 +172,7 @@ function InvoiceDetailModal({
           <LabelItem label={t('account_bill:bank_account')} value={invoice.bankAccount} />
           <LabelItem
             label={t('account_bill:need_special_invoice')}
-            value={invoice.needSpecialInvoice ? t('account_bill:yes') : t('account_bill:no')}
+            value={invoice.needSpecialInvoice ? t('account:yes') : t('account:no')}
           />
           <LabelItem label={t('account_bill:contact_phone')} value={invoice.contactPhone} />
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />
