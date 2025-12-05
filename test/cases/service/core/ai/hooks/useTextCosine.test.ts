@@ -19,7 +19,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'test query',
+        originalText: 'test query',
         candidates: [],
         k: 3
       });
@@ -32,7 +32,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original text',
+        originalText: 'original text',
         candidates: ['candidate1', 'candidate2', 'candidate3'],
         k: 2
       });
@@ -45,7 +45,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original text',
+        originalText: 'original text',
         candidates: ['candidate1', 'candidate2'],
         k: 5
       });
@@ -58,7 +58,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original text',
+        originalText: 'original text',
         candidates: ['only candidate'],
         k: 1
       });
@@ -82,7 +82,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original text',
+        originalText: 'original text',
         candidates: ['different', 'similar'],
         k: 1,
         alpha: 1.0 // Only consider relevance, not diversity
@@ -97,7 +97,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original text',
+        originalText: 'original text',
         candidates: ['c1', 'c2', 'c3'],
         k: 3,
         alpha: 0.3 // Default alpha
@@ -113,7 +113,7 @@ describe('useTextCosine', () => {
     it('should call getVectorsByText with correct parameters', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
       await lazyGreedyQuerySelection({
-        originnalText: 'test query',
+        originalText: 'test query',
         candidates: ['candidate'],
         k: 1
       });
@@ -138,7 +138,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original',
+        originalText: 'original',
         candidates: ['same1', 'same2', 'same3'],
         k: 2
       });
@@ -163,7 +163,7 @@ describe('useTextCosine', () => {
 
       // With high alpha (more relevance)
       const resultHighAlpha = await lazyGreedyQuerySelection({
-        originnalText: 'original',
+        originalText: 'original',
         candidates: ['similar', 'different'],
         k: 1,
         alpha: 0.9
@@ -182,7 +182,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'test',
+        originalText: 'test',
         candidates: ['candidate'],
         k: 1
       });
@@ -195,7 +195,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'test',
+        originalText: 'test',
         candidates: ['candidate'],
         k: 0
       });
@@ -219,7 +219,7 @@ describe('useTextCosine', () => {
         embeddingModel: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
-        originnalText: 'original',
+        originalText: 'original',
         candidates: ['similar1', 'similar2', 'different'],
         k: 2,
         alpha: 0.1 // Low alpha means more diversity

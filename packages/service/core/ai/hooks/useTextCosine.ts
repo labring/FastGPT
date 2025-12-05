@@ -73,19 +73,19 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
 
   // Lazy greedy query selection algorithm
   const lazyGreedyQuerySelection = async ({
-    originnalText,
+    originalText,
     candidates,
     k,
     alpha = 0.3
   }: {
-    originnalText: string;
+    originalText: string;
     candidates: string[]; // 候选文本
     k: number;
     alpha?: number;
   }) => {
     const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectorsByText({
       model: vectorModel,
-      input: [originnalText, ...candidates],
+      input: [originalText, ...candidates],
       type: 'query'
     });
 
