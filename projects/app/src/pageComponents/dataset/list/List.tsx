@@ -340,8 +340,8 @@ function List() {
                                           }
                                         }
                                       ]
-                                    : []),
-                                  ...(dataset.permission.hasManagePer
+                                    : [])
+                                  /*...(dataset.permission.hasManagePer
                                     ? [
                                         {
                                           icon: 'key',
@@ -349,7 +349,7 @@ function List() {
                                           onClick: () => setEditPerDatasetId(dataset._id)
                                         }
                                       ]
-                                    : [])
+                                    : [])*/
                                 ]
                               },
                               ...(dataset.type != DatasetTypeEnum.folder
