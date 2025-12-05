@@ -1,142 +1,167 @@
 import { vi } from 'vitest';
 
-vi.mock('@fastgpt/service/common/s3/buckets/base', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+// Create mock S3 bucket object for global use
+const createMockS3Bucket = () => ({
+  name: 'mock-bucket',
+  client: {},
+  externalClient: {},
+  exist: vi.fn().mockResolvedValue(true),
+  delete: vi.fn().mockResolvedValue(undefined),
+  putObject: vi.fn().mockResolvedValue(undefined),
+  getObject: vi.fn().mockResolvedValue(null),
+  statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
+  move: vi.fn().mockResolvedValue(undefined),
+  copy: vi.fn().mockResolvedValue(undefined),
+  addDeleteJob: vi.fn().mockResolvedValue(undefined),
+  createPostPresignedUrl: vi.fn().mockResolvedValue({
+    url: 'http://localhost:9000/mock-bucket',
+    fields: { key: 'mock-key' },
+    maxSize: 100 * 1024 * 1024
+  }),
+  createExternalUrl: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-key'),
+  createGetPresignedUrl: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-key'),
+  createPublicUrl: vi.fn((key: string) => `http://localhost:9000/mock-bucket/${key}`)
+});
 
-  class MockS3BaseBucket {
-    private _bucket: string;
+// Initialize global s3BucketMap early to prevent any real S3 connections
+const mockBucket = createMockS3Bucket();
+global.s3BucketMap = {
+  'fastgpt-public': mockBucket,
+  'fastgpt-private': mockBucket
+} as any;
+
+// Mock minio Client to prevent real connections
+const createMockMinioClient = vi.hoisted(() => {
+  return vi.fn().mockImplementation(() => ({
+    bucketExists: vi.fn().mockResolvedValue(true),
+    makeBucket: vi.fn().mockResolvedValue(undefined),
+    setBucketPolicy: vi.fn().mockResolvedValue(undefined),
+    copyObject: vi.fn().mockResolvedValue(undefined),
+    removeObject: vi.fn().mockResolvedValue(undefined),
+    putObject: vi.fn().mockResolvedValue({ etag: 'mock-etag' }),
+    getObject: vi.fn().mockResolvedValue(null),
+    statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
+    presignedGetObject: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-object'),
+    presignedPostPolicy: vi.fn().mockResolvedValue({
+      postURL: 'http://localhost:9000/mock-bucket',
+      formData: { key: 'mock-key' }
+    }),
+    newPostPolicy: vi.fn(() => ({
+      setKey: vi.fn().mockReturnThis(),
+      setBucket: vi.fn().mockReturnThis(),
+      setContentType: vi.fn().mockReturnThis(),
+      setContentLengthRange: vi.fn().mockReturnThis(),
+      setExpires: vi.fn().mockReturnThis(),
+      setUserMetaData: vi.fn().mockReturnThis()
+    }))
+  }));
+});
+
+vi.mock('minio', () => ({
+  Client: createMockMinioClient(),
+  S3Error: class S3Error extends Error {},
+  CopyConditions: vi.fn()
+}));
+
+// Simplified S3 bucket class mock
+const createMockBucketClass = (defaultName: string) => {
+  return class MockS3Bucket {
+    public name: string;
     public options: any;
+    public client = {};
+    public externalClient = {};
 
-    constructor(bucket: string, options?: any) {
-      this._bucket = bucket;
+    constructor(bucket?: string, options?: any) {
+      this.name = bucket || defaultName;
       this.options = options || {};
-      // Prevent async init() from running in tests
     }
 
-    get name(): string {
-      return this._bucket;
+    async exist() {
+      return true;
     }
-
-    get client(): any {
-      return {
-        bucketExists: vi.fn().mockResolvedValue(true),
-        makeBucket: vi.fn().mockResolvedValue(undefined),
-        setBucketPolicy: vi.fn().mockResolvedValue(undefined),
-        copyObject: vi.fn().mockResolvedValue(undefined),
-        removeObject: vi.fn().mockResolvedValue(undefined),
-        presignedPostPolicy: vi.fn().mockResolvedValue({
-          postURL: 'http://localhost:9000/mock-bucket',
-          formData: { key: 'mock-key' }
-        }),
-        newPostPolicy: vi.fn(() => ({
-          setKey: vi.fn(),
-          setBucket: vi.fn(),
-          setContentType: vi.fn(),
-          setContentLengthRange: vi.fn(),
-          setExpires: vi.fn(),
-          setUserMetaData: vi.fn()
-        }))
-      };
+    async delete() {}
+    async putObject() {}
+    async getObject() {
+      return null;
     }
-
-    get externalClient(): any {
-      return {
-        bucketExists: vi.fn().mockResolvedValue(true),
-        makeBucket: vi.fn().mockResolvedValue(undefined),
-        setBucketPolicy: vi.fn().mockResolvedValue(undefined),
-        copyObject: vi.fn().mockResolvedValue(undefined),
-        removeObject: vi.fn().mockResolvedValue(undefined),
-        presignedPostPolicy: vi.fn().mockResolvedValue({
-          postURL: 'http://localhost:9000/mock-bucket',
-          formData: { key: 'mock-key' }
-        }),
-        newPostPolicy: vi.fn(() => ({
-          setKey: vi.fn(),
-          setBucket: vi.fn(),
-          setContentType: vi.fn(),
-          setContentLengthRange: vi.fn(),
-          setExpires: vi.fn(),
-          setUserMetaData: vi.fn()
-        }))
-      };
+    async statObject() {
+      return { size: 0, etag: 'mock-etag' };
     }
-
-    move(src: string, dst: string, options?: any): Promise<void> {
-      return Promise.resolve();
-    }
-
-    copy(src: string, dst: string, options?: any): any {
-      return Promise.resolve();
-    }
-
-    exist(): Promise<boolean> {
-      return Promise.resolve(true);
-    }
-
-    delete(objectKey: string, options?: any): Promise<void> {
-      return Promise.resolve();
-    }
-
-    addDeleteJob(params: any): Promise<void> {
-      return Promise.resolve();
-    }
-
-    async createPostPresignedUrl(params: any, options?: any): Promise<any> {
-      const key = `mock/${params.teamId || 'test'}/${params.filename}`;
+    async move() {}
+    async copy() {}
+    async addDeleteJob() {}
+    async createPostPresignedUrl(params: any, options?: any) {
       return {
         url: 'http://localhost:9000/mock-bucket',
-        fields: { key },
+        fields: { key: `mock/${params.teamId || 'test'}/${params.filename}` },
         maxSize: (options?.maxFileSize || 100) * 1024 * 1024
       };
     }
-
-    async createExternalUrl(params: any): Promise<string> {
+    async createExternalUrl(params: any) {
       return `http://localhost:9000/mock-bucket/${params.key}`;
     }
-  }
-
-  return {
-    ...actual,
-    S3BaseBucket: MockS3BaseBucket
-  };
-});
-
-vi.mock('@fastgpt/service/common/s3/buckets/public', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
-  const { S3BaseBucket } = await import('@fastgpt/service/common/s3/buckets/base');
-
-  class MockS3PublicBucket extends S3BaseBucket {
-    createPublicUrl(objectKey: string): string {
-      return `http://localhost:9000/mock-public-bucket/${objectKey}`;
+    async createGetPresignedUrl(params: any) {
+      return `http://localhost:9000/mock-bucket/${params.key}`;
     }
-  }
-
-  return {
-    ...actual,
-    S3PublicBucket: MockS3PublicBucket
+    createPublicUrl(objectKey: string) {
+      return `http://localhost:9000/mock-bucket/${objectKey}`;
+    }
   };
-});
+};
 
-vi.mock('@fastgpt/service/common/s3/buckets/private', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
-  const { S3BaseBucket } = await import('@fastgpt/service/common/s3/buckets/base');
+vi.mock('@fastgpt/service/common/s3/buckets/base', () => ({
+  S3BaseBucket: createMockBucketClass('fastgpt-bucket')
+}));
 
-  return {
-    ...actual,
-    S3PrivateBucket: S3BaseBucket
-  };
-});
+vi.mock('@fastgpt/service/common/s3/buckets/public', () => ({
+  S3PublicBucket: createMockBucketClass('fastgpt-public')
+}));
 
-// Mock S3 initialization to prevent real connections
-vi.mock('@fastgpt/service/common/s3', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
+  S3PrivateBucket: createMockBucketClass('fastgpt-private')
+}));
 
-  return {
-    ...actual,
-    initS3Buckets: vi.fn(() => {
-      // Mock global s3BucketMap
-      global.s3BucketMap = {} as any;
+// Mock S3 source modules
+vi.mock('@fastgpt/service/common/s3/sources/avatar', () => ({
+  getS3AvatarSource: vi.fn(() => ({
+    prefix: '/avatar/',
+    createUploadAvatarURL: vi.fn().mockResolvedValue({
+      url: 'http://localhost:9000/mock-bucket',
+      fields: { key: 'mock-key' },
+      maxSize: 5 * 1024 * 1024
     }),
-    initS3MQWorker: vi.fn().mockResolvedValue(undefined)
-  };
-});
+    createPublicUrl: vi.fn((key: string) => `http://localhost:9000/mock-bucket/${key}`),
+    removeAvatarTTL: vi.fn().mockResolvedValue(undefined),
+    deleteAvatar: vi.fn().mockResolvedValue(undefined),
+    refreshAvatar: vi.fn().mockResolvedValue(undefined),
+    copyAvatar: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-avatar')
+  }))
+}));
+
+vi.mock('@fastgpt/service/common/s3/sources/dataset/index', () => ({
+  getS3DatasetSource: vi.fn(() => ({
+    createUploadDatasetFileURL: vi.fn().mockResolvedValue({
+      url: 'http://localhost:9000/mock-bucket',
+      fields: { key: 'mock-key' },
+      maxSize: 500 * 1024 * 1024
+    }),
+    deleteDatasetFile: vi.fn().mockResolvedValue(undefined)
+  })),
+  S3DatasetSource: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/s3/sources/chat/index', () => ({
+  S3ChatSource: vi.fn()
+}));
+
+// Mock S3 initialization
+vi.mock('@fastgpt/service/common/s3', () => ({
+  initS3Buckets: vi.fn(() => {
+    const mockBucket = createMockS3Bucket();
+    global.s3BucketMap = {
+      'fastgpt-public': mockBucket,
+      'fastgpt-private': mockBucket
+    } as any;
+  }),
+  initS3MQWorker: vi.fn().mockResolvedValue(undefined)
+}));
