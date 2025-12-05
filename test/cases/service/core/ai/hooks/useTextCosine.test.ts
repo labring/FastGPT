@@ -6,7 +6,7 @@ import {
   generateSimilarVector,
   generateOrthogonalVector,
   mockGetVectorsByText
-} from '../../../../../mocks/ai/embedding';
+} from '../../../../../mocks/core/ai/embedding';
 
 describe('useTextCosine', () => {
   beforeEach(() => {
