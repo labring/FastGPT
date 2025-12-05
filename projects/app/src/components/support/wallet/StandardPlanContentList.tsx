@@ -80,9 +80,9 @@ const StandardPlanContentList = ({
       </Flex>
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
-        <Box color={'myGray.600'}>
-          {t('common:support.wallet.subscription.function.Requests per minute', {
-            amount: planContent.requestsPerMinute
+        <Box fontWeight={'bold'} color={'myGray.600'}>
+          {t('common:support.wallet.subscription.function.Max dataset size', {
+            amount: planContent.maxDatasetSize
           })}
         </Box>
       </Flex>
@@ -112,9 +112,9 @@ const StandardPlanContentList = ({
       </Flex>
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
-        <Box fontWeight={'bold'} color={'myGray.600'}>
-          {t('common:support.wallet.subscription.function.Max dataset size', {
-            amount: planContent.maxDatasetSize
+        <Box color={'myGray.600'}>
+          {t('common:support.wallet.subscription.function.Requests per minute', {
+            amount: planContent.requestsPerMinute
           })}
         </Box>
       </Flex>
@@ -128,7 +128,6 @@ const StandardPlanContentList = ({
           </Box>
         </Flex>
       )}
-
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
         <Box color={'myGray.600'}>

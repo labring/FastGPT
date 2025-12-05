@@ -205,7 +205,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                     </Th>
                     <Th>{t('account_bill:type')}</Th>
                     <Th>{t('account_bill:time')}</Th>
-                    <Th>{t('account_bill:support_wallet_amount')}</Th>
+                    <Th>{t('account:support_wallet_amount')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody fontSize={'0.875rem'}>
