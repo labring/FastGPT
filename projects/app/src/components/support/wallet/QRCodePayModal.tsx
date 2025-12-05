@@ -19,6 +19,8 @@ import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wal
 
 export type QRPayProps = CreateBillResponseType & {
   tip?: string;
+  discountCouponName?: string;
+  onClose?: () => void;
 };
 
 const QRCodePayModal = ({
@@ -29,7 +31,9 @@ const QRCodePayModal = ({
   qrCode,
   iframeCode,
   markdown,
-  onSuccess
+  onSuccess,
+  discountCouponName,
+  onClose
 }: QRPayProps & { tip?: string; onSuccess?: () => any }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -161,13 +165,25 @@ const QRCodePayModal = ({
       title={t('common:user.Pay')}
       iconSrc="/imgs/modal/wallet.svg"
       w={'600px'}
+      onClose={onClose}
     >
       <ModalBody textAlign={'center'} padding={['16px 24px', '32px 52px']}>
         {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
         <Box>{t('common:pay_money')}</Box>
-        <Box color="primary.600" fontSize="32px" fontWeight="600" lineHeight="40px" mb={6}>
+        <Box
+          color="primary.600"
+          fontSize="32px"
+          fontWeight="600"
+          lineHeight="40px"
+          mb={discountCouponName ? 1 : 6}
+        >
           ¥{readPrice.toFixed(2)}
         </Box>
+        {discountCouponName && (
+          <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'500'} mb={6}>
+            {t('common:discount_coupon_used') + t(discountCouponName)}
+          </Box>
+        )}
 
         {renderPaymentContent()}
 

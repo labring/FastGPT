@@ -46,8 +46,8 @@ const InvoiceTable = () => {
             <Tr>
               <Th w={'20%'}>#</Th>
               <Th w={'20%'}>{t('account_bill:time')}</Th>
-              <Th w={'20%'}>{t('account_bill:support_wallet_amount')}</Th>
-              <Th w={'20%'}>{t('account_bill:status')}</Th>
+              <Th w={'20%'}>{t('account:support_wallet_amount')}</Th>
+              <Th w={'20%'}>{t('account:status')}</Th>
               <Th w={'20%'}></Th>
             </Tr>
           </Thead>
@@ -58,7 +58,7 @@ const InvoiceTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
+                <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
                 <Td>
                   <Flex
                     px={'0.75rem'}

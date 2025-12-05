@@ -828,6 +828,7 @@
   "delete_folder": "刪除資料夾",
   "delete_success": "刪除成功",
   "delete_warning": "刪除警告",
+  "discount_coupon_used": "已使用優惠券：",
   "embedding_model_not_config": "偵測到沒有可用的索引模型",
   "enable_auth": "啟用鑑權",
   "error.Create failed": "建立失敗",
