@@ -146,7 +146,20 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
-  fileUrlWhitelist?: string[];
+  customDomain?: customDomainType;
+};
+
+export type customDomainType = {
+  kc: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  domain: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
 };
 
 export type customPdfParseType = {
