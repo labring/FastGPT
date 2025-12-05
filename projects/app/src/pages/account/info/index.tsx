@@ -81,9 +81,9 @@ const Info = () => {
           <Flex justifyContent={'center'} maxW={'1080px'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box mt={6}>
+              {/*<Box mt={6}>
                 <Other onOpenContact={onOpenContact} />
-              </Box>
+              </Box>*/}
             </Box>
             {!!standardPlan && (
               <Box ml={'45px'} flex={'1'} maxW={'600px'}>
@@ -95,7 +95,7 @@ const Info = () => {
           <>
             <MyInfo onOpenContact={onOpenContact} />
             {standardPlan && <PlanUsage />}
-            <Other onOpenContact={onOpenContact} />
+            {/*<Other onOpenContact={onOpenContact} />*/}
           </>
         )}
       </Box>
