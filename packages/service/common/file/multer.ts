@@ -16,7 +16,7 @@ export type FileType = {
   size: number;
 };
 
-/* 
+/*
   maxSize: File max size (MB)
 */
 export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
