@@ -34,8 +34,7 @@ describe('Get Evaluation Task Stats API Handler', () => {
       completed: 80,
       evaluating: 10,
       queuing: 5,
-      error: 5,
-      avgScore: 85.5
+      error: 5
     };
 
     (EvaluationTaskService.getEvaluationStats as any).mockResolvedValue(mockStats);

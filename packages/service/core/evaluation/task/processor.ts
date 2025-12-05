@@ -17,350 +17,50 @@ import { getEvaluationTaskStats } from './statusCalculator';
 import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 
-// Sleep utility function
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Evaluation stage error types
-export enum EvaluationStageEnum {
-  TaskExecute = 'TaskExecute',
-  EvaluatorExecute = 'EvaluatorExecute',
-  ResourceCheck = 'ResourceCheck'
-}
-
-// Structured error class for evaluation stages
-export class EvaluationStageError extends Error {
-  public readonly stage: EvaluationStageEnum;
-  public readonly originalError: any;
-  public readonly retriable: boolean;
-
-  constructor(
-    stage: EvaluationStageEnum,
-    errorMsg: string,
-    retriable: boolean,
-    originalError?: any
-  ) {
-    super(errorMsg);
-    this.name = 'EvaluationStageError';
-    this.stage = stage;
-    this.originalError = originalError;
-    this.retriable = retriable;
-  }
-
-  toString(): string {
-    return `[${this.stage}] ${this.message}`;
-  }
-}
-
-// Aggregated error class for multiple evaluator errors
-export class EvaluatorAggregatedError extends Error {
-  public readonly errors: Array<{
-    evaluatorName: string;
-    error: string;
-    retriable: boolean;
-  }>;
-  public readonly retriable: boolean;
-
-  constructor(errors: Array<{ evaluatorName: string; error: string }>) {
-    const errorMessages = errors.map((e) => `${e.evaluatorName}: ${e.error}`);
-    super(`Evaluator errors: ${errorMessages.join('; ')}`);
-    this.name = 'EvaluatorAggregatedError';
-
-    // Check retriability for each error and determine overall retriability
-    this.errors = errors.map((e) => ({
-      ...e,
-      retriable: isEvaluatorExecutionRetriable(e.error)
-    }));
-
-    // Consider aggregated error retriable if any individual error is retriable
-    this.retriable = this.errors.some((e) => e.retriable);
-  }
-}
-
-// Distributed lock implementation
-const distributedLocks = new Map<string, { timestamp: number; timeout: number }>();
-
-const acquireDistributedLock = async (
-  lockKey: string,
-  timeout: number = 30000
-): Promise<{ release: () => Promise<void> }> => {
-  const now = Date.now();
-  const existing = distributedLocks.get(lockKey);
-
-  // Clean expired locks
-  if (existing && now > existing.timestamp + existing.timeout) {
-    distributedLocks.delete(lockKey);
-  }
-
-  // Wait for lock to be available
-  let attempts = 0;
-  while (distributedLocks.has(lockKey) && attempts < 10) {
-    await sleep(100);
-    attempts++;
-  }
-
-  if (distributedLocks.has(lockKey)) {
-    throw new Error(EvaluationErrEnum.evalLockAcquisitionFailed);
-  }
-
-  // Acquire lock
-  distributedLocks.set(lockKey, { timestamp: now, timeout });
-
-  return {
-    release: async () => {
-      distributedLocks.delete(lockKey);
-    }
-  };
-};
-
-// Enhanced retriable error patterns with categories
-const RETRIABLE_ERROR_PATTERNS = {
-  // Network connectivity issues
-  network: [
-    'NETWORK_ERROR',
-    'ECONNRESET',
-    'ENOTFOUND',
-    'ECONNREFUSED',
-    'Connection refused',
-    'socket hang up',
-    'connect timeout',
-    'EHOSTUNREACH',
-    'ENETUNREACH'
-  ],
-  // Timeout related errors
-  timeout: ['TIMEOUT', 'timeout', 'ETIMEDOUT', 'Request timeout', 'Connection timeout'],
-  // Rate limiting and temporary service issues
-  rateLimit: [
-    'RATE_LIMIT',
-    'rate limit',
-    'too many requests',
-    '429',
-    'quota exceeded',
-    'throttled'
-  ],
-  // Temporary server errors
-  serverError: [
-    '502',
-    '503',
-    '504',
-    'bad gateway',
-    'service unavailable',
-    'gateway timeout',
-    'temporary failure',
-    'server overloaded'
-  ]
-};
-
-const maxRetries = Number(process.env.EVAL_ITEM_MAX_RETRY) || 3; // Default max retry count
-
-// Enhanced error analysis with category detection
-const analyzeError = (
-  error: any
-): { isRetriable: boolean; category?: string; pattern?: string } => {
-  const errorStr = error?.message || error?.code || String(error);
-  const lowerErrorStr = errorStr.toLowerCase();
-
-  // Check each category for matches
-  for (const [category, patterns] of Object.entries(RETRIABLE_ERROR_PATTERNS)) {
-    for (const pattern of patterns) {
-      if (lowerErrorStr.includes(pattern.toLowerCase())) {
-        return { isRetriable: true, category, pattern };
-      }
-    }
-  }
-
-  // Check HTTP status codes directly
-  const httpStatusMatch = errorStr.match(/\b(4\d{2}|5\d{2})\b/);
-  if (httpStatusMatch) {
-    const statusCode = httpStatusMatch[1];
-    // 4xx errors are generally not retriable except 429
-    if (statusCode === '429') {
-      return { isRetriable: true, category: 'rateLimit', pattern: statusCode };
-    }
-    // 5xx errors are generally retriable
-    if (statusCode.startsWith('5')) {
-      return { isRetriable: true, category: 'serverError', pattern: statusCode };
-    }
-  }
-
-  return { isRetriable: false };
-};
-
-// Determine if target execution error should be retriable
-const isTargetExecutionRetriable = (error: any): boolean => {
-  if (error === TeamErrEnum.aiPointsNotEnough) return false;
-  if (error === EvaluationErrEnum.evalTargetOutputRequired) return true;
-  return analyzeError(error).isRetriable;
-};
-
-// Determine if evaluator execution error should be retriable
-const isEvaluatorExecutionRetriable = (error: any): boolean => {
-  if (error === TeamErrEnum.aiPointsNotEnough) return false;
-  return analyzeError(error).isRetriable;
-};
-
-// General error retriability check for handleEvalItemError
-const isRetriableError = (error: any): boolean => {
-  // If it's a structured stage error, use its retriable flag
-  if (error instanceof EvaluationStageError) {
-    return error.retriable;
-  }
-
-  // If it's an aggregated error, use its retriable flag
-  if (error instanceof EvaluatorAggregatedError) {
-    return error.retriable;
-  }
-
-  return analyzeError(error).isRetriable;
-};
-
-// Complete evaluation task - simplified version based on status enum statistics
-const finishEvaluationTask = async (evalId: string) => {
-  const lockKey = `eval_task_finish_${evalId}`;
-  const lock = await acquireDistributedLock(lockKey, 30000);
-
+/**
+ * Complete evaluation task and trigger summary generation
+ */
+export const finishEvaluationTask = async (evalId: string) => {
   try {
-    // Simplified aggregation query: based only on status statistics
-    const [statsResult] = await MongoEvalItem.aggregate([
-      {
-        $match: { evalId: new Types.ObjectId(evalId) }
-      },
-      {
-        $group: {
-          _id: null,
-          totalCount: { $sum: 1 },
-          // Statistics by status
-          completedCount: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
-          },
-          errorCount: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          },
-          evaluatingCount: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.evaluating] }, 1, 0] }
-          },
-          queuingCount: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.queuing] }, 1, 0] }
-          },
-          // Calculate average score only for successfully completed items
-          avgScore: {
-            $avg: {
-              $cond: [
-                { $eq: ['$status', EvaluationStatusEnum.completed] },
-                '$evaluatorOutput?.data?.score',
-                null
-              ]
-            }
-          }
-        }
-      }
-    ]);
+    // Get task statistics using the reusable function
+    const stats = await getEvaluationTaskStats(evalId);
 
-    // If no data, return (should not happen)
-    if (!statsResult) {
+    if (stats.total === 0) {
       addLog.warn(`[Evaluation] Evaluation task has no evaluation item data: ${evalId}`);
       return;
     }
 
-    const {
-      totalCount = 0,
-      completedCount = 0,
-      errorCount = 0,
-      evaluatingCount = 0,
-      queuingCount = 0,
-      avgScore = 0
-    } = statsResult;
+    // Check if all items are truly completed
+    const pendingCount = stats.evaluating + stats.queuing;
 
-    // Check if truly completed
-    const pendingCount = evaluatingCount + queuingCount;
     if (pendingCount > 0) {
       addLog.debug(
-        `[Evaluation] Task not yet completed: ${evalId}, pending items: ${pendingCount}`
+        `[Evaluation] Task still has pending items, skipping completion: ${evalId}, total: ${stats.total}, ` +
+          `success: ${stats.completed}, failed: ${stats.error}, pending: ${pendingCount}`
       );
-      return; // Still have incomplete items, do not update task status
+      return;
     }
 
-    // Task status is always completed when all items are finished
-    const taskStatus = EvaluationStatusEnum.completed;
-
-    // Update task status with statistical fields
-    await MongoEvaluation.updateOne(
-      { _id: new Types.ObjectId(evalId) },
+    // Set finishTime if all items are finished (either completed or error, no pending)
+    // Use conditional update to prevent duplicate writes
+    const updateResult = await MongoEvaluation.updateOne(
       {
-        $set: {
-          finishTime: new Date(),
-          avgScore: avgScore != null ? Math.round(avgScore * 100) / 100 : undefined,
-          status: taskStatus,
-          // Use statistics object to store execution statistics
-          statistics: {
-            totalItems: totalCount,
-            completedItems: completedCount,
-            errorItems: errorCount
-          }
-        }
-      }
+        _id: new Types.ObjectId(evalId),
+        finishTime: { $exists: false } // Only update if finishTime is not already set
+      },
+      { $set: { finishTime: new Date() } }
     );
 
-    addLog.debug(
-      `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
-        `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
-    );
-
-    // Calculate metric scores and trigger summary generation
-
-    if (completedCount > 0 || itemsWithSuccessfulOutputs > 0) {
-      try {
-        // Scores are now calculated in real-time when getEvaluationSummary is called
-        // No need to pre-calculate and save scores
-
-        // Check which metrics need summary generation
-        const currentEvaluation = await MongoEvaluation.findById(
-          evalId,
-          'evaluators summaryConfigs'
-        ).lean();
-
-        if (currentEvaluation?.evaluators && currentEvaluation.evaluators.length > 0) {
-          // Find metrics with empty summaries
-          const metricsNeedingSummary: string[] = [];
-
-          currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
-            const metricId = evaluator.metric._id.toString();
-            const summaryConfig = currentEvaluation.summaryConfigs[index];
-
-            // Check if summary is empty
-            if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
-              metricsNeedingSummary.push(metricId);
-            }
-          });
-
-          if (metricsNeedingSummary.length > 0) {
-            // Trigger async summary generation for metrics with empty summaries
-            setImmediate(() => {
-              EvaluationSummaryService.generateSummaryReports(evalId, metricsNeedingSummary).catch(
-                (error) => {
-                  addLog.error(
-                    `[Evaluation] Failed to trigger async summary generation: ${evalId}`,
-                    error
-                  );
-                }
-              );
-            });
-
-            addLog.debug(
-              `[Evaluation] Triggered async summary generation for ${metricsNeedingSummary.length} metrics with empty summaries: ${evalId}, taskStatus: ${taskStatus}`
-            );
-          } else {
-            addLog.debug(
-              `[Evaluation] All metrics already have summaries, skipping summary generation: ${evalId}, taskStatus: ${taskStatus}`
-            );
-          }
-        }
-      } catch (summaryError) {
-        // Log error without affecting main completion flow
-        addLog.warn(`[Evaluation] Failed to trigger summary generation: ${evalId}`, {
-          error: summaryError instanceof Error ? summaryError.message : String(summaryError)
-        });
-      }
+    // If no document was modified, it means another process already finished the task
+    if (updateResult.modifiedCount === 0) {
+      addLog.debug(
+        `[Evaluation] Task already finished by another process: ${evalId}, skipping completion`
+      );
+      return;
     }
+
+    // Trigger summary generation for completed task
+    await EvaluationSummaryService.triggerSummaryGeneration(evalId);
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, {
       error: getErrText(error)
@@ -633,44 +333,11 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       true
     );
   }
-
-  // Report final progress
-  await job.updateProgress(100);
-
-    const scores = evaluatorOutputs
-      .map((output) => output?.data?.score)
-      .filter((score) => score !== undefined);
-    addLog.debug(
-      `[Evaluation] Evaluation item completed: ${evalItemId}, scores: [${scores.join(', ')}], aggregateScore: ${aggregateScore}`
-    );
-  } catch (error) {
-    addLog.error(`[Evaluation] Evaluation item error: ${evalItemId}, error: ${error}`);
-    await handleEvalItemError(evalItemId, evalId, error);
-  }
-
-  // After try-catch, check if all evaluation items are completed
-  try {
-    const pendingCount = await MongoEvalItem.countDocuments({
-      evalId: new Types.ObjectId(evalId),
-      status: { $in: [EvaluationStatusEnum.queuing, EvaluationStatusEnum.evaluating] }
-    });
-
-    if (pendingCount === 0) {
-      await finishEvaluationTask(evalId);
-    }
-  } catch (finishError) {
-    addLog.error(
-      `[Evaluation] Error occurred while checking task completion status: ${evalId}`,
-      finishError
-    );
-  }
 };
 
-// Initialize worker
-export const initEvalTaskWorker = () => {
-  return getEvaluationTaskWorker(evaluationTaskProcessor);
-};
-
+/**
+ * Initialize evaluation item workers
+ */
 export const initEvalTaskItemWorker = () => {
   return getEvaluationItemWorker(evaluationItemProcessor);
 };

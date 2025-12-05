@@ -20,7 +20,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 async function handler(
   req: ApiRequestProps<CreateEvaluationRequest>
 ): Promise<CreateEvaluationResponse> {
-  const { name, description, datasetId, target, evaluators } = req.body;
+  const { name, description, evalDatasetCollectionId, target, evaluators, autoStart } = req.body;
 
   // First perform auth to get teamId
   const { teamId, tmbId } = await authEvaluationTaskCreate(target as EvalTarget, {
@@ -61,6 +61,7 @@ async function handler(
     evalDatasetCollectionId,
     target: target as EvalTarget,
     evaluators,
+    autoStart,
     teamId,
     tmbId
   });

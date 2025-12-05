@@ -5,7 +5,8 @@ import type {
   EvaluationItemSchemaType,
   EvaluationDisplayType,
   EvaluationItemDisplayType,
-  EvaluationDataItemType
+  EvaluationDataItemType,
+  EvaluationStatistics
 } from './type';
 import type { EvaluationStatusEnum } from './constants';
 import type { EvalDatasetDataKeyEnum } from './dataset/constants';
@@ -49,13 +50,8 @@ export type StopEvaluationResponse = MessageResponse;
 
 // Get Evaluation Stats
 export type StatsEvaluationRequest = EvalIdQuery;
-export type EvaluationStatsResponse = {
-  total: number;
-  completed: number;
-  evaluating: number;
-  queuing: number;
-  error: number;
-  avgScore?: number;
+export type EvaluationStatsResponse = EvaluationStatistics & {
+  belowThreshold: number;
 };
 
 // Export Evaluation Items
@@ -121,54 +117,3 @@ export type RetryEvaluationItemResponse = MessageResponse;
 // Delete Evaluation Item
 export type DeleteEvaluationItemRequest = EvalItemIdQuery;
 export type DeleteEvaluationItemResponse = MessageResponse;
-
-// ===== DataItem Aggregation API =====
-
-// Query for dataItem ID
-export type DataItemIdQuery = { dataItemId: string };
-
-// DataItem List (Grouped by DataItem)
-export type DataItemListRequest = PaginationProps<
-  EvalIdQuery & {
-    status?: number; // Optional: filter by status
-    keyword?: string; // Optional: search in dataItem content
-  }
->;
-export type DataItemGroupedItem = {
-  dataItemId: string;
-  dataItem: EvaluationDataItemType;
-  items: EvaluationItemDisplayType[];
-  summary: {
-    totalItems: number;
-    completedItems: number;
-    errorItems: number;
-    avgScore?: number;
-  };
-};
-export type DataItemListResponse = PaginationResponse<DataItemGroupedItem>;
-
-// Delete DataItem Items
-export type DeleteDataItemRequest = DataItemIdQuery & EvalIdQuery;
-export type DeleteDataItemResponse = {
-  message: string;
-  deletedCount: number;
-};
-
-// Retry DataItem Items
-export type RetryDataItemRequest = DataItemIdQuery & EvalIdQuery;
-export type RetryDataItemResponse = {
-  message: string;
-  retriedCount: number;
-};
-
-// Update DataItem Items
-export type UpdateDataItemRequest = DataItemIdQuery & EvalIdQuery & Partial<EvaluationDataItemType>;
-export type UpdateDataItemResponse = {
-  message: string;
-  updatedCount: number;
-};
-
-// Export All DataItems Results
-export type ExportDataItemsResultsRequest = EvalIdQuery & {
-  format?: 'csv' | 'json';
-};

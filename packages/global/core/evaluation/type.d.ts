@@ -157,22 +157,15 @@ export type EvaluationWithPerType = EvaluationSchemaType & {
 
 // ===== Display Types =====
 
-export type EvaluationDisplayType = Pick<
-  EvaluationWithPerType,
-  | 'name'
-  | 'createTime'
-  | 'finishTime'
-  | 'status'
-  | 'errorMessage'
-  | 'tmbId'
-  | 'permission'
-  | 'statistics'
-  | 'target'
-> & {
-  _id: string;
-  avgScore?: number;
-  datasetName?: string;
-  target: EvalTarget; // Complete target object with extended config
+// Extended SummaryConfig for display purposes (includes runtime calculated fields)
+export type SummaryConfigDisplay = SummaryConfig & {
+  score: number; // Real-time calculated metric score
+  completedItemCount: number; // Real-time calculated completed items count
+  overThresholdItemCount: number; // Real-time calculated over threshold items count
+};
+
+export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryData'> & {
+  evalDatasetCollectionName?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
@@ -196,7 +189,17 @@ export interface CreateEvaluationParams {
   evalDatasetCollectionId: string;
   target: EvalTarget; // Only supports workflow type target configuration
   evaluators: EvaluatorSchema[]; // Replace metricIds with evaluators
+  autoStart?: boolean; // Whether to automatically start the evaluation task after creation (default: true)
 }
+
+type EvaluationParamsType = Omit<CreateEvaluationParams, 'autoStart'>;
+
+type EvaluationParamsWithDeafultConfigType = Omit<CreateEvaluationParams, 'autoStart'> & {
+  summaryData: {
+    calculateType: CalculateMethodEnum;
+    summaryConfigs: SummaryConfig[];
+  };
+};
 
 // Queue job data types
 export interface EvaluationTaskJobData {

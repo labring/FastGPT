@@ -8,7 +8,6 @@ import type {
   TargetCallParams,
   EvaluationDisplayType
 } from '@fastgpt/global/core/evaluation/type';
-import type { MetricResult } from '@fastgpt/global/core/evaluation/metric/type';
 import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import {
@@ -24,86 +23,10 @@ import { buildEvalDataConfig } from '../summary/util/weightCalculator';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type ClientSession } from '../../../common/mongo';
-
-// Constants
-const MAX_EXPORT_PAGE_SIZE = 100000;
-
-// ===== Service Layer Response Types =====
-
-// List response type for evaluations
-export interface EvaluationListResponse {
-  list: EvaluationDisplayType[];
-  total: number;
-}
-
-// List response type for evaluation items
-export interface EvaluationItemListResponse {
-  items: EvaluationItemDisplayType[];
-  total: number;
-}
-
-// Statistics response for evaluation task
-export interface EvaluationStatsResponse {
-  total: number;
-  completed: number;
-  evaluating: number;
-  queuing: number;
-  error: number;
-  avgScore?: number;
-}
-
-// Result response for individual evaluation item
-export interface EvaluationItemResultResponse {
-  item: EvaluationItemSchemaType;
-  dataItem: EvaluationDataItemType;
-  response?: string;
-  result?: MetricResult;
-  score?: number;
-}
-
-// Export response for evaluation results
-export interface EvaluationExportResponse {
-  results: Buffer;
-  total: number;
-}
-
-// Export response for grouped data items
-export interface EvaluationExportByDataItemResponse {
-  results: Buffer;
-  totalItems: number;
-}
-
-// Grouped data item response
-export interface DataItemGroupedResponse {
-  list: DataItemGroupedType[];
-  total: number;
-}
-
-// Individual grouped data item type
-export interface DataItemGroupedType {
-  dataItemId: string;
-  dataItem: EvaluationDataItemType;
-  items: EvaluationItemDisplayType[];
-  summary: {
-    totalItems: number;
-    completedItems: number;
-    errorItems: number;
-    avgScore?: number;
-  };
-}
-
-// Batch operation response types
-export interface BatchDeleteResponse {
-  deletedCount: number;
-}
-
-export interface BatchRetryResponse {
-  retriedCount: number;
-}
-
-export interface BatchUpdateResponse {
-  updatedCount: number;
-}
+import { getEvaluationTaskStatus, getEvaluationTaskStats } from './statusCalculator';
+import { EvaluationSummaryService } from '../summary';
+import { removeEvaluationSummaryJobs } from '../summary/queue';
+import { enqueueEvaluationItems } from './processor';
 
 export class EvaluationTaskService {
   /**
@@ -166,7 +89,7 @@ export class EvaluationTaskService {
       tmbId: string;
     }
   ): Promise<EvaluationSchemaType> {
-    const { teamId, tmbId, ...evaluationParams } = params;
+    const { teamId, tmbId, autoStart = true, ...evaluationParamsInput } = params;
 
     const evaluationParams = buildEvalDataConfig(evaluationParamsInput);
 
@@ -176,20 +99,80 @@ export class EvaluationTaskService {
       appName: evaluationParams.name
     });
 
-    // Apply default configuration to evaluators (weights, thresholds, etc.)
-    const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
+    await checkEvaluationItemQueueHealth();
+    const createEvaluationWithItems = async (session: ClientSession) => {
+      // Create evaluation in transaction
+      const evaluation = await MongoEvaluation.create(
+        [
+          {
+            ...evaluationParams,
+            teamId,
+            tmbId,
+            usageId: billId,
+            createTime: new Date()
+          }
+        ],
+        { session }
+      );
 
-    const evaluation = await MongoEvaluation.create({
-      ...evaluationParams,
-      evaluators: evaluatorsWithDefaultConfig,
-      teamId,
-      tmbId,
-      usageId: billId,
-      status: EvaluationStatusEnum.queuing,
-      createTime: new Date()
-    });
+      const evaluationObject = evaluation[0].toObject();
 
-    return evaluation.toObject();
+      // Load dataset and create evaluation items
+      // Ensure we only operate on committed dataset documents inside the transaction
+      const dataItems = await MongoEvalDatasetData.find({
+        evalDatasetCollectionId: evaluationParams.evalDatasetCollectionId,
+        teamId
+      })
+        .session(session)
+        .lean();
+
+      if (dataItems.length === 0) {
+        throw new Error(EvaluationErrEnum.evalDatasetLoadFailed);
+      }
+
+      // Create evaluation items
+      const evalItems: Omit<EvaluationItemSchemaType, '_id' | 'status'>[] = [];
+      for (const dataItem of dataItems) {
+        const evaluationDataItem = {
+          _id: dataItem._id,
+          userInput: dataItem.userInput,
+          expectedOutput: dataItem.expectedOutput,
+          context: dataItem.context,
+          targetCallParams: undefined
+        };
+
+        evalItems.push({
+          evalId: evaluationObject._id,
+          dataItem: evaluationDataItem
+        });
+      }
+
+      // Insert evaluation items in transaction
+      const insertedItems = await MongoEvalItem.insertMany(evalItems, { session });
+      addLog.debug(`[Evaluation] Created ${insertedItems.length} evaluation items`);
+
+      return {
+        evaluation: evaluationObject,
+        insertedItemCount: insertedItems.length
+      };
+    };
+
+    const { evaluation, insertedItemCount } = await mongoSessionRun(createEvaluationWithItems);
+
+    // Auto-start evaluation if enabled – this now occurs after the transaction commits
+    if (autoStart) {
+      await enqueueEvaluationItems(evaluation._id.toString());
+
+      addLog.debug(`[Evaluation] Task created and auto-started after commit: ${evaluation._id}`, {
+        insertedItemCount
+      });
+    } else {
+      addLog.debug(`[Evaluation] Task created: ${evaluation._id}`, {
+        insertedItemCount
+      });
+    }
+
+    return evaluation;
   }
 
   static async getEvaluation(evalId: string, teamId: string): Promise<EvaluationSchemaType> {
@@ -274,9 +257,11 @@ export class EvaluationTaskService {
     searchKey?: string,
     accessibleIds?: string[],
     tmbId?: string,
-    isOwner: boolean = false
-  ): Promise<EvaluationListResponse> {
-    // Build basic filter and pagination
+    isOwner: boolean = false,
+    appName?: string,
+    appId?: string
+  ): Promise<{ list: EvaluationDisplayType[]; total: number }> {
+    // Build filter and pagination
     const filter: any = { teamId: new Types.ObjectId(teamId) };
     const skip = offset;
     const limit = pageSize;
@@ -294,43 +279,84 @@ export class EvaluationTaskService {
       };
     }
 
+    // Build aggregation pipeline
+    const aggregationPipeline = [
+      { $match: finalFilter },
+      {
+        $lookup: {
+          from: 'eval_dataset_collections',
+          localField: 'evalDatasetCollectionId',
+          foreignField: '_id',
+          as: 'evalDatasetCollection'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'apps',
+          localField: 'target.config.appObjectId',
+          foreignField: '_id',
+          as: 'app'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'app_versions',
+          localField: 'target.config.versionObjectId',
+          foreignField: '_id',
+          as: 'appVersion'
+        }
+      },
+      {
+        $addFields: {
+          'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
+          'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
+          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] }
+        }
+      }
+    ];
+
+    // Add target filtering if provided
+    if (appName || appId) {
+      const targetFilter: any = {};
+
+      if (appName) {
+        targetFilter['target.config.appName'] = { $regex: appName, $options: 'i' };
+      }
+
+      if (appId) {
+        targetFilter['target.config.appId'] = appId;
+      }
+
+      aggregationPipeline.push({ $match: targetFilter });
+    }
+
+    // Add search key filtering
+    if (searchKey) {
+      aggregationPipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: searchKey, $options: 'i' } },
+            { description: { $regex: searchKey, $options: 'i' } },
+            { 'target.config.versionId': { $regex: searchKey, $options: 'i' } },
+            { 'target.config.versionName': { $regex: searchKey, $options: 'i' } }
+          ]
+        }
+      });
+    }
+
     const [evaluations, total] = await Promise.all([
       MongoEvaluation.aggregate([
-        { $match: finalFilter },
-        {
-          $lookup: {
-            from: 'eval_dataset_collections',
-            localField: 'datasetId',
-            foreignField: '_id',
-            as: 'dataset'
-          }
-        },
-        {
-          $addFields: {
-            'target.config.appObjectId': { $toObjectId: '$target.config.appId' }
-          }
-        },
-        {
-          $lookup: {
-            from: 'apps',
-            localField: 'target.config.appObjectId',
-            foreignField: '_id',
-            as: 'app'
-          }
-        },
-        {
-          $addFields: {
-            'target.config.versionObjectId': { $toObjectId: '$target.config.versionId' }
-          }
-        },
-        {
-          $lookup: {
-            from: 'app_versions',
-            localField: 'target.config.versionObjectId',
-            foreignField: '_id',
-            as: 'appVersion'
-          }
-        },
+        ...aggregationPipeline,
         {
           $addFields: {
             evalDatasetCollectionName: { $arrayElemAt: ['$evalDatasetCollection.name', 0] },
@@ -351,8 +377,8 @@ export class EvaluationTaskService {
             createTime: 1,
             finishTime: 1,
             errorMessage: 1,
-            avgScore: 1,
-            datasetName: 1,
+            evalDatasetCollectionName: 1,
+            evalDatasetCollectionId: 1,
             target: {
               type: '$target.type',
               config: {
@@ -500,7 +526,9 @@ export class EvaluationTaskService {
         $addFields: {
           'target.config.appName': { $arrayElemAt: ['$app.name', 0] },
           'target.config.avatar': { $arrayElemAt: ['$app.avatar', 0] },
-          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] }
+          'target.config.versionName': { $arrayElemAt: ['$appVersion.versionName', 0] },
+          evalDatasetCollectionName: { $arrayElemAt: ['$evalDatasetCollection.name', 0] },
+          evalDatasetCollectionId: '$evalDatasetCollectionId'
         }
       },
       {
@@ -534,50 +562,21 @@ export class EvaluationTaskService {
 
     const evaluation = evaluationResult[0];
     if (!evaluation) {
-      throw new Error('Evaluation not found');
+      throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
 
-    return evaluation;
-  }
+    const status = await getEvaluationTaskStatus(evalId);
+    const stats = await getEvaluationTaskStats(evalId);
 
-  static async listEvaluationItems(
-    evalId: string,
-    teamId: string,
-    offset: number = 0,
-    pageSize: number = 20
-  ): Promise<EvaluationItemListResponse> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    const skip = offset;
-    const limit = pageSize;
-
-    const [items, total] = await Promise.all([
-      MongoEvalItem.find({ evalId: evaluation._id })
-        .sort({ createTime: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .then((items) =>
-          items.map((item) => ({
-            ...item,
-            evalItemId: item._id.toString()
-          }))
-        ),
-      MongoEvalItem.countDocuments({ evalId: evaluation._id })
-    ]);
-
-    return { items, total };
+    return {
+      ...evaluation,
+      status,
+      statistics: stats
+    };
   }
 
   static async startEvaluation(evalId: string, teamId: string): Promise<void> {
     const evaluation = await this.getEvaluation(evalId, teamId);
-
-    // Check if task can be started using job status
-    const isJobActive = await checkEvaluationTaskJobActive(evalId);
-
-    if (isJobActive) {
-      throw new Error('Evaluation task is already running');
-    }
 
     // Let BullMQ handle most scenarios
     const canStart =
@@ -665,8 +664,15 @@ export class EvaluationTaskService {
   static async getEvaluationStats(
     evalId: string,
     teamId: string
-  ): Promise<EvaluationStatsResponse> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
+  ): Promise<{
+    total: number;
+    completed: number;
+    evaluating: number;
+    queuing: number;
+    error: number;
+    belowThreshold: number;
+  }> {
+    const evaluation = await this.getEvaluation(evalId, teamId); // Validate access
 
     // Get real-time status from job queues
     const basicStats = await getEvaluationTaskStats(evalId);
@@ -678,56 +684,31 @@ export class EvaluationTaskService {
     if (evaluators.length > 0) {
       const evaluatorFailChecks = this.buildEvaluatorFailChecks(evaluators);
 
-    const pipeline = [
-      { $match: { evalId: evaluation._id } },
-      {
-        $addFields: {
-          // Add a field to check if this item has any failed evaluators
-          hasFailedEvaluator: evaluatorFailChecks.length > 0 ? { $or: evaluatorFailChecks } : false
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          completed: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
-          },
-          evaluating: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.evaluating] }, 1, 0] }
-          },
-          queuing: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.queuing] }, 1, 0] }
-          },
-          error: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          },
-          avgScore: {
-            $avg: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', EvaluationStatusEnum.completed] },
-                    { $ne: ['$evaluatorOutput.data.score', null] }
-                  ]
-                },
-                '$evaluatorOutput.data.score',
-                null
-              ]
-            }
+      // Count items that are below threshold checks
+      const belowThresholdResult = await MongoEvalItem.aggregate([
+        { $match: { evalId: new Types.ObjectId(evalId) } },
+        {
+          $addFields: {
+            hasFailedEvaluator:
+              evaluatorFailChecks.length > 0 ? { $or: evaluatorFailChecks } : false
           }
-        }
-      }
-    ]);
+        },
+        {
+          $match: {
+            hasFailedEvaluator: true,
+            finishTime: { $exists: true }, // Only completed items
+            errorMessage: { $exists: false } // Exclude errors
+          }
+        },
+        { $count: 'belowThreshold' }
+      ]);
 
-    // Return stats with defaults for empty results
-    const result: EvaluationStatsResponse = {
-      total: statsResult?.total || 0,
-      completed: statsResult?.completed || 0,
-      evaluating: statsResult?.evaluating || 0,
-      queuing: statsResult?.queuing || 0,
-      error: statsResult?.error || 0,
-      avgScore: statsResult?.avgScore ? Math.round(statsResult.avgScore * 100) / 100 : undefined
+      belowThresholdCount = belowThresholdResult[0]?.belowThreshold || 0;
+    }
+
+    return {
+      ...basicStats,
+      belowThreshold: belowThresholdCount
     };
   }
 
@@ -1036,18 +1017,75 @@ export class EvaluationTaskService {
   static async retryEvaluationItem(itemId: string, teamId: string): Promise<void> {
     const item = await this.getEvaluationItem(itemId, teamId);
 
-    // Find the failed job for this item by searching through failed jobs
-    const failedJobs = await evaluationItemQueue.getJobs(['failed']);
-    const job = failedJobs.find((j) => j.data.evalItemId === itemId);
-
-    if (!job) {
-      throw new Error(EvaluationErrEnum.evalItemJobNotFound);
+    if (item.status !== EvaluationStatusEnum.error) {
+      throw new Error(EvaluationErrEnum.evalItemNoErrorToRetry);
     }
 
-    // Retry the job directly (active event will clear error state automatically)
-    await job.retry();
+    const [failedJobs, pendingJobs] = await Promise.all([
+      evaluationItemQueue.getJobs(['failed']),
+      evaluationItemQueue.getJobs(['waiting', 'delayed', 'active', 'prioritized'])
+    ]);
 
-    addLog.debug('Evaluation item retried successfully', {
+    const pendingJob = pendingJobs.find((job) => job.data?.evalItemId === itemId);
+    if (pendingJob) {
+      addLog.debug('Evaluation item retry skipped (job already pending)', {
+        itemId,
+        evalId: item.evalId,
+        teamId,
+        jobId: pendingJob.id
+      });
+      return;
+    }
+
+    const failedJob = failedJobs.find((job) => job.data?.evalItemId === itemId);
+    if (failedJob) {
+      // Retry the failed job first
+      await failedJob.retry();
+
+      // Update status to queuing after successful retry
+      await MongoEvalItem.updateOne(
+        { _id: new Types.ObjectId(itemId) },
+        {
+          $set: {
+            status: EvaluationStatusEnum.queuing
+          },
+          $unset: {
+            finishTime: 1,
+            errorMessage: 1
+          }
+        }
+      );
+
+      addLog.debug('Evaluation item retried successfully (existing failed job)', {
+        itemId,
+        evalId: item.evalId,
+        teamId,
+        jobId: failedJob.id
+      });
+      return;
+    }
+
+    // Add new job first
+    await addEvaluationItemJob({
+      evalId: item.evalId.toString(),
+      evalItemId: itemId
+    });
+
+    // Update status to queuing after successful job addition
+    await MongoEvalItem.updateOne(
+      { _id: new Types.ObjectId(itemId) },
+      {
+        $set: {
+          status: EvaluationStatusEnum.queuing
+        },
+        $unset: {
+          finishTime: 1,
+          errorMessage: 1
+        }
+      }
+    );
+
+    addLog.debug('Evaluation item retried successfully (new job queued)', {
       itemId,
       evalId: item.evalId,
       teamId
@@ -1055,625 +1093,119 @@ export class EvaluationTaskService {
   }
 
   static async retryFailedItems(evalId: string, teamId: string): Promise<number> {
-    await this.getEvaluation(evalId, teamId); // Validate evalId and teamId
+    const evaluation = await this.getEvaluation(evalId, teamId); // Validate evalId and teamId
 
-    // Get all failed jobs for this evaluation
-    const failedJobs = await evaluationItemQueue.getJobs(['failed']);
-    const evaluationFailedJobs = failedJobs.filter((job) => job.data.evalId === evalId);
+    const itemsToProcess = await MongoEvalItem.find({
+      evalId: evaluation._id,
+      status: EvaluationStatusEnum.error
+    }).lean();
 
-    if (evaluationFailedJobs.length === 0) {
+    if (itemsToProcess.length === 0) {
       addLog.warn('No failed jobs found to retry for evaluation', { evalId });
       return 0;
     }
 
-      // Clean up existing jobs for all items that will be retried to prevent duplicates
-      const itemIds = itemsToRetry.map((item) => item._id.toString());
-      const cleanupPromises = itemIds.map((itemId) =>
-        removeEvaluationItemJobsByItemId(itemId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        })
-      );
+    const [failedJobs, pendingJobs] = await Promise.all([
+      evaluationItemQueue.getJobs(['failed']),
+      evaluationItemQueue.getJobs(['waiting', 'delayed', 'active', 'prioritized'])
+    ]);
 
-      const cleanupResults = await Promise.allSettled(cleanupPromises);
-      const successfulCleanups = cleanupResults.filter((r) => r.status === 'fulfilled').length;
+    const failedJobMap = new Map<string, (typeof failedJobs)[number]>();
+    failedJobs.forEach((job) => {
+      const evalItemId = job.data?.evalItemId;
+      if (evalItemId) {
+        failedJobMap.set(evalItemId, job);
+      }
+    });
 
-      addLog.debug('Queue cleanup completed for batch retry failed items', {
-        evalId,
-        totalItems: itemsToRetry.length,
-        successfulCleanups,
-        failedCleanups: cleanupResults.length - successfulCleanups
-      });
+    const pendingJobSet = new Set<string>();
+    pendingJobs.forEach((job) => {
+      const evalItemId = job.data?.evalItemId;
+      if (evalItemId) {
+        pendingJobSet.add(evalItemId);
+      }
+    });
 
-      // Initialize evaluatorOutputs based on evaluators schema definition
-      const evaluatorOutputs = evaluation.evaluators.map((evaluator) => ({
-        metricName: evaluator.metric.name
-      }));
+    let retriedJobs = 0;
+    let addedJobs = 0;
+    let skippedJobs = 0;
 
-      // Batch update status
+    // Collect successfully processed items for batch status update
+    const itemsToUpdate: string[] = [];
+
+    // Process each item: retry/add job first, then collect for status update
+    for (const item of itemsToProcess) {
+      const evalItemId = item._id.toString();
+
+      if (pendingJobSet.has(evalItemId)) {
+        skippedJobs += 1;
+        continue;
+      }
+
+      try {
+        const failedJob = failedJobMap.get(evalItemId);
+        if (failedJob) {
+          // Retry the failed job first
+          await failedJob.retry();
+          retriedJobs += 1;
+          itemsToUpdate.push(evalItemId);
+          pendingJobSet.add(evalItemId);
+        } else {
+          // Add new job first
+          await addEvaluationItemJob({
+            evalId,
+            evalItemId
+          });
+          addedJobs += 1;
+          itemsToUpdate.push(evalItemId);
+          pendingJobSet.add(evalItemId);
+        }
+      } catch (error) {
+        addLog.error('Failed to retry evaluation item', {
+          evalId,
+          evalItemId,
+          error
+        });
+        // Don't add to itemsToUpdate if job operation failed
+      }
+    }
+
+    // Update status to queuing for all successfully processed items
+    if (itemsToUpdate.length > 0) {
       await MongoEvalItem.updateMany(
-        {
-          _id: { $in: itemsToRetry.map((item) => item._id) }
-        },
+        { _id: { $in: itemsToUpdate.map((id) => new Types.ObjectId(id)) } },
         {
           $set: {
-            status: EvaluationStatusEnum.queuing,
-            targetOutput: {},
-            evaluatorOutputs
+            status: EvaluationStatusEnum.queuing
           },
           $unset: {
             finishTime: 1,
             errorMessage: 1
-          },
-          $inc: {
-            retry: 1
           }
-        },
-        { session }
-      );
-
-      // Batch resubmit to queue
-      const jobs = itemsToRetry.map((item, index) => ({
-        name: `eval_item_batch_retry_${evalId}_${index}`,
-        data: {
-          evalId: evaluation._id,
-          evalItemId: item._id.toString()
-        },
-        opts: {
-          delay: index * 100 // Add small delay to avoid starting too many tasks simultaneously
         }
-      }));
-
-      try {
-        await evaluationItemQueue.addBulk(jobs);
-      } catch (queueError) {
-        // If queue operation fails, the transaction will rollback the status updates
-        addLog.error(`[Evaluation] Failed to resubmit jobs to queue: ${evalId}`, queueError);
-        throw queueError;
-      }
-
-      addLog.debug(
-        `[Evaluation] Batch retry failed items: ${evalId}, affected count: ${itemsToRetry.length}`
       );
+    }
 
-      return itemsToRetry.length;
-    };
+    const totalProcessed = retriedJobs + addedJobs;
 
-    return await mongoSessionRun(retryItems);
+    addLog.debug('All failed evaluation items retry completed', {
+      evalId,
+      teamId,
+      retriedJobs,
+      addedJobs,
+      skippedJobs,
+      totalProcessed
+    });
+
+    return totalProcessed;
   }
 
   static async getEvaluationItemResult(
     itemId: string,
     teamId: string
-  ): Promise<EvaluationItemResultResponse> {
+  ): Promise<EvaluationItemSchemaType> {
     const item = await this.getEvaluationItem(itemId, teamId);
     return item;
-  }
-
-  // Search evaluation items
-  static async searchEvaluationItems(
-    evalId: string,
-    teamId: string,
-    options: {
-      status?: EvaluationStatusEnum;
-      hasError?: boolean;
-      scoreRange?: { min?: number; max?: number };
-      keyword?: string;
-      page?: number;
-      pageSize?: number;
-    } = {}
-  ): Promise<EvaluationItemListResponse> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    const { status, hasError, scoreRange, keyword, page = 1, pageSize = 20 } = options;
-
-    // Build query conditions
-    const filter: any = { evalId: evaluation._id };
-
-    if (status !== undefined) {
-      filter.status = status;
-    }
-
-    if (hasError === true) {
-      filter.status = EvaluationStatusEnum.error;
-    } else if (hasError === false) {
-      filter.status = { $ne: EvaluationStatusEnum.error };
-    }
-
-    if (scoreRange) {
-      const scoreFilter: any = {};
-      if (scoreRange.min !== undefined) {
-        scoreFilter.$gte = scoreRange.min;
-      }
-      if (scoreRange.max !== undefined) {
-        scoreFilter.$lte = scoreRange.max;
-      }
-      if (Object.keys(scoreFilter).length > 0) {
-        filter['evaluatorOutputs.0.data.score'] = scoreFilter;
-      }
-    }
-
-    if (keyword) {
-      filter.$or = [
-        { 'dataItem.userInput': { $regex: keyword, $options: 'i' } },
-        { 'dataItem.expectedOutput': { $regex: keyword, $options: 'i' } },
-        { 'targetOutput.actualOutput': { $regex: keyword, $options: 'i' } }
-      ];
-    }
-
-    const skip = (page - 1) * pageSize;
-
-    const [items, total] = await Promise.all([
-      MongoEvalItem.find(filter)
-        .sort({ createTime: -1 })
-        .skip(skip)
-        .limit(pageSize)
-        .lean()
-        .then((items) =>
-          items.map((item) => ({
-            ...item,
-            evalItemId: item._id.toString()
-          }))
-        ),
-      MongoEvalItem.countDocuments(filter)
-    ]);
-
-    return { items, total };
-  }
-
-  // Export evaluation item results
-  static async exportEvaluationResults(
-    evalId: string,
-    teamId: string,
-    format: 'csv' | 'json' = 'json'
-  ): Promise<EvaluationExportResponse> {
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    const items = await MongoEvalItem.find({ evalId: evaluation._id })
-      .sort({ createTime: 1 })
-      .lean();
-
-    const total = items.length;
-
-    // Get real-time status for all items
-    const itemIds = items.map((item) => item._id.toString());
-    const statusMap = await getBatchEvaluationItemStatus(itemIds);
-
-    if (format === 'json') {
-      const results = items.map((item) => ({
-        itemId: item._id,
-        userInput: item.dataItem?.userInput,
-        expectedOutput: item.dataItem?.expectedOutput,
-        actualOutput: item.targetOutput?.actualOutput,
-        scores: item.evaluatorOutputs?.map((output) => output?.data?.score) || [],
-        status: statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed,
-        targetOutput: item.targetOutput,
-        evaluatorOutputs: item.evaluatorOutputs,
-        errorMessage: item.errorMessage,
-        finishTime: item.finishTime
-      }));
-
-      return { results: Buffer.from(JSON.stringify(results, null, 2)), total };
-    } else {
-      // CSV format
-      if (items.length === 0) {
-        return { results: Buffer.from(''), total: 0 };
-      }
-
-      // Collect all unique metric names from evaluator outputs
-      const metricNames = new Set<string>();
-      items.forEach((item) => {
-        item.evaluatorOutputs?.forEach((output) => {
-          if (output?.data?.metricName) {
-            metricNames.add(output.data.metricName);
-          }
-        });
-      });
-      const sortedMetricNames = Array.from(metricNames).sort();
-
-      // Translate metric names for CSV headers
-      const translatedMetricNames = sortedMetricNames.map((metricName) =>
-        translateBuiltinMetricName(metricName, locale)
-      );
-
-      // Translate column headers
-      const baseHeaders = ['ItemId', 'UserInput', 'ExpectedOutput', 'ActualOutput'];
-      const translatedBaseHeaders = baseHeaders.map((header) =>
-        translateCsvColumnName(header, locale)
-      );
-
-      const footerHeaders = ['Status', 'ErrorMessage'];
-      const translatedFooterHeaders = footerHeaders.map((header) =>
-        translateCsvColumnName(header, locale)
-      );
-
-      const headers = [
-        ...translatedBaseHeaders,
-        ...translatedMetricNames,
-        ...translatedFooterHeaders
-      ];
-
-      const csvRows = [headers.join(',')];
-
-      items.forEach((item) => {
-        // Create a map of metric name to score for easier lookup
-        const metricScoreMap = new Map<string, number>();
-        item.evaluatorOutputs?.forEach((output) => {
-          if (output?.data?.metricName && output.data.score !== undefined) {
-            metricScoreMap.set(output.data.metricName, output.data.score);
-          }
-        });
-
-        const itemStatus = statusMap.get(item._id.toString()) || EvaluationStatusEnum.completed;
-
-        const row = [
-          item._id.toString(),
-          `"${(item.dataItem?.userInput || '').replace(/"/g, '""')}"`,
-          `"${(item.dataItem?.expectedOutput || '').replace(/"/g, '""')}"`,
-          `"${(item.targetOutput?.actualOutput || '').replace(/"/g, '""')}"`,
-          // Add scores for each metric column in the same order as headers
-          ...sortedMetricNames.map((metricName) => {
-            const score = metricScoreMap.get(metricName);
-            return score !== undefined ? score : '';
-          }),
-          itemStatus || '',
-          `"${(item.errorMessage || '').replace(/"/g, '""')}"`
-        ];
-        csvRows.push(row.join(','));
-      });
-
-      return { results: Buffer.from(csvRows.join('\n')), total };
-    }
-  }
-
-  // ========================= DataItem Aggregation APIs =========================
-
-  static async listDataItemsGrouped(
-    teamId: string,
-    options: {
-      evalId: string;
-      status?: number;
-      keyword?: string;
-      offset?: number;
-      pageSize?: number;
-    }
-  ): Promise<DataItemGroupedResponse> {
-    const { evalId, status, keyword, offset = 0, pageSize = 20 } = options;
-
-    // Verify team access to the evaluation task
-    await this.getEvaluation(evalId, teamId);
-
-    // Build match stage
-    const matchStage: any = {
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    if (status !== undefined) {
-      matchStage.status = status;
-    }
-
-    if (keyword) {
-      matchStage.$or = [
-        { 'dataItem.userInput': { $regex: keyword, $options: 'i' } },
-        { 'dataItem.expectedOutput': { $regex: keyword, $options: 'i' } }
-      ];
-    }
-
-    // Build aggregation pipeline
-    const aggregationPipeline = [
-      { $match: matchStage },
-      {
-        $group: {
-          _id: '$dataItem._id',
-          dataItem: { $first: '$dataItem' },
-          items: { $push: '$$ROOT' },
-          totalItems: { $sum: 1 },
-          completedItems: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.completed] }, 1, 0] }
-          },
-          errorItems: {
-            $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.error] }, 1, 0] }
-          },
-          avgScore: { $avg: '$evaluatorOutput.data.score' }
-        }
-      },
-      {
-        $addFields: {
-          dataItemId: '$_id',
-          'summary.totalItems': '$totalItems',
-          'summary.completedItems': '$completedItems',
-          'summary.errorItems': '$errorItems',
-          'summary.avgScore': { $round: ['$avgScore', 2] }
-        }
-      },
-      { $sort: { totalItems: -1 as const, _id: 1 as const } }
-    ];
-
-    // Simple Promise.all approach like listEvaluationItems
-    const [list, total] = await Promise.all([
-      // Get paginated results with projection
-      MongoEvalItem.aggregate([
-        ...aggregationPipeline,
-        { $skip: offset },
-        { $limit: pageSize },
-        {
-          $project: {
-            dataItemId: 1,
-            dataItem: 1,
-            items: {
-              $map: {
-                input: '$items',
-                as: 'item',
-                in: {
-                  $mergeObjects: ['$$item', { evalItemId: { $toString: '$$item._id' } }]
-                }
-              }
-            },
-            summary: {
-              totalItems: '$totalItems',
-              completedItems: '$completedItems',
-              errorItems: '$errorItems',
-              avgScore: '$summary.avgScore'
-            }
-          }
-        }
-      ]),
-      // Get total count
-      MongoEvalItem.aggregate([...aggregationPipeline, { $count: 'total' }]).then(
-        (result) => result[0]?.total || 0
-      )
-    ]);
-
-    return {
-      list,
-      total
-    };
-  }
-
-  static async deleteEvaluationItemsByDataItem(
-    dataItemId: string,
-    teamId: string,
-    evalId: string
-  ): Promise<BatchDeleteResponse> {
-    // Verify team access to the evaluation task
-    await this.getEvaluation(evalId, teamId);
-
-    const filter: any = {
-      'dataItem._id': dataItemId,
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    // Find items to delete
-    const itemsToDelete = await MongoEvalItem.find(filter).lean();
-
-    if (itemsToDelete.length === 0) {
-      return { deletedCount: 0 };
-    }
-
-    const deleteOperation = async (session: ClientSession) => {
-      // Clean up queue jobs for items to be deleted
-      const itemIds = itemsToDelete.map((item) => item._id.toString());
-      const cleanupPromises = itemIds.map((itemId) =>
-        removeEvaluationItemJobsByItemId(itemId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        })
-      );
-
-      await Promise.allSettled(cleanupPromises);
-
-      // Delete the items
-      const result = await MongoEvalItem.deleteMany(filter, { session });
-
-      addLog.debug(`[Evaluation] Deleted ${result.deletedCount} items for dataItem: ${dataItemId}`);
-
-      return result.deletedCount;
-    };
-
-    const deletedCount = await mongoSessionRun(deleteOperation);
-
-    return {
-      deletedCount
-    };
-  }
-
-  static async retryEvaluationItemsByDataItem(
-    dataItemId: string,
-    teamId: string,
-    evalId: string
-  ): Promise<BatchRetryResponse> {
-    // Verify evaluation access first
-    await this.getEvaluation(evalId, teamId);
-
-    const filter: any = {
-      'dataItem._id': dataItemId,
-      evalId: new Types.ObjectId(evalId),
-      status: EvaluationStatusEnum.error
-    };
-
-    // Find items to retry
-    const itemsToRetry = await MongoEvalItem.find(filter).lean();
-
-    if (itemsToRetry.length === 0) {
-      return { retriedCount: 0 };
-    }
-
-    const retryOperation = async (session: ClientSession) => {
-      // Clean up existing jobs
-      const itemIds = itemsToRetry.map((item) => item._id.toString());
-      const cleanupPromises = itemIds.map((itemId) =>
-        removeEvaluationItemJobsByItemId(itemId, {
-          forceCleanActiveJobs: true,
-          retryAttempts: 3,
-          retryDelay: 200
-        })
-      );
-
-      await Promise.allSettled(cleanupPromises);
-
-      // Update items status
-      const result = await MongoEvalItem.updateMany(
-        { _id: { $in: itemsToRetry.map((item) => item._id) } },
-        {
-          $set: {
-            status: EvaluationStatusEnum.queuing,
-            targetOutput: {},
-            evaluatorOutput: {}
-          },
-          $unset: {
-            finishTime: 1,
-            errorMessage: 1
-          },
-          $inc: { retry: 1 }
-        },
-        { session }
-      );
-
-      // Resubmit to queue
-      const jobs = itemsToRetry.map((item, index) => ({
-        name: `eval_item_dataitem_retry_${dataItemId}_${index}`,
-        data: {
-          evalId: item.evalId,
-          evalItemId: item._id.toString()
-        },
-        opts: {
-          delay: index * 100
-        }
-      }));
-
-      await evaluationItemQueue.addBulk(jobs);
-
-      addLog.debug(
-        `[Evaluation] Retried ${result.modifiedCount} items for dataItem: ${dataItemId}`
-      );
-
-      return result.modifiedCount;
-    };
-
-    const retriedCount = await mongoSessionRun(retryOperation);
-
-    return {
-      retriedCount
-    };
-  }
-
-  static async updateEvaluationItemsByDataItem(
-    dataItemId: string,
-    updates: {
-      userInput?: string;
-      expectedOutput?: string;
-      context?: string[];
-      targetCallParams?: TargetCallParams;
-    },
-    teamId: string,
-    evalId: string
-  ): Promise<BatchUpdateResponse> {
-    // Verify evaluation access first
-    await this.getEvaluation(evalId, teamId);
-
-    // Build MongoDB update object with dot notation
-    const updateObj = this.buildEvaluationDataItemUpdateObject(updates);
-    if (Object.keys(updateObj).length === 0) {
-      return { updatedCount: 0 };
-    }
-
-    const filter: any = {
-      'dataItem._id': dataItemId,
-      evalId: new Types.ObjectId(evalId)
-    };
-
-    const result = await MongoEvalItem.updateMany(filter, { $set: updateObj });
-
-    addLog.debug(`[Evaluation] Updated ${result.modifiedCount} items for dataItem: ${dataItemId}`);
-
-    return {
-      updatedCount: result.modifiedCount
-    };
-  }
-
-  static async exportEvaluationResultsGroupedByDataItem(
-    teamId: string,
-    evalId: string,
-    format: 'csv' | 'json' = 'json'
-  ): Promise<EvaluationExportByDataItemResponse> {
-    // Get evaluation config for metric names
-    const evaluation = await this.getEvaluation(evalId, teamId);
-
-    // Use listDataItemsGrouped to get all dataItems (large pageSize to get all)
-    const { list: dataItems } = await this.listDataItemsGrouped(teamId, {
-      evalId,
-      offset: 0,
-      pageSize: MAX_EXPORT_PAGE_SIZE // Large pageSize to get all items
-    });
-
-    if (dataItems.length === 0) {
-      const emptyResult = format === 'json' ? '[]' : '';
-      return {
-        results: Buffer.from(emptyResult),
-        totalItems: 0
-      };
-    }
-
-    // Extract metric names from evaluation config
-    const metricNames = evaluation.evaluators.map(
-      (evaluator) => evaluator.metric.name || evaluator.metric._id || 'Unknown Metric'
-    );
-
-    // Transform listDataItemsGrouped result to export format (remove totalItems, completedItems, errorItems)
-    const exportData = dataItems.map((groupedItem: any) => {
-      const dataItemExport = {
-        dataItemId: groupedItem.dataItemId,
-        userInput: groupedItem.dataItem?.userInput,
-        expectedOutput: groupedItem.dataItem?.expectedOutput,
-        actualOutput: groupedItem.items.find((item: any) => item.targetOutput?.actualOutput)
-          ?.targetOutput?.actualOutput,
-        // Build metric scores object
-        metricScores: {} as Record<string, number>
-      };
-
-      // Add scores for each metric from the grouped items
-      groupedItem.items.forEach((item: any) => {
-        if (item.evaluator?.metric?.name && item.evaluatorOutput?.data?.score !== undefined) {
-          const metricName = item.evaluator.metric.name;
-          dataItemExport.metricScores[metricName] = item.evaluatorOutput.data.score;
-        }
-      });
-
-      return dataItemExport;
-    });
-
-    if (format === 'json') {
-      return {
-        results: Buffer.from(JSON.stringify(exportData, null, 2)),
-        totalItems: exportData.length
-      };
-    } else {
-      // CSV format with dynamic metric columns (remove totalItems, completedItems, errorItems)
-      const baseHeaders = ['DataItemId', 'UserInput', 'ExpectedOutput', 'ActualOutput'];
-
-      const headers = [...baseHeaders, ...metricNames];
-      const csvRows = [headers.join(',')];
-
-      exportData.forEach((dataItem) => {
-        const row = [
-          dataItem.dataItemId,
-          `"${(dataItem.userInput || '').replace(/"/g, '""')}"`,
-          `"${(dataItem.expectedOutput || '').replace(/"/g, '""')}"`,
-          `"${(dataItem.actualOutput || '').replace(/"/g, '""')}"`,
-          // Add metric scores in the same order as headers
-          ...metricNames.map((metricName) => dataItem.metricScores[metricName] || '')
-        ];
-
-        csvRows.push(row.join(','));
-      });
-
-      return {
-        results: Buffer.from(csvRows.join('\n')),
-        totalItems: exportData.length
-      };
-    }
   }
 }
 export { MongoEvaluation };
