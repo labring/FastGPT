@@ -56,7 +56,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
   let index = 0;
 
-  for await (const item of loopInputArray.filter(Boolean)) {
+  for await (const item of loopInputArray) {
     // Skip already looped
     if (lastIndex && index < lastIndex) {
       index++;
