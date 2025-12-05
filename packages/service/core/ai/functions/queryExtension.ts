@@ -249,7 +249,7 @@ assistant: ${chatBg}
       embeddingModel
     });
     const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
-      originnalText: query,
+      originalText: query,
       candidates: queries,
       k: Math.min(3, queries.length), // 至多 3 个
       alpha: 0.3
