@@ -142,10 +142,10 @@ export const InvoiceHeaderSingleForm = ({
           >
             <HStack h={'2rem'}>
               <Radio value="true" pr={'1rem'}>
-                <Box fontSize={'14px'}>{t('account_bill:yes')}</Box>
+                <Box fontSize={'14px'}>{t('account:yes')}</Box>
               </Radio>
               <Radio value="false">
-                <Box fontSize={'14px'}>{t('account_bill:no')}</Box>
+                <Box fontSize={'14px'}>{t('account:no')}</Box>
               </Radio>
             </HStack>
           </RadioGroup>
