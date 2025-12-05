@@ -147,8 +147,8 @@ const BillTable = () => {
                 ></MySelect>
               </Th>
               <Th>{t('account_bill:time')}</Th>
-              <Th>{t('account_bill:support_wallet_amount')}</Th>
-              <Th>{t('account_bill:status')}</Th>
+              <Th>{t('account:support_wallet_amount')}</Th>
+              <Th>{t('account:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -160,7 +160,7 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
+                <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td display={'flex'} justifyContent={'end'}>
                   {item.status === 'NOTPAY' && (

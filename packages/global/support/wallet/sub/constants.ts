@@ -62,33 +62,33 @@ export const standardSubLevelMap = {
   [StandardSubLevelEnum.basic]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.basic'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.basic_desc'),
-    weight: 2
+    weight: 4
   },
   [StandardSubLevelEnum.advanced]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.advanced'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.advanced_desc'),
-    weight: 3
+    weight: 5
   },
   [StandardSubLevelEnum.custom]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.custom'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.custom_desc'),
-    weight: 4
+    weight: 7
   },
 
   // deprecated
   [StandardSubLevelEnum.experience]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.experience'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.experience_desc'),
-    weight: 5
+    weight: 2
   },
   [StandardSubLevelEnum.team]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.team'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.team_desc'),
-    weight: 6
+    weight: 3
   },
   [StandardSubLevelEnum.enterprise]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise_desc'),
-    weight: 7
+    weight: 6
   }
 };
