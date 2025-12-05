@@ -297,7 +297,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
             feConfigs?.show_dataset_enhance !== false && (
               <>
-                <HStack flex={'1'} spacing={1}>
+                {/*<HStack flex={'1'} spacing={1}>
                   <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
                     <Checkbox
                       isDisabled={!feConfigs?.isPlus}
@@ -308,8 +308,8 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     </Checkbox>
                   </MyTooltip>
                   <QuestionTip label={t('dataset:auto_indexes_tips')} />
-                </HStack>
-                <HStack flex={'1'} spacing={1}>
+                </HStack>*/}
+                {/*<HStack flex={'1'} spacing={1}>
                   <MyTooltip
                     label={
                       !feConfigs?.isPlus
@@ -328,7 +328,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                     </Checkbox>
                   </MyTooltip>
                   <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-                </HStack>
+                </HStack>*/}
               </>
             )}
         </Grid>
