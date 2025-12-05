@@ -1,5 +1,4 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';

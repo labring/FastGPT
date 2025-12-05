@@ -11,8 +11,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
-import multer from 'multer';
-import fs from 'node:fs';
 import type { NextApiRequest } from 'next';
 
 // S3文件名最大长度配置
