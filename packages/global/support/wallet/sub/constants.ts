@@ -53,6 +53,7 @@ export enum StandardSubLevelEnum {
   team = 'team',
   enterprise = 'enterprise'
 }
+
 export const standardSubLevelMap = {
   [StandardSubLevelEnum.free]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.free'),
