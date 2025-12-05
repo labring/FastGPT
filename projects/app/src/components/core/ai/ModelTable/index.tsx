@@ -288,9 +288,9 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
               </Th>
               <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
               <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-              {permissionConfig && userInfo?.team.permission.hasManagePer && (
+              {/*{permissionConfig && userInfo?.team.permission.hasManagePer && (
                 <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
-              )}
+              )}*/}
             </Tr>
           </Thead>
           <Tbody>
@@ -315,7 +315,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                 </Td>
                 <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                {/*{permissionConfig && userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
                     <LazyCollaboratorProvider
                       selectedHint={t('account_model:model_permission_config_hint')}
@@ -340,7 +340,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                       )}
                     </LazyCollaboratorProvider>
                   </Td>
-                )}
+                )}*/}
               </Tr>
             ))}
           </Tbody>
