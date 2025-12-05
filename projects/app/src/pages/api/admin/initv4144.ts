@@ -259,7 +259,7 @@ async function processCollectionBatch({
   // 2. 查找对应的 collections
   const fileIds = files.map((f) => f._id);
   const collections = await MongoDatasetCollection.find(
-    { fileId: { $in: fileIds } },
+    { fileId: { $in: fileIds, $not: { $regex: /^dataset\// } } },
     '_id fileId teamId datasetId type parentId name updateTime'
   ).lean();
 
@@ -530,9 +530,7 @@ async function processImageBatch({
   // 2. 获取所有的 imageId，并在 dataset_datas 中查找对应的记录
   const imageIds = imageFiles.map((file) => file._id.toString());
   const dataList = await MongoDatasetData.find(
-    {
-      imageId: { $in: imageIds }
-    },
+    { imageId: { $in: imageIds, $not: { $regex: /^dataset\// } } },
     '_id imageId teamId datasetId collectionId updateTime'
   ).lean();
 
