@@ -237,15 +237,15 @@ const List = () => {
                     isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
                   })}
                 >
-                  <HStack>
+                  <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
                     <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                    <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={'medium'}>
-                      {app.name}
+                    <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden">
+                      <Box className={'textEllipsis'}>{app.name}</Box>
                     </Box>
-                    <Box mr={-5}>
+                    <Box justifySelf="end" mr={-5}>
                       <AppTypeTag type={app.type} />
                     </Box>
-                  </HStack>
+                  </Grid>
                   <Box
                     flex={'1 0 56px'}
                     mt={3}
