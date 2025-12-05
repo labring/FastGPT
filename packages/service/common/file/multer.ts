@@ -132,7 +132,7 @@ export const multer = {
 
   clearDiskTempFiles(filepaths: string[]) {
     for (const filepath of filepaths) {
-      fs.unlink(filepath, (_) => {});
+      fs.rm(filepath, { force: true }, (_) => {});
     }
   }
 };
