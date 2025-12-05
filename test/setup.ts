@@ -49,11 +49,22 @@ beforeEach(async () => {
 
   onTestFinished(async () => {
     clean();
-    await delay(200); // wait for asynchronous operations to complete
-    await Promise.all([
-      connectionMongo?.connection.db?.dropDatabase(),
-      connectionLogMongo?.connection.db?.dropDatabase()
-    ]);
+    // Wait for any ongoing transactions and operations to complete
+    await delay(500);
+
+    // Ensure all sessions are closed before dropping database
+    try {
+      await Promise.all([
+        connectionMongo?.connection.db?.dropDatabase(),
+        connectionLogMongo?.connection.db?.dropDatabase()
+      ]);
+    } catch (error) {
+      // Ignore errors during cleanup
+      console.warn('Error during test cleanup:', error);
+    }
+
+    // Additional delay to prevent lock contention between tests
+    await delay(100);
   });
 });
 
