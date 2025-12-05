@@ -125,7 +125,7 @@ export class S3DatasetSource {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, datasetId } =
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
       GetDatasetFileContentParamsSchema.parse(params);
 
     const rawTextBuffer = await this.getRawTextBuffer({ customPdfParse, sourceId: fileId });

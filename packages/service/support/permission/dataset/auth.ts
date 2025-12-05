@@ -172,55 +172,6 @@ export async function authDatasetCollection({
   };
 }
 
-// export async function authDatasetFile({
-//   fileId,
-//   per,
-//   ...props
-// }: AuthModeType & {
-//   fileId: string;
-// }): Promise<
-//   AuthResponseType<DatasetPermission> & {
-//     file: DatasetFileSchema;
-//   }
-// > {
-//   const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
-
-//   const [file, collection] = await Promise.all([
-//     getFileById({ bucketName: BucketNameEnum.dataset, fileId }),
-//     MongoDatasetCollection.findOne({
-//       teamId,
-//       fileId
-//     })
-//   ]);
-
-//   if (!file) {
-//     return Promise.reject(CommonErrEnum.fileNotFound);
-//   }
-
-//   if (!collection) {
-//     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-//   }
-
-//   try {
-//     const { permission } = await authDatasetCollection({
-//       ...props,
-//       collectionId: collection._id,
-//       per,
-//       isRoot
-//     });
-
-//     return {
-//       teamId,
-//       tmbId,
-//       file,
-//       permission,
-//       isRoot
-//     };
-//   } catch (error) {
-//     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-//   }
-// }
-
 /*
   DatasetData permission is inherited from collection.
 */
