@@ -38,5 +38,11 @@ export const cleanTimerLock = async ({
   teamId: string;
   session?: ClientSession;
 }) => {
-  await MongoTimerLock.deleteMany({ timerId: new RegExp(`${teamId}`) }, { session });
+  // Match timerId pattern where lockId (last segment) equals teamId
+  await MongoTimerLock.deleteMany(
+    {
+      timerId: new RegExp(`--${teamId}$`)
+    },
+    { session }
+  );
 };
