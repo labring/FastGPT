@@ -55,6 +55,7 @@ const Edit = ({
         <Box flex={'2 0 0'} w={0} mb={3}>
           <ChatTest
             appForm={appForm}
+            setAppForm={setAppForm}
             setRenderEdit={setRenderEdit}
             form2WorkflowFn={agentForm2AppWorkflow}
           />

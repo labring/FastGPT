@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { MongoHelperBotChatItem } from './chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { mongoSessionRun } from 'common/mongo/sessionRun';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 
 export const pushChatRecords = async ({
   type,

@@ -34,7 +34,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
+const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -144,7 +144,27 @@ const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
     }
   );
   const generatingMessage = useMemoizedFn(
-    ({ event, text = '', reasoningText, tool }: generatingMessageProps) => {
+    ({ event, text = '', reasoningText, tool, data }: generatingMessageProps & { data?: any }) => {
+      // Debug: 打印所有接收到的事件
+      console.log('🔔 收到事件:', { event, hasData: !!data, data });
+
+      // Handle formData event
+      if (event === SseResponseEventEnum.formData && data) {
+        console.log('✅ 收到表单数据:', data);
+        console.log('🎯 onApply 回调存在?', !!onApply);
+        const formData = {
+          role: data.role || '',
+          taskObject: data.taskObject || '',
+          selectedTools: data.tools || [],
+          selectedDatasets: [],
+          fileUpload: data.fileUploadEnabled || false
+        };
+        console.log('📤 准备调用 onApply:', formData);
+        onApply?.(formData);
+        console.log('✅ onApply 调用完成');
+        return;
+      }
+
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
@@ -276,6 +296,7 @@ const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
     const chatItemDataId = getNanoid(24);
     const newChatList: HelperBotChatItemSiteType[] = [
       ...chatRecords,
+      // 用户消息
       {
         _id: getNanoid(24),
         createTime: new Date(),
@@ -289,6 +310,7 @@ const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
           }
         ]
       },
+      // AI 消息 - 空白,用于接收流式输出
       {
         _id: getNanoid(24),
         createTime: new Date(),
@@ -297,20 +319,7 @@ const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
         value: [
           {
             text: {
-              content: `我无法直接通过“读取静态网页工具”获取 GitHub（动态站点）上的实时信息，因此不能自动抓取 fastgpt 的 star 数量。
-
-不过你可以告诉我：
-
-- 你指的是 **FastGPT（fastgpt-dev/FastGPT）** 吗？  
-  GitHub 链接通常是：https://github.com/fastgpt-dev/FastGPT
-
-如果是这个项目，我可以根据我最新的训练数据给你一个**大致的历史 star 数范围**，或者你也可以让我协助编写脚本来实时查询它的 star。
-
-你希望我：
-
-1. 提供现阶段近似 star 数（基于 2025 的大致趋势）？
-2. 帮你写一个脚本实时查 GitHub API？
-3. 还是提供该项目的介绍？`
+              content: ''
             }
           }
         ]
@@ -340,7 +349,7 @@ const ChatBox = ({ type, metadata, ...props }: HelperBotProps) => {
           })),
           metadata: {
             type: 'topAgent',
-            data: {}
+            data: metadata
           }
         },
         onMessage: generatingMessage,
