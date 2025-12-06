@@ -20,12 +20,12 @@ export type DiscountCouponSchemaType = z.infer<typeof DiscountCouponSchema>;
 export const DiscountCouponItemSchema = DiscountCouponSchema.extend({
   name: z.string().meta({ description: '优惠券名称' }),
   description: z.string().meta({ description: '优惠券描述' }),
-  discount: z.number().meta({ description: '折扣率' }),
+  discount: z.number().min(0).max(1).meta({ description: '折扣率' }),
   iconZh: z.string().meta({ description: '中文图标路径' }),
   iconEn: z.string().meta({ description: '英文图标路径' }),
-  status: z.enum(Object.values(DiscountCouponStatusEnum)).meta({ description: '优惠券状态' }),
+  status: z.enum(DiscountCouponStatusEnum).meta({ description: '优惠券状态' }),
   billId: ObjectIdSchema.optional().meta({
-    description: '关联的订单 ID'
+    description: '关联的订单 ID, 被使用后该值存在'
   })
 });
 export const DiscountCouponListResponseSchema = z.array(DiscountCouponItemSchema);

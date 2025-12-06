@@ -12,8 +12,8 @@ export const BillSchema = z.object({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   orderId: z.string().meta({ description: '订单 ID' }),
-  status: z.enum(Object.values(BillStatusEnum)).meta({ description: '订单状态' }),
-  type: z.enum(Object.values(BillTypeEnum)).meta({ description: '订单类型' }),
+  status: z.enum(BillStatusEnum).meta({ description: '订单状态' }),
+  type: z.enum(BillTypeEnum).meta({ description: '订单类型' }),
   price: z.number().meta({ description: '价格' }),
   couponId: ObjectIdSchema.optional().meta({
     description: '优惠券 ID'
@@ -21,12 +21,9 @@ export const BillSchema = z.object({
   hasInvoice: z.boolean().meta({ description: '是否已开发票' }),
   metadata: z
     .object({
-      payWay: z.enum(Object.values(BillPayWayEnum)).meta({ description: '支付方式' }),
-      subMode: z.enum(Object.values(SubModeEnum)).optional().meta({ description: '订阅周期' }),
-      standSubLevel: z
-        .enum(Object.values(StandardSubLevelEnum))
-        .optional()
-        .meta({ description: '订阅等级' }),
+      payWay: z.enum(BillPayWayEnum).meta({ description: '支付方式' }),
+      subMode: z.enum(SubModeEnum).optional().meta({ description: '订阅周期' }),
+      standSubLevel: z.enum(StandardSubLevelEnum).optional().meta({ description: '订阅等级' }),
       month: z.number().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
       extraPoints: z.number().optional().meta({ description: '额外积分' })
@@ -36,7 +33,7 @@ export const BillSchema = z.object({
     .object({
       amount: z.number().meta({ description: '退款金额' }),
       refundId: z.string().meta({ description: '退款 ID' }),
-      refundTime: z.coerce.date().meta({ description: '退款时间' })
+      refundTime: z.date().meta({ description: '退款时间' })
     })
     .optional()
     .meta({ description: '退款数据' })

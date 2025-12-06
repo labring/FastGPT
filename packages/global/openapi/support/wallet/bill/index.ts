@@ -4,7 +4,7 @@ import {
   CreateBillPropsSchema,
   CreateBillResponseSchema,
   UpdatePaymentPropsSchema,
-  CreateOrderResponseSchema,
+  UpdateBillResponseSchema,
   CheckPayResultResponseSchema,
   BillDetailResponseSchema,
   BillListQuerySchema,
@@ -32,6 +32,54 @@ export const BillPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: CreateBillResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/wallet/bill/pay/updatePayment': {
+    post: {
+      summary: '更新支付方式',
+      description: '为未支付的订单更新支付方式，返回新的支付二维码或链接',
+      tags: [TagsMap.walletBill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdatePaymentPropsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新支付方式',
+          content: {
+            'application/json': {
+              schema: UpdateBillResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/wallet/bill/pay/checkPayResult': {
+    get: {
+      summary: '检查支付结果',
+      description: '检查订单的支付状态，用于轮询支付结果',
+      tags: [TagsMap.walletBill],
+      requestParams: {
+        query: z.object({
+          payId: ObjectIdSchema.meta({
+            description: '订单 ID'
+          })
+        })
+      },
+      responses: {
+        200: {
+          description: '成功获取支付结果',
+          content: {
+            'application/json': {
+              schema: CheckPayResultResponseSchema
             }
           }
         }
@@ -107,54 +155,6 @@ export const BillPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: z.null()
-            }
-          }
-        }
-      }
-    }
-  },
-  '/support/wallet/bill/pay/updatePayment': {
-    post: {
-      summary: '更新支付方式',
-      description: '为未支付的订单更新支付方式，返回新的支付二维码或链接',
-      tags: [TagsMap.walletBill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdatePaymentPropsSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功更新支付方式',
-          content: {
-            'application/json': {
-              schema: CreateOrderResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/support/wallet/bill/pay/checkPayResult': {
-    get: {
-      summary: '检查支付结果',
-      description: '检查订单的支付状态，用于轮询支付结果',
-      tags: [TagsMap.walletBill],
-      requestParams: {
-        query: z.object({
-          payId: ObjectIdSchema.meta({
-            description: '订单 ID'
-          })
-        })
-      },
-      responses: {
-        200: {
-          description: '成功获取支付结果',
-          content: {
-            'application/json': {
-              schema: CheckPayResultResponseSchema
             }
           }
         }
