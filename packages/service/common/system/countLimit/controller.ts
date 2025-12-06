@@ -34,11 +34,13 @@ export const updateCountLimit = async ({
     if (!countLimit) {
       // do not exist, create a new one
       await MongoCountLimit.create(
-        {
-          type,
-          key,
-          count: update // 0 + update
-        },
+        [
+          {
+            type,
+            key,
+            count: update // 0 + update
+          }
+        ],
         {
           session
         }
@@ -73,8 +75,7 @@ export const updateCountLimit = async ({
   });
 
 /** Clean the Count limit, if no key provided, clean all the type */
-export const cleanCountLimit = async ({ type, key }: { type: CountLimitTypeEnum; key: string }) =>
+export const cleanCountLimit = async ({ teamId }: { teamId: string }) =>
   MongoCountLimit.deleteMany({
-    type,
-    key
+    key: teamId
   });

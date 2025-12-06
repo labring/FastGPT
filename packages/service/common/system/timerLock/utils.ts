@@ -32,11 +32,11 @@ export const checkTimerLock = async ({
 };
 
 export const cleanTimerLock = async ({
-  timerId,
+  teamId,
   session
 }: {
-  timerId: string;
+  teamId: string;
   session?: ClientSession;
 }) => {
-  await MongoTimerLock.deleteOne({ timerId }, { session });
+  await MongoTimerLock.deleteMany({ timerId: new RegExp(`${teamId}`) }, { session });
 };
