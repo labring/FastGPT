@@ -15,7 +15,7 @@ import { webPushTrack } from '@/web/common/middle/tracks/utils';
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
   const { teamPlanStatus } = useUserStore();
-  const { operationalAd, loadOperationalAd, feConfigs } = useSystemStore();
+  const { operationalAd, loadOperationalAd, feConfigs, subPlans } = useSystemStore();
   const router = useRouter();
 
   // Load data
@@ -42,8 +42,11 @@ const TeamPlanStatusCard = () => {
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
 
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {

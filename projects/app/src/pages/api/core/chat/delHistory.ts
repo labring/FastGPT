@@ -6,7 +6,6 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
@@ -21,7 +20,6 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
     ...req.query
   });
 
-  await deleteChatFiles({ chatIdList: [chatId] });
   await mongoSessionRun(async (session) => {
     await MongoChatItemResponse.deleteMany({
       appId,

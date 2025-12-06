@@ -15,6 +15,13 @@ const getCurrentTenMinuteBoundary = () => {
   return boundary;
 };
 
+const getCurrentMinuteBoundary = () => {
+  const now = new Date();
+  const boundary = new Date(now);
+  boundary.setSeconds(0, 0);
+  return boundary;
+};
+
 export const trackTimerProcess = async () => {
   while (true) {
     await countTrackTimer();
@@ -31,7 +38,8 @@ export const countTrackTimer = async () => {
   global.countTrackQueue = new Map();
 
   try {
-    const currentBoundary = getCurrentTenMinuteBoundary();
+    const currentTenMinuteBoundary = getCurrentTenMinuteBoundary();
+    const currentMinuteBoundary = getCurrentMinuteBoundary();
 
     const bulkOps = queuedItems
       .map(({ event, count, data }) => {
@@ -44,7 +52,7 @@ export const countTrackTimer = async () => {
                 filter: {
                   event,
                   teamId,
-                  createTime: currentBoundary,
+                  createTime: currentTenMinuteBoundary,
                   'data.datasetId': datasetId
                 },
                 update: [
@@ -52,7 +60,7 @@ export const countTrackTimer = async () => {
                     $set: {
                       event,
                       teamId,
-                      createTime: { $ifNull: ['$createTime', currentBoundary] },
+                      createTime: { $ifNull: ['$createTime', currentTenMinuteBoundary] },
                       data: {
                         datasetId,
                         count: { $add: [{ $ifNull: ['$data.count', 0] }, count] }
@@ -65,6 +73,36 @@ export const countTrackTimer = async () => {
             }
           ];
         }
+
+        if (event === TrackEnum.teamChatQPM) {
+          const { teamId } = data;
+
+          return [
+            {
+              updateOne: {
+                filter: {
+                  event,
+                  teamId,
+                  createTime: currentMinuteBoundary
+                },
+                update: [
+                  {
+                    $set: {
+                      event,
+                      teamId,
+                      createTime: { $ifNull: ['$createTime', currentMinuteBoundary] },
+                      data: {
+                        requestCount: { $add: [{ $ifNull: ['$data.requestCount', 0] }, count] }
+                      }
+                    }
+                  }
+                ],
+                upsert: true
+              }
+            }
+          ];
+        }
+
         return [];
       })
       .flat();

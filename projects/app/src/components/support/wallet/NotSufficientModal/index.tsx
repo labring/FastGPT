@@ -11,6 +11,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMount } from 'ahooks';
+import { useRouter } from 'next/router';
 
 const NotSufficientModal = () => {
   const { t } = useTranslation();
@@ -62,7 +63,7 @@ const NotSufficientModal = () => {
 
 export default NotSufficientModal;
 
-const RechargeModal = ({
+export const RechargeModal = ({
   onClose,
   onPaySuccess
 }: {
@@ -70,7 +71,9 @@ const RechargeModal = ({
   onPaySuccess: () => void;
 }) => {
   const { t } = useTranslation();
+  const router = useRouter();
   const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  const { subPlans } = useSystemStore();
 
   useMount(() => {
     initTeamPlanStatus();
@@ -78,8 +81,11 @@ const RechargeModal = ({
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      t(standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label as any)
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
 
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
 
@@ -96,28 +102,96 @@ const RechargeModal = ({
     >
       <ModalBody px={'52px'}>
         <Flex alignItems={'center'} mb={6}>
-          <FormLabel fontSize={'16px'} fontWeight={'medium'}>
-            {t('common:support.wallet.subscription.Current plan')}
-          </FormLabel>
-          <Box fontSize={'14px'} ml={5} color={'myGray.900'}>
-            {t(planName as any)}
-          </Box>
+          <Flex>
+            <FormLabel fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('common:support.wallet.subscription.Current plan')}
+            </FormLabel>
+            <Box fontSize={'14px'} ml={5} color={'myGray.900'}>
+              {t(planName as any)}
+            </Box>
+          </Flex>
+          <Box flex={1} />
+          <Button
+            size={'md'}
+            variant={'transparentBase'}
+            color={'primary.700'}
+            onClick={() => {
+              router.push('/account/usage');
+              onClose();
+              onPaySuccess();
+            }}
+          >
+            {t('common:usage_records')}
+          </Button>
         </Flex>
 
-        <Flex alignItems={'center'} mb={6}>
-          <FormLabel fontSize={'16px'} fontWeight={'medium'}>
-            {t('common:info.resource')}
-          </FormLabel>
-          <Flex fontSize={'14px'} ml={5} color={'myGray.900'}>
-            <Box>{`${t('common:support.user.team.Dataset usage')}:`}</Box>
-            <Box
-              ml={2}
-            >{`${teamPlanStatus?.usedDatasetIndexSize} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
-            <Box ml={5}>{`${t('common:support.wallet.subscription.AI points usage')}:`}</Box>
-            <Box
-              ml={2}
-            >{`${Math.round(teamPlanStatus?.usedPoints || 0)} / ${teamPlanStatus?.totalPoints || t('account_info:unlimited')}`}</Box>
-          </Flex>
+        <Flex mb={6} gap={8} w={'100%'}>
+          <Box flex={1}>
+            <Flex gap={4} alignItems={'center'} mb={2}>
+              <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+                {t('common:support.wallet.subscription.AI points left')}
+              </Box>
+              <Box
+                fontSize={'14px'}
+                fontWeight={'medium'}
+              >{`${teamPlanStatus?.totalPoints ? Math.round(teamPlanStatus.totalPoints - teamPlanStatus.usedPoints || 0) : t('account_info:unlimited')} / ${teamPlanStatus?.totalPoints || t('account_info:unlimited')}`}</Box>
+            </Flex>
+            <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+              <Box
+                borderRadius={'sm'}
+                transition="width 0.3s"
+                w={`${teamPlanStatus?.totalPoints ? Math.max(((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) / teamPlanStatus.totalPoints) * 100, 0) : 0}%`}
+                bg={`${
+                  teamPlanStatus?.totalPoints
+                    ? ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) /
+                        teamPlanStatus.totalPoints) *
+                        100 >
+                      50
+                      ? 'primary'
+                      : ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) /
+                            teamPlanStatus.totalPoints) *
+                            100 >
+                          20
+                        ? 'yellow'
+                        : 'red'
+                    : 'primary'
+                }.500`}
+              />
+            </Flex>
+          </Box>
+          <Box flex={1}>
+            <Flex gap={4} alignItems={'center'} mb={2}>
+              <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+                {t('common:support.user.team.Dataset left')}
+              </Box>
+              <Box
+                fontSize={'14px'}
+                fontWeight={'medium'}
+              >{`${teamPlanStatus?.datasetMaxSize ? Math.round(teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize || 0) : t('account_info:unlimited')} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
+            </Flex>
+            <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+              <Box
+                borderRadius={'sm'}
+                transition="width 0.3s"
+                w={`${teamPlanStatus?.datasetMaxSize ? Math.max(((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) / teamPlanStatus.datasetMaxSize) * 100, 0) : 0}%`}
+                bg={`${
+                  teamPlanStatus?.datasetMaxSize
+                    ? ((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) /
+                        teamPlanStatus.datasetMaxSize) *
+                        100 >
+                      50
+                      ? 'primary'
+                      : ((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) /
+                            teamPlanStatus.datasetMaxSize) *
+                            100 >
+                          20
+                        ? 'yellow'
+                        : 'red'
+                    : 'primary'
+                }.500`}
+              />
+            </Flex>
+          </Box>
         </Flex>
 
         <FillRowTabs

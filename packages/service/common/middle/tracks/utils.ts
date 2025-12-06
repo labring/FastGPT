@@ -146,5 +146,15 @@ export const pushTrack = {
         }
       });
     });
+  },
+  teamChatQPM: (data: { teamId: string }) => {
+    if (!data.teamId) return;
+    pushCountTrack({
+      event: TrackEnum.teamChatQPM,
+      key: `${TrackEnum.teamChatQPM}_${data.teamId}`,
+      data: {
+        teamId: data.teamId
+      }
+    });
   }
 };

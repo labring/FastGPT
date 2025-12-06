@@ -35,6 +35,7 @@ export const defaultS3Options: {
   accessKey: process.env.S3_ACCESS_KEY || 'minioadmin',
   secretKey: process.env.S3_SECRET_KEY || 'minioadmin',
   port: process.env.S3_PORT ? parseInt(process.env.S3_PORT) : 9000,
+  pathStyle: process.env.S3_PATH_STYLE === 'false' ? false : true,
   transportAgent: process.env.HTTP_PROXY
     ? new HttpProxyAgent(process.env.HTTP_PROXY)
     : process.env.HTTPS_PROXY

@@ -1,4 +1,5 @@
 {
+  "ai.query_extension_embedding": "問題優化-embedding",
   "ai_model": "AI 模型",
   "all": "所有",
   "app_name": "應用程式名",

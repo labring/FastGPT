@@ -14,6 +14,7 @@ import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import type { SourceMember } from '@fastgpt/global/support/user/type';
+import type { LocationName } from '@fastgpt/service/common/geo/type';
 
 export interface ShareAppItem {
   _id: string;
@@ -52,4 +53,5 @@ export type AppLogsListItemType = {
   outLinkUid?: string;
   tmbId: string;
   sourceMember: SourceMember;
+  region?: string;
 };

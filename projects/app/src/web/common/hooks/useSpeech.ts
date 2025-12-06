@@ -445,10 +445,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             setIsTransCription(true);
             try {
               const result = await POST<string>('/v1/audio/transcriptions', formData, {
-                timeout: 60000,
-                headers: {
-                  'Content-Type': 'multipart/form-data; charset=utf-8'
-                }
+                timeout: 60000
               });
               onFinish(result);
             } catch (error) {

@@ -162,10 +162,7 @@ function responseError(err: any) {
 
 /* 创建请求实例 */
 const instance = axios.create({
-  timeout: 60000, // 超时时间
-  headers: {
-    'content-type': 'application/json'
-  }
+  timeout: 60000 // 超时时间
 });
 
 /* 请求拦截 */

@@ -260,24 +260,40 @@ export const pushDatasetTestUsage = ({
     model: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
+    embeddingModel: string;
   };
 }) => {
   const list: UsageItemType[] = [];
   let points = 0;
 
   if (extensionUsage) {
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
       model: extensionUsage.model,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
     });
-    points += totalPoints;
+    points += llmPoints;
     list.push({
       moduleName: i18nT('common:core.module.template.Query extension'),
-      amount: totalPoints,
-      model: modelName,
+      amount: llmPoints,
+      model: llmModelName,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
+    });
+
+    const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points(
+      {
+        model: extensionUsage.embeddingModel,
+        inputTokens: extensionUsage.embeddingTokens
+      }
+    );
+    points += embeddingPoints;
+    list.push({
+      moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+      amount: embeddingPoints,
+      model: embeddingModelName,
+      inputTokens: extensionUsage.embeddingTokens
     });
   }
   if (embUsage) {

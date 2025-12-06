@@ -19,7 +19,7 @@ const Individuation = () => {
   const { toast } = useToast();
 
   const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo as UserType
+    defaultValues: userInfo!
   });
 
   const onclickSave = useCallback(

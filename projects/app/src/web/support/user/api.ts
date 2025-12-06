@@ -16,12 +16,14 @@ import type {
 } from '@fastgpt/global/support/user/login/api.d';
 import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
 import type { WxLoginProps } from '@fastgpt/global/support/user/api.d';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
   captcha: string;
+  lang: `${LangEnum}`;
 }) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () =>

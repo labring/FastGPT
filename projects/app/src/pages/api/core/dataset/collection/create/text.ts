@@ -23,7 +23,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   // 1. Create file from text
   const filename = `${name}.txt`;
   const s3DatasetSource = getS3DatasetSource();
-  const key = await s3DatasetSource.uploadDatasetFileByBuffer({
+  const key = await s3DatasetSource.upload({
     datasetId: String(dataset._id),
     buffer: Buffer.from(text),
     filename

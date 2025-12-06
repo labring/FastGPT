@@ -6,8 +6,6 @@ import React from 'react';
 import type { updateLogKeysBody } from '@/pages/api/core/app/logs/updateLogKeys';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updateLogKeys } from '@/web/core/app/api/log';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
 import type { SetState } from 'ahooks/lib/createUseStorageState';
@@ -16,15 +14,16 @@ const SyncLogKeysPopover = ({
   logKeys,
   setLogKeys,
   teamLogKeys,
-  fetchLogKeys
+  fetchLogKeys,
+  appId
 }: {
   logKeys: AppLogKeysType[];
   setLogKeys: (value: SetState<AppLogKeysType[]>) => void;
   teamLogKeys: AppLogKeysType[];
   fetchLogKeys: () => Promise<getLogKeysResponse>;
+  appId: string;
 }) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const { runAsync: updateList, loading: updateLoading } = useRequest2(
     async (data: updateLogKeysBody) => {

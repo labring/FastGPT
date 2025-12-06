@@ -17,7 +17,7 @@ import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { username, password, code } = req.body as PostLoginProps;
+  const { username, password, code, language = 'zh-CN' } = req.body as PostLoginProps;
 
   if (!username || !password || !code) {
     return Promise.reject(CommonErrEnum.invalidParams);
@@ -60,7 +60,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   MongoUser.findByIdAndUpdate(user._id, {
-    lastLoginTmbId: userDetail.team.tmbId
+    lastLoginTmbId: userDetail.team.tmbId,
+    language
   });
 
   const token = await createUserSession({

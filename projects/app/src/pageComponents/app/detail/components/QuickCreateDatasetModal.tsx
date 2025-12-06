@@ -91,9 +91,6 @@ const QuickCreateDatasetModal = ({
             formData.set('file', file);
 
             await POST(url, formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data; charset=utf-8'
-              },
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);

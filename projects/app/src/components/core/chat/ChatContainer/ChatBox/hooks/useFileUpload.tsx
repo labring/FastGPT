@@ -188,9 +188,6 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
           formData.set('file', copyFile.rawFile);
           await POST(url, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data; charset=utf-8'
-            },
             onUploadProgress: (e) => {
               if (!e.total) return;
               const percent = Math.round((e.loaded / e.total) * 100);

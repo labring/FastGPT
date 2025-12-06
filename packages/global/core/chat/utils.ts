@@ -59,7 +59,6 @@ export const getHistoryPreview = (
                 return `![Input an image](${item.file.url.slice(0, 100)}...)`;
               return '';
             })
-            .filter(Boolean)
             .join('\n') || ''
         );
       } else if (item.obj === ChatRoleEnum.AI) {

@@ -9,8 +9,7 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { getDatasetImagePreviewUrl } from '@fastgpt/service/core/dataset/image/utils';
-import { getS3DatasetSource, S3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
@@ -91,16 +90,10 @@ async function handler(
     list: await Promise.all(
       list.map(async (item) => {
         const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
-        const imagePreviewUrl = item.imageId
-          ? isS3ObjectKey(item.imageId, 'dataset')
+        const imagePreviewUrl =
+          item.imageId && isS3ObjectKey(item.imageId, 'dataset')
             ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
-            : getDatasetImagePreviewUrl({
-                imageId: item.imageId,
-                teamId,
-                datasetId: collection.datasetId,
-                expiredMinutes: 30
-              })
-          : undefined;
+            : undefined;
 
         return {
           ...item,

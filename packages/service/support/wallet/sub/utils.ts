@@ -63,7 +63,18 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
           ...standardConstants,
           maxTeamMember: standard?.maxTeamMember || standardConstants.maxTeamMember,
           maxAppAmount: standard?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standard?.maxDataset || standardConstants.maxDatasetAmount
+          maxDatasetAmount: standard?.maxDataset || standardConstants.maxDatasetAmount,
+          requestsPerMinute: standard?.requestsPerMinute || standardConstants.requestsPerMinute,
+          chatHistoryStoreDuration:
+            standard?.chatHistoryStoreDuration || standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standard?.maxDatasetSize || standardConstants.maxDatasetSize,
+          websiteSyncPerDataset:
+            standard?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+          appRegistrationCount:
+            standard?.appRegistrationCount || standardConstants.appRegistrationCount,
+          auditLogStoreDuration:
+            standard?.auditLogStoreDuration || standardConstants.auditLogStoreDuration,
+          ticketResponseTime: standard?.ticketResponseTime || standardConstants.ticketResponseTime
         }
       : undefined
   };
@@ -165,7 +176,9 @@ export const getTeamPlanStatus = async ({
 
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize || Infinity
+      ? standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize ||
+        standardPlan?.maxDatasetSize ||
+        Infinity
       : Infinity;
   const totalDatasetSize =
     standardMaxDatasetSize +
@@ -185,7 +198,19 @@ export const getTeamPlanStatus = async ({
           ...standardConstants,
           maxTeamMember: standardPlan?.maxTeamMember || standardConstants.maxTeamMember,
           maxAppAmount: standardPlan?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standardPlan?.maxDataset || standardConstants.maxDatasetAmount
+          maxDatasetAmount: standardPlan?.maxDataset || standardConstants.maxDatasetAmount,
+          requestsPerMinute: standardPlan?.requestsPerMinute || standardConstants.requestsPerMinute,
+          chatHistoryStoreDuration:
+            standardPlan?.chatHistoryStoreDuration || standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standardPlan?.maxDatasetSize || standardConstants.maxDatasetSize,
+          websiteSyncPerDataset:
+            standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+          appRegistrationCount:
+            standardPlan?.appRegistrationCount || standardConstants.appRegistrationCount,
+          auditLogStoreDuration:
+            standardPlan?.auditLogStoreDuration || standardConstants.auditLogStoreDuration,
+          ticketResponseTime:
+            standardPlan?.ticketResponseTime || standardConstants.ticketResponseTime
         }
       : undefined,
 

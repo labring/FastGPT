@@ -15,6 +15,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -23,7 +24,7 @@ async function handler(
   req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, locale = 'en' } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -48,13 +49,15 @@ async function handler(
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
     },
-    ...(chatSearch && {
-      $or: [
-        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-      ]
-    })
+    ...(chatSearch
+      ? {
+          $or: [
+            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+          ]
+        }
+      : undefined)
   };
 
   const [list, total] = await Promise.all([
@@ -277,7 +280,8 @@ async function handler(
             errorCount: 1,
             totalPoints: 1,
             outLinkUid: 1,
-            tmbId: 1
+            tmbId: 1,
+            region: '$metadata.originIp'
           }
         }
       ],
@@ -288,11 +292,21 @@ async function handler(
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
 
-  const listWithSourceMember = await addSourceMember({
-    list
+  const listWithRegion = list.map((item) => {
+    const ip = item.region;
+    const region = getLocationFromIp(ip, locale);
+
+    return {
+      ...item,
+      region: region || ip
+    };
   });
 
-  const listWithoutTmbId = list.filter((item) => !item.tmbId);
+  const listWithSourceMember = await addSourceMember({
+    list: listWithRegion
+  });
+
+  const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
 
   return {
     list: listWithSourceMember.concat(listWithoutTmbId),

@@ -3,13 +3,12 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getLLMModel } from '../../../../core/ai/model';
+import { getLLMModel, getEmbeddingModel } from '../../../../core/ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -31,22 +30,38 @@ export const dispatchQueryExtension = async ({
   }
 
   const queryExtensionModel = getLLMModel(model);
+  const embeddingModel = getEmbeddingModel();
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, inputTokens, outputTokens } = await queryExtension({
+  const {
+    extensionQueries,
+    inputTokens,
+    outputTokens,
+    embeddingTokens,
+    llmModel,
+    embeddingModel: useEmbeddingModel
+  } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
-    model: queryExtensionModel.model
+    llmModel: queryExtensionModel.model,
+    embeddingModel: embeddingModel.model
   });
 
   extensionQueries.unshift(userChatInput);
 
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: queryExtensionModel.model,
+  const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+    model: llmModel,
     inputTokens,
     outputTokens
   });
+
+  const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points({
+    model: useEmbeddingModel,
+    inputTokens: embeddingTokens
+  });
+
+  const totalPoints = llmPoints + embeddingPoints;
 
   const set = new Set<string>();
   const filterSameQueries = extensionQueries.filter((item) => {
@@ -63,19 +78,27 @@ export const dispatchQueryExtension = async ({
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
-      model: modelName,
+      model: llmModelName,
       inputTokens,
       outputTokens,
+      embeddingTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: node.name,
-        totalPoints,
-        model: modelName,
+        totalPoints: llmPoints,
+        model: llmModelName,
         inputTokens,
         outputTokens
+      },
+      {
+        moduleName: `${node.name} - Embedding`,
+        totalPoints: embeddingPoints,
+        model: embeddingModelName,
+        inputTokens: embeddingTokens,
+        outputTokens: 0
       }
     ]
   };

@@ -10,9 +10,6 @@ export const postS3UploadFile = (
 ) =>
   POST(postURL, form, {
     timeout: 600000,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    },
     onUploadProgress
   });
 

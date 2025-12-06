@@ -9,8 +9,7 @@ import { addLog } from '../../../../common/system/log';
 import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
+import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
 
 type ResponseDataType = {
   success: boolean;
@@ -155,11 +154,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     }
     if (previewUrl) {
       // Get from buffer
-      const buffer = await getRawTextBuffer(previewUrl);
-      if (buffer) {
+      const rawTextBuffer = await getS3DatasetSource().getRawTextBuffer({
+        sourceId: previewUrl,
+        customPdfParse
+      });
+      if (rawTextBuffer) {
         return {
           title,
-          rawText: buffer.text
+          rawText: rawTextBuffer.text
         };
       }
 
@@ -173,11 +175,11 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         getFormatText: true
       });
 
-      await addRawTextBuffer({
+      getS3DatasetSource().addRawTextBuffer({
         sourceId: previewUrl,
         sourceName: title || '',
         text: rawText,
-        expiredTime: addMinutes(new Date(), 30)
+        customPdfParse
       });
 
       return {

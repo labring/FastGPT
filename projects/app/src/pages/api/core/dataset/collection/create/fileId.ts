@@ -1,9 +1,7 @@
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -25,23 +23,14 @@ async function handler(
     datasetId: body.datasetId
   });
 
-  const filename = await (async () => {
-    if (isS3ObjectKey(fileId, 'dataset')) {
-      const metadata = await getS3DatasetSource().getFileMetadata(fileId);
-      if (!metadata) return Promise.reject(CommonErrEnum.fileNotFound);
-      return metadata.filename;
-    }
+  if (!isS3ObjectKey(fileId, 'dataset')) {
+    return Promise.reject('Invalid dataset file key');
+  }
 
-    const file = await getFileById({
-      bucketName: BucketNameEnum.dataset,
-      fileId
-    });
-    if (!file) {
-      return Promise.reject(CommonErrEnum.fileNotFound);
-    }
-
-    return file.filename;
-  })();
+  const metadata = await getS3DatasetSource().getFileMetadata(fileId);
+  if (!metadata) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
@@ -50,7 +39,7 @@ async function handler(
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.file,
-      name: filename,
+      name: metadata.filename,
       fileId, // ObjectId -> ObjectKey
       customPdfParse
     }

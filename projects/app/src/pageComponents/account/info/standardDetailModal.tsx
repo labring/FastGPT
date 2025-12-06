@@ -116,7 +116,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                           <Flex align={'center'} color={'myGray.900'}>
                             {t(subTypeMap[type]?.label as any)}
                             {currentSubLevel &&
-                              `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
+                              `(${subPlans?.standard?.[currentSubLevel]?.name || t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
                           </Flex>
                           <StatusTag status={status as packageStatus} />
                         </Flex>

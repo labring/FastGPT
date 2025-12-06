@@ -11,7 +11,7 @@ export type DatasetMigrationLogSchemaType = {
   migrationVersion: string; // 如 'v4.14.3'
 
   // 资源类型和标识
-  resourceType: 'collection' | 'image' | 'chat_file'; // 支持不同类型的文件迁移
+  resourceType: 'collection' | 'dataset_image'; // 支持不同类型的文件迁移
   resourceId: string; // collection._id 或 image._id
   teamId: string;
   datasetId?: string; // collection 有，image 可能没有
@@ -101,7 +101,7 @@ const DatasetMigrationLogSchema = new Schema({
   // 资源类型和标识
   resourceType: {
     type: String,
-    enum: ['collection', 'image', 'chat_file'],
+    enum: ['collection', 'dataset_image'],
     required: true
   },
   resourceId: {
