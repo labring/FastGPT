@@ -29,3 +29,9 @@ export type CreateCustomDomainBody = {
 };
 export type ProviderEnum = z.infer<typeof ProviderEnum>;
 export type CustomDomainStatusEnum = z.infer<typeof CustomDomainStatusEnum>;
+
+export type UpdateDomainVerifyFileBody = {
+  domain: string;
+  path: string;
+  content: string;
+};

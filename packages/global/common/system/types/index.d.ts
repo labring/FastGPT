@@ -137,6 +137,8 @@ export type FastGPTFeConfigsType = {
       volcengine?: string;
     };
   };
+
+  ip_whitelist?: string;
 };
 
 export type SystemEnvType = {

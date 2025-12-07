@@ -10,7 +10,8 @@ import {
   Th,
   Td,
   Tbody,
-  useDisclosure
+  useDisclosure,
+  Link
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -19,7 +20,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { WecomAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
@@ -206,7 +207,24 @@ const Wecom = ({ appId }: { appId: string }) => {
         />
       )}
       {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')}> </EmptyTip>
+        <EmptyTip
+          text={
+            <Trans
+              i18nKey="app:publish_channel.wecom.empty"
+              components={{
+                a: (
+                  <Link
+                    color="primary.600"
+                    key="link"
+                    href="/account/customDomain"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                )
+              }}
+            />
+          }
+        ></EmptyTip>
       )}
       <Loading loading={isFetching} fixed={false} />
       {showShareLinkModalOpen && (

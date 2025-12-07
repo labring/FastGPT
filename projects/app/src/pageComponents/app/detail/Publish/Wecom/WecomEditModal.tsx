@@ -75,7 +75,10 @@ const WecomEditModal = ({
             <Box color="myGray.600">{t('publish:wecom.api')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/wecom-bot')}
+                href={
+                  feConfigs.openAPIDocUrl ||
+                  getDocPath('/docs/use-cases/external-integration/wecom')
+                }
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}

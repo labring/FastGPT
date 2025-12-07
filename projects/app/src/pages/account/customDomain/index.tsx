@@ -1,5 +1,4 @@
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { deleteCustomDomain, listCustomDomain } from '@/web/support/customDomain/api';
 import {
@@ -28,6 +27,10 @@ const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal')
 );
 
+const DomainVerifyModal = dynamic(
+  () => import('@/pageComponents/account/customDomain/domainVerifyModal')
+);
+
 const CustomDomain = () => {
   const { t } = useTranslation();
   const {
@@ -41,6 +44,12 @@ const CustomDomain = () => {
     isOpen: isOpenCreateModal,
     onOpen: onOpenCreateModal,
     onClose: onCloseCreateModal
+  } = useDisclosure();
+
+  const {
+    isOpen: isOpenDomainVerify,
+    onOpen: onOpenDomainVerify,
+    onClose: onCloseDomainVerify
   } = useDisclosure();
 
   const { runAsync: onDelete, loading: loadingDelete } = useRequest2(deleteCustomDomain, {
@@ -66,7 +75,7 @@ const CustomDomain = () => {
                 {t('account:custom_domain')}
                 {customDomainList?.length ? `: (${customDomainList.length}/3)` : <></>}
               </Box>
-              <Button variant="outline" onClick={onOpenCreateModal}>
+              <Button variant="whitePrimaryOutline" onClick={onOpenCreateModal}>
                 {t('common:Add')}
               </Button>
             </Flex>
@@ -90,23 +99,37 @@ const CustomDomain = () => {
                       <Td>{t(providerMap[customDomain.provider])}</Td>
                       <Td>{t(customDomainStatusMap[customDomain.status])}</Td>
                       <Td>
-                        {customDomain.status === 'inactive' ? (
-                          <IconButton
-                            name="edit"
+                        <Flex gap="2">
+                          {customDomain.status === 'inactive' ? (
+                            <Button
+                              variant="whitePrimary"
+                              onClick={() => {
+                                setEditDomain(customDomain);
+                                onOpenCreateModal();
+                              }}
+                            >
+                              {t('common:Edit')}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="whitePrimary"
+                              onClick={() => {
+                                setEditDomain(customDomain);
+                                onOpenDomainVerify();
+                              }}
+                            >
+                              {t('account:custom_domain.domain_verify')}
+                            </Button>
+                          )}
+                          <Button
+                            variant="whiteDanger"
                             onClick={() => {
-                              setEditDomain(customDomain);
-                              onOpenCreateModal();
+                              return openConfirm(() => onDelete(customDomain.domain))();
                             }}
-                          />
-                        ) : (
-                          <></>
-                        )}
-                        <IconButton
-                          name="delete"
-                          onClick={() => {
-                            return openConfirm(() => onDelete(customDomain.domain))();
-                          }}
-                        ></IconButton>
+                          >
+                            {t('common:Delete')}
+                          </Button>
+                        </Flex>
                       </Td>
                     </Tr>
                   ))
@@ -134,6 +157,15 @@ const CustomDomain = () => {
           }}
           type={editDomain ? 'refresh' : 'create'}
           data={editDomain!}
+        />
+      )}
+      {isOpenDomainVerify && editDomain?.domain && (
+        <DomainVerifyModal
+          domain={editDomain?.domain}
+          onClose={() => {
+            onCloseDomainVerify();
+            setEditDomain(undefined);
+          }}
         />
       )}
     </>

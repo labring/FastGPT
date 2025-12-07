@@ -26,3 +26,13 @@ export const activeCustomDomain = (domain: string) =>
   });
 
 // TODO: verify files
+
+export const updateCustomDomainVerifyFile = (props: {
+  domain: string;
+  path: string;
+  content: string;
+}) =>
+  POST<{ success: boolean; message: string }>(
+    '/proApi/support/customDomain/updateVerifyFile',
+    props
+  );
