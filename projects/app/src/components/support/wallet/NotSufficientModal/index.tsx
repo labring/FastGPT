@@ -134,7 +134,7 @@ export const RechargeModal = ({
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.usedPoints || 0} / ${teamPlanStatus?.totalPoints || t('account_info:unlimited')}`}</Box>
+              >{`${teamPlanStatus?.usedPoints || 0} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box
@@ -161,7 +161,7 @@ export const RechargeModal = ({
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.usedDatasetIndexSize || 0} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
+              >{`${teamPlanStatus?.usedDatasetIndexSize || 0} / ${teamPlanStatus?.datasetMaxSize ?? t('common:Unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box
