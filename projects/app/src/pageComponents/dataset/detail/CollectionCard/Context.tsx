@@ -72,50 +72,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     (v) => v
   );
 
-  // dataset sync confirm
-  const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
-    {
-      content: t('dataset:start_sync_dataset_tip')
-    }
-  );
-
-  const syncDataset = async () => {
-    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
-      await checkTeamWebSyncLimit();
-    }
-
-    await postDatasetSync({ datasetId: datasetId });
-    loadDatasetDetail(datasetId);
-
-    // Show success message
-    toast({
-      status: 'success',
-      title: t('dataset:collection.sync.submit')
-    });
-  };
-
-  const {
-    isOpen: isOpenWebsiteModal,
-    onOpen: onOpenWebsiteModal,
-    onClose: onCloseWebsiteModal
-  } = useDisclosure();
-
-  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
-    async (websiteConfig: WebsiteConfigFormType) => {
-      await updateDataset({
-        id: datasetId,
-        websiteConfig: websiteConfig.websiteConfig,
-        chunkSettings: websiteConfig.chunkSettings
-      });
-      await syncDataset();
-    },
-    {
-      onSuccess() {
-        onCloseWebsiteModal();
-      }
-    }
-  );
-
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -138,6 +94,52 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     },
     refreshDeps: [parentId, searchText, filterTags]
   });
+
+  const syncDataset = async () => {
+    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+      await checkTeamWebSyncLimit();
+    }
+
+    await postDatasetSync({ datasetId: datasetId });
+    loadDatasetDetail(datasetId);
+
+    getData(pageNum);
+
+    // Show success message
+    toast({
+      status: 'success',
+      title: t('dataset:collection.sync.submit')
+    });
+  };
+
+  // dataset sync confirm
+  const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
+    {
+      content: t('dataset:start_sync_dataset_tip')
+    }
+  );
+
+  const {
+    isOpen: isOpenWebsiteModal,
+    onOpen: onOpenWebsiteModal,
+    onClose: onCloseWebsiteModal
+  } = useDisclosure();
+
+  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
+    async (websiteConfig: WebsiteConfigFormType) => {
+      await updateDataset({
+        id: datasetId,
+        websiteConfig: websiteConfig.websiteConfig,
+        chunkSettings: websiteConfig.chunkSettings
+      });
+      await syncDataset();
+    },
+    {
+      onSuccess() {
+        onCloseWebsiteModal();
+      }
+    }
+  );
 
   const contextValue: CollectionPageContextType = {
     openDatasetSyncConfirm: openDatasetSyncConfirm(syncDataset),

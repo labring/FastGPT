@@ -4,6 +4,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const userCollectionName = 'users';
 
@@ -19,7 +20,6 @@ const UserSchema = new Schema({
     required: true,
     unique: true // 唯一
   },
-  phonePrefix: Number,
   password: {
     type: String,
     required: true,
@@ -46,6 +46,10 @@ const UserSchema = new Schema({
     type: String,
     default: 'Asia/Shanghai'
   },
+  language: {
+    type: String,
+    default: LangEnum.zh_CN
+  },
   lastLoginTmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName
@@ -58,6 +62,8 @@ const UserSchema = new Schema({
   },
   fastgpt_sem: Object,
   sourceDomain: String,
+
+  phonePrefix: Number,
   contact: String,
 
   /** @deprecated */

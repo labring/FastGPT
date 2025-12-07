@@ -934,28 +934,6 @@ export const authCertWithCSRF = async (props: AuthModeType) => {
 
 ## 新增中危问题 (Additional Medium Priority)
 
-### 🟡 M20. 向量查询缓存策略过于激进
-
-**位置**: `packages/service/common/vectorDB/controller.ts:29-35`
-
-**问题描述**:
-```typescript
-const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId)), 30000, {
-  leading: true,
-  trailing: true
-});
-```
-- 删除操作使用 throttle,30 秒内只执行一次
-- 可能导致缓存计数不准确
-- 未考虑高频删除场景
-
-**建议**:
-- 删除操作直接更新缓存
-- 定期全量同步缓存和数据库
-- 添加缓存一致性校验
-
----
-
 ### 🟡 M21. 训练队列缺少优先级机制
 
 **位置**: `packages/service/common/bullmq/index.ts:20-26`

@@ -131,7 +131,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
             <Box w={'100%'} fontSize={'0.875rem'}>
               <Flex w={'100%'} justifyContent={'space-between'}>
                 <Box>{t('account_bill:total_amount')}</Box>
-                <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
+                <Box>{t('account:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
               </Flex>
               <Box w={'100%'} py={4}>
                 <Divider showBorderBottom={false} />
@@ -205,7 +205,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                     </Th>
                     <Th>{t('account_bill:type')}</Th>
                     <Th>{t('account_bill:time')}</Th>
-                    <Th>{t('account_bill:support_wallet_amount')}</Th>
+                    <Th>{t('account:support_wallet_amount')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody fontSize={'0.875rem'}>
@@ -233,9 +233,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                           ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss')
                           : '-'}
                       </Td>
-                      <Td>
-                        {t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}
-                      </Td>
+                      <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
                     </Tr>
                   ))}
                 </Tbody>

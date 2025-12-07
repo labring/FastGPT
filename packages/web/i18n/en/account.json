@@ -83,5 +83,22 @@
   "reset_default": "Restore the default configuration",
   "team": "Team",
   "third_party": "Third Party",
-  "usage_records": "Usage"
+  "usage_records": "Usage",
+  "bill_detail": "Bill details",
+  "order_number": "Order number",
+  "generation_time": "Generation time",
+  "order_type": "Order type",
+  "status": "state",
+  "payment_method": "Payment method",
+  "support_wallet_amount": "Amount",
+  "yuan": "¥{{amount}}",
+  "has_invoice": "Whether the invoice has been issued",
+  "yes": "yes",
+  "no": "no",
+  "subscription_period": "Subscription cycle",
+  "subscription_package": "Subscription package",
+  "subscription_mode_month": "Duration",
+  "month": "moon",
+  "extra_dataset_size": "Additional knowledge base capacity",
+  "extra_ai_points": "AI points calculation standard"
 }

@@ -1,4 +1,4 @@
-import { replaceDatasetQuoteTextWithJWT } from '../../../core/dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
@@ -53,8 +53,8 @@ export const formatDatasetDataValue = ({
 
   if (!imageId) {
     return {
-      q: replaceDatasetQuoteTextWithJWT(q, addDays(new Date(), 90)),
-      a: a ? replaceDatasetQuoteTextWithJWT(a, addDays(new Date(), 90)) : undefined
+      q: replaceS3KeyToPreviewUrl(q, addDays(new Date(), 90)),
+      a: a ? replaceS3KeyToPreviewUrl(a, addDays(new Date(), 90)) : undefined
     };
   }
 

@@ -8,7 +8,6 @@ import {
   useTheme,
   Input,
   Link,
-  Progress,
   Grid,
   type BoxProps
 } from '@chakra-ui/react';
@@ -32,7 +31,6 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
-
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -51,6 +49,10 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
 });
+const DiscountCouponsModal = dynamic(
+  () => import('@/pageComponents/account/info/DiscountCouponsModal'),
+  { ssr: false }
+);
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
@@ -364,10 +366,20 @@ const PlanUsage = () => {
     onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
+  const {
+    isOpen: isOpenDiscountCouponsModal,
+    onClose: onCloseDiscountCouponsModal,
+    onOpen: onOpenDiscountCouponsModal
+  } = useDisclosure();
+
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
@@ -386,41 +398,39 @@ const PlanUsage = () => {
     return false;
   }, [teamPlanStatus]);
 
-  const valueColorSchema = useCallback((val: number) => {
-    if (val < 50) return 'green';
-    if (val < 80) return 'yellow';
-    return 'red';
-  }, []);
-
   const datasetIndexUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
-    const rate = teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize;
+
+    const rate = teamPlanStatus.datasetMaxSize
+      ? (teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) * 100
+      : 0;
 
     return {
-      value: teamPlanStatus.usedDatasetIndexSize,
-      rate: rate * 100,
-      max: teamPlanStatus.datasetMaxSize || 1
+      total: teamPlanStatus.datasetMaxSize ?? t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
+
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
 
+    const rate = teamPlanStatus.totalPoints
+      ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      : 0;
+
     return {
-      value: Math.round(teamPlanStatus.usedPoints),
-      max: teamPlanStatus.totalPoints,
-      rate: (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      total: teamPlanStatus.totalPoints ?? t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
 
@@ -429,11 +439,11 @@ const PlanUsage = () => {
       return [];
     }
 
-    return [
+    const data = [
       {
         label: t('account_info:member_amount'),
         value: teamPlanStatus.usedMember,
-        max: teamPlanStatus?.standardConstants?.maxTeamMember || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxTeamMember ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedMember / (teamPlanStatus?.standardConstants?.maxTeamMember || 1)) *
           100
@@ -441,7 +451,7 @@ const PlanUsage = () => {
       {
         label: t('account_info:app_amount'),
         value: teamPlanStatus.usedAppAmount,
-        max: teamPlanStatus?.standardConstants?.maxAppAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxAppAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standardConstants?.maxAppAmount || 1)) *
           100
@@ -449,13 +459,27 @@ const PlanUsage = () => {
       {
         label: t('account_info:dataset_amount'),
         value: teamPlanStatus.usedDatasetSize,
-        max: teamPlanStatus?.standardConstants?.maxDatasetAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxDatasetAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedDatasetSize /
             (teamPlanStatus?.standardConstants?.maxDatasetAmount || 1)) *
           100
       }
     ];
+
+    if (teamPlanStatus?.standardConstants?.appRegistrationCount) {
+      data.push({
+        label: t('account_info:app_registration_count'),
+        value: teamPlanStatus.usedRegistrationCount || 0,
+        max: teamPlanStatus.standardConstants.appRegistrationCount,
+        rate:
+          ((teamPlanStatus.usedRegistrationCount || 0) /
+            teamPlanStatus.standardConstants.appRegistrationCount) *
+          100
+      });
+    }
+
+    return data;
   }, [t, teamPlanStatus]);
 
   return standardPlan ? (
@@ -487,6 +511,11 @@ const PlanUsage = () => {
         {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
           <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
             {t('account_info:redeem_coupon')}
+          </Button>
+        )}
+        {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
+          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenDiscountCouponsModal}>
+            {t('account_info:discount_coupon')}
           </Button>
         )}
       </Flex>
@@ -536,7 +565,7 @@ const PlanUsage = () => {
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
-              mode={standardPlan.currentMode}
+              mode={'month'}
               standplan={standardPlan}
             />
           </Box>
@@ -575,87 +604,89 @@ const PlanUsage = () => {
           </Link>
         </Flex>
         <Box width={'100%'} mt={5} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:knowledge_base_capacity')}
-              </Box>
-              <Box color={'myGray.600'} ml={2}>
-                {datasetIndexUsageMap.value}/{datasetIndexUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} mr={1}>
+              {t('common:support.wallet.subscription.AI points usage')}
+            </Box>
+            <QuestionTip label={t('account_info:ai_points_usage_tip')} />
+            <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {Math.round(teamPlanStatus?.usedPoints || 0)} / {aiPointsUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={datasetIndexUsageMap.rate}
-              colorScheme={valueColorSchema(datasetIndexUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${aiPointsUsageMap.rate}%`}
+              bg={`${aiPointsUsageMap.rate < 50 ? 'primary' : aiPointsUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
+
         <Box mt="6" width={'100%'} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:ai_points_usage')}
-              </Box>
-              <QuestionTip ml={1} label={t('account_info:ai_points_usage_tip')}></QuestionTip>
-              <Box color={'myGray.600'} ml={2}>
-                {aiPointsUsageMap.value}/{aiPointsUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex gap={4} alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('common:support.user.team.Dataset usage')}
+            </Box>
+            <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {Math.round(teamPlanStatus?.usedDatasetIndexSize || 0)} / {datasetIndexUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={aiPointsUsageMap.rate}
-              colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${datasetIndexUsageMap.rate}%`}
+              bg={`${datasetIndexUsageMap.rate < 50 ? 'primary' : datasetIndexUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
 
         <MyDivider />
 
         {limitData.map((item) => {
+          const isAppRegistration = item.label === t('account_info:app_registration_count');
+
           return (
             <Box
               key={item.label}
               _notFirst={{
-                mt: 4
+                mt: 6
               }}
               width={'100%'}
               fontSize={'sm'}
             >
-              <Flex alignItems={'center'}>
-                <Box fontWeight={'bold'} color={'myGray.900'}>
+              <Flex gap={4} alignItems={'center'} mb={2}>
+                <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
                   {item.label}
                 </Box>
-                <Box color={'myGray.600'} ml={2}>
+                <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
                   {item.value}/{item.max}
                 </Box>
+                {isAppRegistration && subPlans?.appRegistrationUrl && (
+                  <Link
+                    href={subPlans?.appRegistrationUrl}
+                    target="_blank"
+                    ml={'auto'}
+                    display={'flex'}
+                    alignItems={'center'}
+                    color={'primary.600'}
+                    cursor={'pointer'}
+                    fontSize={'sm'}
+                  >
+                    {t('account_info:apply_app_registration')}
+                    <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
+                  </Link>
+                )}
               </Flex>
-              <Box mt={1}>
-                <Progress
-                  size={'sm'}
-                  value={item.rate}
-                  colorScheme={valueColorSchema(item.rate)}
-                  borderRadius={'md'}
-                  isAnimated
-                  hasStripe
-                  borderWidth={'1px'}
-                  borderColor={'borderColor.low'}
+              <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+                <Box
+                  borderRadius={'sm'}
+                  transition="width 0.3s"
+                  w={`${item.rate}%`}
+                  bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
-              </Box>
+              </Flex>
             </Box>
           );
         })}
@@ -667,6 +698,7 @@ const PlanUsage = () => {
           onSuccess={() => initTeamPlanStatus()}
         />
       )}
+      {isOpenDiscountCouponsModal && <DiscountCouponsModal onClose={onCloseDiscountCouponsModal} />}
     </Box>
   ) : null;
 };
