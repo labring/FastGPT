@@ -227,12 +227,7 @@ const Standard = ({
                       {item.priceDescription || t('common:custom_plan_price')}
                     </Box>
                   ) : (
-                    <MyBox
-                      isLoading={loading}
-                      fontSize={['32px', '42px']}
-                      fontWeight={'bold'}
-                      color={'myGray.900'}
-                    >
+                    <MyBox fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
                       ￥
                       {matchedCoupon?.discount && item.price > 0
                         ? (matchedCoupon.discount * item.price).toFixed(1)
