@@ -95,6 +95,17 @@ export async function delDatasetRelevantData({
     teamId,
     datasetId: { $in: datasetIds }
   });
+  //Delete dataset_data_texts
+  await MongoDatasetDataText.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+  //delete dataset_datas
+  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } });
+  // Delete collection image and file
+  await delCollectionRelatedSource({ collections });
+  // Delete vector data
+  await deleteDatasetDataVector({ teamId, datasetIds });
 
   // Delete dataset_data_texts in batches by datasetId
   for (const datasetId of datasetIds) {
