@@ -105,11 +105,18 @@ try {
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
 
-  // 为查询 initJieba 字段不存在的数据添加索引
-  DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });
-
   // Cron clear invalid data
   DatasetDataSchema.index({ updateTime: 1 });
+
+  // fileId index
+  DatasetDataSchema.index(
+    { fileId: 1 },
+    { unique: true, partialFilterExpression: { fileId: { $exists: true } } }
+  );
+  DatasetDataSchema.index(
+    { imageId: 1 },
+    { unique: true, partialFilterExpression: { imageId: { $exists: true } } }
+  );
 } catch (error) {
   console.log(error);
 }
