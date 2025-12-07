@@ -174,6 +174,17 @@ export const getFileS3Key = {
     };
   },
 
+  avatar: ({ teamId, filename }: { teamId: string; filename?: string }) => {
+    const { formatedFilename, extension } = getFormatedFilename(filename);
+    return {
+      fileKey: [
+        S3Sources.avatar,
+        teamId,
+        `${formatedFilename}${extension ? `.${extension}` : ''}`
+      ].join('/')
+    };
+  },
+
   // 对话中上传的文件的解析结果的图片的 Key
   chat: ({
     appId,

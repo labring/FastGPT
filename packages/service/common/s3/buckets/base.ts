@@ -195,10 +195,7 @@ export class S3BaseBucket {
       const ext = path.extname(filename).toLowerCase();
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
 
-      const key = (() => {
-        if ('rawKey' in params) return params.rawKey;
-        return [params.source, params.teamId, `${getNanoid(6)}-${filename}`].join('/');
-      })();
+      const key = params.rawKey;
 
       const policy = this.externalClient.newPostPolicy();
       policy.setKey(key);
