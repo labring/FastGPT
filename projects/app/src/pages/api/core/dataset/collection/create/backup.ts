@@ -13,7 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
-import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isCSVFile } from '@fastgpt/global/common/file/utils';
 
 export type backupQuery = {};
 
@@ -31,8 +31,8 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
     const { file, data } = await upload.getUploadFile<{ datasetId: string }>(req, res);
     filePaths.push(file.path);
 
-    if (file.mimetype !== 'text/csv') {
-      throw new Error('File must be a CSV file');
+    if (!isCSVFile(file.originalname)) {
+      return Promise.reject('File must be a CSV file');
     }
 
     const { teamId, tmbId, dataset } = await authDataset({
