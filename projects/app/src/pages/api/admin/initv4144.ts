@@ -495,7 +495,9 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   const { converted } = await convertFileIdToString(batchId);
 
   // ========== Collection 迁移 ==========
-  const totalCollectionFiles = await getGFSCollection('dataset').countDocuments({});
+  const totalCollectionFiles = await getGFSCollection('dataset').countDocuments({
+    uploadDate: { $gte: new Date('2025-11-20') }
+  });
   addLog.info(`[Migration ${batchId}] Total collection files in GridFS: ${totalCollectionFiles}`);
 
   let collectionStats = {
