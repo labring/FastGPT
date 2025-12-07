@@ -30,7 +30,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
     });
     filepaths.push(result.fileMetadata.path);
 
-    if (!isCSVFile(result.fileMetadata..originalname)) {
+    if (!isCSVFile(result.fileMetadata.originalname)) {
       return Promise.reject('File must be a CSV file');
     }
 
