@@ -16,8 +16,7 @@ export const CreateGetDatasetFileURLParamsSchema = z.object({
 export type CreateGetDatasetFileURLParams = z.infer<typeof CreateGetDatasetFileURLParamsSchema>;
 
 export const DeleteDatasetFilesByPrefixParamsSchema = z.object({
-  datasetId: ObjectIdSchema.optional(),
-  rawPrefix: z.string().nonempty().optional()
+  datasetId: ObjectIdSchema.optional()
 });
 export type DeleteDatasetFilesByPrefixParams = z.infer<
   typeof DeleteDatasetFilesByPrefixParamsSchema

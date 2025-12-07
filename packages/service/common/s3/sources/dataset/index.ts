@@ -65,8 +65,8 @@ export class S3DatasetSource {
    * 比如根据被解析的文档前缀去删除解析出来的图片
    **/
   deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
-    const { datasetId, rawPrefix } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
-    const prefix = rawPrefix || [S3Sources.dataset, datasetId].filter(Boolean).join('/');
+    const { datasetId } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
+    const prefix = [S3Sources.dataset, datasetId].filter(Boolean).join('/');
     return this.bucket.addDeleteJob({ prefix });
   }
 
