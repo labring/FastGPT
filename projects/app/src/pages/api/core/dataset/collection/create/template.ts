@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
+import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 
 export type templateImportQuery = {};
 
