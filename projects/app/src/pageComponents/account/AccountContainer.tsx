@@ -22,7 +22,8 @@ export enum TabEnum {
   'apikey' = 'apikey',
   'loginout' = 'loginout',
   'team' = 'team',
-  'model' = 'model'
+  'model' = 'model',
+  'customDomain' = 'customDomain'
 }
 
 const AccountContainer = ({
@@ -49,6 +50,15 @@ const AccountContainer = ({
       label: t('account:personal_information'),
       value: TabEnum.info
     },
+    ...(feConfigs.isPlus && feConfigs.customDomain?.enable
+      ? [
+          {
+            icon: 'common/globalLine',
+            label: t('account:custom_domain'),
+            value: TabEnum.customDomain
+          }
+        ]
+      : []),
     ...(feConfigs?.isPlus
       ? [
           {

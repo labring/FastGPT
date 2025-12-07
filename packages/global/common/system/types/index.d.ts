@@ -128,6 +128,15 @@ export type FastGPTFeConfigsType = {
     alipay?: boolean;
     bank?: boolean;
   };
+
+  customDomain?: {
+    enable?: boolean;
+    domain?: {
+      aliyun?: string;
+      tencent?: string;
+      volcengine?: string;
+    };
+  };
 };
 
 export type SystemEnvType = {
@@ -150,12 +159,22 @@ export type SystemEnvType = {
 };
 
 export type customDomainType = {
-  kc: {
+  kc?: {
     aliyun?: string;
     tencent?: string;
     volcengine?: string;
   };
-  domain: {
+  domain?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  issuerServiceName?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  nginxServiceName?: {
     aliyun?: string;
     tencent?: string;
     volcengine?: string;

@@ -11,6 +11,7 @@
   "create_model": "Add new model",
   "custom_domain": "Custom Domain",
   "custom_model": "custom model",
+  "custom_domain": "custom domain",
   "default_model": "Default model",
   "default_model_config": "Default model configuration",
   "language": "Language and time zone",
