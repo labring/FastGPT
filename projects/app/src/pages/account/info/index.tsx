@@ -610,7 +610,7 @@ const PlanUsage = () => {
             </Box>
             <QuestionTip label={t('account_info:ai_points_usage_tip')} />
             <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {Math.round(teamPlanStatus?.usedPoints * 100) / 100 || 0} / {aiPointsUsageMap.total}
+              {teamPlanStatus?.usedPoints.toFixed(0) || 0} / {aiPointsUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
@@ -629,8 +629,7 @@ const PlanUsage = () => {
               {t('common:support.user.team.Dataset usage')}
             </Box>
             <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {Math.round(teamPlanStatus?.usedDatasetIndexSize * 100) / 100 || 0} /{' '}
-              {datasetIndexUsageMap.total}
+              {teamPlanStatus?.usedDatasetIndexSize.toFixed(0) || 0} / {datasetIndexUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
