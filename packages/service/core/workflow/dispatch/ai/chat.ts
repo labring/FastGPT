@@ -41,9 +41,6 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
-import { getFileS3Key } from '../../../../common/s3/utils';
-import { addDays } from 'date-fns';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -307,7 +304,6 @@ async function filterDatasetQuote({
       : '';
 
   return {
-    // datasetQuoteText: replaceDatasetQuoteTextWithJWT(datasetQuoteText, addDays(new Date(), 90))
     datasetQuoteText
   };
 }

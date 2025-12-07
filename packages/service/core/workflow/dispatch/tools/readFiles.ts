@@ -14,7 +14,7 @@ import { addLog } from '../../../../common/system/log';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
-import { replaceDatasetQuoteTextWithJWT } from '../../../dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
 import path from 'node:path';
@@ -266,7 +266,7 @@ export const getFileContentFromLinks = async ({
             usageId
           });
 
-          const replacedText = replaceDatasetQuoteTextWithJWT(rawText, addDays(new Date(), 90));
+          const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
 
           // Add to buffer
           getS3DatasetSource().addRawTextBuffer({

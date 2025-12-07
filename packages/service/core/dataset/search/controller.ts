@@ -33,7 +33,7 @@ import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
-import { replaceDatasetQuoteTextWithJWT } from '../../../core/dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays, addHours } from 'date-fns';
 
 export type SearchDatasetDataProps = {
@@ -908,7 +908,7 @@ export async function searchDatasetData(
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
   const finalResult = filterMaxTokensResult.map((item) => {
-    item.q = replaceDatasetQuoteTextWithJWT(item.q, addDays(new Date(), 90));
+    item.q = replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
     return item;
   });
 

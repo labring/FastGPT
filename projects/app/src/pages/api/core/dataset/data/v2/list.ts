@@ -12,7 +12,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 
 export type GetDatasetDataListProps = PaginationProps & {
   searchText?: string;
@@ -58,9 +58,9 @@ async function handler(
   ]);
 
   list.forEach((item) => {
-    item.q = replaceDatasetQuoteTextWithJWT(item.q, addHours(new Date(), 1));
+    item.q = replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
     if (item.a) {
-      item.a = replaceDatasetQuoteTextWithJWT(item.a, addHours(new Date(), 1));
+      item.a = replaceS3KeyToPreviewUrl(item.a, addHours(new Date(), 1));
     }
   });
 
