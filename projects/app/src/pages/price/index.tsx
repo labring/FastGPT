@@ -36,7 +36,7 @@ const PriceBox = () => {
       },
       {
         threshold: 0,
-        rootMargin: '0px'
+        rootMargin: '0px 0px -50px 0px'
       }
     );
 
@@ -48,6 +48,7 @@ const PriceBox = () => {
       if (backButtonRef.current) {
         observer.unobserve(backButtonRef.current);
       }
+      observer.disconnect();
     };
   }, []);
 

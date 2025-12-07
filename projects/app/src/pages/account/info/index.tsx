@@ -411,7 +411,7 @@ const PlanUsage = () => {
       : 0;
 
     return {
-      total: teamPlanStatus.datasetMaxSize || t('account_info:unlimited'),
+      total: teamPlanStatus.datasetMaxSize ?? t('account_info:unlimited'),
       rate
     };
   }, [t, teamPlanStatus]);
@@ -429,7 +429,7 @@ const PlanUsage = () => {
       : 0;
 
     return {
-      total: teamPlanStatus.totalPoints || t('account_info:unlimited'),
+      total: teamPlanStatus.totalPoints ?? t('account_info:unlimited'),
       rate
     };
   }, [t, teamPlanStatus]);
@@ -443,7 +443,7 @@ const PlanUsage = () => {
       {
         label: t('account_info:member_amount'),
         value: teamPlanStatus.usedMember,
-        max: teamPlanStatus?.standardConstants?.maxTeamMember || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxTeamMember ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedMember / (teamPlanStatus?.standardConstants?.maxTeamMember || 1)) *
           100
@@ -451,7 +451,7 @@ const PlanUsage = () => {
       {
         label: t('account_info:app_amount'),
         value: teamPlanStatus.usedAppAmount,
-        max: teamPlanStatus?.standardConstants?.maxAppAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxAppAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standardConstants?.maxAppAmount || 1)) *
           100
@@ -459,7 +459,7 @@ const PlanUsage = () => {
       {
         label: t('account_info:dataset_amount'),
         value: teamPlanStatus.usedDatasetSize,
-        max: teamPlanStatus?.standardConstants?.maxDatasetAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxDatasetAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedDatasetSize /
             (teamPlanStatus?.standardConstants?.maxDatasetAmount || 1)) *
