@@ -401,21 +401,16 @@ const PlanUsage = () => {
   const datasetIndexUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        remaining: 0,
         total: t('account_info:unlimited'),
         rate: 0
       };
     }
-    const remaining = Math.max(
-      teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize,
-      0
-    );
+
     const rate = teamPlanStatus.datasetMaxSize
-      ? (remaining / teamPlanStatus.datasetMaxSize) * 100
+      ? (teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) * 100
       : 0;
 
     return {
-      remaining: Math.round(remaining),
       total: teamPlanStatus.datasetMaxSize || t('account_info:unlimited'),
       rate
     };
@@ -424,17 +419,16 @@ const PlanUsage = () => {
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        remaining: 0,
         total: t('account_info:unlimited'),
         rate: 0
       };
     }
 
-    const remaining = Math.max(teamPlanStatus.totalPoints - teamPlanStatus.usedPoints, 0);
-    const rate = teamPlanStatus.totalPoints ? (remaining / teamPlanStatus.totalPoints) * 100 : 0;
+    const rate = teamPlanStatus.totalPoints
+      ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      : 0;
 
     return {
-      remaining: Math.round(remaining),
       total: teamPlanStatus.totalPoints || t('account_info:unlimited'),
       rate
     };
@@ -611,12 +605,12 @@ const PlanUsage = () => {
         </Flex>
         <Box width={'100%'} mt={5} fontSize={'sm'}>
           <Flex alignItems={'center'} mb={2}>
-            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('common:support.wallet.subscription.AI points left')}
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} mr={1}>
+              {t('common:support.wallet.subscription.AI points usage')}
             </Box>
             <QuestionTip label={t('account_info:ai_points_usage_tip')} />
             <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {aiPointsUsageMap.remaining} / {aiPointsUsageMap.total}
+              {teamPlanStatus?.usedPoints || 0} / {aiPointsUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
@@ -624,7 +618,7 @@ const PlanUsage = () => {
               borderRadius={'sm'}
               transition="width 0.3s"
               w={`${aiPointsUsageMap.rate}%`}
-              bg={`${aiPointsUsageMap.rate > 50 ? 'primary' : aiPointsUsageMap.rate > 20 ? 'yellow' : 'red'}.500`}
+              bg={`${aiPointsUsageMap.rate < 50 ? 'primary' : aiPointsUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
           </Flex>
         </Box>
@@ -632,10 +626,10 @@ const PlanUsage = () => {
         <Box mt="6" width={'100%'} fontSize={'sm'}>
           <Flex gap={4} alignItems={'center'} mb={2}>
             <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('common:support.user.team.Dataset left')}
+              {t('common:support.user.team.Dataset usage')}
             </Box>
             <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {datasetIndexUsageMap.remaining} / {datasetIndexUsageMap.total}
+              {teamPlanStatus?.usedDatasetIndexSize || 0} / {datasetIndexUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
@@ -643,7 +637,7 @@ const PlanUsage = () => {
               borderRadius={'sm'}
               transition="width 0.3s"
               w={`${datasetIndexUsageMap.rate}%`}
-              bg={`${datasetIndexUsageMap.rate > 50 ? 'primary' : datasetIndexUsageMap.rate > 20 ? 'yellow' : 'red'}.500`}
+              bg={`${datasetIndexUsageMap.rate < 50 ? 'primary' : datasetIndexUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
           </Flex>
         </Box>
