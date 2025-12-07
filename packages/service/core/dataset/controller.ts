@@ -95,13 +95,22 @@ export async function delDatasetRelevantData({
     teamId,
     datasetId: { $in: datasetIds }
   });
-  //Delete dataset_data_texts
-  await MongoDatasetDataText.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).maxTimeMS(600000);
-  //delete dataset_datas
-  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }).maxTimeMS(600000);
+
+  // Delete dataset_data_texts in batches by datasetId
+  for (const datasetId of datasetIds) {
+    await MongoDatasetDataText.deleteMany({
+      teamId,
+      datasetId
+    }).maxTimeMS(300000); // Reduce timeout for single batch
+  }
+  // Delete dataset_datas in batches by datasetId
+  for (const datasetId of datasetIds) {
+    await MongoDatasetData.deleteMany({
+      teamId,
+      datasetId
+    }).maxTimeMS(300000);
+  }
+
   await delCollectionRelatedSource({ collections });
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
