@@ -99,10 +99,9 @@ export async function delDatasetRelevantData({
   await MongoDatasetDataText.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
-  });
+  }).maxTimeMS(600000);
   //delete dataset_datas
-  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } });
-  // Delete collection image and file
+  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }).maxTimeMS(600000);
   await delCollectionRelatedSource({ collections });
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
