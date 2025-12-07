@@ -41,5 +41,7 @@
   "dingtalk.create_modal_title": "Create DingTalk Bot",
   "dingtalk.edit_modal_title": "Edit DingTalk Bot",
   "dingtalk.title": "Publish to DingTalk Bot",
-  "dingtalk.api": "DingTalk API"
+  "dingtalk.api": "DingTalk API",
+  "use_default_domain": "Use Default Domain",
+  "ip_whitelist": "IP Whitelist"
 }

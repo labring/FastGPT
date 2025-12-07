@@ -114,7 +114,7 @@ function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps
             borderTopLeftRadius={'md'}
             borderTopRightRadius={'md'}
           >
-            <Box flex="1">IP 白名单</Box>
+            <Box flex="1">{t('publish:ip_whitelist')}</Box>
             <MyIcon
               name={'copy'}
               w={'16px'}
