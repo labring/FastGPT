@@ -76,20 +76,20 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const extraPointsPackages = subPlans?.extraPoints?.packages || [];
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number>(0);
 
-  const getDurationText = (duration: number) => {
-    if (duration < 12) return `${duration} ${t('common:month_text')}`;
+  const getMonthText = (month: number) => {
+    if (month < 12) return `${month} ${t('common:month_text')}`;
     return t('common:one_year');
   };
 
   const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(
-    async ({ points, duration }: { points: number; duration: number }) => {
+    async ({ points, month }: { points: number; month: number }) => {
       points = Math.ceil(points);
-      duration = Math.ceil(duration);
+      month = Math.ceil(month);
 
       const res = await postCreatePayBill({
         type: BillTypeEnum.extraPoints,
         extraPoints: points,
-        duration: duration
+        month: month
       });
 
       setQRPayData({
@@ -152,7 +152,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 </Box>
                 <Box fontSize={'12px'} fontWeight={'medium'} color={'myGray.500'} mt={2}>
                   {t('common:invalid_time') + ' '}
-                  {getDurationText(pkg.duration)}
+                  {getMonthText(pkg.month)}
                 </Box>
               </Flex>
             ))}
@@ -184,7 +184,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 const selectedPackage = extraPointsPackages[selectedPackageIndex];
                 onclickBuyExtraPoints({
                   points: selectedPackage.points,
-                  duration: selectedPackage.duration
+                  month: selectedPackage.month
                 });
               }
             }}
@@ -337,7 +337,13 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         </Flex>
       </Grid>
 
-      {!!qrPayData && <QRCodePayModal onSuccess={onPaySuccess} {...qrPayData} />}
+      {!!qrPayData && (
+        <QRCodePayModal
+          onSuccess={onPaySuccess}
+          onClose={() => setQRPayData(undefined)}
+          {...qrPayData}
+        />
+      )}
     </VStack>
   );
 };

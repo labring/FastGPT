@@ -20,7 +20,6 @@ import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wal
 export type QRPayProps = CreateBillResponseType & {
   tip?: string;
   discountCouponName?: string;
-  onClose?: () => void;
 };
 
 const QRCodePayModal = ({
@@ -34,7 +33,11 @@ const QRCodePayModal = ({
   onSuccess,
   discountCouponName,
   onClose
-}: QRPayProps & { tip?: string; onSuccess?: () => any }) => {
+}: QRPayProps & {
+  tip?: string;
+  onSuccess?: () => any;
+  onClose?: () => void;
+}) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const toast = useToast();

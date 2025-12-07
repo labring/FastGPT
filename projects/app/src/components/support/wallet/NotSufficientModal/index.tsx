@@ -85,7 +85,7 @@ export const RechargeModal = ({
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       t(standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label as any)
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
+  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans?.standard, t]);
 
   const [tab, setTab] = useState<'standard' | 'extra'>('standard');
 

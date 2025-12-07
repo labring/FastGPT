@@ -33,7 +33,7 @@ export const CreateExtractPointsBillSchema = z
   .object({
     type: z.literal(BillTypeEnum.extraPoints).meta({ description: '订单类型：额外积分' }),
     extraPoints: z.int().min(0).meta({ description: '额外积分数量' }),
-    duration: z.int().min(1).max(12).meta({ description: '有效期（月）' }),
+    month: z.int().min(1).max(12).meta({ description: '订阅月数' }),
     discountCouponId: z.string().optional().meta({ description: '优惠券 ID（未使用）' })
   })
   .meta({ description: '额外积分订单创建参数' });

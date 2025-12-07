@@ -52,9 +52,17 @@ const StandardPlanContentList = ({
     subPlans?.standard,
     level,
     mode,
+    standplan?.totalPoints,
+    standplan?.requestsPerMinute,
     standplan?.maxTeamMember,
     standplan?.maxApp,
-    standplan?.maxDataset
+    standplan?.maxDataset,
+    standplan?.maxDatasetSize,
+    standplan?.websiteSyncPerDataset,
+    standplan?.chatHistoryStoreDuration,
+    standplan?.auditLogStoreDuration,
+    standplan?.appRegistrationCount,
+    standplan?.ticketResponseTime
   ]);
 
   return planContent ? (
@@ -137,12 +145,12 @@ const StandardPlanContentList = ({
         </Box>
         <QuestionTip ml={1} label={t('common:support.wallet.subscription.function.qpm tip')} />
       </Flex>
-      {!!planContent.appRegistrationCount && (
+      {!!planContent.websiteSyncPerDataset && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>
-            {t('common:support.wallet.subscription.function.App registration count', {
-              amount: planContent.appRegistrationCount
+          <Box fontWeight={'bold'} color={'myGray.600'}>
+            {t('common:support.wallet.subscription.function.Website sync per dataset', {
+              amount: planContent.websiteSyncPerDataset
             })}
           </Box>
         </Flex>
@@ -157,12 +165,12 @@ const StandardPlanContentList = ({
           </Box>
         </Flex>
       )}
-      {!!planContent.websiteSyncPerDataset && (
+      {!!planContent.appRegistrationCount && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box fontWeight={'bold'} color={'myGray.600'}>
-            {t('common:support.wallet.subscription.function.Website sync per dataset', {
-              amount: planContent.websiteSyncPerDataset
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.function.App registration count', {
+              amount: planContent.appRegistrationCount
             })}
           </Box>
         </Flex>

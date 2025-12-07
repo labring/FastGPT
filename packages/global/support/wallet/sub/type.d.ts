@@ -34,12 +34,12 @@ export type StandSubPlanLevelMapType = Record<
 
 export type PointsPackageItem = {
   points: number;
-  duration: number;
+  month: number;
   price: number;
 };
 
 export type SubPlanType = {
-  [SubTypeEnum.standard]: StandSubPlanLevelMapType;
+  [SubTypeEnum.standard]?: StandSubPlanLevelMapType;
   planDescriptionUrl?: string;
   appRegistrationUrl?: string;
   [SubTypeEnum.extraDatasetSize]: {
