@@ -224,15 +224,10 @@ const Standard = ({
                       fontWeight={'bold'}
                       color={'myGray.900'}
                     >
-                      {item.priceDescription || t('common:custom_plan_price')}
+                      {t('common:custom_plan_price')}
                     </Box>
                   ) : (
-                    <MyBox
-                      isLoading={loading}
-                      fontSize={['32px', '42px']}
-                      fontWeight={'bold'}
-                      color={'myGray.900'}
-                    >
+                    <MyBox fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
                       ￥
                       {matchedCoupon?.discount && item.price > 0
                         ? (matchedCoupon.discount * item.price).toFixed(1)
@@ -362,12 +357,22 @@ const Standard = ({
                 {/* function list */}
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
-                    {item.customDescriptions?.map((desc, index) => (
-                      <Flex key={index} alignItems={'center'}>
-                        <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                        <Box color={'myGray.600'}>{desc}</Box>
-                      </Flex>
-                    ))}
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_1')}</Box>
+                    </Flex>
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_2')}</Box>
+                    </Flex>
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_3')}</Box>
+                    </Flex>
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_4')}</Box>
+                    </Flex>
                   </Grid>
                 ) : (
                   <StandardPlanContentList level={item.level} mode={selectSubMode} />

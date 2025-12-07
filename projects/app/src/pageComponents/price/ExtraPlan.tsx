@@ -108,9 +108,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
         <Box
           bg={'white'}
-          w={['100%', '582px']}
-          px={8}
-          py={6}
+          w={'100%'}
+          px={[4, 8]}
+          py={[4, 6]}
           borderRadius={'16px'}
           borderWidth={'1px'}
           borderColor={'myGray.200'}
@@ -126,15 +126,20 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           >
             {t('common:support.wallet.subscription.Extra ai points')}
           </Box>
-          <Grid gridTemplateColumns={'repeat(3, 1fr)'} gap={3} py={4} minHeight={'220px'}>
+          <Grid
+            gridTemplateColumns={['repeat(2, 1fr)', 'repeat(3, 1fr)']}
+            gap={[2, 3]}
+            py={[3, 4]}
+            minHeight={['180px', '220px']}
+          >
             {extraPointsPackages.map((pkg, index) => (
               <Flex
                 key={index}
                 flexDir={'column'}
                 alignItems={'center'}
                 justifyContent={'center'}
-                p={4}
-                borderRadius={'sm'}
+                p={[3, 4]}
+                borderRadius={['8px', 'sm']}
                 borderWidth={'1px'}
                 borderColor={selectedPackageIndex === index ? '#3E78FF' : 'myGray.200'}
                 bg={selectedPackageIndex === index ? 'primary.25' : 'white'}
@@ -150,7 +155,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   {formatNumberWithUnit(pkg.points, i18n.language)}{' '}
                   {t('common:support.wallet.subscription.point')}
                 </Box>
-                <Box fontSize={'12px'} fontWeight={'medium'} color={'myGray.500'} mt={2}>
+                <Box
+                  fontSize={['10px', '12px']}
+                  fontWeight={'medium'}
+                  color={'myGray.500'}
+                  mt={[1, 2]}
+                >
                   {t('common:invalid_time') + ' '}
                   {getMonthText(pkg.month)}
                 </Box>
@@ -159,10 +169,15 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           </Grid>
 
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <Box fontSize={'14px'} color={'myGray.600'} fontWeight={'medium'}>
+            <Box
+              fontSize={['13px', '14px']}
+              color={'myGray.600'}
+              fontWeight={'medium'}
+              textAlign={['center', 'left']}
+            >
               {t('common:support.wallet.subscription.Update extra price')}
             </Box>
-            <Box color={'myGray.600'} fontSize={'20px'} fontWeight={'medium'}>
+            <Box color={'myGray.600'} fontSize={['18px', '20px']} fontWeight={'medium'}>
               {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
                 ? t('common:extraPointsPrice', {
                     price: extraPointsPackages[selectedPackageIndex].price
@@ -173,7 +188,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
           <Button
             w={'100%'}
-            h={'44px'}
+            h={['40px', '44px']}
             variant={'primaryGhost'}
             isLoading={isLoadingBuyExtraPoints}
             isDisabled={
@@ -188,16 +203,16 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 });
               }
             }}
-            fontSize={'16px'}
+            fontSize={['14px', '16px']}
             color={'primary.700'}
-            mt={4}
+            mt={[3, 4]}
           >
             {t('common:support.wallet.Buy')}
           </Button>
 
-          <HStack color={'blue.700'} mt={6}>
-            <MyIcon name={'infoRounded'} w={'18px'} />
-            <Box fontSize={'14px'} fontWeight={'medium'}>
+          <HStack color={'blue.700'} mt={[4, 6]} spacing={[2, 0]}>
+            <MyIcon name={'infoRounded'} w={['16px', '18px']} />
+            <Box fontSize={['12px', '14px']} fontWeight={'medium'} lineHeight={['1.4', 'normal']}>
               {t('common:support.wallet.subscription.Update extra ai points tips')}
             </Box>
           </HStack>
@@ -206,48 +221,63 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         {/* dataset */}
         <Flex
           bg={'white'}
-          w={['100%', '582px']}
-          px={8}
-          py={6}
+          w={'100%'}
+          px={[4, 8]}
+          py={[4, 6]}
           borderRadius={'16px'}
           borderColor={'myGray.200'}
           boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
           flexDir="column"
           borderWidth={'1px'}
-          gap={4}
+          gap={2}
         >
-          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={1}>
-            <Flex flexDir="column" gap={3} flex={'1 0 0'}>
-              <Box fontSize={'lg'} fontWeight={'500'} color={'primary.700'}>
+          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={[2, 4]}>
+            <Flex flexDir="column" gap={[2, 3]} flex={'1 0 0'}>
+              <Box fontSize={['16px', '18px', 'lg']} fontWeight={'500'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra dataset size')}
               </Box>
-              <Box fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
+              <Box
+                fontSize={['20px', '32px']}
+                fontWeight={'bold'}
+                color={'black'}
+                lineHeight={['1.2', 'normal']}
+              >
                 {`￥${extraDatasetPrice}/1000${t('common:support.wallet.subscription.Extra dataset unit')}`}
               </Box>
-              <Box mt="auto" fontSize={'xs'} color={'myGray.600'} fontWeight={'500'}>
+              <Box
+                mt="auto"
+                fontSize={['10px', 'xs']}
+                color={'myGray.600'}
+                fontWeight={'500'}
+                lineHeight={['1.3', 'normal']}
+              >
                 {t('common:support.wallet.subscription.Extra dataset description')}
               </Box>
             </Flex>
             <MyIcon
               display={['none', 'block']}
-              mt={'-30px'}
-              transform={'translateX(20px)'}
+              mt={['-20px', '-30px']}
+              transform={['translateX(10px)', 'translateX(20px)']}
               name={'support/bill/extraDatasetsize'}
               fill={'none'}
+              w={['60px', 'auto']}
             />
           </Flex>
 
-          <Flex flexDir="column" gap={4} h={'180px'} w={'100%'}>
-            <Flex color={'myGray.900'}>
+          <Flex flexDir="column" gap={[3, 4]} h={['auto', '180px']} w={'100%'}>
+            <Flex color={'myGray.900'} alignItems={'center'}>
               <MyIcon
-                mr={2}
+                mr={[2, 3]}
                 name={'support/bill/shoppingCart'}
                 fontWeight={'500'}
-                w={'16px'}
+                w={['14px', '16px']}
                 color={'primary.600'}
               />
-              {t('common:support.wallet.buy_dataset_capacity')}
+              <Box fontSize={['14px', 'sm']} fontWeight={'500'}>
+                {t('common:support.wallet.buy_dataset_capacity')}
+              </Box>
             </Flex>
+
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Dataset size')}
@@ -255,8 +285,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               <Flex
                 justifyContent={'end'}
                 alignItems={'center'}
-                mt={1}
-                w={'180px'}
+                mt={[0, 1]}
+                w={['100%', '180px']}
                 position={'relative'}
               >
                 <MyNumberInput
@@ -272,15 +302,16 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 </Box>
               </Flex>
             </Flex>
+
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:invalid_time')}
               </Box>
               <Flex
-                justifyContent={'end'}
+                justifyContent={['flex-start', 'end']}
                 alignItems={'center'}
-                mt={1}
-                w={'180px'}
+                mt={[0, 1]}
+                w={['100%', '180px']}
                 position={'relative'}
               >
                 <MySelect
@@ -292,15 +323,16 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 />
               </Flex>
             </Flex>
-            <Flex alignItems={'end'} fontSize={'sm'} h="36px">
+
+            <Flex alignItems={'end'} fontSize={'sm'} h="36px" gap={[2, 0]}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'} fontWeight={'500'}>
                 {t('common:support.wallet.subscription.Update extra price')}
               </Box>
               <Flex
-                justifyContent={'end'}
+                justifyContent={['flex-start', 'end']}
                 alignItems={'center'}
-                mt={1}
-                w={'180px'}
+                mt={[0, 1]}
+                w={['100%', '180px']}
                 position={'relative'}
                 fontWeight={500}
                 fontSize={'20px'}
@@ -316,23 +348,26 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               </Flex>
             </Flex>
           </Flex>
-          <Box mt={'auto'}>
+
+          <Box mt={['auto', 0]}>
             <Button
               w={'100%'}
-              h={'44px'}
+              h={['40px', '44px']}
               variant={'primaryGhost'}
               isLoading={isLoadingBuyDatasetSize}
               onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
               color={'primary.700'}
+              fontSize={['14px', '16px']}
             >
               {t('common:support.wallet.Buy')}
             </Button>
-            <HStack color={'blue.700'} mt={4}>
-              <MyIcon name={'infoRounded'} w={'1rem'} />
-              <Box fontSize={'sm'} fontWeight={'500'}>
+
+            <Flex color={'blue.700'} mt={5} alignItems={['flex-start', 'center']} gap={[2, 0]}>
+              <MyIcon name={'infoRounded'} w={['14px', '1rem']} mt={['2px', 0]} />
+              <Box fontSize={['12px', 'sm']} fontWeight={'500'} lineHeight={['1.4', 'normal']}>
                 {t('common:support.wallet.subscription.Update extra dataset tips')}
               </Box>
-            </HStack>
+            </Flex>
           </Box>
         </Flex>
       </Grid>
