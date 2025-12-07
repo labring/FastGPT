@@ -104,6 +104,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       const data = {
         ...datasetPerQuery,
         teamId,
+        deleteTime: null, // 搜索时也要过滤已删除数据
         ...searchMatch
       };
       // @ts-ignore
@@ -114,6 +115,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     return {
       ...datasetPerQuery,
       teamId,
+      deleteTime: null, // 关键：只返回未删除的数据
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...parseParentIdInMongo(parentId)
     };

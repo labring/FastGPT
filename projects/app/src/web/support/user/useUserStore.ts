@@ -17,7 +17,7 @@ type State = {
 
   userInfo: UserType | null;
   isTeamAdmin: boolean;
-  initUserInfo: () => Promise<UserType>;
+  initUserInfo: () => Promise<any>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
@@ -50,16 +50,20 @@ export const useUserStore = create<State>()(
         async initUserInfo() {
           get().initTeamPlanStatus();
 
-          const res = await getTokenLogin();
-          get().setUserInfo(res);
+          try {
+            const res = await getTokenLogin();
+            get().setUserInfo(res);
 
-          //设置html的fontsize
-          const html = document?.querySelector('html');
-          if (html) {
-            // html.style.fontSize = '16px';
+            //设置html的fontsize
+            const html = document?.querySelector('html');
+            if (html) {
+              // html.style.fontSize = '16px';
+            }
+
+            return res;
+          } catch (error) {
+            console.log('[Init user] error', error);
           }
-
-          return res;
         },
         setUserInfo(user: UserType | null) {
           set((state) => {

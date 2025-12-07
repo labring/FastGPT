@@ -9,10 +9,6 @@ import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { MongoDatasetCollectionTags } from './tag/schema';
-import { removeDatasetSyncJobScheduler } from './datasetSync';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { removeImageByPath } from '../../common/file/image/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 
@@ -125,44 +121,3 @@ export async function delDatasetRelevantData({
     await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
   }
 }
-
-export const deleteDatasets = async ({
-  teamId,
-  datasets
-}: {
-  teamId: string;
-  datasets: DatasetSchemaType[];
-}) => {
-  const datasetIds = datasets.map((d) => d._id);
-
-  // delete collection.tags
-  await MongoDatasetCollectionTags.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  });
-
-  // Remove cron job
-  await Promise.all(
-    datasets.map((dataset) => {
-      return removeDatasetSyncJobScheduler(dataset._id);
-    })
-  );
-
-  // delete all dataset.data and pg data
-  await mongoSessionRun(async (session) => {
-    // delete dataset data
-    await delDatasetRelevantData({ datasets, session });
-
-    // delete dataset
-    await MongoDataset.deleteMany(
-      {
-        _id: { $in: datasetIds }
-      },
-      { session }
-    );
-
-    for await (const dataset of datasets) {
-      await removeImageByPath(dataset.avatar, session);
-    }
-  });
-};
