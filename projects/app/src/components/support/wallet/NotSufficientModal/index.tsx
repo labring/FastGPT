@@ -129,29 +129,23 @@ export const RechargeModal = ({
           <Box flex={1}>
             <Flex gap={4} alignItems={'center'} mb={2}>
               <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
-                {t('common:support.wallet.subscription.AI points left')}
+                {t('common:support.wallet.subscription.AI points usage')}
               </Box>
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.totalPoints ? Math.round(teamPlanStatus.totalPoints - teamPlanStatus.usedPoints || 0) : t('account_info:unlimited')} / ${teamPlanStatus?.totalPoints || t('account_info:unlimited')}`}</Box>
+              >{`${teamPlanStatus?.usedPoints || 0} / ${teamPlanStatus?.totalPoints || t('account_info:unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box
                 borderRadius={'sm'}
                 transition="width 0.3s"
-                w={`${teamPlanStatus?.totalPoints ? Math.max(((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) / teamPlanStatus.totalPoints) * 100, 0) : 0}%`}
+                w={`${teamPlanStatus?.totalPoints ? Math.max((teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100, 0) : 0}%`}
                 bg={`${
                   teamPlanStatus?.totalPoints
-                    ? ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) /
-                        teamPlanStatus.totalPoints) *
-                        100 >
-                      50
+                    ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100 < 50
                       ? 'primary'
-                      : ((teamPlanStatus.totalPoints - teamPlanStatus.usedPoints) /
-                            teamPlanStatus.totalPoints) *
-                            100 >
-                          20
+                      : (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100 < 80
                         ? 'yellow'
                         : 'red'
                     : 'primary'
@@ -162,29 +156,26 @@ export const RechargeModal = ({
           <Box flex={1}>
             <Flex gap={4} alignItems={'center'} mb={2}>
               <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
-                {t('common:support.user.team.Dataset left')}
+                {t('common:support.user.team.Dataset usage')}
               </Box>
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.datasetMaxSize ? Math.round(teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize || 0) : t('account_info:unlimited')} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
+              >{`${teamPlanStatus?.usedDatasetIndexSize || 0} / ${teamPlanStatus?.datasetMaxSize || t('account_info:unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box
                 borderRadius={'sm'}
                 transition="width 0.3s"
-                w={`${teamPlanStatus?.datasetMaxSize ? Math.max(((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) / teamPlanStatus.datasetMaxSize) * 100, 0) : 0}%`}
+                w={`${teamPlanStatus?.datasetMaxSize ? Math.max((teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) * 100, 0) : 0}%`}
                 bg={`${
                   teamPlanStatus?.datasetMaxSize
-                    ? ((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) /
-                        teamPlanStatus.datasetMaxSize) *
-                        100 >
+                    ? (teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) * 100 <
                       50
                       ? 'primary'
-                      : ((teamPlanStatus.datasetMaxSize - teamPlanStatus.usedDatasetIndexSize) /
-                            teamPlanStatus.datasetMaxSize) *
-                            100 >
-                          20
+                      : (teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) *
+                            100 <
+                          80
                         ? 'yellow'
                         : 'red'
                     : 'primary'
