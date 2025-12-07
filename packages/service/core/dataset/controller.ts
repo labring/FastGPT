@@ -90,26 +90,22 @@ export async function delDatasetRelevantData({
     '_id teamId datasetId fileId metadata'
   ).lean();
 
-  await retryFn(async () => {
-    await Promise.all([
-      // delete training data
-      MongoDatasetTraining.deleteMany({
-        teamId,
-        datasetId: { $in: datasetIds }
-      }),
-      //Delete dataset_data_texts
-      MongoDatasetDataText.deleteMany({
-        teamId,
-        datasetId: { $in: datasetIds }
-      }),
-      //delete dataset_datas
-      MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }),
-      // Delete collection image and file
-      delCollectionRelatedSource({ collections }),
-      // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds })
-    ]);
+  // delete training data
+  await MongoDatasetTraining.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
   });
+  //Delete dataset_data_texts
+  await MongoDatasetDataText.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+  //delete dataset_datas
+  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } });
+  // Delete collection image and file
+  await delCollectionRelatedSource({ collections });
+  // Delete vector data
+  await deleteDatasetDataVector({ teamId, datasetIds });
 
   // delete collections
   await MongoDatasetCollection.deleteMany({
