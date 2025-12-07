@@ -90,6 +90,11 @@ async function processImageBatch({
   const imageIds = imageFiles.map((file) => file._id.toString());
   const dataList = await MongoDatasetData.find(
     {
+      teamId: { $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.teamId))) },
+      datasetId: { $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.datasetId))) },
+      collectionId: {
+        $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.collectionId)))
+      },
       imageId: { $in: imageIds }
     },
     '_id imageId teamId datasetId collectionId updateTime'
