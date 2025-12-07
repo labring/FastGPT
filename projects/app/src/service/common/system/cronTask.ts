@@ -1,9 +1,4 @@
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  delFileByFileIdList,
-  getGFSCollection
-} from '@fastgpt/service/common/file/gridfs/controller';
 import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,
@@ -13,88 +8,6 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { addDays } from 'date-fns';
-
-/*
-  check dataset.files data. If there is no match in dataset.collections, delete it
-  可能异常情况:
-  1. 上传了文件，未成功创建集合
-*/
-export async function checkInvalidDatasetFiles(start: Date, end: Date) {
-  let deleteFileAmount = 0;
-  const collection = getGFSCollection(BucketNameEnum.dataset);
-  const where = {
-    uploadDate: { $gte: start, $lte: end }
-  };
-
-  // 1. get all file _id
-  const files = await collection
-    .find(where, {
-      projection: {
-        metadata: 1,
-        _id: 1
-      }
-    })
-    .toArray();
-  addLog.info(`Clear invalid dataset files, total files: ${files.length}`);
-
-  let index = 0;
-  for await (const file of files) {
-    try {
-      // 2. find fileId in dataset.collections
-      const hasCollection = await MongoDatasetCollection.countDocuments({
-        teamId: file.metadata.teamId,
-        fileId: file._id
-      });
-
-      // 3. if not found, delete file
-      if (hasCollection === 0) {
-        await delFileByFileIdList({
-          bucketName: BucketNameEnum.dataset,
-          fileIdList: [String(file._id)]
-        });
-        console.log('delete file', file._id);
-        deleteFileAmount++;
-      }
-      index++;
-      index % 100 === 0 && console.log(index);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  addLog.info(`Clear invalid dataset files finish, remove ${deleteFileAmount} files`);
-}
-
-/*
-  Remove 7 days ago chat files
-*/
-export const removeExpiredChatFiles = async () => {
-  let deleteFileAmount = 0;
-  const collection = getGFSCollection(BucketNameEnum.chat);
-
-  const expireTime = Number(process.env.CHAT_FILE_EXPIRE_TIME || 7);
-  const where = {
-    uploadDate: { $lte: addDays(new Date(), -expireTime) }
-  };
-
-  // get all file _id
-  const files = await collection.find(where, { projection: { _id: 1 } }).toArray();
-
-  // Delete file one by one
-  for await (const file of files) {
-    try {
-      await delFileByFileIdList({
-        bucketName: BucketNameEnum.chat,
-        fileIdList: [String(file._id)]
-      });
-      deleteFileAmount++;
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  addLog.info(`Remove expired chat files finish, remove ${deleteFileAmount} files`);
-};
 
 /*
   检测无效的 Mongo 数据

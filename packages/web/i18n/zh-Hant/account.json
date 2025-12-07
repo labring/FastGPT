@@ -83,5 +83,22 @@
   "reset_default": "恢復預設設定",
   "team": "團隊管理",
   "third_party": "第三方賬號",
-  "usage_records": "使用記錄"
+  "usage_records": "使用記錄",
+  "bill_detail": "帳單詳細資訊",
+  "order_number": "訂單編號",
+  "generation_time": "生成時間",
+  "order_type": "訂單類型",
+  "status": "狀態",
+  "payment_method": "支付方式",
+  "support_wallet_amount": "金額",
+  "yuan": "{{amount}}元",
+  "has_invoice": "是否已開票",
+  "yes": "是",
+  "no": "否",
+  "subscription_period": "訂閱週期",
+  "subscription_package": "訂閱套餐",
+  "subscription_mode_month": "時長",
+  "month": "月",
+  "extra_dataset_size": "額外知識庫容量",
+  "extra_ai_points": "AI 積分運算標準"
 }

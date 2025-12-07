@@ -1,13 +1,12 @@
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { addDays } from 'date-fns';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
-import { type GetAppChatLogsProps } from '@/global/core/api/appReq';
+import type { GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -26,6 +25,8 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
+import { getLocationFromIp } from '@fastgpt/service/common/geo';
+import type { I18nName } from '@fastgpt/service/common/geo/type';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -39,6 +40,7 @@ export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
   sourcesMap: Record<string, { label: string }>;
   logKeys: AppLogKeysEnum[];
+  locale?: keyof I18nName;
 };
 
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
@@ -49,6 +51,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     sources,
     tmbIds,
     chatSearch,
+    locale = 'en',
     title,
     sourcesMap,
     logKeys = []
@@ -104,13 +107,15 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     },
     ...(sources && { source: { $in: sources } }),
     ...(tmbIds && { tmbId: { $in: tmbIds } }),
-    ...(chatSearch && {
-      $or: [
-        { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-        { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-      ]
-    })
+    ...(chatSearch
+      ? {
+          $or: [
+            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+          ]
+        }
+      : undefined)
   };
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
@@ -364,7 +369,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           customFeedbackItems: 1,
           markItems: 1,
           chatDetails: 1,
-          variables: 1
+          variables: 1,
+          originIp: '$metadata.originIp'
         }
       }
     ],
@@ -394,6 +400,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
       : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
+    const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
@@ -432,6 +439,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
+      [AppLogKeysEnum.REGION]: () => region,
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 

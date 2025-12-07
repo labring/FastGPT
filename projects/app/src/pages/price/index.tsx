@@ -36,7 +36,7 @@ const PriceBox = () => {
       },
       {
         threshold: 0,
-        rootMargin: '0px'
+        rootMargin: '0px 0px -50px 0px'
       }
     );
 
@@ -48,6 +48,7 @@ const PriceBox = () => {
       if (backButtonRef.current) {
         observer.unobserve(backButtonRef.current);
       }
+      observer.disconnect();
     };
   }, []);
 
@@ -69,7 +70,7 @@ const PriceBox = () => {
       backgroundSize={'cover'}
       backgroundRepeat={'no-repeat'}
     >
-      {userInfo && (
+      {teamSubPlan?.standard?.teamId && (
         <Button
           ref={backButtonRef}
           variant={'transparentBase'}
@@ -82,7 +83,7 @@ const PriceBox = () => {
           {t('common:back')}
         </Button>
       )}
-      {!isButtonInView && userInfo && (
+      {!isButtonInView && teamSubPlan?.standard?.teamId && (
         <IconButton
           aria-label={t('common:back')}
           position={'fixed'}

@@ -13,7 +13,8 @@ export enum AppLogKeysEnum {
   ANNOTATED_COUNT = 'annotatedCount',
   POINTS = 'points',
   RESPONSE_TIME = 'responseTime',
-  ERROR_COUNT = 'errorCount'
+  ERROR_COUNT = 'errorCount',
+  REGION = 'region'
 }
 
 export const AppLogKeysEnumMap = {
@@ -29,7 +30,8 @@ export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
   [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
   [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
-  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
+  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount'),
+  [AppLogKeysEnum.REGION]: i18nT('app:logs_keys_region')
 };
 
 export const DefaultAppLogKeys = [
@@ -45,7 +47,8 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.ANNOTATED_COUNT, enable: false },
   { key: AppLogKeysEnum.POINTS, enable: false },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
-  { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
+  { key: AppLogKeysEnum.ERROR_COUNT, enable: false },
+  { key: AppLogKeysEnum.REGION, enable: true }
 ];
 
 export enum AppLogTimespanEnum {
