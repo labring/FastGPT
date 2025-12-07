@@ -21,7 +21,10 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import type { CustomDomainType } from '@fastgpt/global/support/customDomain/type';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { useRouter } from 'next/router';
 
 const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal')
@@ -33,6 +36,9 @@ const DomainVerifyModal = dynamic(
 
 const CustomDomain = () => {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { teamPlanStatus } = useUserStore();
+
   const {
     data: customDomainList,
     refreshAsync: refreshCustomDomainList,
@@ -64,6 +70,14 @@ const CustomDomain = () => {
 
   const [editDomain, setEditDomain] = useState<CustomDomainType | undefined>(undefined);
 
+  // 检查用户是否有 advanced 套餐
+  const isAdvancedPlan = useMemo(() => {
+    const currentLevel = teamPlanStatus?.standard?.currentSubLevel;
+    if (!currentLevel) return false;
+
+    return currentLevel === StandardSubLevelEnum.advanced;
+  }, [teamPlanStatus?.standard?.currentSubLevel]);
+
   return (
     <>
       <AccountContainer>
@@ -75,7 +89,12 @@ const CustomDomain = () => {
                 {t('account:custom_domain')}
                 {customDomainList?.length ? `: (${customDomainList.length}/3)` : <></>}
               </Box>
-              <Button variant="whitePrimaryOutline" onClick={onOpenCreateModal}>
+
+              <Button
+                variant="whitePrimaryOutline"
+                onClick={onOpenCreateModal}
+                isDisabled={!isAdvancedPlan}
+              >
                 {t('common:Add')}
               </Button>
             </Flex>
@@ -136,8 +155,31 @@ const CustomDomain = () => {
                 ) : (
                   <Tr h="100%">
                     <Td colSpan={5} textAlign="center" h="100%">
-                      <Flex h="100%" alignItems="center" justifyContent="center" minH="400px">
-                        <EmptyTip />
+                      <Flex
+                        h="100%"
+                        alignItems="center"
+                        justifyContent="center"
+                        minH="400px"
+                        flexDirection="column"
+                        gap={4}
+                      >
+                        <EmptyTip
+                          text={
+                            !isAdvancedPlan && (
+                              <Flex flexDir="column" alignItems="center">
+                                <Box>{t('account:upgrade_to_use_custom_domain')}</Box>
+                                <Button
+                                  mt="4"
+                                  variant="primary"
+                                  onClick={() => router.push('/price')}
+                                  size="md"
+                                >
+                                  {t('account:upgrade_plan')}
+                                </Button>
+                              </Flex>
+                            )
+                          }
+                        />
                       </Flex>
                     </Td>
                   </Tr>

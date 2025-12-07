@@ -133,5 +133,10 @@
   "usage_records": "使用記錄",
   "website_sync_per_dataset": "站點同步最大頁數",
   "yes": "是",
-  "yuan": "{{amount}}元"
+  "yuan": "{{amount}}元",
+  "month": "月",
+  "extra_dataset_size": "額外知識庫容量",
+  "extra_ai_points": "AI 積分運算標準",
+  "upgrade_to_use_custom_domain": "目前套餐不支援自訂域名，請先升級",
+  "upgrade_plan": "升級套餐"
 }

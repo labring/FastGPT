@@ -123,9 +123,6 @@
   "requests_per_minute": "QPM",
   "reset_default": "恢复默认配置",
   "status": "状态",
-  "subscription_mode_month": "时长",
-  "subscription_package": "订阅套餐",
-  "subscription_period": "订阅周期",
   "support_wallet_amount": "金额",
   "team": "团队管理",
   "third_party": "第三方账号",
@@ -133,5 +130,11 @@
   "usage_records": "使用记录",
   "website_sync_per_dataset": "站点同步最大页数",
   "yes": "是",
-  "yuan": "{{amount}}元"
+  "yuan": "{{amount}}元",
+  "no": "否",
+  "subscription_period": "订阅周期",
+  "subscription_package": "订阅套餐",
+  "subscription_mode_month": "时长",
+  "upgrade_to_use_custom_domain": "当前套餐不支持自定义域名，请先升级",
+  "upgrade_plan": "升级套餐"
 }

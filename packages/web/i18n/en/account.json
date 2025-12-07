@@ -133,5 +133,7 @@
   "app_registration_count": "App registration count",
   "audit_log_store_duration": "Audit log storage duration",
   "ticket_response_time": "Ticket response time",
-  "custom_config_details": "Custom configuration details"
+  "custom_config_details": "Custom configuration details",
+  "upgrade_to_use_custom_domain": "Current plan does not support custom domains, please upgrade first",
+  "upgrade_plan": "Upgrade plan"
 }
