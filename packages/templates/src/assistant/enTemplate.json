@@ -1,0 +1,704 @@
+{
+  "name": "Customer Service Assistant",
+  "intro": "Intelligent assistant designed for customer service, combining knowledge base retrieval and AI conversation capabilities",
+  "author": "FastGPT",
+  "avatar": "core/workflow/template/customerService",
+  "tags": ["customer-service"],
+  "type": "assistant",
+  "weight": 1,
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "System Config",
+        "intro": "Configure system parameters for the application",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": -83.21188516590976,
+          "y": -455.6131256516957
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "object",
+            "renderTypeList": ["hidden"],
+            "label": "core.app.Question Guide",
+            "value": {
+              "open": false
+            }
+          },
+          {
+            "key": "tts",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "workflowStartNodeId",
+        "name": "Workflow Start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 481.30634687244265,
+          "y": -501.97057002072324
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "workflow:user_question",
+            "required": true,
+            "toolDescription": "User's question",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "iKBoX2vIzETU",
+        "name": "Knowledge Base Search",
+        "intro": "Search for relevant content from the knowledge base using semantic retrieval, full-text search, and database query capabilities",
+        "avatar": "core/workflow/template/datasetSearch",
+        "flowNodeType": "datasetSearchNode",
+        "showStatus": true,
+        "position": {
+          "x": 1181.4000948777586,
+          "y": -1041.7929020914667
+        },
+        "version": "4.9.2",
+        "inputs": [
+          {
+            "key": "datasets",
+            "renderTypeList": ["selectDataset", "reference"],
+            "label": "common:core.module.input.label.Select dataset",
+            "value": [],
+            "valueType": "selectDataset",
+            "required": true,
+            "valueDesc": "{\n  datasetId: string;\n}[]",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "similarity",
+            "renderTypeList": ["selectDatasetParamsModal"],
+            "label": "",
+            "value": 0.4,
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "limit",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 5000,
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "searchMode",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "mixedRecall",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "embeddingWeight",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "number",
+            "value": 0.65,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "usingReRank",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "rerankModel",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "bge-reranker-large"
+          },
+          {
+            "key": "rerankMethod",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "content",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "rerankWeight",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "number",
+            "value": 0.4,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "datasetSearchUsingExtensionQuery",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "datasetSearchExtensionModel",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": ""
+          },
+          {
+            "key": "datasetSearchExtensionBg",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "authTmbId",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "workflow:user_question",
+            "toolDescription": "Content to search for",
+            "required": true,
+            "value": ["workflowStartNodeId", "userChatInput"],
+            "debugLabel": ""
+          },
+          {
+            "key": "collectionFilterMatch",
+            "renderTypeList": ["textarea", "reference"],
+            "label": "workflow:collection_metadata_filter",
+            "valueType": "string",
+            "isPro": true,
+            "description": "workflow:filter_description",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "generateSqlModel",
+            "renderTypeList": ["hidden"],
+            "label": "common:search_model",
+            "value": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "quoteQA",
+            "key": "quoteQA",
+            "label": "common:core.module.Dataset quote.label",
+            "description": "Special array format, returns empty array when no search results are found.",
+            "type": "static",
+            "valueType": "datasetQuote",
+            "valueDesc": "{\n  id: string;\n  datasetId: string;\n  collectionId: string;\n  sourceName: string;\n  sourceId?: string;\n  q: string;\n  a: string\n}[]"
+          },
+          {
+            "id": "system_error_text",
+            "key": "system_error_text",
+            "type": "error",
+            "valueType": "string",
+            "label": "workflow:error_text",
+            "valueDesc": "",
+            "description": ""
+          }
+        ],
+        "catchError": false
+      },
+      {
+        "nodeId": "qaFDoVSH4WcXMZPO",
+        "name": "Condition Checker",
+        "intro": "Execute different branches based on conditions.",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 2277.985028019776,
+          "y": -1299.563387920271
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": ["iKBoX2vIzETU", "quoteQA"],
+                    "condition": "isEmpty",
+                    "valueType": "input"
+                  }
+                ]
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "vprtN0xvK1dV0c6M",
+        "name": "Specified Reply",
+        "intro": "This module can directly reply with specified content. Commonly used for guidance and prompts. Non-string content will be converted to string for output.",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 3281.4085684466586,
+          "y": -1344.9921952365255
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "required": true,
+            "label": "common:core.module.input.label.Response content",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": ["VARIABLE_NODE_ID", "byG7WNk4"],
+            "selectedTypeIndex": 1,
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "zPMaGZJTcmh6qjx2",
+        "name": "Condition Checker #2",
+        "intro": "Execute different branches based on conditions.",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 3067.066917987494,
+          "y": -837.539310501848
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": ["VARIABLE_NODE_ID", "utjZSg8f"],
+                    "condition": "equalTo",
+                    "value": "llm-summary",
+                    "valueType": "input"
+                  }
+                ]
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "7BdojPlukIQw",
+        "name": "AI Chat",
+        "intro": "AI Large Language Model Conversation",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 4430.42738186963,
+          "y": -837.539310501848
+        },
+        "version": "4.9.7",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": ["settingLLMModel", "reference"],
+            "label": "common:core.module.input.label.aiModel",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": true,
+            "valueType": "boolean",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatReasoning",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatTopP",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "number",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatStopSign",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatResponseFormat",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatJsonSchema",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": ["textarea", "reference"],
+            "max": 3000,
+            "valueType": "string",
+            "label": "common:core.ai.Prompt",
+            "description": "common:core.app.tip.systemPromptTip",
+            "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": ["numberInput", "reference"],
+            "valueType": "chatHistory",
+            "label": "common:core.module.input.label.chat history",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": ["settingDatasetQuotePrompt"],
+            "label": "",
+            "debugLabel": "Knowledge Base Quote",
+            "valueType": "datasetQuote",
+            "value": ["iKBoX2vIzETU", "quoteQA"],
+            "description": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": ["reference", "input"],
+            "label": "app:workflow.user_file_input",
+            "debugLabel": "File Link",
+            "description": "app:workflow.user_file_input_desc",
+            "valueType": "arrayString",
+            "value": [["workflowStartNodeId", "userFiles"]],
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "workflow:user_question",
+            "toolDescription": "User's question",
+            "required": true,
+            "value": ["workflowStartNodeId", "userChatInput"],
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "Concatenate this reply with history to return as new context",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "Will be triggered after stream reply is completed",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": ""
+          },
+          {
+            "id": "reasoningText",
+            "key": "reasoningText",
+            "required": false,
+            "label": "workflow:reasoning_text",
+            "valueType": "string",
+            "type": "static",
+            "invalid": false,
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "system_error_text",
+            "key": "system_error_text",
+            "type": "error",
+            "valueType": "string",
+            "label": "workflow:error_text",
+            "valueDesc": "",
+            "description": ""
+          }
+        ],
+        "catchError": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "workflowStartNodeId",
+        "target": "iKBoX2vIzETU",
+        "sourceHandle": "workflowStartNodeId-source-right",
+        "targetHandle": "iKBoX2vIzETU-target-left"
+      },
+      {
+        "source": "iKBoX2vIzETU",
+        "target": "qaFDoVSH4WcXMZPO",
+        "sourceHandle": "iKBoX2vIzETU-source-right",
+        "targetHandle": "qaFDoVSH4WcXMZPO-target-left"
+      },
+      {
+        "source": "qaFDoVSH4WcXMZPO",
+        "target": "vprtN0xvK1dV0c6M",
+        "sourceHandle": "qaFDoVSH4WcXMZPO-source-IF",
+        "targetHandle": "vprtN0xvK1dV0c6M-target-left"
+      },
+      {
+        "source": "qaFDoVSH4WcXMZPO",
+        "target": "zPMaGZJTcmh6qjx2",
+        "sourceHandle": "qaFDoVSH4WcXMZPO-source-ELSE",
+        "targetHandle": "zPMaGZJTcmh6qjx2-target-left"
+      },
+      {
+        "source": "zPMaGZJTcmh6qjx2",
+        "target": "7BdojPlukIQw",
+        "sourceHandle": "zPMaGZJTcmh6qjx2-source-IF",
+        "targetHandle": "7BdojPlukIQw-target-left"
+      }
+    ],
+    "chatConfig": {
+      "variables": [
+        {
+          "key": "byG7WNk4",
+          "label": "fallbackReply",
+          "type": "input",
+          "description": "Fallback reply when no answer is found",
+          "required": true,
+          "valueType": "string",
+          "defaultValue": "Sorry, I couldn't find an answer. You can try rephrasing your question, and I'll also help report this to the relevant team.",
+          "maxLength": 4000
+        },
+        {
+          "key": "utjZSg8f",
+          "label": "faqAnswerMode",
+          "type": "select",
+          "description": "FAQ Answer Mode",
+          "required": true,
+          "valueType": "string",
+          "list": [
+            {
+              "value": "quote",
+              "label": "Direct Quote"
+            },
+            {
+              "label": "LLM Summary",
+              "value": "llm-summary"
+            }
+          ],
+          "defaultValue": "quote"
+        }
+      ],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "welcomeText": "Hello, how can I help you today?"
+    }
+  }
+}
