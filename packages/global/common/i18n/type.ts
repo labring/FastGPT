@@ -1,8 +1,11 @@
-export type I18nStringType = {
-  'zh-CN'?: string;
-  'zh-Hant'?: string;
-  en: string;
-};
+import z from 'zod';
+
+export const I18nStringSchema = z.object({
+  en: z.string(),
+  'zh-CN': z.string().optional(),
+  'zh-Hant': z.string().optional()
+});
+export type I18nStringType = z.infer<typeof I18nStringSchema>;
 
 export enum LangEnum {
   'zh_CN' = 'zh-CN',

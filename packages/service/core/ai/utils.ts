@@ -330,9 +330,9 @@ export const parseLLMStreamResponse = () => {
   };
 };
 
-export const parseToolArgs = <T = Record<string, any>>(toolArgs: string) => {
+export const parseJsonArgs = <T = Record<string, any>>(str: string) => {
   try {
-    return json5.parse(sliceJsonStr(toolArgs)) as T;
+    return json5.parse(sliceJsonStr(str)) as T;
   } catch {
     return;
   }
