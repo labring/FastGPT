@@ -76,6 +76,8 @@ export type DatabaseConfig = {
   password: string;
   encrypt?: boolean;
   poolSize?: number;
+  // PostgreSQL specific
+  schema?: string;
 };
 
 // Database table schema types

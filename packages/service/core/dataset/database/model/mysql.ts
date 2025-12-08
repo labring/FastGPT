@@ -39,33 +39,36 @@ export class MysqlClient extends AsyncDB {
       return true;
     } catch (err: any) {
       addLog.warn('[checkConnection]:', err);
-      if (err?.code === 'ER_ACCESS_DENIED_ERROR') {
-        // username or password error
-        return Promise.reject(DatabaseErrEnum.authError);
-      } else if (err?.code === 'ER_BAD_DB_ERROR') {
-        // database not found
-        return Promise.reject(DatabaseErrEnum.databaseNameError);
-      } else if (err?.code === 'PROTOCOL_CONNECTION_LOST') {
-        // connection lost
-        return Promise.reject(DatabaseErrEnum.connectionLost);
-      } else if (err?.code === 'ECONNREFUSED') {
-        // Error: Connection Refused
-        return Promise.reject(DatabaseErrEnum.econnRefused);
-      } else if (err?.code === 'ETIMEDOUT') {
-        // timeout error
-        return Promise.reject(DatabaseErrEnum.connectionTimeout);
-      } else if (err?.code === 'ENOTFOUND') {
-        // url error
-        return Promise.reject(DatabaseErrEnum.connectionFailed);
-      } else if (err?.code === 'EHOSTUNREACH') {
-        // address error
-        return Promise.reject(DatabaseErrEnum.hostError);
-      } else if (err?.code === 'ERR_SOCKET_BAD_PORT') {
-        // port error
-        return Promise.reject(DatabaseErrEnum.databasePortError);
-      } else {
-        // other
-        return Promise.reject(DatabaseErrEnum.checkError);
+
+      const code = err?.code;
+
+      switch (code) {
+        case 'ER_ACCESS_DENIED_ERROR': // username or password error
+          return Promise.reject(DatabaseErrEnum.authError);
+
+        case 'ER_BAD_DB_ERROR': // database not found
+          return Promise.reject(DatabaseErrEnum.databaseNameError);
+
+        case 'PROTOCOL_CONNECTION_LOST': // connection lost
+          return Promise.reject(DatabaseErrEnum.connectionLost);
+
+        case 'ECONNREFUSED': // Error: Connection Refused
+          return Promise.reject(DatabaseErrEnum.econnRefused);
+
+        case 'ETIMEDOUT': // timeout error
+          return Promise.reject(DatabaseErrEnum.connectionTimeout);
+
+        case 'ENOTFOUND': // url error
+          return Promise.reject(DatabaseErrEnum.connectionFailed);
+
+        case 'EHOSTUNREACH': // address error
+          return Promise.reject(DatabaseErrEnum.hostError);
+
+        case 'ERR_SOCKET_BAD_PORT': // port error
+          return Promise.reject(DatabaseErrEnum.databasePortError);
+
+        default: // other
+          return Promise.reject(DatabaseErrEnum.checkError);
       }
     }
   }

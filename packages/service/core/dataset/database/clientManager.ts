@@ -2,6 +2,7 @@ import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import { addLog } from '../../../common/system/log';
 import { MysqlClient } from './model/mysql';
+import { PostgresqlClient } from './model/postgresql';
 import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -11,6 +12,8 @@ export async function createDatabaseClient(config: DatabaseConfig): Promise<Asyn
   switch (config.clientType) {
     case DatabaseTypeEnum.mysql:
       return MysqlClient.fromConfig(config);
+    case DatabaseTypeEnum.postgresql:
+      return PostgresqlClient.fromConfig(config);
     default:
       return Promise.reject(DatabaseErrEnum.notSupportType);
   }
