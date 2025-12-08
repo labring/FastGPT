@@ -10,10 +10,6 @@ const FAQ = () => {
       desc: t('common:FAQ.switch_package_a')
     },
     {
-      title: t('common:FAQ.year_day_q'),
-      desc: t('common:FAQ.year_day_a')
-    },
-    {
       title: t('common:FAQ.check_subscription_q'),
       desc: t('common:FAQ.check_subscription_a')
     },
@@ -41,6 +37,10 @@ const FAQ = () => {
     {
       title: t('common:FAQ.qpm_q'),
       desc: t('common:FAQ.qpm_a')
+    },
+    {
+      title: t('common:FAQ.year_day_q'),
+      desc: t('common:FAQ.year_day_a')
     },
     {
       title: t('common:FAQ.free_user_clean_q'),

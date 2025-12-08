@@ -402,22 +402,39 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       res.end();
     } else {
-      const responseContent = (() => {
-        if (assistantResponses.length === 0) return '';
-        if (assistantResponses.length === 1 && assistantResponses[0].text?.content)
-          return assistantResponses[0].text?.content;
-
-        if (!detail) {
-          return assistantResponses
-            .map((item) => item?.text?.content)
-            .filter(Boolean)
-            .join('\n');
+      const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
+      const formattdResponse = (() => {
+        if (formatResponseContent.length === 0)
+          return {
+            reasoning: '',
+            content: ''
+          };
+        if (formatResponseContent.length === 1) {
+          return {
+            reasoning: formatResponseContent[0].reasoning?.content,
+            content: formatResponseContent[0].text?.content
+          };
         }
 
-        return assistantResponses;
+        if (!detail) {
+          return {
+            reasoning: formatResponseContent
+              .map((item) => item?.reasoning?.content)
+              .filter(Boolean)
+              .join('\n'),
+            content: formatResponseContent
+              .map((item) => item?.text?.content)
+              .filter(Boolean)
+              .join('\n')
+          };
+        }
+
+        return formatResponseContent;
       })();
-      const formatResponseContent = removeAIResponseCite(responseContent, retainDatasetCite);
-      const error = flowResponses[flowResponses.length - 1]?.error;
+
+      const error =
+        flowResponses[flowResponses.length - 1]?.error ||
+        flowResponses[flowResponses.length - 1]?.errorText;
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
@@ -427,7 +444,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: formatResponseContent },
+            message: {
+              role: 'assistant',
+              ...(Array.isArray(formattdResponse)
+                ? { content: formattdResponse }
+                : {
+                    content: formattdResponse.content,
+                    ...(formattdResponse.reasoning && {
+                      reasoning_content: formattdResponse.reasoning
+                    })
+                  })
+            },
             finish_reason: 'stop',
             index: 0
           }

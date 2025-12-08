@@ -5,15 +5,11 @@ import { addDays } from 'date-fns';
 import { isS3ObjectKey, jwtSignS3ObjectKey } from '../../../common/s3/utils';
 
 export const formatDatasetDataValue = ({
-  teamId,
-  datasetId,
   q,
   a,
   imageId,
   imageDescMap
 }: {
-  teamId: string;
-  datasetId: string;
   q: string;
   a?: string;
   imageId?: string;
@@ -73,8 +69,6 @@ export const getFormatDatasetCiteList = (list: DatasetDataSchemaType[]) => {
   return list.map((item) => ({
     _id: item._id,
     ...formatDatasetDataValue({
-      teamId: item.teamId,
-      datasetId: item.datasetId,
       q: item.q,
       a: item.a,
       imageId: item.imageId

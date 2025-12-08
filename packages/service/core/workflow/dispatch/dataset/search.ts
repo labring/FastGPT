@@ -14,6 +14,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
+import { addLog } from '../../../../common/system/log';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
@@ -49,7 +50,6 @@ export async function dispatchDatasetSearch(
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
-    uid,
     histories,
     node,
     params: {
@@ -281,6 +281,7 @@ export async function dispatchDatasetSearch(
           : 'No results'
     };
   } catch (error) {
+    addLog.error(`[Dataset search] error`, error);
     return getNodeErrResponse({ error });
   }
 }
