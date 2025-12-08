@@ -9,6 +9,7 @@ import { MongoHelperBotChatItem } from '@fastgpt/service/core/chat/HelperBot/cha
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchMap } from '@fastgpt/service/core/chat/HelperBot/dispatch/index';
 import { pushChatRecords } from '@fastgpt/service/core/chat/HelperBot/utils';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -43,8 +44,18 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     files,
     metadata,
     histories,
-    workflowResponseWrite
+    workflowResponseWrite,
+    teamId,
+    userId
   });
+
+  // Send formData if exists
+  if (result.formData) {
+    workflowResponseWrite?.({
+      event: SseResponseEventEnum.formData,
+      data: result.formData
+    });
+  }
 
   // Save chat
   await pushChatRecords({
