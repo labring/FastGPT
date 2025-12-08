@@ -5,9 +5,14 @@ import {
   BillStatusEnum,
   BillPayWayEnum
 } from '../../../../support/wallet/bill/constants';
-import { StandardSubLevelEnum, SubModeEnum } from '../../../../support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  SubModeEnum,
+  SubTypeEnum
+} from '../../../../support/wallet/sub/constants';
 import { PaginationSchema } from '../../../api';
 import { BillSchema } from '../../../../support/wallet/bill/type';
+import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants';
 
 // Bill list
 export const BillListQuerySchema = PaginationSchema.safeExtend({
@@ -85,7 +90,23 @@ export type CheckPayResultResponseType = z.infer<typeof CheckPayResultResponseSc
 
 // Bill detail
 export const BillDetailResponseSchema = BillSchema.safeExtend({
-  couponName: z.string().optional()
+  discountCouponName: z.string().optional(),
+  couponDetail: z
+    .object({
+      key: z.string(),
+      type: z.enum(CouponTypeEnum),
+      subscriptions: z.array(
+        z.object({
+          type: z.enum(SubTypeEnum),
+          durationDay: z.number(),
+          totalPoints: z.number().optional(),
+          level: z.enum(StandardSubLevelEnum).optional(),
+          extraDatasetSize: z.number().optional(),
+          customConfig: z.record(z.string(), z.any()).optional()
+        })
+      )
+    })
+    .optional()
 });
 export type BillDetailResponseType = z.infer<typeof BillDetailResponseSchema>;
 
