@@ -253,9 +253,11 @@ ${resourceList}
 - 形成完整的 resources 配置
 
 **输出要求**：
-**重要：只输出JSON，不要添加任何解释文字、代码块标记或其他内容！**
+**重要**
+1. 只输出JSON规定的字段，不要添加任何解释文字、代码块标记或其他内容！
+2. 千万不能添加不属于以下模板中的字段到最终的结果中
 
-直接输出以下格式的JSON：
+直接输出以下格式的JSON（千万不要添加其他字段进来）：
 {
   "task_analysis": {
     "goal": "任务的核心目标描述",
@@ -353,7 +355,7 @@ ${resourceList}
 - ❌ 不要使用旧格式的 tools 字段，必须使用 resources 结构
 - ❌ 不要添加任何解释性文字或前言后语
 - ✅ 必须使用 resources 对象，包含 tools、knowledges、system_features
-- ✅ file_upload.enabled=true 时必须提供 purpose 字段
+- ✅ file_upload.enabled=true 时必须提供 purpose 字段，
 - ✅ knowledges 或 tools 可以为空数组（如果不需要）
 - ✅ 直接、纯净地输出JSON内容
 
