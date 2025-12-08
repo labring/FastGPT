@@ -547,7 +547,7 @@ async function processImageBatch({
   const imageMigrationLogs = imageDataPairs.map(({ data, imageFile }) => ({
     batchId,
     migrationVersion,
-    resourceType: 'data_image' as const,
+    resourceType: 'dataset_image' as const,
     resourceId: data._id,
     teamId: data.teamId,
     datasetId: data.datasetId,
