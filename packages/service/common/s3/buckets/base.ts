@@ -50,6 +50,7 @@ export class S3BaseBucket {
         port: externalPort,
         accessKey: options.accessKey,
         secretKey: options.secretKey,
+        pathStyle: options.pathStyle,
         transportAgent: options.transportAgent
       });
     }
