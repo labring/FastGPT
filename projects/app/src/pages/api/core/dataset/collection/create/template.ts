@@ -14,6 +14,7 @@ import {
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
+import type { CreateCollectionResponse } from '@/global/core/dataset/api';
 
 export type TemplateImportQuery = {};
 export type EnhanceConfig = {
@@ -26,7 +27,7 @@ export type EnhanceConfig = {
 };
 export type TemplateImportBody = { datasetId: string; enhanceConfig: EnhanceConfig };
 
-export type TemplateImportResponse = {};
+export type TemplateImportResponse = CreateCollectionResponse;
 
 async function handler(
   req: ApiRequestProps<TemplateImportBody, TemplateImportQuery>,
@@ -94,7 +95,7 @@ async function handler(
     removeFilesByPaths(filePaths);
 
     // 4. Create collection
-    await createCollectionAndInsertData({
+    const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,
@@ -110,7 +111,7 @@ async function handler(
       }
     });
 
-    return {};
+    return { collectionId, results: insertResults };
   } catch (error) {
     addLog.error(`Backup dataset collection create error: ${error}`);
     removeFilesByPaths(filePaths);
