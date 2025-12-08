@@ -1243,7 +1243,7 @@ async function dispatchToolCall(params: {
 
   if (toolId === SubAppIds.model) {
     // 调用 Model Agent
-    const toolParams = parseToolArgs<{
+    const toolParams = parseJsonArgs<{
       systemPrompt: string;
       task: string;
     }>(params.call.function.arguments);
@@ -1258,7 +1258,7 @@ async function dispatchToolCall(params: {
 
   if (toolId === SubAppIds.fileRead) {
     // 调用文件读取工具
-    const toolParams = parseToolArgs<{
+    const toolParams = parseJsonArgs<{
       file_indexes: string[];
     }>(params.call.function.arguments);
 
@@ -1285,7 +1285,7 @@ async function dispatchToolCall(params: {
     };
   }
 
-  const toolCallParams = parseToolArgs(params.call.function.arguments);
+  const toolCallParams = parseJsonArgs(params.call.function.arguments);
   if (!toolCallParams) {
     return {
       response: 'params is not object',
@@ -1363,7 +1363,7 @@ LLM 可能生成不符合 JSON Schema 的 Plan，或者生成的 Plan 结构不�
    } {
      try {
        // 尝试解析为 JSON
-       const parsed = parseToolArgs<AgentPlanType>(answerText);
+       const parsed = parseJsonArgs<AgentPlanType>(answerText);
 
        // 验证必要字段
        if (parsed && parsed.task && Array.isArray(parsed.steps) && parsed.steps.length > 0) {

@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowChildResponseWrite } from '../../../utils';
 import { SubAppIds } from '../sub/constants';
-import { parseToolArgs } from '../../../../../ai/utils';
+import { parseJsonArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -186,7 +186,7 @@ export const stepCall = async ({
         const { response, usages = [] } = await (async () => {
           try {
             if (toolId === SubAppIds.fileRead) {
-              const params = parseToolArgs<{
+              const params = parseJsonArgs<{
                 file_indexes: string[];
               }>(call.function.arguments);
               if (!params) {
@@ -227,7 +227,7 @@ export const stepCall = async ({
                 };
               }
 
-              const toolCallParams = parseToolArgs(call.function.arguments);
+              const toolCallParams = parseJsonArgs(call.function.arguments);
 
               if (!toolCallParams) {
                 return {

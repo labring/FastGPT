@@ -144,19 +144,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
     }
   );
   const generatingMessage = useMemoizedFn(
-    ({ event, text = '', reasoningText, tool, data }: generatingMessageProps & { data?: any }) => {
-      if (event === SseResponseEventEnum.formData && data) {
-        const formData = {
-          role: data.role || '',
-          taskObject: data.taskObject || '',
-          selectedTools: data.tools || [],
-          selectedDatasets: [],
-          fileUpload: data.fileUploadEnabled || false
-        };
-        onApply?.(formData);
-        return;
-      }
-
+    ({ event, text = '', reasoningText, tool, formData }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
@@ -164,6 +152,12 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
 
           const updateIndex = item.value.length - 1;
           const updateValue: AIChatItemValueItemType = item.value[updateIndex];
+
+          // Special event: form data
+          if (event === SseResponseEventEnum.formData && formData) {
+            onApply?.(formData);
+            return item;
+          }
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
