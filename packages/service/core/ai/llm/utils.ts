@@ -14,6 +14,7 @@ import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -166,26 +167,32 @@ export const loadRequestMessages = async ({
                 process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
                 isInternalAddress(imgUrl)
               ) {
-                const url = await (async () => {
-                  if (item.key) {
-                    try {
-                      return await getS3ChatSource().createGetChatFileURL({
-                        key: item.key,
-                        external: false
-                      });
-                    } catch (error) {}
-                  }
-                  return imgUrl;
-                })();
-                const { completeBase64: base64 } = await getImageBase64(url);
+                try {
+                  const url = await (async () => {
+                    if (item.key) {
+                      try {
+                        return await getS3ChatSource().createGetChatFileURL({
+                          key: item.key,
+                          external: false
+                        });
+                      } catch (error) {}
+                    }
+                    return imgUrl;
+                  })();
+                  const { completeBase64: base64 } = await getImageBase64(url);
 
-                return {
-                  ...item,
-                  image_url: {
-                    ...item.image_url,
-                    url: base64
-                  }
-                };
+                  return {
+                    ...item,
+                    image_url: {
+                      ...item.image_url,
+                      url: base64
+                    }
+                  };
+                } catch (error) {
+                  return Promise.reject(
+                    `Cannot load image ${imgUrl}, because ${getErrText(error)}`
+                  );
+                }
               }
 
               // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉

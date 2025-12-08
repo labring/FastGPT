@@ -64,7 +64,6 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { validateFileUrlDomain } from '@fastgpt/service/common/security/fileUrlValidator';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -133,18 +132,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       API params: [histories, Human]
     */
     const chatMessages = GPTMessages2Chats({ messages });
-
-    messages.forEach((message: ChatCompletionMessageParam) => {
-      if (message.content && Array.isArray(message.content)) {
-        message.content.forEach((item) => {
-          if (item.type === 'image_url' && item.image_url?.url) {
-            validateFileUrlDomain(item.image_url.url);
-          } else if (item.type === 'file_url') {
-            validateFileUrlDomain(item.url);
-          }
-        });
-      }
-    });
 
     // Computed start hook params
     const startHookText = (() => {

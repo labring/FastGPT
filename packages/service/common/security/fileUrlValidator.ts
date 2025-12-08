@@ -1,13 +1,37 @@
-import { UserError } from '@fastgpt/global/common/error/utils';
+const systemWhiteList = (() => {
+  const list: string[] = [];
+  if (process.env.S3_ENDPOINT) {
+    list.push(process.env.S3_ENDPOINT);
+  }
+  if (process.env.S3_EXTERNAL_BASE_URL) {
+    try {
+      const urlData = new URL(process.env.S3_EXTERNAL_BASE_URL);
+      list.push(urlData.hostname);
+    } catch (error) {}
+  }
+  if (process.env.FE_DOMAIN) {
+    try {
+      const urlData = new URL(process.env.FE_DOMAIN);
+      list.push(urlData.hostname);
+    } catch (error) {}
+  }
+  if (process.env.PRO_URL) {
+    try {
+      const urlData = new URL(process.env.PRO_URL);
+      list.push(urlData.hostname);
+    } catch (error) {}
+  }
+  return list;
+})();
 
 export const validateFileUrlDomain = (url: string): boolean => {
   try {
-    const whitelistArray = global.systemEnv?.fileUrlWhitelist || [];
-
     // Allow all URLs if the whitelist is empty
-    if (whitelistArray.length === 0) {
+    if ((global.systemEnv?.fileUrlWhitelist || []).length === 0) {
       return true;
     }
+
+    const whitelistArray = [...(global.systemEnv?.fileUrlWhitelist || []), ...systemWhiteList];
 
     const urlObj = new URL(url);
 
@@ -17,15 +41,11 @@ export const validateFileUrlDomain = (url: string): boolean => {
     });
 
     if (!isAllowed) {
-      throw new UserError(`URL domain not allowed: ${urlObj.hostname}`);
+      return false;
     }
 
     return true;
   } catch (error) {
-    if (error instanceof UserError) {
-      throw error;
-    }
-    console.error('Error validating file URL domain:', error);
-    throw new UserError('Invalid URL format');
+    return true;
   }
 };
