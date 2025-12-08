@@ -21,7 +21,7 @@ export type OutLinkUpdateQuery = {};
 // }
 export type OutLinkUpdateBody = OutLinkEditType;
 
-export type OutLinkUpdateResponse = {};
+export type OutLinkUpdateResponse = string;
 
 async function handler(
   req: ApiRequestProps<OutLinkUpdateBody, OutLinkUpdateQuery>
@@ -66,6 +66,6 @@ async function handler(
       }
     });
   })();
-  return doc?.shareId;
+  return doc?.shareId!;
 }
 export default NextAPI(handler);
