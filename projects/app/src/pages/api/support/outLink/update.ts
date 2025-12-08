@@ -44,7 +44,7 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  await MongoOutLink.findByIdAndUpdate(_id, {
+  const doc = await MongoOutLink.findByIdAndUpdate(_id, {
     name,
     responseDetail,
     showRawSource,
@@ -66,6 +66,6 @@ async function handler(
       }
     });
   })();
-  return {};
+  return doc?.shareId;
 }
 export default NextAPI(handler);

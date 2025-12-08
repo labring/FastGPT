@@ -30,9 +30,10 @@ const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal')
 );
 
-const DomainVerifyModal = dynamic(
-  () => import('@/pageComponents/account/customDomain/domainVerifyModal')
-);
+/** unimplemented */
+// const DomainVerifyModal = dynamic(
+//   () => import('@/pageComponents/account/customDomain/domainVerifyModal')
+// );
 
 const CustomDomain = () => {
   const { t } = useTranslation();
@@ -52,11 +53,11 @@ const CustomDomain = () => {
     onClose: onCloseCreateModal
   } = useDisclosure();
 
-  const {
-    isOpen: isOpenDomainVerify,
-    onOpen: onOpenDomainVerify,
-    onClose: onCloseDomainVerify
-  } = useDisclosure();
+  // const {
+  //   isOpen: isOpenDomainVerify,
+  //   onOpen: onOpenDomainVerify,
+  //   onClose: onCloseDomainVerify
+  // } = useDisclosure();
 
   const { runAsync: onDelete, loading: loadingDelete } = useRequest2(deleteCustomDomain, {
     manual: true,
@@ -130,15 +131,16 @@ const CustomDomain = () => {
                               {t('common:Edit')}
                             </Button>
                           ) : (
-                            <Button
-                              variant="whitePrimary"
-                              onClick={() => {
-                                setEditDomain(customDomain);
-                                onOpenDomainVerify();
-                              }}
-                            >
-                              {t('account:custom_domain.domain_verify')}
-                            </Button>
+                            <></>
+                            // <Button
+                            //   variant="whitePrimary"
+                            //   onClick={() => {
+                            //     setEditDomain(customDomain);
+                            //     onOpenDomainVerify();
+                            //   }}
+                            // >
+                            //   {t('account:custom_domain.domain_verify')}
+                            // </Button>
                           )}
                           <Button
                             variant="whiteDanger"
@@ -201,7 +203,7 @@ const CustomDomain = () => {
           data={editDomain!}
         />
       )}
-      {isOpenDomainVerify && editDomain?.domain && (
+      {/*{isOpenDomainVerify && editDomain?.domain && (
         <DomainVerifyModal
           domain={editDomain?.domain}
           onClose={() => {
@@ -209,7 +211,7 @@ const CustomDomain = () => {
             setEditDomain(undefined);
           }}
         />
-      )}
+      )}*/}
     </>
   );
 };

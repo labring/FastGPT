@@ -200,8 +200,8 @@ const Wecom = ({ appId }: { appId: string }) => {
         <WecomEditModal
           appId={appId}
           defaultData={editWecomData}
-          onCreate={() => Promise.all([refetchShareChatList(), setEditWecomData(undefined)])}
-          onEdit={() => Promise.all([refetchShareChatList(), setEditWecomData(undefined)])}
+          onCreate={() => refetchShareChatList()}
+          onEdit={() => refetchShareChatList()}
           onClose={() => setEditWecomData(undefined)}
           isEdit={isEdit}
         />

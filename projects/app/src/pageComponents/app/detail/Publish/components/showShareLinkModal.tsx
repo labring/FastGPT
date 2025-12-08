@@ -16,11 +16,9 @@ export type ShowShareLinkModalProps = {
   img: string;
 };
 
-function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps) {
+export const ShareLinkContainer = ({ shareLink, img }: { shareLink: string; img: string }) => {
   const { copyData } = useCopyData();
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
-
   const [customDomain, setCustomDomain] = useState<string | undefined>(undefined);
 
   const { data: customDomainList = [] } = useRequest2(listCustomDomain, {
@@ -64,71 +62,80 @@ function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps
 
     return [...options, ...activeDomains];
   }, [customDomainList, t]);
+  return (
+    <>
+      {/* 自定义域名选择器 */}
+      {domainOptions.length > 1 && (
+        <Box mb={4}>
+          <MySelect
+            value={customDomain || ''}
+            list={domainOptions}
+            onChange={(value) => setCustomDomain(value || undefined)}
+          />
+        </Box>
+      )}
+
+      <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'}>
+        <Flex
+          p={3}
+          bg={'myWhite.500'}
+          border="base"
+          borderTopLeftRadius={'md'}
+          borderTopRightRadius={'md'}
+        >
+          <Box flex={1}>{t('publish:copy_link_hint')}</Box>
+          <MyIcon
+            name={'copy'}
+            w={'16px'}
+            color={'myGray.600'}
+            cursor={'pointer'}
+            _hover={{ color: 'primary.500' }}
+            onClick={() => copyData(displayShareLink)}
+          />
+        </Flex>
+        <Box whiteSpace={'pre'} p={3} overflowX={'auto'}>
+          {displayShareLink}
+        </Box>
+      </Box>
+
+      <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
+        <MyImage src={img} borderRadius="0.5rem" alt="" />
+      </Box>
+
+      {/*<Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'} mt="4">
+      <Flex
+        p={3}
+        bg={'myWhite.500'}
+        border="base"
+        borderTopLeftRadius={'md'}
+        borderTopRightRadius={'md'}
+      >
+        <Box flex="1">{t('publish:ip_whitelist')}</Box>
+        <MyIcon
+          name={'copy'}
+          w={'16px'}
+          color={'myGray.600'}
+          cursor={'pointer'}
+          _hover={{ color: 'primary.500' }}
+          onClick={() => copyData(feConfigs?.ip_whitelist || '')}
+        />
+      </Flex>
+
+      <Box p={3} wordBreak={'break-all'}>
+        {feConfigs.ip_whitelist}
+      </Box>
+    </Box>*/}
+    </>
+  );
+};
+
+function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps) {
+  const { t } = useTranslation();
 
   return (
     <MyModal onClose={onClose} title={t('publish:show_share_link_modal_title')}>
       <ModalBody>
-        {/* 自定义域名选择器 */}
-        {domainOptions.length > 1 && (
-          <Box mb={4}>
-            <MySelect
-              value={customDomain || ''}
-              list={domainOptions}
-              onChange={(value) => setCustomDomain(value || undefined)}
-            />
-          </Box>
-        )}
-
-        <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'}>
-          <Flex
-            p={3}
-            bg={'myWhite.500'}
-            border="base"
-            borderTopLeftRadius={'md'}
-            borderTopRightRadius={'md'}
-          >
-            <Box flex={1}>{t('publish:copy_link_hint')}</Box>
-            <MyIcon
-              name={'copy'}
-              w={'16px'}
-              color={'myGray.600'}
-              cursor={'pointer'}
-              _hover={{ color: 'primary.500' }}
-              onClick={() => copyData(displayShareLink)}
-            />
-          </Flex>
-          <Box whiteSpace={'pre'} p={3} overflowX={'auto'}>
-            {displayShareLink}
-          </Box>
-        </Box>
-
-        <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
-          <MyImage src={img} borderRadius="0.5rem" alt="" />
-        </Box>
-
-        <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'} mt="4">
-          <Flex
-            p={3}
-            bg={'myWhite.500'}
-            border="base"
-            borderTopLeftRadius={'md'}
-            borderTopRightRadius={'md'}
-          >
-            <Box flex="1">{t('publish:ip_whitelist')}</Box>
-            <MyIcon
-              name={'copy'}
-              w={'16px'}
-              color={'myGray.600'}
-              cursor={'pointer'}
-              _hover={{ color: 'primary.500' }}
-              onClick={() => copyData(feConfigs?.ip_whitelist || '')}
-            />
-          </Flex>
-
-          <Box p={3} wordBreak={'break-all'}>
-            {feConfigs.ip_whitelist}
-          </Box>
-        </Box>
+        <ShareLinkContainer shareLink={shareLink} img={img} />
       </ModalBody>
     </MyModal>
   );
