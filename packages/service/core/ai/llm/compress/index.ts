@@ -9,7 +9,7 @@ import { getCompressRequestMessagesPrompt } from './prompt';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { parseToolArgs } from '../../utils';
+import { parseJsonArgs } from '../../utils';
 
 /**
  * 压缩 对话历史
@@ -102,7 +102,7 @@ export const compressRequestMessages = async ({
       outputTokens: usage.outputTokens
     };
 
-    const compressResult = parseToolArgs<{
+    const compressResult = parseJsonArgs<{
       compressed_messages: ChatCompletionMessageParam[];
       compression_summary: string;
     }>(answerText);

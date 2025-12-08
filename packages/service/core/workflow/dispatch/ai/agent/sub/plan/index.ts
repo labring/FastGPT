@@ -16,7 +16,7 @@ import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseToolArgs } from '../../../../../../ai/utils';
+import { parseJsonArgs } from '../../../../../../ai/utils';
 import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
 import { PlanCheckInteractive } from './constants';
 import type { AgentPlanType } from './type';
@@ -148,7 +148,7 @@ export const dispatchPlanAgent = async ({
       return;
     }
 
-    const params = parseToolArgs<AgentPlanType>(answerText);
+    const params = parseJsonArgs<AgentPlanType>(answerText);
     if (toolCalls.length === 0 && (!params || !params.task || !params.steps)) {
       throw new Error('Plan response is not valid');
     }
@@ -164,7 +164,7 @@ export const dispatchPlanAgent = async ({
 
     const tooCall = toolCalls[0];
     if (tooCall) {
-      const params = parseToolArgs<AskAgentToolParamsType>(tooCall.function.arguments);
+      const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
       if (params) {
         return {
           type: 'agentPlanAskQuery',
@@ -321,7 +321,7 @@ export const dispatchReplanAgent = async ({
       return;
     }
 
-    const params = parseToolArgs<AgentPlanType>(answerText);
+    const params = parseJsonArgs<AgentPlanType>(answerText);
     if (toolCalls.length === 0 && (!params || !params.steps)) {
       throw new Error('Replan response is not valid');
     }
@@ -337,7 +337,7 @@ export const dispatchReplanAgent = async ({
 
     const tooCall = toolCalls[0];
     if (tooCall) {
-      const params = parseToolArgs<AskAgentToolParamsType>(tooCall.function.arguments);
+      const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
       if (params) {
         return {
           type: 'agentPlanAskQuery',

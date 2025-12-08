@@ -25,6 +25,7 @@
   "feishu": "飞书",
   "generate_answer": "生成应用回答",
   "generation_time": "生成时间",
+  "helper_bot": "辅助机器人",
   "image_index": "图片索引",
   "image_parse": "图片标注",
   "input_token_length": "输入 tokens",

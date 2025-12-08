@@ -4,6 +4,44 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
+
+export const pushHelperBotUsage = ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens,
+  outputTokens
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}) => {
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model,
+    inputTokens,
+    outputTokens
+  });
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:helper_bot'),
+    totalPoints,
+    source: UsageSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: i18nT('account_usage:helper_bot'),
+        amount: totalPoints,
+        model: modelName,
+        inputTokens,
+        outputTokens
+      }
+    ]
+  });
+};
 
 export const pushGenerateVectorUsage = ({
   usageId,
