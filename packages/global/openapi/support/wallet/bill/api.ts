@@ -97,12 +97,10 @@ export const BillDetailResponseSchema = BillSchema.safeExtend({
       type: z.enum(CouponTypeEnum),
       subscriptions: z.array(
         z.object({
-          type: z.enum(['standard', 'extraDatasetSize', 'extraPoints']),
+          type: z.enum(SubTypeEnum),
           durationDay: z.number(),
           totalPoints: z.number().optional(),
-          level: z
-            .enum(['free', 'basic', 'advanced', 'custom', 'experience', 'team', 'enterprise'])
-            .optional(),
+          level: z.enum(StandardSubLevelEnum).optional(),
           extraDatasetSize: z.number().optional(),
           customConfig: z.record(z.string(), z.any()).optional()
         })
