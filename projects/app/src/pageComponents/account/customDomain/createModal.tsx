@@ -68,7 +68,7 @@ const ProviderItem = ({
       cursor={isDisabled ? 'not-allowed' : 'pointer'}
     >
       <Radio isChecked={selected} />
-      <Icon name={icon} padding={'11px'} h="20px" />
+      <Icon name={icon} padding={'11px'} h="20px" w="100px" />
     </Flex>
   );
 };
@@ -192,9 +192,10 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
             components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
           />
         </Box>
-        <Flex marginTop={'16px'}>
+        <Flex marginTop={'16px'} alignItems="center">
           <InputGroup>
             <Input
+              h="40px"
               placeholder="www.example.com"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
@@ -285,12 +286,12 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
 
           <Link
             href={
-              // TODO: change to custom domain doc
               feConfigs.openAPIDocUrl ||
-              getDocPath('/docs/use-cases/external-integration/dingtalk/')
+              getDocPath('/docs/introduction/guide/team_permissions/customDomain')
             }
             target={'_blank'}
-            ml={2}
+            mt="2"
+            ml="2"
             color={'primary.500'}
             fontSize={'sm'}
           >

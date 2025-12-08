@@ -1,54 +1,12 @@
-import {
-  ModalBody,
-  Box,
-  Radio,
-  Flex,
-  Text,
-  Input,
-  InputGroup,
-  InputRightElement,
-  Tag,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  IconButton,
-  Button,
-  ModalFooter,
-  Link,
-  Grid
-} from '@chakra-ui/react';
+import { ModalBody, Box, Input, Button, ModalFooter, Grid } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation, Trans } from 'next-i18next';
-import Icon from '@fastgpt/web/components/common/Icon';
-import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import { useEffect, useMemo, useState } from 'react';
-import { providerMap } from '@/web/support/customDomain/const';
-import type { ProviderEnum } from '@fastgpt/global/support/customDomain/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { generateCNAMEDomain } from '@fastgpt/global/support/customDomain/utils';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  activeCustomDomain,
-  checkCustomDomainDNSResolve,
-  createCustomDomain,
-  updateCustomDomainVerifyFile
-} from '@/web/support/customDomain/api';
-import { getDocPath } from '@/web/common/system/doc';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { updateCustomDomainVerifyFile } from '@/web/support/customDomain/api';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
-function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
-  onClose,
-  domain
-}: {
-  onClose: () => void;
-  domain: string;
-}) {
+function domainVerifyModal({ onClose, domain }: { onClose: () => void; domain: string }) {
   const { t } = useTranslation();
   const { watch, handleSubmit, register } = useForm({
     defaultValues: {
@@ -98,4 +56,4 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
   );
 }
 
-export default CreateCustomDomainModal;
+export default domainVerifyModal;

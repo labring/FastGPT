@@ -35,6 +35,8 @@
   "wecom.bot_desc": "Connect to WeCom Bot directly via API",
   "wecom.create_modal_title": "Create WeCom Bot",
   "wecom.edit_modal_title": "Edit WeCom Bot",
+  "wecom.create_modal.step.1": "Configure Parameters",
+  "wecom.create_modal.step.2": "Fill in Callback URL",
   "wecom.title": "Publish to WeCom Bot",
   "dingtalk.bot": "DingTalk Bot",
   "dingtalk.bot_desc": "Connect to DingTalk Bot directly via API",
