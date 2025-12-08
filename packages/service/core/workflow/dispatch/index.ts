@@ -23,7 +23,7 @@ import type {
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
@@ -58,6 +58,7 @@ import type { MCPClient } from '../../app/mcp';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { clone } from 'lodash';
+import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 
 type Props = Omit<
   ChatDispatchProps,
@@ -88,7 +89,21 @@ export async function dispatchWorkFlow({
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
   const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
 
+  // Check url valid
+  const invalidInput = query.some((item) => {
+    if (item.type === ChatItemValueTypeEnum.file && item.file?.url) {
+      if (!validateFileUrlDomain(item.file.url)) {
+        return true;
+      }
+    }
+  });
+  if (invalidInput) {
+    addLog.info('[Workflow run] Invalid file url');
+    return Promise.reject(new UserError('Invalid file url'));
+  }
+  // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
+
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {

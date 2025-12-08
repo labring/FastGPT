@@ -6,8 +6,10 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type.d';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,

@@ -29,6 +29,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 3. 对话日志支持展示 IP 地址归属地。
 4. 通过 API 上传本地文件至知识库，保存至 S3。同时将旧版 Gridfs 代码全部移除。
 5. 新版订阅套餐逻辑。
+6. 支持配置对话文件白名单。
 
 ## ⚙️ 优化
 
@@ -36,6 +37,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 2. 问题优化采用 JinaAI 的边际收益公式，获取最大边际收益的检索词。
 3. 用户通知，支持中英文，以及优化模板。
 4. 删除知识库采用队列异步删除模式。
+5. LLM 请求时，图片无效报错提示。
 
 ## 🐛 修复
 

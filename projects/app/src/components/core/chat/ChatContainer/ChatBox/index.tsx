@@ -527,7 +527,7 @@ const ChatBox = ({
                   file: {
                     type: file.type,
                     name: file.name,
-                    url: file.url || '',
+                    url: file.key ? undefined : file.url || '',
                     icon: file.icon || '',
                     key: file.key || ''
                   }
