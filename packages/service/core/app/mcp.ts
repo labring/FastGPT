@@ -41,14 +41,14 @@ export class MCPClient {
           },
           eventSourceInit: {
             fetch: (url, init) => {
-              const headers = new Headers({
-                ...init?.headers,
-                ...this.headers
-              });
+              const mergedHeaders = {
+                ...this.headers,
+                ...init?.headers
+              };
 
               return fetch(url, {
                 ...init,
-                headers
+                headers: mergedHeaders
               });
             }
           }
