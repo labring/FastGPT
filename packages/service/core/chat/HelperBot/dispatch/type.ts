@@ -5,6 +5,7 @@ import {
   HelperBotChatItemSchema
 } from '@fastgpt/global/core/chat/helperBot/type';
 import { WorkflowResponseFnSchema } from '../../../workflow/dispatch/type';
+import { LocaleList } from '@fastgpt/global/common/i18n/type';
 
 export const HelperBotDispatchParamsSchema = z.object({
   query: z.string(),
@@ -12,20 +13,23 @@ export const HelperBotDispatchParamsSchema = z.object({
   metadata: HelperBotCompletionsParamsSchema.shape.metadata,
   histories: z.array(HelperBotChatItemSchema),
   workflowResponseWrite: WorkflowResponseFnSchema,
-  teamId: z.string(),
-  userId: z.string()
+
+  user: z.object({
+    teamId: z.string(),
+    tmbId: z.string(),
+    userId: z.string(),
+    isRoot: z.boolean(),
+    lang: z.enum(LocaleList)
+  })
 });
 export type HelperBotDispatchParamsType = z.infer<typeof HelperBotDispatchParamsSchema>;
 
 export const HelperBotDispatchResponseSchema = z.object({
   aiResponse: z.array(AIChatItemValueItemSchema),
-  formData: z
-    .object({
-      role: z.string().optional(),
-      taskObject: z.string().optional(),
-      tools: z.array(z.string()).optional(),
-      fileUploadEnabled: z.boolean().optional()
-    })
-    .optional()
+  usage: z.object({
+    model: z.string(),
+    inputTokens: z.number(),
+    outputTokens: z.number()
+  })
 });
 export type HelperBotDispatchResponseType = z.infer<typeof HelperBotDispatchResponseSchema>;

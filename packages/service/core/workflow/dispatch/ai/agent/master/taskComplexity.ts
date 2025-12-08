@@ -1,5 +1,5 @@
 import { createLLMResponse } from '../../../../../ai/llm/request';
-import { parseToolArgs } from '../../../../../ai/utils';
+import { parseJsonArgs } from '../../../../../ai/utils';
 import { addLog } from '../../../../../../common/system/log';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -71,7 +71,7 @@ export const checkTaskComplexity = async ({
       }
     });
 
-    const checkResponse = parseToolArgs<{ complex: boolean; reason: string }>(checkResult);
+    const checkResponse = parseJsonArgs<{ complex: boolean; reason: string }>(checkResult);
 
     const { totalPoints, modelName } = formatModelChars2Points({
       model,

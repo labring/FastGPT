@@ -5,40 +5,37 @@ import { createLLMResponse } from '../../../../ai/llm/request';
 import { getLLMModel } from '../../../../ai/model';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
-import { getSystemToolsWithInstalled } from '../../../../app/tool/controller';
+import { generateResourceList } from './utils';
+import { TopAgentFormDataSchema } from './type';
+import { addLog } from '../../../../../common/system/log';
+import { formatAIResponse } from '../utils';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType
 ): Promise<HelperBotDispatchResponseType> => {
-  const { query, files, metadata, histories, workflowResponseWrite, teamId, userId } = props;
+  const { query, files, metadata, histories, workflowResponseWrite, user } = props;
 
-  const modelConfig = metadata.data?.modelConfig;
-
-  const modelName = modelConfig?.model || global.systemDefaultModel?.llm?.model;
-  if (!modelName) {
-    throw new Error('未配置 LLM 模型，请在前端选择模型或在系统中配置默认模型');
-  }
-  const modelData = getLLMModel(modelName);
+  const modelData = getLLMModel();
   if (!modelData) {
-    throw new Error(`模型 ${modelName} 未找到`);
+    return Promise.reject('Can not get model data');
   }
 
-  const temperature = modelConfig?.temperature ?? 0.7;
-  const maxToken = modelConfig?.maxToken ?? 4000;
-  const stream = modelConfig?.stream ?? true;
+  const usage = {
+    model: modelData.model,
+    inputTokens: 0,
+    outputTokens: 0
+  };
 
   const resourceList = await generateResourceList({
-    teamId,
-    userId
+    teamId: user.teamId,
+    isRoot: user.isRoot
   });
+  const systemPrompt = getPrompt({ resourceList });
 
   const historyMessages = helperChats2GPTMessages({
     messages: histories,
     reserveTool: false
   });
-
-  const systemPrompt = getPrompt({ resourceList });
   const conversationMessages = [
     { role: 'system' as const, content: systemPrompt },
     ...historyMessages,
@@ -51,10 +48,8 @@ export const dispatchTopAgent = async (
   const llmResponse = await createLLMResponse({
     body: {
       messages: conversationMessages,
-      model: modelName,
-      temperature,
-      stream,
-      max_tokens: maxToken
+      model: modelData,
+      stream: true
     },
     onStreaming: ({ text }) => {
       workflowResponseWrite?.({
@@ -69,7 +64,15 @@ export const dispatchTopAgent = async (
       });
     }
   });
+  usage.inputTokens = llmResponse.usage.inputTokens;
+  usage.outputTokens = llmResponse.usage.outputTokens;
 
+  /* 
+    3 种返回情况
+      1. 「信息收集已完成」
+      2. JSON 字符串：{ reasoning?: string; question?: string }
+      3. 配置表单
+  */
   const firstPhaseAnswer = llmResponse.answerText;
   const firstPhaseReasoning = llmResponse.reasoningText;
 
@@ -83,7 +86,7 @@ export const dispatchTopAgent = async (
   }
 
   if (firstPhaseAnswer.includes('「信息收集已完成」')) {
-    console.log('🔄 TopAgent: 检测到信息收集完成信号，切换到计划生成阶段');
+    addLog.debug('🔄 TopAgent: 检测到信息收集完成信号，切换到计划生成阶段');
 
     const newMessages = [
       ...conversationMessages,
@@ -91,15 +94,11 @@ export const dispatchTopAgent = async (
       { role: 'user' as const, content: '请你直接生成规划方案' }
     ];
 
-    // console.log('📋 TopAgent 阶段 2: 计划生成');
-
     const planResponse = await createLLMResponse({
       body: {
         messages: newMessages,
-        model: modelName,
-        temperature,
-        stream,
-        max_tokens: maxToken
+        model: modelData,
+        stream: true
       },
       onStreaming: ({ text }) => {
         workflowResponseWrite?.({
@@ -114,94 +113,42 @@ export const dispatchTopAgent = async (
         });
       }
     });
+    usage.inputTokens = planResponse.usage.inputTokens;
+    usage.outputTokens = planResponse.usage.outputTokens;
 
-    let formData;
     try {
       const planJson = JSON.parse(planResponse.answerText);
-      // console.log('解析的计划 JSON:', planJson);
 
-      formData = {
-        role: planJson.task_analysis?.role || '',
-        taskObject: planJson.task_analysis?.goal || '',
-        tools: planJson.resources?.tools?.map((tool: any) => tool.id) || [],
+      const formData = TopAgentFormDataSchema.parse({
+        role: planJson.task_analysis?.role,
+        taskObject: planJson.task_analysis?.goal,
+        tools: planJson.resources?.tools?.map((tool: any) => tool.id),
         fileUploadEnabled: planJson.resources?.system_features?.file_upload?.enabled || false
-      };
+      });
+
+      // Send formData if exists
+      if (formData) {
+        workflowResponseWrite?.({
+          event: SseResponseEventEnum.formData,
+          data: formData
+        });
+      }
     } catch (e) {
-      console.error('解析计划 JSON 失败:', e);
+      addLog.warn(`[Top agent] parse answer faield`, { text: planResponse.answerText });
     }
 
     return {
-      aiResponse: formatAIResponse(planResponse.answerText, planResponse.reasoningText),
-      formData
+      aiResponse: formatAIResponse({
+        text: planResponse.answerText,
+        reasoning: planResponse.reasoningText
+      }),
+      usage
     };
   }
 
   const displayText = parsedResponse?.question || firstPhaseAnswer;
   return {
-    aiResponse: formatAIResponse(displayText, firstPhaseReasoning)
+    aiResponse: formatAIResponse({ text: displayText, reasoning: firstPhaseReasoning }),
+    usage
   };
-};
-
-const generateResourceList = async ({
-  teamId,
-  userId
-}: {
-  teamId: string;
-  userId: string;
-}): Promise<string> => {
-  let result = '\n## 可用资源列表\n';
-
-  const tools = await getSystemToolsWithInstalled({
-    teamId,
-    isRoot: true // TODO: 需要传入实际的 isRoot 值
-  });
-
-  const installedTools = tools.filter((tool) => {
-    return tool.installed && !tool.isFolder;
-  });
-
-  if (installedTools.length > 0) {
-    result += '### 工具\n';
-    installedTools.forEach((tool) => {
-      const toolId = tool.id;
-      const name =
-        typeof tool.name === 'string'
-          ? tool.name
-          : tool.name?.en || tool.name?.['zh-CN'] || '未命名';
-      const intro =
-        typeof tool.intro === 'string' ? tool.intro : tool.intro?.en || tool.intro?.['zh-CN'] || '';
-      const description = tool.toolDescription || intro || '暂无描述';
-      result += `- **${toolId}** [工具]: ${name} - ${description}\n`;
-    });
-  } else {
-    result += '### 工具\n暂无已安装的工具\n';
-  }
-
-  // TODO: 知识库
-  result += '\n### 知识库\n暂未配置知识库\n';
-
-  result += '\n### 系统功能\n';
-  result += '- **file_upload**: 文件上传功能 (enabled, purpose, file_types)\n';
-
-  return result;
-};
-
-const formatAIResponse = (text: string, reasoning?: string): AIChatItemValueItemType[] => {
-  const result: AIChatItemValueItemType[] = [];
-
-  if (reasoning) {
-    result.push({
-      reasoning: {
-        content: reasoning
-      }
-    });
-  }
-
-  result.push({
-    text: {
-      content: text
-    }
-  });
-
-  return result;
 };

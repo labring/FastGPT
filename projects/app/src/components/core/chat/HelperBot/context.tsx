@@ -6,10 +6,8 @@ import {
   type HelperBotTypeEnumType,
   type TopAgentParamsType
 } from '@fastgpt/global/core/chat/helperBot/type';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 
 export type HelperBotProps = {
   emptyDom?: ReactNode;
@@ -17,7 +15,7 @@ export type HelperBotProps = {
 } & {
   type: HelperBotTypeEnumType;
   metadata: TopAgentParamsType;
-  onApply: (e: TopAgentParamsType) => void;
+  onApply: (e: TopAgentFormDataType) => void;
 };
 type HelperBotContextType = HelperBotProps & {};
 
@@ -30,7 +28,7 @@ export const HelperBotContext = createContext<HelperBotContextType>({
     selectedDatasets: [],
     fileUpload: false
   },
-  onApply: function (e: TopAgentParamsType): void {
+  onApply: function (e): void {
     throw new Error('Function not implemented.');
   }
 });

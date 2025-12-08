@@ -33,7 +33,6 @@ const HumanItem = ({ chat }: { chat: HelperBotChatItemSiteType }) => {
         py={3}
         borderRadius={'sm'}
         display="inline-block"
-        textAlign="right"
         maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
         color={'myGray.900'}
         bg={'primary.100'}
