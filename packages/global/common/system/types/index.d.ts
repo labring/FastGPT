@@ -146,6 +146,7 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+  fileUrlWhitelist?: string[];
 };
 
 export type customPdfParseType = {
