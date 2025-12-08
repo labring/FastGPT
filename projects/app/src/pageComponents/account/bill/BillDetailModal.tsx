@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Flex, ModalBody } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -13,6 +13,7 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getBillDetail } from '@/web/support/wallet/bill/api';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type BillDetailModalProps = {
   billId: string;
@@ -26,6 +27,91 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
     refreshDeps: [billId],
     manual: false
   });
+
+  const customConfigItems = useMemo(() => {
+    if (bill?.metadata.standSubLevel !== 'custom') return [];
+    const customSub = bill?.couponDetail?.subscriptions?.find(
+      (sub) => sub.type === 'standard' && sub.level === 'custom' && sub.customConfig
+    );
+
+    if (!customSub?.customConfig) return [];
+
+    const config = customSub.customConfig;
+    const items = [];
+
+    if (config.maxTeamMember !== undefined) {
+      items.push({
+        key: i18nT('account:max_team_member'),
+        value: config.maxTeamMember,
+        unit: ''
+      });
+    }
+    if (config.maxAppAmount !== undefined) {
+      items.push({
+        key: i18nT('account:max_app_amount'),
+        value: config.maxAppAmount,
+        unit: ''
+      });
+    }
+    if (config.maxDatasetAmount !== undefined) {
+      items.push({
+        key: i18nT('account:max_dataset_amount'),
+        value: config.maxDatasetAmount,
+        unit: ''
+      });
+    }
+    if (config.requestsPerMinute !== undefined) {
+      items.push({
+        key: i18nT('account:requests_per_minute'),
+        value: config.requestsPerMinute,
+        unit: ''
+      });
+    }
+    if (config.maxDatasetSize !== undefined) {
+      items.push({
+        key: i18nT('account:max_dataset_size'),
+        value: config.maxDatasetSize,
+        unit: 'GB'
+      });
+    }
+    if (config.chatHistoryStoreDuration !== undefined) {
+      items.push({
+        key: i18nT('account:chat_history_store_duration'),
+        value: config.chatHistoryStoreDuration,
+        unit: 'day'
+      });
+    }
+    if (config.websiteSyncPerDataset !== undefined) {
+      items.push({
+        key: i18nT('account:website_sync_per_dataset'),
+        value: config.websiteSyncPerDataset,
+        unit: ''
+      });
+    }
+    if (config.appRegistrationCount !== undefined) {
+      items.push({
+        key: i18nT('account:app_registration_count'),
+        value: config.appRegistrationCount,
+        unit: ''
+      });
+    }
+    if (config.auditLogStoreDuration !== undefined) {
+      items.push({
+        key: i18nT('account:audit_log_store_duration'),
+        value: config.auditLogStoreDuration,
+        unit: 'day'
+      });
+    }
+    if (config.ticketResponseTime !== undefined) {
+      items.push({
+        key: i18nT('account:ticket_response_time'),
+        value: config.ticketResponseTime,
+        unit: 'h'
+      });
+    }
+
+    return items;
+  }, [bill?.couponDetail?.subscriptions]);
 
   return (
     <MyModal
@@ -57,10 +143,10 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
             <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
           </Flex>
         )}
-        {!!bill?.couponName && (
+        {!!bill?.discountCouponName && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_info:discount_coupon')}:</FormLabel>
-            <Box>{t(bill?.couponName as any)}</Box>
+            <Box>{t(bill?.discountCouponName as any)}</Box>
           </Flex>
         )}
         {!!bill?.metadata?.payWay && (
@@ -113,6 +199,24 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account:extra_ai_points')}:</FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>
+          </Flex>
+        )}
+        {customConfigItems.length > 0 && (
+          <Flex alignItems={'flex-start'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('account:custom_config_details')}:</FormLabel>
+            <Box flex={1} fontSize="sm" color="gray.600">
+              {customConfigItems.map((item, idx) => (
+                <Box key={idx} pb={0.5}>
+                  {t(item.key)}: {item.value}
+                  {item.unit &&
+                    (item.unit === 'day'
+                      ? t('account:day')
+                      : item.unit === 'h'
+                        ? t('account:hour')
+                        : item.unit)}
+                </Box>
+              ))}
+            </Box>
           </Flex>
         )}
       </ModalBody>

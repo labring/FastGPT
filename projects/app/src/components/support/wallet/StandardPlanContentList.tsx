@@ -35,18 +35,18 @@ const StandardPlanContentList = ({
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
       totalPoints:
-        standplan?.totalPoints || plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
-      requestsPerMinute: standplan?.requestsPerMinute || plan.requestsPerMinute || 2000,
-      maxTeamMember: standplan?.maxTeamMember || plan.maxTeamMember,
-      maxAppAmount: standplan?.maxApp || plan.maxAppAmount,
-      maxDatasetAmount: standplan?.maxDataset || plan.maxDatasetAmount,
-      maxDatasetSize: standplan?.maxDatasetSize || plan.maxDatasetSize,
-      websiteSyncPerDataset: standplan?.websiteSyncPerDataset || plan.websiteSyncPerDataset,
+        standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
+      requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
+      maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
+      maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
+      maxDatasetAmount: standplan?.maxDataset ?? plan.maxDatasetAmount,
+      maxDatasetSize: standplan?.maxDatasetSize ?? plan.maxDatasetSize,
+      websiteSyncPerDataset: standplan?.websiteSyncPerDataset ?? plan.websiteSyncPerDataset,
       chatHistoryStoreDuration:
-        standplan?.chatHistoryStoreDuration || plan.chatHistoryStoreDuration,
-      auditLogStoreDuration: standplan?.auditLogStoreDuration || plan.auditLogStoreDuration,
-      appRegistrationCount: standplan?.appRegistrationCount || plan.appRegistrationCount,
-      ticketResponseTime: standplan?.ticketResponseTime || plan.ticketResponseTime
+        standplan?.chatHistoryStoreDuration ?? plan.chatHistoryStoreDuration,
+      auditLogStoreDuration: standplan?.auditLogStoreDuration ?? plan.auditLogStoreDuration,
+      appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
+      ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime
     };
   }, [
     subPlans?.standard,

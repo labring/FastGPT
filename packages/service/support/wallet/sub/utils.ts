@@ -61,20 +61,20 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
     standardConstants: standardConstants
       ? {
           ...standardConstants,
-          maxTeamMember: standard?.maxTeamMember || standardConstants.maxTeamMember,
-          maxAppAmount: standard?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standard?.maxDataset || standardConstants.maxDatasetAmount,
-          requestsPerMinute: standard?.requestsPerMinute || standardConstants.requestsPerMinute,
+          maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
+          maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
+          maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
+          requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
           chatHistoryStoreDuration:
-            standard?.chatHistoryStoreDuration || standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standard?.maxDatasetSize || standardConstants.maxDatasetSize,
+            standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
           websiteSyncPerDataset:
-            standard?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+            standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
           appRegistrationCount:
-            standard?.appRegistrationCount || standardConstants.appRegistrationCount,
+            standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
           auditLogStoreDuration:
-            standard?.auditLogStoreDuration || standardConstants.auditLogStoreDuration,
-          ticketResponseTime: standard?.ticketResponseTime || standardConstants.ticketResponseTime
+            standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime
         }
       : undefined
   };
@@ -176,8 +176,8 @@ export const getTeamPlanStatus = async ({
 
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize ||
-        standardPlan?.maxDatasetSize ||
+      ? standardPlan?.maxDatasetSize ||
+        standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize ||
         Infinity
       : Infinity;
   const totalDatasetSize =
@@ -196,21 +196,21 @@ export const getTeamPlanStatus = async ({
     standardConstants: standardConstants
       ? {
           ...standardConstants,
-          maxTeamMember: standardPlan?.maxTeamMember || standardConstants.maxTeamMember,
-          maxAppAmount: standardPlan?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standardPlan?.maxDataset || standardConstants.maxDatasetAmount,
-          requestsPerMinute: standardPlan?.requestsPerMinute || standardConstants.requestsPerMinute,
+          maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
+          maxAppAmount: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
+          maxDatasetAmount: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
+          requestsPerMinute: standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
           chatHistoryStoreDuration:
-            standardPlan?.chatHistoryStoreDuration || standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standardPlan?.maxDatasetSize || standardConstants.maxDatasetSize,
+            standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
           websiteSyncPerDataset:
             standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
           appRegistrationCount:
-            standardPlan?.appRegistrationCount || standardConstants.appRegistrationCount,
+            standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
           auditLogStoreDuration:
-            standardPlan?.auditLogStoreDuration || standardConstants.auditLogStoreDuration,
+            standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
           ticketResponseTime:
-            standardPlan?.ticketResponseTime || standardConstants.ticketResponseTime
+            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime
         }
       : undefined,
 
