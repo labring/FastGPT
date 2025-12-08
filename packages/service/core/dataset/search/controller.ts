@@ -555,8 +555,6 @@ export async function searchDatasetData(
               id: String(data._id),
               updateTime: data.updateTime,
               ...formatDatasetDataValue({
-                teamId,
-                datasetId: data.datasetId,
                 q: data.q,
                 a: data.a,
                 imageId: data.imageId,
@@ -727,8 +725,6 @@ export async function searchDatasetData(
             collectionId: String(data.collectionId),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,
