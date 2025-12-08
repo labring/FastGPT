@@ -21,7 +21,7 @@ const PriceBox = () => {
   const router = useRouter();
 
   const backButtonRef = useRef<HTMLButtonElement>(null);
-  const [isButtonInView, setIsButtonInView] = useState(true);
+  const [isButtonInView, setIsButtonInView] = useState(false);
 
   const { data: teamSubPlan } = useRequest2(getTeamPlanStatus, {
     manual: false,
@@ -30,6 +30,11 @@ const PriceBox = () => {
 
   // TODO: 封装成一个 hook 来判断滚动态
   useEffect(() => {
+    if (!teamSubPlan?.standard?.teamId) {
+      setIsButtonInView(false);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsButtonInView(entry.isIntersecting);
@@ -50,7 +55,7 @@ const PriceBox = () => {
       }
       observer.disconnect();
     };
-  }, []);
+  }, [teamSubPlan?.standard?.teamId]);
 
   const onPaySuccess = () => {
     setTimeout(() => {
