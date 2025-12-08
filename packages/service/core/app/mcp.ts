@@ -41,14 +41,23 @@ export class MCPClient {
           },
           eventSourceInit: {
             fetch: (url, init) => {
-              const headers = new Headers({
-                ...init?.headers,
+              const mergedHeaders: Record<string, string> = {
                 ...this.headers
-              });
+              };
+
+              if (init?.headers) {
+                if (init.headers instanceof Headers) {
+                  init.headers.forEach((value, key) => {
+                    mergedHeaders[key] = value;
+                  });
+                } else if (typeof init.headers === 'object') {
+                  Object.assign(mergedHeaders, init.headers);
+                }
+              }
 
               return fetch(url, {
                 ...init,
-                headers
+                headers: mergedHeaders
               });
             }
           }
