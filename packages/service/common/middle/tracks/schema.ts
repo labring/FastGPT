@@ -26,4 +26,4 @@ try {
   console.log(error);
 }
 
-export const TrackModel = getMongoModel<TrackSchemaType>('track', TrackSchema);
+export const TrackModel = getMongoModel<TrackSchemaType>('tracks', TrackSchema);
