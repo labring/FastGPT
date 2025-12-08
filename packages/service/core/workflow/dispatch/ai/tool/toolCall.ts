@@ -7,7 +7,7 @@ import type { DispatchFlowResponse } from '../../type';
 import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { parseToolArgs } from '../../../../ai/utils';
+import { parseJsonArgs } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
@@ -194,7 +194,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       }
 
       // Init tool params and run
-      const startParams = parseToolArgs(call.function.arguments);
+      const startParams = parseJsonArgs(call.function.arguments);
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
       initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
 

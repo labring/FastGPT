@@ -27,7 +27,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   appForm: AppFormEditFormType;
-  setAppForm?: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
   setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
   form2WorkflowFn: Form2WorkflowFnType;
 };
@@ -137,86 +137,50 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
-                if (!setAppForm) {
-                  console.warn('⚠️ setAppForm 未传入，无法更新表单');
-                  return;
-                }
-
+                // Compute tools
                 const existingToolIds = new Set(
                   appForm.selectedTools.map((tool) => tool.pluginId).filter(Boolean)
                 );
-
-                // console.log('📋 当前已存在的工具 pluginId:', Array.from(existingToolIds));
-                // console.log('📋 formData.selectedTools:', formData.selectedTools);
-
-                const newToolIds = (formData.selectedTools || []).filter(
+                const newToolIds = (formData.tools || []).filter(
                   (toolId: string) => !existingToolIds.has(toolId)
                 );
 
-                if (newToolIds.length === 0) {
-                  // 没有新工具需要添加，仍然更新 role、taskObject 和文件上传配置
-                  setAppForm((prev) => ({
-                    ...prev,
-                    aiSettings: {
-                      ...prev.aiSettings,
-                      aiRole: formData.role || '',
-                      aiTaskObject: formData.taskObject || ''
-                    },
-                    chatConfig: {
-                      ...prev.chatConfig,
-                      fileSelectConfig: {
-                        ...prev.chatConfig.fileSelectConfig,
-                        canSelectFile: formData.fileUpload || false
-                      }
-                    }
-                  }));
-                  return;
-                }
-
-                let newTools: FlowNodeTemplateType[] = [];
+                const newTools: FlowNodeTemplateType[] = [];
                 const failedToolIds: string[] = [];
 
-                // 使用 Promise.allSettled 并行请求所有工具
-                const toolPromises = newToolIds.map((toolId: string) =>
-                  getToolPreviewNode({ appId: toolId })
-                    .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
-                    .catch((error) => ({ status: 'rejected' as const, toolId, error }))
+                const results = await Promise.all(
+                  newToolIds.map((toolId: string) =>
+                    getToolPreviewNode({ appId: toolId })
+                      .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
+                      .catch((error) => ({ status: 'rejected' as const, toolId, error }))
+                  )
                 );
 
-                const results = await Promise.allSettled(toolPromises);
-
-                results.forEach((result: any) => {
-                  if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
-                    newTools.push(result.value.tool);
-                  } else if (result.status === 'fulfilled' && result.value.status === 'rejected') {
-                    failedToolIds.push(result.value.toolId);
-                    console.error(`❌ 工具 ${result.value.toolId} 获取失败:`, result.value.error);
+                results.forEach((result) => {
+                  if (result.status === 'fulfilled') {
+                    newTools.push(result.tool);
+                  } else if (result.status === 'rejected') {
+                    failedToolIds.push(result.toolId);
                   }
                 });
-
-                if (failedToolIds.length > 0) {
-                  toast({
-                    title: t('app:tool_load_failed'),
-                    description: `${t('app:failed_tools')}: ${failedToolIds.join(', ')}`,
-                    status: 'warning',
-                    duration: 5000
-                  });
-                }
 
                 setAppForm((prev) => {
                   const newForm: AppFormEditFormType = {
                     ...prev,
+                    selectedTools: [...prev.selectedTools, ...newTools],
                     aiSettings: {
                       ...prev.aiSettings,
-                      aiRole: formData.role || '',
-                      aiTaskObject: formData.taskObject || ''
+                      aiRole: formData.role || prev.aiSettings.aiRole,
+                      aiTaskObject: formData.taskObject || prev.aiSettings.aiTaskObject
                     },
-                    selectedTools: [...prev.selectedTools, ...newTools],
                     chatConfig: {
                       ...prev.chatConfig,
                       fileSelectConfig: {
                         ...prev.chatConfig.fileSelectConfig,
-                        canSelectFile: formData.fileUpload || false
+                        canSelectFile:
+                          formData.fileUploadEnabled ||
+                          prev.chatConfig.fileSelectConfig?.canSelectFile ||
+                          false
                       }
                     }
                   };

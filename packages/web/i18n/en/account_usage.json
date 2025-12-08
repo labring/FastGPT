@@ -24,6 +24,7 @@
   "export_title": "Time,Members,Type,Project name,AI points",
   "feishu": "Feishu",
   "generation_time": "Generation time",
+  "helper_bot": "Assistive robot",
   "image_index": "Image index",
   "image_parse": "Image tagging",
   "input_token_length": "input tokens",

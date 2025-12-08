@@ -1,20 +1,13 @@
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import type {
   ChatCompletionContentPart,
-  ChatCompletionFunctionMessageParam,
-  ChatCompletionMessageFunctionCall,
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionToolMessageParam
 } from '../../ai/type';
 import { ChatFileTypeEnum, ChatRoleEnum } from '../constants';
 import type { HelperBotChatItemType } from './type';
-import { GPT2Chat, simpleUserContentPart } from '../adapt';
-import type {
-  AIChatItemValueItemType,
-  SystemChatItemValueItemType,
-  UserChatItemValueItemType
-} from '../type';
+import { simpleUserContentPart } from '../adapt';
 
 export const helperChats2GPTMessages = ({
   messages,

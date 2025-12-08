@@ -70,7 +70,7 @@ export const getSystemToolsWithInstalled = async ({
 }: {
   teamId: string;
   isRoot: boolean;
-}) => {
+}): Promise<(AppToolTemplateItemType & { installed: boolean })[]> => {
   const [tools, { installedSet, uninstalledSet }] = await Promise.all([
     getSystemTools(),
     MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')

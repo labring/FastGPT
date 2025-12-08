@@ -13,6 +13,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -52,6 +53,7 @@ type ResponseQueueItemType = CommonResponseType &
       }
     | {
         event: SseResponseEventEnum.formData;
+        data: TopAgentFormDataType;
       }
   );
 
@@ -276,7 +278,7 @@ export const streamFetch = ({
             // Directly call onMessage for formData, no need to queue
             onMessage({
               event,
-              data: rest
+              formData: rest
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
