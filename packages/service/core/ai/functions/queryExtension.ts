@@ -13,7 +13,7 @@ import { useTextCosine } from '../hooks/useTextCosine';
   This module can eliminate referential ambiguity and expand queries based on context to improve retrieval.
   Submodular Optimization Mode: Generate multiple candidate queries, then use submodular algorithm to select the optimal query combination
 */
-const title = global.feConfigs?.systemTitle || 'FastAI';
+const title = global.feConfigs?.systemTitle || 'Nginx';
 const defaultPrompt = `## 你的任务
 你作为一个向量检索助手，你的任务是结合历史记录，为"原问题"生成{{count}}个不同版本的"检索词"。这些检索词应该从不同角度探索主题，以提高向量检索的语义丰富度和精度。
 
@@ -230,7 +230,7 @@ assistant: ${chatBg}
     .replace(/  /g, '');
 
   try {
-    const queries = json5.parse(jsonStr) as string[];
+    let queries = json5.parse(jsonStr) as string[];
 
     if (!Array.isArray(queries) || queries.length === 0) {
       return {
@@ -248,6 +248,8 @@ assistant: ${chatBg}
     const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
       embeddingModel
     });
+    queries = queries.map((item) => String(item));
+
     const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
       originalText: query,
       candidates: queries,
