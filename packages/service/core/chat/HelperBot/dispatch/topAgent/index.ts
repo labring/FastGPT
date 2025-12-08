@@ -13,7 +13,6 @@ export const dispatchTopAgent = async (
 ): Promise<HelperBotDispatchResponseType> => {
   const { query, files, metadata, histories, workflowResponseWrite, teamId, userId } = props;
 
-  // 1. 获取 LLM 模型配置 (优先使用前端传入的 modelConfig，否则使用系统默认模型)
   const modelConfig = metadata.data?.modelConfig;
 
   const modelName = modelConfig?.model || global.systemDefaultModel?.llm?.model;
@@ -25,22 +24,15 @@ export const dispatchTopAgent = async (
     throw new Error(`模型 ${modelName} 未找到`);
   }
 
-  // 获取模型参数 (使用传入的参数，否则使用默认值)
   const temperature = modelConfig?.temperature ?? 0.7;
   const maxToken = modelConfig?.maxToken ?? 4000;
   const stream = modelConfig?.stream ?? true;
 
-  console.log(
-    `🤖 TopAgent 使用模型: ${modelName}, temperature: ${temperature}, maxToken: ${maxToken}`
-  );
-
-  // 2. 生成资源列表 - 从数据库查询所有已安装的工具和知识库
   const resourceList = await generateResourceList({
     teamId,
     userId
   });
 
-  // 3. 构建消息
   const historyMessages = helperChats2GPTMessages({
     messages: histories,
     reserveTool: false
@@ -53,9 +45,8 @@ export const dispatchTopAgent = async (
     { role: 'user' as const, content: query }
   ];
 
-  // 4. 调用 LLM (第一阶段: 信息收集)
-  console.log('📝 TopAgent 阶段 1: 信息收集');
-  console.log('conversationMessages:', conversationMessages);
+  // console.log('📝 TopAgent 阶段 1: 信息收集');
+  // console.log('conversationMessages:', conversationMessages);
 
   const llmResponse = await createLLMResponse({
     body: {
@@ -81,21 +72,26 @@ export const dispatchTopAgent = async (
 
   const firstPhaseAnswer = llmResponse.answerText;
   const firstPhaseReasoning = llmResponse.reasoningText;
-  console.log('FirstPhaseAnswer:', firstPhaseAnswer);
-  console.log('FirstPhaseReasoning:', firstPhaseReasoning);
-  // 5. 检测阶段切换信号
+
+  // 尝试解析信息收集阶段的 JSON 响应
+  let parsedResponse: { reasoning?: string; question?: string } | null = null;
+  try {
+    parsedResponse = JSON.parse(firstPhaseAnswer);
+  } catch (e) {
+    // 如果解析失败,说明不是 JSON 格式,可能是普通文本
+    parsedResponse = null;
+  }
+
   if (firstPhaseAnswer.includes('「信息收集已完成」')) {
     console.log('🔄 TopAgent: 检测到信息收集完成信号，切换到计划生成阶段');
 
-    // 构建新的消息历史
     const newMessages = [
       ...conversationMessages,
       { role: 'assistant' as const, content: firstPhaseAnswer },
       { role: 'user' as const, content: '请你直接生成规划方案' }
     ];
 
-    // 第二次调用 LLM (第二阶段: 计划生成)
-    console.log('📋 TopAgent 阶段 2: 计划生成');
+    // console.log('📋 TopAgent 阶段 2: 计划生成');
 
     const planResponse = await createLLMResponse({
       body: {
@@ -119,13 +115,10 @@ export const dispatchTopAgent = async (
       }
     });
 
-    console.log('✅ TopAgent: 计划生成完成');
-
-    // 解析计划 JSON,提取表单数据
     let formData;
     try {
       const planJson = JSON.parse(planResponse.answerText);
-      console.log('解析的计划 JSON:', planJson);
+      // console.log('解析的计划 JSON:', planJson);
 
       formData = {
         role: planJson.task_analysis?.role || '',
@@ -133,23 +126,19 @@ export const dispatchTopAgent = async (
         tools: planJson.resources?.tools?.map((tool: any) => tool.id) || [],
         fileUploadEnabled: planJson.resources?.system_features?.file_upload?.enabled || false
       };
-      console.log('提取的表单数据:', formData);
     } catch (e) {
       console.error('解析计划 JSON 失败:', e);
     }
 
-    // 返回计划生成阶段的响应 - 包含表单数据
     return {
       aiResponse: formatAIResponse(planResponse.answerText, planResponse.reasoningText),
       formData
     };
   }
 
-  // 6. 返回信息收集阶段的响应 - 不包含表单数据
-  console.log('✅ TopAgent: 信息收集完成，等待下一轮');
-
+  const displayText = parsedResponse?.question || firstPhaseAnswer;
   return {
-    aiResponse: formatAIResponse(firstPhaseAnswer, firstPhaseReasoning)
+    aiResponse: formatAIResponse(displayText, firstPhaseReasoning)
   };
 };
 

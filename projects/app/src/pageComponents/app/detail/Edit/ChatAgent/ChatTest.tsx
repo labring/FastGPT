@@ -137,43 +137,42 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
-                console.log('🎨 ChatTest 收到 onApply 回调:', formData);
                 if (!setAppForm) {
                   console.warn('⚠️ setAppForm 未传入，无法更新表单');
                   return;
                 }
 
-                // 1. 过滤已存在的工具ID
                 const existingToolIds = new Set(
                   appForm.selectedTools.map((tool) => tool.pluginId).filter(Boolean)
                 );
 
-                console.log('📋 当前已存在的工具 pluginId:', Array.from(existingToolIds));
-                console.log('📋 formData.selectedTools:', formData.selectedTools);
+                // console.log('📋 当前已存在的工具 pluginId:', Array.from(existingToolIds));
+                // console.log('📋 formData.selectedTools:', formData.selectedTools);
 
                 const newToolIds = (formData.selectedTools || []).filter(
                   (toolId: string) => !existingToolIds.has(toolId)
                 );
 
-                console.log('📋 过滤后的新工具ID:', newToolIds);
-
                 if (newToolIds.length === 0) {
-                  console.log('📋 没有新工具需要添加,全部已存在');
-                  // 仍然更新 role 和 taskObject
+                  // 没有新工具需要添加，仍然更新 role、taskObject 和文件上传配置
                   setAppForm((prev) => ({
                     ...prev,
                     aiSettings: {
                       ...prev.aiSettings,
                       aiRole: formData.role || '',
                       aiTaskObject: formData.taskObject || ''
+                    },
+                    chatConfig: {
+                      ...prev.chatConfig,
+                      fileSelectConfig: {
+                        ...prev.chatConfig.fileSelectConfig,
+                        canSelectFile: formData.fileUpload || false
+                      }
                     }
                   }));
                   return;
                 }
 
-                console.log(`📦 过滤后需要添加 ${newToolIds.length} 个新工具:`, newToolIds);
-
-                // 2. 批量获取工具详细信息
                 let newTools: FlowNodeTemplateType[] = [];
                 const failedToolIds: string[] = [];
 
@@ -186,7 +185,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
 
                 const results = await Promise.allSettled(toolPromises);
 
-                // 3. 处理结果
                 results.forEach((result: any) => {
                   if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
                     newTools.push(result.value.tool);
@@ -196,11 +194,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                   }
                 });
 
-                console.log(
-                  `✅ 成功获取 ${newTools.length} 个工具, 失败 ${failedToolIds.length} 个`
-                );
-
-                // 4. 如果有失败的工具,显示警告
                 if (failedToolIds.length > 0) {
                   toast({
                     title: t('app:tool_load_failed'),
@@ -210,10 +203,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                   });
                 }
 
-                // 5. 更新 appForm
                 setAppForm((prev) => {
-                  console.log('📝 更新前的 appForm:', prev);
-
                   const newForm: AppFormEditFormType = {
                     ...prev,
                     aiSettings: {
@@ -221,10 +211,15 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                       aiRole: formData.role || '',
                       aiTaskObject: formData.taskObject || ''
                     },
-                    selectedTools: [...prev.selectedTools, ...newTools]
+                    selectedTools: [...prev.selectedTools, ...newTools],
+                    chatConfig: {
+                      ...prev.chatConfig,
+                      fileSelectConfig: {
+                        ...prev.chatConfig.fileSelectConfig,
+                        canSelectFile: formData.fileUpload || false
+                      }
+                    }
                   };
-
-                  console.log('✅ 更新后的 appForm:', newForm);
                   return newForm;
                 });
               }}

@@ -145,13 +145,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
   );
   const generatingMessage = useMemoizedFn(
     ({ event, text = '', reasoningText, tool, data }: generatingMessageProps & { data?: any }) => {
-      // Debug: 打印所有接收到的事件
-      console.log('🔔 收到事件:', { event, hasData: !!data, data });
-
-      // Handle formData event
       if (event === SseResponseEventEnum.formData && data) {
-        console.log('✅ 收到表单数据:', data);
-        console.log('🎯 onApply 回调存在?', !!onApply);
         const formData = {
           role: data.role || '',
           taskObject: data.taskObject || '',
@@ -159,9 +153,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
           selectedDatasets: [],
           fileUpload: data.fileUploadEnabled || false
         };
-        console.log('📤 准备调用 onApply:', formData);
         onApply?.(formData);
-        console.log('✅ onApply 调用完成');
         return;
       }
 

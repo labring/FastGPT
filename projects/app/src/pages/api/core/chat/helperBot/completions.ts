@@ -51,7 +51,6 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
 
   // Send formData if exists
   if (result.formData) {
-    console.log('📤 发送表单数据到前端:', result.formData);
     workflowResponseWrite?.({
       event: SseResponseEventEnum.formData,
       data: result.formData
