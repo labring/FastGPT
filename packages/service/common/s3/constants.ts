@@ -52,3 +52,5 @@ export const getSystemMaxFileSize = () => {
   const config = global.feConfigs?.uploadFileMaxSize || 1024; // MB, default 1024MB
   return config; // bytes
 };
+
+export const S3_KEY_PATH_INVALID_CHARS = ['/', '\\', '|'];
