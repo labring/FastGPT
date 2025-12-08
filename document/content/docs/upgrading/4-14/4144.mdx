@@ -30,6 +30,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 4. 通过 API 上传本地文件至知识库，保存至 S3。同时将旧版 Gridfs 代码全部移除。
 5. 新版订阅套餐逻辑。
 6. 支持配置对话文件白名单。
+7. S3 支持 pathStyle 配置。
 
 ## ⚙️ 优化
 
@@ -38,6 +39,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 3. 用户通知，支持中英文，以及优化模板。
 4. 删除知识库采用队列异步删除模式。
 5. LLM 请求时，图片无效报错提示。
+6. completions 接口，非 stream 模式， detail=false 时，增加返回 reason_content。
+7. 增加对于无效的 S3 key 检测。
 
 ## 🐛 修复
 
@@ -47,6 +50,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 4. 工作台卡片在名字过长时错位。
 5. 分享链接中url query 中携带全局变量时，前端 UI 不会加载该值。
 6. window 下判断 CSV 文件异常。
+7. 模型测试时，如果模型未启动，会导致无法被测试。
+8. MCP header 中带特殊内容时，会抛错。
+9. 工作流引用其他 Agent 时，切换版本号后未及时更新 UI。
 
 ## 插件
 
