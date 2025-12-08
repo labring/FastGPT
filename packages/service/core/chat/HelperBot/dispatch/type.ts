@@ -11,11 +11,21 @@ export const HelperBotDispatchParamsSchema = z.object({
   files: HelperBotCompletionsParamsSchema.shape.files,
   metadata: HelperBotCompletionsParamsSchema.shape.metadata,
   histories: z.array(HelperBotChatItemSchema),
-  workflowResponseWrite: WorkflowResponseFnSchema
+  workflowResponseWrite: WorkflowResponseFnSchema,
+  teamId: z.string(),
+  userId: z.string()
 });
 export type HelperBotDispatchParamsType = z.infer<typeof HelperBotDispatchParamsSchema>;
 
 export const HelperBotDispatchResponseSchema = z.object({
-  aiResponse: z.array(AIChatItemValueItemSchema)
+  aiResponse: z.array(AIChatItemValueItemSchema),
+  formData: z
+    .object({
+      role: z.string().optional(),
+      taskObject: z.string().optional(),
+      tools: z.array(z.string()).optional(),
+      fileUploadEnabled: z.boolean().optional()
+    })
+    .optional()
 });
 export type HelperBotDispatchResponseType = z.infer<typeof HelperBotDispatchResponseSchema>;

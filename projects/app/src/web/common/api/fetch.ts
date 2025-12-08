@@ -50,6 +50,9 @@ type ResponseQueueItemType = CommonResponseType &
           | SseResponseEventEnum.toolResponse;
         tools: any;
       }
+    | {
+        event: SseResponseEventEnum.formData;
+      }
   );
 
 class FatalError extends Error {}
@@ -268,6 +271,12 @@ export const streamFetch = ({
               stepId,
               event,
               agentPlan: rest.agentPlan
+            });
+          } else if (event === SseResponseEventEnum.formData) {
+            // Directly call onMessage for formData, no need to queue
+            onMessage({
+              event,
+              data: rest
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
