@@ -7,6 +7,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
@@ -23,6 +24,9 @@ export type generatingMessageProps = {
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
+
+  // Agent
+  formData?: TopAgentFormDataType;
 };
 
 export type StartChatFnProps = {

@@ -1,13 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { z } from 'zod';
 import { ChatRoleEnum } from '../constants';
-import {
-  UserChatItemSchema,
-  SystemChatItemSchema,
-  type ChatItemObjItemType,
-  type ChatItemValueItemType,
-  ToolModuleResponseItemSchema
-} from '../type';
+import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
 
 export enum HelperBotTypeEnum {
   topAgent = 'topAgent'
@@ -79,21 +73,11 @@ export type HelperBotChatItemSiteType = z.infer<typeof HelperBotChatItemSiteSche
 /* 具体的 bot 的特有参数 */
 
 // AI 模型配置
-export const AIModelConfigSchema = z.object({
-  model: z.string(),
-  temperature: z.number().nullish(),
-  maxToken: z.number().nullish(),
-  stream: z.boolean().nullish()
-});
-export type AIModelConfigType = z.infer<typeof AIModelConfigSchema>;
-
 export const topAgentParamsSchema = z.object({
   role: z.string().nullish(),
   taskObject: z.string().nullish(),
   selectedTools: z.array(z.string()).nullish(),
   selectedDatasets: z.array(z.string()).nullish(),
-  fileUpload: z.boolean().nullish(),
-  // AI 模型配置
-  modelConfig: AIModelConfigSchema.nullish()
+  fileUpload: z.boolean().nullish()
 });
 export type TopAgentParamsType = z.infer<typeof topAgentParamsSchema>;

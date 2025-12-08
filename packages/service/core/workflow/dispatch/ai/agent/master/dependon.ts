@@ -2,7 +2,7 @@ import { getLLMModel } from '../../../../../ai/model';
 import type { AgentPlanStepType } from '../sub/plan/type';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
-import { parseToolArgs } from '../../../../../ai/utils';
+import { parseJsonArgs } from '../../../../../ai/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 
@@ -68,7 +68,7 @@ export const getStepDependon = async ({
       stream: false
     }
   });
-  const params = parseToolArgs<{
+  const params = parseJsonArgs<{
     needed_step_ids: string[];
     reason: string;
   }>(answerText);

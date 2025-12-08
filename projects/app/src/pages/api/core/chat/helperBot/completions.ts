@@ -9,7 +9,8 @@ import { MongoHelperBotChatItem } from '@fastgpt/service/core/chat/HelperBot/cha
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchMap } from '@fastgpt/service/core/chat/HelperBot/dispatch/index';
 import { pushChatRecords } from '@fastgpt/service/core/chat/HelperBot/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { pushHelperBotUsage } from '@/service/support/wallet/usage/push';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -18,7 +19,7 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     req.body
   );
 
-  const { teamId, userId } = await authCert({ req, authToken: true });
+  const { teamId, tmbId, userId, isRoot } = await authCert({ req, authToken: true });
 
   const histories = await MongoHelperBotChatItem.find({
     userId,
@@ -45,17 +46,14 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     metadata,
     histories,
     workflowResponseWrite,
-    teamId,
-    userId
+    user: {
+      teamId,
+      tmbId,
+      userId,
+      isRoot,
+      lang: getLocale(req)
+    }
   });
-
-  // Send formData if exists
-  if (result.formData) {
-    workflowResponseWrite?.({
-      event: SseResponseEventEnum.formData,
-      data: result.formData
-    });
-  }
 
   // Save chat
   await pushChatRecords({
@@ -68,6 +66,13 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     aiResponse: result.aiResponse
   });
   // Push usage
+  pushHelperBotUsage({
+    teamId,
+    tmbId,
+    model: result.usage.model,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens
+  });
 }
 
 export default NextAPI(handler);

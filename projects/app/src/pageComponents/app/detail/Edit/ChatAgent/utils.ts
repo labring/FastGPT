@@ -280,6 +280,7 @@ export const validateToolConfiguration = ({
 
   return true;
 };
+
 export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType): boolean => {
   const formRenderTypesMap: Record<string, boolean> = {
     [FlowNodeInputTypeEnum.input]: true,
@@ -293,8 +294,8 @@ export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType):
     [FlowNodeInputTypeEnum.timeRangeSelect]: true
   };
   return (
-    ((toolTemplate.inputs?.length ?? 0) > 0 &&
-      toolTemplate.inputs?.some((input) => {
+    (toolTemplate.inputs.length > 0 &&
+      toolTemplate.inputs.some((input) => {
         // 有工具描述的不需要配置
         if (input.toolDescription) return false;
         // 禁用流的不需要配置
