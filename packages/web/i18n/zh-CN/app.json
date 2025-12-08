@@ -473,6 +473,8 @@
   "toolkit_uninstalled": "未安装",
   "toolkit_update_failed": "更新失败",
   "toolkit_user_guide": "使用说明",
+  "tool_load_failed": "部分工具加载失败",
+  "failed_tools": "失败的工具",
   "tools": "工具",
   "tools_no_description": "这个工具没有介绍~",
   "tools_tip": "声明模型可用的工具，可以实现与外部系统交互等扩展能力",

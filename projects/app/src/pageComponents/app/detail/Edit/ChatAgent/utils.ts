@@ -293,17 +293,18 @@ export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType):
     [FlowNodeInputTypeEnum.timeRangeSelect]: true
   };
   return (
-    toolTemplate.inputs.length > 0 &&
-    toolTemplate.inputs.some((input) => {
-      // 有工具描述的不需要配置
-      if (input.toolDescription) return false;
-      // 禁用流的不需要配置
-      if (input.key === NodeInputKeyEnum.forbidStream) return false;
-      // 系统输入配置需要配置
-      if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+    ((toolTemplate.inputs?.length ?? 0) > 0 &&
+      toolTemplate.inputs?.some((input) => {
+        // 有工具描述的不需要配置
+        if (input.toolDescription) return false;
+        // 禁用流的不需要配置
+        if (input.key === NodeInputKeyEnum.forbidStream) return false;
+        // 系统输入配置需要配置
+        if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
 
-      // 检查是否包含表单类型的输入
-      return input.renderTypeList.some((type) => formRenderTypesMap[type]);
-    })
+        // 检查是否包含表单类型的输入
+        return input.renderTypeList.some((type) => formRenderTypesMap[type]);
+      })) ||
+    false
   );
 };

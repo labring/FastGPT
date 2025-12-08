@@ -1,4 +1,4 @@
-import { ChatCompletionRequestMessageRoleEnum } from 'core/ai/constants';
+import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import type {
   ChatCompletionContentPart,
   ChatCompletionFunctionMessageParam,
@@ -96,7 +96,7 @@ export const helperChats2GPTMessages = ({
             tool_calls
           });
           aiResults.push(...toolResponse);
-        } else if ('text' in value && value.text?.content === 'string') {
+        } else if ('text' in value && typeof value.text?.content === 'string') {
           if (!value.text.content && item.value.length > 1) {
             return;
           }
