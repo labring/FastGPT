@@ -31,10 +31,6 @@ const FAQ = () => {
       desc: t('common:FAQ.index_del_a')
     },
     {
-      title: t('common:FAQ.index_del_q'),
-      desc: t('common:FAQ.index_del_a')
-    },
-    {
       title: t('common:FAQ.package_overlay_q'),
       desc: t('common:FAQ.package_overlay_a')
     },
