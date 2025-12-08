@@ -128,7 +128,7 @@ export type FastGPTFeConfigsType = {
     alipay?: boolean;
     bank?: boolean;
   };
-
+  fileUrlWhitelist?: string[];
   customDomain?: {
     enable?: boolean;
     domain?: {
