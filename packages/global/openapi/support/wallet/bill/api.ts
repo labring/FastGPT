@@ -12,7 +12,7 @@ import {
 } from '../../../../support/wallet/sub/constants';
 import { PaginationSchema } from '../../../api';
 import { BillSchema } from '../../../../support/wallet/bill/type';
-import { CouponTypeEnum } from 'support/wallet/sub/coupon/constants';
+import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants';
 
 // Bill list
 export const BillListQuerySchema = PaginationSchema.safeExtend({
