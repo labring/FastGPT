@@ -16,11 +16,6 @@ export class MCPClient {
   private headers: Record<string, any> = {};
 
   constructor(config: { url: string; headers: Record<string, any> }) {
-    console.log('MCPClient constructor:', {
-      url: config.url,
-      headers: config.headers
-    });
-
     this.url = config.url;
     this.headers = config.headers;
     this.client = new Client({
@@ -39,8 +34,6 @@ export class MCPClient {
       await this.client.connect(transport);
       return this.client;
     } catch (error) {
-      console.log('StreamableHTTPClientTransport failed, trying SSE:', error);
-
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
@@ -48,16 +41,19 @@ export class MCPClient {
           },
           eventSourceInit: {
             fetch: (url, init) => {
-              console.log('SSE fetch called');
-              console.log('init?.headers:', init?.headers);
-              console.log('this.headers:', this.headers);
-
-              const mergedHeaders = {
-                ...this.headers,
-                ...init?.headers
+              const mergedHeaders: Record<string, string> = {
+                ...this.headers
               };
 
-              console.log('mergedHeaders:', mergedHeaders);
+              if (init?.headers) {
+                if (init.headers instanceof Headers) {
+                  init.headers.forEach((value, key) => {
+                    mergedHeaders[key] = value;
+                  });
+                } else if (typeof init.headers === 'object') {
+                  Object.assign(mergedHeaders, init.headers);
+                }
+              }
 
               return fetch(url, {
                 ...init,
@@ -87,9 +83,7 @@ export class MCPClient {
    */
   public async getTools(): Promise<McpToolConfigType[]> {
     try {
-      console.log('MCPClient getTools started');
       const client = await this.getConnection();
-      console.log('MCPClient client connected, calling listTools');
       const response = await client.listTools();
 
       if (!Array.isArray(response.tools)) {
