@@ -17,7 +17,9 @@ export enum SseResponseEventEnum {
 
   interactive = 'interactive',
 
-  agentPlan = 'agentPlan' // agent plan
+  agentPlan = 'agentPlan', // agent plan
+
+  formData = 'formData' // form data for TopAgent
 }
 
 export enum DispatchNodeResponseKeyEnum {
