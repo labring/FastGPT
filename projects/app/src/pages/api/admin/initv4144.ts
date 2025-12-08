@@ -244,7 +244,7 @@ async function processCollectionBatch({
       {
         projection: {
           _id: 1,
-          metadata: { teamId: 1 }
+          metadata: 1
         }
       }
     )
@@ -260,7 +260,10 @@ async function processCollectionBatch({
   // 2. 查找对应的 collections
   const fileIds = files.map((f) => f._id);
   const collections = await MongoDatasetCollection.find(
-    { fileId: { $in: fileIds, $not: { $regex: /^dataset\// } } },
+    {
+      teamId: { $in: Array.from(new Set(files.map((f) => f.metadata?.teamId).filter(Boolean))) },
+      fileId: { $in: fileIds, $not: { $regex: /^dataset\// } }
+    },
     '_id fileId teamId datasetId type parentId name updateTime'
   ).lean();
 
