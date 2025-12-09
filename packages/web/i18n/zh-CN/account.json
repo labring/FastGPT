@@ -16,7 +16,6 @@
   "custom_config_details": "定制配置详情",
   "custom_domain": "自定义域名",
   "custom_model": "自定义模型",
-  "custom_domain": "自定义域名",
   "custom_domain.domain": "域名",
   "custom_domain.provider": "域名备案商",
   "custom_domain.registration_hint": "请自备域名并通过 <bold>{{provider}}</bold> 完成备案后，将域名填入下方输入框中",
