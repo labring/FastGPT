@@ -268,7 +268,7 @@ export class S3BaseBucket {
 
     return {
       key,
-      accessUrl: await this.createPreviewUrl({
+      accessUrl: await this.createExternalUrl({
         key,
         expiredHours: 2
       })
