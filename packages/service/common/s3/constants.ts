@@ -53,8 +53,4 @@ export const getSystemMaxFileSize = () => {
   return config; // bytes
 };
 
-export const S3_KEY_PATH_INVALID_CHARS_MAP: Record<string, boolean> = {
-  '/': true,
-  '\\': true,
-  '|': true
-};
+export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
