@@ -301,6 +301,7 @@
   "pro_modal_title": "商业版专享！",
   "pro_modal_unlock_button": "去解锁",
   "publish_channel": "发布渠道",
+  "publish_channel.wecom.empty": "发布到企业微信机器人，请先 <a>绑定自定义域名</a>，并且通过域名校验。",
   "publish_success": "发布成功",
   "question_guide_tip": "对话结束后，会为你生成 3 个引导性问题。",
   "reasoning_response": "输出思考",

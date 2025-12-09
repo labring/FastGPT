@@ -109,6 +109,13 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
         unit: 'h'
       });
     }
+    if (config.customDomain !== undefined) {
+      items.push({
+        key: i18nT('account:custom_domain'),
+        value: config.customDomain,
+        unit: ''
+      });
+    }
 
     return items;
   }, [bill?.couponDetail?.subscriptions]);

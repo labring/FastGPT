@@ -7,14 +7,9 @@ import { getFileS3Key } from '../utils';
 
 class S3AvatarSource {
   private bucket: S3PublicBucket;
-  private static instance: S3AvatarSource;
 
   constructor() {
     this.bucket = new S3PublicBucket();
-  }
-
-  static getInstance() {
-    return (this.instance ??= new S3AvatarSource());
   }
 
   get prefix(): string {
@@ -89,5 +84,13 @@ class S3AvatarSource {
 }
 
 export function getS3AvatarSource() {
-  return S3AvatarSource.getInstance();
+  if (global.avatarBucket) {
+    return global.avatarBucket;
+  }
+  global.avatarBucket = new S3AvatarSource();
+  return global.avatarBucket;
+}
+
+declare global {
+  var avatarBucket: S3AvatarSource;
 }

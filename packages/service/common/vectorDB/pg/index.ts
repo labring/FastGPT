@@ -204,33 +204,34 @@ export class PgVectorCtrl {
       datasetId: item.dataset_id
     }));
   };
-  getVectorCountByTeamId = async (teamId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)]]
-    });
 
-    return total;
-  };
-  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
-    });
+  getVectorCount = async (props: {
+    teamId?: string;
+    datasetId?: string;
+    collectionId?: string;
+  }) => {
+    const { teamId, datasetId, collectionId } = props;
 
-    return total;
-  };
-  getVectorCountByCollectionId = async (
-    teamId: string,
-    datasetId: string,
-    collectionId: string
-  ) => {
+    // Build where conditions dynamically
+    const whereConditions: any[] = [];
+
+    if (teamId) {
+      whereConditions.push(['team_id', String(teamId)]);
+    }
+
+    if (datasetId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['dataset_id', String(datasetId)]);
+    }
+
+    if (collectionId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['collection_id', String(collectionId)]);
+    }
+
+    // If no conditions provided, count all
     const total = await PgClient.count(DatasetVectorTableName, {
-      where: [
-        ['team_id', String(teamId)],
-        'and',
-        ['dataset_id', String(datasetId)],
-        'and',
-        ['collection_id', String(collectionId)]
-      ]
+      where: whereConditions.length > 0 ? whereConditions : undefined
     });
 
     return total;

@@ -257,43 +257,36 @@ export class MilvusCtrl {
     };
   };
 
-  getVectorCountByTeamId = async (teamId: string) => {
+  getVectorCount = async (props: {
+    teamId?: string;
+    datasetId?: string;
+    collectionId?: string;
+  }) => {
+    const { teamId, datasetId, collectionId } = props;
     const client = await this.getClient();
+
+    // Build filter conditions dynamically (each condition wrapped in parentheses)
+    const filterConditions: string[] = [];
+
+    if (teamId) {
+      filterConditions.push(`(teamId == "${String(teamId)}")`);
+    }
+
+    if (datasetId) {
+      filterConditions.push(`(datasetId == "${String(datasetId)}")`);
+    }
+
+    if (collectionId) {
+      filterConditions.push(`(collectionId == "${String(collectionId)}")`);
+    }
+
+    // If no conditions provided, count all (empty filter)
+    const filter = filterConditions.length > 0 ? filterConditions.join(' and ') : '';
 
     const result = await client.query({
       collection_name: DatasetVectorTableName,
       output_fields: ['count(*)'],
-      filter: `teamId == "${String(teamId)}"`
-    });
-
-    const total = result.data?.[0]?.['count(*)'] as number;
-
-    return total;
-  };
-  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const client = await this.getClient();
-
-    const result = await client.query({
-      collection_name: DatasetVectorTableName,
-      output_fields: ['count(*)'],
-      filter: `(teamId == "${String(teamId)}") and (dataset == "${String(datasetId)}")`
-    });
-
-    const total = result.data?.[0]?.['count(*)'] as number;
-
-    return total;
-  };
-  getVectorCountByCollectionId = async (
-    teamId: string,
-    datasetId: string,
-    collectionId: string
-  ) => {
-    const client = await this.getClient();
-
-    const result = await client.query({
-      collection_name: DatasetVectorTableName,
-      output_fields: ['count(*)'],
-      filter: `(teamId == "${String(teamId)}") and (datasetId == "${String(datasetId)}") and (collectionId == "${String(collectionId)}")`
+      filter: filter || undefined
     });
 
     const total = result.data?.[0]?.['count(*)'] as number;

@@ -148,7 +148,7 @@ const DatasetSchema = new Schema({
 
 try {
   DatasetSchema.index({ teamId: 1 });
-  DatasetSchema.index({ type: 1 });
+  DatasetSchema.index({ type: 1 }); // Admin count
   DatasetSchema.index({ deleteTime: 1 }); // 添加软删除字段索引
 } catch (error) {
   console.log(error);

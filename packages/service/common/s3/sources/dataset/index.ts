@@ -29,14 +29,9 @@ import { S3Error } from 'minio';
 
 export class S3DatasetSource {
   public bucket: S3PrivateBucket;
-  private static instance: S3DatasetSource;
 
   constructor() {
     this.bucket = new S3PrivateBucket();
-  }
-
-  static getInstance() {
-    return (this.instance ??= new S3DatasetSource());
   }
 
   // 下载链接
@@ -260,5 +255,13 @@ export class S3DatasetSource {
 }
 
 export function getS3DatasetSource() {
-  return S3DatasetSource.getInstance();
+  if (global.datasetBucket) {
+    return global.datasetBucket;
+  }
+  global.datasetBucket = new S3DatasetSource();
+  return global.datasetBucket;
+}
+
+declare global {
+  var datasetBucket: S3DatasetSource;
 }

@@ -240,7 +240,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}
           onClose={closeShowShareLinkModal}
-          img="/imgs/outlink/offiaccount-copylink-instruction.png"
+          img="/imgs/outlink/offiaccount-copylink-instruction.jpg"
         />
       )}
     </Box>

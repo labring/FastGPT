@@ -61,6 +61,7 @@ export const iconPaths = {
   'common/gitFill': () => import('./icons/common/gitFill.svg'),
   'common/gitInlight': () => import('./icons/common/gitInlight.svg'),
   'common/gitLight': () => import('./icons/common/gitLight.svg'),
+  'common/globalLine': () => import('./icons/common/globalLine.svg'),
   'common/googleFill': () => import('./icons/common/googleFill.svg'),
   'common/help': () => import('./icons/common/help.svg'),
   'common/importLight': () => import('./icons/common/importLight.svg'),
@@ -472,6 +473,12 @@ export const iconPaths = {
   star: () => import('./icons/star.svg'),
   stop: () => import('./icons/stop.svg'),
   'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
+  'support/account/customDomain/provider/aliyun': () =>
+    import('./icons/support/account/customDomain/provider/aliyun.svg'),
+  'support/account/customDomain/provider/tencent': () =>
+    import('./icons/support/account/customDomain/provider/tencent.svg'),
+  'support/account/customDomain/provider/volcengine': () =>
+    import('./icons/support/account/customDomain/provider/volcengine.svg'),
   'support/account/laf': () => import('./icons/support/account/laf.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),

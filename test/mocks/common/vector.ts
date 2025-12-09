@@ -26,9 +26,7 @@ export const mockGetVectorDataByTime = vi.fn().mockResolvedValue([
 
 export const mockGetVectorCountByTeamId = vi.fn().mockResolvedValue(100);
 
-export const mockGetVectorCountByDatasetId = vi.fn().mockResolvedValue(50);
-
-export const mockGetVectorCountByCollectionId = vi.fn().mockResolvedValue(25);
+export const mockGetVectorCount = vi.fn().mockResolvedValue(50);
 
 const MockVectorCtrl = vi.fn().mockImplementation(() => ({
   init: mockVectorInit,
@@ -37,8 +35,7 @@ const MockVectorCtrl = vi.fn().mockImplementation(() => ({
   embRecall: mockVectorEmbRecall,
   getVectorDataByTime: mockGetVectorDataByTime,
   getVectorCountByTeamId: mockGetVectorCountByTeamId,
-  getVectorCountByDatasetId: mockGetVectorCountByDatasetId,
-  getVectorCountByCollectionId: mockGetVectorCountByCollectionId
+  getVectorCount: mockGetVectorCount
 }));
 
 // Mock PgVectorCtrl
@@ -74,6 +71,5 @@ export const resetVectorMocks = () => {
   mockVectorInit.mockClear();
   mockGetVectorDataByTime.mockClear();
   mockGetVectorCountByTeamId.mockClear();
-  mockGetVectorCountByDatasetId.mockClear();
-  mockGetVectorCountByCollectionId.mockClear();
+  mockGetVectorCount.mockClear();
 };
