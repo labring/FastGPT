@@ -190,16 +190,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     })();
 
-    if (
-      !(await teamFrequencyLimit({
-        teamId,
-        type: LimitTypeEnum.chat,
-        res
-      }))
-    ) {
-      return;
-    }
-
     pushTrack.teamChatQPM({ teamId });
 
     retainDatasetCite = retainDatasetCite && !!responseDetail;

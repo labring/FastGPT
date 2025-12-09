@@ -4,6 +4,8 @@ import { authFrequencyLimit } from '../system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import { type NextApiResponse } from 'next';
 import { jsonRes } from '../response';
+import { authCert } from '../../support/permission/auth/common';
+import { teamFrequencyLimit } from '../api/frequencyLimit';
 
 // unit: times/s
 // how to use?
@@ -35,6 +37,37 @@ export function useIPFrequencyLimit({
         code: 429,
         error: `Too many request, request ${limit} times every ${seconds} seconds`
       });
+    }
+  };
+}
+
+export function useTeamFrequencyLimit({
+  paths = ['/api/v', '/api/core/', '/api/support/']
+}: {
+  paths?: string[];
+} = {}) {
+  return async (req: ApiRequestProps, res: NextApiResponse) => {
+    const isTargetPath = paths.some((path) => req.url?.startsWith(path));
+    if (!isTargetPath) {
+      return;
+    }
+
+    try {
+      const { teamId } = await authCert({
+        req,
+        authToken: true,
+        authApiKey: true
+      });
+
+      if (teamId) {
+        await teamFrequencyLimit({
+          teamId,
+          type: req.url as any,
+          res
+        });
+      }
+    } catch (error) {
+      return;
     }
   };
 }

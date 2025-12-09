@@ -46,7 +46,7 @@ export const getTeamQPMLimit = async (teamId: string): Promise<number> => {
 
 export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOption) => {
   const limit = await getTeamQPMLimit(teamId);
-  const seconds = limitSecondsMap[type];
+  const seconds = limitSecondsMap[type] ?? 60;
 
   const redis = getGlobalRedisConnection();
   const key = `frequency:${type}:${teamId}`;
