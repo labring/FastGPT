@@ -1,13 +1,13 @@
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
-import type { UploadFileParams } from './type';
 import {
   type CheckChatFileKeys,
   type DelChatFileByPrefixParams,
   ChatFileUploadSchema,
   DelChatFileByPrefixSchema,
-  UploadChatFileSchema
+  UploadChatFileSchema,
+  type UploadFileParams
 } from './type';
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../constants';
@@ -97,7 +97,7 @@ export class S3ChatSource {
     const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
     return await this.bucket.createPostPresignedUrl(
       { rawKey: fileKey, filename },
-      { expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24 }
+      { expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 24 }
     );
   }
 
@@ -112,8 +112,8 @@ export class S3ChatSource {
     return this.bucket.addDeleteJob({ key });
   }
 
-  async uploadFileByBuffer(params: UploadFileParams) {
-    const { appId, chatId, uId, filename, expiredTime, buffer, contentType } =
+  async uploadChatFileByBuffer(params: UploadFileParams) {
+    const { appId, chatId, uId, filename, buffer, contentType } =
       UploadChatFileSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({
       appId,
@@ -122,17 +122,11 @@ export class S3ChatSource {
       filename
     });
 
-    await this.bucket.putObject(fileKey, buffer, undefined, {
-      'Content-Type': contentType || 'application/octet-stream'
+    return this.bucket.uploadFileByBuffer({
+      key: fileKey,
+      buffer,
+      contentType
     });
-
-    return {
-      fileKey,
-      accessUrl: await this.bucket.createPreviewUrl({
-        key: fileKey,
-        expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24
-      })
-    };
   }
 }
 

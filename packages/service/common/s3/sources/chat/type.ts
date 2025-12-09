@@ -22,7 +22,6 @@ export const UploadChatFileSchema = z.object({
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional(),
   buffer: z.instanceof(Buffer),
   contentType: z.string().optional()
 });

@@ -15,6 +15,7 @@ import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { format } from 'date-fns';
 import { ShareLinkContainer } from '../components/showShareLinkModal';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 const WecomEditModal = ({
   appId,
@@ -169,7 +170,7 @@ const WecomEditModal = ({
                     type="datetime-local"
                     defaultValue={
                       defaultData.limit?.expiredTime
-                        ? format(defaultData.limit?.expiredTime, 'YYYY-MM-DDTHH:mm')
+                        ? formatTime2YMDHM(defaultData.limit?.expiredTime)
                         : ''
                     }
                     onChange={(e) => {

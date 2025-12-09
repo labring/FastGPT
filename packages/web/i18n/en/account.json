@@ -11,7 +11,6 @@
   "create_model": "Add new model",
   "custom_domain": "Custom Domain",
   "custom_model": "custom model",
-  "custom_domain": "custom domain",
   "custom_domain.domain": "Domain",
   "custom_domain.provider": "Domain Provider",
   "custom_domain.registration_hint": "Please prepare your own domain and complete the ICP filing through <bold>{{provider}}</bold>, then fill in the domain in the input box below",
