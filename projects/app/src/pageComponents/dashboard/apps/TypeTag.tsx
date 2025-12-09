@@ -6,7 +6,6 @@ import { useTranslation } from 'next-i18next';
 
 const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const { t } = useTranslation();
-
   const map = useRef({
     [AppTypeEnum.simple]: {
       label: t('app:type.Simple bot'),
@@ -35,6 +34,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     [AppTypeEnum.toolSet]: {
       label: t('app:type.MCP tools'),
       icon: 'core/app/type/mcpTools',
+      bg: '',
+      color: ''
+    },
+    [AppTypeEnum.assistant]: {
+      label: t('app:type.Smart customer service'),
+      icon: 'core/app/assistant/assistantTag',
       bg: '',
       color: ''
     },

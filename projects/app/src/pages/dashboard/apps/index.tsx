@@ -110,6 +110,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const appTypeName = useMemo(() => {
     const map: Record<AppTypeEnum | 'all', string> = {
       all: t('common:core.module.template.Team app'),
+      [AppTypeEnum.assistant]: t('app:type.Smart customer service'),
       [AppTypeEnum.simple]: t('app:team.menu.app'),
       [AppTypeEnum.workflow]: t('app:team.menu.workflow'),
       [AppTypeEnum.plugin]: t('app:team.menu.plugin'),
@@ -181,6 +182,16 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   </Button>
                 }
                 menuList={[
+                  {
+                    children: [
+                      {
+                        icon: 'core/app/assistant/assistantIcon',
+                        label: t('app:type.Smart customer service'),
+                        description: t('app:type.Create smart customer service tip'),
+                        onClick: () => setCreateAppType(AppTypeEnum.assistant)
+                      }
+                    ]
+                  },
                   {
                     children: [
                       {

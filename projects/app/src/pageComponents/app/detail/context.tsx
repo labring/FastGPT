@@ -22,6 +22,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -123,6 +124,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
+
   const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
     () => {
       if (appId) {
@@ -246,7 +248,12 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={contextValue}>
       {children}
-      {isOpenInfoEdit && <InfoModal onClose={onCloseInfoEdit} />}
+      {isOpenInfoEdit && (
+        <InfoModal
+          onClose={onCloseInfoEdit}
+          hideAuthConfig={appDetail.type === AppTypeEnum.assistant}
+        />
+      )}
       {isOpenTeamTagModal && <TagsEditModal onClose={onCloseTeamTagModal} />}
 
       <ConfirmDelModal />

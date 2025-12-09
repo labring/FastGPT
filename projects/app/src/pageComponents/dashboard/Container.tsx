@@ -132,6 +132,10 @@ const DashboardContainer = ({
             typeName: t('app:type.All')
           },
           {
+            typeId: AppTypeEnum.assistant,
+            typeName: t('app:type.Smart customer service')
+          },
+          {
             typeId: AppTypeEnum.simple,
             typeName: t('app:team.menu.app')
           },

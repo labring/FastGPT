@@ -4,10 +4,12 @@ import {
   type AppSchema,
   type AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -46,7 +48,8 @@ type WorkflowType = {
 };
 export function form2AppWorkflow(
   data: AppSimpleEditFormType,
-  t: any // i18nT
+  t: any, // i18nT
+  appType?: AppTypeEnum
 ): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
@@ -377,6 +380,257 @@ export function form2AppWorkflow(
       ]
     };
   }
+  // Assistant workflow node templates
+  function createConditionCheckerNode(
+    nodeId: string,
+    position: { x: number; y: number }
+  ): StoreNodeItemType {
+    return {
+      nodeId,
+      name: t('workflow:condition_checker'),
+      intro: t('workflow:execute_different_branches_based_on_conditions'),
+      avatar: 'core/workflow/template/ifelse',
+      flowNodeType: FlowNodeTypeEnum.ifElseNode,
+      showStatus: true,
+      position,
+      version: '481',
+      inputs: [
+        {
+          key: 'ifElseList',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.any,
+          label: '',
+          value: [
+            {
+              condition: 'AND',
+              list: [
+                {
+                  variable: [datasetNodeId, 'quoteQA'],
+                  condition: 'isEmpty',
+                  valueType: 'input'
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          id: 'ifElseResult',
+          key: 'ifElseResult',
+          label: t('workflow:judgment_result'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          type: FlowNodeOutputTypeEnum.static
+        }
+      ]
+    };
+  }
+
+  function createFallbackReplyNode(
+    nodeId: string,
+    position: { x: number; y: number }
+  ): StoreNodeItemType {
+    return {
+      nodeId,
+      name: t('workflow:assigned_reply'),
+      intro: t('workflow:intro_assigned_reply'),
+      avatar: 'core/workflow/template/reply',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      position,
+      version: '481',
+      inputs: [
+        {
+          key: 'text',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          label: t('common:core.module.input.label.Response content'),
+          description: t('common:core.module.input.description.Response content'),
+          placeholder: t('common:core.module.input.description.Response content'),
+          value: ['VARIABLE_NODE_ID', 'byG7WNk4'],
+          selectedTypeIndex: 1
+        }
+      ],
+      outputs: []
+    };
+  }
+
+  function createAnswerModeCheckerNode(
+    nodeId: string,
+    position: { x: number; y: number }
+  ): StoreNodeItemType {
+    return {
+      nodeId,
+      name: t('workflow:customer_service.checker_node_name'),
+      intro: t('workflow:execute_different_branches_based_on_conditions'),
+      avatar: 'core/workflow/template/ifelse',
+      flowNodeType: FlowNodeTypeEnum.ifElseNode,
+      showStatus: true,
+      position,
+      version: '481',
+      inputs: [
+        {
+          key: 'ifElseList',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.any,
+          label: '',
+          value: [
+            {
+              condition: 'AND',
+              list: [
+                {
+                  variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
+                  condition: 'equalTo',
+                  value: 'llm-summary',
+                  valueType: 'input'
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          id: 'ifElseResult',
+          key: 'ifElseResult',
+          label: t('workflow:judgment_result'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          type: FlowNodeOutputTypeEnum.static
+        }
+      ]
+    };
+  }
+
+  function createAssistantAiChatNode(
+    formData: AppSimpleEditFormType,
+    nodeId: string,
+    position: { x: number; y: number }
+  ): StoreNodeItemType {
+    // 复用现有的 aiChatTemplate，只覆盖特定的配置
+    const baseAiChatNode = aiChatTemplate(formData);
+
+    return {
+      ...baseAiChatNode,
+      nodeId,
+      position,
+      version: '4.9.7',
+      // 覆盖特定的输入配置
+      inputs: baseAiChatNode.inputs.map((input) => {
+        // 更新历史记录的最大值为50（assistant模式）
+        if (input.key === NodeInputKeyEnum.history) {
+          return {
+            ...input,
+            max: 50,
+            description: t('workflow:max_dialog_rounds')
+          };
+        }
+        // 更新用户问题输入的标签和描述
+        if (input.key === NodeInputKeyEnum.userChatInput) {
+          return {
+            ...input,
+            label: t('workflow:user_question'),
+            toolDescription: t('workflow:user_question_tool_desc')
+          };
+        }
+        return input;
+      }),
+      // 添加额外的输出
+      outputs: [
+        ...baseAiChatNode.outputs,
+        {
+          id: 'reasoningText',
+          key: 'reasoningText',
+          required: false,
+          label: t('workflow:reasoning_text'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          type: FlowNodeOutputTypeEnum.static
+        },
+        {
+          id: 'system_error_text',
+          key: 'system_error_text',
+          type: FlowNodeOutputTypeEnum.error,
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: t('workflow:error_text')
+        }
+      ]
+    };
+  }
+
+  function createAssistantEdges(nodeIds: {
+    conditionChecker: string;
+    fallbackReply: string;
+    answerModeChecker: string;
+    aiChat: string;
+  }): StoreEdgeItemType[] {
+    return [
+      {
+        source: workflowStartNodeId,
+        target: datasetNodeId,
+        sourceHandle: `${workflowStartNodeId}-source-right`,
+        targetHandle: `${datasetNodeId}-target-left`
+      },
+      {
+        source: datasetNodeId,
+        target: nodeIds.conditionChecker,
+        sourceHandle: `${datasetNodeId}-source-right`,
+        targetHandle: `${nodeIds.conditionChecker}-target-left`
+      },
+      {
+        source: nodeIds.conditionChecker,
+        target: nodeIds.fallbackReply,
+        sourceHandle: `${nodeIds.conditionChecker}-source-IF`,
+        targetHandle: `${nodeIds.fallbackReply}-target-left`
+      },
+      {
+        source: nodeIds.conditionChecker,
+        target: nodeIds.answerModeChecker,
+        sourceHandle: `${nodeIds.conditionChecker}-source-ELSE`,
+        targetHandle: `${nodeIds.answerModeChecker}-target-left`
+      },
+      {
+        source: nodeIds.answerModeChecker,
+        target: nodeIds.aiChat,
+        sourceHandle: `${nodeIds.answerModeChecker}-source-IF`,
+        targetHandle: `${nodeIds.aiChat}-target-left`
+      }
+    ];
+  }
+
+  function assistantTemplate(formData: AppSimpleEditFormType): WorkflowType {
+    const nodeIds = {
+      conditionChecker: 'qaFDoVSH4WcXMZPO',
+      fallbackReply: 'vprtN0xvK1dV0c6M',
+      answerModeChecker: 'zPMaGZJTcmh6qjx2',
+      aiChat: aiChatNodeId
+    };
+
+    const nodes = [
+      datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput']),
+      createConditionCheckerNode(nodeIds.conditionChecker, {
+        x: 2277.985028019776,
+        y: -1299.563387920271
+      }),
+      createFallbackReplyNode(nodeIds.fallbackReply, {
+        x: 3281.4085684466586,
+        y: -1344.9921952365255
+      }),
+      createAnswerModeCheckerNode(nodeIds.answerModeChecker, {
+        x: 3067.066917987494,
+        y: -837.539310501848
+      }),
+      createAssistantAiChatNode(formData, nodeIds.aiChat, {
+        x: 4430.42738186963,
+        y: -837.539310501848
+      })
+    ];
+
+    const edges = createAssistantEdges(nodeIds);
+
+    return {
+      nodes,
+      edges
+    };
+  }
   function toolTemplates(formData: AppSimpleEditFormType): WorkflowType {
     const toolNodeId = getNanoid(6);
 
@@ -576,6 +830,9 @@ export function form2AppWorkflow(
   }
 
   const workflow = (() => {
+    if (appType === AppTypeEnum.assistant) {
+      return assistantTemplate(data);
+    }
     if (data.selectedTools.length > 0) return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);

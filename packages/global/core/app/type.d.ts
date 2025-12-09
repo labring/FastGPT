@@ -130,6 +130,7 @@ export type AppChatConfigType = {
   scheduledTriggerConfig?: AppScheduledTriggerConfigType;
   chatInputGuide?: ChatInputGuideConfigType;
   fileSelectConfig?: AppFileSelectConfigType;
+  faqAnswerMode?: 'quote' | 'llm-summary';
 
   // plugin
   instruction?: string;
