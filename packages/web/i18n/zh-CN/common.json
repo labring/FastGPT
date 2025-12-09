@@ -1233,6 +1233,8 @@
   "support.wallet.subscription.function.Requests per minute": "{{amount}} QPM",
   "support.wallet.subscription.function.Ticket response time": "{{amount}} 小时工单支持响应",
   "support.wallet.subscription.function.Website sync per dataset": "站点同步最大 {{amount}} 页",
+  "support.wallet.subscription.function.Custom domain": "{{amount}} 个自定义域名",
+  "support.wallet.subscription.function.custom domain tip": "团队可以配置的自定义域名数量，用于绑定独立域名访问应用",
   "support.wallet.subscription.function.qpm tip": "主要指团队每分钟请求 Agent 的最大次数，与单个 Agent 复杂度无关。其他 OpenAPI 接口也受此影响，每个接口单独计算",
   "support.wallet.subscription.mode.Month": "按月",
   "support.wallet.subscription.mode.Period": "订阅周期",

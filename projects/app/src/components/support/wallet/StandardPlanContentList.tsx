@@ -46,7 +46,8 @@ const StandardPlanContentList = ({
         standplan?.chatHistoryStoreDuration ?? plan.chatHistoryStoreDuration,
       auditLogStoreDuration: standplan?.auditLogStoreDuration ?? plan.auditLogStoreDuration,
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
-      ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime
+      ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
+      customDomain: standplan?.customDomain ?? plan.customDomain
     };
   }, [
     subPlans?.standard,
@@ -62,7 +63,8 @@ const StandardPlanContentList = ({
     standplan?.chatHistoryStoreDuration,
     standplan?.auditLogStoreDuration,
     standplan?.appRegistrationCount,
-    standplan?.ticketResponseTime
+    standplan?.ticketResponseTime,
+    standplan?.customDomain
   ]);
 
   return planContent ? (
@@ -173,6 +175,20 @@ const StandardPlanContentList = ({
               amount: planContent.appRegistrationCount
             })}
           </Box>
+        </Flex>
+      )}
+      {planContent.customDomain !== undefined && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.function.Custom domain', {
+              amount: planContent.customDomain
+            })}
+          </Box>
+          <QuestionTip
+            ml={1}
+            label={t('common:support.wallet.subscription.function.custom domain tip')}
+          />
         </Flex>
       )}
     </Grid>

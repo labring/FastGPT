@@ -74,7 +74,8 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
             standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
           auditLogStoreDuration:
             standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime
+          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+          customDomain: standard?.customDomain ?? standardConstants.customDomain
         }
       : undefined
   };
@@ -210,7 +211,8 @@ export const getTeamPlanStatus = async ({
           auditLogStoreDuration:
             standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
           ticketResponseTime:
-            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime
+            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain
         }
       : undefined,
 
