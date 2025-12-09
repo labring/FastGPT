@@ -5,7 +5,7 @@ export const isCSVFile = (filename: string) => {
   return extension === '.csv';
 };
 
-export function detectImageContentType(buffer: Buffer): string {
+export function detectImageContentType(buffer: Buffer) {
   if (!buffer || buffer.length < 12) return 'text/plain';
 
   // JPEG
