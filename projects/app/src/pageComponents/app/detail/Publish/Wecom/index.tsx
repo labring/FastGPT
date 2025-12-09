@@ -50,8 +50,7 @@ const Wecom = ({ appId }: { appId: string }) => {
     loading: isFetching,
     runAsync: refetchShareChatList
   } = useRequest2(() => getShareChatList<WecomAppType>({ appId, type: PublishChannelEnum.wecom }), {
-    manual: false,
-    refreshOnWindowFocus: true
+    manual: false
   });
 
   const {
@@ -63,7 +62,8 @@ const Wecom = ({ appId }: { appId: string }) => {
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   const { data: customDomains = [] } = useRequest2(listCustomDomain, {
-    manual: false
+    manual: false,
+    refreshOnWindowFocus: true
   });
 
   return (
@@ -247,26 +247,27 @@ const Wecom = ({ appId }: { appId: string }) => {
       )}
       {shareChatList.length === 0 && !isFetching && (
         <EmptyTip
-          {...(feConfigs.customDomain?.enable &&
-            customDomains.length > 0 && {
-              text: (
-                <Trans
-                  i18nKey="app:publish_channel.wecom.empty"
-                  components={{
-                    a: (
-                      <Link
-                        color="primary.600"
-                        key="link"
-                        href="/account/customDomain"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      />
-                    )
-                  }}
-                />
-              )
-            })}
-        ></EmptyTip>
+          {...(feConfigs.customDomain?.enable && customDomains.length > 0
+            ? { text: '' }
+            : {
+                text: (
+                  <Trans
+                    i18nKey="app:publish_channel.wecom.empty"
+                    components={{
+                      a: (
+                        <Link
+                          color="primary.600"
+                          key="link"
+                          href="/account/customDomain"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      )
+                    }}
+                  />
+                )
+              })}
+        />
       )}
       <Loading loading={isFetching} fixed={false} />
       {showShareLinkModalOpen && (
