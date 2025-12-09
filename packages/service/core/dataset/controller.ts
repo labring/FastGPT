@@ -109,6 +109,7 @@ export async function delDatasetRelevantData({
     }).maxTimeMS(300000);
   }
 
+  // Delete source: 兼容旧版的图片
   await delCollectionRelatedSource({ collections });
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
