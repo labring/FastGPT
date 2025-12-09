@@ -112,7 +112,7 @@ export class S3ChatSource {
     return this.bucket.addDeleteJob({ key });
   }
 
-  async uploadFile(params: UploadFileParams) {
+  async uploadFileByBuffer(params: UploadFileParams) {
     const { appId, chatId, uId, filename, expiredTime, buffer, contentType } =
       UploadChatFileSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({
@@ -122,7 +122,6 @@ export class S3ChatSource {
       filename
     });
 
-    console.log('upload to s3, contentType:', contentType);
     await this.bucket.putObject(fileKey, buffer, undefined, {
       'Content-Type': contentType || 'application/octet-stream'
     });
