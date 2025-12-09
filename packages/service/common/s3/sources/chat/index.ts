@@ -16,14 +16,9 @@ import { getFileS3Key } from '../../utils';
 
 export class S3ChatSource {
   private bucket: S3PrivateBucket;
-  private static instance: S3ChatSource;
 
   constructor() {
     this.bucket = new S3PrivateBucket();
-  }
-
-  static getInstance() {
-    return (this.instance ??= new S3ChatSource());
   }
 
   static parseChatUrl(url: string | URL) {
@@ -131,5 +126,13 @@ export class S3ChatSource {
 }
 
 export function getS3ChatSource() {
-  return S3ChatSource.getInstance();
+  if (global.chatBucket) {
+    return global.chatBucket;
+  }
+  global.chatBucket = new S3ChatSource();
+  return global.chatBucket;
+}
+
+declare global {
+  var chatBucket: S3ChatSource;
 }

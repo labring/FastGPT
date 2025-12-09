@@ -207,23 +207,18 @@ export const getFileContentFromLinks = async ({
 
           // Get file name
           const { filename, extension, imageParsePrefix } = (() => {
-            const contentDisposition = response.headers['content-disposition'];
-            if (contentDisposition) {
+            if (isChatExternalUrl) {
+              const contentDisposition = response.headers['content-disposition'] || '';
               const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
               const matches = filenameRegex.exec(contentDisposition);
-              if (matches != null && matches[1]) {
-                const filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
-                return {
-                  filename,
-                  extension: path.extname(filename).replace('.', ''),
-                  imageParsePrefix: `` // TODO: 需要根据是否是聊天对话里面的外部链接来决定
-                };
-              }
-            }
+              const matchFilename =
+                matches != null && matches[1] ? matches[1].replace(/['"]/g, '') : '';
 
-            if (isChatExternalUrl) {
-              const filename = urlObj.pathname.split('/').pop() || 'file';
+              const filename = decodeURIComponent(
+                matchFilename || urlObj.pathname.split('/').pop() || 'file'
+              );
               const extension = path.extname(filename).replace('.', '');
+
               return {
                 filename,
                 extension,

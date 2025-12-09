@@ -28,6 +28,7 @@ export const Mimes = {
 export const defaultS3Options: {
   externalBaseURL?: string;
   afterInit?: () => Promise<void> | void;
+  init?: boolean;
 } & ClientOptions = {
   useSSL: process.env.S3_USE_SSL === 'true',
   endPoint: process.env.S3_ENDPOINT || 'localhost',

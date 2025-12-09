@@ -62,7 +62,9 @@ export class S3BaseBucket {
       await this.options.afterInit?.();
       console.log(`S3 init success: ${this.name}`);
     };
-    init();
+    if (this.options.init) {
+      init();
+    }
   }
 
   get name(): string {
