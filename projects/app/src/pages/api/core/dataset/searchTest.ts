@@ -114,9 +114,11 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       : undefined,
     extensionUsage: queryExtensionResult
       ? {
-          model: queryExtensionResult.model,
+          model: queryExtensionResult.llmModel,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          embeddingTokens: queryExtensionResult.embeddingTokens,
+          embeddingModel: dataset.vectorModel
         }
       : undefined
   });
@@ -143,7 +145,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   return {
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-    queryExtensionModel: queryExtensionResult?.model,
+    queryExtensionModel: queryExtensionResult?.llmModel,
     usingReRank: searchUsingReRank,
     ...result
   };

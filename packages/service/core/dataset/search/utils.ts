@@ -1,17 +1,18 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { addLog } from '../../../common/system/log';
 
 export const datasetSearchQueryExtension = async ({
   query,
-  extensionModel,
+  llmModel,
+  embeddingModel,
   extensionBg = '',
   histories = []
 }: {
   query: string;
-  extensionModel?: LLMModelItemType;
+  llmModel?: string;
+  embeddingModel?: string;
   extensionBg?: string;
   histories?: ChatItemType[];
 }) => {
@@ -28,19 +29,8 @@ export const datasetSearchQueryExtension = async ({
     return filterSameQueries;
   };
 
-  let { queries, rewriteQuery, alreadyExtension } = (() => {
-    // concat query
-    let rewriteQuery =
-      histories.length > 0
-        ? `${histories
-            .map((item) => {
-              return `${item.obj}: ${chatValue2RuntimePrompt(item.value).text}`;
-            })
-            .join('\n')}
-Human: ${query}
-`
-        : query;
-
+  // 检查传入的 query 是否已经进行过扩展
+  let { queries, reRankQuery, alreadyExtension } = (() => {
     /* if query already extension, direct parse */
     try {
       const jsonParse = JSON.parse(query);
@@ -48,41 +38,45 @@ Human: ${query}
       const alreadyExtension = Array.isArray(jsonParse);
       return {
         queries,
-        rewriteQuery: alreadyExtension ? queries.join('\n') : rewriteQuery,
-        alreadyExtension: alreadyExtension
+        reRankQuery: alreadyExtension ? queries.join('\n') : query,
+        alreadyExtension
       };
     } catch (error) {
       return {
         queries: [query],
-        rewriteQuery,
+        reRankQuery: query,
         alreadyExtension: false
       };
     }
   })();
 
-  // ai extension
+  // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!extensionModel || alreadyExtension) return;
-    const result = await queryExtension({
-      chatBg: extensionBg,
-      query,
-      histories,
-      model: extensionModel.model
-    });
-    if (result.extensionQueries?.length === 0) return;
-    return result;
+    if (!llmModel || !embeddingModel || alreadyExtension) return;
+
+    try {
+      const result = await queryExtension({
+        chatBg: extensionBg,
+        query,
+        histories,
+        llmModel,
+        embeddingModel
+      });
+      if (result.extensionQueries?.length === 0) return;
+      return result;
+    } catch (error) {
+      addLog.error('Failed to generate extension queries', error);
+    }
   })();
 
-  const extensionQueries = filterSamQuery(aiExtensionResult?.extensionQueries || []);
   if (aiExtensionResult) {
-    queries = filterSamQuery(queries.concat(extensionQueries));
-    rewriteQuery = queries.join('\n');
+    queries = queries.concat(aiExtensionResult.extensionQueries);
+    reRankQuery = queries.join('\n');
   }
 
   return {
-    extensionQueries,
-    concatQueries: queries,
-    rewriteQuery,
+    searchQueries: queries,
+    reRankQuery,
     aiExtensionResult
   };
 };

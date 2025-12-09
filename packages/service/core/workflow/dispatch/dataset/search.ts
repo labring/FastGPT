@@ -1,7 +1,4 @@
-import {
-  type DispatchNodeResponseType,
-  type DispatchNodeResultType
-} from '@fastgpt/global/core/workflow/runtime/type.d';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -17,6 +14,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
+import { addLog } from '../../../../common/system/log';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
@@ -52,7 +50,6 @@ export async function dispatchDatasetSearch(
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
-    uid,
     histories,
     node,
     params: {
@@ -117,7 +114,7 @@ export async function dispatchDatasetSearch(
       return emptyResult;
     }
 
-    // get vector
+    // Get vector model
     const vectorModel = getEmbeddingModel(
       (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
     );
@@ -165,7 +162,7 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
-    // vector
+    // 1. Search vector
     const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
       formatModelChars2Points({
         model: vectorModel.model,
@@ -177,96 +174,98 @@ export async function dispatchDatasetSearch(
       model: embeddingModelName,
       inputTokens: embeddingTokens
     });
-    // Rerank
-    const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
-      model: rerankModelData?.model,
-      inputTokens: reRankInputTokens
-    });
+    // 2. Rerank
     if (usingReRank) {
+      const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
+        formatModelChars2Points({
+          model: rerankModelData?.model,
+          inputTokens: reRankInputTokens
+        });
       nodeDispatchUsages.push({
         totalPoints: reRankTotalPoints,
-        moduleName: node.name,
+        moduleName: i18nT('account_usage:rerank'),
         model: reRankModelName,
         inputTokens: reRankInputTokens
       });
     }
-    // Query extension
-    (() => {
-      if (queryExtensionResult) {
-        const { totalPoints, modelName } = formatModelChars2Points({
-          model: queryExtensionResult.model,
-          inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
-        });
-        nodeDispatchUsages.push({
-          totalPoints,
-          moduleName: i18nT('common:core.module.template.Query extension'),
-          model: modelName,
-          inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
-        });
-        return {
-          totalPoints
-        };
-      }
-      return {
-        totalPoints: 0
-      };
-    })();
-    // Deep search
-    (() => {
-      if (deepSearchResult) {
-        const { totalPoints, modelName } = formatModelChars2Points({
-          model: deepSearchResult.model,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens
-        });
-        nodeDispatchUsages.push({
-          totalPoints,
-          moduleName: i18nT('common:deep_rag_search'),
-          model: modelName,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens
-        });
-        return {
-          totalPoints
-        };
-      }
-      return {
-        totalPoints: 0
-      };
-    })();
+    // 3. Query extension
+    if (queryExtensionResult) {
+      const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+        model: queryExtensionResult.llmModel,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens
+      });
+      nodeDispatchUsages.push({
+        totalPoints: llmPoints,
+        moduleName: i18nT('common:core.module.template.Query extension'),
+        model: llmModelName,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens
+      });
 
+      const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
+        formatModelChars2Points({
+          model: queryExtensionResult.embeddingModel,
+          inputTokens: queryExtensionResult.embeddingTokens
+        });
+      nodeDispatchUsages.push({
+        totalPoints: embeddingPoints,
+        moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+        model: embeddingModelName,
+        inputTokens: queryExtensionResult.embeddingTokens,
+        outputTokens: 0
+      });
+    }
+    // 4. Deep search
+    if (deepSearchResult) {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: deepSearchResult.model,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens
+      });
+      nodeDispatchUsages.push({
+        totalPoints,
+        moduleName: i18nT('common:deep_rag_search'),
+        model: modelName,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens
+      });
+    }
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
-
-    const responseData: DispatchNodeResponseType & { totalPoints: number } = {
-      totalPoints,
-      query: userChatInput,
-      embeddingModel: vectorModel.name,
-      embeddingTokens,
-      similarity: usingSimilarityFilter ? similarity : undefined,
-      limit,
-      searchMode,
-      embeddingWeight:
-        searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
-      // Rerank
-      ...(searchUsingReRank && {
-        rerankModel: rerankModelData?.name,
-        rerankWeight: rerankWeight,
-        reRankInputTokens
-      }),
-      searchUsingReRank,
-      // Results
-      quoteList: searchRes,
-      queryExtensionResult,
-      deepSearchResult
-    };
 
     return {
       data: {
         quoteQA: searchRes
       },
-      [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints,
+        query: userChatInput,
+        embeddingModel: vectorModel.name,
+        embeddingTokens,
+        similarity: usingSimilarityFilter ? similarity : undefined,
+        limit,
+        searchMode,
+        embeddingWeight:
+          searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
+        // Rerank
+        ...(searchUsingReRank && {
+          rerankModel: rerankModelData?.name,
+          rerankWeight: rerankWeight,
+          reRankInputTokens
+        }),
+        searchUsingReRank,
+        queryExtensionResult: queryExtensionResult
+          ? {
+              model: queryExtensionResult.llmModel,
+              inputTokens: queryExtensionResult.inputTokens,
+              outputTokens: queryExtensionResult.outputTokens,
+              query: queryExtensionResult.query
+            }
+          : undefined,
+        deepSearchResult,
+        // Results
+        quoteList: searchRes
+      },
       nodeDispatchUsages,
       [DispatchNodeResponseKeyEnum.toolResponses]:
         searchRes.length > 0
@@ -282,6 +281,7 @@ export async function dispatchDatasetSearch(
           : 'No results'
     };
   } catch (error) {
+    addLog.error(`[Dataset search] error`, error);
     return getNodeErrResponse({ error });
   }
 }

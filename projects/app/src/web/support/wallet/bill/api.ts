@@ -1,27 +1,25 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
-  CheckPayResultResponse,
-  CreateBillProps,
-  CreateBillResponse,
-  CreateOrderResponse,
-  UpdatePaymentProps
-} from '@fastgpt/global/support/wallet/bill/api';
-import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+  CreateBillPropsType,
+  CreateBillResponseType,
+  GetBillListQueryType,
+  GetBillListResponseType,
+  CheckPayResultResponseType,
+  UpdatePaymentPropsType,
+  BillDetailResponseType,
+  CancelBillPropsType,
+  UpdateBillResponseType
+} from '@fastgpt/global/openapi/support/wallet/bill/api';
 import { BillStatusEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
-export const getBills = (
-  data: PaginationProps<{
-    type?: BillTypeEnum;
-  }>
-) => POST<PaginationResponse<BillSchemaType>>(`/proApi/support/wallet/bill/list`, data);
+export const getBills = (data: GetBillListQueryType) =>
+  POST<GetBillListResponseType>(`/proApi/support/wallet/bill/list`, data);
 
-export const postCreatePayBill = (data: CreateBillProps) =>
-  POST<CreateBillResponse>(`/proApi/support/wallet/bill/create`, data);
+export const postCreatePayBill = (data: CreateBillPropsType) =>
+  POST<CreateBillResponseType>(`/proApi/support/wallet/bill/create`, data);
 
-export const checkBalancePayResult = (payId: string) =>
-  GET<CheckPayResultResponse>(`/proApi/support/wallet/bill/pay/checkPayResult`, { payId }).then(
+export const checkBalancePayResult = (payId: string): Promise<CheckPayResultResponseType> =>
+  GET<CheckPayResultResponseType>(`/proApi/support/wallet/bill/pay/checkPayResult`, { payId }).then(
     (data) => {
       try {
         if (data.status === BillStatusEnum.SUCCESS) {
@@ -32,7 +30,13 @@ export const checkBalancePayResult = (payId: string) =>
     }
   );
 
-export const putUpdatePayment = (data: UpdatePaymentProps) =>
-  PUT<CreateOrderResponse>(`/proApi/support/wallet/bill/pay/updatePayment`, data);
+export const putUpdatePayment = (data: UpdatePaymentPropsType) =>
+  PUT<UpdateBillResponseType>(`/proApi/support/wallet/bill/pay/updatePayment`, data);
 
 export const balanceConversion = () => GET<string>(`/proApi/support/wallet/bill/balanceConversion`);
+
+export const cancelBill = (data: CancelBillPropsType) =>
+  POST(`/proApi/support/wallet/bill/cancel`, data);
+
+export const getBillDetail = (billId: string) =>
+  GET<BillDetailResponseType>(`/proApi/support/wallet/bill/detail`, { billId });

@@ -22,7 +22,10 @@ export enum QueueNames {
   datasetSync = 'datasetSync',
   evaluation = 'evaluation',
   s3FileDelete = 's3FileDelete',
-  // abondoned
+
+  // Delete Queue
+  datasetDelete = 'datasetDelete',
+  // @deprecated
   websiteSync = 'websiteSync'
 }
 
