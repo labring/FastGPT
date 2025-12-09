@@ -75,7 +75,7 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
       };
     }
 
-    // Default to image type for non-document files
+    // Default to file type for non-extension files
     return {
       type: ChatFileTypeEnum.image,
       name: filename || 'null',

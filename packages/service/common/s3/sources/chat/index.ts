@@ -1,11 +1,13 @@
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
 import { S3Sources } from '../../type';
+import type { UploadFileParams } from './type';
 import {
   type CheckChatFileKeys,
   type DelChatFileByPrefixParams,
   ChatFileUploadSchema,
-  DelChatFileByPrefixSchema
+  DelChatFileByPrefixSchema,
+  UploadChatFileSchema
 } from './type';
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../constants';
@@ -108,6 +110,30 @@ export class S3ChatSource {
 
   deleteChatFileByKey(key: string) {
     return this.bucket.addDeleteJob({ key });
+  }
+
+  async uploadFile(params: UploadFileParams) {
+    const { appId, chatId, uId, filename, expiredTime, buffer, contentType } =
+      UploadChatFileSchema.parse(params);
+    const { fileKey } = getFileS3Key.chat({
+      appId,
+      chatId,
+      uId,
+      filename
+    });
+
+    console.log('upload to s3, contentType:', contentType);
+    await this.bucket.putObject(fileKey, buffer, undefined, {
+      'Content-Type': contentType || 'application/octet-stream'
+    });
+
+    return {
+      fileKey,
+      accessUrl: await this.bucket.createPreviewUrl({
+        key: fileKey,
+        expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24
+      })
+    };
   }
 }
 

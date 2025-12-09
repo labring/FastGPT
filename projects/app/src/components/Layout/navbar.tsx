@@ -85,6 +85,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: [
           '/account/bill',
           '/account/info',
+          '/account/customDomain',
           '/account/team',
           '/account/usage',
           '/account/thirdParty',
