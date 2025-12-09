@@ -23,7 +23,7 @@ TrackSchema.index(
 );
 // QPM index
 TrackSchema.index(
-  { event: 1, createTime: -1 },
+  { event: 1, createTime: -1, 'data.requestCount': 1 },
   {
     partialFilterExpression: {
       event: TrackEnum.teamChatQPM

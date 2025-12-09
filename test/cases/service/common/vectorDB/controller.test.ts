@@ -121,27 +121,27 @@ describe('VectorDB Controller', () => {
       const result = await getVectorCountByTeamId('team_123');
 
       expect(result).toBe(150);
-      expect(mockGetVectorCountByTeamId).not.toHaveBeenCalled();
+      expect(mockGetVectorCount).not.toHaveBeenCalled();
     });
 
     it('should fetch from Vector and cache if no cache exists', async () => {
       mockGetRedisCache.mockResolvedValue(null);
-      mockGetVectorCountByTeamId.mockResolvedValue(200);
+      mockGetVectorCount.mockResolvedValue(200);
 
       const result = await getVectorCountByTeamId('team_456');
 
       expect(result).toBe(200);
-      expect(mockGetVectorCountByTeamId).toHaveBeenCalledWith('team_456');
+      expect(mockGetVectorCount).toHaveBeenCalledWith({ teamId: 'team_456' });
     });
 
     it('should handle undefined cache value', async () => {
       mockGetRedisCache.mockResolvedValue(undefined);
-      mockGetVectorCountByTeamId.mockResolvedValue(50);
+      mockGetVectorCount.mockResolvedValue(50);
 
       const result = await getVectorCountByTeamId('team_789');
 
       expect(result).toBe(50);
-      expect(mockGetVectorCountByTeamId).toHaveBeenCalled();
+      expect(mockGetVectorCount).toHaveBeenCalledWith({ teamId: 'team_789' });
     });
   });
 
