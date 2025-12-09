@@ -120,7 +120,7 @@ const WecomEditModal = ({
               <Box color="myGray.900" fontWeight={'500'}>
                 {t('publish:basic_info')}
               </Box>
-              <Grid gridTemplateColumns={'1fr 1fr'} columnGap="4">
+              <Grid gridTemplateColumns={'1fr 1fr'} gap="4">
                 <Flex flexDir={'column'} gap="2">
                   <FormLabel required>{t('common:Name')}</FormLabel>
                   <Input

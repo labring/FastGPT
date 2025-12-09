@@ -131,7 +131,6 @@
   "website_sync_per_dataset": "站点同步最大页数",
   "yes": "是",
   "yuan": "{{amount}}元",
-  "no": "否",
   "subscription_period": "订阅周期",
   "subscription_package": "订阅套餐",
   "subscription_mode_month": "时长",
