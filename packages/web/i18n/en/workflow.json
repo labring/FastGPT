@@ -221,5 +221,15 @@
   "workflow.My edit": "My edits",
   "workflow.Switch_success": "Switched successfully.",
   "workflow.Team cloud": "Historical versions",
-  "workflow.exit_tips": "Your changes are not saved and will be discarded if you exit directly."
+  "workflow.exit_tips": "Your changes are not saved and will be discarded if you exit directly.",
+  "customer_service.dataset_search_node_name": "Knowledge Base Search",
+  "customer_service.checker_node_name": "Checker #2",
+  "customer_service.file_link_label": "File Link",
+  "customer_service.search_content_desc": "Content to search",
+  "customer_service.fallback_reply_desc": "Fallback reply",
+  "customer_service.fallback_reply_default": "Sorry, I couldn't find an answer. You can try rephrasing your question, and I'll also pass your feedback to the relevant team.",
+  "customer_service.answer_mode_desc": "How to respond when knowledge base has relevant content",
+  "customer_service.answer_mode_quote": "Quote",
+  "customer_service.answer_mode_summary": "LLM Summary",
+  "customer_service.welcome_text_default": "Hello! How can I help you?"
 }

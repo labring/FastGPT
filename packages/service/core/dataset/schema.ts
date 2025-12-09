@@ -195,6 +195,13 @@ const DatasetSchema = new Schema({
     default: true
   },
 
+  // 同义词文件ID数组 - 该知识库绑定的同义词文件
+  // 注意：设计支持多文件，但当前版本仅支持单个文件（数组长度≤1）
+  synonymFiles: {
+    type: [Schema.Types.ObjectId],
+    default: []
+  },
+
   apiDatasetServer: Object,
 
   // abandoned

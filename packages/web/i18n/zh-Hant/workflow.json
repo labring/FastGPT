@@ -221,5 +221,15 @@
   "workflow.My edit": "我的編輯",
   "workflow.Switch_success": "切換成功",
   "workflow.Team cloud": "團隊雲端",
-  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
+  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "customer_service.dataset_search_node_name": "知識庫搜尋",
+  "customer_service.checker_node_name": "判斷器#2",
+  "customer_service.file_link_label": "檔案連結",
+  "customer_service.search_content_desc": "需要檢索的內容",
+  "customer_service.fallback_reply_desc": "兜底回覆",
+  "customer_service.fallback_reply_default": "抱歉，我沒有找到答案，您可以嘗試重新提問，我也會幫您反饋給相關團隊。",
+  "customer_service.answer_mode_desc": "知識庫有相關內容時的回答方式",
+  "customer_service.answer_mode_quote": "原文引用",
+  "customer_service.answer_mode_summary": "模型總結",
+  "customer_service.welcome_text_default": "您好，請問有什麼可以幫您？"
 }

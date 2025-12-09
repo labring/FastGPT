@@ -364,5 +364,6 @@
   "logs_user_callback": "用戶回饋",
   "team.menu.plugin": "外掛",
   "team.menu.app": "簡易應用程式",
-  "team.menu.workflow": "工作流程"
+  "team.menu.workflow": "工作流程",
+  "template.customer_service_assistant": "智能客服助手"
 }
