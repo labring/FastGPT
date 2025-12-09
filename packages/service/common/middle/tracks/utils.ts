@@ -156,5 +156,38 @@ export const pushTrack = {
         teamId: data.teamId
       }
     });
+  },
+  subscriptionDeleted: (data: {
+    teamId: string;
+    subscriptionType: string;
+    subLevel?: string;
+    totalPoints: number;
+    usedPoints: number;
+    startTime: Date;
+    expiredTime: Date;
+  }) => {
+    return createTrack({
+      event: TrackEnum.subscriptionDeleted,
+      data: {
+        teamId: data.teamId,
+        subscriptionType: data.subscriptionType,
+        subLevel: data.subLevel,
+        totalPoints: data.totalPoints,
+        usedPoints: data.usedPoints,
+        activeDays: Math.ceil(
+          (new Date(data.expiredTime).getTime() - new Date(data.startTime).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
+      }
+    });
+  },
+  freeAccountCleanup: (data: { teamId: string; expiredTime: Date }) => {
+    return createTrack({
+      event: TrackEnum.freeAccountCleanup,
+      data: {
+        teamId: data.teamId,
+        expiredTime: data.expiredTime
+      }
+    });
   }
 };

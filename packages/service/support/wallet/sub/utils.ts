@@ -278,3 +278,17 @@ export const getTeamPoints = async ({ teamId }: { teamId: string }) => {
     usedPoints: planStatus.usedPoints
   };
 };
+
+export const getCachedTeamQPMLimit = async (teamId: string): Promise<number | null> => {
+  const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+  const cached = await getRedisCache(cacheKey);
+  return cached ? Number(cached) : null;
+};
+export const setCachedTeamQPMLimit = async (teamId: string, limit: number): Promise<void> => {
+  const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+  await setRedisCache(cacheKey, limit.toString(), CacheKeyEnumTime.team_qpm_limit);
+};
+export const clearTeamQPMLimitCache = async (teamId: string): Promise<void> => {
+  const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+  await delRedisCache(cacheKey);
+};

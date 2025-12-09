@@ -2,15 +2,19 @@
 import { getGlobalRedisConnection } from '../../common/redis';
 import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
+import {
+  getCachedTeamQPMLimit,
+  setCachedTeamQPMLimit,
+  getTeamPlanStatus
+} from '../../support/wallet/sub/utils';
+import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 export enum LimitTypeEnum {
   chat = 'chat'
 }
-const limitMap = {
-  [LimitTypeEnum.chat]: {
-    seconds: 60,
-    limit: Number(process.env.CHAT_MAX_QPM || 5000)
-  }
+
+const limitSecondsMap = {
+  [LimitTypeEnum.chat]: 60
 };
 
 type FrequencyLimitOption = {
@@ -19,8 +23,31 @@ type FrequencyLimitOption = {
   res: NextApiResponse;
 };
 
+// Get team's dynamic QPM limit with caching
+export const getTeamQPMLimit = async (teamId: string): Promise<number> => {
+  // 1. Try to get from cache first
+  const cachedLimit = await getCachedTeamQPMLimit(teamId);
+  if (cachedLimit !== null) {
+    return cachedLimit;
+  }
+
+  // 2. Cache miss, compute from database
+  const teamPlanStatus = await getTeamPlanStatus({ teamId });
+  const limit =
+    teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
+    teamPlanStatus.standardConstants?.requestsPerMinute ??
+    30;
+
+  // 3. Write to cache
+  await setCachedTeamQPMLimit(teamId, limit);
+
+  return limit;
+};
+
 export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOption) => {
-  const { seconds, limit } = limitMap[type];
+  const limit = await getTeamQPMLimit(teamId);
+  const seconds = limitSecondsMap[type];
+
   const redis = getGlobalRedisConnection();
   const key = `frequency:${type}:${teamId}`;
 
