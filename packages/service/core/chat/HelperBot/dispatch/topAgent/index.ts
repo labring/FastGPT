@@ -30,7 +30,10 @@ export const dispatchTopAgent = async (
     teamId: user.teamId,
     isRoot: user.isRoot
   });
-  const systemPrompt = getPrompt({ resourceList });
+  const systemPrompt = getPrompt({
+    resourceList,
+    metadata: metadata.data
+  });
 
   const historyMessages = helperChats2GPTMessages({
     messages: histories,
@@ -41,9 +44,6 @@ export const dispatchTopAgent = async (
     ...historyMessages,
     { role: 'user' as const, content: query }
   ];
-
-  // console.log('📝 TopAgent 阶段 1: 信息收集');
-  // console.log('conversationMessages:', conversationMessages);
 
   const llmResponse = await createLLMResponse({
     body: {
@@ -64,91 +64,69 @@ export const dispatchTopAgent = async (
       });
     }
   });
+
   usage.inputTokens = llmResponse.usage.inputTokens;
   usage.outputTokens = llmResponse.usage.outputTokens;
 
-  /* 
-    3 种返回情况
-      1. 「信息收集已完成」
-      2. JSON 字符串：{ reasoning?: string; question?: string }
-      3. 配置表单
-  */
-  const firstPhaseAnswer = llmResponse.answerText;
-  const firstPhaseReasoning = llmResponse.reasoningText;
+  const answerText = llmResponse.answerText;
+  const reasoningText = llmResponse.reasoningText;
 
-  // 尝试解析信息收集阶段的 JSON 响应
-  let parsedResponse: { reasoning?: string; question?: string } | null = null;
   try {
-    parsedResponse = JSON.parse(firstPhaseAnswer);
-  } catch (e) {
-    // 如果解析失败,说明不是 JSON 格式,可能是普通文本
-    parsedResponse = null;
-  }
+    const responseJson = JSON.parse(answerText);
 
-  if (firstPhaseAnswer.includes('「信息收集已完成」')) {
-    addLog.debug('🔄 TopAgent: 检测到信息收集完成信号，切换到计划生成阶段');
-
-    const newMessages = [
-      ...conversationMessages,
-      { role: 'assistant' as const, content: firstPhaseAnswer },
-      { role: 'user' as const, content: '请你直接生成规划方案' }
-    ];
-
-    const planResponse = await createLLMResponse({
-      body: {
-        messages: newMessages,
-        model: modelData,
-        stream: true
-      },
-      onStreaming: ({ text }) => {
-        workflowResponseWrite?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({ text })
-        });
-      },
-      onReasoning: ({ text }) => {
-        workflowResponseWrite?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({ reasoning_content: text })
-        });
-      }
-    });
-    usage.inputTokens = planResponse.usage.inputTokens;
-    usage.outputTokens = planResponse.usage.outputTokens;
-
-    try {
-      const planJson = JSON.parse(planResponse.answerText);
+    if (responseJson.phase === 'generation') {
+      addLog.debug('🔄 TopAgent: Configuration generation phase');
 
       const formData = TopAgentFormDataSchema.parse({
-        role: planJson.task_analysis?.role,
-        taskObject: planJson.task_analysis?.goal,
-        tools: planJson.resources?.tools?.map((tool: any) => tool.id),
-        fileUploadEnabled: planJson.resources?.system_features?.file_upload?.enabled || false
+        role: responseJson.task_analysis?.role,
+        taskObject: responseJson.task_analysis?.goal,
+        tools: responseJson.resources?.tools?.map((tool: any) => tool.id),
+        fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false
       });
 
-      // Send formData if exists
       if (formData) {
         workflowResponseWrite?.({
           event: SseResponseEventEnum.formData,
           data: formData
         });
       }
-    } catch (e) {
-      addLog.warn(`[Top agent] parse answer faield`, { text: planResponse.answerText });
-    }
 
+      return {
+        aiResponse: formatAIResponse({
+          text: answerText,
+          reasoning: reasoningText
+        }),
+        usage
+      };
+    } else if (responseJson.phase === 'collection') {
+      addLog.debug('📝 TopAgent: Information collection phase');
+
+      const displayText = responseJson.question || answerText;
+      return {
+        aiResponse: formatAIResponse({
+          text: displayText,
+          reasoning: responseJson.reasoning || reasoningText
+        }),
+        usage
+      };
+    } else {
+      addLog.warn(`[Top agent] Unknown phase: ${responseJson.phase}`);
+      return {
+        aiResponse: formatAIResponse({
+          text: answerText,
+          reasoning: reasoningText
+        }),
+        usage
+      };
+    }
+  } catch (e) {
+    addLog.warn(`[Top agent] Failed to parse JSON response`, { text: answerText });
     return {
       aiResponse: formatAIResponse({
-        text: planResponse.answerText,
-        reasoning: planResponse.reasoningText
+        text: answerText,
+        reasoning: reasoningText
       }),
       usage
     };
   }
-
-  const displayText = parsedResponse?.question || firstPhaseAnswer;
-  return {
-    aiResponse: formatAIResponse({ text: displayText, reasoning: firstPhaseReasoning }),
-    usage
-  };
 };
