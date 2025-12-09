@@ -179,13 +179,13 @@ export const getFileContentFromLinks = async ({
           sourceId: url,
           customPdfParse
         });
-        if (rawTextBuffer) {
-          return formatResponseObject({
-            filename: rawTextBuffer.filename || url,
-            url,
-            content: rawTextBuffer.text
-          });
-        }
+        // if (rawTextBuffer) {
+        //   return formatResponseObject({
+        //     filename: rawTextBuffer.filename || url,
+        //     url,
+        //     content: rawTextBuffer.text
+        //   });
+        // }
 
         try {
           if (isInternalAddress(url)) {
@@ -209,14 +209,35 @@ export const getFileContentFromLinks = async ({
           const { filename, extension, imageParsePrefix } = (() => {
             if (isChatExternalUrl) {
               const contentDisposition = response.headers['content-disposition'] || '';
-              const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-              const matches = filenameRegex.exec(contentDisposition);
-              const matchFilename =
-                matches != null && matches[1] ? matches[1].replace(/['"]/g, '') : '';
 
-              const filename = decodeURIComponent(
-                matchFilename || urlObj.pathname.split('/').pop() || 'file'
-              );
+              // Priority: filename* (RFC 5987, UTF-8 encoded) > filename (traditional)
+              const extractFilename = (contentDisposition: string): string => {
+                // Try RFC 5987 filename* first (e.g., filename*=UTF-8''encoded-name)
+                const filenameStarRegex = /filename\*=([^']*)'([^']*)'([^;\n]*)/i;
+                const starMatches = filenameStarRegex.exec(contentDisposition);
+                if (starMatches && starMatches[3]) {
+                  const charset = starMatches[1].toLowerCase();
+                  const encodedFilename = starMatches[3];
+                  // Decode percent-encoded UTF-8 filename
+                  try {
+                    return decodeURIComponent(encodedFilename);
+                  } catch (error) {
+                    addLog.warn('Failed to decode filename*', { encodedFilename, error });
+                  }
+                }
+
+                // Fallback to traditional filename parameter
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i;
+                const matches = filenameRegex.exec(contentDisposition);
+                if (matches && matches[1]) {
+                  return matches[1].replace(/['"]/g, '');
+                }
+
+                return '';
+              };
+
+              const matchFilename = extractFilename(contentDisposition);
+              const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
               const extension = path.extname(filename).replace('.', '');
 
               return {
