@@ -7,22 +7,34 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { listCustomDomain } from '@/web/support/customDomain/api';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 
 export type ShowShareLinkModalProps = {
   shareLink: string;
   onClose: () => void;
   img: string;
+  defaultDomain?: boolean;
+  showCustomDomainSelector?: boolean;
 };
 
-export const ShareLinkContainer = ({ shareLink, img }: { shareLink: string; img: string }) => {
+export const ShareLinkContainer = ({
+  shareLink,
+  img,
+  defaultDomain = true,
+  showCustomDomainSelector = false
+}: {
+  shareLink: string;
+  img: string;
+  defaultDomain?: boolean;
+  showCustomDomainSelector?: boolean;
+}) => {
   const { copyData } = useCopyData();
   const { t } = useTranslation();
   const [customDomain, setCustomDomain] = useState<string | undefined>(undefined);
 
   const { data: customDomainList = [] } = useRequest2(listCustomDomain, {
-    manual: false
+    manual: !showCustomDomainSelector
   });
 
   // 从 shareLink 中提取原始域名
@@ -45,9 +57,9 @@ export const ShareLinkContainer = ({ shareLink, img }: { shareLink: string; img:
 
   // 处理域名选择选项
   const domainOptions = useMemo(() => {
-    const options = [
+    const defaultOption = [
       {
-        label: t('publish:use_default_domain') || '使用默认域名',
+        label: t('publish:use_default_domain'),
         value: ''
       }
     ];
@@ -60,12 +72,22 @@ export const ShareLinkContainer = ({ shareLink, img }: { shareLink: string; img:
         value: item.domain
       }));
 
-    return [...options, ...activeDomains];
-  }, [customDomainList, t]);
+    return activeDomains.length === 0
+      ? [...defaultOption]
+      : [...(defaultDomain ? defaultOption : []), ...activeDomains];
+  }, [customDomainList, defaultDomain, t]);
+
+  // 当 defaultDomain=false 时，自动选择第一个自定义域名
+  useEffect(() => {
+    if (!defaultDomain && domainOptions.length > 0 && customDomain === undefined) {
+      setCustomDomain(domainOptions[0].value || undefined);
+    }
+  }, [defaultDomain, domainOptions, customDomain]);
+
   return (
     <>
       {/* 自定义域名选择器 */}
-      {domainOptions.length > 1 && (
+      {showCustomDomainSelector && domainOptions.length > 1 && (
         <Box mb={4}>
           <MySelect
             value={customDomain || ''}
@@ -129,13 +151,24 @@ export const ShareLinkContainer = ({ shareLink, img }: { shareLink: string; img:
   );
 };
 
-function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps) {
+function ShowShareLinkModal({
+  shareLink,
+  onClose,
+  img,
+  defaultDomain,
+  showCustomDomainSelector
+}: ShowShareLinkModalProps) {
   const { t } = useTranslation();
 
   return (
     <MyModal onClose={onClose} title={t('publish:show_share_link_modal_title')}>
       <ModalBody>
-        <ShareLinkContainer shareLink={shareLink} img={img} />
+        <ShareLinkContainer
+          shareLink={shareLink}
+          img={img}
+          defaultDomain={defaultDomain}
+          showCustomDomainSelector={showCustomDomainSelector}
+        />
       </ModalBody>
     </MyModal>
   );
