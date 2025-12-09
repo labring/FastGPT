@@ -92,13 +92,13 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
 
-  const [provider, setProvider] = useState<ProviderEnum>('aliyun');
+  const [provider, setProvider] = useState<ProviderEnum>('tencent');
   const [domain, setDomain] = useState<string>('');
   const [editDomain, setEditDomain] = useState<boolean>(true);
 
   useEffect(() => {
     if (type === 'refresh') {
-      setProvider(data?.provider || 'aliyun');
+      setProvider(data?.provider || 'tencent');
       setDomain(data?.domain || '');
     }
   }, [data, type]);
@@ -173,15 +173,15 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
         </Box>
         <Flex flexDirection="row" gap="16px" w="100%" marginTop={'10px'}>
           <ProviderItem
-            icon="support/account/customDomain/provider/aliyun"
-            selected={provider === 'aliyun'}
-            onClick={() => setProvider('aliyun')}
-            isDisabled={!editDomain || type === 'refresh'}
-          />
-          <ProviderItem
             icon="support/account/customDomain/provider/tencent"
             selected={provider === 'tencent'}
             onClick={() => setProvider('tencent')}
+            isDisabled={!editDomain || type === 'refresh'}
+          />
+          <ProviderItem
+            icon="support/account/customDomain/provider/aliyun"
+            selected={provider === 'aliyun'}
+            onClick={() => setProvider('aliyun')}
             isDisabled={!editDomain || type === 'refresh'}
           />
           <ProviderItem
