@@ -188,10 +188,7 @@ const WecomEditModal = ({
                 <Flex>
                   {feConfigs?.docUrl && (
                     <Link
-                      href={
-                        feConfigs.openAPIDocUrl ||
-                        getDocPath('/docs/use-cases/external-integration/wecom')
-                      }
+                      href={getDocPath('/docs/use-cases/external-integration/wecom')}
                       target={'_blank'}
                       ml={2}
                       color={'primary.500'}
@@ -232,6 +229,8 @@ const WecomEditModal = ({
             <ShareLinkContainer
               shareLink={`${baseUrl}/support/outLink/wecom/${shareId}`}
               img="/imgs/outlink/wecom-copylink-instruction.png"
+              defaultDomain={false}
+              showCustomDomainSelector={true}
             ></ShareLinkContainer>
           </Box>
         )}
