@@ -41,7 +41,7 @@ async function handler(
   }
 
   // 2. 权限校验 - 需要知识库写权限
-  const { teamId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -53,6 +53,7 @@ async function handler(
   await deleteSynonymFile({
     synonymId: id,
     teamId: String(teamId),
+    tmbId: String(tmbId),
     datasetId: String(synonymFile.datasetId)
   });
 

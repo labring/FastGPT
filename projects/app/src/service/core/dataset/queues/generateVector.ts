@@ -30,7 +30,7 @@ const reduceQueue = () => {
 type PopulateType = {
   dataset: { vectorModel: string };
   collection: { name: string; indexPrefixTitle: boolean; hypeIndexes: boolean };
-  data: { _id: string; indexes: DatasetDataSchemaType['indexes'] };
+  data: { _id: string; q: string; a: string; indexes: DatasetDataSchemaType['indexes'] };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 
@@ -53,9 +53,20 @@ export async function generateVector(): Promise<any> {
         error = false
       } = await (async () => {
         try {
+          // ✅ 查询多种训练模式 (chunk, synonymStandardize, synonymRestore)
+          // 说明: 这里同时查询三种模式是安全的，因为双向互斥检查保证了：
+          // 1. pushDataListToTrainingQueue 会检查并阻止 chunk 与 synonym 任务并发
+          // 2. uploadSynonymFile/deleteSynonymFile 会检查并阻止 synonym 与任何训练任务并发
+          // 因此同一知识库同一时刻只会有一种类型的任务，不会出现 mode 共存冲突
           const data = await MongoDatasetTraining.findOneAndUpdate(
             {
-              mode: TrainingModeEnum.chunk,
+              mode: {
+                $in: [
+                  TrainingModeEnum.chunk,
+                  TrainingModeEnum.synonymStandardize,
+                  TrainingModeEnum.synonymRestore
+                ]
+              },
               retryCount: { $gt: 0 },
               lockTime: { $lte: addMinutes(new Date(), -3) }
             },
@@ -75,7 +86,7 @@ export async function generateVector(): Promise<any> {
               },
               {
                 path: 'data',
-                select: '_id indexes'
+                select: '_id q a indexes'
               }
             ])
             .lean();
@@ -122,10 +133,21 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (data.dataId) {
+          // Route to different processors based on mode
+          if (data.mode === TrainingModeEnum.chunk && data.dataId) {
             return rebuildData({ trainingData: data });
-          } else {
+          } else if (data.mode === TrainingModeEnum.chunk && !data.dataId) {
             return insertData({ trainingData: data });
+          } else if (data.mode === TrainingModeEnum.synonymStandardize) {
+            // Import dynamically to avoid circular dependencies
+            const { processSynonymStandardize } = await import('./synonym/standardize');
+            return processSynonymStandardize({ trainingData: data });
+          } else if (data.mode === TrainingModeEnum.synonymRestore) {
+            // Import dynamically to avoid circular dependencies
+            const { processSynonymRestore } = await import('./synonym/restore');
+            return processSynonymRestore({ trainingData: data });
+          } else {
+            throw new Error(`Unknown training mode: ${data.mode}`);
           }
         })();
 

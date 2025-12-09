@@ -1,5 +1,5 @@
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { queryExtension } from '../../ai/functions/queryExtension';
+import { queryExtension, queryExtensionForAssistant } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
@@ -9,12 +9,18 @@ export const datasetSearchQueryExtension = async ({
   query,
   extensionModel,
   extensionBg = '',
-  histories = []
+  histories = [],
+  isAssistant = false,
+  teamId,
+  datasetIds
 }: {
   query: string;
   extensionModel?: LLMModelItemType;
   extensionBg?: string;
   histories?: ChatItemType[];
+  isAssistant?: boolean;
+  teamId?: string;
+  datasetIds?: string[];
 }) => {
   const filterSamQuery = (queries: string[]) => {
     const set = new Set<string>();
@@ -64,6 +70,21 @@ Human: ${query}
   // ai extension
   const aiExtensionResult = await (async () => {
     if (!extensionModel || alreadyExtension) return;
+
+    // 如果是 assistant 类型且有 teamId 和 datasetIds，使用新逻辑
+    if (isAssistant && teamId && datasetIds && datasetIds.length > 0) {
+      const result = await queryExtensionForAssistant({
+        query,
+        histories,
+        model: extensionModel.model,
+        teamId,
+        datasetIds
+      });
+      if (result.extensionQueries?.length === 0) return;
+      return result;
+    }
+
+    // 否则使用原有逻辑
     const result = await queryExtension({
       chatBg: extensionBg,
       query,
@@ -78,6 +99,12 @@ Human: ${query}
   if (aiExtensionResult) {
     queries = filterSamQuery(queries.concat(extensionQueries));
     rewriteQuery = queries.join('\n');
+  }
+
+  //参考客服跑验证集逻辑，不开问题优化，传入的query是原始query+问题改写+指代消除的标准化后的；拼接在一起
+  if (isAssistant) {
+    queries = [queries.join(';')];
+    rewriteQuery = queries.join(';');
   }
 
   return {

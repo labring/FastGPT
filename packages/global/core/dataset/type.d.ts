@@ -213,7 +213,13 @@ export type DatasetCollectionTagsSchemaType = {
 export type DatasetDataIndexItemType = {
   type: `${DatasetDataIndexTypeEnum}`;
   dataId: string; // pg data id
-  text: string;
+  text: string; // ⚠️ 存储标准化后的文本
+
+  // 该 index 的同义词转换元数据
+  synonymMetadata?: {
+    synonymFileIds: string[]; // 关联的同义词文件ID数组
+    transformations: TransformationRecordType[]; // 转换记录
+  };
 };
 
 export type DatasetDataFieldType = {
@@ -240,6 +246,10 @@ export type DatasetDataSchemaType = DatasetDataFieldType & {
   rebuilding?: boolean;
   imageDescMap?: Record<string, string>;
   metadata?: Record<string, any>;
+
+  // 同义词处理状态 (标记数据需要被处理)
+  synonymProcessing?: 'standardize' | 'restore';
+  synonymFileIds?: string[]; // 需要应用的同义词文件ID数组
 };
 
 export type DatasetDataTextSchemaType = {
@@ -415,4 +425,23 @@ export type DatasetSynonymMappingSchemaType = {
   allTerms: string; // 组合搜索字段: "{标准词} {同义词1} {同义词2}..."
   createdTime: Date;
   updatedTime: Date;
+};
+
+/**
+ * 文本转换记录（单个转换项）
+ * 记录一次同义词替换的详细信息
+ */
+export type TransformationRecordType = {
+  // 在原始文本中的位置信息
+  originalStartPos: number; // 原始文本中的起始位置（字符索引）
+  originalEndPos: number; // 原始文本中的结束位置（字符索引）
+  originalTerm: string; // 原始词汇（非标准词）
+
+  // 在转换后文本中的位置信息
+  transformedStartPos: number; // 转换后文本中的起始位置（字符索引）
+  transformedEndPos: number; // 转换后文本中的结束位置（字符索引）
+  standardizedTerm: string; // 标准化词
+
+  // 关联信息
+  synonymMappingId: string; // 关联的同义词映射记录ID（MongoSynonymMapping._id）
 };
