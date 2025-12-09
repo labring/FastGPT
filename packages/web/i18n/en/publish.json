@@ -45,5 +45,6 @@
   "dingtalk.title": "Publish to DingTalk Bot",
   "dingtalk.api": "DingTalk API",
   "use_default_domain": "Use Default Domain",
-  "ip_whitelist": "IP Whitelist"
+  "ip_whitelist": "IP Whitelist",
+  "custom_domain_management": "Custom Domain Management"
 }

@@ -45,5 +45,6 @@
   "dingtalk.title": "發布至釘釘聊天機器人",
   "dingtalk.api": "釘釘 API",
   "use_default_domain": "使用預設域名",
-  "ip_whitelist": "IP 白名單"
+  "ip_whitelist": "IP 白名單",
+  "custom_domain_management": "自訂域名管理"
 }

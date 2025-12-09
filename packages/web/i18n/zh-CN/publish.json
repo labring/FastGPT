@@ -45,5 +45,6 @@
   "dingtalk.title": "发布到钉钉机器人",
   "dingtalk.api": "钉钉 API",
   "use_default_domain": "使用默认域名",
-  "ip_whitelist": "IP 白名单"
+  "ip_whitelist": "IP 白名单",
+  "custom_domain_management": "自定义域名管理"
 }

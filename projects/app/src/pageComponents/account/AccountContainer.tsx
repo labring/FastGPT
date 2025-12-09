@@ -50,15 +50,6 @@ const AccountContainer = ({
       label: t('account:personal_information'),
       value: TabEnum.info
     },
-    ...(feConfigs.isPlus && feConfigs.customDomain?.enable
-      ? [
-          {
-            icon: 'common/globalLine',
-            label: t('account:custom_domain'),
-            value: TabEnum.customDomain
-          }
-        ]
-      : []),
     ...(feConfigs?.isPlus
       ? [
           {
@@ -87,6 +78,15 @@ const AccountContainer = ({
       label: t('account:third_party'),
       value: TabEnum.thirdParty
     },
+    ...(feConfigs.isPlus && feConfigs.customDomain?.enable
+      ? [
+          {
+            icon: 'common/globalLine',
+            label: t('account:custom_domain'),
+            value: TabEnum.customDomain
+          }
+        ]
+      : []),
     {
       icon: 'common/model',
       label: t('account:model_provider'),

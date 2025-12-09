@@ -202,7 +202,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
               isDisabled={!editDomain || type === 'refresh'}
             />
             <InputRightElement width="auto" paddingRight={'8px'}>
-              {!editDomain && domain ? (
+              {!editDomain && domain && startDnsResolve ? (
                 DnsResolved ? (
                   <Tag colorScheme="green" size="sm">
                     {t('account:custom_domain.dns_resolved')}

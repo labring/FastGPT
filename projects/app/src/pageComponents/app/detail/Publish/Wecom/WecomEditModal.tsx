@@ -27,7 +27,7 @@ const WecomEditModal = ({
   appId: string;
   defaultData: OutLinkEditType<WecomAppType>;
   onClose: () => void;
-  onCreate: (id: string) => void;
+  onCreate: (shareId: string) => Promise<string | undefined>;
   onEdit: () => void;
   isEdit?: boolean;
 }) => {
@@ -54,7 +54,12 @@ const WecomEditModal = ({
     {
       errorToast: t('common:create_failed'),
       successToast: t('common:create_success'),
-      onSuccess: onCreate
+      onSuccess: async (shareId) => {
+        const _id = await onCreate(shareId);
+        if (_id) {
+          setValue('_id', _id);
+        }
+      }
     }
   );
 
@@ -69,6 +74,10 @@ const WecomEditModal = ({
   });
 
   const shareId = useMemo(() => createShareId || updatedShareId, [createShareId, updatedShareId]);
+
+  // 判断是否已经创建成功（有 createShareId 说明已经创建）
+  const isCreated = useMemo(() => !!createShareId, [createShareId]);
+  const isEditMode = useMemo(() => isEdit || isCreated, [isEdit, isCreated]);
 
   const { feConfigs } = useSystemStore();
   const { MyStep, activeStep, goToNext, goToPrevious } = useMyStep({
@@ -90,7 +99,9 @@ const WecomEditModal = ({
   return (
     <MyModal
       iconSrc="core/app/publish/wecom"
-      title={isEdit ? t('publish:wecom.edit_modal_title') : t('publish:wecom.create_modal_title')}
+      title={
+        isEditMode ? t('publish:wecom.edit_modal_title') : t('publish:wecom.create_modal_title')
+      }
       minW={['auto', '60rem']}
       onClose={onClose}
     >
@@ -102,9 +113,9 @@ const WecomEditModal = ({
               gridTemplateColumns={'200px 1fr'}
               rowGap="4"
               mt="4"
-              pb="4"
+              pb="24px"
               borderBottom="1px solid"
-              borderColor="myGray.300"
+              borderColor="myGray.200"
             >
               <Box color="myGray.900" fontWeight={'500'}>
                 {t('publish:basic_info')}
@@ -169,8 +180,8 @@ const WecomEditModal = ({
               </Grid>
             </Grid>
 
-            <Grid gridTemplateColumns={'200px 1fr'} rowGap="4" mt="4">
-              <Flex>
+            <Grid gridTemplateColumns={'200px 1fr'} rowGap="4" mt="24px">
+              <Flex h="min">
                 <Box color="myGray.900" fontWeight="500">
                   {t('publish:wecom.api')}
                 </Box>
@@ -226,7 +237,7 @@ const WecomEditModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        {activeStep === 0 && (
+        {activeStep === 1 && (
           <Button
             variant={'whiteBase'}
             mr={3}
@@ -242,7 +253,7 @@ const WecomEditModal = ({
           onClick={() => {
             if (activeStep === 0) {
               submitShareChat((data) =>
-                (isEdit ? onclickUpdate(data) : onclickCreate(data)).then(() => goToNext())
+                (isEditMode ? onclickUpdate(data) : onclickCreate(data)).then(() => goToNext())
               )();
             } else {
               onClose();

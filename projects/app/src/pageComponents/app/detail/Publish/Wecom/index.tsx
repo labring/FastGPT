@@ -65,25 +65,35 @@ const Wecom = ({ appId }: { appId: string }) => {
         <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('publish:wecom.title')}
         </Box>
-        <Button
-          variant={'primary'}
-          colorScheme={'blue'}
-          size={['sm', 'md']}
-          leftIcon={<MyIcon name={'common/addLight'} w="1.25rem" color="white" />}
-          ml={3}
-          {...(shareChatList.length >= 10
-            ? {
-                isDisabled: true,
-                title: t('common:core.app.share.Amount limit tip')
-              }
-            : {})}
-          onClick={() => {
-            setEditWecomData(defaultOutLinkForm as any); // HACK
-            setIsEdit(false);
-          }}
-        >
-          {t('common:add_new')}
-        </Button>
+        <Flex gap={3}>
+          <Button
+            variant={'whitePrimary'}
+            size={['sm', 'md']}
+            onClick={() => {
+              window.open('/account/customDomain', '_blank');
+            }}
+          >
+            {t('publish:custom_domain_management')}
+          </Button>
+          <Button
+            variant={'primary'}
+            colorScheme={'blue'}
+            size={['sm', 'md']}
+            leftIcon={<MyIcon name={'common/addLight'} w="1.25rem" color="white" />}
+            {...(shareChatList.length >= 10
+              ? {
+                  isDisabled: true,
+                  title: t('common:core.app.share.Amount limit tip')
+                }
+              : {})}
+            onClick={() => {
+              setEditWecomData(defaultOutLinkForm as any); // HACK
+              setIsEdit(false);
+            }}
+          >
+            {t('common:add_new')}
+          </Button>
+        </Flex>
       </Flex>
       <TableContainer mt={3}>
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
@@ -200,7 +210,11 @@ const Wecom = ({ appId }: { appId: string }) => {
         <WecomEditModal
           appId={appId}
           defaultData={editWecomData}
-          onCreate={() => refetchShareChatList()}
+          onCreate={async (shareId: string) => {
+            const newList = await refetchShareChatList();
+            const newItem = newList.find((item) => item.shareId === shareId);
+            return newItem?._id;
+          }}
           onEdit={() => refetchShareChatList()}
           onClose={() => setEditWecomData(undefined)}
           isEdit={isEdit}

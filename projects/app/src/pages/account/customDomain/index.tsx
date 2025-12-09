@@ -25,6 +25,7 @@ import { useState, useMemo } from 'react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRouter } from 'next/router';
+import Tag from '@fastgpt/web/components/common/Tag';
 
 const CreateCustomDomainModal = dynamic(
   () => import('@/pageComponents/account/customDomain/createModal')
@@ -88,7 +89,11 @@ const CustomDomain = () => {
             <Flex justifyContent="space-between" alignItems="center" w="100%">
               <Box fontSize="20px" fontWeight="500">
                 {t('account:custom_domain')}
-                {customDomainList?.length ? `: (${customDomainList.length}/3)` : <></>}
+                {customDomainList?.length ? (
+                  `: (${customDomainList.length}/${teamPlanStatus?.standardConstants?.customDomain})`
+                ) : (
+                  <></>
+                )}
               </Box>
 
               <Button
@@ -117,9 +122,27 @@ const CustomDomain = () => {
                       <Td>{customDomain.domain}</Td>
                       <Td>{customDomain.cnameDomain}</Td>
                       <Td>{t(providerMap[customDomain.provider])}</Td>
-                      <Td>{t(customDomainStatusMap[customDomain.status])}</Td>
+                      <Td>
+                        {customDomain.status === 'active' ? (
+                          <Tag colorSchema="green">
+                            {t(customDomainStatusMap[customDomain.status])}
+                          </Tag>
+                        ) : (
+                          <Tag colorSchema="red">
+                            {t(customDomainStatusMap[customDomain.status])}
+                          </Tag>
+                        )}
+                      </Td>
                       <Td>
                         <Flex gap="2">
+                          <Button
+                            variant="whiteDanger"
+                            onClick={() => {
+                              return openConfirm(() => onDelete(customDomain.domain))();
+                            }}
+                          >
+                            {t('common:Delete')}
+                          </Button>
                           {customDomain.status === 'inactive' ? (
                             <Button
                               variant="whitePrimary"
@@ -142,14 +165,6 @@ const CustomDomain = () => {
                             //   {t('account:custom_domain.domain_verify')}
                             // </Button>
                           )}
-                          <Button
-                            variant="whiteDanger"
-                            onClick={() => {
-                              return openConfirm(() => onDelete(customDomain.domain))();
-                            }}
-                          >
-                            {t('common:Delete')}
-                          </Button>
                         </Flex>
                       </Td>
                     </Tr>
