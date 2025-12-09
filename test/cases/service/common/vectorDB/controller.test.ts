@@ -6,8 +6,7 @@ import {
   mockVectorInit,
   mockGetVectorDataByTime,
   mockGetVectorCountByTeamId,
-  mockGetVectorCountByDatasetId,
-  mockGetVectorCountByCollectionId,
+  mockGetVectorCount,
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectorsByText } from '@test/mocks/core/ai/embedding';
@@ -18,8 +17,7 @@ import {
   recallFromVectorStore,
   getVectorDataByTime,
   getVectorCountByTeamId,
-  getVectorCountByDatasetId,
-  getVectorCountByCollectionId,
+  getVectorCount,
   insertDatasetDataVector,
   deleteDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
@@ -147,21 +145,15 @@ describe('VectorDB Controller', () => {
     });
   });
 
-  describe('getVectorCountByDatasetId', () => {
-    it('should call Vector.getVectorCountByDatasetId', async () => {
-      const result = await getVectorCountByDatasetId('team_1', 'dataset_1');
+  describe('getVectorCount', () => {
+    it('should call Vector.getVectorCount', async () => {
+      const result = await getVectorCount({ teamId: 'team_1', datasetId: 'dataset_1' });
 
-      expect(mockGetVectorCountByDatasetId).toHaveBeenCalledWith('team_1', 'dataset_1');
+      expect(mockGetVectorCount).toHaveBeenCalledWith({
+        teamId: 'team_1',
+        datasetId: 'dataset_1'
+      });
       expect(result).toBe(50);
-    });
-  });
-
-  describe('getVectorCountByCollectionId', () => {
-    it('should call Vector.getVectorCountByCollectionId', async () => {
-      const result = await getVectorCountByCollectionId('team_1', 'dataset_1', 'col_1');
-
-      expect(mockGetVectorCountByCollectionId).toHaveBeenCalledWith('team_1', 'dataset_1', 'col_1');
-      expect(result).toBe(25);
     });
   });
 
