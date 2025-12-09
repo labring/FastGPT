@@ -6,8 +6,10 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type.d';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -22,7 +24,6 @@ import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/save
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
-import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
@@ -62,6 +63,8 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { getIpFromRequest } from '@fastgpt/service/common/geo';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -115,7 +118,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     metadata
   } = req.body as Props;
 
-  const originIp = requestIp.getClientIp(req);
+  const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
 
@@ -196,6 +199,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ) {
       return;
     }
+
+    pushTrack.teamChatQPM({ teamId });
 
     retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
@@ -397,22 +402,39 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       res.end();
     } else {
-      const responseContent = (() => {
-        if (assistantResponses.length === 0) return '';
-        if (assistantResponses.length === 1 && assistantResponses[0].text?.content)
-          return assistantResponses[0].text?.content;
-
-        if (!detail) {
-          return assistantResponses
-            .map((item) => item?.text?.content)
-            .filter(Boolean)
-            .join('\n');
+      const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
+      const formattdResponse = (() => {
+        if (formatResponseContent.length === 0)
+          return {
+            reasoning: '',
+            content: ''
+          };
+        if (formatResponseContent.length === 1) {
+          return {
+            reasoning: formatResponseContent[0].reasoning?.content,
+            content: formatResponseContent[0].text?.content
+          };
         }
 
-        return assistantResponses;
+        if (!detail) {
+          return {
+            reasoning: formatResponseContent
+              .map((item) => item?.reasoning?.content)
+              .filter(Boolean)
+              .join('\n'),
+            content: formatResponseContent
+              .map((item) => item?.text?.content)
+              .filter(Boolean)
+              .join('\n')
+          };
+        }
+
+        return formatResponseContent;
       })();
-      const formatResponseContent = removeAIResponseCite(responseContent, retainDatasetCite);
-      const error = flowResponses[flowResponses.length - 1]?.error;
+
+      const error =
+        flowResponses[flowResponses.length - 1]?.error ||
+        flowResponses[flowResponses.length - 1]?.errorText;
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
@@ -422,7 +444,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: formatResponseContent },
+            message: {
+              role: 'assistant',
+              ...(Array.isArray(formattdResponse)
+                ? { content: formattdResponse }
+                : {
+                    content: formattdResponse.content,
+                    ...(formattdResponse.reasoning && {
+                      reasoning_content: formattdResponse.reasoning
+                    })
+                  })
+            },
             finish_reason: 'stop',
             index: 0
           }

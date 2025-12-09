@@ -169,7 +169,7 @@ async function migrateDatasetCollection({
     const uploadStartTime = Date.now();
     let key: string;
     try {
-      key = await getS3DatasetSource().uploadDatasetFileByBuffer({
+      key = await getS3DatasetSource().upload({
         buffer,
         datasetId,
         filename: name
@@ -244,7 +244,7 @@ async function processCollectionBatch({
       {
         projection: {
           _id: 1,
-          metadata: { teamId: 1 }
+          metadata: 1
         }
       }
     )
@@ -259,7 +259,10 @@ async function processCollectionBatch({
   // 2. 查找对应的 collections
   const fileIds = files.map((f) => f._id);
   const collections = await MongoDatasetCollection.find(
-    { fileId: { $in: fileIds } },
+    {
+      teamId: { $in: Array.from(new Set(files.map((f) => f.metadata?.teamId).filter(Boolean))) },
+      fileId: { $in: fileIds }
+    },
     '_id fileId teamId datasetId type parentId name updateTime'
   ).lean();
 
@@ -531,6 +534,11 @@ async function processImageBatch({
   const imageIds = imageFiles.map((file) => file._id.toString());
   const dataList = await MongoDatasetData.find(
     {
+      teamId: { $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.teamId))) },
+      datasetId: { $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.datasetId))) },
+      collectionId: {
+        $in: Array.from(new Set(imageFiles.map((file) => file.metadata?.collectionId)))
+      },
       imageId: { $in: imageIds }
     },
     '_id imageId teamId datasetId collectionId updateTime'

@@ -65,6 +65,7 @@ export type FastGPTFeConfigsType = {
   show_compliance_copywriting?: boolean;
   show_aiproxy?: boolean;
   show_coupon?: boolean;
+  show_discount_coupon?: boolean;
   concatMd?: string;
 
   show_dataset_feishu?: boolean;
@@ -145,6 +146,7 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+  fileUrlWhitelist?: string[];
 };
 
 export type customPdfParseType = {

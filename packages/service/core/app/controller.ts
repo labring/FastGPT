@@ -12,7 +12,6 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { type ClientSession } from '../../common/mongo';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
-import { deleteChatFiles } from '../chat/controller';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -224,7 +223,7 @@ export const onDelOneApp = async ({
   // Delete chats
   for await (const app of apps) {
     const appId = String(app._id);
-    await deleteChatFiles({ appId });
+    await getS3ChatSource().deleteChatFilesByPrefix({ appId });
     await MongoChatItemResponse.deleteMany({
       appId
     });

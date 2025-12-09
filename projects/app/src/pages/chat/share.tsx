@@ -81,8 +81,11 @@ const OutLink = (props: Props) => {
   const { isPc } = useSystem();
   const { outLinkAuthData, appId, chatId } = useChatStore();
 
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  // Remove empty value field
+  const formatedCustomVariables = useMemo(() => {
+    return Object.fromEntries(Object.entries(customVariables).filter(([_, value]) => value !== ''));
+  }, [customVariables]);
+
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
@@ -114,7 +117,10 @@ const OutLink = (props: Props) => {
       setChatBoxData(res);
 
       resetVariables({
-        variables: res.variables,
+        variables: {
+          ...formatedCustomVariables,
+          ...res.variables
+        },
         variableList: res.app?.chatConfig?.variables
       });
 

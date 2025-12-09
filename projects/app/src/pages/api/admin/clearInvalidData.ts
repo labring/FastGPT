@@ -2,11 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
-import {
-  checkInvalidDatasetFiles,
-  checkInvalidDatasetData,
-  checkInvalidVector
-} from '@/service/common/system/cronTask';
+import { checkInvalidDatasetData, checkInvalidVector } from '@/service/common/system/cronTask';
 import dayjs from 'dayjs';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { NextAPI } from '@/service/middleware/entry';
@@ -88,7 +84,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             )} to ${dayjs(chunkEndTime).format('YYYY-MM-DD HH:mm')}`
           );
 
-          await retryFn(() => checkInvalidDatasetFiles(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidImg(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidDatasetData(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidVector(chunkStartTime, chunkEndTime));

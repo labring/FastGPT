@@ -150,6 +150,9 @@ const WorkflowInitContextProvider = ({
         name: node.data.name,
         parentNodeId: node.data.parentNodeId,
         flowNodeType: node.data.flowNodeType,
+        version: node.data.version,
+        versionLabel: node.data.versionLabel,
+        isLatestVersion: node.data.isLatestVersion,
         inputs: node.data.inputs.map((input) => {
           return {
             key: input.key,

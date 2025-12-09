@@ -5,7 +5,7 @@ import {
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getWebLLMModel } from '@/web/common/system/utils';
 
@@ -27,16 +27,15 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList } = useSystemStore();
+  const { reRankModelList } = useSystemStore();
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
   const extensionModelName = useMemo(
-    () =>
-      datasetSearchUsingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : undefined,
-    [datasetSearchUsingExtensionQuery, queryExtensionModel, llmModelList]
+    () => getWebLLMModel(queryExtensionModel)?.name,
+    [queryExtensionModel]
   );
 
   return (

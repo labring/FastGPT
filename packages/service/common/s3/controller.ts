@@ -4,6 +4,7 @@ import { setCron } from '../system/cron';
 import { checkTimerLock } from '../system/timerLock/utils';
 import { TimerIdEnum } from '../system/timerLock/constants';
 import path from 'node:path';
+import { S3Error } from 'minio';
 
 export async function clearExpiredMinioFiles() {
   try {
@@ -56,6 +57,12 @@ export async function clearExpiredMinioFiles() {
           addLog.warn(`Bucket not found: ${file.bucketName}`);
         }
       } catch (error) {
+        if (
+          error instanceof S3Error &&
+          error.message.includes('Object name contains unsupported characters.')
+        ) {
+          await MongoS3TTL.deleteOne({ _id: file._id });
+        }
         fail++;
         addLog.error(`Failed to delete minio file: ${file.minioKey}`, error);
       }

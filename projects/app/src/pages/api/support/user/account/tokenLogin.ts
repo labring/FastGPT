@@ -4,7 +4,6 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 
 export type TokenLoginQuery = {};
 export type TokenLoginBody = {};

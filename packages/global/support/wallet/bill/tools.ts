@@ -1,13 +1,5 @@
 import type { PriceOption } from './type';
 
-// 根据积分获取月份
-export const getMonthByPoints = (points: number) => {
-  if (points >= 200) return 12;
-  if (points >= 100) return 6;
-  if (points >= 50) return 3;
-  return 1;
-};
-
 // 根据月份获取积分下限
 export const getMinPointsByMonth = (month: number): number => {
   switch (month) {

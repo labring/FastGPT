@@ -1,7 +1,5 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
-import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -12,8 +10,9 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
-import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isCSVFile } from '@fastgpt/global/common/file/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 export type backupQuery = {};
 
@@ -21,18 +20,18 @@ export type backupBody = {};
 
 export type backupResponse = {};
 
-async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiResponseType<any>) {
-  const filePaths: string[] = [];
+async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
+  const filepaths: string[] = [];
 
   try {
-    const upload = getUploadModel({
-      maxSize: global.feConfigs?.uploadFileMaxSize
+    const result = await multer.resolveFormData({
+      request: req,
+      maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.getUploadFile<{ datasetId: string }>(req, res);
-    filePaths.push(file.path);
+    filepaths.push(result.fileMetadata.path);
 
-    if (file.mimetype !== 'text/csv') {
-      throw new Error('File must be a CSV file');
+    if (!isCSVFile(result.fileMetadata.originalname)) {
+      return Promise.reject('File must be a CSV file');
     }
 
     const { teamId, tmbId, dataset } = await authDataset({
@@ -40,35 +39,28 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
       authToken: true,
       authApiKey: true,
       per: WritePermissionVal,
-      datasetId: data.datasetId
+      datasetId: result.data.datasetId
     });
 
-    // 1. Read
     const { rawText } = await readRawTextByLocalFile({
       teamId,
       tmbId,
-      path: file.path,
-      encoding: file.encoding,
+      path: result.fileMetadata.path,
+      encoding: result.fileMetadata.encoding,
       getFormatText: false
     });
+
     if (!rawText.trim().startsWith('q,a,indexes')) {
       return Promise.reject(i18nT('dataset:backup_template_invalid'));
     }
 
-    // 2. Upload file
-    const fileId = await uploadFile({
-      teamId,
-      uid: tmbId,
-      bucketName: 'dataset',
-      path: file.path,
-      filename: file.originalname,
-      contentType: file.mimetype
+    const fileId = await getS3DatasetSource().upload({
+      datasetId: dataset._id,
+      stream: result.getReadStream(),
+      size: result.fileMetadata.size,
+      filename: result.fileMetadata.originalname
     });
 
-    // 2. delete tmp file
-    removeFilesByPaths(filePaths);
-
-    // 3. Create collection
     await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -77,7 +69,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
         teamId,
         tmbId,
         datasetId: dataset._id,
-        name: file.originalname,
+        name: result.fileMetadata.originalname,
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.backup
@@ -87,8 +79,9 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>, res: ApiRe
     return {};
   } catch (error) {
     addLog.error(`Backup dataset collection create error: ${error}`);
-    removeFilesByPaths(filePaths);
     return Promise.reject(error);
+  } finally {
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

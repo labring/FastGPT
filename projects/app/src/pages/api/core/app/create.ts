@@ -18,7 +18,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -62,7 +62,11 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // 上限校验
-  await checkTeamAppLimit(teamId);
+  await checkTeamAppTypeLimit({
+    teamId,
+    appCheckType: type === AppTypeEnum.workflowTool ? 'tool' : 'app'
+  });
+
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
     .populate<{
       user: { username: string };
@@ -168,13 +172,15 @@ export const onCreateApp = async ({
       if (!template?.avatar) return avatar;
 
       const s3AvatarSource = getS3AvatarSource();
-      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar'))
+      if (!isS3ObjectKey(template.avatar?.slice(s3AvatarSource.prefix.length), 'avatar')) {
         return template.avatar;
+      }
 
       const filename = (() => {
-        const last = template.avatar.split('/').pop()?.split('-')[1];
+        const last = template.avatar.split('/').pop();
         if (!last) return getNanoid(6).concat(path.extname(template.avatar));
-        return `${getNanoid(6)}-${last}`;
+        const firstDashIndex = last.indexOf('-');
+        return `${getNanoid(6)}-${firstDashIndex === -1 ? last : last.slice(firstDashIndex + 1)}`;
       })();
 
       return await s3AvatarSource.copyAvatar({

@@ -17,9 +17,6 @@ export const createImageDatasetCollection = async ({
 
   return await POST<{ collectionId: string }>('/core/dataset/collection/create/images', formData, {
     timeout: 600000,
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
-    },
     onUploadProgress: (e) => {
       if (!onUploadProgress) return;
       if (!e.progress) {
@@ -48,9 +45,6 @@ export const insertImagesToCollection = async ({
 
   return await POST<{ collectionId: string }>('/core/dataset/data/insertImages', formData, {
     timeout: 600000,
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
-    },
     onUploadProgress: (e) => {
       if (!onUploadProgress) return;
       if (!e.progress) {

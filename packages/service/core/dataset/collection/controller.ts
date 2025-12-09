@@ -12,8 +12,6 @@ import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
-import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import type { ClientSession } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
@@ -33,9 +31,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { clearCollectionImages } from '../image/utils';
-import { getS3DatasetSource, S3DatasetSource } from '../../../common/s3/sources/dataset';
-import path from 'node:path';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 
 export const createCollectionAndInsertData = async ({
@@ -326,18 +322,13 @@ export const delCollectionRelatedSource = async ({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
-  const fileIdList = collections.map((item) => item?.fileId || '').filter(Boolean);
+  // FIXME: 兼容旧解析图像删除
   const relatedImageIds = collections
     .map((item) => item?.metadata?.relatedImgId || '')
     .filter(Boolean);
 
   // Delete files and images in parallel
   await Promise.all([
-    // Delete files
-    delFileByFileIdList({
-      bucketName: BucketNameEnum.dataset,
-      fileIdList
-    }),
     // Delete images
     delImgByRelatedId({
       teamId,
@@ -405,10 +396,8 @@ export async function delCollection({
         datasetId: { $in: datasetIds },
         collectionId: { $in: collectionIds }
       }),
-      // Delete dataset_images
-      clearCollectionImages(collectionIds),
       // Delete images if needed
-      ...(delImg
+      ...(delImg // 兼容旧图像删除
         ? [
             delImgByRelatedId({
               teamId,
@@ -421,10 +410,9 @@ export async function delCollection({
       // Delete files if needed
       ...(delFile
         ? [
-            delFileByFileIdList({
-              bucketName: BucketNameEnum.dataset,
-              fileIdList: collections.map((item) => item?.fileId || '').filter(Boolean)
-            })
+            getS3DatasetSource().deleteDatasetFilesByKeys(
+              collections.map((item) => item?.fileId || '').filter(Boolean)
+            )
           ]
         : []),
       // Delete vector data

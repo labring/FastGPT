@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { useRouter } from 'next/router';
 import { useMount } from 'ahooks';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -26,8 +27,7 @@ interface LoginFormType {
 }
 
 const LoginForm = ({ setPageType, loginSuccess }: Props) => {
-  const { t } = useTranslation();
-  const { toast } = useToast();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
   const router = useRouter();
@@ -45,7 +45,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         await postLogin({
           username,
           password,
-          code
+          code,
+          language: i18n.language as LangEnum
         })
       );
     },

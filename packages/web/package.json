@@ -17,7 +17,7 @@
     "@lexical/markdown": "0.12.6",
     "@lexical/react": "0.12.6",
     "@lexical/rich-text": "0.12.6",
-    "@lexical/selection": "^0.14.5",
+    "@lexical/selection": "0.12.6",
     "@lexical/text": "0.12.6",
     "@lexical/utils": "0.12.6",
     "@monaco-editor/react": "^4.6.0",

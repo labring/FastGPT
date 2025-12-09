@@ -91,9 +91,6 @@ const QuickCreateDatasetModal = ({
             formData.set('file', file);
 
             await POST(url, formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data; charset=utf-8'
-              },
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
@@ -109,7 +106,8 @@ const QuickCreateDatasetModal = ({
                       : item
                   )
                 );
-              }
+              },
+              timeout: 5 * 60 * 1000 // 5 minutes
             })
               .then(() => {
                 setSelectFiles((state) =>

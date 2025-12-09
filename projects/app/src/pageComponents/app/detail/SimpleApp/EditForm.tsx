@@ -32,6 +32,7 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -66,6 +67,7 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { defaultModels } = useSystemStore();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
@@ -126,6 +128,26 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
+
+  useEffect(() => {
+    if (
+      appForm.dataset.datasetSearchUsingExtensionQuery &&
+      !appForm.dataset.datasetSearchExtensionModel
+    ) {
+      setAppForm((state) => ({
+        ...state,
+        dataset: {
+          ...state.dataset,
+          datasetSearchExtensionModel: defaultModels.llm?.model
+        }
+      }));
+    }
+  }, [
+    appForm.dataset.datasetSearchUsingExtensionQuery,
+    appForm.dataset.datasetSearchExtensionModel,
+    defaultModels.llm?.model,
+    setAppForm
+  ]);
 
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {

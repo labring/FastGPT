@@ -15,7 +15,7 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
-import { replaceDatasetQuoteTextWithJWT } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 
 export type PostPreviewFilesChunksProps = ChunkSettingsType & {
@@ -114,8 +114,8 @@ async function handler(
   });
 
   const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({
-    q: replaceDatasetQuoteTextWithJWT(chunk.q, addDays(new Date(), 1)),
-    a: replaceDatasetQuoteTextWithJWT(chunk.a, addDays(new Date(), 1))
+    q: replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
+    a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
   }));
 
   return {

@@ -57,7 +57,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       history = 6,
       fileUrlList: fileLinks,
       aiChatVision,
-      aiChatReasoning
+      aiChatReasoning,
+      isResponseAnswerText = true
     }
   } = props;
 
@@ -235,7 +236,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         (sum, item) => sum + item.runTimes,
         0
       ),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? previewAssistantResponses
+        : undefined,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗
         totalPoints: totalPointsUsage,

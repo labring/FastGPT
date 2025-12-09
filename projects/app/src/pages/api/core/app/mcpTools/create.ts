@@ -9,7 +9,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
@@ -37,7 +37,7 @@ async function handler(
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await checkTeamAppLimit(teamId);
+  await checkTeamAppTypeLimit({ teamId, appCheckType: 'tool' });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 

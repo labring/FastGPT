@@ -71,7 +71,7 @@ export default NextAPI(handler);
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const { answerText } = await createLLMResponse({
     body: {
-      model: model.model,
+      model,
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },

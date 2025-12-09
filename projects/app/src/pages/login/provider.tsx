@@ -21,11 +21,12 @@ import {
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 let isOauthLogging = false;
 
 const provider = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
@@ -79,7 +80,8 @@ const provider = () => {
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain()
+          sourceDomain: getSourceDomain(),
+          language: i18n.language as LangEnum
         });
 
         if (!res) {

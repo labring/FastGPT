@@ -11,6 +11,7 @@ export enum TeamErrEnum {
   datasetAmountNotEnough = 'datasetAmountNotEnough',
   appAmountNotEnough = 'appAmountNotEnough',
   pluginAmountNotEnough = 'pluginAmountNotEnough',
+  appFolderAmountNotEnough = 'appFolderAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   groupNameEmpty = 'groupNameEmpty',
@@ -64,6 +65,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.pluginAmountNotEnough,
     message: i18nT('common:code_error.team_error.plugin_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.appFolderAmountNotEnough,
+    message: i18nT('common:code_error.team_error.app_folder_amount_not_enough')
   },
   {
     statusText: TeamErrEnum.websiteSyncNotEnough,

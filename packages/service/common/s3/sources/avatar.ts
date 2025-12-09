@@ -3,6 +3,7 @@ import { MongoS3TTL } from '../schema';
 import { S3PublicBucket } from '../buckets/public';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import type { ClientSession } from 'mongoose';
+import { getFileS3Key } from '../utils';
 
 class S3AvatarSource {
   private bucket: S3PublicBucket;
@@ -29,8 +30,10 @@ class S3AvatarSource {
     teamId: string;
     autoExpired?: boolean;
   }) {
+    const { fileKey } = getFileS3Key.avatar({ teamId, filename });
+
     return this.bucket.createPostPresignedUrl(
-      { filename, teamId, source: S3Sources.avatar },
+      { filename, rawKey: fileKey },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
         maxFileSize: 5 // 5MB

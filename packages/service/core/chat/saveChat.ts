@@ -245,6 +245,7 @@ export async function saveChat(props: Props) {
       ...chat?.metadata,
       ...metadata
     };
+
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
       systemConfigNode: getGuideModule(nodes),

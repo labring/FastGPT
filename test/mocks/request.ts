@@ -5,15 +5,8 @@ import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/membe
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { vi } from 'vitest';
 
-// vi.mock(import('@/service/middleware/entry'), async () => {
-//   const NextAPI = vi.fn((handler: any) => handler);
-//   return {
-//     NextAPI
-//   };
-// });
-
-vi.mock(import('@fastgpt/service/common/middle/entry'), async (importOriginal) => {
-  const mod = await importOriginal();
+vi.mock('@fastgpt/service/common/middle/entry', async (importOriginal) => {
+  const mod = (await importOriginal()) as any;
   const NextEntry = vi.fn(({ beforeCallback = [] }: { beforeCallback?: Promise<any>[] }) => {
     return (...args: any) => {
       return async function api(req: any, res: any) {
@@ -67,8 +60,8 @@ export type MockReqType<B = any, Q = any> = {
   [key: string]: any;
 };
 
-vi.mock(import('@fastgpt/service/support/permission/auth/common'), async (importOriginal) => {
-  const mod = await importOriginal();
+vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal) => {
+  const mod = (await importOriginal()) as any;
   const parseHeaderCert = vi.fn(
     ({
       req,
@@ -98,68 +91,69 @@ vi.mock(import('@fastgpt/service/support/permission/auth/common'), async (import
       canWrite: true
     };
   };
+
+  const setCookie = vi.fn();
+
   return {
     ...mod,
     parseHeaderCert,
-    authCert
+    authCert,
+    setCookie
   };
 });
 
-vi.mock(
-  import('@fastgpt/service/support/permission/memberGroup/controllers'),
-  async (importOriginal) => {
-    const mod = await importOriginal();
-    const parseHeaderCert = vi.fn(
-      ({
-        req,
-        authToken = false,
-        authRoot = false,
-        authApiKey = false
-      }: {
-        req: MockReqType;
-        authToken?: boolean;
-        authRoot?: boolean;
-        authApiKey?: boolean;
-      }) => {
-        const { auth } = req;
-        if (!auth) {
-          return Promise.reject(Error('unAuthorization(mock)'));
-        }
-        return Promise.resolve(auth);
+vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', async (importOriginal) => {
+  const mod = (await importOriginal()) as any;
+  const parseHeaderCert = vi.fn(
+    ({
+      req,
+      authToken = false,
+      authRoot = false,
+      authApiKey = false
+    }: {
+      req: MockReqType;
+      authToken?: boolean;
+      authRoot?: boolean;
+      authApiKey?: boolean;
+    }) => {
+      const { auth } = req;
+      if (!auth) {
+        return Promise.reject(Error('unAuthorization(mock)'));
       }
-    );
-    const authGroupMemberRole = vi.fn(async ({ groupId, role, ...props }: any) => {
-      const result = await parseHeaderCert(props);
-      const { teamId, tmbId, isRoot } = result;
-      if (isRoot) {
-        return {
-          ...result,
-          permission: new TeamPermission({
-            isOwner: true
-          }),
-          teamId,
-          tmbId
-        };
-      }
-      const [groupMember, tmb] = await Promise.all([
-        MongoGroupMemberModel.findOne({ groupId, tmbId }),
-        getTmbInfoByTmbId({ tmbId })
-      ]);
+      return Promise.resolve(auth);
+    }
+  );
+  const authGroupMemberRole = vi.fn(async ({ groupId, role, ...props }: any) => {
+    const result = await parseHeaderCert(props);
+    const { teamId, tmbId, isRoot } = result;
+    if (isRoot) {
+      return {
+        ...result,
+        permission: new TeamPermission({
+          isOwner: true
+        }),
+        teamId,
+        tmbId
+      };
+    }
+    const [groupMember, tmb] = await Promise.all([
+      MongoGroupMemberModel.findOne({ groupId, tmbId }),
+      getTmbInfoByTmbId({ tmbId })
+    ]);
 
-      // Team admin or role check
-      if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
-        return {
-          ...result,
-          permission: tmb.permission,
-          teamId,
-          tmbId
-        };
-      }
-      return Promise.reject(TeamErrEnum.unAuthTeam);
-    });
-    return {
-      ...mod,
-      authGroupMemberRole
-    };
-  }
-);
+    // Team admin or role check
+    if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
+      return {
+        ...result,
+        permission: tmb.permission,
+        teamId,
+        tmbId
+      };
+    }
+    return Promise.reject(TeamErrEnum.unAuthTeam);
+  });
+  return {
+    ...mod,
+    authGroupMemberRole
+  };
+});

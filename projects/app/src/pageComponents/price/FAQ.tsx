@@ -25,13 +25,22 @@ const FAQ = () => {
       title: t('common:FAQ.dataset_compute_q'),
       desc: t('common:FAQ.dataset_compute_a')
     },
+
     {
-      title: t('common:FAQ.dataset_index_q'),
-      desc: t('common:FAQ.dataset_index_a')
+      title: t('common:FAQ.index_del_q'),
+      desc: t('common:FAQ.index_del_a')
     },
     {
       title: t('common:FAQ.package_overlay_q'),
       desc: t('common:FAQ.package_overlay_a')
+    },
+    {
+      title: t('common:FAQ.qpm_q'),
+      desc: t('common:FAQ.qpm_a')
+    },
+    {
+      title: t('common:FAQ.year_day_q'),
+      desc: t('common:FAQ.year_day_a')
     },
     {
       title: t('common:FAQ.free_user_clean_q'),

@@ -50,6 +50,7 @@ export class S3BaseBucket {
         port: externalPort,
         accessKey: options.accessKey,
         secretKey: options.secretKey,
+        pathStyle: options.pathStyle,
         transportAgent: options.transportAgent
       });
     }
@@ -160,6 +161,18 @@ export class S3BaseBucket {
     return this.client.statObject(this.name, ...params);
   }
 
+  async isObjectExists(key: string): Promise<boolean> {
+    try {
+      await this.client.statObject(this.name, key);
+      return true;
+    } catch (err) {
+      if (err instanceof S3Error && err.message === 'Not Found') {
+        return false;
+      }
+      return Promise.reject(err);
+    }
+  }
+
   async fileStreamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
@@ -183,10 +196,7 @@ export class S3BaseBucket {
       const ext = path.extname(filename).toLowerCase();
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
 
-      const key = (() => {
-        if ('rawKey' in params) return params.rawKey;
-        return [params.source, params.teamId, `${getNanoid(6)}-${filename}`].join('/');
-      })();
+      const key = params.rawKey;
 
       const policy = this.externalClient.newPostPolicy();
       policy.setKey(key);
@@ -230,9 +240,7 @@ export class S3BaseBucket {
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.externalClient.presignedGetObject(this.name, key, expires, {
-      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
-    });
+    return await this.externalClient.presignedGetObject(this.name, key, expires);
   }
 
   async createPreviewUrl(params: createPreviewUrlParams) {
@@ -241,8 +249,6 @@ export class S3BaseBucket {
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.client.presignedGetObject(this.name, key, expires, {
-      'Content-Disposition': `attachment; filename="${path.basename(key)}"`
-    });
+    return await this.client.presignedGetObject(this.name, key, expires);
   }
 }

@@ -44,12 +44,12 @@ export const filterDatasetsByTmbId = async ({
  *
  * ```typescript
  * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
- * const replacedText = await replaceDatasetQuoteTextWithJWT(datasetQuoteText, addDays(new Date(), 90))
+ * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, addDays(new Date(), 90))
  * console.log(replacedText)
  * // '![image.png](http://localhost:3000/api/system/file/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvYmplY3RLZXkiOiJjaGF0LzY5MWFlMjlkNDA0ZDA0Njg3MTdkZDc0Ny82OGFkODVhNzQ2MzAwNmM5NjM3OTlhMDcvalhmWHk4eWZHQUZzOVdKcGNXUmJBaFYyL3BhcnNlZC85YTBmNGZlZC00ZWRmLTQ2MTMtYThkNi01MzNhZjVhZTUxZGMucG5nIiwiaWF0IjoxNzYzMzcwOTYwLCJleHAiOjk1MzkzNzA5NjB9.tMDWg0-ZWRnWPNp9Hakd0w1hhaO8jj2oD98SU0wAQYQ)'
  * ```
  */
-export function replaceDatasetQuoteTextWithJWT(documentQuoteText: string, expiredTime: Date) {
+export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
   if (!documentQuoteText || typeof documentQuoteText !== 'string')
     return documentQuoteText as string;
 

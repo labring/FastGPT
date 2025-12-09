@@ -151,13 +151,15 @@ const ConfigToolModal = ({
                     name={input.key}
                     rules={{
                       validate: (value) => {
-                        if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                          return value !== undefined;
+                        if (
+                          input.valueType === WorkflowIOValueTypeEnum.boolean ||
+                          input.valueType === WorkflowIOValueTypeEnum.number
+                        ) {
+                          return true;
                         }
-                        if (input.required) {
-                          return !!value;
-                        }
-                        return true;
+                        if (!input.required) return true;
+
+                        return !!value;
                       }
                     }}
                     render={({ field: { onChange, value }, fieldState: { error } }) => {

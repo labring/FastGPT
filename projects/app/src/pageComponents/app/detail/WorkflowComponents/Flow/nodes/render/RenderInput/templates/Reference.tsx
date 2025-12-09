@@ -194,6 +194,20 @@ const SingleReferenceSelector = ({
     [list]
   );
 
+  // Adapt array type from old version
+  useEffect(() => {
+    if (
+      Array.isArray(value) &&
+      // @ts-ignore
+      value.length === 1 &&
+      Array.isArray(value[0]) &&
+      value[0].length === 2
+    ) {
+      // @ts-ignore
+      onSelect(value[0]);
+    }
+  }, [value, onSelect]);
+
   const ItemSelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType;
     const [nodeName, outputName] = getSelectValue(selectorVal);

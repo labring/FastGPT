@@ -17,7 +17,7 @@ async function handler(
   req: ApiRequestProps<UserAccountUpdateBody, UserAccountUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<UserAccountUpdateResponse> {
-  const { avatar, timezone } = req.body;
+  const { avatar, timezone, language } = req.body;
 
   const { tmbId } = await authCert({ req, authToken: true });
   // const user = await getUserDetail({ tmbId });
@@ -25,13 +25,14 @@ async function handler(
   // 更新对应的记录
   await mongoSessionRun(async (session) => {
     const tmb = await MongoTeamMember.findById(tmbId).session(session);
-    if (timezone) {
+    if (timezone || language) {
       await MongoUser.updateOne(
         {
           _id: tmb?.userId
         },
         {
-          timezone
+          ...(timezone && { timezone }),
+          ...(language && { language })
         }
       ).session(session);
     }

@@ -81,7 +81,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     return requestMessages;
   })();
 
-  const requestBody = await llmCompletionsBodyFormat({
+  const { requestBody, modelData } = await llmCompletionsBodyFormat({
     ...body,
     messages: rewriteMessages
   });
@@ -89,6 +89,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   // console.log(JSON.stringify(requestBody, null, 2));
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
     body: requestBody,
+    modelData,
     userKey,
     options: {
       headers: {
@@ -491,10 +492,16 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   parallel_tool_calls,
   toolCallMode,
   ...body
-}: LLMRequestBodyType<T>): Promise<InferCompletionsBody<T>> => {
+}: LLMRequestBodyType<T>): Promise<{
+  requestBody: InferCompletionsBody<T>;
+  modelData: LLMModelItemType;
+}> => {
   const modelData = getLLMModel(body.model);
   if (!modelData) {
-    return body as unknown as InferCompletionsBody<T>;
+    return {
+      requestBody: body as unknown as InferCompletionsBody<T>,
+      modelData
+    };
   }
 
   const response_format = (() => {
@@ -548,7 +555,10 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
     });
   }
 
-  return requestBody as unknown as InferCompletionsBody<T>;
+  return {
+    requestBody: requestBody as unknown as InferCompletionsBody<T>,
+    modelData
+  };
 };
 const createChatCompletion = async ({
   modelData,
@@ -579,6 +589,7 @@ const createChatCompletion = async ({
   try {
     // Rewrite model
     const modelConstantsData = modelData || getLLMModel(body.model);
+
     if (!modelConstantsData) {
       return Promise.reject(`${body.model} not found`);
     }

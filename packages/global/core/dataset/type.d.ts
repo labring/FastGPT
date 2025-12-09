@@ -83,6 +83,9 @@ export type DatasetSchemaType = {
 
   apiDatasetServer?: ApiDatasetServerType;
 
+  // 软删除字段
+  deleteTime?: Date | null;
+
   // abandon
   autoSync?: boolean;
   externalReadUrl?: string;

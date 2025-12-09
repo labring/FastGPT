@@ -1,4 +1,5 @@
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { ReadStream } from 'fs';
 import { z } from 'zod';
 
 export const CreateUploadDatasetFileParamsSchema = z.object({
@@ -15,8 +16,7 @@ export const CreateGetDatasetFileURLParamsSchema = z.object({
 export type CreateGetDatasetFileURLParams = z.infer<typeof CreateGetDatasetFileURLParamsSchema>;
 
 export const DeleteDatasetFilesByPrefixParamsSchema = z.object({
-  datasetId: ObjectIdSchema.optional(),
-  rawPrefix: z.string().nonempty().optional()
+  datasetId: ObjectIdSchema.optional()
 });
 export type DeleteDatasetFilesByPrefixParams = z.infer<
   typeof DeleteDatasetFilesByPrefixParamsSchema
@@ -44,9 +44,27 @@ export const ParsedFileContentS3KeyParamsSchema = z.object({
 });
 export type ParsedFileContentS3KeyParams = z.infer<typeof ParsedFileContentS3KeyParamsSchema>;
 
-export const UploadDatasetFileByBufferParamsSchema = z.object({
-  datasetId: ObjectIdSchema,
-  buffer: z.instanceof(Buffer),
-  filename: z.string().nonempty()
+export const UploadParamsSchema = z.union([
+  z.object({
+    datasetId: ObjectIdSchema,
+    filename: z.string().nonempty(),
+    buffer: z.instanceof(Buffer)
+  }),
+
+  z.object({
+    datasetId: ObjectIdSchema,
+    filename: z.string().nonempty(),
+    stream: z.instanceof(ReadStream),
+    size: z.int().positive().optional()
+  })
+]);
+export type UploadParams = z.input<typeof UploadParamsSchema>;
+
+export const AddRawTextBufferParamsSchema = z.object({
+  customPdfParse: z.boolean().optional(),
+  sourceId: z.string().nonempty(),
+  sourceName: z.string().nonempty(),
+  text: z.string()
 });
-export type UploadDatasetFileByBufferParams = z.infer<typeof UploadDatasetFileByBufferParamsSchema>;
+export type AddRawTextBufferParams = z.input<typeof AddRawTextBufferParamsSchema>;
+export type GetRawTextBufferParams = Pick<AddRawTextBufferParams, 'customPdfParse' | 'sourceId'>;

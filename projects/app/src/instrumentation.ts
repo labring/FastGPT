@@ -23,7 +23,8 @@ export async function register() {
         { getSystemTools },
         { trackTimerProcess },
         { initBullMQWorkers },
-        { initS3Buckets }
+        { initS3Buckets },
+        { initGeo }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -40,7 +41,8 @@ export async function register() {
         import('@fastgpt/service/core/app/tool/controller'),
         import('@fastgpt/service/common/middle/tracks/processor'),
         import('@/service/common/bullmq'),
-        import('@fastgpt/service/common/s3')
+        import('@fastgpt/service/common/s3'),
+        import('@fastgpt/service/common/geo')
       ]);
 
       // connect to signoz
@@ -52,6 +54,9 @@ export async function register() {
 
       // init s3 buckets
       initS3Buckets();
+
+      // init geo
+      initGeo();
 
       // Connect to MongoDB
       await Promise.all([

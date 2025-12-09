@@ -80,8 +80,6 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       return {
         collection,
         ...formatDatasetDataValue({
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId
@@ -98,8 +96,6 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       return {
         collection,
         ...formatDatasetDataValue({
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId

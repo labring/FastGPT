@@ -78,9 +78,6 @@ const SelectFile = React.memo(function SelectFile() {
               Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
               formData.set('file', file);
               await POST(url, formData, {
-                headers: {
-                  'Content-Type': 'multipart/form-data; charset=utf-8'
-                },
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);
@@ -96,7 +93,8 @@ const SelectFile = React.memo(function SelectFile() {
                         : item
                     )
                   );
-                }
+                },
+                timeout: 5 * 60 * 1000 // 5 minutes
               })
                 .then(() => {
                   setSelectFiles((state) =>

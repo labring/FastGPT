@@ -1,10 +1,12 @@
 {
+  "ai.query_extension_embedding": "问题优化-embedding",
   "ai_model": "AI 模型",
   "all": "所有",
   "answer_accuracy": "评测-回答准确性",
   "app_name": "应用名",
   "auto_index": "索引增强",
   "billing_module": "扣费模块",
+  "check_left_points": "查看剩余积分",
   "compress_llm_messages": "AI 历史记录压缩",
   "confirm_export": "共筛选出 {{total}} 条数据，是否确认导出？",
   "count": "运行次数",

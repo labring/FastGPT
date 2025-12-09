@@ -184,7 +184,7 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/* 
+/*
   Parse file extension from url
   Test：
   1. https://xxx.com/file.pdf?token=123
@@ -200,4 +200,33 @@ export const parseFileExtensionFromUrl = (url = '') => {
   // Get file extension
   const extension = fileName.split('.').pop();
   return (extension || '').toLowerCase();
+};
+
+export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
+  if (num === 0) return '0';
+  if (!num || isNaN(num)) return '-';
+  const absNum = Math.abs(num);
+  const isNegative = num < 0;
+  const prefix = isNegative ? '-' : '';
+
+  if (locale === 'zh-CN') {
+    if (absNum >= 10000) {
+      const value = absNum / 10000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}万`;
+    }
+    return num.toLocaleString(locale);
+  } else {
+    if (absNum >= 1000000) {
+      const value = absNum / 1000000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}M`;
+    }
+    if (absNum >= 1000) {
+      const value = absNum / 1000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}K`;
+    }
+    return num.toLocaleString(locale);
+  }
 };

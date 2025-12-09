@@ -9,7 +9,8 @@ export enum TimerIdEnum {
 
   clearExpiredRawTextBuffer = 'clearExpiredRawTextBuffer',
   clearExpiredDatasetImage = 'clearExpiredDatasetImage',
-  clearExpiredMinioFiles = 'clearExpiredMinioFiles'
+  clearExpiredMinioFiles = 'clearExpiredMinioFiles',
+  recordTeamQPM = 'recordTeamQPM'
 }
 
 export enum LockNotificationEnum {

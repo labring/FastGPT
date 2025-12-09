@@ -8,10 +8,11 @@ import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
 import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
 import { useMemoizedFn } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 let timer: NodeJS.Timeout;
 
 export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
@@ -20,7 +21,7 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
       const googleToken = await getClientToken(feConfigs.googleClientVerKey);
-      await sendAuthCode({ username, type, googleToken, captcha });
+      await sendAuthCode({ username, type, googleToken, captcha, lang: i18n.language as LangEnum });
 
       setCodeCountDown(60);
 
