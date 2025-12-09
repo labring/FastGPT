@@ -37,9 +37,9 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2AppWorkflow(appForm, t);
+    const { nodes, edges } = form2AppWorkflow(appForm, t, appDetail.type);
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, t]);
+  }, [appForm, setWorkflowData, t, appDetail.type]);
 
   useEffect(() => {
     setRenderEdit(!datasetCiteData);

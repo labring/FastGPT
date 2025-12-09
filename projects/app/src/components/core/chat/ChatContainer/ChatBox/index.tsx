@@ -68,6 +68,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import WelcomeHomeBox from '@/components/core/chat/ChatContainer/ChatBox/components/WelcomeHomeBox';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -133,6 +134,10 @@ const ChatBox = ({
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
+  const isAssistantType = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
+  );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -979,7 +984,7 @@ const ChatBox = ({
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
-          {(!!variableList?.length || !!externalVariableList?.length) && (
+          {(!!variableList?.length || !!externalVariableList?.length) && !isAssistantType && (
             <Box id="variable-input">
               <VariableInputForm
                 chatStarted={chatStarted}
@@ -1100,7 +1105,8 @@ const ChatBox = ({
     t,
     userAvatar,
     variableList?.length,
-    welcomeText
+    welcomeText,
+    isAssistantType
   ]);
 
   return (
@@ -1115,7 +1121,7 @@ const ChatBox = ({
       {/* chat box container */}
       {RenderRecords}
       {/* message input */}
-      {canSendPrompt && (
+      {(canSendPrompt || isAssistantType) && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

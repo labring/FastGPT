@@ -19,5 +19,11 @@ export const appTypeMap = {
     avatar: 'core/app/type/pluginFill',
     title: i18nT('app:type.Create plugin bot'),
     emptyCreateText: i18nT('app:create_empty_plugin')
+  },
+  [AppTypeEnum.assistant]: {
+    icon: 'core/app/assistant/assistantIcon',
+    title: i18nT('app:type.Create smart customer service'),
+    avatar: 'core/app/assistant/assistantIcon',
+    emptyCreateText: i18nT('app:create_empty_smart_customer_service')
   }
 };

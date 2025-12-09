@@ -74,6 +74,9 @@ export const DatasetSelectModal = ({
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
+    if (item.type === DatasetTypeEnum.structureDocument && !isSmartGenerateScene) {
+      return false;
+    }
     return isSmartGenerateScene
       ? isEmptyDatabase(item)
       : !!activeVectorModel && item.vectorModel && activeVectorModel !== item.vectorModel.model;
@@ -97,7 +100,8 @@ export const DatasetSelectModal = ({
     }
 
     return visibleDatasets.filter(
-      (item: DatasetListItemType) => item.vectorModel?.model === targetModel
+      (item: DatasetListItemType) =>
+        item.vectorModel?.model === targetModel || item.type === DatasetTypeEnum.structureDocument
     );
   }, [datasets, activeVectorModel]);
 

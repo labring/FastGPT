@@ -32,7 +32,13 @@ import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 
-const InfoModal = ({ onClose }: { onClose: () => void }) => {
+const InfoModal = ({
+  onClose,
+  hideAuthConfig = false
+}: {
+  onClose: () => void;
+  hideAuthConfig?: boolean;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
@@ -176,7 +182,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         />
 
         {/* role */}
-        {appDetail.permission.hasManagePer && (
+        {appDetail.permission.hasManagePer && !hideAuthConfig && (
           <>
             {!appDetail.inheritPermission && appDetail.parentId && (
               <Box mt={3}>
