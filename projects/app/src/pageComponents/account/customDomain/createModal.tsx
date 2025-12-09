@@ -94,7 +94,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
 
   const [provider, setProvider] = useState<ProviderEnum>('aliyun');
   const [domain, setDomain] = useState<string>('');
-  const [editDomain, setEditDomain] = useState<boolean>(false);
+  const [editDomain, setEditDomain] = useState<boolean>(true);
 
   useEffect(() => {
     if (type === 'refresh') {
@@ -160,7 +160,13 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
   const loading = loadingCreatingDomain;
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('account:custom_domain')} minW="800px">
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="common/globalLine"
+      title={t('account:custom_domain')}
+      minW="800px"
+    >
       <ModalBody>
         <Box fontWeight="500" color="gray.900">
           {t('account:custom_domain.provider')}
@@ -218,8 +224,9 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
             </InputRightElement>
           </InputGroup>
           <Button
-            variant="outline"
+            variant="whiteBase"
             marginLeft={'8px'}
+            h={'40px'}
             onClick={() => {
               if (type === 'create') {
                 setEditDomain(!editDomain);
