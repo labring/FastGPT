@@ -320,7 +320,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
     try {
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
-
+      console.log('metadata-fronted', metadata);
       const { responseText } = await streamFetch({
         url: '/api/core/chat/helperBot/completions',
         data: {
@@ -334,7 +334,8 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
             name: item.name
           })),
           metadata: {
-            type,
+            // type: 'topAgent',
+            type: 'skillAgent',
             data: metadata
           }
         },

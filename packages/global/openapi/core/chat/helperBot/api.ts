@@ -3,8 +3,9 @@ import {
   type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema,
-  skillEditorParamsSchema,
-  topAgentParamsSchema
+  topAgentParamsSchema,
+  skillAgentParamsSchema,
+  skillEditorParamsSchema
 } from '../../../../core/chat/helperBot/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';
@@ -61,8 +62,8 @@ export const HelperBotCompletionsParamsSchema = z.object({
       data: topAgentParamsSchema
     }),
     z.object({
-      type: z.literal(HelperBotTypeEnum.skillEditor),
-      data: skillEditorParamsSchema
+      type: z.literal(HelperBotTypeEnum.skillAgent),
+      data: skillAgentParamsSchema
     })
   ])
 });

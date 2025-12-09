@@ -5,7 +5,7 @@ import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema 
 
 export enum HelperBotTypeEnum {
   topAgent = 'topAgent',
-  skillEditor = 'skillEditor'
+  skillAgent = 'skillAgent'
 }
 export const HelperBotTypeEnumSchema = z.enum(Object.values(HelperBotTypeEnum));
 export type HelperBotTypeEnumType = z.infer<typeof HelperBotTypeEnumSchema>;
@@ -73,16 +73,19 @@ export type HelperBotChatItemSiteType = z.infer<typeof HelperBotChatItemSiteSche
 
 /* 具体的 bot 的特有参数 */
 
-// Top agent
-export const topAgentParamsSchema = z.object({
+// HelperBot 通用参数配置 (TopAgent 和 SkillAgent 共用)
+export const helperBotParamsSchema = z.object({
   role: z.string().nullish(),
   taskObject: z.string().nullish(),
   selectedTools: z.array(z.string()).nullish(),
   selectedDatasets: z.array(z.string()).nullish(),
   fileUpload: z.boolean().nullish()
 });
-export type TopAgentParamsType = z.infer<typeof topAgentParamsSchema>;
+export type HelperBotParamsType = z.infer<typeof helperBotParamsSchema>;
 
-// Skill editor
-export const skillEditorParamsSchema = z.object({});
-export type SkillEditorParamsType = z.infer<typeof skillEditorParamsSchema>;
+// 兼容性别名
+export const topAgentParamsSchema = helperBotParamsSchema;
+export type TopAgentParamsType = HelperBotParamsType;
+
+export const skillAgentParamsSchema = helperBotParamsSchema;
+export type SkillAgentParamsType = HelperBotParamsType;
