@@ -4,6 +4,7 @@
   "private": false,
   "scripts": {
     "dev": "next dev",
+    "dev:proxy": "node scripts/dev-proxy.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
