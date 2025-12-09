@@ -76,6 +76,8 @@ COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@
 COPY --from=builder /app/projects/app/package.json ./package.json
 # copy config
 COPY ./projects/app/data/config.json /app/data/config.json
+# copy test.mp3
+COPY ./projects/app/data/test.mp3 /app/data/test.mp3
 # copy GeoLite2-City.mmdb
 COPY ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
 

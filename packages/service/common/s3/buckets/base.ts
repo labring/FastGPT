@@ -10,11 +10,11 @@ import {
 import { defaultS3Options, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../system/log';
 import { addS3DelJob } from '../mq';
 import { type Readable } from 'node:stream';
+import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
 
 export class S3BaseBucket {
   private _client: Client;
@@ -62,7 +62,9 @@ export class S3BaseBucket {
       await this.options.afterInit?.();
       console.log(`S3 init success: ${this.name}`);
     };
-    init();
+    if (this.options.init) {
+      init();
+    }
   }
 
   get name(): string {
@@ -250,5 +252,26 @@ export class S3BaseBucket {
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return await this.client.presignedGetObject(this.name, key, expires);
+  }
+
+  async uploadFileByBuffer(params: UploadFileByBufferParams) {
+    const { key, buffer, contentType } = UploadFileByBufferSchema.parse(params);
+
+    await MongoS3TTL.create({
+      minioKey: key,
+      bucketName: this.name,
+      expiredTime: addHours(new Date(), 1)
+    });
+    await this.putObject(key, buffer, undefined, {
+      'Content-Type': contentType || 'application/octet-stream'
+    });
+
+    return {
+      key,
+      accessUrl: await this.createExternalUrl({
+        key,
+        expiredHours: 2
+      })
+    };
   }
 }

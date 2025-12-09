@@ -20,11 +20,15 @@ export interface DingtalkAppType {
 }
 
 export interface WecomAppType {
-  AgentId: string;
-  CorpId: string;
-  SuiteSecret: string;
   CallbackToken: string;
   CallbackEncodingAesKey: string;
+
+  /** @deprecated */
+  // AgentId: string;
+  /** @deprecated */
+  // CorpId: string;
+  /** @deprecated */
+  // SuiteSecret: string;
 }
 
 // TODO: unused

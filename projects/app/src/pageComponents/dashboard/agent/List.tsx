@@ -528,7 +528,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
     >
       <Box
         as="img"
-        src={getWebReqUrl('/imgs/app/createButton.png')}
+        src={getWebReqUrl('/imgs/app/createButton.jpg')}
         alt="operational advertisement"
         width="100%"
         maxW="100%"

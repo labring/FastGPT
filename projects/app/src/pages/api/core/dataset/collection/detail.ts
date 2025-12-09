@@ -9,7 +9,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorDB/controller';
+import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
@@ -38,7 +38,11 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
 
   const [file, indexAmount, errorCount] = await Promise.all([
     fileId ? getS3DatasetSource().getFileMetadata(fileId) : undefined,
-    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
+    getVectorCount({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      collectionId: collection._id
+    }),
     MongoDatasetTraining.countDocuments(
       {
         teamId: collection.teamId,

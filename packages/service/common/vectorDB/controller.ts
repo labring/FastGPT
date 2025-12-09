@@ -64,13 +64,14 @@ export const recallFromVectorStore = (props: EmbeddingRecallCtrlProps) =>
   retryFn(() => Vector.embRecall(props));
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
+// Count vector
 export const getVectorCountByTeamId = async (teamId: string) => {
   const cacheCount = await teamVectorCache.get(teamId);
   if (cacheCount !== undefined) {
     return cacheCount;
   }
 
-  const count = await Vector.getVectorCountByTeamId(teamId);
+  const count = await Vector.getVectorCount({ teamId });
 
   teamVectorCache.set({
     teamId,
@@ -79,9 +80,7 @@ export const getVectorCountByTeamId = async (teamId: string) => {
 
   return count;
 };
-
-export const getVectorCountByDatasetId = Vector.getVectorCountByDatasetId;
-export const getVectorCountByCollectionId = Vector.getVectorCountByCollectionId;
+export const getVectorCount = Vector.getVectorCount;
 
 export const insertDatasetDataVector = async ({
   model,

@@ -35,11 +35,16 @@
   "wecom.bot_desc": "Connect to WeCom Bot directly via API",
   "wecom.create_modal_title": "Create WeCom Bot",
   "wecom.edit_modal_title": "Edit WeCom Bot",
+  "wecom.create_modal.step.1": "Configure Parameters",
+  "wecom.create_modal.step.2": "Fill in Callback URL",
   "wecom.title": "Publish to WeCom Bot",
   "dingtalk.bot": "DingTalk Bot",
   "dingtalk.bot_desc": "Connect to DingTalk Bot directly via API",
   "dingtalk.create_modal_title": "Create DingTalk Bot",
   "dingtalk.edit_modal_title": "Edit DingTalk Bot",
   "dingtalk.title": "Publish to DingTalk Bot",
-  "dingtalk.api": "DingTalk API"
+  "dingtalk.api": "DingTalk API",
+  "use_default_domain": "Use Default Domain",
+  "ip_whitelist": "IP Whitelist",
+  "custom_domain_management": "Custom Domain Management"
 }

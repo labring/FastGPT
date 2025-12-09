@@ -28,6 +28,7 @@ export const Mimes = {
 export const defaultS3Options: {
   externalBaseURL?: string;
   afterInit?: () => Promise<void> | void;
+  init?: boolean;
 } & ClientOptions = {
   useSSL: process.env.S3_USE_SSL === 'true',
   endPoint: process.env.S3_ENDPOINT || 'localhost',
@@ -53,8 +54,4 @@ export const getSystemMaxFileSize = () => {
   return config; // bytes
 };
 
-export const S3_KEY_PATH_INVALID_CHARS_MAP: Record<string, boolean> = {
-  '/': true,
-  '\\': true,
-  '|': true
-};
+export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;

@@ -6,8 +6,7 @@ import {
   mockVectorInit,
   mockGetVectorDataByTime,
   mockGetVectorCountByTeamId,
-  mockGetVectorCountByDatasetId,
-  mockGetVectorCountByCollectionId,
+  mockGetVectorCount,
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectorsByText } from '@test/mocks/core/ai/embedding';
@@ -18,8 +17,7 @@ import {
   recallFromVectorStore,
   getVectorDataByTime,
   getVectorCountByTeamId,
-  getVectorCountByDatasetId,
-  getVectorCountByCollectionId,
+  getVectorCount,
   insertDatasetDataVector,
   deleteDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
@@ -123,45 +121,39 @@ describe('VectorDB Controller', () => {
       const result = await getVectorCountByTeamId('team_123');
 
       expect(result).toBe(150);
-      expect(mockGetVectorCountByTeamId).not.toHaveBeenCalled();
+      expect(mockGetVectorCount).not.toHaveBeenCalled();
     });
 
     it('should fetch from Vector and cache if no cache exists', async () => {
       mockGetRedisCache.mockResolvedValue(null);
-      mockGetVectorCountByTeamId.mockResolvedValue(200);
+      mockGetVectorCount.mockResolvedValue(200);
 
       const result = await getVectorCountByTeamId('team_456');
 
       expect(result).toBe(200);
-      expect(mockGetVectorCountByTeamId).toHaveBeenCalledWith('team_456');
+      expect(mockGetVectorCount).toHaveBeenCalledWith({ teamId: 'team_456' });
     });
 
     it('should handle undefined cache value', async () => {
       mockGetRedisCache.mockResolvedValue(undefined);
-      mockGetVectorCountByTeamId.mockResolvedValue(50);
+      mockGetVectorCount.mockResolvedValue(50);
 
       const result = await getVectorCountByTeamId('team_789');
 
       expect(result).toBe(50);
-      expect(mockGetVectorCountByTeamId).toHaveBeenCalled();
+      expect(mockGetVectorCount).toHaveBeenCalledWith({ teamId: 'team_789' });
     });
   });
 
-  describe('getVectorCountByDatasetId', () => {
-    it('should call Vector.getVectorCountByDatasetId', async () => {
-      const result = await getVectorCountByDatasetId('team_1', 'dataset_1');
+  describe('getVectorCount', () => {
+    it('should call Vector.getVectorCount', async () => {
+      const result = await getVectorCount({ teamId: 'team_1', datasetId: 'dataset_1' });
 
-      expect(mockGetVectorCountByDatasetId).toHaveBeenCalledWith('team_1', 'dataset_1');
+      expect(mockGetVectorCount).toHaveBeenCalledWith({
+        teamId: 'team_1',
+        datasetId: 'dataset_1'
+      });
       expect(result).toBe(50);
-    });
-  });
-
-  describe('getVectorCountByCollectionId', () => {
-    it('should call Vector.getVectorCountByCollectionId', async () => {
-      const result = await getVectorCountByCollectionId('team_1', 'dataset_1', 'col_1');
-
-      expect(mockGetVectorCountByCollectionId).toHaveBeenCalledWith('team_1', 'dataset_1', 'col_1');
-      expect(result).toBe(25);
     });
   });
 

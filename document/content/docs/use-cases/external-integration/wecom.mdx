@@ -3,119 +3,70 @@ title: 接入企微机器人教程
 description: FastGPT 接入企微机器人教程
 ---
 
-从 4.12.4 版本起，FastGPT 商业版支持直接接入企微机器人，无需额外的 API。 
+- 从 4.12.4 版本起，FastGPT 商业版支持直接接入企微机器人，无需额外的 API。 
+- 从 4.14.4 版本起，FastGPT 云服务版支持通过配置自定义域名的方式接入企微智能机器人。
 
-## 1. 配置可信域名和可信IP
+## 1. （云服务版必须）配置自定义域名
 
-点击企微头像,打开管理企业
+企微要求智能机器人消息推送地址必须使用企业主体域名，因此云服务版本用户必须先配置自定义域名才能使用企微机器人。
 
-![图片](/imgs/wecom-bot-1.png)
+- [配置自定义域名](/docs/introduction/guide/team_permissions/customDomain)
 
-在应用管理中找到"自建"-"创建应用"
+若您是商业版用户，请继续使用您企业的域名。
 
-![图片](/imgs/wecom-bot-2.png)
+## 2. 创建智能机器人
 
-创建好应用后, 下拉, 依次配置"网页授权及JS-SDK"和"企业可信IP"
+### 2.1 超级管理员登录 
 
-![图片](/imgs/wecom-bot-3.png)
+[点击打开企业微信管理后台](https://work.weixin.qq.com/)
 
-其中, 网页授权及JS-SDK要求按照企微指引,完成域名归属认证
+### 2.2 找到智能机器人入口
 
-![图片](/imgs/wecom-bot-4.png)
+在"安全与管理" - "管理工具"页面点击"智能机器人" ( 注意: 只有企业创建者或超级管理员才有权限看到这个入口 )
 
-企业可信IP要求为企业服务器IP, 后续企微的回调URL将请求到此IP
+![图片](/imgs/use-cases/external-integration/wecom/1.png)
 
-![图片](/imgs/wecom-bot-5.png)
+### 2.3 选择 “API模式创建” 智能机器人
 
-## 2. 创建企业自建应用
+在创建机器人页面, 下拉, 点击 "API模式创建"
 
-前往 FastGPT ,选择想要接入的应用，在 发布渠道 页面，新建一个接入企微智能机器人的发布渠道，填写好基础信息。
+![图片](/imgs/use-cases/external-integration/wecom/2.png)
 
-![图片](/imgs/wecom-bot-6.png)
+### 2.4 获取关键密钥
 
-现在回到企业微信平台,找到 Corp ID, Secret, Agent ID, Token, AES Key 信息并填写回 FastGPT 平台
+随机生成或者手动输入 Token 和 Encoding-AESKey，并且纪录下来
 
-![图片](/imgs/wecom-bot-7.png)
+![图片](/imgs/use-cases/external-integration/wecom/3.png)
 
-在"我的企业"里找到企业 ID, 填写到 FastGPT 的 Corp ID 中
+### 2.5 创建企微机器人发布渠道
 
-![图片](/imgs/wecom-bot-8.png)
+在 FastGPT 中，选择要使用 Agent，在发布渠道页面，选择“企业微信机器人”，点击“创建”
 
-在应用中找到 Agent Id 和 Secret, 并填写回 FastGPT
+![图片](/imgs/use-cases/external-integration/wecom/4.png)
 
-![图片](/imgs/wecom-bot-9.png)
+### 2.6 配置发布渠道信息
 
-点击"消息接收"-"设置API接收"
+配置该发布渠道的信息，需要填入 Token 和 AESKey，也就是第四步中纪录下来的 Token 和 Encoding-AESKey
 
-![图片](/imgs/wecom-bot-10.png)
+![图片](/imgs/use-cases/external-integration/wecom/5.png)
 
-随机生成或者手动输入 Token 和 Encoding-Key, 分别填写到 FastGPT 的 Token 和 AES Key 中
+### 2.7 复制回调地址
 
-![图片](/imgs/wecom-bot-11.png)
+点击“确认”后，选择您配置的自定义域名，复制回调地址，填回企微智能机器人配置页中。
 
-填写完成后确认创建
+![图片](/imgs/use-cases/external-integration/wecom/6.png)
 
-然后点击请求地址, 复制页面中的链接
-
-![图片](/imgs/wecom-bot-12.png)
-
-回到刚才的配置详情, 将刚才复制的链接填入 URL 框中, 并点击下方的保存 ,即可完成自建应用的创建
-
-注意: 若复制的链接是以 "http://localhost" 开头, 需要将本地地址改为企业主体域名
-
-因为企微会给填写的 URL 发送验证密文, 若 URL 为本地地址, 则本地接收不到企微的密文
-
-若 URL 不是企业主体域名, 则验证会失败
-
-## 3. 创建智能机器人
-
-第二步创建企业自建应用是为了验证域名和IP的合规性, 并获取 secret 参数, 下面创建智能机器人才是正式的配置流程
-
-在"安全与管理" - "管理工具"页面找到"智能机器人" ( 注意: 只有企业创建者或超级管理员才有权限看到这个入口 )
-
-![图片](/imgs/wecom-bot-13.png)
-
-创建机器人页面,下拉,找到,点击"API模式创建"
-
-![图片](/imgs/wecom-bot-14.png)
-
-与刚才配置自建应用同理, 在 FastGPT 平台再新增一个发布渠道, 并回到企业微信配置参数
-
-![图片](/imgs/wecom-bot-19.png)
-
-随机生成或者手动输入 Token 和 Encoding-AESKey, 分别填写到 FastGPT 的 Token 和 AES Key 中
-
-![图片](/imgs/wecom-bot-15.png)
-
-Corp ID 和 Secret 这两个参数和刚才的自建应用保持一致
-
-Agent ID 和自建应用的不同, 需要先填写一个自定义值, 后续会根据企业微信提供的数据重新更改
-
-在 FastGPT 将Corp ID, Secret, Agent ID, Token, AES Key 等参数都填写完毕后, 点击确认
-
-然后点击请求地址, 复制页面中的链接
-
-回到企业微信, 将链接粘贴到智能机器人的 URL 配置栏, 点击创建
-
-创建完成后, 找到智能机器人的配置详情
-
-![图片](/imgs/wecom-bot-16.png)
-
-复制 Bot ID, 填写到 FastGPT 的 Agent ID 中, 即可完成智能机器人配置
-
-![图片](/imgs/wecom-bot-17.png)
-
-## 4. 使用智能机器人
+## 3. 使用智能机器人
 
 在企业微信平台的"通讯录",即可找到创建的机器人,就可以发送消息了
 
-![图片](/imgs/wecom-bot-18.png)
+![图片](/imgs/use-cases/external-integration/wecom/7.png)
 
 ## FAQ
 
 ### 发送了消息，没响应
 
-1. 检查可信域名和可信IP是否配置正确。
-2. 检查自建应用的 Secret 参数是否与智能机器人一致。
-3. 查看 FastGPT 对话日志，是否有对应的提问记录
+1. 检查可信域名是否配置正确。
+2. 检查 Token 和 Encoding-AESKey 是否正确。
+3. 查看 FastGPT 对话日志，是否有对应的提问记录。
 4. 如果没记录，则可能是应用运行报错了，可以先试试最简单的机器人.

@@ -8,5 +8,7 @@ export const TagsMap = {
   pluginTeam: '团队插件管理',
   apiKey: 'APIKey',
   walletBill: '订单',
-  walletDiscountCoupon: '优惠券'
+  walletDiscountCoupon: '优惠券',
+
+  adminDashboard: '管理员仪表盘'
 };
