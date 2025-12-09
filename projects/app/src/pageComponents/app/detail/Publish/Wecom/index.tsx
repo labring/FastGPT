@@ -50,7 +50,8 @@ const Wecom = ({ appId }: { appId: string }) => {
     loading: isFetching,
     runAsync: refetchShareChatList
   } = useRequest2(() => getShareChatList<WecomAppType>({ appId, type: PublishChannelEnum.wecom }), {
-    manual: false
+    manual: false,
+    refreshOnWindowFocus: true
   });
 
   const {
