@@ -9,6 +9,7 @@
   "confirm_logout": "Confirm to log out?",
   "create_channel": "Add new channel",
   "create_model": "Add new model",
+  "custom_domain": "Custom Domain",
   "custom_model": "custom model",
   "default_model": "Default model",
   "default_model_config": "Default model configuration",

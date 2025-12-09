@@ -64,6 +64,7 @@ const SubSchema = new Schema({
   appRegistrationCount: Number,
   auditLogStoreDuration: Number,
   ticketResponseTime: Number,
+  customDomain: Number,
 
   // stand sub and extra points sub. Plan total points
   totalPoints: {
