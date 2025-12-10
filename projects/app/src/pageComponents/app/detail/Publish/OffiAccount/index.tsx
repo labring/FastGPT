@@ -75,10 +75,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
 
           {feConfigs?.docUrl && (
             <Link
-              href={
-                feConfigs.openAPIDocUrl ||
-                getDocPath('/docs/use-cases/external-integration/official_account/')
-              }
+              href={getDocPath('/docs/use-cases/external-integration/official_account')}
               target={'_blank'}
               ml={2}
               color={'primary.500'}
