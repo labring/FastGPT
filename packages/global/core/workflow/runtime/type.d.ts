@@ -209,14 +209,15 @@ export type DispatchNodeResponseType = {
   headers?: Record<string, any>;
   httpResult?: Record<string, any>;
 
-  // plugin output
+  // Tool
+  toolInput?: Record<string, any>;
   pluginOutput?: Record<string, any>;
   pluginDetail?: ChatHistoryItemResType[];
 
   // if-else
   ifElseResult?: string;
 
-  // tool
+  // tool call
   toolCallInputTokens?: number;
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
@@ -224,9 +225,6 @@ export type DispatchNodeResponseType = {
 
   // code
   codeLog?: string;
-
-  // plugin
-  pluginOutput?: Record<string, any>;
 
   // read files
   readFilesResult?: string;

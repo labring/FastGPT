@@ -427,7 +427,6 @@
   "core.chat.response.module query": "問題/搜尋詞",
   "core.chat.response.module similarity": "相似度",
   "core.chat.response.module temperature": "溫度",
-  "core.chat.response.plugin output": "外掛程式輸出值",
   "core.chat.response.search using reRank": "結果重新排名",
   "core.chat.response.text output": "文字輸出",
   "core.chat.response.update_var_result": "變數更新結果（依序顯示多個變數更新結果）",

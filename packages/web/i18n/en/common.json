@@ -427,7 +427,6 @@
   "core.chat.response.module query": "Question/Search Term",
   "core.chat.response.module similarity": "Similarity",
   "core.chat.response.module temperature": "Temperature",
-  "core.chat.response.plugin output": "Plugin Output Value",
   "core.chat.response.search using reRank": "Result Re-Rank",
   "core.chat.response.text output": "Text Output",
   "core.chat.response.update_var_result": "Variable Update Result (Displays Multiple Variable Update Results in Order)",

@@ -350,10 +350,8 @@ export const WholeResponseContent = ({
       </>
       {/* plugin */}
       <>
-        <Row
-          label={t('common:core.chat.response.plugin output')}
-          value={activeModule?.pluginOutput}
-        />
+        <Row label={t('chat:tool_input')} value={activeModule?.toolInput} />
+        <Row label={t('chat:tool_output')} value={activeModule?.pluginOutput} />
       </>
       {/* text output */}
       <Row label={t('common:core.chat.response.text output')} value={activeModule?.textOutput} />
