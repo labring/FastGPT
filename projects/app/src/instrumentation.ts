@@ -6,6 +6,8 @@ import { exit } from 'process';
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+      await import('@fastgpt/service/common/proxy');
+
       // 基础系统初始化
       const [
         { connectMongo },
@@ -42,8 +44,7 @@ export async function register() {
         import('@fastgpt/service/common/middle/tracks/processor'),
         import('@/service/common/bullmq'),
         import('@fastgpt/service/common/s3'),
-        import('@fastgpt/service/common/geo'),
-        import('@fastgpt/service/common/proxy')
+        import('@fastgpt/service/common/geo')
       ]);
 
       // connect to signoz
