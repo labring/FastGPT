@@ -70,7 +70,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       taskObject: appForm.aiSettings.aiTaskObject,
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
-      fileUpload: false, // TODO: 从配置中获取文件上传设置
+      fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       modelConfig: {
         model: appForm.aiSettings.model,
         temperature: appForm.aiSettings.temperature,
@@ -137,19 +137,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
-                // Compute tools
-                const existingToolIds = new Set(
-                  appForm.selectedTools.map((tool) => tool.pluginId).filter(Boolean)
-                );
-                const newToolIds = (formData.tools || []).filter(
-                  (toolId: string) => !existingToolIds.has(toolId)
-                );
-
+                const targetToolIds = formData.tools || [];
                 const newTools: FlowNodeTemplateType[] = [];
                 const failedToolIds: string[] = [];
 
                 const results = await Promise.all(
-                  newToolIds.map((toolId: string) =>
+                  targetToolIds.map((toolId: string) =>
                     getToolPreviewNode({ appId: toolId })
                       .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
                       .catch((error) => ({ status: 'rejected' as const, toolId, error }))
@@ -167,7 +160,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 setAppForm((prev) => {
                   const newForm: AppFormEditFormType = {
                     ...prev,
-                    selectedTools: [...prev.selectedTools, ...newTools],
+                    selectedTools: newTools,
                     aiSettings: {
                       ...prev.aiSettings,
                       aiRole: formData.role || prev.aiSettings.aiRole,
@@ -175,13 +168,21 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     },
                     chatConfig: {
                       ...prev.chatConfig,
-                      fileSelectConfig: {
-                        ...prev.chatConfig.fileSelectConfig,
-                        canSelectFile:
-                          formData.fileUploadEnabled ||
-                          prev.chatConfig.fileSelectConfig?.canSelectFile ||
-                          false
-                      }
+                      fileSelectConfig: formData.fileUploadEnabled
+                        ? {
+                            ...prev.chatConfig.fileSelectConfig,
+                            canSelectFile: true
+                          }
+                        : {
+                            maxFiles: undefined,
+                            canSelectFile: false,
+                            customPdfParse: false,
+                            canSelectImg: false,
+                            canSelectVideo: false,
+                            canSelectAudio: false,
+                            canSelectCustomFileExtension: false,
+                            customFileExtensionList: []
+                          }
                     }
                   };
                   return newForm;
