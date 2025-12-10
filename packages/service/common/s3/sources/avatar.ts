@@ -5,11 +5,9 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import type { ClientSession } from 'mongoose';
 import { getFileS3Key } from '../utils';
 
-class S3AvatarSource {
-  private bucket: S3PublicBucket;
-
+class S3AvatarSource extends S3PublicBucket {
   constructor() {
-    this.bucket = new S3PublicBucket();
+    super();
   }
 
   get prefix(): string {
@@ -27,7 +25,7 @@ class S3AvatarSource {
   }) {
     const { fileKey } = getFileS3Key.avatar({ teamId, filename });
 
-    return this.bucket.createPostPresignedUrl(
+    return this.createPostPresignedUrl(
       { filename, rawKey: fileKey },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
@@ -36,19 +34,15 @@ class S3AvatarSource {
     );
   }
 
-  createPublicUrl(objectKey: string): string {
-    return this.bucket.createPublicUrl(objectKey);
-  }
-
   async removeAvatarTTL(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
-    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, session);
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
   }
 
   async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
-    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucket.name }, session);
-    await this.bucket.delete(key);
+    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
+    await this.delete(key);
   }
 
   async refreshAvatar(newAvatar?: string, oldAvatar?: string, session?: ClientSession) {
@@ -78,7 +72,7 @@ class S3AvatarSource {
   }) {
     const from = key.slice(this.prefix.length);
     const to = `${S3Sources.avatar}/${teamId}/${filename}`;
-    await this.bucket.copy({ from, to, options: { temporary } });
+    await this.copy({ from, to, options: { temporary } });
     return this.prefix.concat(to);
   }
 }

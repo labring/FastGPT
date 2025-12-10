@@ -105,6 +105,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             let val = data[input.key] ?? input.value;
             if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
               val = anyValueDecrypt(val);
+            } else if (
+              input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+              Array.isArray(val) &&
+              data[input.key]
+            ) {
+              data[input.key] = val.map((item) => item.url);
             }
 
             return {
@@ -172,6 +178,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: plugin.avatar,
         totalPoints: usagePoints,
+        toolInput: data,
         pluginOutput: output?.pluginOutput,
         pluginDetail: pluginData?.permission?.hasWritePer // Not system plugin
           ? flowResponses.filter((item) => {

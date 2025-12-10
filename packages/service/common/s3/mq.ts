@@ -57,7 +57,7 @@ export const startS3DelWorker = async () => {
 
             const p = limit(() =>
               // 因为封装的 delete 方法里，包含前缀删除，这里不能再使用，避免循环。
-              retryFn(() => bucket.client.removeObject(bucket.name, file.name))
+              retryFn(() => bucket.client.removeObject(bucket.bucketName, file.name))
             );
             tasks.push(p);
           });

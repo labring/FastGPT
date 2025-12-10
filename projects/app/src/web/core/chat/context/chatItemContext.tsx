@@ -72,7 +72,7 @@ type ChatItemContextType = {
   pluginRunTab: PluginRunBoxTabEnum;
   setPluginRunTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
   resetVariables: (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }) => void;
   clearChatRecords: () => void;
@@ -95,7 +95,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
     throw new Error('Function not implemented.');
   },
   resetVariables: function (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }): void {
     throw new Error('Function not implemented.');
@@ -144,17 +144,24 @@ const ChatItemContextProvider = ({
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
       const { variables = {}, variableList = [] } = props || {};
 
-      const varValues: Record<string, any> = {};
-
-      variableList.forEach((item) => {
-        varValues[item.key] = variables[item.key] ?? variables[item.label] ?? item.defaultValue;
-      });
       const values = variablesForm.getValues();
 
-      variablesForm.reset({
-        ...values,
-        variables: varValues
-      });
+      if (variableList.length) {
+        const varValues: Record<string, any> = {};
+        variableList.forEach((item) => {
+          varValues[item.key] = variables[item.key] ?? variables[item.label] ?? item.defaultValue;
+        });
+
+        variablesForm.reset({
+          ...values,
+          variables: varValues
+        });
+      } else {
+        variablesForm.reset({
+          ...values,
+          variables
+        });
+      }
     },
     [variablesForm]
   );

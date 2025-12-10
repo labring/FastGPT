@@ -39,11 +39,3 @@ async function handler(
 }
 
 export default NextAPI(useIPFrequencyLimit({ id: 'push-tracks', seconds: 1, limit: 5 }), handler);
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '5kb'
-    }
-  }
-};

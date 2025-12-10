@@ -10,7 +10,9 @@ export enum TimerIdEnum {
   clearExpiredRawTextBuffer = 'clearExpiredRawTextBuffer',
   clearExpiredDatasetImage = 'clearExpiredDatasetImage',
   clearExpiredMinioFiles = 'clearExpiredMinioFiles',
-  recordTeamQPM = 'recordTeamQPM'
+  recordTeamQPM = 'recordTeamQPM',
+  auditLogCleanup = 'auditLogCleanup',
+  chatHistoryCleanup = 'chatHistoryCleanup'
 }
 
 export enum LockNotificationEnum {

@@ -10,5 +10,10 @@ export enum TrackEnum {
   readSystemAnnouncement = 'readSystemAnnouncement',
   clickOperationalAd = 'clickOperationalAd',
   closeOperationalAd = 'closeOperationalAd',
-  teamChatQPM = 'teamChatQPM'
+  teamChatQPM = 'teamChatQPM',
+  subscriptionDeleted = 'subscriptionDeleted',
+  freeAccountCleanup = 'freeAccountCleanup',
+
+  // web tracks
+  clientError = 'clientError'
 }

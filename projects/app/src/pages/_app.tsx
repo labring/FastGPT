@@ -17,6 +17,7 @@ import { type NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
+import { errorLogger } from '@/web/common/utils/errorLogger';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -45,6 +46,9 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
       },
       { passive: false }
     );
+
+    // Initialize error logger
+    errorLogger.init();
   }, []);
 
   const setLayout = Component.setLayout || ((page) => <>{page}</>);

@@ -144,6 +144,7 @@
   "expand_tool_create": "展開 MCP、Http 創建",
   "export_config_successful": "已複製設定，自動過濾部分敏感資訊，請注意檢查是否仍有敏感資料",
   "export_configs": "匯出設定",
+  "export_log_filename": "{{name}} 對話日誌.csv",
   "fastgpt_marketplace": "FastGPT 插件市場",
   "feedback_count": "使用者回饋",
   "file_quote_link": "檔案連結",

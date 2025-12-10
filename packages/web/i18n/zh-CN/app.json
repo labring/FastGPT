@@ -149,6 +149,7 @@
   "expand_tool_create": "展开MCP、Http创建",
   "export_config_successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "export_configs": "导出配置",
+  "export_log_filename": "{{name}} 对话日志.csv",
   "fastgpt_marketplace": "FastGPT 插件市场",
   "feedback_count": "用户反馈",
   "file_quote_link": "文件链接",

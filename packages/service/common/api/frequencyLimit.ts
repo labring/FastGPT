@@ -2,25 +2,50 @@
 import { getGlobalRedisConnection } from '../../common/redis';
 import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
+import { teamQPM } from '../../support/wallet/sub/utils';
+import z from 'zod';
+import { addLog } from '../system/log';
 
 export enum LimitTypeEnum {
   chat = 'chat'
 }
-const limitMap = {
-  [LimitTypeEnum.chat]: {
-    seconds: 60,
-    limit: Number(process.env.CHAT_MAX_QPM || 5000)
+
+const FrequencyLimitOptionSchema = z.union([
+  z.object({
+    type: z.literal(LimitTypeEnum.chat),
+    teamId: z.string()
+  })
+]);
+type FrequencyLimitOption = z.infer<typeof FrequencyLimitOptionSchema>;
+
+const getLimitData = async (data: FrequencyLimitOption) => {
+  if (data.type === LimitTypeEnum.chat) {
+    const qpm = await teamQPM.getTeamQPMLimit(data.teamId);
+
+    if (!qpm) return;
+
+    return {
+      limit: qpm,
+      seconds: 60
+    };
   }
+  return;
 };
 
-type FrequencyLimitOption = {
-  teamId: string;
-  type: LimitTypeEnum;
-  res: NextApiResponse;
-};
+/*
+  true: 未达到限制
+  false: 达到了限制
+*/
+export const teamFrequencyLimit = async ({
+  teamId,
+  type,
+  res
+}: FrequencyLimitOption & { res: NextApiResponse }) => {
+  const data = await getLimitData({ type, teamId });
+  if (!data) return true;
 
-export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOption) => {
-  const { seconds, limit } = limitMap[type];
+  const { limit, seconds } = data;
+
   const redis = getGlobalRedisConnection();
   const key = `frequency:${type}:${teamId}`;
 
@@ -31,13 +56,16 @@ export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOp
     .exec();
 
   if (!result) {
-    return Promise.reject(new Error('Redis connection error'));
+    return true;
   }
 
   const currentCount = result[0][1] as number;
 
   if (currentCount > limit) {
     const remainingTime = await redis.ttl(key);
+    addLog.info(
+      `[Completion Limit] Team ${teamId} reached the limit of ${limit} requests per ${seconds} seconds. Remaining time: ${remainingTime} seconds.`
+    );
     jsonRes(res, {
       code: 429,
       error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`

@@ -20,7 +20,7 @@ import { S3ChatSource } from '../../../../common/s3/sources/chat';
 import path from 'node:path';
 import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
-import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
+import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -175,17 +175,17 @@ export const getFileContentFromLinks = async ({
     parseUrlList
       .map(async (url) => {
         // Get from buffer
-        const rawTextBuffer = await getS3DatasetSource().getRawTextBuffer({
+        const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
           sourceId: url,
           customPdfParse
         });
-        // if (rawTextBuffer) {
-        //   return formatResponseObject({
-        //     filename: rawTextBuffer.filename || url,
-        //     url,
-        //     content: rawTextBuffer.text
-        //   });
-        // }
+        if (rawTextBuffer) {
+          return formatResponseObject({
+            filename: rawTextBuffer.filename || url,
+            url,
+            content: rawTextBuffer.text
+          });
+        }
 
         try {
           if (isInternalAddress(url)) {
@@ -285,7 +285,7 @@ export const getFileContentFromLinks = async ({
           const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
 
           // Add to buffer
-          getS3DatasetSource().addRawTextBuffer({
+          getS3RawTextSource().addRawTextBuffer({
             sourceId: url,
             sourceName: filename,
             text: replacedText,
