@@ -12,5 +12,8 @@ export enum TrackEnum {
   closeOperationalAd = 'closeOperationalAd',
   teamChatQPM = 'teamChatQPM',
   subscriptionDeleted = 'subscriptionDeleted',
-  freeAccountCleanup = 'freeAccountCleanup'
+  freeAccountCleanup = 'freeAccountCleanup',
+
+  // web tracks
+  clientError = 'clientError'
 }
