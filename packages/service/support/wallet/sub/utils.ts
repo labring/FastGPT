@@ -294,7 +294,10 @@ export const teamQPM = {
       teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
       teamPlanStatus.standardConstants?.requestsPerMinute;
 
-    if (!limit) return null;
+    if (!limit) {
+      if (process.env.CHAT_MAX_QPM) return Number(process.env.CHAT_MAX_QPM);
+      return null;
+    }
 
     // 3. Set cache
     await teamQPM.setCachedTeamQPMLimit(teamId, limit);
