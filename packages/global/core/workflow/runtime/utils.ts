@@ -67,25 +67,8 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   };
 
   // Handle null/undefined, return default value by type
-  if (value === undefined || value === null) {
-    if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
-
-    // Default value map (use function to ensure new reference each time)
-    const defaultValueMap: Partial<Record<WorkflowIOValueTypeEnum, () => any>> = {
-      [WorkflowIOValueTypeEnum.string]: () => '',
-      [WorkflowIOValueTypeEnum.number]: () => 0,
-      [WorkflowIOValueTypeEnum.boolean]: () => false,
-      [WorkflowIOValueTypeEnum.arrayString]: () => [],
-      [WorkflowIOValueTypeEnum.arrayNumber]: () => [],
-      [WorkflowIOValueTypeEnum.arrayBoolean]: () => [],
-      [WorkflowIOValueTypeEnum.arrayObject]: () => [],
-      [WorkflowIOValueTypeEnum.arrayAny]: () => [],
-      [WorkflowIOValueTypeEnum.object]: () => ({})
-    };
-
-    const getDefaultValue = defaultValueMap[valueType];
-    return getDefaultValue ? getDefaultValue() : value;
-  }
+  if (value === undefined || value === null) return value;
+  if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
   // Password check
   if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
