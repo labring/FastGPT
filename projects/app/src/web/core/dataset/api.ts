@@ -8,6 +8,7 @@ import type {
   DatasetListItemType,
   DatasetSimpleItemType,
   DatasetTagType,
+  DatasetSynonymSchemaType,
   TagUsageType
 } from '@fastgpt/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
@@ -436,3 +437,64 @@ export const postCreateStructureCollection = ({
  */
 export const getStructureCollectionPreview = (data: { collectionId: string }) =>
   GET<PreviewDataResponse>(`/core/dataset/database/preview`, data);
+
+/* ================== synonym ======================== */
+
+/**
+ * 同义词文件上传
+ */
+export const postUploadSynonymFile = ({
+  datasetId,
+  file,
+  onProgress
+}: {
+  datasetId: string;
+  file: File;
+  onProgress?: (progress: number) => void;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId }));
+
+  return POST<{
+    synonymId: string;
+    fileName: string;
+    size: number;
+    uploadTime: Date;
+  }>(`/core/dataset/synonym/upload`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+      const percent = Math.round((e.loaded / e.total) * 100);
+      onProgress?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
+
+/**
+ * 获取同义词文件列表
+ */
+export const getSynonymFileList = (datasetId: string) =>
+  GET<{
+    files: (DatasetSynonymSchemaType & { uploaderName?: string })[];
+  }>(`/core/dataset/synonym/list?datasetId=${datasetId}`);
+
+/**
+ * 下载同义词文件
+ */
+export const downloadSynonymFile = (id: string) => {
+  return GET<Blob>(`/core/dataset/synonym/download`, {
+    id
+  });
+};
+
+/**
+ * 删除同义词文件
+ */
+export const deleteSynonymFile = (datasetId: string, fileId: string) =>
+  DELETE<{
+    success: boolean;
+  }>(`/core/dataset/synonym/delete?id=${fileId}&datasetId=${datasetId}`);
