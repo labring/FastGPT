@@ -26,7 +26,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
-import type { I18nName } from '@fastgpt/service/common/geo/type';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -40,7 +40,6 @@ export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
   sourcesMap: Record<string, { label: string }>;
   logKeys: AppLogKeysEnum[];
-  locale?: keyof I18nName;
 };
 
 async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
@@ -51,7 +50,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     sources,
     tmbIds,
     chatSearch,
-    locale = 'en',
     title,
     sourcesMap,
     logKeys = []
@@ -61,6 +59,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     throw new Error('缺少参数');
   }
 
+  const locale = getLocale(req);
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
 
   const { teamId, tmbId, app } = await authApp({
