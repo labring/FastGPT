@@ -44,7 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
     });
   } catch (error) {
-    console.dir(error, { depth: null });
     jsonRes(res, {
       code: 500,
       error
