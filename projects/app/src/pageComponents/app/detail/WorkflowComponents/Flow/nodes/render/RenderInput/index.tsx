@@ -22,7 +22,7 @@ const RenderList: Record<
     Component: dynamic(() => import('./templates/Reference'))
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
-    Component: dynamic(() => import('./templates/Reference'))
+    Component: dynamic(() => import('./templates/FileSelect'))
   },
   [FlowNodeInputTypeEnum.selectApp]: {
     Component: dynamic(() => import('./templates/SelectApp'))
@@ -134,6 +134,8 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
           const RenderItem = RenderList[renderType];
 
           if (!RenderItem) return null;
+
+          console.log(renderType, input);
 
           return {
             Component: (
