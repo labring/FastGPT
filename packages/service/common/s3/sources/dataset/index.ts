@@ -2,8 +2,6 @@ import { S3Sources } from '../../type';
 import { S3PrivateBucket } from '../../buckets/private';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import {
-  type AddRawTextBufferParams,
-  AddRawTextBufferParamsSchema,
   type CreateGetDatasetFileURLParams,
   CreateGetDatasetFileURLParamsSchema,
   type CreateUploadDatasetFileParams,
@@ -12,26 +10,26 @@ import {
   DeleteDatasetFilesByPrefixParamsSchema,
   type GetDatasetFileContentParams,
   GetDatasetFileContentParamsSchema,
-  type GetRawTextBufferParams,
   type UploadParams,
   UploadParamsSchema
 } from './type';
 import { MongoS3TTL } from '../../schema';
-import { addHours, addMinutes } from 'date-fns';
+import { addHours } from 'date-fns';
 import { addLog } from '../../../system/log';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readS3FileContentByBuffer } from '../../../file/read/utils';
 import path from 'node:path';
 import { Mimes } from '../../constants';
 import { getFileS3Key, truncateFilename } from '../../utils';
-import { createHash } from 'node:crypto';
-import { S3Error } from 'minio';
+import type { S3RawTextSource } from '../rawText';
+import { getS3RawTextSource } from '../rawText';
 
-export class S3DatasetSource {
-  public bucket: S3PrivateBucket;
+export class S3DatasetSource extends S3PrivateBucket {
+  private rawTextSource: S3RawTextSource;
 
   constructor() {
-    this.bucket = new S3PrivateBucket();
+    super();
+    this.rawTextSource = getS3RawTextSource();
   }
 
   // 下载链接
@@ -39,19 +37,26 @@ export class S3DatasetSource {
     const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
 
     if (external) {
-      return await this.bucket.createExternalUrl({ key, expiredHours });
+      return await this.createExternalUrl({ key, expiredHours });
     }
-    return await this.bucket.createPreviewUrl({ key, expiredHours });
+    return await this.createPreviewUrl({ key, expiredHours });
   }
 
   // 上传链接
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
     const { filename, datasetId } = CreateUploadDatasetFileParamsSchema.parse(params);
     const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
-    return await this.bucket.createPostPresignedUrl(
-      { rawKey: fileKey, filename },
-      { expiredHours: 3 }
-    );
+    return await this.createPostPresignedUrl({ rawKey: fileKey, filename }, { expiredHours: 3 });
+  }
+
+  // 单个键删除
+  deleteDatasetFileByKey(key?: string) {
+    return this.addDeleteJob({ key });
+  }
+
+  // 多个键删除
+  deleteDatasetFilesByKeys(keys: string[]) {
+    return this.addDeleteJob({ keys });
   }
 
   /**
@@ -62,68 +67,27 @@ export class S3DatasetSource {
   deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
     const { datasetId } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
     const prefix = [S3Sources.dataset, datasetId].filter(Boolean).join('/');
-    return this.bucket.addDeleteJob({ prefix });
-  }
-
-  // 单个键删除
-  deleteDatasetFileByKey(key?: string) {
-    return this.bucket.addDeleteJob({ key });
-  }
-
-  // 多个键删除
-  deleteDatasetFilesByKeys(keys: string[]) {
-    return this.bucket.addDeleteJob({ keys });
-  }
-
-  // 获取文件流
-  getDatasetFileStream(key: string) {
-    return this.bucket.getObject(key);
-  }
-
-  // 获取文件状态
-  getDatasetFileStat(key: string) {
-    try {
-      return this.bucket.statObject(key);
-    } catch (error) {
-      if (error instanceof S3Error && error.message === 'Not Found') {
-        return null;
-      }
-      return Promise.reject(error);
-    }
-  }
-
-  // 获取文件元数据
-  async getFileMetadata(key: string) {
-    const stat = await this.getDatasetFileStat(key);
-    if (!stat) return { filename: '', extension: '', contentLength: 0, contentType: '' };
-
-    const contentLength = stat.size;
-    const filename: string = decodeURIComponent(stat.metaData['origin-filename']);
-    const extension = parseFileExtensionFromUrl(filename);
-    const contentType: string = stat.metaData['content-type'];
-    return {
-      filename,
-      extension,
-      contentType,
-      contentLength
-    };
+    return this.addDeleteJob({ prefix });
   }
 
   async getDatasetBase64Image(key: string): Promise<string> {
     const [stream, metadata] = await Promise.all([
-      this.getDatasetFileStream(key),
+      this.getFileStream(key),
       this.getFileMetadata(key)
     ]);
-    const buffer = await this.bucket.fileStreamToBuffer(stream);
+    const buffer = await this.fileStreamToBuffer(stream);
     const base64 = buffer.toString('base64');
-    return `data:${metadata.contentType || 'image/jpeg'};base64,${base64}`;
+    return `data:${metadata?.contentType || 'image/jpeg'};base64,${base64}`;
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
     const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
       GetDatasetFileContentParamsSchema.parse(params);
 
-    const rawTextBuffer = await this.getRawTextBuffer({ customPdfParse, sourceId: fileId });
+    const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
+      customPdfParse,
+      sourceId: fileId
+    });
     if (rawTextBuffer) {
       return {
         rawText: rawTextBuffer.text,
@@ -133,14 +97,14 @@ export class S3DatasetSource {
 
     const [metadata, stream] = await Promise.all([
       this.getFileMetadata(fileId),
-      this.getDatasetFileStream(fileId)
+      this.getFileStream(fileId)
     ]);
 
-    const extension = metadata.extension;
-    const filename: string = decodeURIComponent(metadata.filename);
+    const extension = metadata?.extension || '';
+    const filename: string = decodeURIComponent(metadata?.filename || '');
 
     const start = Date.now();
-    const buffer = await this.bucket.fileStreamToBuffer(stream);
+    const buffer = await this.fileStreamToBuffer(stream);
     addLog.debug('get dataset file buffer', { time: Date.now() - start });
 
     const encoding = detectFileEncoding(buffer);
@@ -159,7 +123,7 @@ export class S3DatasetSource {
       }
     });
 
-    this.addRawTextBuffer({
+    this.rawTextSource.addRawTextBuffer({
       sourceId: fileId,
       sourceName: filename,
       text: rawText,
@@ -195,62 +159,17 @@ export class S3DatasetSource {
 
     await MongoS3TTL.create({
       minioKey: key,
-      bucketName: this.bucket.name,
+      bucketName: this.bucketName,
       expiredTime: addHours(new Date(), 3)
     });
 
-    await this.bucket.putObject(key, stream, size, {
+    await this.putObject(key, stream, size, {
       'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
       'upload-time': new Date().toISOString(),
       'origin-filename': encodeURIComponent(truncatedFilename)
     });
 
     return key;
-  }
-
-  async addRawTextBuffer(params: AddRawTextBufferParams) {
-    const { sourceId, sourceName, text, customPdfParse } =
-      AddRawTextBufferParamsSchema.parse(params);
-
-    // 因为 Key 唯一对应一个 Object 所以不需要根据文件内容计算 Hash 直接用 Key 计算 Hash 就行了
-    const hash = createHash('md5').update(sourceId).digest('hex');
-    const key = getFileS3Key.rawText({ hash, customPdfParse });
-
-    await MongoS3TTL.create({
-      minioKey: key,
-      bucketName: this.bucket.name,
-      expiredTime: addMinutes(new Date(), 20)
-    });
-
-    const buffer = Buffer.from(text);
-    await this.bucket.putObject(key, buffer, buffer.length, {
-      'content-type': 'text/plain',
-      'origin-filename': encodeURIComponent(sourceName),
-      'upload-time': new Date().toISOString()
-    });
-
-    return key;
-  }
-
-  async getRawTextBuffer(params: GetRawTextBufferParams) {
-    const { customPdfParse, sourceId } = params;
-
-    const hash = createHash('md5').update(sourceId).digest('hex');
-    const key = getFileS3Key.rawText({ hash, customPdfParse });
-
-    if (!(await this.bucket.isObjectExists(key))) return null;
-
-    const [stream, metadata] = await Promise.all([
-      this.bucket.getObject(key),
-      this.getFileMetadata(key)
-    ]);
-
-    const buffer = await this.bucket.fileStreamToBuffer(stream);
-
-    return {
-      text: buffer.toString('utf-8'),
-      filename: metadata.filename
-    };
   }
 }
 
