@@ -1,4 +1,4 @@
-import { getTeamPlanStatus, getTeamStandPlan, getTeamPoints } from '../../support/wallet/sub/utils';
+import { getTeamPlanStatus, getTeamStandPlan, teamPoint } from '../../support/wallet/sub/utils';
 import { MongoApp } from '../../core/app/schema';
 import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -12,7 +12,7 @@ import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
 
-  const { totalPoints, usedPoints } = await getTeamPoints({ teamId });
+  const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
 
   if (usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);

@@ -131,7 +131,7 @@ export async function uploadImage2S3Bucket(
   if (expiredTime && isAfter(expiredTime, now)) {
     await MongoS3TTL.create({
       minioKey: uploadKey,
-      bucketName: bucket.name,
+      bucketName: bucket.bucketName,
       expiredTime: expiredTime
     });
   }

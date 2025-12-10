@@ -8,7 +8,7 @@ const createMockS3Bucket = () => ({
   exist: vi.fn().mockResolvedValue(true),
   delete: vi.fn().mockResolvedValue(undefined),
   putObject: vi.fn().mockResolvedValue(undefined),
-  getObject: vi.fn().mockResolvedValue(null),
+  getFileStream: vi.fn().mockResolvedValue(null),
   statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
   move: vi.fn().mockResolvedValue(undefined),
   copy: vi.fn().mockResolvedValue(undefined),
@@ -39,7 +39,7 @@ const createMockMinioClient = vi.hoisted(() => {
     copyObject: vi.fn().mockResolvedValue(undefined),
     removeObject: vi.fn().mockResolvedValue(undefined),
     putObject: vi.fn().mockResolvedValue({ etag: 'mock-etag' }),
-    getObject: vi.fn().mockResolvedValue(null),
+    getFileStream: vi.fn().mockResolvedValue(null),
     statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
     presignedGetObject: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-object'),
     presignedPostPolicy: vi.fn().mockResolvedValue({
@@ -81,7 +81,7 @@ const createMockBucketClass = (defaultName: string) => {
     }
     async delete() {}
     async putObject() {}
-    async getObject() {
+    async getFileStream() {
       return null;
     }
     async statObject() {

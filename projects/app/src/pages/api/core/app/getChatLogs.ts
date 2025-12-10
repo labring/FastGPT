@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
-import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
@@ -19,12 +18,13 @@ import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 
 async function handler(
   req: ApiRequestProps<GetAppChatLogsParams>,
   _res: NextApiResponse
 ): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, locale = 'en' } = req.body;
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -294,7 +294,7 @@ async function handler(
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
-    const region = getLocationFromIp(ip, locale);
+    const region = getLocationFromIp(ip, getLocale(req));
 
     return {
       ...item,

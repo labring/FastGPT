@@ -67,7 +67,8 @@ const CustomDomain = () => {
   });
 
   const { ConfirmModal, openConfirm } = useConfirm({
-    content: t('account:custom_domain.delete_confirm')
+    content: t('account:custom_domain.delete_confirm'),
+    type: 'delete'
   });
 
   const [editDomain, setEditDomain] = useState<CustomDomainType | undefined>(undefined);

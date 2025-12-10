@@ -20,8 +20,8 @@ export const authCollectionFile = async ({
   const authRes = await parseHeaderCert(props);
 
   if (isS3ObjectKey(fileId, 'dataset')) {
-    const stat = await getS3DatasetSource().getDatasetFileStat(fileId);
-    if (!stat) return Promise.reject(CommonErrEnum.fileNotFound);
+    const exists = await getS3DatasetSource().isObjectExists(fileId);
+    if (!exists) return Promise.reject(CommonErrEnum.fileNotFound);
   } else {
     return Promise.reject('Invalid dataset file key');
   }

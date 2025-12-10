@@ -9,7 +9,7 @@ import { addLog } from '../../../../common/system/log';
 import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { getS3DatasetSource } from '../../../../common/s3/sources/dataset';
+import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 
 type ResponseDataType = {
   success: boolean;
@@ -154,7 +154,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     }
     if (previewUrl) {
       // Get from buffer
-      const rawTextBuffer = await getS3DatasetSource().getRawTextBuffer({
+      const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
         sourceId: previewUrl,
         customPdfParse
       });
@@ -175,7 +175,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         getFormatText: true
       });
 
-      getS3DatasetSource().addRawTextBuffer({
+      getS3RawTextSource().addRawTextBuffer({
         sourceId: previewUrl,
         sourceName: title || '',
         text: rawText,
