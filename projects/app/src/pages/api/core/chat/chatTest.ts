@@ -98,6 +98,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       per: ReadPermissionVal
     });
 
+    if (
+      !(await teamFrequencyLimit({
+        teamId,
+        type: LimitTypeEnum.chat,
+        res
+      }))
+    ) {
+      return;
+    }
+
     pushTrack.teamChatQPM({ teamId });
 
     const isPlugin = app.type === AppTypeEnum.workflowTool;
