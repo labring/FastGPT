@@ -2,51 +2,44 @@
 import { getGlobalRedisConnection } from '../../common/redis';
 import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
-import {
-  getCachedTeamQPMLimit,
-  setCachedTeamQPMLimit,
-  getTeamPlanStatus
-} from '../../support/wallet/sub/utils';
-import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { teamQPM } from '../../support/wallet/sub/utils';
+import z from 'zod';
 
 export enum LimitTypeEnum {
   chat = 'chat'
 }
 
-const limitSecondsMap = {
-  [LimitTypeEnum.chat]: 60
-};
+const FrequencyLimitOptionSchema = z.union([
+  z.object({
+    type: z.literal(LimitTypeEnum.chat),
+    teamId: z.string()
+  })
+]);
+type FrequencyLimitOption = z.infer<typeof FrequencyLimitOptionSchema>;
 
-type FrequencyLimitOption = {
-  teamId: string;
-  type: LimitTypeEnum;
-  res: NextApiResponse;
-};
+const getLimitData = async (data: FrequencyLimitOption) => {
+  if (data.type === LimitTypeEnum.chat) {
+    const qpm = await teamQPM.getTeamQPMLimit(data.teamId);
 
-// Get team's dynamic QPM limit with caching
-export const getTeamQPMLimit = async (teamId: string): Promise<number> => {
-  // 1. Try to get from cache first
-  const cachedLimit = await getCachedTeamQPMLimit(teamId);
-  if (cachedLimit !== null) {
-    return cachedLimit;
+    if (!qpm) return;
+
+    return {
+      limit: qpm,
+      seconds: 60
+    };
   }
-
-  // 2. Cache miss, compute from database
-  const teamPlanStatus = await getTeamPlanStatus({ teamId });
-  const limit =
-    teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
-    teamPlanStatus.standardConstants?.requestsPerMinute ??
-    30;
-
-  // 3. Write to cache
-  await setCachedTeamQPMLimit(teamId, limit);
-
-  return limit;
+  return;
 };
 
-export const teamFrequencyLimit = async ({ teamId, type, res }: FrequencyLimitOption) => {
-  const limit = await getTeamQPMLimit(teamId);
-  const seconds = limitSecondsMap[type];
+export const teamFrequencyLimit = async ({
+  teamId,
+  type,
+  res
+}: FrequencyLimitOption & { res: NextApiResponse }) => {
+  const data = await getLimitData({ type, teamId });
+  if (!data) return;
+
+  const { limit, seconds } = data;
 
   const redis = getGlobalRedisConnection();
   const key = `frequency:${type}:${teamId}`;
