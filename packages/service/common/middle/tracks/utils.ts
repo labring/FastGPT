@@ -161,7 +161,6 @@ export const pushTrack = {
   subscriptionDeleted: (data: {
     teamId: string;
     subscriptionType: string;
-    subLevel?: string;
     totalPoints: number;
     usedPoints: number;
     startTime: Date;
@@ -172,7 +171,6 @@ export const pushTrack = {
       data: {
         teamId: data.teamId,
         subscriptionType: data.subscriptionType,
-        subLevel: data.subLevel,
         totalPoints: data.totalPoints,
         usedPoints: data.usedPoints,
         activeDays: differenceInDays(data.expiredTime, data.startTime)
