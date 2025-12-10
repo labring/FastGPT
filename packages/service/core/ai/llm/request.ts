@@ -537,7 +537,7 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
         : undefined,
     ...modelData?.defaultConfig,
     response_format,
-    stop: stop?.split('|'),
+    stop: stop?.split('|').filter((item) => !!item.trim()),
     ...(toolCallMode === 'toolChoice' && {
       tools,
       tool_choice,
