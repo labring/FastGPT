@@ -7,7 +7,7 @@ export class S3PublicBucket extends S3BaseBucket {
     super(S3Buckets.public, {
       ...options,
       afterInit: async () => {
-        const bucket = this.name;
+        const bucket = this.bucketName;
         const policy = JSON.stringify({
           Version: '2012-10-17',
           Statement: [
@@ -34,7 +34,7 @@ export class S3PublicBucket extends S3BaseBucket {
     const protocol = this.options.useSSL ? 'https' : 'http';
     const hostname = this.options.endPoint;
     const port = this.options.port;
-    const bucket = this.name;
+    const bucket = this.bucketName;
 
     const url = new URL(`${protocol}://${hostname}:${port}/${bucket}/${objectKey}`);
 
