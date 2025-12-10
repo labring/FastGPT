@@ -19,6 +19,8 @@ describe('replaceJsonBodyString', () => {
   ] as unknown as RuntimeNodeItemType[];
 
   const mockVariables = {
+    undefinedVar: undefined,
+    nullVar: null,
     userName: 'John Doe',
     userAge: 30,
     isActive: true,
@@ -43,6 +45,14 @@ describe('replaceJsonBodyString', () => {
   };
 
   describe('Basic variable replacement functionality', () => {
+    it('字符串为空', () => {
+      const input = '{"name": "{{undefinedVar}}"}';
+      const expected = '{"name": ""}';
+
+      const result = replaceJsonBodyString({ text: input }, mockProps);
+      expect(result).toBe(expected);
+    });
+
     it('should correctly replace string variables', () => {
       const input = '{"name": "{{userName}}", "greeting": "Hello {{userName}}"}';
       const expected = '{"name": "John Doe", "greeting": "Hello John Doe"}';
@@ -241,7 +251,7 @@ describe('replaceJsonBodyString', () => {
 
     it('should handle non-existent variables', () => {
       const input = '{"missing": "{{nonExistentVar}}", "static": "value"}';
-      const expected = '{"missing": "null", "static": "value"}';
+      const expected = '{"missing": "", "static": "value"}';
 
       const result = replaceJsonBodyString({ text: input }, mockProps);
       expect(result).toBe(expected);
@@ -626,7 +636,7 @@ describe('replaceJsonBodyString', () => {
 
       // Verify no code execution occurred (template injection variable was replaced with null because it doesn't exist)
       expect(typeof parsed.templateTests.inject).toBe('string');
-      expect(parsed.templateTests.inject).toBe('null'); // Non-existent variables become "null"
+      expect(parsed.templateTests.inject).toBe(''); // Non-existent variables become "null"
     });
   });
 });
