@@ -66,9 +66,26 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     return false;
   };
 
-  // 1. any值，忽略格式化
-  if (value === undefined || value === null) return value;
-  if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
+  // Handle null/undefined, return default value by type
+  if (value === undefined || value === null) {
+    if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
+
+    // Default value map (use function to ensure new reference each time)
+    const defaultValueMap: Partial<Record<WorkflowIOValueTypeEnum, () => any>> = {
+      [WorkflowIOValueTypeEnum.string]: () => '',
+      [WorkflowIOValueTypeEnum.number]: () => 0,
+      [WorkflowIOValueTypeEnum.boolean]: () => false,
+      [WorkflowIOValueTypeEnum.arrayString]: () => [],
+      [WorkflowIOValueTypeEnum.arrayNumber]: () => [],
+      [WorkflowIOValueTypeEnum.arrayBoolean]: () => [],
+      [WorkflowIOValueTypeEnum.arrayObject]: () => [],
+      [WorkflowIOValueTypeEnum.arrayAny]: () => [],
+      [WorkflowIOValueTypeEnum.object]: () => ({})
+    };
+
+    const getDefaultValue = defaultValueMap[valueType];
+    return getDefaultValue ? getDefaultValue() : value;
+  }
 
   // Password check
   if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
@@ -78,7 +95,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     (valueType === WorkflowIOValueTypeEnum.string && typeof value === 'string') ||
     (valueType === WorkflowIOValueTypeEnum.number && typeof value === 'number') ||
     (valueType === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
-    (valueType.startsWith('array') && Array.isArray(value)) ||
+    (valueType?.startsWith('array') && Array.isArray(value)) ||
     (valueType === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
     (valueType === WorkflowIOValueTypeEnum.chatHistory &&
       (Array.isArray(value) || typeof value === 'number')) ||
@@ -117,7 +134,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   }
 
   // 4.4 数组类型(这里 value 不是数组类型)（TODO: 嵌套数据类型转化）
-  if (valueType.startsWith('array')) {
+  if (valueType?.startsWith('array')) {
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
@@ -132,7 +149,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectDataset,
       WorkflowIOValueTypeEnum.selectApp
-    ].includes(valueType)
+    ].includes(valueType as any)
   ) {
     if (isObjectString(value)) {
       try {

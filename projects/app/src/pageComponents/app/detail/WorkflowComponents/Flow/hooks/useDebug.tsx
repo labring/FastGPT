@@ -265,6 +265,7 @@ export const useDebug = () => {
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
             {renderInputs.map((item) => (
               <LabelAndFormRender
+                {...item}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -279,6 +280,7 @@ export const useDebug = () => {
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
               <LabelAndFormRender
+                {...item}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -291,6 +293,7 @@ export const useDebug = () => {
             ))}
             {internalVar.map((item) => (
               <LabelAndFormRender
+                {...item}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -303,6 +306,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
+                {...item}
                 key={item.key}
                 label={item.label}
                 required={item.required}
