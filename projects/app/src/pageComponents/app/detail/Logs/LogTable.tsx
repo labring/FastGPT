@@ -20,7 +20,6 @@ import MultipleSelect, {
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
-import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -50,7 +49,8 @@ import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { I18nName } from '@fastgpt/service/common/geo/type';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -65,10 +65,11 @@ const LogTable = ({
   showSourceSelector = true,
   px = [4, 8]
 }: HeaderControlProps) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
+  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
 
   // source
   const sourceList = useMemo(
@@ -147,15 +148,14 @@ const LogTable = ({
       const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
       await downloadFetch({
         url: '/api/core/app/exportChatLogs',
-        filename: 'chat_logs.csv',
+        filename: t('app:export_log_filename', { name: appName }),
         body: {
           appId,
           dateStart: dayjs(dateRange.from || new Date()).format(),
-          dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
+          dateEnd: dayjs(dateRange.to || new Date()).format(),
           sources: isSelectAllSource ? undefined : chatSources,
           tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
           chatSearch,
-          locale: i18n.language === 'zh-CN' ? 'zh' : 'en',
           title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
           logKeys: enabledKeys,
           sourcesMap: Object.fromEntries(
@@ -180,8 +180,7 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch,
-      locale: (i18n.language === 'zh-CN' ? 'zh' : 'en') as keyof I18nName
+      chatSearch
     }),
     [
       appId,
@@ -191,8 +190,7 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch,
-      i18n.language
+      chatSearch
     ]
   );
 
