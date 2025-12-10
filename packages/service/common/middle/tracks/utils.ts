@@ -8,6 +8,7 @@ import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { getRedisCache, setRedisCache } from '../../redis/cache';
+import { differenceInDays } from 'date-fns';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -174,10 +175,7 @@ export const pushTrack = {
         subLevel: data.subLevel,
         totalPoints: data.totalPoints,
         usedPoints: data.usedPoints,
-        activeDays: Math.ceil(
-          (new Date(data.expiredTime).getTime() - new Date(data.startTime).getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
+        activeDays: differenceInDays(data.expiredTime, data.startTime)
       }
     });
   },
