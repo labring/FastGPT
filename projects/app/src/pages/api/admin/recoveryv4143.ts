@@ -84,7 +84,7 @@ async function recoverCollectionFile({
 
       // 直接使用 bucket.putObject 上传到指定的 key
       const s3Source = getS3DatasetSource();
-      await s3Source.bucket.putObject(s3Key, buffer, buffer.length, {
+      await s3Source.client.putObject(s3Source.bucketName, s3Key, buffer, buffer.length, {
         'content-type': 'application/octet-stream',
         'upload-time': new Date().toISOString(),
         'origin-filename': encodeURIComponent(filename)

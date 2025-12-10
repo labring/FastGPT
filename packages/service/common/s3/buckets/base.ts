@@ -52,7 +52,7 @@ export class S3BaseBucket {
         accessKey: options.accessKey,
         secretKey: options.secretKey,
         pathStyle: options.pathStyle,
-        transportAgent: options.transportAgent
+        region: options.region
       });
     }
 

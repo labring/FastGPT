@@ -8,8 +8,8 @@ export function initS3Buckets() {
   const privateBucket = new S3PrivateBucket({ init: true });
 
   global.s3BucketMap = {
-    [publicBucket.name]: publicBucket,
-    [privateBucket.name]: privateBucket
+    [publicBucket.bucketName]: publicBucket,
+    [privateBucket.bucketName]: privateBucket
   };
 }
 
