@@ -4,6 +4,7 @@ import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
+import { addLog } from 'common/system/log';
 
 export enum LimitTypeEnum {
   chat = 'chat'
@@ -31,13 +32,17 @@ const getLimitData = async (data: FrequencyLimitOption) => {
   return;
 };
 
+/* 
+  true: 未达到限制
+  false: 达到了限制
+*/
 export const teamFrequencyLimit = async ({
   teamId,
   type,
   res
 }: FrequencyLimitOption & { res: NextApiResponse }) => {
   const data = await getLimitData({ type, teamId });
-  if (!data) return;
+  if (!data) return true;
 
   const { limit, seconds } = data;
 
@@ -51,13 +56,16 @@ export const teamFrequencyLimit = async ({
     .exec();
 
   if (!result) {
-    return Promise.reject(new Error('Redis connection error'));
+    return true;
   }
 
   const currentCount = result[0][1] as number;
 
   if (currentCount > limit) {
     const remainingTime = await redis.ttl(key);
+    addLog.info(
+      `[Completion Limit] Team ${teamId} reached the limit of ${limit} requests per ${seconds} seconds. Remaining time: ${remainingTime} seconds.`
+    );
     jsonRes(res, {
       code: 429,
       error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`
