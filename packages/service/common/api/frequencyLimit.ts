@@ -4,7 +4,7 @@ import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
-import { addLog } from 'common/system/log';
+import { addLog } from '../system/log';
 
 export enum LimitTypeEnum {
   chat = 'chat'
@@ -32,7 +32,7 @@ const getLimitData = async (data: FrequencyLimitOption) => {
   return;
 };
 
-/* 
+/*
   true: 未达到限制
   false: 达到了限制
 */
