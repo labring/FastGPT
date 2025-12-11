@@ -3,7 +3,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Switch } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';

@@ -4,7 +4,6 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
-import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
 import { childAppSystemKey } from '../FormComponent/ToolSelector/ToolSelectModal';
 import { Controller, useForm } from 'react-hook-form';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';

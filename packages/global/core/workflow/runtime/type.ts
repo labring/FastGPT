@@ -5,25 +5,19 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '../../chat/type';
-import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
-import type { NodeToolConfigType, StoreNodeItemType } from '../type/node';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io';
+import type { StoreNodeItemType } from '../type/node';
 import type { DispatchNodeResponseKeyEnum } from './constants';
-import type { StoreEdgeItemType } from '../type/edge';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
 import type { NextApiResponse } from 'next';
-import { UserModelSchema } from '../../../support/user/type';
-import type { AppSchema } from '../../app/type';
-import { AppDetailType } from '../../app/type';
-import type { RuntimeNodeItemType } from '../runtime/type';
-import type { RuntimeEdgeItemType } from './edge';
+import type { AppSchemaType } from '../../app/type';
+import type { RuntimeEdgeItemType } from '../type/edge';
 import type { ReadFileNodeResponse } from '../template/system/readFiles/type';
-import { UserSelectOptionType } from '../template/system/userSelect/type';
 import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
-import { LafAccountType } from '../../../support/user/team/type';
-import type { ChatCompletionMessageParam, CompletionFinishReason } from '../../ai/type';
+import type { CompletionFinishReason } from '../../ai/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -31,6 +25,10 @@ import type {
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import { type UserChatItemValueItemType } from '../../chat/type';
+import { z } from 'zod';
+import type { DatasetSearchModeEnum } from '../../dataset/constants';
+import type { ChatRoleEnum } from '../../chat/constants';
+import type { MCPClient } from '../../../../service/core/app/mcp';
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
@@ -69,7 +67,7 @@ export type ChatDispatchProps = {
   variables: Record<string, any>; // global variable
   cloneVariables: Record<string, any>;
   query: UserChatItemValueItemType[]; // trigger query
-  chatConfig: AppSchema['chatConfig'];
+  chatConfig: AppSchemaType['chatConfig'];
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
@@ -128,10 +126,6 @@ export type RuntimeNodeItemType = {
 
   // catch error
   catchError?: boolean;
-};
-
-export type RuntimeEdgeItemType = StoreEdgeItemType & {
-  status: 'waiting' | 'active' | 'skipped';
 };
 
 export type DispatchNodeResponseType = {

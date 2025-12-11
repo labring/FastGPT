@@ -12,7 +12,7 @@ import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import z from 'zod';
 

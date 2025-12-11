@@ -1,8 +1,7 @@
 import { getNanoid } from '../../../../common/string/tools';
-import type { PathDataType } from './type';
+import type { PathDataType, HttpToolConfigType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
-import { type HttpToolConfigType } from '../../type';
 import { AppToolSourceEnum } from '../constants';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';

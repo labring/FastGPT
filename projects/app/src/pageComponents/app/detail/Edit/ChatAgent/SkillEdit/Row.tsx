@@ -5,7 +5,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
-import type { SkillEditType } from '@fastgpt/global/core/app/type';
+import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 export const defaultSkill: SkillEditType = {

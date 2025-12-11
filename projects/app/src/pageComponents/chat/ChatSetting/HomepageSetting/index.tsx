@@ -18,7 +18,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMount } from 'ahooks';

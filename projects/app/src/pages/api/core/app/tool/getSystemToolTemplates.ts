@@ -1,4 +1,4 @@
-import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';

@@ -15,9 +15,11 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+
 export type UpdateDatasetCollectionParams = {
   id?: string;
-  parentId?: string;
+  parentId?: ParentIdType;
   name?: string;
   tags?: string[]; // Not tag id, is tag label
   forbid?: boolean;

@@ -6,7 +6,7 @@ import {
 } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 
 vi.mock('@/web/core/workflow/utils', () => ({

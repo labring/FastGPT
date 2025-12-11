@@ -1,4 +1,4 @@
-import type { FlowNodeOutputItemType } from '../type/io.d';
+import type { FlowNodeOutputItemType } from '../type/io';
 import { NodeOutputKeyEnum } from '../constants';
 import { FlowNodeOutputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';

@@ -47,7 +47,7 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { putUpdateHttpPlugin } from '@/web/core/app/api/tool';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import CurlImportModal from './CurlImportModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

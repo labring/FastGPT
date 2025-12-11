@@ -5,7 +5,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';

@@ -1,4 +1,5 @@
-import type { AppChatConfigType, AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { WorkflowType } from '../ChatAgent/utils';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 

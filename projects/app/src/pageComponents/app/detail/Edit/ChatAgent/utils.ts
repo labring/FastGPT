@@ -1,12 +1,10 @@
-import type {
-  AppChatConfigType,
-  AppFormEditFormType,
-  SkillEditType
-} from '@fastgpt/global/core/app/type';
+import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type {
   FlowNodeTemplateType,
   StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum

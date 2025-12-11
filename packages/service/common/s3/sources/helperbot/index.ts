@@ -61,7 +61,7 @@ export class S3HelperBotSource {
 
   // 获取文件流
   getFileStream(key: string) {
-    return this.bucket.getObject(key);
+    return this.bucket.getFileStream(key);
   }
 
   // 获取文件状态

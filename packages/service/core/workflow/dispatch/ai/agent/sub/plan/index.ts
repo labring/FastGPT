@@ -1,7 +1,4 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import {
   getPlanAgentSystemPrompt,

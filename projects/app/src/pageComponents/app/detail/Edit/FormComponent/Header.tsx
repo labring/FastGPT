@@ -8,7 +8,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import RouteTab from '../../RouteTab';
 import { useTranslation } from 'next-i18next';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { TabEnum } from '../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -34,6 +34,7 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type.d';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -72,11 +73,11 @@ const Header = ({
     }
   );
   const onClickRoute = useCallback(
-    (parentId: string) => {
+    (parentId: ParentIdType) => {
       router.push({
         pathname: '/dashboard/agent',
         query: {
-          parentId,
+          parentId: parentId || '',
           type: lastAppListRouteType
         }
       });

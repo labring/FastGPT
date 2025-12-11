@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
 import { Flex, Stack } from '@chakra-ui/react';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
