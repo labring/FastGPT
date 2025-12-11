@@ -18,8 +18,10 @@ import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 
 const Edit = dynamic(() => import('./Edit'));
-const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
+const Dashboard = dynamic(() => import('../Dashboard/index'));
+const ConversationLogs = dynamic(() => import('../ConversationLogs/index'));
+const AutoLearn = dynamic(() => import('../AutoLearn/index'));
 
 const SmartCustomerServiceEdit = () => {
   const { t } = useTranslation();
@@ -122,8 +124,10 @@ const SmartCustomerServiceEdit = () => {
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />
       ) : (
         <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
+          {currentTab === TabEnum.dashboard && <Dashboard />}
+          {currentTab === TabEnum.logs && <ConversationLogs />}
+          {currentTab === TabEnum.autoLearn && <AutoLearn />}
           {currentTab === TabEnum.publish && <PublishChannel />}
-          {currentTab === TabEnum.logs && <Logs />}
         </Box>
       )}
     </Flex>

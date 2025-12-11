@@ -984,7 +984,7 @@ const ChatBox = ({
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
-          {(!!variableList?.length || !!externalVariableList?.length) && !isAssistantType && (
+          {(!!variableList?.length || !!externalVariableList?.length) && (
             <Box id="variable-input">
               <VariableInputForm
                 chatStarted={chatStarted}
@@ -1121,7 +1121,7 @@ const ChatBox = ({
       {/* chat box container */}
       {RenderRecords}
       {/* message input */}
-      {(canSendPrompt || isAssistantType) && (
+      {canSendPrompt && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

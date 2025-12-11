@@ -28,9 +28,11 @@ const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
 
 export enum TabEnum {
+  'dashboard' = 'dashboard',
+  'logs' = 'logs',
+  'autoLearn' = 'autoLearn',
   'appEdit' = 'appEdit',
-  'publish' = 'publish',
-  'logs' = 'logs'
+  'publish' = 'publish'
 }
 
 type AppContextType = {
