@@ -100,6 +100,19 @@ export type AppDatasetSearchParamsType = {
   datasetSearchExtensionBg?: string;
 };
 
+/* ===== skill ===== */
+export type SkillEditType = {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  dataset: {
+    list: SelectedDatasetType[];
+  };
+  selectedTools: SelectedToolItemType[];
+  fileSelectConfig: AppFileSelectConfigType;
+};
+
 export type SelectedToolItemType = FlowNodeTemplateType & {
   configStatus?: 'active' | 'waitingForConfig' | 'invalid';
 };
@@ -126,6 +139,7 @@ export type AppFormEditFormType = {
   } & AppDatasetSearchParamsType;
   selectedTools: SelectedToolItemType[];
   chatConfig: AppChatConfigType;
+  skills: SkillEditType[];
 };
 
 export type HttpToolConfigType = {

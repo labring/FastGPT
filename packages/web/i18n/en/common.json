@@ -845,6 +845,7 @@
   "delete_folder": "Delete Folder",
   "delete_success": "Deleted Successfully",
   "delete_warning": "Deletion Warning",
+  "descripton": "describe",
   "discount_coupon_used": "Coupon used:",
   "embedding_model_not_config": "No index model is detected",
   "enable_auth": "Enable authentication",

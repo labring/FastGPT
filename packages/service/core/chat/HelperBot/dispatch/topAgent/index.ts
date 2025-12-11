@@ -9,11 +9,12 @@ import { generateResourceList } from './utils';
 import { TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
+import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const dispatchTopAgent = async (
-  props: HelperBotDispatchParamsType
+  props: HelperBotDispatchParamsType<TopAgentParamsType>
 ): Promise<HelperBotDispatchResponseType> => {
-  const { query, files, metadata, histories, workflowResponseWrite, user } = props;
+  const { query, files, data, histories, workflowResponseWrite, user } = props;
 
   const modelData = getLLMModel();
   if (!modelData) {
@@ -32,7 +33,7 @@ export const dispatchTopAgent = async (
   });
   const systemPrompt = getPrompt({
     resourceList,
-    metadata: metadata.data
+    metadata: data
   });
 
   const historyMessages = helperChats2GPTMessages({

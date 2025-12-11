@@ -10,7 +10,7 @@ import { LocaleList } from '@fastgpt/global/common/i18n/type';
 export const HelperBotDispatchParamsSchema = z.object({
   query: z.string(),
   files: HelperBotCompletionsParamsSchema.shape.files,
-  metadata: HelperBotCompletionsParamsSchema.shape.metadata,
+  data: z.unknown(), // Allow any type, will be constrained by generic type parameter
   histories: z.array(HelperBotChatItemSchema),
   workflowResponseWrite: WorkflowResponseFnSchema,
 
@@ -22,7 +22,14 @@ export const HelperBotDispatchParamsSchema = z.object({
     lang: z.enum(LocaleList)
   })
 });
-export type HelperBotDispatchParamsType = z.infer<typeof HelperBotDispatchParamsSchema>;
+
+type BaseHelperBotDispatchParamsType = z.infer<typeof HelperBotDispatchParamsSchema>;
+export type HelperBotDispatchParamsType<T = unknown> = Omit<
+  BaseHelperBotDispatchParamsType,
+  'data'
+> & {
+  data: T;
+};
 
 export const HelperBotDispatchResponseSchema = z.object({
   aiResponse: z.array(AIChatItemValueItemSchema),
