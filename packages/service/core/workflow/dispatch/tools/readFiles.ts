@@ -7,7 +7,7 @@ import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
+import { readFileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { addLog } from '../../../../common/system/log';
@@ -264,7 +264,7 @@ export const getFileContentFromLinks = async ({
             return detectFileEncoding(buffer);
           })();
 
-          const { rawText } = await readS3FileContentByBuffer({
+          const { rawText } = await readFileContentByBuffer({
             extension,
             teamId,
             tmbId,
