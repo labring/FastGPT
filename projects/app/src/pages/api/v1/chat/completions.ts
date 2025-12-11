@@ -9,7 +9,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type {
   ChatCompletionCreateParams,
   ChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -37,7 +37,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -86,7 +86,7 @@ export type Props = ChatCompletionCreateParams &
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  app: AppSchema;
+  app: AppSchemaType;
   responseDetail?: boolean;
   showNodeStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;

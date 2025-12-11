@@ -4,7 +4,8 @@ import { Box, Flex } from '@chakra-ui/react';
 import ChatTest from './ChatTest';
 import AppCard from '../FormComponent/AppCard';
 import EditForm from './EditForm';
-import type { SkillEditType, AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { cardStyles } from '../../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type SimpleAppSnapshotType } from '../FormComponent/useSnapshots';
@@ -37,6 +38,7 @@ const Edit = ({
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
+      overflowX={'hidden'}
       position={'relative'}
     >
       {/* Top agent editor */}

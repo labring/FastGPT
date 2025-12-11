@@ -1,8 +1,5 @@
-import {
-  type AppDetailType,
-  type AppSchema,
-  type AppFormEditFormType
-} from '@fastgpt/global/core/app/type';
+import { type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   chatHistoryValueDesc,
   FlowNodeTypeEnum
@@ -61,7 +58,7 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
   }
 ];
 
-export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchema): string => {
+export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
   return (
     appDetail?.modules
       .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)

@@ -1,4 +1,4 @@
-import type { AppFormEditFormType } from '../app/type';
+import type { AppFormEditFormType } from './formEdit/type';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
@@ -9,12 +9,8 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
       model: '',
-      systemPrompt: '',
-      temperature: 0,
       isResponseAnswerText: true,
-      maxHistories: 6,
-      maxToken: 4000,
-      aiChatReasoning: true
+      maxHistories: 6
     },
     dataset: {
       datasets: [],
@@ -28,8 +24,8 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       datasetSearchExtensionBg: ''
     },
     selectedTools: [],
-    chatConfig: {},
-    skills: []
+    skills: [],
+    chatConfig: {}
   };
 };
 

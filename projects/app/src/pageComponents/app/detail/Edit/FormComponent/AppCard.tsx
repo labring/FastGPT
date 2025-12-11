@@ -10,7 +10,8 @@ import {
   ModalFooter
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { type AppSchema, type AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -45,7 +46,7 @@ const AppCard = ({
 
   const appId = appDetail._id;
   const { feConfigs } = useSystemStore();
-  const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
+  const [TeamTagsSet, setTeamTagsSet] = useState<AppSchemaType>();
 
   // transition to workflow
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();

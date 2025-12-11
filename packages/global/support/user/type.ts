@@ -1,7 +1,8 @@
-import type { LangEnum } from '../common/i18n/type';
+import z from 'zod';
+import type { LangEnum } from '../../common/i18n/type';
 import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
-import type { TeamMemberStatusEnum } from './team/constant';
+import { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
 
 export type UserModelSchema = {
@@ -35,8 +36,9 @@ export type UserType = {
   contact?: string;
 };
 
-export type SourceMemberType = {
-  name: string;
-  avatar: string;
-  status: `${TeamMemberStatusEnum}`;
-};
+export const SourceMemberSchema = z.object({
+  name: z.string(),
+  avatar: z.string(),
+  status: z.enum(TeamMemberStatusEnum)
+});
+export type SourceMemberType = z.infer<typeof SourceMemberSchema>;

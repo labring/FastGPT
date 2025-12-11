@@ -9,7 +9,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   type FlowNodeTemplateType,
   type NodeTemplateListItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -21,7 +21,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';

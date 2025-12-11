@@ -8,6 +8,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -25,11 +26,11 @@ const Header = () => {
   );
 
   const onClickRoute = useCallback(
-    (parentId: string) => {
+    (parentId: ParentIdType) => {
       router.push({
         pathname: '/dashboard/tool',
         query: {
-          parentId,
+          parentId: parentId || '',
           type: lastAppListRouteType
         }
       });

@@ -45,7 +45,7 @@ export type TeamMemberSchema = {
   updateTime?: Date;
   name: string;
   role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
+  status: TeamMemberStatusEnum;
   avatar: string;
 };
 

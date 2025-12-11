@@ -189,7 +189,7 @@ type V1WorkflowType = {
     max?: number; // slider, number input
     min?: number; // slider, number input
 
-    llmModelType?: `${LLMModelTypeEnum}`;
+    llmModelType?: LLMModelTypeEnum;
   }[];
   outputs: {
     type?: OutputTypeEnum;

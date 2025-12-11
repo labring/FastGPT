@@ -21,7 +21,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
 import { addLog } from '../../../common/system/log';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';

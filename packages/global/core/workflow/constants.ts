@@ -453,13 +453,6 @@ export const variableMap: Record<VariableInputEnum, VariableConfigType> = {
 // Keep backward compatibility
 export const variableMapGroups = variableConfigs;
 
-/* run time */
-export enum RuntimeEdgeStatusEnum {
-  'waiting' = 'waiting',
-  'active' = 'active',
-  'skipped' = 'skipped'
-}
-
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';
 export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';
 

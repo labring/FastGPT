@@ -1,7 +1,7 @@
 import type {
   NodeToolConfigType,
   FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeInputTypeEnum,
