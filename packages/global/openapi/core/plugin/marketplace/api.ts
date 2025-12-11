@@ -12,18 +12,22 @@ export type MarketplaceToolListItemType = ToolSimpleType & {
   downloadCount: number;
 };
 
-export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
-  readme: z.string().optional()
-});
+export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.and(
+  z.object({
+    readme: z.string().optional()
+  })
+);
 export const MarketplaceToolDetailSchema = z.object({
   tools: z.array(MarketplaceToolDetailItemSchema)
 });
 
 // List
-export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
-  searchKey: z.string().optional(),
-  tags: z.array(z.string()).nullish()
-});
+export const GetMarketplaceToolsBodySchema = PaginationSchema.and(
+  z.object({
+    searchKey: z.string().optional(),
+    tags: z.array(z.string()).nullish()
+  })
+);
 export type GetMarketplaceToolsBodyType = z.infer<typeof GetMarketplaceToolsBodySchema>;
 
 export const MarketplaceToolsResponseSchema = z.object({

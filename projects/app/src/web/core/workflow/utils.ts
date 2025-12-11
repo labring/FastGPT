@@ -1,7 +1,4 @@
-import type {
-  StoreNodeItemType,
-  FlowNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+import type { StoreNodeItemType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';

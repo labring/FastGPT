@@ -9,7 +9,7 @@ import {
   STTModelType,
   EmbeddingModelItemType,
   LLMModelItemType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';

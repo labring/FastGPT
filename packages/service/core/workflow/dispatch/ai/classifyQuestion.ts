@@ -7,14 +7,13 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { addLog } from '../../../../common/system/log';
-import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import { createLLMResponse } from '../../../ai/llm/request';
 
 type Props = ModuleDispatchProps<{

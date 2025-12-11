@@ -1,14 +1,12 @@
 import openai from 'openai';
 import type {
   ChatCompletionMessageToolCall,
-  ChatCompletionMessageParam as SdkChatCompletionMessageParam,
+  ChatCompletionMessageParam as OpenaiChatCompletionMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
   ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam,
-  ChatCompletionTool
+  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam
 } from 'openai/resources';
-import { ChatMessageTypeEnum } from './constants';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { Stream } from 'openai/streaming';
 export * from 'openai/resources';
@@ -24,7 +22,7 @@ export type ChatCompletionContentPartFile = {
 export type ChatCompletionContentPart =
   | (SdkChatCompletionContentPart & { key?: string })
   | ChatCompletionContentPartFile;
-type CustomChatCompletionUserMessageParam = Omit<ChatCompletionUserMessageParam, 'content'> & {
+type CustomChatCompletionUserMessageParam = Omit<SdkChatCompletionUserMessageParam, 'content'> & {
   role: 'user';
   content: string | Array<ChatCompletionContentPart>;
 };
@@ -52,7 +50,7 @@ export type ChatCompletionMessageParam = (
   dataId?: string;
   hideInUI?: boolean;
 };
-export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
+export type SdkChatCompletionMessageParam = OpenaiChatCompletionMessageParam;
 
 /* ToolChoice and functionCall extension */
 export type ChatCompletionAssistantToolParam = {

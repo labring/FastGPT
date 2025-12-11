@@ -1,6 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NullRoleVal,
   PerResourceTypeEnum,

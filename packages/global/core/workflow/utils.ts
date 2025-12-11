@@ -17,7 +17,7 @@ import {
   type FlowNodeOutputItemType,
   type ReferenceArrayValueType,
   type ReferenceItemValueType
-} from './type/io.d';
+} from './type/io';
 import { type StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -28,7 +28,7 @@ import type {
   AppChatConfigType,
   AppAutoExecuteConfigType,
   AppQGConfigType,
-  AppSchema
+  AppSchemaType
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -428,7 +428,7 @@ export const removeUnauthModels = async ({
   modules,
   allowedModels = new Set()
 }: {
-  modules: AppSchema['modules'];
+  modules: AppSchemaType['modules'];
   allowedModels?: Set<string>;
 }) => {
   if (modules) {

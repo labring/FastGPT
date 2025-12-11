@@ -16,7 +16,7 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
