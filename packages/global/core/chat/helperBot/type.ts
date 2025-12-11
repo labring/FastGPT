@@ -4,7 +4,8 @@ import { ChatRoleEnum } from '../constants';
 import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
 
 export enum HelperBotTypeEnum {
-  topAgent = 'topAgent'
+  topAgent = 'topAgent',
+  skillEditor = 'skillEditor'
 }
 export const HelperBotTypeEnumSchema = z.enum(Object.values(HelperBotTypeEnum));
 export type HelperBotTypeEnumType = z.infer<typeof HelperBotTypeEnumSchema>;
@@ -72,7 +73,7 @@ export type HelperBotChatItemSiteType = z.infer<typeof HelperBotChatItemSiteSche
 
 /* 具体的 bot 的特有参数 */
 
-// AI 模型配置
+// Top agent
 export const topAgentParamsSchema = z.object({
   role: z.string().nullish(),
   taskObject: z.string().nullish(),
@@ -81,3 +82,7 @@ export const topAgentParamsSchema = z.object({
   fileUpload: z.boolean().nullish()
 });
 export type TopAgentParamsType = z.infer<typeof topAgentParamsSchema>;
+
+// Skill editor
+export const skillEditorParamsSchema = z.object({});
+export type SkillEditorParamsType = z.infer<typeof skillEditorParamsSchema>;
