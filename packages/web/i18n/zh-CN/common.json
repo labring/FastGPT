@@ -845,6 +845,7 @@
   "delete_folder": "删除文件夹",
   "delete_success": "删除成功",
   "delete_warning": "删除警告",
+  "descripton": "描述",
   "discount_coupon_used": "已使用优惠券：",
   "embedding_model_not_config": "检测到没有可用的索引模型",
   "enable_auth": "启用鉴权",

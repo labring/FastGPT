@@ -3,6 +3,7 @@ import {
   type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema,
+  skillEditorParamsSchema,
   topAgentParamsSchema
 } from '../../../../core/chat/helperBot/type';
 import { z } from 'zod';
@@ -58,6 +59,10 @@ export const HelperBotCompletionsParamsSchema = z.object({
     z.object({
       type: z.literal(HelperBotTypeEnum.topAgent),
       data: topAgentParamsSchema
+    }),
+    z.object({
+      type: z.literal(HelperBotTypeEnum.skillEditor),
+      data: skillEditorParamsSchema
     })
   ])
 });

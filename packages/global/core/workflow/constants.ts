@@ -172,6 +172,7 @@ export enum NodeInputKeyEnum {
 
   // agent
   subApps = 'subApps',
+  skills = 'skills',
   isAskAgent = 'isAskAgent',
   isPlanAgent = 'isPlanAgent',
   isConfirmPlanAgent = 'isConfirmPlanAgent',

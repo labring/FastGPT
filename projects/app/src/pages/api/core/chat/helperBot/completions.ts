@@ -40,10 +40,13 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
 
   // 执行不同逻辑
   const fn = dispatchMap[metadata.type];
+  if (!fn) {
+    return Promise.reject('Invalid helper bot type');
+  }
   const result = await fn({
     query,
     files,
-    metadata,
+    data: metadata.data,
     histories,
     workflowResponseWrite,
     user: {

@@ -10,7 +10,7 @@ import {
   HStack,
   Input
 } from '@chakra-ui/react';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { AppFormEditFormType, SkillEditType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -20,23 +20,17 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { workflowSystemVariables } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
-import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { type SelectedToolItemType, useSkillManager } from './hooks/useSkillManager';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
+import { SmallAddIcon } from '@chakra-ui/icons';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -56,10 +50,12 @@ const BoxStyles: BoxProps = {
 
 const EditForm = ({
   appForm,
-  setAppForm
+  setAppForm,
+  onEditSkill
 }: {
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  onEditSkill: (e: SkillEditType) => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
@@ -79,26 +75,6 @@ const EditForm = ({
     onOpen: onOpenDatasetParams,
     onClose: onCloseDatasetParams
   } = useDisclosure();
-
-  const formatVariables = useMemo(
-    () =>
-      formatEditorVariablePickerIcon([
-        ...workflowSystemVariables.filter(
-          (variable) =>
-            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
-        ),
-        ...(appForm.chatConfig.variables || [])
-      ]).map((item) => ({
-        ...item,
-        label: t(item.label as any),
-        parent: {
-          id: 'VARIABLE_NODE_ID',
-          label: t('common:core.module.Variable'),
-          avatar: 'core/workflow/template/variable'
-        }
-      })),
-    [appForm.chatConfig.variables, t]
-  );
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
@@ -226,9 +202,44 @@ const EditForm = ({
           </Box>
         </Box>
 
+        <Box {...BoxStyles}>
+          <SkillRow
+            skills={appForm.skills}
+            onEditSkill={onEditSkill}
+            onDeleteSkill={(id) => {
+              setAppForm((state) => ({
+                ...state,
+                skills: state.skills.filter((item) => item.id !== id)
+              }));
+            }}
+          />
+        </Box>
         {/* tool choice */}
         <Box {...BoxStyles}>
-          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
+          <ToolSelect
+            selectedModel={selectedModel}
+            selectedTools={appForm.selectedTools}
+            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+            onAddTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: [e, ...(state.selectedTools || [])]
+              }));
+            }}
+            onUpdateTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools:
+                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              }));
+            }}
+            onRemoveTool={(id) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: state.selectedTools?.filter((item) => item.id !== id) || []
+              }));
+            }}
+          />
         </Box>
 
         {/* dataset */}
@@ -240,17 +251,6 @@ const EditForm = ({
             </Flex>
             <Button
               variant={'transparentBase'}
-              leftIcon={<MyIcon name="common/addLight" w={'0.8rem'} />}
-              iconSpacing={1}
-              size={'sm'}
-              fontSize={'sm'}
-              onClick={onOpenKbSelect}
-            >
-              {t('common:Choose')}
-            </Button>
-            <Button
-              mr={'-5px'}
-              variant={'transparentBase'}
               leftIcon={<MyIcon name={'edit'} w={'14px'} />}
               iconSpacing={1}
               size={'sm'}
@@ -258,6 +258,17 @@ const EditForm = ({
               onClick={onOpenDatasetParams}
             >
               {t('common:Params')}
+            </Button>
+            <Button
+              mr={'-5px'}
+              variant={'transparentBase'}
+              leftIcon={<SmallAddIcon />}
+              iconSpacing={1}
+              size={'sm'}
+              fontSize={'sm'}
+              onClick={onOpenKbSelect}
+            >
+              {t('common:Choose')}
             </Button>
           </Flex>
           {appForm.dataset.datasets?.length > 0 && (
