@@ -12,6 +12,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -19,7 +20,8 @@ export enum TabEnum {
   collectionCard = 'collectionCard',
   test = 'test',
   info = 'info',
-  import = 'import'
+  import = 'import',
+  synonym = 'synonym'
 }
 
 const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
@@ -96,6 +98,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
       label: t('common:core.dataset.Collection'),
       value: TabEnum.collectionCard
     },
+    // 同义词Tab - 仅对非数据库类型和结构化文档类型知识库显示
+    ...(!isDatabaseDataset(datasetDetail.type) &&
+    datasetDetail.type !== DatasetTypeEnum.structureDocument
+      ? [{ label: t('dataset:synonym_tab_title'), value: TabEnum.synonym }]
+      : []),
     { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test },
     ...(datasetDetail.permission.hasManagePer && !isPc
       ? [{ label: t('common:Config'), value: TabEnum.info }]

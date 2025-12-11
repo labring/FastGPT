@@ -359,5 +359,15 @@
   "uploading_progress_with_count": "上傳中 {{completedCount}}/{{totalCount}}",
   "file_upload_tip": "最多支援 {{maxCount}} 個檔案，單個檔案最大 {{maxSize}}，僅讀取第一個sheet",
   "file_data_preview_info": "共 {{rows}} 行，{{cols}} 列，僅支援預覽前20行",
-  "data_structure_rows_cols": "{{rows}}行, {{cols}}列"
+  "data_structure_rows_cols": "{{rows}}行, {{cols}}列",
+  "synonym_tab_title": "同義詞",
+  "synonym_usage_tip": "使用知識庫時，將自動根據已設定的近義詞、口語化表達、縮寫等，進行更精準的知識匹配。",
+  "synonym_confirm_delete": "確認刪除同義詞文件嗎？",
+  "synonym_download_template": "點擊下載 xlsx 模板",
+  "synonym_upload_success": "文件上傳成功",
+  "synonym_upload_failed": "文件上傳失敗",
+  "synonym_fetch_failed": "獲取同義詞文件列表失敗",
+  "synonym_download_started": "已開始下載",
+  "synonym_delete_success": "文件刪除成功",
+  "synonym_download_failed": "文件下載失敗"
 }

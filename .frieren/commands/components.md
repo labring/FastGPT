@@ -47,5 +47,10 @@ const commonCps = [
     name: "FormLabel",
     desc: "表单标签组件，严格替代chakra-ui的FormLabel",
     path: "import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel'"
+  },
+  {
+    name: "MyBox",
+    desc: "普通容器布局组件，支持loading状态",
+    path: "import MyBox from '@fastgpt/web/components/common/MyBox';"
   }
 ];
