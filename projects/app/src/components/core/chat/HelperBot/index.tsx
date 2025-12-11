@@ -334,7 +334,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
             name: item.name
           })),
           metadata: {
-            type: 'topAgent',
+            type,
             data: metadata
           }
         },

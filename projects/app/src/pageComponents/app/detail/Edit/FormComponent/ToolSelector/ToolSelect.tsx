@@ -4,15 +4,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type {
+  SelectedToolItemType,
+  AppFormEditFormType,
+  AppFileSelectConfigType
+} from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { theme } from '@fastgpt/web/styles/theme';
-import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
-import ToolSelectModal, { childAppSystemKey } from './ToolSelectModal';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
+import ToolSelectModal from './ToolSelectModal';
+
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
@@ -22,13 +22,22 @@ import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/t
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { checkNeedsUserConfiguration } from '../../ChatAgent/utils';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const ToolSelect = ({
-  appForm,
-  setAppForm
+  selectedModel,
+  selectedTools = [],
+  fileSelectConfig = {},
+  onAddTool,
+  onUpdateTool,
+  onRemoveTool
 }: {
-  appForm: AppFormEditFormType;
-  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  selectedModel: LLMModelItemType;
+  selectedTools?: SelectedToolItemType[];
+  fileSelectConfig?: AppFileSelectConfigType;
+  onAddTool: (tool: SelectedToolItemType) => void;
+  onUpdateTool: (tool: SelectedToolItemType) => void;
+  onRemoveTool: (id: string) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -41,7 +50,6 @@ const ToolSelect = ({
     onOpen: onOpenToolsSelect,
     onClose: onCloseToolsSelect
   } = useDisclosure();
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
 
   return (
     <>
@@ -64,11 +72,11 @@ const ToolSelect = ({
         </Button>
       </Flex>
       <Grid
-        mt={appForm.selectedTools.length > 0 ? 2 : 0}
+        mt={selectedTools.length > 0 ? 2 : 0}
         gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
         gridGap={[2, 4]}
       >
-        {appForm.selectedTools.map((item) => {
+        {selectedTools.map((item) => {
           const toolError = formatToolError(item.pluginData?.error);
           // 即将下架/已下架
           const status = item.status || item.pluginData?.status;
@@ -161,10 +169,7 @@ const ToolSelect = ({
                   hoverColor="red.600"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setAppForm((state: AppFormEditFormType) => ({
-                      ...state,
-                      selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
-                    }));
+                    onRemoveTool(item.id);
                   }}
                 />
               </Flex>
@@ -175,20 +180,14 @@ const ToolSelect = ({
 
       {isOpenToolsSelect && (
         <ToolSelectModal
-          selectedTools={appForm.selectedTools}
-          chatConfig={appForm.chatConfig}
+          selectedTools={selectedTools}
+          fileSelectConfig={fileSelectConfig}
           selectedModel={selectedModel}
           onAddTool={(e) => {
-            setAppForm((state) => ({
-              ...state,
-              selectedTools: [...state.selectedTools, e]
-            }));
+            onAddTool(e);
           }}
           onRemoveTool={(e) => {
-            setAppForm((state) => ({
-              ...state,
-              selectedTools: state.selectedTools.filter((item) => item.pluginId !== e.id)
-            }));
+            onRemoveTool(e.id);
           }}
           onClose={onCloseToolsSelect}
         />
@@ -198,17 +197,10 @@ const ToolSelect = ({
           configTool={configTool}
           onCloseConfigTool={() => setConfigTool(null)}
           onAddTool={(e) => {
-            setAppForm((state) => ({
-              ...state,
-              selectedTools: state.selectedTools.map((item) =>
-                item.pluginId === configTool.pluginId
-                  ? {
-                      ...e,
-                      configStatus: 'active'
-                    }
-                  : item
-              )
-            }));
+            onUpdateTool({
+              ...e,
+              configStatus: 'active'
+            });
           }}
         />
       )}

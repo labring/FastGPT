@@ -40,7 +40,7 @@ import { checkNeedsUserConfiguration, validateToolConfiguration } from '../../Ch
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
-  chatConfig: AppFormEditFormType['chatConfig'];
+  fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
   selectedModel: LLMModelItemType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
@@ -244,7 +244,7 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId,
   selectedTools,
-  chatConfig
+  fileSelectConfig
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
@@ -262,8 +262,8 @@ const RenderList = React.memo(function RenderList({
 
       const toolValid = validateToolConfiguration({
         toolTemplate: res,
-        canSelectFile: chatConfig?.fileSelectConfig?.canSelectFile,
-        canSelectImg: chatConfig?.fileSelectConfig?.canSelectImg
+        canSelectFile: fileSelectConfig?.canSelectFile,
+        canSelectImg: fileSelectConfig?.canSelectImg
       });
       if (!toolValid) {
         return toast({

@@ -1,4 +1,8 @@
-import type { AppChatConfigType, AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type {
+  AppChatConfigType,
+  AppFormEditFormType,
+  SkillEditType
+} from '@fastgpt/global/core/app/type';
 import type {
   FlowNodeTemplateType,
   StoreNodeItemType
@@ -51,11 +55,14 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
 
       const subApps = inputMap.get(NodeInputKeyEnum.subApps) as FlowNodeTemplateType[];
-
       if (subApps) {
-        subApps.forEach((subApp) => {
-          defaultAppForm.selectedTools.push(subApp);
-        });
+        defaultAppForm.selectedTools = subApps;
+      }
+
+      // TODO: 临时存这里，后续会改成单独表存储
+      const skills = inputMap.get(NodeInputKeyEnum.skills) as SkillEditType[];
+      if (skills) {
+        defaultAppForm.skills = skills;
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -187,7 +194,7 @@ export function agentForm2AppWorkflow(
               key: NodeInputKeyEnum.subApps,
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
-              valueType: WorkflowIOValueTypeEnum.object,
+              valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => ({
                 ...tool,
                 inputs: tool.inputs.map((input) => {
@@ -210,6 +217,38 @@ export function agentForm2AppWorkflow(
                   }
                   return input;
                 })
+              }))
+            },
+            {
+              key: NodeInputKeyEnum.skills,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.arrayObject,
+              value: data.skills.map((skill) => ({
+                ...skill,
+                selectedTools: skill.selectedTools.map((tool) => ({
+                  ...tool,
+                  inputs: tool.inputs.map((input) => {
+                    // Special key value
+                    if (input.key === NodeInputKeyEnum.forbidStream) {
+                      input.value = true;
+                    }
+                    // Special tool
+                    if (
+                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                      input.key === NodeInputKeyEnum.history
+                    ) {
+                      return {
+                        ...input,
+                        value: data.aiSettings.maxHistories
+                      };
+                    }
+                    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                      input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
+                    }
+                    return input;
+                  })
+                }))
               }))
             }
           ],
