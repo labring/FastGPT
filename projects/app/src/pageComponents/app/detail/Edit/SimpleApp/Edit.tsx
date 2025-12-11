@@ -3,7 +3,7 @@ import { Box } from '@chakra-ui/react';
 
 import AppCard from '../FormComponent/AppCard';
 import EditForm from './EditForm';
-import { type AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { cardStyles } from '../../constants';
 
 import styles from '../FormComponent/styles.module.scss';

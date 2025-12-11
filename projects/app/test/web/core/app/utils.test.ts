@@ -4,7 +4,7 @@ import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/uti
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 
 describe('form2AppWorkflow', () => {
   const mockT = (str: string) => str;

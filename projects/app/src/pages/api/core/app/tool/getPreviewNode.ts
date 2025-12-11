@@ -2,7 +2,7 @@
   get plugin preview modules
  */
 import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
-import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import type { NextApiResponse } from 'next';

@@ -2,7 +2,7 @@ import dynamic from 'next/dynamic';
 import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 import 'reactflow/dist/style.css';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';

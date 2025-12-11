@@ -9,7 +9,7 @@ import {
   Button,
   HStack
 } from '@chakra-ui/react';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -473,9 +473,9 @@ const EditForm = ({
         <DatasetSelectModal
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
-            vectorModel: item.vectorModel,
             name: item.name,
-            avatar: item.avatar
+            avatar: item.avatar,
+            vectorModel: item.vectorModel
           }))}
           onClose={onCloseDatasetSelect}
           onChange={(e) => {

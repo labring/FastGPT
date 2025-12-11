@@ -1,6 +1,6 @@
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -417,9 +417,9 @@ export const emptyTemplates = {
 export const parsePluginFromCurlString = (
   curl: string
 ): {
-  nodes: AppSchema['modules'];
-  edges: AppSchema['edges'];
-  chatConfig: AppSchema['chatConfig'];
+  nodes: AppSchemaType['modules'];
+  edges: AppSchemaType['edges'];
+  chatConfig: AppSchemaType['chatConfig'];
 } => {
   const { url, method, headers, body, params, bodyArray } = parseCurl(curl);
 

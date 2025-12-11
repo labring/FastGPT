@@ -4,7 +4,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import type { AppSchema, VariableItemType } from '../app/type';
+import type { AppSchemaType, VariableItemType } from '../app/type';
 import type { DispatchNodeResponseType } from '../workflow/runtime/type';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
@@ -61,7 +61,7 @@ export type ChatSchemaType = {
 };
 
 export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
-  appId: AppSchema;
+  appId: AppSchemaType;
 };
 
 /* --------- chat item ---------- */
@@ -216,7 +216,7 @@ export type ChatItemResponseSchemaType = {
 
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
-  apps: AppSchema[];
+  apps: AppSchemaType[];
   teamInfo: any;
   uid?: string;
 };
