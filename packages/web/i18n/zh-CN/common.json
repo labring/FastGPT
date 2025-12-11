@@ -1400,5 +1400,11 @@
   "zoomin_tip": "缩小  ctrl  -",
   "zoomin_tip_mac": "缩小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +"
+  "zoomout_tip_mac": "放大  ⌘  +",
+  "log.navigation.previous": "上一条",
+  "log.navigation.next": "下一条",
+  "log.feedback.read": "已读",
+  "log.feedback.mark_as_read": "标为已读",
+  "log.feedback.show_feedback": "显示反馈",
+  "log.feedback.bad_feedback_content": "差评内容"
 }

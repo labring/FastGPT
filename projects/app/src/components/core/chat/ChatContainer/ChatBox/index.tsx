@@ -99,6 +99,7 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    onTriggerRefresh?: () => void;
   };
 
 const ChatBox = ({
@@ -110,7 +111,8 @@ const ChatBox = ({
   active = true,
   showWorkorder,
   onStartChat,
-  chatType
+  chatType,
+  onTriggerRefresh
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -1067,9 +1069,8 @@ const ChatBox = ({
                       formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
                     ),
                     onAddUserLike: onAddUserLike(item),
-                    onCloseUserLike: onCloseUserLike(item),
                     onAddUserDislike: onAddUserDislike(item),
-                    onReadUserDislike: onReadUserDislike(item)
+                    onTriggerRefresh
                   }}
                 >
                   {/* custom feedback */}
@@ -1124,9 +1125,7 @@ const ChatBox = ({
     questionGuides,
     onMark,
     onAddUserLike,
-    onCloseUserLike,
     onAddUserDislike,
-    onReadUserDislike,
     t,
     showMarkIcon,
     onCloseCustomFeedback

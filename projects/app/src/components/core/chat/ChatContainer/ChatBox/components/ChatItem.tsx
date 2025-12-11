@@ -280,6 +280,7 @@ const ChatItem = (props: Props) => {
 
   return (
     <Box
+      data-chat-id={chat.dataId}
       _hover={{
         '& .time-label': {
           display: 'block'

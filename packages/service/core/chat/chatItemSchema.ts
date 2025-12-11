@@ -76,6 +76,8 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
+  adminGoodFeedbackRead: Boolean,
+  adminBadFeedbackRead: Boolean,
   durationSeconds: Number,
   citeCollectionIds: [String],
 

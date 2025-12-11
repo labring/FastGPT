@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Flex, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
@@ -21,6 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import NavigationBar from './NavigationBar';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -35,6 +36,11 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const triggerRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
@@ -43,6 +49,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const { data: chat } = useRequest2(
@@ -66,6 +73,15 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
       }
     }
   );
+
+  const handleScrollToChatItem = React.useCallback((dataId: string) => {
+    setTimeout(() => {
+      const element = document.querySelector(`[data-chat-id="${dataId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }, []);
 
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
@@ -152,45 +168,57 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         )}
 
         {/* Chat container */}
-        <Flex pt={2} flex={'1 0 0'} h={0}>
-          <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
-            {isPlugin ? (
-              <Box px={5} py={2}>
-                <PluginRunBox appId={appId} chatId={chatId} />
-              </Box>
-            ) : (
-              <ChatBox
-                isReady
-                appId={appId}
-                chatId={chatId}
-                feedbackType={'admin'}
-                showMarkIcon
-                showVoiceIcon={false}
-                chatType={ChatTypeEnum.log}
-              />
-            )}
-          </Box>
-
-          {datasetCiteData && (
-            <Box
-              flex={'1 0 0'}
-              w={0}
-              mr={4}
-              maxW={'460px'}
-              h={'98%'}
-              bg={'white'}
-              boxShadow={
-                '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
-              }
-              borderRadius={'md'}
-            >
-              <ChatQuoteList
-                rawSearch={datasetCiteData.rawSearch}
-                metadata={datasetCiteData.metadata}
-                onClose={() => setCiteModalData(undefined)}
-              />
+        <Flex pt={2} flex={'1 0 0'} h={0} flexDirection={'column'}>
+          <Flex flex={'1 0 0'} h={0}>
+            <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+              {isPlugin ? (
+                <Box px={5} py={2}>
+                  <PluginRunBox appId={appId} chatId={chatId} />
+                </Box>
+              ) : (
+                <ChatBox
+                  isReady
+                  appId={appId}
+                  chatId={chatId}
+                  feedbackType={'admin'}
+                  showMarkIcon
+                  showVoiceIcon={false}
+                  chatType={ChatTypeEnum.log}
+                  onTriggerRefresh={triggerRefresh}
+                />
+              )}
             </Box>
-          )}
+
+            {datasetCiteData && (
+              <Box
+                flex={'1 0 0'}
+                w={0}
+                mr={4}
+                maxW={'460px'}
+                h={'98%'}
+                bg={'white'}
+                boxShadow={
+                  '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+                }
+                borderRadius={'md'}
+              >
+                <ChatQuoteList
+                  rawSearch={datasetCiteData.rawSearch}
+                  metadata={datasetCiteData.metadata}
+                  onClose={() => setCiteModalData(undefined)}
+                />
+              </Box>
+            )}
+          </Flex>
+
+          <NavigationBar
+            appId={appId}
+            chatId={chatId}
+            chatRecords={chatRecords}
+            setChatRecords={setChatRecords}
+            onNavigate={handleScrollToChatItem}
+            refreshTrigger={refreshTrigger}
+          />
         </Flex>
       </MyBox>
 
