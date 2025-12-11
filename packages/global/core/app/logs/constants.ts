@@ -11,6 +11,7 @@ export enum AppLogKeysEnum {
   FEEDBACK = 'feedback',
   CUSTOM_FEEDBACK = 'customFeedback',
   ANNOTATED_COUNT = 'annotatedCount',
+  OPTIMIZED_COUNT = 'optimizedCount',
   POINTS = 'points',
   RESPONSE_TIME = 'responseTime',
   ERROR_COUNT = 'errorCount'
@@ -27,6 +28,7 @@ export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.FEEDBACK]: i18nT('app:logs_keys_feedback'),
   [AppLogKeysEnum.CUSTOM_FEEDBACK]: i18nT('app:logs_keys_customFeedback'),
   [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
+  [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount'),
   [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
   [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
   [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
@@ -43,6 +45,7 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.FEEDBACK, enable: true },
   { key: AppLogKeysEnum.CUSTOM_FEEDBACK, enable: false },
   { key: AppLogKeysEnum.ANNOTATED_COUNT, enable: false },
+  { key: AppLogKeysEnum.OPTIMIZED_COUNT, enable: true },
   { key: AppLogKeysEnum.POINTS, enable: false },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
   { key: AppLogKeysEnum.ERROR_COUNT, enable: false }

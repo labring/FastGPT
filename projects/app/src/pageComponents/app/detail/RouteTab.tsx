@@ -23,7 +23,41 @@ const RouteTab = () => {
     [router]
   );
 
-  const tabList = useMemo(
+  const assistantTabList = useMemo(() => {
+    const allTabs = [
+      ...(appDetail.permission.hasReadChatLogPer
+        ? [
+            { label: t('app:logs_app_data'), id: TabEnum.dashboard },
+            { label: t('app:chat_logs'), id: TabEnum.logs }
+          ]
+        : []),
+      { label: t('app:AutoOptimize'), id: TabEnum.autoLearn },
+      ...(appDetail.permission.hasWritePer
+        ? [
+            {
+              label:
+                appDetail.type === AppTypeEnum.plugin
+                  ? t('app:setting_plugin')
+                  : t('app:setting_app'),
+              id: TabEnum.appEdit
+            }
+          ]
+        : []),
+      ...(appDetail.permission.hasManagePer
+        ? [{ label: t('app:publish_channel'), id: TabEnum.publish }]
+        : [])
+    ];
+
+    return allTabs;
+  }, [
+    appDetail.permission.hasManagePer,
+    appDetail.permission.hasReadChatLogPer,
+    appDetail.permission.hasWritePer,
+    appDetail.type,
+    t
+  ]);
+
+  const otherTypeTabList = useMemo(
     () => [
       ...(appDetail.permission.hasWritePer
         ? [
@@ -55,6 +89,11 @@ const RouteTab = () => {
       appDetail.type,
       t
     ]
+  );
+
+  const tabList = useMemo(
+    () => (appDetail.type === AppTypeEnum.assistant ? assistantTabList : otherTypeTabList),
+    [appDetail.type, assistantTabList, otherTypeTabList]
   );
 
   return (

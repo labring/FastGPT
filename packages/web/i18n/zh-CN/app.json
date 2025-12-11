@@ -128,6 +128,7 @@
   "logs_good_feedback": "点赞",
   "logs_key_config": "字段配置",
   "logs_keys_annotatedCount": "标注答案数量",
+  "logs_keys_optimizedCount": "优化回答数",
   "logs_keys_chatDetails": "对话详情",
   "logs_keys_createdTime": "创建时间",
   "logs_keys_customFeedback": "自定义反馈",
@@ -388,5 +389,8 @@
   "smart_customer_service_ai_model": "AI 模型",
   "smart_customer_service_deep_thinking": "深度思考",
   "smart_customer_service_prompt_config": "提示词配置",
-  "smart_customer_service_welcome_text_placeholder": "您好，请问有什么可以帮您？"
+  "smart_customer_service_welcome_text_placeholder": "您好，请问有什么可以帮您？",
+  "logs_keys_feedback_none": "无反馈",
+  "logs_keys_feedback_column": "反馈",
+  "logs_search_title": "搜索标题"
 }

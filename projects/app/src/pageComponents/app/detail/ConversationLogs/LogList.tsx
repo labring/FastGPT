@@ -1,6 +1,9 @@
+/**
+ * @file 日志列表组件
+ * @description 智能客服应用的对话日志列表页面，支持日期、反馈、来源等多维度筛选和搜索功能
+ */
 import {
   Box,
-  Button,
   Flex,
   HStack,
   Input,
@@ -12,7 +15,7 @@ import {
   Thead,
   Tr
 } from '@chakra-ui/react';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import MultipleSelect, {
   useMultipleSelect
@@ -23,7 +26,6 @@ import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
@@ -34,10 +36,8 @@ import {
   DefaultAppLogKeys
 } from '@fastgpt/global/core/app/logs/constants';
 import { isEqual } from 'lodash';
-import SyncLogKeysPopover from './SyncLogKeysPopover';
-import LogKeysConfigPopover from './LogKeysConfigPopover';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { downloadFetch } from '@/web/common/system/utils';
+import SyncLogKeysPopover from '../Logs/SyncLogKeysPopover';
+import LogKeysConfigPopover from '../Logs/LogKeysConfigPopover';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api/log';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -47,26 +47,71 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
-import type { HeaderControlProps } from './LogChart';
+import type { HeaderControlProps } from '../Logs/LogChart';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
 
-const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
+const DetailLogsModal = dynamic(() => import('../Logs/DetailLogsModal'));
 
-const LogTable = ({
-  appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
-  dateRange,
-  setDateRange,
-  showSourceSelector = true
-}: HeaderControlProps) => {
+// 反馈筛选枚举
+export enum FeedbackFilterEnum {
+  like = 'like',
+  dislike = 'dislike',
+  none = 'none'
+}
+
+// 反馈筛选组件
+const FeedbackSelect = ({
+  value,
+  onChange,
+  isSelectAll,
+  setIsSelectAll
+}: {
+  value: FeedbackFilterEnum[];
+  onChange: (value: FeedbackFilterEnum[]) => void;
+  isSelectAll: boolean;
+  setIsSelectAll: (value: boolean) => void;
+}) => {
+  const { t } = useTranslation();
+  // 反馈筛选选项列表
+  const feedbackList = [
+    { label: t('app:logs_good_feedback'), value: FeedbackFilterEnum.like },
+    { label: t('app:logs_bad_feedback'), value: FeedbackFilterEnum.dislike },
+    { label: t('app:logs_keys_feedback_none'), value: FeedbackFilterEnum.none }
+  ];
+
+  return (
+    <MultipleSelect<FeedbackFilterEnum>
+      list={feedbackList}
+      value={value}
+      onSelect={onChange}
+      isSelectAll={isSelectAll}
+      setIsSelectAll={(value) => setIsSelectAll(value as boolean)}
+      h={10}
+      w={'226px'}
+      bg={'white'}
+      rounded={'8px'}
+      tagStyle={{
+        px: 1,
+        py: 1,
+        borderRadius: 'sm',
+        bg: 'myGray.100',
+        color: 'myGray.900'
+      }}
+      borderColor={'myGray.200'}
+      formLabel={t('app:logs_keys_feedback_column')}
+      formLabelFontSize={'sm'}
+    />
+  );
+};
+
+const LogList = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-
   const [detailLogsId, setDetailLogsId] = useState<string>();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   // source
   const sourceList = useMemo(
@@ -78,11 +123,17 @@ const LogTable = ({
     [t]
   );
 
+  const {
+    value: chatSources,
+    setValue: setChatSources,
+    isSelectAll: isSelectAllSource,
+    setIsSelectAll: setIsSelectAllSource
+  } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
+
   // member
   const [tmbInputValue, setTmbInputValue] = useState('');
   const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
     params: { searchKey: tmbInputValue },
-    refreshDeps: [tmbInputValue],
     disabled: !feConfigs?.isPlus
   });
   const tmbList = useMemo(
@@ -90,7 +141,6 @@ const LogTable = ({
       members.map((item) => ({
         label: (
           <HStack spacing={1}>
-            <Avatar src={item.avatar} w={'1.2rem'} rounded={'full'} />
             <Box color={'myGray.900'} className="textEllipsis">
               {item.memberName}
             </Box>
@@ -107,12 +157,26 @@ const LogTable = ({
     setIsSelectAll: setIsSelectAllTmb
   } = useMultipleSelect<string>([], true);
 
+  // feedback
+  const {
+    value: feedbackFilters,
+    setValue: setFeedbackFilters,
+    isSelectAll: isSelectAllFeedback,
+    setIsSelectAll: setIsSelectAllFeedback
+  } = useMultipleSelect<FeedbackFilterEnum>(Object.values(FeedbackFilterEnum), true);
+
   // chat
   const [chatSearch, setChatSearch] = useState('');
 
+  // date range
+  const [dateRange, setDateRange] = useState({
+    from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
+    to: new Date(new Date().setHours(23, 59, 59, 999))
+  });
+
   // log keys
   const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
-    `app_log_keys_${appId}`
+    `app_assistant_log_keys_${appId}`
   );
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
     async () => {
@@ -139,38 +203,6 @@ const LogTable = ({
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
-  const { runAsync: exportLogs } = useRequest2(
-    async () => {
-      const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
-      await downloadFetch({
-        url: '/api/core/app/exportChatLogs',
-        filename: 'chat_logs.csv',
-        body: {
-          appId,
-          dateStart: dateRange.from || new Date(),
-          dateEnd: addDays(dateRange.to || new Date(), 1),
-          sources: isSelectAllSource ? undefined : chatSources,
-          tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-          chatSearch,
-
-          title: headerTitle + ',' + t('app:logs_keys_chatDetails'),
-          logKeys: enabledKeys,
-          sourcesMap: Object.fromEntries(
-            Object.entries(ChatSourceMap).map(([key, config]) => [
-              key,
-              {
-                label: t(config.name as any)
-              }
-            ])
-          )
-        }
-      });
-    },
-    {
-      refreshDeps: [chatSources]
-    }
-  );
   const params = useMemo(
     () => ({
       appId,
@@ -178,7 +210,8 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch
+      chatSearch,
+      feedbackFilters: isSelectAllFeedback ? undefined : feedbackFilters
     }),
     [
       appId,
@@ -188,9 +221,12 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch
+      chatSearch,
+      feedbackFilters,
+      isSelectAllFeedback
     ]
   );
+
   const {
     data: logs,
     isLoading,
@@ -205,7 +241,7 @@ const LogTable = ({
     refreshDeps: [params]
   });
 
-  const HeaderRenderMap = useMemo(
+  const HeaderRenderMap: Record<string, React.ReactNode> = useMemo(
     () => ({
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -218,41 +254,24 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
       [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
-      [AppLogKeysEnum.SESSION_ID]: (
-        <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
-      ),
       [AppLogKeysEnum.MESSAGE_COUNT]: (
         <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
       ),
       [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
-      [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
-        <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>
-          {t('common:core.app.feedback.Custom feedback')}
-        </Th>
-      ),
-      [AppLogKeysEnum.ANNOTATED_COUNT]: (
-        <Th key={AppLogKeysEnum.ANNOTATED_COUNT}>
-          <Flex gap={1} alignItems={'center'}>
-            {t('app:mark_count')}
-            <QuestionTip label={t('common:core.chat.Mark Description')} />
-          </Flex>
-        </Th>
+      [AppLogKeysEnum.OPTIMIZED_COUNT]: (
+        <Th key={AppLogKeysEnum.OPTIMIZED_COUNT}>{t('app:logs_keys_optimizedCount')}</Th>
       ),
       [AppLogKeysEnum.RESPONSE_TIME]: (
         <Th key={AppLogKeysEnum.RESPONSE_TIME}>{t('app:logs_response_time')}</Th>
       ),
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
-      ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
-      [AppLogKeysEnum.OPTIMIZED_COUNT]: (
-        <Th key={AppLogKeysEnum.OPTIMIZED_COUNT}>{t('app:logs_keys_optimizedCount')}</Th>
       )
     }),
     [t]
   );
 
-  const getCellRenderMap = (item: AppLogsListItemType) => ({
+  const getCellRenderMap = (item: AppLogsListItemType): Record<string, React.ReactNode> => ({
     [AppLogKeysEnum.SOURCE]: (
       <Td key={AppLogKeysEnum.SOURCE}>
         {/* @ts-ignore */}
@@ -260,11 +279,13 @@ const LogTable = ({
       </Td>
     ),
     [AppLogKeysEnum.CREATED_TIME]: (
-      <Td key={AppLogKeysEnum.CREATED_TIME}>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
+      <Td key={AppLogKeysEnum.CREATED_TIME}>
+        {dayjs(item.createTime).format('YYYY-MM-DD HH:mm:ss')}
+      </Td>
     ),
     [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
       <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
-        {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
+        {dayjs(item.updateTime).format('YYYY-MM-DD HH:mm:ss')}
       </Td>
     ),
     [AppLogKeysEnum.USER]: (
@@ -277,11 +298,6 @@ const LogTable = ({
     [AppLogKeysEnum.TITLE]: (
       <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
         {item.customTitle || item.title}
-      </Td>
-    ),
-    [AppLogKeysEnum.SESSION_ID]: (
-      <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
-        {item.id || '-'}
       </Td>
     ),
     [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
@@ -321,55 +337,24 @@ const LogTable = ({
         {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
       </Td>
     ),
-    [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
-      <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.ANNOTATED_COUNT]: (
-      <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
+    [AppLogKeysEnum.OPTIMIZED_COUNT]: (
+      <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}>
+        {/* @ts-ignore */}
+        {item.optimizedCount || 0}
+      </Td>
     ),
     [AppLogKeysEnum.RESPONSE_TIME]: (
       <Td key={AppLogKeysEnum.RESPONSE_TIME}>
         {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
       </Td>
     ),
-    [AppLogKeysEnum.ERROR_COUNT]: (
-      <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.POINTS]: (
-      <Td key={AppLogKeysEnum.POINTS}>
-        {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.OPTIMIZED_COUNT]: <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}> TODO </Td>
+    [AppLogKeysEnum.ERROR_COUNT]: <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
   });
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={[4, 8]}>
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
-        {showSourceSelector && (
-          <Flex>
-            <MultipleSelect<ChatSourceEnum>
-              list={sourceList}
-              value={chatSources}
-              onSelect={setChatSources}
-              isSelectAll={isSelectAllSource}
-              setIsSelectAll={setIsSelectAllSource}
-              h={10}
-              w={'200px'}
-              rounded={'8px'}
-              tagStyle={{
-                px: 1,
-                py: 1,
-                borderRadius: 'sm',
-                bg: 'myGray.100',
-                color: 'myGray.900'
-              }}
-              borderColor={'myGray.200'}
-              formLabel={t('app:logs_source')}
-              formLabelFontSize={'sm'}
-            />
-          </Flex>
-        )}
+        {/* 日期筛选 - 置前 */}
         <Flex>
           <DateRangePicker
             defaultDate={dateRange}
@@ -387,33 +372,42 @@ const LogTable = ({
             }}
           />
         </Flex>
-        {feConfigs?.isPlus && (
-          <Flex>
-            <MultipleSelect<string>
-              list={tmbList}
-              value={selectTmbIds}
-              onSelect={(val) => {
-                setSelectTmbIds(val as string[]);
-              }}
-              ScrollData={TmbScrollData}
-              isSelectAll={isSelectAllTmb}
-              setIsSelectAll={setIsSelectAllTmb}
-              h={10}
-              w={' 226px'}
-              rounded={'8px'}
-              formLabelFontSize={'sm'}
-              formLabel={t('common:member')}
-              tagStyle={{
-                px: 1,
-                borderRadius: 'sm',
-                bg: 'myGray.100',
-                w: '76px'
-              }}
-              inputValue={tmbInputValue}
-              setInputValue={setTmbInputValue}
-            />
-          </Flex>
-        )}
+
+        {/* 反馈筛选 */}
+        <Flex>
+          <FeedbackSelect
+            value={feedbackFilters}
+            onChange={setFeedbackFilters}
+            isSelectAll={isSelectAllFeedback}
+            setIsSelectAll={setIsSelectAllFeedback}
+          />
+        </Flex>
+
+        {/* 来源筛选 */}
+        <Flex>
+          <MultipleSelect<ChatSourceEnum>
+            list={sourceList}
+            value={chatSources}
+            onSelect={setChatSources}
+            isSelectAll={isSelectAllSource}
+            setIsSelectAll={setIsSelectAllSource}
+            h={10}
+            w={'200px'}
+            rounded={'8px'}
+            tagStyle={{
+              px: 1,
+              py: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              color: 'myGray.900'
+            }}
+            borderColor={'myGray.200'}
+            formLabel={t('app:logs_source')}
+            formLabelFontSize={'sm'}
+          />
+        </Flex>
+
+        {/* 搜索 */}
         <Flex
           flex={'0 1 230px'}
           h={10}
@@ -432,7 +426,7 @@ const LogTable = ({
           </Box>
           <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
           <Input
-            placeholder={t('app:logs_search_chat')}
+            placeholder={t('app:logs_search_title')}
             value={chatSearch}
             onChange={(e) => setChatSearch(e.target.value)}
             fontSize={'sm'}
@@ -457,22 +451,16 @@ const LogTable = ({
         )}
         <LogKeysConfigPopover
           logKeysList={logKeys.filter((item) => {
-            if (
-              (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) ||
-              item.key === AppLogKeysEnum.OPTIMIZED_COUNT
-            ) {
-              return false;
-            }
-            return true;
+            // 智能客服场景隐藏的列：会话ID、自定义反馈、标注答案数量、积分消耗
+            const hiddenKeys = [
+              AppLogKeysEnum.SESSION_ID,
+              AppLogKeysEnum.CUSTOM_FEEDBACK,
+              AppLogKeysEnum.ANNOTATED_COUNT,
+              AppLogKeysEnum.POINTS
+            ];
+            return !hiddenKeys.includes(item.key);
           })}
           setLogKeysList={setLogKeys}
-        />
-
-        <PopoverConfirm
-          Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
-          showCancel
-          content={t('app:logs_export_confirm_tip', { total })}
-          onConfirm={exportLogs}
         />
       </Flex>
 
@@ -527,4 +515,4 @@ const LogTable = ({
   );
 };
 
-export default React.memo(LogTable);
+export default React.memo(LogList);
