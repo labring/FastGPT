@@ -1,16 +1,13 @@
-import {
-  addRawTextBuffer,
-  getRawTextBuffer
-} from '../../../../../../../common/buffer/rawText/controller';
 import type { DispatchSubAppResponse } from '../../type';
 import { isInternalAddress } from '../../../../../../../common/system/utils';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
-import { readRawContentByFileBuffer } from '../../../../../../../common/file/read/utils';
 import { addMinutes } from 'date-fns';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
+import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -29,11 +26,14 @@ export const dispatchFileRead = async ({
   const readFilesResult = await Promise.all(
     files.map(async ({ index, url }) => {
       // Get from buffer
-      const fileBuffer = await getRawTextBuffer(url);
+      const fileBuffer = await getS3RawTextSource().getRawTextBuffer({
+        sourceId: url,
+        customPdfParse
+      });
       if (fileBuffer) {
         return {
           index,
-          name: fileBuffer.sourceName,
+          name: fileBuffer.filename,
           content: fileBuffer.text
         };
       }
@@ -85,7 +85,7 @@ export const dispatchFileRead = async ({
         })();
 
         // Read file
-        const { rawText } = await readRawContentByFileBuffer({
+        const { rawText } = await readFileContentByBuffer({
           extension,
           teamId,
           tmbId,
@@ -96,11 +96,11 @@ export const dispatchFileRead = async ({
         });
 
         // Add to buffer
-        addRawTextBuffer({
+        getS3RawTextSource().addRawTextBuffer({
           sourceId: url,
           sourceName: filename,
           text: rawText,
-          expiredTime: addMinutes(new Date(), 20)
+          customPdfParse
         });
 
         return {
