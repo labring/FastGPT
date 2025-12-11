@@ -82,111 +82,114 @@ const AppCard = ({
   return (
     <>
       {/* basic info */}
-      <Box px={[4, 6]} py={4} position={'relative'}>
-        <Flex alignItems={'center'}>
-          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
-          <Box ml={3} fontWeight={'bold'} fontSize={'md'} flex={'1 0 0'} color={'myGray.900'}>
-            {appDetail.name}
-          </Box>
+      <Box px={[4, 6]} py={5} position={'relative'}>
+        {/* Header: Avatar, Name and Action Icons */}
+        <Flex alignItems={'center'} justifyContent={'space-between'} mb={5}>
+          <Flex alignItems={'center'} flex={1} minW={0}>
+            <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} h={'28px'} />
+            <Box
+              ml={3}
+              fontWeight={'bold'}
+              fontSize={'lg'}
+              color={'myGray.900'}
+              flex={1}
+              noOfLines={1}
+            >
+              {appDetail.name}
+            </Box>
+          </Flex>
+
+          {/* Right Action Icons */}
+          <HStack spacing={2} ml={4}>
+            <IconButton
+              variant={'whitePrimary'}
+              size={'mdSquare'}
+              icon={<MyIcon name={'core/chat/chatLight'} w={'18px'} />}
+              aria-label={'chat'}
+              onClick={() =>
+                window.open(
+                  `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+                  '_blank'
+                )
+              }
+            />
+            {appDetail.permission.hasManagePer && (
+              <IconButton
+                variant={'whitePrimary'}
+                size={'mdSquare'}
+                icon={<MyIcon name={'common/settingLight'} w={'18px'} />}
+                aria-label={'settings'}
+                onClick={onOpenInfoEdit}
+              />
+            )}
+            {appDetail.permission.isOwner && (
+              <MyMenu
+                size={'xs'}
+                Button={
+                  <IconButton
+                    variant={'whitePrimary'}
+                    size={'mdSquare'}
+                    icon={<MyIcon name={'more'} w={'18px'} />}
+                    aria-label={'more'}
+                  />
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        label: (
+                          <Flex>
+                            <ExportConfigPopover
+                              appName={appDetail.name}
+                              appForm={appForm}
+                              chatConfig={appDetail.chatConfig}
+                            />
+                          </Flex>
+                        )
+                      },
+                      {
+                        icon: 'core/app/type/workflow',
+                        label: t('app:transition_to_workflow'),
+                        onClick: () => setTransitionCreateNew(true)
+                      },
+                      ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
+                        ? [
+                            {
+                              icon: 'core/chat/fileSelect',
+                              label: t('app:team_tags_set'),
+                              onClick: () => setTeamTagsSet(appDetail)
+                            }
+                          ]
+                        : [])
+                    ]
+                  },
+                  {
+                    children: [
+                      {
+                        icon: 'delete',
+                        type: 'danger',
+                        label: t('common:Delete'),
+                        onClick: onDelApp
+                      }
+                    ]
+                  }
+                ]}
+              />
+            )}
+          </HStack>
         </Flex>
+
+        {/* Intro Text */}
         <Box
-          flex={1}
-          mt={3}
-          mb={4}
-          className={'textEllipsis3'}
+          className={'textEllipsis2'}
           wordBreak={'break-all'}
           color={'myGray.600'}
-          fontSize={'xs'}
-          minH={'46px'}
+          fontSize={'sm'}
+          lineHeight={'1.6'}
+          height={'40px'}
         >
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
-        <HStack alignItems={'center'}>
-          <Button
-            size={['sm', 'md']}
-            variant={'whitePrimary'}
-            leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
-            onClick={() =>
-              router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
-            }
-          >
-            {t('common:core.Chat')}
-          </Button>
-          {appDetail.permission.hasManagePer && (
-            <Button
-              size={['sm', 'md']}
-              variant={'whitePrimary'}
-              leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
-              onClick={onOpenInfoEdit}
-            >
-              {t('common:Setting')}
-            </Button>
-          )}
-          {appDetail.permission.isOwner && (
-            <MyMenu
-              size={'xs'}
-              Button={
-                <IconButton
-                  variant={'whitePrimary'}
-                  size={['smSquare', 'mdSquare']}
-                  icon={<MyIcon name={'more'} w={'1rem'} />}
-                  aria-label={''}
-                />
-              }
-              menuList={[
-                {
-                  children: [
-                    {
-                      label: (
-                        <Flex>
-                          <ExportConfigPopover
-                            appName={appDetail.name}
-                            appForm={appForm}
-                            chatConfig={appDetail.chatConfig}
-                          />
-                        </Flex>
-                      )
-                    },
-                    {
-                      icon: 'core/app/type/workflow',
-                      label: t('app:transition_to_workflow'),
-                      onClick: () => setTransitionCreateNew(true)
-                    },
-                    ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
-                      ? [
-                          {
-                            icon: 'core/chat/fileSelect',
-                            label: t('app:team_tags_set'),
-                            onClick: () => setTeamTagsSet(appDetail)
-                          }
-                        ]
-                      : [])
-                  ]
-                },
-                {
-                  children: [
-                    {
-                      icon: 'delete',
-                      type: 'danger',
-                      label: t('common:Delete'),
-                      onClick: onDelApp
-                    }
-                  ]
-                }
-              ]}
-            />
-          )}
-          <Box flex={1} />
-          {/* {isPc && ( */}
-          {/*   <MyTag */}
-          {/*     type="borderFill" */}
-          {/*     colorSchema="gray" */}
-          {/*     onClick={() => (appDetail.permission.hasManagePer ? onOpenInfoEdit() : undefined)} */}
-          {/*   > */}
-          {/*     <PermissionIconText defaultPermission={appDetail.defaultPermission} /> */}
-          {/*   </MyTag> */}
-          {/* )} */}
-        </HStack>
       </Box>
       {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
       {transitionCreateNew !== undefined && (
