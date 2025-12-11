@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useTransition } from 'react';
+import React, { useEffect, useMemo, useTransition, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -76,17 +76,43 @@ const EditForm = ({
 
   const selectedModel = getWebLLMModel(model);
 
-  const { register, setValue, handleSubmit, reset, watch } = useForm<SkillEditType>({
+  const { register, setValue, handleSubmit, reset, watch, getValues } = useForm<SkillEditType>({
     defaultValues: defaultSkill
   });
+
+  // 标记是否正在从外部重置表单
+  const isResetting = useRef(false);
+
   useEffect(() => {
+    isResetting.current = true;
     reset(defaultSkill);
+    // 给 React 一个渲染周期来完成 reset
+    setTimeout(() => {
+      isResetting.current = false;
+    }, 0);
   }, [defaultSkill, reset]);
 
   const name = watch('name');
+  const description = watch('description');
   const prompt = watch('prompt');
+  const steps = watch('steps');
   const selectedTools = watch('selectedTools');
   const selectDatasets = watch('dataset.list');
+
+  // 实时同步表单值到 appForm.skills (模仿 TopAgent 的方式)
+  useEffect(() => {
+    // 如果正在重置表单，不要同步回 appForm（避免覆盖外部更新）
+    if (isResetting.current) return;
+
+    const currentValues = getValues();
+    if (currentValues.id) {
+      // 更新现有的 skill
+      setAppForm((state) => ({
+        ...state,
+        skills: state.skills.map((item) => (item.id === currentValues.id ? currentValues : item))
+      }));
+    }
+  }, [name, description, prompt, steps, selectedTools, selectDatasets, getValues, setAppForm]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -160,23 +186,76 @@ const EditForm = ({
             placeholder={t('app:skill_description_placeholder')}
           />
         </Box>
-        {/* Prompt */}
+        {/* Steps */}
         <Box mt={4}>
           <HStack w={'100%'}>
-            <FormLabel>Prompt</FormLabel>
+            <FormLabel>{t('app:execution_steps')}</FormLabel>
           </HStack>
-          <Box mt={1}>
-            <PromptEditor
-              minH={100}
-              maxH={300}
-              value={prompt}
-              onChange={(text) => {
-                startTst(() => {
-                  setValue('prompt', text);
-                });
-              }}
-              isRichText={false}
-            />
+          <Box mt={2}>
+            {watch('steps') && watch('steps')!.length > 0 ? (
+              <Flex flexDir={'column'} gap={2}>
+                {watch('steps')!.map((step, index) => (
+                  <Box
+                    key={step.id}
+                    p={3}
+                    borderRadius={'md'}
+                    borderWidth={'1px'}
+                    borderColor={'myGray.200'}
+                    bg={'white'}
+                  >
+                    <HStack mb={2}>
+                      <Box
+                        fontSize={'xs'}
+                        fontWeight={'bold'}
+                        color={'primary.600'}
+                        bg={'primary.50'}
+                        px={2}
+                        py={0.5}
+                        borderRadius={'md'}
+                      >
+                        {t('common:step')} {index + 1}
+                      </Box>
+                      <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
+                        {step.title}
+                      </Box>
+                    </HStack>
+                    <Box fontSize={'xs'} color={'myGray.600'} mb={2}>
+                      {step.description}
+                    </Box>
+                    {step.expectedTools && step.expectedTools.length > 0 && (
+                      <HStack spacing={1} flexWrap={'wrap'}>
+                        {step.expectedTools.map((tool) => (
+                          <Box
+                            key={tool.id}
+                            fontSize={'xs'}
+                            px={2}
+                            py={0.5}
+                            bg={tool.type === 'tool' ? 'blue.50' : 'purple.50'}
+                            color={tool.type === 'tool' ? 'blue.600' : 'purple.600'}
+                            borderRadius={'sm'}
+                          >
+                            {tool.type === 'tool' ? '🔧' : '📚'} {tool.id}
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+                  </Box>
+                ))}
+              </Flex>
+            ) : (
+              <Box
+                p={4}
+                textAlign={'center'}
+                borderRadius={'md'}
+                borderWidth={'1px'}
+                borderStyle={'dashed'}
+                borderColor={'myGray.300'}
+                color={'myGray.500'}
+                fontSize={'sm'}
+              >
+                {t('app:no_steps_yet')}
+              </Box>
+            )}
           </Box>
         </Box>
 

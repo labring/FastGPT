@@ -8,11 +8,13 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { generateResourceList } from '../topAgent/utils';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
+import { GeneratedSkillDataSchema } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const dispatchSkillAgent = async (
-  props: HelperBotDispatchParamsType
+  props: HelperBotDispatchParamsType<SkillAgentParamsType>
 ): Promise<HelperBotDispatchResponseType> => {
-  const { query, files, metadata, histories, workflowResponseWrite, user } = props;
+  const { query, files, data, histories, workflowResponseWrite, user } = props;
 
   const modelData = getLLMModel();
   if (!modelData) {
@@ -32,7 +34,7 @@ export const dispatchSkillAgent = async (
 
   const systemPrompt = getPrompt({
     resourceList,
-    metadata: metadata.data
+    metadata: data
   });
 
   const historyMessages = helperChats2GPTMessages({
@@ -78,10 +80,18 @@ export const dispatchSkillAgent = async (
 
     // Handle based on phase field
     if (responseJson.phase === 'generation') {
-      addLog.debug('🔄 SkillAgent: Execution plan generation phase');
+      addLog.debug('🔄 SkillAgent: Generated skill generation phase');
 
-      // SkillAgent does NOT send formData event, just returns JSON for frontend to display
-      // Frontend will parse execution_plan from aiResponse and display it
+      // Parse and validate the generated skill data
+      const generatedSkillData = GeneratedSkillDataSchema.parse(responseJson);
+
+      // Send generatedSkill event
+      workflowResponseWrite?.({
+        event: SseResponseEventEnum.generatedSkill,
+        data: generatedSkillData
+      });
+
+      // Return original format (backward compatible)
       return {
         aiResponse: formatAIResponse({
           text: answerText,

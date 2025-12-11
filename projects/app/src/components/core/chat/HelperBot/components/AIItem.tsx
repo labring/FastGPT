@@ -7,11 +7,9 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Button,
   Flex,
   HStack
 } from '@chakra-ui/react';
-import AIResponseBox from '../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
@@ -71,6 +69,11 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
     </Accordion>
   );
 });
+// GeneratedSkill 不再需要渲染UI，直接通过onApply填充到编辑器
+const RenderGeneratedSkill = React.memo(function RenderGeneratedSkill() {
+  return null;
+});
+
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text
@@ -136,6 +139,9 @@ const AIItem = ({
                 content={value.reasoning.content}
               />
             );
+          }
+          if ('generatedSkill' in value && value.generatedSkill) {
+            return <RenderGeneratedSkill key={i} />;
           }
         })}
       </Box>

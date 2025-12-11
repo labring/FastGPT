@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 
 import ChatTest from './ChatTest';
@@ -29,6 +29,43 @@ const Edit = ({
   const [renderEdit, setRenderEdit] = useState(true);
   const [editSkill, setEditSkill] = useState<SkillEditType>();
 
+  // 从 appForm.skills 中实时获取最新的 skill 数据
+  const currentEditSkill = useMemo(() => {
+    if (!editSkill) return undefined;
+    return appForm.skills.find((s) => s.id === editSkill.id) || editSkill;
+  }, [appForm.skills, editSkill]);
+
+  // 处理编辑 skill 的逻辑:如果是新 skill(不在 appForm.skills 中),先添加到数组
+  const handleEditSkill = (skill: SkillEditType) => {
+    const existingSkill = appForm.skills.find((s) => s.id === skill.id);
+    if (!existingSkill) {
+      // 新 skill,添加到 appForm.skills
+      setAppForm((state) => ({
+        ...state,
+        skills: [...state.skills, skill]
+      }));
+    }
+    setEditSkill(skill);
+  };
+
+  // 处理关闭 skill 编辑器
+  const handleCloseSkillEdit = () => {
+    if (editSkill) {
+      // 从 appForm.skills 中查找最新的 skill 数据来检查
+      const currentSkill = appForm.skills.find((s) => s.id === editSkill.id);
+      // 检查这个 skill 是否有实际内容(name 不为空)
+      const hasContent = currentSkill?.name && currentSkill.name.trim() !== '';
+      if (!hasContent) {
+        // 如果没有内容,从 appForm.skills 中移除
+        setAppForm((state) => ({
+          ...state,
+          skills: state.skills.filter((s) => s.id !== editSkill.id)
+        }));
+      }
+    }
+    setEditSkill(undefined);
+  };
+
   return (
     <Box
       display={['block', 'flex']}
@@ -55,11 +92,7 @@ const Edit = ({
           </Box>
 
           <Box pb={4}>
-            <EditForm
-              appForm={appForm}
-              setAppForm={setAppForm}
-              onEditSkill={(e) => setEditSkill(e)}
-            />
+            <EditForm appForm={appForm} setAppForm={setAppForm} onEditSkill={handleEditSkill} />
           </Box>
         </Box>
       )}
@@ -102,19 +135,19 @@ const Edit = ({
         transition={'transform 0.3s ease-in-out'}
         pointerEvents={editSkill ? 'auto' : 'none'}
       >
-        {editSkill && (
+        {currentEditSkill && (
           <>
             <Box overflowY={'auto'} minW={['auto', '580px']} flex={'1'} borderRight={'base'}>
               <SkillEditForm
                 model={appForm.aiSettings.model}
                 fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-                defaultSkill={editSkill}
-                onClose={() => setEditSkill(undefined)}
+                defaultSkill={currentEditSkill}
+                onClose={handleCloseSkillEdit}
                 setAppForm={setAppForm}
               />
             </Box>
             <Box flex={'2 0 0'} w={0} mb={3}>
-              <SKillChatTest skill={editSkill} setAppForm={setAppForm} />
+              <SKillChatTest skill={currentEditSkill} appForm={appForm} setAppForm={setAppForm} />
             </Box>
           </>
         )}

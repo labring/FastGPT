@@ -15,14 +15,33 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   skill: SkillEditType;
+  appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 };
-const ChatTest = ({ skill, setAppForm }: Props) => {
+const ChatTest = ({ skill, appForm, setAppForm }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  // 构建 SkillAgent metadata,从 appForm 中提取配置
-  const skillAgentMetadata = useMemo(() => ({}), []);
+  // 构建 SkillAgent metadata
+  // 使用 useMemo 确保 metadata 响应 appForm 的变化
+  const skillAgentMetadata = useMemo(() => {
+    // 从 appForm.skills 中找到当前正在编辑的 skill (通过 id 匹配)
+    const currentSkill = appForm.skills.find((s) => s.id === skill.id) || skill;
+    return {
+      skillAgent: {
+        name: currentSkill.name,
+        description: currentSkill.description,
+        prompt: currentSkill.prompt
+      },
+      topAgent: {
+        role: appForm.aiSettings.aiRole,
+        taskObject: appForm.aiSettings.aiTaskObject,
+        fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
+        selectedTools: currentSkill.selectedTools?.map((tool) => tool.id) || [],
+        selectedDatasets: currentSkill.dataset?.list?.map((ds) => ds.datasetId) || []
+      }
+    };
+  }, [appForm, skill]);
 
   return (
     <MyBox display={'flex'} position={'relative'} flexDirection={'column'} h={'full'} py={4}>
@@ -46,10 +65,45 @@ const ChatTest = ({ skill, setAppForm }: Props) => {
       </Flex>
       <Box flex={1}>
         <HelperBot
-          type={HelperBotTypeEnum.skillEditor}
+          type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
-          onApply={(e) => {
-            console.log(e);
+          onApply={(generatedSkillData) => {
+            console.log('📝 ChatTest onApply - Received generated skill data:', generatedSkillData);
+            console.log('📝 Current skill id:', skill.id);
+
+            // 检查是否是 generatedSkill 类型
+            if (!generatedSkillData.plan_analysis || !generatedSkillData.execution_plan) {
+              console.warn('❌ Invalid generated skill data format');
+              return;
+            }
+
+            // 将生成的 skill 数据填充到 appForm.skills 中
+            setAppForm((state) => {
+              console.log('📝 Before update - appForm.skills:', state.skills);
+              const updatedSkills = state.skills.map((s) => {
+                if (s.id === skill.id) {
+                  const updatedSkill = {
+                    ...s,
+                    name: generatedSkillData.plan_analysis.name || s.name,
+                    description: generatedSkillData.plan_analysis.description || s.description,
+                    steps: generatedSkillData.execution_plan.steps
+                  };
+                  console.log('✅ Updated skill:', updatedSkill);
+                  return updatedSkill;
+                }
+                return s;
+              });
+              console.log('📝 After update - appForm.skills:', updatedSkills);
+              return {
+                ...state,
+                skills: updatedSkills
+              };
+            });
+
+            toast({
+              title: t('chat:generated_skill.applied_success'),
+              status: 'success'
+            });
           }}
         />
       </Box>

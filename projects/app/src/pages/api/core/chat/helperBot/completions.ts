@@ -37,7 +37,7 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     id: chatId,
     showNodeStatus: true
   });
-
+  console.log({ chatId, chatItemId, query, files, metadata });
   // 执行不同逻辑
   const fn = dispatchMap[metadata.type];
   if (!fn) {

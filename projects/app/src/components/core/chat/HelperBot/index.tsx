@@ -27,7 +27,10 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn, useThrottleFn } from 'ahooks';
-import type { HelperBotChatItemSiteType } from '@fastgpt/global/core/chat/helperBot/type';
+import {
+  HelperBotTypeEnum,
+  type HelperBotChatItemSiteType
+} from '@fastgpt/global/core/chat/helperBot/type';
 import type { onSendMessageParamsType } from './type';
 import { textareaMinH } from '../ChatContainer/ChatBox/constants';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -42,6 +45,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
   // Messages 管理
   const [chatId, setChatId] = useState<string>(getNanoid(12));
   const [isChatting, setIsChatting] = useState(false);
+
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
       input: '',
@@ -144,7 +148,14 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
     }
   );
   const generatingMessage = useMemoizedFn(
-    ({ event, text = '', reasoningText, tool, formData }: generatingMessageProps) => {
+    ({
+      event,
+      text = '',
+      reasoningText,
+      tool,
+      formData,
+      generatedSkill
+    }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
@@ -157,6 +168,22 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
           if (event === SseResponseEventEnum.formData && formData) {
             onApply?.(formData);
             return item;
+          }
+
+          // Special event: generated skill
+          if (event === SseResponseEventEnum.generatedSkill && generatedSkill) {
+            console.log('📊 HelperBot: Received generatedSkill event', generatedSkill);
+            // 直接将生成的 skill 数据传递给 onApply 回调（仅在 skillAgent 类型时）
+            if (type === HelperBotTypeEnum.skillAgent) {
+              (onApply as (e: typeof generatedSkill) => void)?.(generatedSkill);
+            }
+            const val: AIChatItemValueItemType = {
+              generatedSkill
+            };
+            return {
+              ...item,
+              value: [...item.value, val]
+            };
           }
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
@@ -334,8 +361,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
             name: item.name
           })),
           metadata: {
-            // type: 'topAgent',
-            type: 'skillAgent',
+            type: type,
             data: metadata
           }
         },

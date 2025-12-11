@@ -10,6 +10,7 @@ import type { ChatBoxInputType } from '../../../../projects/app/src/components/c
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import type { RequireOnlyOne } from '../../common/type/utils';
+import type { GeneratedSkillDataType } from './helperBot/generatedSkill/type';
 import z from 'zod';
 
 /* One tool run response  */
@@ -132,6 +133,9 @@ export type AIChatItemValueItemType = {
       value: AIChatItemValueItemType[];
     }[];
   };
+
+  // Generated Skill (SkillAgent)
+  generatedSkill: GeneratedSkillDataType;
 
   // @deprecated
   tools: ToolModuleResponseItemType[];

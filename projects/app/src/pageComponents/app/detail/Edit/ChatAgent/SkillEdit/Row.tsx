@@ -7,6 +7,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultSkill: SkillEditType = {
   id: '',
@@ -53,7 +54,7 @@ const Row = ({
           mr={'-5px'}
           size={'sm'}
           fontSize={'sm'}
-          onClick={() => onEditSkill({ ...defaultSkill })}
+          onClick={() => onEditSkill({ ...defaultSkill, id: getNanoid(6) })}
         >
           {t('common:Add')}
         </Button>

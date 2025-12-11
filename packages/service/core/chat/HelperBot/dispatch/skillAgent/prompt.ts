@@ -1,5 +1,5 @@
 import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
-import { buildMetadataInfo } from '../topAgent/utils';
+import { buildSkillAgentMetadataInfo } from './utils';
 
 export const getPrompt = ({
   resourceList,
@@ -8,7 +8,7 @@ export const getPrompt = ({
   resourceList: string;
   metadata?: SkillAgentParamsType;
 }) => {
-  const currentConfigContext = buildMetadataInfo(metadata);
+  const currentConfigContext = buildSkillAgentMetadataInfo(metadata);
 
   return `<!-- 任务执行流程设计系统 -->
 
@@ -275,7 +275,7 @@ ${resourceList}
         "id": "step1",
         "title": "简洁明确的步骤标题",
         "description": "使用@[资源名称]格式的简洁任务描述,明确指出要做什么",
-        "expected_tools": [
+        "expectedTools": [
           {"id": "资源ID1", "type": "tool或knowledge"},
           {"id": "资源ID2", "type": "tool或knowledge"}
         ]
@@ -319,7 +319,7 @@ ${resourceList}
         "id": "step1",
         "title": "查询旅游目的地信息",
         "description": "使用@[travel_destinations]知识库查询目的地的景点、美食、住宿等详细信息",
-        "expected_tools": [
+        "expectedTools": [
           {"id": "travel_destinations", "type": "knowledge"}
         ]
       },
@@ -327,7 +327,7 @@ ${resourceList}
         "id": "step2",
         "title": "查询实时天气信息",
         "description": "使用@[mojiWeather/tool]工具获取目的地未来7天的天气预报",
-        "expected_tools": [
+        "expectedTools": [
           {"id": "mojiWeather/tool", "type": "tool"}
         ]
       },
@@ -335,7 +335,7 @@ ${resourceList}
         "id": "step3",
         "title": "生成行程计划文档",
         "description": "使用@[markdownTransform]工具将行程信息格式化为markdown文档",
-        "expected_tools": [
+        "expectedTools": [
           {"id": "markdownTransform", "type": "tool"}
         ]
       }
@@ -345,19 +345,19 @@ ${resourceList}
 
 **❌ 错误示例1**(使用字符串数组而非对象数组):
 {
-  "expected_tools": ["travel_destinations", "mojiWeather/tool"]  // ❌ 应该是对象数组
+  "expectedTools": ["travel_destinations", "mojiWeather/tool"]  // ❌ 应该是对象数组
 }
 
 **❌ 错误示例2**(type 值错误):
 {
-  "expected_tools": [
+  "expectedTools": [
     {"id": "travel_destinations", "type": "tool"}  // ❌ 这是知识库,应该是 "knowledge"
   ]
 }
 
 **❌ 错误示例3**(缺少必需字段):
 {
-  "expected_tools": [
+  "expectedTools": [
     {"id": "mojiWeather/tool"}  // ❌ 缺少 type 字段
   ]
 }
