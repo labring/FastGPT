@@ -8,7 +8,7 @@ export const createAppTypeMap = {
     title: i18nT('app:type.Chat_Agent_v2'),
     intro: i18nT('app:chat_agent_intro'),
     description: i18nT('app:chat_agent_intro'),
-    imgUrl: '/imgs/app/simpleAgentPreview.svg'
+    imgUrl: '/imgs/app/type/chatAgent.svg'
   },
   [AppTypeEnum.workflow]: {
     type: AppTypeEnum.workflow,
