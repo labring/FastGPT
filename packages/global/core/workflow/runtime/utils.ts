@@ -14,11 +14,11 @@ import {
   type InteractiveNodeResponseType,
   type WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
-import type { StoreEdgeItemType } from '../type/edge';
+import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
-import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
+import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
@@ -633,7 +633,7 @@ export const textAdaptGptResponse = ({
 /* Update runtimeNode's outputs with interactive data from history */
 export function rewriteNodeOutputByHistories(
   runtimeNodes: RuntimeNodeItemType[],
-  lastInteractive?: InteractiveNodeResponseType
+  lastInteractive?: WorkflowInteractiveResponseType
 ) {
   const interactive = lastInteractive;
   if (!interactive?.nodeOutputs) {

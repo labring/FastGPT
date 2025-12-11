@@ -11,6 +11,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/tool';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const Header = ({
   url,
@@ -36,11 +37,11 @@ const Header = ({
   );
 
   const onClickRoute = useCallback(
-    (parentId: string) => {
+    (parentId: ParentIdType) => {
       router.push({
         pathname: '/dashboard/tool',
         query: {
-          parentId,
+          parentId: parentId || '',
           type: lastAppListRouteType
         }
       });

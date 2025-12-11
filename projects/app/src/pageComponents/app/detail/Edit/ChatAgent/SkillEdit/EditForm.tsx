@@ -12,11 +12,9 @@ import {
   IconButton,
   Textarea
 } from '@chakra-ui/react';
-import type {
-  AppFileSelectConfigType,
-  AppFormEditFormType,
-  SkillEditType
-} from '@fastgpt/global/core/app/type.d';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -40,12 +38,12 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { type SelectedToolItemType, useSkillManager } from '../hooks/useSkillManager';
+import { useSkillManager } from '../hooks/useSkillManager';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { cardStyles } from '../../../constants';
 import { defaultSkill as defaultEditSkill } from './Row';
 import { useForm } from 'react-hook-form';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -257,9 +255,9 @@ const EditForm = ({
         <DatasetSelectModal
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
-            vectorModel: item.vectorModel,
             name: item.name,
-            avatar: item.avatar
+            avatar: item.avatar,
+            vectorModel: item.vectorModel
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {

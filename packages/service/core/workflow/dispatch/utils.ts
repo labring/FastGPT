@@ -5,10 +5,10 @@ import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workf
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
-  type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
   type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
@@ -24,8 +24,8 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
 
 export const getWorkflowResponseWrite = ({

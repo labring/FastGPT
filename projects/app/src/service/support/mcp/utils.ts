@@ -11,7 +11,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
@@ -166,7 +166,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
 
 // Call tool
 export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps) => {
-  const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
+  const dispatchApp = async (app: AppSchemaType, variables: Record<string, any>) => {
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Get app latest version

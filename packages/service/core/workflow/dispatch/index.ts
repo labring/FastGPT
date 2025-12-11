@@ -22,7 +22,7 @@ import type {
   ModuleDispatchProps,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {

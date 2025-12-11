@@ -2,10 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type {
-  FlowNodeItemType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';

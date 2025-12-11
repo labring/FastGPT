@@ -1,12 +1,11 @@
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   STTModelType,
   RerankModelItemType,
   TTSModelType,
   EmbeddingModelItemType,
   LLMModelItemType
-} from '@fastgpt/global/core/ai/model.d';
-import type { ModelProviderListType } from '@fastgpt/global/core/app/model/type';
+} from '@fastgpt/global/core/ai/model';
 import type {
   AiproxyMapProviderType,
   I18nStringStrictType

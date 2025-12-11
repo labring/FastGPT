@@ -1,5 +1,5 @@
 import { getEmbeddingModel } from '../../../../service/core/ai/model';
-import { type EmbeddingModelItemType, type LLMModelItemType } from '../../../core/ai/model.d';
+import { type EmbeddingModelItemType, type LLMModelItemType } from '../../../core/ai/model';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,

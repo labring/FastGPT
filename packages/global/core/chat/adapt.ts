@@ -16,7 +16,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionToolMessageParam
-} from '../../core/ai/type.d';
+} from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 
 export const GPT2Chat = {

@@ -1,4 +1,4 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';

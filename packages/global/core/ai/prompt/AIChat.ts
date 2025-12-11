@@ -1,4 +1,4 @@
-import { type PromptTemplateItem } from '../type.d';
+import { type PromptTemplateItem } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getPromptByVersion } from './utils';
 

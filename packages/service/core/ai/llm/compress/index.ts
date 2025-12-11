@@ -1,4 +1,4 @@
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken';
 import { addLog } from '../../../../common/system/log';
 import { calculateCompressionThresholds } from './constants';

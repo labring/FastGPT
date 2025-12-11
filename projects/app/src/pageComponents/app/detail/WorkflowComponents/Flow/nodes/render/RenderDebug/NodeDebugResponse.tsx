@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FormInputComponent,
   SelectOptionsComponent
@@ -95,7 +95,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
   const response = debugResult?.response;
 
-  const interactive = debugResult?.workflowInteractiveResponse;
+  const interactive = debugResult?.interactiveResponse;
   const onNextInteractive = useCallback(
     (userContent: string) => {
       if (!workflowDebugData || !workflowDebugData || !interactive) return;
@@ -113,9 +113,9 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             {
               interactive: {
                 ...interactive,
-                entryNodeIds: workflowDebugData.entryNodeIds || [],
-                memoryEdges: interactive.memoryEdges || [],
-                nodeOutputs: interactive.nodeOutputs || []
+                entryNodeIds: workflowDebugData.entryNodeIds,
+                memoryEdges: [],
+                nodeOutputs: []
               }
             }
           ]

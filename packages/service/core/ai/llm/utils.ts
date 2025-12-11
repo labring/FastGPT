@@ -6,7 +6,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';

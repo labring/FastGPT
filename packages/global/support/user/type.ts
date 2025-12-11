@@ -1,9 +1,9 @@
+import z from 'zod';
 import type { LangEnum } from '../../common/i18n/type';
 import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
-import z from 'zod';
 
 export type UserModelSchema = {
   _id: string;

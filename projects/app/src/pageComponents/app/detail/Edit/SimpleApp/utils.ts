@@ -1,5 +1,6 @@
-import { type AppChatConfigType, type AppFormEditFormType } from '@fastgpt/global/core/app/type';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -36,6 +37,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({
@@ -593,7 +595,7 @@ export function form2AppWorkflow(
               ],
               label: 'core.module.input.label.aiModel',
               valueType: WorkflowIOValueTypeEnum.string,
-              llmModelType: 'all',
+              llmModelType: LLMModelTypeEnum.all,
               value: formData.aiSettings.model
             },
             {

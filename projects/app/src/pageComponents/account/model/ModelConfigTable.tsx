@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
