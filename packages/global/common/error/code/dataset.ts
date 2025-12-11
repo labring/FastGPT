@@ -21,7 +21,7 @@ export enum DatasetErrEnum {
   synonymFileEmpty = 'synonymFileEmpty',
   synonymFileInvalidFormat = 'synonymFileInvalidFormat',
   synonymFileNoValidData = 'synonymFileNoValidData',
-  synonymFileOnlyCSV = 'synonymFileOnlyCSV',
+  synonymFileUnsupportedFormat = 'synonymFileUnsupportedFormat',
   synonymFileParseFailed = 'synonymFileParseFailed'
 }
 const datasetErr = [
@@ -90,8 +90,8 @@ const datasetErr = [
     message: i18nT('common:core.dataset.error.synonymFileNoValidData')
   },
   {
-    statusText: DatasetErrEnum.synonymFileOnlyCSV,
-    message: i18nT('common:core.dataset.error.synonymFileOnlyCSV')
+    statusText: DatasetErrEnum.synonymFileUnsupportedFormat,
+    message: i18nT('common:core.dataset.error.synonymFileUnsupportedFormat')
   },
   {
     statusText: DatasetErrEnum.synonymFileParseFailed,

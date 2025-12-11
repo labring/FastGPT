@@ -13,12 +13,14 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
  * 同义词上传API
  * POST /api/core/dataset/synonym/upload
  *
- * 功能：上传同义词CSV文件到指定知识库
+ * 功能：上传同义词文件到指定知识库
  * 业务规则：
  * - 一个知识库只能有一个同义词文件
  * - 上传新文件会自动替换旧文件
- * - 文件必须是CSV格式，编码支持UTF-8、GBK
- * - CSV格式：第一行为表头，第一列为标准词，后续列为同义词
+ * - 支持CSV、XLSX、XLS格式文件
+ * - CSV文件编码支持UTF-8、GBK
+ * - Excel文件只读取第一个sheet
+ * - 文件格式：第一行为表头，第一列为标准词，后续列为同义词
  */
 
 export type UploadSynonymFileBody = {
@@ -41,7 +43,7 @@ async function handler(
   try {
     // 1. 创建multer上传处理器
     const upload = getUploadModel({
-      maxSize: 5 * 1024 * 1024 // 限制5MB
+      maxSize: 50 * 1024 * 1024 // 限制50MB
     });
 
     // 2. 接收上传的文件
@@ -58,10 +60,13 @@ async function handler(
     filePaths = [file.path];
     const { datasetId } = data;
 
-    // 3. 验证文件格式
+    // 3. 验证文件格式（支持csv、xlsx、xls）
     const fileName = file.originalname.toLowerCase();
-    if (!fileName.endsWith('.csv')) {
-      throw new Error(DatasetErrEnum.synonymFileOnlyCSV);
+    const isValidFormat =
+      fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    if (!isValidFormat) {
+      throw new Error(DatasetErrEnum.synonymFileUnsupportedFormat);
     }
 
     // 4. 权限校验 - 需要知识库写权限

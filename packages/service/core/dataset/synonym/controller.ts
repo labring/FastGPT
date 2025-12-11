@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import xlsx from 'node-xlsx';
 import { MongoDatasetSynonym } from './schema';
 import { MongoDatasetSynonymMapping } from './mappingSchema';
 import { MongoDataset } from '../schema';
@@ -113,6 +114,42 @@ export async function parseSynonymCSV(fileContent: string): Promise<ParsedSynony
 }
 
 /**
+ * 将Excel buffer转换为CSV字符串
+ * 只读取第一个sheet
+ * @param buffer - Excel文件buffer
+ * @returns CSV字符串
+ */
+export function parseExcelToCSV(buffer: Buffer): string {
+  // 解析Excel文件，只读取第一个sheet
+  const sheets = xlsx.parse(buffer, {
+    skipHidden: false,
+    defval: ''
+  });
+
+  if (sheets.length === 0) {
+    throw new Error(DatasetErrEnum.synonymFileEmpty);
+  }
+
+  // 只读取第一个sheet
+  const firstSheet = sheets[0];
+  const rows = firstSheet.data;
+
+  if (!rows || rows.length === 0) {
+    throw new Error(DatasetErrEnum.synonymFileEmpty);
+  }
+
+  // 将rows转换为CSV字符串
+  // 使用Papa.unparse来保证CSV格式正确（处理特殊字符、引号等）
+  const csvString = Papa.unparse(rows, {
+    quotes: false,
+    delimiter: ',',
+    newline: '\n'
+  });
+
+  return csvString;
+}
+
+/**
  * 从GridFS读取同义词文件内容
  * @param fileId - GridFS文件ID
  * @returns 文件内容字符串
@@ -212,14 +249,21 @@ export async function uploadSynonymFile({
       datasetId: new Types.ObjectId(datasetId)
     });
 
-    // 2. 上传文件到GridFS
+    // 2. 检测文件类型并确定contentType
+    const fileExtension = fileName.toLowerCase().split('.').pop();
+    const isExcel = fileExtension === 'xlsx' || fileExtension === 'xls';
+    const contentType = isExcel
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'text/csv';
+
+    // 3. 上传文件到GridFS
     const fileId = await uploadFile({
       teamId,
       uid: uploaderId,
       bucketName: BucketNameEnum.dataset,
       path: filePath,
       filename: fileName,
-      contentType: 'text/csv',
+      contentType,
       metadata: {
         datasetId,
         type: 'synonym'
@@ -227,11 +271,24 @@ export async function uploadSynonymFile({
     });
     uploadedFileId = fileId;
 
-    // 3. 读取并解析CSV文件（验证格式）
-    const fileContent = await readSynonymFileFromGridFS(fileId);
+    // 4. 读取并解析文件（验证格式）
+    let fileContent: string;
+    if (isExcel) {
+      // 如果是Excel文件，先读取buffer再转换为CSV
+      const fileStream = await getDownloadStream({
+        bucketName: BucketNameEnum.dataset,
+        fileId
+      });
+      const buffer = await gridFsStream2Buffer(fileStream as any);
+      fileContent = parseExcelToCSV(buffer);
+    } else {
+      // 如果是CSV文件，直接读取文本内容
+      fileContent = await readSynonymFileFromGridFS(fileId);
+    }
+
     const parsedData = await parseSynonymCSV(fileContent);
 
-    // 4. 如果存在旧文件，删除旧文件及其映射
+    // 5. 如果存在旧文件，删除旧文件及其映射
     if (existingSynonym) {
       await deleteSynonymFile({
         synonymId: String(existingSynonym._id),
@@ -240,9 +297,9 @@ export async function uploadSynonymFile({
       });
     }
 
-    // 5-7. 使用事务创建同义词记录、映射和更新知识库（保证原子性）
+    // 6-8. 使用事务创建同义词记录、映射和更新知识库（保证原子性）
     const result = await mongoSessionRun(async (session) => {
-      // 5. 创建新的同义词文件记录
+      // 6. 创建新的同义词文件记录
       const [synonymFile] = await MongoDatasetSynonym.create(
         [
           {
@@ -258,7 +315,7 @@ export async function uploadSynonymFile({
         { session }
       );
 
-      // 6. 批量创建同义词映射
+      // 7. 批量创建同义词映射
       const mappings = parsedData.map((data) => ({
         teamId: new Types.ObjectId(teamId),
         datasetId: new Types.ObjectId(datasetId),
@@ -272,7 +329,7 @@ export async function uploadSynonymFile({
 
       await MongoDatasetSynonymMapping.insertMany(mappings, { session });
 
-      // 7. 更新知识库的synonymFiles字段
+      // 8. 更新知识库的synonymFiles字段
       await MongoDataset.findByIdAndUpdate(
         datasetId,
         {
