@@ -331,5 +331,13 @@
   "export_evaluation": "Export app evaluation data",
   "log_create_evaluation": "{{name}} created an evaluation task for the {{appType}} ({{appName}}).",
   "log_export_evaluation": "{{name}} exported the evaluation data of the {{appType}} ({{appName}}).",
-  "permission_evaluationCreate": "Create evaluation"
+  "permission_evaluationCreate": "Create evaluation",
+  "create_rerank_trainset": "Create Rerank Trainset",
+  "log_create_rerank_trainset": "{{name}} created a Rerank trainset for the app ({{appName}}).",
+  "delete_rerank_trainset": "Delete Rerank Trainset",
+  "log_delete_rerank_trainset": "{{name}} deleted the trainset ({{trainsetName}}).",
+  "create_rerank_train_task": "Create Rerank Train Task",
+  "log_create_rerank_train_task": "{{name}} created a train task ({{taskName}}) for the app ({{appName}}).",
+  "delete_rerank_train_task": "Delete Rerank Train Task",
+  "log_delete_rerank_train_task": "{{name}} deleted the train task ({{taskName}})."
 }

@@ -1,0 +1,20 @@
+{
+  "trainset_not_exist": "訓練集不存在",
+  "trainset_generating": "訓練資料生成中，請稍後",
+  "trainset_already_ready": "訓練集已就緒，無需重複生成",
+  "trainset_not_ready": "訓練集未就緒，請先生成訓練資料",
+  "trainset_in_use": "訓練集正在被使用，無法刪除",
+  "trainset_generation_failed": "訓練資料生成失敗，請檢查應用配置和知識庫設定",
+  "train_data_not_exist": "訓練資料不存在",
+  "no_train_data_available": "沒有可用的訓練資料",
+  "no_dataset_available": "應用未關聯知識庫",
+  "task_not_exist": "訓練任務不存在",
+  "task_already_running": "該應用已有進行中的訓練任務",
+  "task_cannot_retry": "任務狀態不允許重試",
+  "task_cannot_cancel": "任務狀態不允許取消",
+  "task_cannot_delete": "進行中的任務不能刪除",
+  "eval_dataset_not_generated": "評測資料集尚未生成，請等待訓練任務完成",
+  "eval_dataset_empty": "評測資料集為空",
+  "diting_service_error": "DiTing 服務調用失敗",
+  "aicp_service_error": "AICP 訓推平台調用失敗"
+}

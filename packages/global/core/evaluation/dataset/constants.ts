@@ -32,6 +32,8 @@ export enum EvalDatasetDataKeyEnum {
   ExpectedOutput = 'expectedOutput',
   Context = 'context',
   RetrievalContext = 'retrievalContext',
+  RetrievalContextsFull = 'retrievalContextsFull',
+  ExpectedContextIds = 'expectedContextIds',
   Metadata = 'metadata'
 }
 

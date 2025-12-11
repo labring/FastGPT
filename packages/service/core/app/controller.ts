@@ -20,6 +20,13 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { removeImageByPath } from '../../common/file/image/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
+import { MongoRerankTrainTask } from '../train/rerank/task/schema';
+import { MongoRerankTrainsetData } from '../train/rerank/data/schema';
+import { MongoRerankTrainset } from '../train/rerank/trainset/schema';
+import { rerankTrainTaskQueue } from '../train/rerank/task/mq';
+import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
+import { addLog } from '../../common/system/log';
+import { deleteRerankTrainTask } from '../train/rerank/task/controller';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -128,6 +135,81 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
+/**
+ * Clean up training module data when deleting a single application
+ *
+ * Cleanup operations (executed in order):
+ * 1. Cancel and remove running training task queue jobs
+ * 2. Cascade delete all training tasks (including associated evaluation datasets, evaluation data, and temp files)
+ * 3. Delete application training data
+ * 4. Delete application training sets
+ *
+ * @param appId Application ID to be deleted
+ * @param session MongoDB transaction session (optional) for ensuring atomicity
+ */
+export async function cleanupTrainModuleOnAppDelete(
+  appId: string,
+  session?: ClientSession
+): Promise<void> {
+  if (!appId) return;
+
+  addLog.info('Cleanup train module on app delete', { appId });
+
+  // 1. Cancel running training tasks and remove queue jobs
+  const runningTasks = await MongoRerankTrainTask.find(
+    {
+      appId,
+      status: {
+        $in: [RerankTrainTaskStatusEnum.pending, RerankTrainTaskStatusEnum.running]
+      }
+    },
+    null,
+    { session }
+  ).lean();
+
+  for (const task of runningTasks) {
+    if (task.jobId) {
+      try {
+        const job = await rerankTrainTaskQueue.getJob(task.jobId);
+        if (job) {
+          await job.remove();
+          addLog.info('Removed train task job', {
+            taskId: String(task._id),
+            jobId: task.jobId
+          });
+        }
+      } catch (error) {
+        addLog.error('Failed to remove train task job', error);
+      }
+    }
+  }
+
+  // 2. Cascade delete all training tasks (including evaluation datasets, evaluation data, and temp files)
+  // Query all tasks
+  const allTasks = await MongoRerankTrainTask.find({ appId }, { _id: 1 }, { session }).lean();
+
+  // Execute cascade delete for each task
+  for (const task of allTasks) {
+    try {
+      await deleteRerankTrainTask(String(task._id), session);
+    } catch (error) {
+      // Deletion failure should not block the process, just log the error
+      addLog.warn('Failed to delete train task', {
+        taskId: String(task._id),
+        error: (error as Error).message
+      });
+    }
+  }
+
+  // 3. Delete application training data
+  await MongoRerankTrainsetData.deleteMany({ appId }, { session });
+
+  // 4. Delete application training sets
+  await MongoRerankTrainset.deleteMany({ appId }, { session });
+
+  addLog.info('Cleanup train module completed', { appId });
+}
+
 export const onDelOneApp = async ({
   teamId,
   appId,
@@ -192,6 +274,9 @@ export const onDelOneApp = async ({
       await MongoAppLogKeys.deleteMany({
         appId
       }).session(session);
+
+      // Clean up training module data
+      await cleanupTrainModuleOnAppDelete(appId, session);
 
       // delete app
       await MongoApp.deleteOne(

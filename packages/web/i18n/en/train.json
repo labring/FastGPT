@@ -1,0 +1,20 @@
+{
+  "trainset_not_exist": "Training set does not exist",
+  "trainset_generating": "Training data is being generated, please wait",
+  "trainset_already_ready": "Training set is already ready, no need to regenerate",
+  "trainset_not_ready": "Training set is not ready, please generate training data first",
+  "trainset_in_use": "Training set is in use and cannot be deleted",
+  "trainset_generation_failed": "Training data generation failed, please check app configuration and dataset settings",
+  "train_data_not_exist": "Training data does not exist",
+  "no_train_data_available": "No training data available",
+  "no_dataset_available": "App has no associated datasets",
+  "task_not_exist": "Training task does not exist",
+  "task_already_running": "This app already has a running training task",
+  "task_cannot_retry": "Task status does not allow retry",
+  "task_cannot_cancel": "Task status does not allow cancellation",
+  "task_cannot_delete": "Running tasks cannot be deleted",
+  "eval_dataset_not_generated": "Evaluation dataset has not been generated yet, please wait for training task to complete",
+  "eval_dataset_empty": "Evaluation dataset is empty",
+  "diting_service_error": "DiTing service call failed",
+  "aicp_service_error": "AICP training platform call failed"
+}

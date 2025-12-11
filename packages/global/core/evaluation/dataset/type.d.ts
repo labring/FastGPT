@@ -34,6 +34,17 @@ export type EvalDatasetDataSynthesisMetadata = {
   generatedAt?: Date;
 };
 
+export type RetrievalContextItem = {
+  id: string;
+  q: string;
+  a?: string;
+  score: Array<{
+    type: string;
+    value: number;
+    index: number;
+  }>;
+};
+
 export type EvalDatasetCollectionSchemaType = {
   _id: string;
   teamId: string;
@@ -56,6 +67,8 @@ export type EvalDatasetDataSchemaType = {
   [EvalDatasetDataKeyEnum.ExpectedOutput]: string;
   [EvalDatasetDataKeyEnum.Context]: string[];
   [EvalDatasetDataKeyEnum.RetrievalContext]: string[];
+  [EvalDatasetDataKeyEnum.RetrievalContextsFull]?: RetrievalContextItem[];
+  [EvalDatasetDataKeyEnum.ExpectedContextIds]?: string[];
   qualityMetadata: EvalDatasetDataQualityMetadata;
   synthesisMetadata?: EvalDatasetDataSynthesisMetadata;
   qualityResult?: EvalDatasetDataQualityResultEnum;

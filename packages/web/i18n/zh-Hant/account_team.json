@@ -331,5 +331,13 @@
   "export_evaluation": "導出應用評測數據",
   "log_create_evaluation": "【{{name}}】創建了名為【{{appName}}】的【{{appType}}】的批量評測",
   "log_export_evaluation": "【{{name}}】導出了名為【{{appName}}】的【{{appType}}】的評測數據",
-  "permission_evaluationCreate": "創建評估"
+  "permission_evaluationCreate": "創建評估",
+  "create_rerank_trainset": "創建 Rerank 訓練集",
+  "log_create_rerank_trainset": "【{{name}}】為應用【{{appName}}】創建了 Rerank 訓練集",
+  "delete_rerank_trainset": "刪除 Rerank 訓練集",
+  "log_delete_rerank_trainset": "【{{name}}】刪除了訓練集【{{trainsetName}}】",
+  "create_rerank_train_task": "創建 Rerank 訓練任務",
+  "log_create_rerank_train_task": "【{{name}}】為應用【{{appName}}】創建了訓練任務【{{taskName}}】",
+  "delete_rerank_train_task": "刪除 Rerank 訓練任務",
+  "log_delete_rerank_train_task": "【{{name}}】刪除了訓練任務【{{taskName}}】"
 }

@@ -73,6 +73,27 @@ const EvalDatasetDataSchema = new Schema({
     ],
     default: []
   },
+  [EvalDatasetDataKeyEnum.RetrievalContextsFull]: {
+    type: [
+      {
+        id: { type: String, required: true },
+        q: String,
+        a: String,
+        score: [
+          {
+            type: { type: String },
+            value: Number,
+            index: Number
+          }
+        ]
+      }
+    ],
+    default: []
+  },
+  [EvalDatasetDataKeyEnum.ExpectedContextIds]: {
+    type: [String],
+    default: []
+  },
   qualityMetadata: {
     status: {
       type: String,

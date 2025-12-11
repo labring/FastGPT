@@ -1,0 +1,739 @@
+{
+  "info": {
+    "name": "FastGPT Rerank Training API",
+    "description": "FastGPT Rerank 训练模块 API 接口测试集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "fastgpt-rerank-training"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "训练任务管理",
+      "item": [
+        {
+          "name": "创建训练任务",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"trainsetId\": \"{{TRAINSET_ID}}\",\n  \"name\": \"测试训练任务\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/create",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "创建训练任务(自动生成训练集)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"name\": \"测试训练任务 - 自动生成训练集\",\n  \"pollingConfig\": {\n    \"maxAttempts\": 60,\n    \"interval\": 5000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/create-with-trainset",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "create-with-trainset"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取任务详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/detail?taskId={{TASK_ID}}",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "taskId",
+                  "value": "{{TASK_ID}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取任务列表",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageNum\": 1,\n  \"pageSize\": 10,\n  \"status\": \"\",\n  \"sortField\": \"createTime\",\n  \"sortOrder\": \"desc\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/list",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "list"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "重试任务",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskId\": \"{{TASK_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/retry",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "retry"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "取消任务",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskId\": \"{{TASK_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/cancel",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "删除任务",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/delete?taskId={{TASK_ID}}",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "delete"
+              ],
+              "query": [
+                {
+                  "key": "taskId",
+                  "value": "{{TASK_ID}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "下载评测数据集",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/eval-dataset/download?taskId={{TASK_ID}}",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "task",
+                "eval-dataset",
+                "download"
+              ],
+              "query": [
+                {
+                  "key": "taskId",
+                  "value": "{{TASK_ID}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "训练集管理",
+      "item": [
+        {
+          "name": "创建训练集",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"name\": \"测试训练集\",\n  \"description\": \"用于测试的训练集\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/create",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取训练集详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/detail?trainsetId={{TRAINSET_ID}}",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "trainsetId",
+                  "value": "{{TRAINSET_ID}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取训练集列表",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"status\": \"\",\n  \"pageNum\": 1,\n  \"pageSize\": 20,\n  \"sortField\": \"createTime\",\n  \"sortOrder\": \"desc\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/list",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "list"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "删除训练集",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/delete?trainsetId={{TRAINSET_ID}}",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "delete"
+              ],
+              "query": [
+                {
+                  "key": "trainsetId",
+                  "value": "{{TRAINSET_ID}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "训练数据管理",
+      "item": [
+        {
+          "name": "生成训练数据",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trainsetId\": \"{{TRAINSET_ID}}\",\n  \"datasetIds\": [],\n  \"generateConfig\": {\n    \"sampleSize\": 100,\n    \"forceRegenerate\": false,\n    \"minNegativeSamples\": 1,\n    \"maxNegativeSamples\": 7,\n    \"includeOriginalQ\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/data/generate",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "data",
+                "generate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "创建手动训练数据",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trainsetId\": \"{{TRAINSET_ID}}\",\n  \"query\": \"测试查询\",\n  \"positiveDocs\": [\"正文档1\", \"正文档2\"],\n  \"negativeDocs\": [\"负文档1\", \"负文档2\"],\n  \"reason\": \"测试数据\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/data/create",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "data",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取训练数据列表",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trainsetId\": \"{{TRAINSET_ID}}\",\n  \"pageNum\": 1,\n  \"pageSize\": 20,\n  \"sortField\": \"createTime\",\n  \"sortOrder\": \"desc\"\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/data/list",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "data",
+                "list"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "更新训练数据",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataId\": \"{{DATA_ID}}\",\n  \"query\": \"更新的查询\",\n  \"positiveDocs\": [\"更新的正文档1\"],\n  \"negativeDocs\": [\"更新的负文档1\", \"更新的负文档2\"]\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/data/update",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "data",
+                "update"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "删除训练数据",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataIds\": [\"{{DATA_ID}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{API_BASE_URL}}/api/core/train/rerank/trainset/data/delete",
+              "host": [
+                "{{API_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "core",
+                "train",
+                "rerank",
+                "trainset",
+                "data",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// FastGPT 认证设置",
+          "// 根据认证类型自动配置请求头",
+          "",
+          "const authType = pm.environment.get('AUTH_TYPE') || 'cookie';",
+          "console.log('使用认证类型:', authType);",
+          "",
+          "// 清除现有的认证头",
+          "pm.request.headers.remove('Authorization');",
+          "pm.request.headers.remove('Cookie');",
+          "pm.request.headers.remove('rootkey');",
+          "",
+          "// 根据认证类型添加相应的认证信息",
+          "switch (authType) {",
+          "    case 'cookie':",
+          "        const fastgptToken = pm.environment.get('FASTGPT_TOKEN');",
+          "        if (fastgptToken) {",
+          "            pm.request.headers.add({",
+          "                key: 'Cookie',",
+          "                value: `fastgpt_token=${fastgptToken}`",
+          "            });",
+          "            console.log('已添加 Cookie 认证');",
+          "        } else {",
+          "            console.warn('未找到 FASTGPT_TOKEN，请先设置');",
+          "        }",
+          "        break;",
+          "        ",
+          "    case 'bearer':",
+          "        const authToken = pm.environment.get('AUTH_TOKEN');",
+          "        if (authToken) {",
+          "            pm.request.headers.add({",
+          "                key: 'Authorization',",
+          "                value: authToken",
+          "            });",
+          "            console.log('已添加 Bearer Token 认证');",
+          "        } else {",
+          "            console.warn('未找到 AUTH_TOKEN，请先设置');",
+          "        }",
+          "        break;",
+          "        ",
+          "    case 'apikey':",
+          "        const apiKey = pm.environment.get('API_KEY');",
+          "        if (apiKey) {",
+          "            pm.request.headers.add({",
+          "                key: 'Authorization',",
+          "                value: `Bearer ${apiKey}`",
+          "            });",
+          "            console.log('已添加 API Key 认证');",
+          "        } else {",
+          "            console.warn('未找到 API_KEY，请先设置');",
+          "        }",
+          "        break;",
+          "        ",
+          "    case 'root':",
+          "        const rootKey = pm.environment.get('ROOT_KEY');",
+          "        if (rootKey) {",
+          "            pm.request.headers.add({",
+          "                key: 'rootkey',",
+          "                value: rootKey",
+          "            });",
+          "            console.log('已添加 Root Key 认证');",
+          "        } else {",
+          "            console.warn('未找到 ROOT_KEY，请先设置');",
+          "        }",
+          "        break;",
+          "        ",
+          "    default:",
+          "        console.warn('未知的认证类型:', authType);",
+          "}",
+          "",
+          "// 检查必需的环境变量",
+          "if (!pm.environment.get('API_BASE_URL')) {",
+          "    pm.environment.set('API_BASE_URL', 'http://localhost:3000');",
+          "}",
+          "",
+          "// 自动替换 body 中的环境变量",
+          "if (pm.request.body && pm.request.body.mode === 'raw') {",
+          "    try {",
+          "        let bodyText = pm.request.body.raw;",
+          "        ",
+          "        // 替换常用的环境变量",
+          "        bodyText = bodyText.replace(/\"{{APP_ID}}\"/g, '\"' + (pm.environment.get('APP_ID') || 'your-app-id-here') + '\"');",
+          "        bodyText = bodyText.replace(/\"{{TASK_ID}}\"/g, '\"' + (pm.environment.get('TASK_ID') || '') + '\"');",
+          "        bodyText = bodyText.replace(/\"{{TRAINSET_ID}}\"/g, '\"' + (pm.environment.get('TRAINSET_ID') || '') + '\"');",
+          "        bodyText = bodyText.replace(/\"{{DATA_ID}}\"/g, '\"' + (pm.environment.get('DATA_ID') || '') + '\"');",
+          "        ",
+          "        pm.request.body.raw = bodyText;",
+          "    } catch (e) {",
+          "        console.log('环境变量替换失败:', e.message);",
+          "    }",
+          "}",
+          "",
+          "console.log('执行请求前处理完成');"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// 全局测试脚本",
+          "// 基本的响应状态检查",
+          "",
+          "pm.test('响应状态码为200', function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "pm.test('响应时间小于5秒', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "// 尝试解析 JSON 响应",
+          "try {",
+          "    const responseJson = pm.response.json();",
+          "    ",
+          "    // 检查基本响应结构",
+          "    pm.test('响应包含code字段', function () {",
+          "        pm.expect(responseJson).to.have.property('code');",
+          "    });",
+          "    ",
+          "    // 检查成功响应",
+          "    if (responseJson.code === 200 && responseJson.data) {",
+          "        pm.test('API调用成功', function () {",
+          "            pm.expect(responseJson.code).to.eql(200);",
+          "        });",
+          "        ",
+          "        // 自动提取和设置各种ID",
+          "        const data = responseJson.data;",
+          "        ",
+          "        // 设置任务ID",
+          "        if (data.taskId || data._id) {",
+          "            const taskId = data.taskId || data._id;",
+          "            pm.environment.set('TASK_ID', taskId);",
+          "            console.log('已设置 TASK_ID:', taskId);",
+          "        }",
+          "        ",
+          "        // 设置训练集ID",
+          "        if (data.trainsetId) {",
+          "            pm.environment.set('TRAINSET_ID', data.trainsetId);",
+          "            console.log('已设置 TRAINSET_ID:', data.trainsetId);",
+          "        }",
+          "        ",
+          "        // 设置训练数据ID",
+          "        if (data.dataId) {",
+          "            pm.environment.set('DATA_ID', data.dataId);",
+          "            console.log('已设置 DATA_ID:', data.dataId);",
+          "        }",
+          "        ",
+          "        // 处理列表响应中的ID",
+          "        if (data.list && data.list.length > 0) {",
+          "            const firstItem = data.list[0];",
+          "            if (firstItem._id && !pm.environment.get('TASK_ID')) {",
+          "                pm.environment.set('TASK_ID', firstItem._id);",
+          "                console.log('已从列表设置 TASK_ID:', firstItem._id);",
+          "            }",
+          "        }",
+          "    }",
+          "    ",
+          "} catch (e) {",
+          "    console.log('无法解析JSON响应:', e.message);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "API_BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "TASK_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "TRAINSET_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "DATA_ID",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

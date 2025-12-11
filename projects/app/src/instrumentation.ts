@@ -80,6 +80,10 @@ export async function register() {
       const { initEvaluationWorkers } = await import('@fastgpt/service/core/evaluation');
       initEvaluationWorkers();
 
+      // 初始化 Rerank 训练模块 Workers
+      const { initRerankTrainWorkers } = await import('@fastgpt/service/core/train/rerank');
+      initRerankTrainWorkers();
+
       startCron();
       startTrainingQueue(true);
 

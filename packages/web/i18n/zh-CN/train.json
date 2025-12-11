@@ -1,0 +1,20 @@
+{
+  "trainset_not_exist": "训练集不存在",
+  "trainset_generating": "训练数据生成中，请稍后",
+  "trainset_already_ready": "训练集已就绪，无需重复生成",
+  "trainset_not_ready": "训练集未就绪，请先生成训练数据",
+  "trainset_in_use": "训练集正在被使用，无法删除",
+  "trainset_generation_failed": "训练数据生成失败，请检查应用配置和知识库设置",
+  "train_data_not_exist": "训练数据不存在",
+  "no_train_data_available": "没有可用的训练数据",
+  "no_dataset_available": "应用未关联知识库",
+  "task_not_exist": "训练任务不存在",
+  "task_already_running": "该应用已有进行中的训练任务",
+  "task_cannot_retry": "任务状态不允许重试",
+  "task_cannot_cancel": "任务状态不允许取消",
+  "task_cannot_delete": "进行中的任务不能删除",
+  "eval_dataset_not_generated": "评测数据集尚未生成，请等待训练任务完成",
+  "eval_dataset_empty": "评测数据集为空",
+  "diting_service_error": "DiTing 服务调用失败",
+  "aicp_service_error": "AICP 训推平台调用失败"
+}
