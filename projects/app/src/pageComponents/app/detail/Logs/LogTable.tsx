@@ -40,7 +40,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api/log';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { AppLogsListItemType } from '@/types/app';
+import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -147,7 +147,7 @@ const LogTable = ({
       const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
       const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
       await downloadFetch({
-        url: '/api/core/app/exportChatLogs',
+        url: '/api/core/app/logs/exportLogs',
         filename: t('app:export_log_filename', { name: appName }),
         body: {
           appId,
@@ -248,7 +248,10 @@ const LogTable = ({
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
       ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
+      [AppLogKeysEnum.VERSION_NAME]: (
+        <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
+      )
     }),
     [t]
   );
@@ -271,7 +274,13 @@ const LogTable = ({
     [AppLogKeysEnum.USER]: (
       <Td key={AppLogKeysEnum.USER}>
         <Box>
-          {!!item.outLinkUid ? item.outLinkUid : <UserBox sourceMember={item.sourceMember} />}
+          {!!item.outLinkUid ? (
+            item.outLinkUid
+          ) : item.sourceMember ? (
+            <UserBox sourceMember={item.sourceMember} />
+          ) : (
+            '-'
+          )}
         </Box>
       </Td>
     ),
@@ -283,7 +292,7 @@ const LogTable = ({
     ),
     [AppLogKeysEnum.SESSION_ID]: (
       <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
-        {item.id || '-'}
+        {item.chatId || '-'}
       </Td>
     ),
     [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
@@ -341,6 +350,9 @@ const LogTable = ({
       <Td key={AppLogKeysEnum.POINTS}>
         {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
       </Td>
+    ),
+    [AppLogKeysEnum.VERSION_NAME]: (
+      <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
     )
   });
 
@@ -492,7 +504,7 @@ const LogTable = ({
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
                   title={t('common:core.view_chat_detail')}
-                  onClick={() => setDetailLogsId(item.id)}
+                  onClick={() => setDetailLogsId(item.chatId)}
                 >
                   {logKeys
                     .filter((logKey) => logKey.enable)

@@ -214,6 +214,7 @@
   "logs_keys_source": "來源",
   "logs_keys_title": "標題",
   "logs_keys_user": "使用者",
+  "logs_keys_versionName": "版本名稱",
   "logs_message_total": "訊息總數",
   "logs_new_user_count": "新增用戶",
   "logs_points": "積分消耗",

@@ -221,6 +221,7 @@
   "logs_keys_source": "来源",
   "logs_keys_title": "标题",
   "logs_keys_user": "使用者",
+  "logs_keys_versionName": "版本名",
   "logs_message_total": "消息总数",
   "logs_new_user_count": "新增用户",
   "logs_points": "积分消耗",

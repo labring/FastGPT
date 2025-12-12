@@ -3,11 +3,13 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import type { updateLogKeysBody } from '@/pages/api/core/app/logs/updateLogKeys';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updateLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
-import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
+import type {
+  getLogKeysResponseType,
+  updateLogKeysBody
+} from '@fastgpt/global/openapi/core/app/log/api';
 import type { SetState } from 'ahooks/lib/createUseStorageState';
 
 const SyncLogKeysPopover = ({
@@ -20,7 +22,7 @@ const SyncLogKeysPopover = ({
   logKeys: AppLogKeysType[];
   setLogKeys: (value: SetState<AppLogKeysType[]>) => void;
   teamLogKeys: AppLogKeysType[];
-  fetchLogKeys: () => Promise<getLogKeysResponse>;
+  fetchLogKeys: () => Promise<getLogKeysResponseType>;
   appId: string;
 }) => {
   const { t } = useTranslation();
