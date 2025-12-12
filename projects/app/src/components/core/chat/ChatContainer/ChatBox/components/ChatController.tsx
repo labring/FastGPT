@@ -329,7 +329,7 @@ const ChatController = ({
                   _hover={{ color: 'primary.600' }}
                   onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                 >
-                  {t('common:log.feedback.read')}
+                  {t('chat:log.feedback.read')}
                 </Box>
               ) : (
                 <Button
@@ -339,7 +339,7 @@ const ChatController = ({
                   h={'22px'}
                   onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                 >
-                  {t('common:log.feedback.mark_as_read')}
+                  {t('chat:log.feedback.mark_as_read')}
                 </Button>
               ))}
 
@@ -353,7 +353,7 @@ const ChatController = ({
                     _hover={{ color: 'primary.600' }}
                     onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                   >
-                    {t('common:log.feedback.read')}
+                    {t('chat:log.feedback.read')}
                   </Box>
                 ) : (
                   <Button
@@ -363,7 +363,7 @@ const ChatController = ({
                     h={'22px'}
                     onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                   >
-                    {t('common:log.feedback.mark_as_read')}
+                    {t('chat:log.feedback.mark_as_read')}
                   </Button>
                 )}
                 {onToggleFeedbackContent && !showFeedbackContent && (
@@ -375,7 +375,7 @@ const ChatController = ({
                     onClick={onToggleFeedbackContent}
                     color={'primary.600'}
                   >
-                    {t('common:log.feedback.show_feedback')}
+                    {t('chat:log.feedback.show_feedback')}
                   </Button>
                 )}
               </>

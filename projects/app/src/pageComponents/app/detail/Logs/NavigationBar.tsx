@@ -103,7 +103,7 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
             isDisabled={!hasPrev || loading || isLoadingRecords}
             isLoading={loading || isLoadingRecords}
           >
-            {t('common:log.navigation.previous')}
+            {t('chat:log.navigation.previous')}
           </Button>
 
           <Button
@@ -113,7 +113,7 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
             isDisabled={!hasNext || loading || isLoadingRecords}
             isLoading={loading || isLoadingRecords}
           >
-            {t('common:log.navigation.next')}
+            {t('chat:log.navigation.next')}
           </Button>
         </HStack>
       </Flex>

@@ -367,7 +367,7 @@ const ChatItem = (props: Props) => {
                 onClick={() => setShowFeedbackContent(false)}
                 color={'primary.600'}
               >
-                {t('common:log.feedback.hide_feedback')}
+                {t('chat:log.feedback.hide_feedback')}
               </Button>
             </Flex>
           </Box>
