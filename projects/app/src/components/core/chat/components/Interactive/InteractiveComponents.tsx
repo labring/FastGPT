@@ -163,7 +163,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   }, [submitted, inputForm, savedFormData, appId, outLinkAuthData, setValue]);
 
   const formValues = watch();
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined' && chatItemDataId && !submitted) {
       sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(formValues));
     }
@@ -227,13 +227,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       onChange={onChange}
                       isDisabled={submitted}
                       isInvalid={!!error}
-                      maxLength={input.maxLength}
-                      min={input.min}
-                      max={input.max}
-                      list={input.list}
                       isRichText={false}
-                      canLocalUpload={true}
-                      canSelectFile={true}
                     />
                     {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
                   </FormControl>

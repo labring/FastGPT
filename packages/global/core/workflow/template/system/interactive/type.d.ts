@@ -3,6 +3,7 @@ import type { FlowNodeOutputItemType } from '../../../type/io';
 import type { FlowNodeInputTypeEnum } from '../../../node/constant';
 import type { WorkflowIOValueTypeEnum } from '../../../constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
+import type { AppFileSelectConfigType } from '../../../../app/type';
 
 type InteractiveBasicType = {
   entryNodeIds: string[];
@@ -80,7 +81,11 @@ export type UserInputFormItemType = {
   min?: number;
   // select
   list?: { label: string; value: string }[];
-};
+
+  // File
+  canLocalUpload?: boolean;
+  canUrlUpload?: boolean;
+} & AppFileSelectConfigType;
 type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {

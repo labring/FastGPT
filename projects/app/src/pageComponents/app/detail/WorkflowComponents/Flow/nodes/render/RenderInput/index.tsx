@@ -135,8 +135,6 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
           if (!RenderItem) return null;
 
-          console.log(renderType, input);
-
           return {
             Component: (
               <RenderItem.Component inputs={filterProInputs} item={input} nodeId={nodeId} />
