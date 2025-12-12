@@ -106,11 +106,7 @@ const NavigationBar = ({
             setUnreadOnly={setUnreadOnly}
           />
           <Box fontSize="sm" color="gray.600">
-            {loading
-              ? '...'
-              : currentIndex === -1
-                ? `? / ${total}`
-                : `${currentIndex + 1} / ${total}`}
+            {loading ? '' : currentIndex === -1 ? `? / ${total}` : `${currentIndex + 1} / ${total}`}
           </Box>
         </HStack>
 

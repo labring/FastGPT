@@ -8,7 +8,6 @@ export type UpdateFeedbackReadStatusBody = {
   appId: string;
   chatId: string;
   dataId: string;
-  feedbackType: 'good' | 'bad';
   isRead: boolean;
 };
 
@@ -16,7 +15,7 @@ async function handler(
   req: ApiRequestProps<UpdateFeedbackReadStatusBody>,
   _res: ApiResponseType<any>
 ): Promise<{ success: boolean }> {
-  const { appId, chatId, dataId, feedbackType, isRead } = req.body;
+  const { appId, chatId, dataId, isRead } = req.body;
 
   await authChatCrud({
     req,
@@ -24,9 +23,6 @@ async function handler(
     appId,
     chatId
   });
-
-  // Determine which field to update based on feedback type
-  const updateField = feedbackType === 'good' ? 'adminGoodFeedbackRead' : 'adminBadFeedbackRead';
 
   await MongoChatItem.updateOne(
     {
@@ -37,7 +33,7 @@ async function handler(
     },
     {
       $set: {
-        [updateField]: isRead
+        isFeedbackRead: isRead
       }
     }
   );

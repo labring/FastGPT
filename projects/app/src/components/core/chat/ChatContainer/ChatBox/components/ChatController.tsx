@@ -90,10 +90,7 @@ const ChatController = ({
     onClose: onBadFeedbackClose
   } = useDisclosure();
 
-  const handleToggleFeedbackReadStatus = async (
-    feedbackType: 'good' | 'bad',
-    currentReadStatus: boolean | undefined
-  ) => {
+  const handleToggleFeedbackReadStatus = async (currentReadStatus: boolean | undefined) => {
     if (!appId || !chatId || !chat.dataId) return;
 
     const newReadStatus = !currentReadStatus;
@@ -103,7 +100,6 @@ const ChatController = ({
         appId,
         chatId,
         dataId: chat.dataId,
-        feedbackType,
         isRead: newReadStatus
       });
 
@@ -113,8 +109,7 @@ const ChatController = ({
           item.dataId === chat.dataId
             ? {
                 ...item,
-                [feedbackType === 'good' ? 'adminGoodFeedbackRead' : 'adminBadFeedbackRead']:
-                  newReadStatus
+                isFeedbackRead: newReadStatus
               }
             : item
         )
@@ -255,7 +250,7 @@ const ChatController = ({
                         name={'core/chat/feedback/goodLight'}
                         cursor={'not-allowed'}
                       />
-                      {!chat.adminGoodFeedbackRead && (
+                      {!chat.isFeedbackRead && (
                         <Box
                           position={'absolute'}
                           top={'-2px'}
@@ -278,7 +273,7 @@ const ChatController = ({
                         name={'core/chat/feedback/badLight'}
                         cursor={'not-allowed'}
                       />
-                      {!chat.adminBadFeedbackRead && (
+                      {!chat.isFeedbackRead && (
                         <Box
                           position={'absolute'}
                           top={'-2px'}
@@ -338,13 +333,13 @@ const ChatController = ({
         {isLogMode && chat.obj === ChatRoleEnum.AI && (
           <>
             {!!chat.userGoodFeedback &&
-              (chat.adminGoodFeedbackRead ? (
+              (chat.isFeedbackRead ? (
                 <Box
                   fontSize={'xs'}
                   color={'myGray.500'}
                   cursor={'pointer'}
                   _hover={{ color: 'primary.600' }}
-                  onClick={() => handleToggleFeedbackReadStatus('good', chat.adminGoodFeedbackRead)}
+                  onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                 >
                   {t('common:log.feedback.read')}
                 </Box>
@@ -354,7 +349,7 @@ const ChatController = ({
                   variant={'outline'}
                   fontSize={'xs'}
                   h={'22px'}
-                  onClick={() => handleToggleFeedbackReadStatus('good', chat.adminGoodFeedbackRead)}
+                  onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                 >
                   {t('common:log.feedback.mark_as_read')}
                 </Button>
@@ -362,13 +357,13 @@ const ChatController = ({
 
             {!!chat.userBadFeedback && (
               <>
-                {chat.adminBadFeedbackRead ? (
+                {chat.isFeedbackRead ? (
                   <Box
                     fontSize={'xs'}
                     color={'myGray.500'}
                     cursor={'pointer'}
                     _hover={{ color: 'primary.600' }}
-                    onClick={() => handleToggleFeedbackReadStatus('bad', chat.adminBadFeedbackRead)}
+                    onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                   >
                     {t('common:log.feedback.read')}
                   </Box>
@@ -378,7 +373,7 @@ const ChatController = ({
                     variant={'outline'}
                     fontSize={'xs'}
                     h={'22px'}
-                    onClick={() => handleToggleFeedbackReadStatus('bad', chat.adminBadFeedbackRead)}
+                    onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
                   >
                     {t('common:log.feedback.mark_as_read')}
                   </Button>

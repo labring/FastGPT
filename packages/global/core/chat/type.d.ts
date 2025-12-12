@@ -106,8 +106,7 @@ export type AIChatItemType = {
   userBadFeedback?: string;
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
-  adminGoodFeedbackRead?: boolean;
-  adminBadFeedbackRead?: boolean;
+  isFeedbackRead?: boolean;
 
   durationSeconds?: number;
   errorMsg?: string;

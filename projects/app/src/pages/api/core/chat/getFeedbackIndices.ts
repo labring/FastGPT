@@ -37,11 +37,11 @@ async function handler(
   });
 
   const goodCondition = unreadOnly
-    ? { userGoodFeedback: { $exists: true, $ne: null }, adminGoodFeedbackRead: { $ne: true } }
+    ? { userGoodFeedback: { $exists: true, $ne: null }, isFeedbackRead: { $ne: true } }
     : { userGoodFeedback: { $exists: true, $ne: null } };
 
   const badCondition = unreadOnly
-    ? { userBadFeedback: { $exists: true, $ne: null }, adminBadFeedbackRead: { $ne: true } }
+    ? { userBadFeedback: { $exists: true, $ne: null }, isFeedbackRead: { $ne: true } }
     : { userBadFeedback: { $exists: true, $ne: null } };
 
   const feedbackConditionMap: Record<FeedbackType, object> = {

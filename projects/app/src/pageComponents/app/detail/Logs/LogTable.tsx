@@ -241,7 +241,10 @@ const LogTable = ({
             menuButtonProps={{
               fontSize: '12.8px',
               fontWeight: 'medium',
-              color: 'myGray.600'
+              color: 'myGray.600',
+              px: 0,
+              _hover: {},
+              _active: {}
             }}
           />
         </Th>

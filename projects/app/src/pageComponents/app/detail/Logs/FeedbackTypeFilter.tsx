@@ -1,7 +1,5 @@
 import React from 'react';
-import type {
-  ButtonProps
-} from '@chakra-ui/react';
+import type { ButtonProps } from '@chakra-ui/react';
 import {
   Checkbox,
   Menu,
@@ -56,7 +54,6 @@ const FeedbackTypeFilter = ({
         variant="ghost"
         size="sm"
         rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} />}
-        px={0}
         fontWeight={'normal'}
         {...menuButtonProps}
       >
@@ -64,8 +61,8 @@ const FeedbackTypeFilter = ({
       </MenuButton>
 
       <MenuList
-        minW={'140px'}
-        w={'140px'}
+        minW={'120px'}
+        w={'120px'}
         px={'6px'}
         py={'6px'}
         border={'1px solid #fff'}
@@ -92,7 +89,7 @@ const FeedbackTypeFilter = ({
                 colorScheme="primary"
                 pointerEvents="none"
               >
-                <Box fontSize={'sm'} fontWeight={'normal'} ml={2}>
+                <Box fontSize={'sm'} fontWeight={'normal'} ml={0.5} whiteSpace={'nowrap'}>
                   {t('app:logs_unread_only')}
                 </Box>
               </Checkbox>
