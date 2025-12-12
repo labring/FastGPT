@@ -4,35 +4,26 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import type { ChatItemSchema } from '@fastgpt/global/core/chat/type';
-
-export type GetFeedbackIndicesBody = {
-  appId: string;
-  chatId: string;
-  feedbackType: 'all' | 'good' | 'bad';
-  unreadOnly?: boolean;
-};
-
-export type FeedbackIndexItem = {
-  dataId: string;
-  index: number;
-  time: Date;
-};
-
-export type GetFeedbackIndicesResponse = {
-  total: number;
-  indices: FeedbackIndexItem[];
-};
+import {
+  GetFeedbackIndicesQuerySchema,
+  type GetFeedbackIndicesQueryType,
+  GetFeedbackIndicesResponseSchema,
+  type GetFeedbackIndicesResponseType
+} from '@fastgpt/global/openapi/core/chat/feedback/api';
 
 async function handler(
-  req: ApiRequestProps<GetFeedbackIndicesBody>,
+  req: ApiRequestProps,
   _res: ApiResponseType<any>
-): Promise<GetFeedbackIndicesResponse> {
-  const { appId, chatId, feedbackType, unreadOnly } = req.body;
+): Promise<GetFeedbackIndicesResponseType> {
+  const { appId, chatId, feedbackType, unreadOnly } = GetFeedbackIndicesQuerySchema.parse(
+    req.query
+  );
 
   await authChatCrud({
     req,
     authToken: true,
-    ...req.body
+    appId,
+    chatId
   });
 
   const goodCondition = unreadOnly
@@ -60,16 +51,16 @@ async function handler(
     .sort({ time: 1 })
     .lean()) as Pick<ChatItemSchema, 'dataId' | 'time'>[];
 
-  const indices: FeedbackIndexItem[] = chatItems.map((item, index) => ({
+  const indices = chatItems.map((item, index) => ({
     dataId: item.dataId,
     index,
     time: item.time || new Date()
   }));
 
-  return {
+  return GetFeedbackIndicesResponseSchema.parse({
     total: indices.length,
     indices
-  };
+  });
 }
 
 export default NextAPI(handler);

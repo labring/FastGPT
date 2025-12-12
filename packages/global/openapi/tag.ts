@@ -6,6 +6,7 @@ export const TagsMap = {
   // Chat - home
   chatPage: '对话页',
   chatSetting: '门户页配置',
+  chatFeedback: '对话反馈',
 
   // Plugin
   pluginToolTag: '工具标签',

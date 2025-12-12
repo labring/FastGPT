@@ -3,19 +3,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-
-export type UpdateFeedbackReadStatusBody = {
-  appId: string;
-  chatId: string;
-  dataId: string;
-  isRead: boolean;
-};
+import {
+  UpdateFeedbackReadStatusBodySchema,
+  type UpdateFeedbackReadStatusBodyType,
+  UpdateFeedbackReadStatusResponseSchema,
+  type UpdateFeedbackReadStatusResponseType
+} from '@fastgpt/global/openapi/core/chat/feedback/api';
 
 async function handler(
-  req: ApiRequestProps<UpdateFeedbackReadStatusBody>,
+  req: ApiRequestProps,
   _res: ApiResponseType<any>
-): Promise<{ success: boolean }> {
-  const { appId, chatId, dataId, isRead } = req.body;
+): Promise<UpdateFeedbackReadStatusResponseType> {
+  const { appId, chatId, dataId, isRead } = UpdateFeedbackReadStatusBodySchema.parse(req.body);
 
   await authChatCrud({
     req,
@@ -38,7 +37,7 @@ async function handler(
     }
   );
 
-  return { success: true };
+  return UpdateFeedbackReadStatusResponseSchema.parse({ success: true });
 }
 
 export default NextAPI(handler);

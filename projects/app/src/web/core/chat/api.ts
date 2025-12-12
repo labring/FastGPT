@@ -37,10 +37,10 @@ import type {
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import type {
-  GetFeedbackIndicesBody,
-  GetFeedbackIndicesResponse
-} from '@/pages/api/core/chat/feedback/getFeedbackIndices';
-import type { UpdateFeedbackReadStatusBody } from '@/pages/api/core/chat/feedback/updateFeedbackReadStatus';
+  GetFeedbackIndicesQueryType,
+  GetFeedbackIndicesResponseType
+} from '@fastgpt/global/openapi/core/chat/feedback/api';
+import type { UpdateFeedbackReadStatusBodyType } from '@fastgpt/global/openapi/core/chat/feedback/api';
 
 /**
  * 获取初始化聊天内容
@@ -97,10 +97,10 @@ export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
 export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
   POST('/core/chat/feedback/closeCustom', data).catch();
 
-export const getFeedbackIndices = (data: GetFeedbackIndicesBody) =>
-  POST<GetFeedbackIndicesResponse>('core/chat/feedback/getFeedbackIndices', data);
+export const getFeedbackIndices = (data: GetFeedbackIndicesQueryType) =>
+  GET<GetFeedbackIndicesResponseType>('core/chat/feedback/getFeedbackIndices', data);
 
-export const updateFeedbackReadStatus = (data: UpdateFeedbackReadStatusBody) =>
+export const updateFeedbackReadStatus = (data: UpdateFeedbackReadStatusBodyType) =>
   POST('/core/chat/feedback/updateFeedbackReadStatus', data);
 
 /* team chat */
