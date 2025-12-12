@@ -242,12 +242,12 @@ const QRCodePayModal = ({
           )}
         </Flex>
 
-        {process.env.NEXT_PUBLIC_PAY_FORM_URL && (
+        {feConfigs.payFormUrl && (
           <Box mt={4} textAlign="center">
             <Text fontSize="sm" color="myGray.600">
               {t('common:pay.more_payment_methods')}
               <Link
-                href={process.env.NEXT_PUBLIC_PAY_FORM_URL}
+                href={feConfigs.payFormUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 color="primary.600"
