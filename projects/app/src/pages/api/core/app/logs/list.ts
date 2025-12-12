@@ -350,7 +350,7 @@ async function handler(
   });
   // 获取没有 tmbId 的人员
   const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
-  console.log(listWithSourceMember, 222);
+
   return GetAppChatLogsResponseSchema.parse({
     list: listWithSourceMember.concat(listWithoutTmbId),
     total
