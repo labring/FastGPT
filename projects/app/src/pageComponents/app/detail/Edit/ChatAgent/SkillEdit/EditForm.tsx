@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useTransition, useRef } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
   Grid,
-  type BoxProps,
   useTheme,
   useDisclosure,
   Button,
@@ -14,7 +13,6 @@ import {
 } from '@chakra-ui/react';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -22,30 +20,18 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import VariableEdit from '@/components/core/app/VariableEdit';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
-import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import { workflowSystemVariables } from '@/web/core/app/utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../../FormComponent/ToolSelector/ToolSelect';
-import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { useSkillManager } from '../hooks/useSkillManager';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { cardStyles } from '../../../constants';
-import { defaultSkill as defaultEditSkill } from './Row';
-import { useForm } from 'react-hook-form';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  saveGeneratedSkill,
+  updateGeneratedSkill
+} from '@/components/core/chat/HelperBot/generatedSkill/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -56,63 +42,32 @@ const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideC
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
+type EditFormProps = {
+  model: string;
+  fileSelectConfig?: AppFileSelectConfigType;
+  skill: SkillEditType; // 受控：从父组件接收
+  onFieldChange: (updates: Partial<SkillEditType>) => void; // 变化时通知父组件
+  onClose: () => void;
+  onSave: (skill: SkillEditType) => void;
+};
+
 const EditForm = ({
   model,
   fileSelectConfig,
-  defaultSkill = defaultEditSkill,
+  skill,
+  onFieldChange,
   onClose,
-  setAppForm
-}: {
-  model: string;
-  fileSelectConfig?: AppFileSelectConfigType;
-  defaultSkill?: SkillEditType;
-  onClose: () => void;
-  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
-}) => {
+  onSave
+}: EditFormProps) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const [, startTst] = useTransition();
+  const { toast } = useToast();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectedModel = getWebLLMModel(model);
-
-  const { register, setValue, handleSubmit, reset, watch, getValues } = useForm<SkillEditType>({
-    defaultValues: defaultSkill
-  });
-
-  // 标记是否正在从外部重置表单
-  const isResetting = useRef(false);
-
-  useEffect(() => {
-    isResetting.current = true;
-    reset(defaultSkill);
-    // 给 React 一个渲染周期来完成 reset
-    setTimeout(() => {
-      isResetting.current = false;
-    }, 0);
-  }, [defaultSkill, reset]);
-
-  const name = watch('name');
-  const description = watch('description');
-  const prompt = watch('prompt');
-  const steps = watch('steps');
-  const selectedTools = watch('selectedTools');
-  const selectDatasets = watch('dataset.list');
-
-  // 实时同步表单值到 appForm.skills (模仿 TopAgent 的方式)
-  useEffect(() => {
-    // 如果正在重置表单，不要同步回 appForm（避免覆盖外部更新）
-    if (isResetting.current) return;
-
-    const currentValues = getValues();
-    if (currentValues.id) {
-      // 更新现有的 skill
-      setAppForm((state) => ({
-        ...state,
-        skills: state.skills.map((item) => (item.id === currentValues.id ? currentValues : item))
-      }));
-    }
-  }, [name, description, prompt, steps, selectedTools, selectDatasets, getValues, setAppForm]);
+  const selectDatasets = skill.dataset?.list || [];
+  const selectedTools = skill.selectedTools || [];
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -120,14 +75,46 @@ const EditForm = ({
     onClose: onCloseKbSelect
   } = useDisclosure();
 
-  const onSave = (e: SkillEditType) => {
-    setAppForm((state) => ({
-      ...state,
-      skills: e.id
-        ? state.skills.map((item) => (item.id === e.id ? e : item))
-        : [{ ...e, id: getNanoid(6) }, ...state.skills]
-    }));
-    onClose();
+  const handleSave = async () => {
+    try {
+      let dbId = skill.dbId;
+
+      // 保存到数据库
+      if (dbId) {
+        await updateGeneratedSkill({
+          id: dbId,
+          name: skill.name,
+          description: skill.description,
+          steps: skill.stepsText || '',
+          status: 'active'
+        });
+      } else {
+        const result = await saveGeneratedSkill({
+          appId: appId,
+          chatId: 'temp-chat-id',
+          chatItemId: 'temp-item-id',
+          name: skill.name,
+          description: skill.description || '',
+          steps: skill.stepsText || '',
+          status: 'active'
+        });
+        dbId = result._id;
+      }
+
+      // 通知父组件保存成功
+      onSave({ ...skill, dbId });
+
+      toast({
+        title: dbId ? '技能更新成功' : '技能保存成功',
+        status: 'success'
+      });
+    } catch (error) {
+      console.error('保存失败:', error);
+      toast({
+        title: '保存失败',
+        status: 'error'
+      });
+    }
   };
 
   return (
@@ -145,14 +132,14 @@ const EditForm = ({
             onClick={onClose}
           />
           <Box color={'myGray.900'} flex={'1 0 0'} w={'0'} className={'textEllipsis'}>
-            {name || t('app:skill_empty_name')}
+            {skill.name || t('app:skill_empty_name')}
           </Box>
 
           <Button
             variant={'primaryOutline'}
             size={'sm'}
             leftIcon={<MyIcon name="save" w={'1rem'} />}
-            onClick={handleSubmit(onSave)}
+            onClick={handleSave}
           >
             {t('common:Save')}
           </Button>
@@ -163,7 +150,8 @@ const EditForm = ({
             {t('common:Name')}
           </FormLabel>
           <Input
-            {...register('name', { required: true })}
+            value={skill.name}
+            onChange={(e) => onFieldChange({ name: e.target.value })}
             bg={'myGray.50'}
             maxLength={30}
             placeholder={t('app:skill_name_placeholder')}
@@ -178,11 +166,12 @@ const EditForm = ({
             <QuestionTip label={t('app:skill_description_placeholder')} />
           </HStack>
           <Textarea
+            value={skill.description}
+            onChange={(e) => onFieldChange({ description: e.target.value })}
             bg={'myGray.50'}
             rows={3}
             mt={1}
             resize={'vertical'}
-            {...register('description', { required: true })}
             placeholder={t('app:skill_description_placeholder')}
           />
         </Box>
@@ -192,70 +181,16 @@ const EditForm = ({
             <FormLabel>{t('app:execution_steps')}</FormLabel>
           </HStack>
           <Box mt={2}>
-            {watch('steps') && watch('steps')!.length > 0 ? (
-              <Flex flexDir={'column'} gap={2}>
-                {watch('steps')!.map((step, index) => (
-                  <Box
-                    key={step.id}
-                    p={3}
-                    borderRadius={'md'}
-                    borderWidth={'1px'}
-                    borderColor={'myGray.200'}
-                    bg={'white'}
-                  >
-                    <HStack mb={2}>
-                      <Box
-                        fontSize={'xs'}
-                        fontWeight={'bold'}
-                        color={'primary.600'}
-                        bg={'primary.50'}
-                        px={2}
-                        py={0.5}
-                        borderRadius={'md'}
-                      >
-                        {t('common:step')} {index + 1}
-                      </Box>
-                      <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
-                        {step.title}
-                      </Box>
-                    </HStack>
-                    <Box fontSize={'xs'} color={'myGray.600'} mb={2}>
-                      {step.description}
-                    </Box>
-                    {step.expectedTools && step.expectedTools.length > 0 && (
-                      <HStack spacing={1} flexWrap={'wrap'}>
-                        {step.expectedTools.map((tool) => (
-                          <Box
-                            key={tool.id}
-                            fontSize={'xs'}
-                            px={2}
-                            py={0.5}
-                            bg={tool.type === 'tool' ? 'blue.50' : 'purple.50'}
-                            color={tool.type === 'tool' ? 'blue.600' : 'purple.600'}
-                            borderRadius={'sm'}
-                          >
-                            {tool.type === 'tool' ? '🔧' : '📚'} {tool.id}
-                          </Box>
-                        ))}
-                      </HStack>
-                    )}
-                  </Box>
-                ))}
-              </Flex>
-            ) : (
-              <Box
-                p={4}
-                textAlign={'center'}
-                borderRadius={'md'}
-                borderWidth={'1px'}
-                borderStyle={'dashed'}
-                borderColor={'myGray.300'}
-                color={'myGray.500'}
-                fontSize={'sm'}
-              >
-                {t('app:no_steps_yet')}
-              </Box>
-            )}
+            <Textarea
+              value={skill.stepsText || ''}
+              onChange={(e) => onFieldChange({ stepsText: e.target.value })}
+              bg={'myGray.50'}
+              rows={10}
+              resize={'vertical'}
+              placeholder={t('app:no_steps_yet')}
+              fontSize={'sm'}
+              color={'myGray.900'}
+            />
           </Box>
         </Box>
 
@@ -266,16 +201,19 @@ const EditForm = ({
             selectedTools={selectedTools}
             fileSelectConfig={fileSelectConfig}
             onAddTool={(e) => {
-              setValue('selectedTools', [e, ...(selectedTools || [])]);
+              onFieldChange({
+                selectedTools: [e, ...(selectedTools || [])]
+              });
             }}
             onUpdateTool={(e) => {
-              setValue(
-                'selectedTools',
-                selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              );
+              onFieldChange({
+                selectedTools: selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              });
             }}
             onRemoveTool={(id) => {
-              setValue('selectedTools', selectedTools?.filter((item) => item.id !== id) || []);
+              onFieldChange({
+                selectedTools: selectedTools?.filter((item) => item.id !== id) || []
+              });
             }}
           />
         </Box>
@@ -347,7 +285,9 @@ const EditForm = ({
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {
-            setValue('dataset.list', e);
+            onFieldChange({
+              dataset: { list: e }
+            });
           }}
         />
       )}

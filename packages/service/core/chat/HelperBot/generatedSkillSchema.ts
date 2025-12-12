@@ -3,24 +3,6 @@ const { Schema } = connectionMongo;
 import { helperBotGeneratedSkillCollectionName } from './constants';
 import type { HelperBotGeneratedSkillType } from '../../../../global/core/chat/helperBot/generatedSkill/type';
 
-const GeneratedSkillToolSchema = new Schema(
-  {
-    id: { type: String, required: true },
-    type: { type: String, enum: ['tool', 'knowledge'], required: true }
-  },
-  { _id: false }
-);
-
-const GeneratedSkillStepSchema = new Schema(
-  {
-    id: { type: String, required: true },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    expectedTools: [GeneratedSkillToolSchema]
-  },
-  { _id: false }
-);
-
 const HelperBotGeneratedSkillSchema = new Schema({
   userId: {
     type: String,
@@ -33,6 +15,11 @@ const HelperBotGeneratedSkillSchema = new Schema({
     index: true
   },
   teamId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  appId: {
     type: String,
     required: true,
     index: true
@@ -59,21 +46,19 @@ const HelperBotGeneratedSkillSchema = new Schema({
     required: true
   },
   description: String,
-  goal: String,
-  taskType: String,
   steps: {
-    type: [GeneratedSkillStepSchema],
-    default: []
+    type: String,
+    default: ''
   },
   status: {
     type: String,
     enum: ['draft', 'active', 'archived'],
     default: 'draft'
-  },
-  metadata: Object
+  }
 });
 
 // 复合索引
+HelperBotGeneratedSkillSchema.index({ teamId: 1, appId: 1, createTime: -1 });
 HelperBotGeneratedSkillSchema.index({ userId: 1, teamId: 1, createTime: -1 });
 HelperBotGeneratedSkillSchema.index({ tmbId: 1, status: 1 });
 HelperBotGeneratedSkillSchema.index({ chatId: 1, chatItemId: 1 });

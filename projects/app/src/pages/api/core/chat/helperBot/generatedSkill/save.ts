@@ -15,7 +15,7 @@ async function handler(
   req: ApiRequestProps<SaveBody>,
   res: ApiResponseType<any>
 ): Promise<SaveResponse> {
-  const { chatId, chatItemId, name, description, goal, taskType, steps, status } = req.body;
+  const { appId, chatId, chatItemId, name, description, steps, status } = req.body;
 
   // Validate user has access to this chat
   const { chat, userId, teamId, tmbId } = await authHelperBotChatCrud({
@@ -29,18 +29,18 @@ async function handler(
   console.log('userId:', userId);
   console.log('tmbId:', tmbId);
   console.log('teamId:', teamId);
+  console.log('appId:', appId);
 
   // Create new generated skill document
   const generatedSkill = await MongoHelperBotGeneratedSkill.create({
     userId,
     tmbId,
     teamId,
+    appId,
     chatId,
     chatItemId,
     name,
     description,
-    goal,
-    taskType,
     steps,
     status: status || 'draft',
     createTime: new Date(),

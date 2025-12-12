@@ -94,7 +94,7 @@ export const skillAgentParamsSchema = z.object({
     .object({
       name: z.string().nullish(),
       description: z.string().nullish(),
-      prompt: z.string().nullish()
+      stepsText: z.string().nullish()
     })
     .nullish(),
   // TopAgent 通用配置

@@ -43,17 +43,15 @@ export const HelperBotGeneratedSkillSchema = z.object({
   userId: z.string(),
   tmbId: z.string(),
   teamId: z.string(),
+  appId: z.string(),
   chatId: z.string(),
   chatItemId: z.string(),
   createTime: z.date(),
   updateTime: z.date(),
   name: z.string(),
   description: z.string().optional(),
-  goal: z.string().optional(),
-  taskType: z.string().optional(),
-  steps: z.array(GeneratedSkillStepSchema),
-  status: z.enum(['draft', 'active', 'archived']).default('draft'),
-  metadata: z.record(z.string(), z.any()).optional()
+  steps: z.string().default(''),
+  status: z.enum(['draft', 'active', 'archived']).default('draft')
 });
 export type HelperBotGeneratedSkillType = z.infer<typeof HelperBotGeneratedSkillSchema>;
 

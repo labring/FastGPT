@@ -11,7 +11,7 @@ async function handler(
   req: ApiRequestProps<UpdateBody>,
   res: ApiResponseType<any>
 ): Promise<UpdateResponse> {
-  const { id, name, description, goal, taskType, steps, status } = req.body;
+  const { id, name, description, steps, status } = req.body;
   const { userId, teamId } = await authUserPer({ req, authToken: true, per: 'w' });
 
   // Build update object
@@ -21,8 +21,6 @@ async function handler(
 
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
-  if (goal !== undefined) updateData.goal = goal;
-  if (taskType !== undefined) updateData.taskType = taskType;
   if (steps !== undefined) updateData.steps = steps;
   if (status !== undefined) updateData.status = status;
 

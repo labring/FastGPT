@@ -9,7 +9,7 @@ export const getPrompt = ({
   metadata?: SkillAgentParamsType;
 }) => {
   const currentConfigContext = buildSkillAgentMetadataInfo(metadata);
-
+  console.log('------currentConfigContext------', currentConfigContext);
   return `<!-- 任务执行流程设计系统 -->
 
 <role>

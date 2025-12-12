@@ -15,7 +15,7 @@ async function handler(
   req: ApiRequestProps<ListBody>,
   res: ApiResponseType<any>
 ): Promise<ListResponse> {
-  const { searchText, status } = req.body;
+  const { appId, searchText, status } = req.body;
   const { userId, teamId } = await authUserPer({ req, authToken: true, per: 'r' });
 
   const { offset, pageSize } = parsePaginationRequest(req);
@@ -23,7 +23,8 @@ async function handler(
   // Build query
   const query: any = {
     userId,
-    teamId
+    teamId,
+    appId
   };
 
   if (status) {

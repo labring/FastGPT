@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 
 import ChatTest from './ChatTest';
@@ -27,44 +27,45 @@ const Edit = ({
 }) => {
   const { isPc } = useSystem();
   const [renderEdit, setRenderEdit] = useState(true);
-  const [editSkill, setEditSkill] = useState<SkillEditType>();
+  // 状态：当前正在编辑的 skill（完整对象）
+  const [editingSkill, setEditingSkill] = useState<SkillEditType>();
 
-  // 从 appForm.skills 中实时获取最新的 skill 数据
-  const currentEditSkill = useMemo(() => {
-    if (!editSkill) return undefined;
-    return appForm.skills.find((s) => s.id === editSkill.id) || editSkill;
-  }, [appForm.skills, editSkill]);
+  // 处理字段变化（EditForm 受控组件的回调）
+  const handleFieldChange = useCallback((updates: Partial<SkillEditType>) => {
+    setEditingSkill((prev) => (prev ? { ...prev, ...updates } : prev));
+  }, []);
 
-  // 处理编辑 skill 的逻辑:如果是新 skill(不在 appForm.skills 中),先添加到数组
+  // 处理 AI 生成（ChatTest 的回调）
+  const handleAIGenerate = useCallback((generatedData: Partial<SkillEditType>) => {
+    setEditingSkill((prev) => (prev ? { ...prev, ...generatedData } : prev));
+  }, []);
+
+  // 打开编辑器
   const handleEditSkill = (skill: SkillEditType) => {
-    const existingSkill = appForm.skills.find((s) => s.id === skill.id);
-    if (!existingSkill) {
-      // 新 skill,添加到 appForm.skills
-      setAppForm((state) => ({
-        ...state,
-        skills: [...state.skills, skill]
-      }));
-    }
-    setEditSkill(skill);
+    setEditingSkill(skill);
   };
 
-  // 处理关闭 skill 编辑器
+  // 关闭编辑器
   const handleCloseSkillEdit = () => {
-    if (editSkill) {
-      // 从 appForm.skills 中查找最新的 skill 数据来检查
-      const currentSkill = appForm.skills.find((s) => s.id === editSkill.id);
-      // 检查这个 skill 是否有实际内容(name 不为空)
-      const hasContent = currentSkill?.name && currentSkill.name.trim() !== '';
-      if (!hasContent) {
-        // 如果没有内容,从 appForm.skills 中移除
-        setAppForm((state) => ({
-          ...state,
-          skills: state.skills.filter((s) => s.id !== editSkill.id)
-        }));
-      }
-    }
-    setEditSkill(undefined);
+    setEditingSkill(undefined);
   };
+
+  // 处理保存
+  const handleSaveSkill = useCallback(
+    (savedSkill: SkillEditType) => {
+      setAppForm((state) => {
+        const skillExists = state.skills.some((s) => s.id === savedSkill.id);
+        return {
+          ...state,
+          skills: skillExists
+            ? state.skills.map((s) => (s.id === savedSkill.id ? savedSkill : s))
+            : [...state.skills, savedSkill]
+        };
+      });
+      handleCloseSkillEdit();
+    },
+    [setAppForm]
+  );
 
   return (
     <Box
@@ -108,7 +109,7 @@ const Edit = ({
       )}
 
       {/* Mask */}
-      {editSkill && (
+      {editingSkill && (
         <Box
           position={'absolute'}
           top={0}
@@ -131,23 +132,28 @@ const Edit = ({
         bg={'white'}
         borderRadius={'md'}
         zIndex={10}
-        transform={editSkill ? 'translateX(0)' : 'translateX(100%)'}
+        transform={editingSkill ? 'translateX(0)' : 'translateX(100%)'}
         transition={'transform 0.3s ease-in-out'}
-        pointerEvents={editSkill ? 'auto' : 'none'}
+        pointerEvents={editingSkill ? 'auto' : 'none'}
       >
-        {currentEditSkill && (
+        {editingSkill && (
           <>
             <Box overflowY={'auto'} minW={['auto', '580px']} flex={'1'} borderRight={'base'}>
               <SkillEditForm
                 model={appForm.aiSettings.model}
                 fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-                defaultSkill={currentEditSkill}
+                skill={editingSkill}
+                onFieldChange={handleFieldChange}
                 onClose={handleCloseSkillEdit}
-                setAppForm={setAppForm}
+                onSave={handleSaveSkill}
               />
             </Box>
             <Box flex={'2 0 0'} w={0} mb={3}>
-              <SKillChatTest skill={currentEditSkill} appForm={appForm} setAppForm={setAppForm} />
+              <SKillChatTest
+                skill={editingSkill}
+                appForm={appForm}
+                onAIGenerate={handleAIGenerate}
+              />
             </Box>
           </>
         )}

@@ -1,20 +1,16 @@
 import { z } from 'zod';
 import { PaginationPropsSchema } from '../../../../type';
 import type { PaginationResponse } from '../../../../../../web/common/fetch/type';
-import {
-  GeneratedSkillStepSchema,
-  type GeneratedSkillSiteType
-} from '../../../../../core/chat/helperBot/generatedSkill/type';
+import { type GeneratedSkillSiteType } from '../../../../../core/chat/helperBot/generatedSkill/type';
 
 // Save Generated Skill
 export const SaveGeneratedSkillParamsSchema = z.object({
+  appId: z.string(),
   chatId: z.string(),
   chatItemId: z.string(),
   name: z.string(),
   description: z.string().optional(),
-  goal: z.string().optional(),
-  taskType: z.string().optional(),
-  steps: z.array(GeneratedSkillStepSchema),
+  steps: z.string().default(''),
   status: z.enum(['draft', 'active', 'archived']).optional()
 });
 export type SaveGeneratedSkillParamsType = z.infer<typeof SaveGeneratedSkillParamsSchema>;
@@ -26,6 +22,7 @@ export type SaveGeneratedSkillResponseType = z.infer<typeof SaveGeneratedSkillRe
 // Get Generated Skills List
 export const GetGeneratedSkillsParamsSchema = z
   .object({
+    appId: z.string(),
     searchText: z.string().optional(),
     status: z.enum(['draft', 'active', 'archived']).optional()
   })
@@ -44,9 +41,7 @@ export const UpdateGeneratedSkillParamsSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   description: z.string().optional(),
-  goal: z.string().optional(),
-  taskType: z.string().optional(),
-  steps: z.array(GeneratedSkillStepSchema).optional(),
+  steps: z.string().optional(),
   status: z.enum(['draft', 'active', 'archived']).optional()
 });
 export type UpdateGeneratedSkillParamsType = z.infer<typeof UpdateGeneratedSkillParamsSchema>;

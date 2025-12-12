@@ -6,13 +6,12 @@ export const buildSkillAgentMetadataInfo = (metadata?: SkillAgentParamsType): st
   const sections: string[] = [];
 
   if (metadata.skillAgent) {
-    const { name, description, prompt } = metadata.skillAgent;
-    if (name || description || prompt) {
+    const { name, description, stepsText } = metadata.skillAgent;
+    if (name || description || stepsText) {
       sections.push('**Skill 配置** (当前 Skill 的专属配置):');
       if (name) sections.push(`- skill名称: ${name}`);
       if (description) sections.push(`- skill描述: ${description}`);
-      if (prompt) sections.push(`-  详细的步骤信息: ${prompt}`);
-      // TODO 已有步骤的加入
+      if (stepsText) sections.push(`-  详细的步骤信息: ${stepsText}`);
     }
   }
 
@@ -47,7 +46,7 @@ export const buildSkillAgentMetadataInfo = (metadata?: SkillAgentParamsType): st
 ${sections.join('\n')}
 
 **重要提示**:
-- **Skill 配置**优先级最高,如果已有 name、description、prompt,说明这是已配置的 skill,应基于这些信息执行任务
+- **Skill 配置**优先级最高,如果已有 name、description、stepsText,说明这是已配置的 skill,应基于这些信息执行任务
 - **TopAgent 通用配置**提供了全局的角色、工具、知识库等配置,可以在 skill 执行中使用
 - 在信息收集阶段,如果预设信息已经提供了某个维度的答案,可以跳过相关问题
 - 在规划阶段,**优先使用**预设的工具和知识库

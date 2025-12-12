@@ -13,7 +13,7 @@ export const defaultSkill: SkillEditType = {
   id: '',
   name: '',
   description: '',
-  prompt: '',
+  stepsText: '',
   dataset: {
     list: []
   },
@@ -35,7 +35,7 @@ const Row = ({
 }: {
   skills: SkillEditType[];
   onEditSkill: (e: SkillEditType) => void;
-  onDeleteSkill: (id: string) => void;
+  onDeleteSkill: (skill: SkillEditType) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -78,7 +78,7 @@ const Row = ({
           >
             <Box flex={'1 0 0'}>{skill.name}</Box>
             <MyIconButton icon={'edit'} onClick={() => onEditSkill(skill)} />
-            <MyIconButton icon={'delete'} onClick={() => onDeleteSkill(skill.id)} />
+            <MyIconButton icon={'delete'} onClick={() => onDeleteSkill(skill)} />
           </HStack>
         ))}
       </Box>
