@@ -213,7 +213,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 }
               }}
               render={({ field: { onChange, value }, fieldState: { error } }) => {
-                console.log(input, 23223);
                 return (
                   <FormControl isInvalid={!!error}>
                     <Flex alignItems={'center'} mb={1}>
