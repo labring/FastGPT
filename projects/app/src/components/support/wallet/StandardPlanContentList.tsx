@@ -9,6 +9,7 @@ import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
 import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import Markdown from '@/components/Markdown';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -157,16 +158,26 @@ const StandardPlanContentList = ({
           </Box>
         </Flex>
       )}
-      {!!planContent.ticketResponseTime && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>
-            {t('common:support.wallet.subscription.function.Ticket response time', {
-              amount: planContent.ticketResponseTime
-            })}
-          </Box>
-        </Flex>
-      )}
+      <Flex alignItems={'center'}>
+        <MyIcon name={'price/right'} w={'16px'} mr={3} />
+        <Box color={'myGray.600'}>
+          {planContent.ticketResponseTime
+            ? t('common:support.wallet.subscription.function.Ticket response time', {
+                amount: planContent.ticketResponseTime
+              })
+            : t('common:support.wallet.subscription.function.Community free support')}
+        </Box>
+        {!planContent.ticketResponseTime && subPlans?.communitySupportTip && (
+          <QuestionTip
+            ml={1}
+            label={
+              <Box maxW="300px">
+                <Markdown source={subPlans.communitySupportTip} />
+              </Box>
+            }
+          />
+        )}
+      </Flex>
       {!!planContent.appRegistrationCount && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
