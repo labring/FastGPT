@@ -24,7 +24,8 @@ import {
   closeCustomFeedback,
   delChatRecordById,
   updateChatAdminFeedback,
-  updateChatUserFeedback
+  updateChatUserFeedback,
+  updateFeedbackReadStatus
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -885,6 +886,36 @@ const ChatBox = ({
       }
     };
   });
+  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
+    return async () => {
+      if (!appId || !chatId || !chat.dataId) return;
+
+      const newReadStatus = !chat.isFeedbackRead;
+
+      try {
+        await updateFeedbackReadStatus({
+          appId,
+          chatId,
+          dataId: chat.dataId,
+          isRead: newReadStatus
+        });
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      } catch (error) {}
+    };
+  });
 
   const showEmpty = useMemo(
     () =>
@@ -1070,7 +1101,7 @@ const ChatBox = ({
                     ),
                     onAddUserLike: onAddUserLike(item),
                     onAddUserDislike: onAddUserDislike(item),
-                    onTriggerRefresh
+                    onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                   }}
                 >
                   {/* custom feedback */}
@@ -1126,6 +1157,7 @@ const ChatBox = ({
     onMark,
     onAddUserLike,
     onAddUserDislike,
+    onToggleFeedbackReadStatus,
     t,
     showMarkIcon,
     onCloseCustomFeedback

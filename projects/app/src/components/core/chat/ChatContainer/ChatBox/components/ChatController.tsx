@@ -11,9 +11,6 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { updateFeedbackReadStatus } from '@/web/core/chat/api';
-import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -24,7 +21,7 @@ export type ChatControllerProps = {
   onMark?: () => void;
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
-  onTriggerRefresh?: () => void;
+  onToggleFeedbackReadStatus?: () => void;
   showFeedbackContent?: boolean;
   onToggleFeedbackContent?: () => void;
 };
@@ -50,7 +47,7 @@ const ChatController = ({
   onDelete,
   onAddUserDislike,
   onAddUserLike,
-  onTriggerRefresh,
+  onToggleFeedbackReadStatus,
   showFeedbackContent,
   onToggleFeedbackContent
 }: ChatControllerProps & FlexProps) => {
@@ -58,8 +55,6 @@ const ChatController = ({
   const { copyData } = useCopyData();
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const audioLoading = useContextSelector(ChatBoxContext, (v) => v.audioLoading);
@@ -74,41 +69,6 @@ const ChatController = ({
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
   const isLogMode = chatType === 'log';
-
-  const { runAsync: handleToggleFeedbackReadStatus } = useRequest2(
-    async (currentReadStatus: boolean | undefined) => {
-      if (!appId || !chatId || !chat.dataId) return;
-
-      const newReadStatus = !currentReadStatus;
-
-      await updateFeedbackReadStatus({
-        appId,
-        chatId,
-        dataId: chat.dataId,
-        isRead: newReadStatus
-      });
-
-      return { newReadStatus };
-    },
-    {
-      onSuccess: (res) => {
-        if (!res) return;
-
-        setChatRecords?.((prev) =>
-          prev.map((item) =>
-            item.dataId === chat.dataId
-              ? {
-                  ...item,
-                  isFeedbackRead: res.newReadStatus
-                }
-              : item
-          )
-        );
-
-        onTriggerRefresh?.();
-      }
-    }
-  );
 
   return (
     <>
@@ -318,16 +278,17 @@ const ChatController = ({
           )}
         </Flex>
 
-        {isLogMode && chat.obj === ChatRoleEnum.AI && (
-          <>
-            {!!chat.userGoodFeedback &&
-              (chat.isFeedbackRead ? (
+        {onToggleFeedbackReadStatus &&
+          chat.obj === ChatRoleEnum.AI &&
+          (chat.userGoodFeedback || chat.userBadFeedback) && (
+            <>
+              {chat.isFeedbackRead ? (
                 <Box
                   fontSize={'xs'}
                   color={'myGray.500'}
                   cursor={'pointer'}
                   _hover={{ color: 'primary.600' }}
-                  onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
+                  onClick={onToggleFeedbackReadStatus}
                 >
                   {t('chat:log.feedback.read')}
                 </Box>
@@ -337,51 +298,25 @@ const ChatController = ({
                   variant={'whitePrimaryOutline'}
                   fontSize={'xs'}
                   h={'22px'}
-                  onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
+                  onClick={onToggleFeedbackReadStatus}
                 >
                   {t('chat:log.feedback.mark_as_read')}
                 </Button>
-              ))}
-
-            {!!chat.userBadFeedback && (
-              <>
-                {chat.isFeedbackRead ? (
-                  <Box
-                    fontSize={'xs'}
-                    color={'myGray.500'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'primary.600' }}
-                    onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
-                  >
-                    {t('chat:log.feedback.read')}
-                  </Box>
-                ) : (
-                  <Button
-                    size={'xs'}
-                    variant={'whitePrimaryOutline'}
-                    fontSize={'xs'}
-                    h={'22px'}
-                    onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
-                  >
-                    {t('chat:log.feedback.mark_as_read')}
-                  </Button>
-                )}
-                {onToggleFeedbackContent && !showFeedbackContent && (
-                  <Button
-                    size={'xs'}
-                    variant={'grayGhost'}
-                    fontSize={'xs'}
-                    h={'22px'}
-                    onClick={onToggleFeedbackContent}
-                    color={'primary.600'}
-                  >
-                    {t('chat:log.feedback.show_feedback')}
-                  </Button>
-                )}
-              </>
-            )}
-          </>
-        )}
+              )}
+              {chat.userBadFeedback && onToggleFeedbackContent && !showFeedbackContent && (
+                <Button
+                  size={'xs'}
+                  variant={'grayGhost'}
+                  fontSize={'xs'}
+                  h={'22px'}
+                  onClick={onToggleFeedbackContent}
+                  color={'primary.600'}
+                >
+                  {t('chat:log.feedback.show_feedback')}
+                </Button>
+              )}
+            </>
+          )}
       </Flex>
     </>
   );
