@@ -14,6 +14,7 @@ export enum TeamErrEnum {
   appFolderAmountNotEnough = 'appFolderAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
+  ticketNotAvailable = 'ticketNotAvailable',
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
@@ -77,6 +78,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.reRankNotEnough,
     message: i18nT('common:code_error.team_error.re_rank_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.ticketNotAvailable,
+    message: i18nT('common:code_error.team_error.ticket_not_available')
   },
   {
     statusText: TeamErrEnum.groupNameEmpty,
