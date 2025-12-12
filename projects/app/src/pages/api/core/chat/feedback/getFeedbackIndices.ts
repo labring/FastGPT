@@ -2,14 +2,13 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { FeedbackType } from '@/types/app';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import type { ChatItemSchema } from '@fastgpt/global/core/chat/type';
 
 export type GetFeedbackIndicesBody = {
   appId: string;
   chatId: string;
-  feedbackType: FeedbackType;
+  feedbackType: 'all' | 'good' | 'bad';
   unreadOnly?: boolean;
 };
 
@@ -44,7 +43,7 @@ async function handler(
     ? { userBadFeedback: { $exists: true, $ne: null }, isFeedbackRead: { $ne: true } }
     : { userBadFeedback: { $exists: true, $ne: null } };
 
-  const feedbackConditionMap: Record<FeedbackType, object> = {
+  const feedbackConditionMap: Record<'all' | 'good' | 'bad', object> = {
     good: goodCondition,
     bad: badCondition,
     all: { $or: [goodCondition, badCondition] }

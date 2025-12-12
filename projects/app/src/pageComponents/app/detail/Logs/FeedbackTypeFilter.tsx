@@ -13,7 +13,6 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { FeedbackType } from '@/types/app';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const FeedbackTypeFilter = ({
@@ -23,8 +22,8 @@ const FeedbackTypeFilter = ({
   setUnreadOnly,
   menuButtonProps
 }: {
-  feedbackType: FeedbackType;
-  setFeedbackType: (feedbackType: FeedbackType) => void;
+  feedbackType: 'all' | 'good' | 'bad';
+  setFeedbackType: (feedbackType: 'all' | 'good' | 'bad') => void;
   unreadOnly?: boolean;
   setUnreadOnly?: (unreadOnly: boolean) => void;
   menuButtonProps?: ButtonProps;

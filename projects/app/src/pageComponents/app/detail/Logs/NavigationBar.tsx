@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { Button, Flex, HStack, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import type { FeedbackType } from '@/types/app';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import { useFeedbackNavigation } from '@/components/core/chat/ChatContainer/hooks/useFeedbackNavigation';
 import { getRecordsAround } from '@/web/core/chat/api';
@@ -22,7 +21,7 @@ type NavigationBarProps = {
 const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: NavigationBarProps) => {
   const { t } = useTranslation();
 
-  const [feedbackType, setFeedbackType] = useState<FeedbackType>('all');
+  const [feedbackType, setFeedbackType] = useState<'all' | 'good' | 'bad'>('all');
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);

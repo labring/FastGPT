@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFeedbackIndices } from '@/web/core/chat/api';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import type { FeedbackType } from '@/types/app';
 
 export const useFeedbackNavigation = ({
   appId,
@@ -15,7 +14,7 @@ export const useFeedbackNavigation = ({
   appId: string;
   chatId: string;
   chatRecords: ChatSiteItemType[];
-  feedbackType: FeedbackType;
+  feedbackType: 'all' | 'good' | 'bad';
   unreadOnly?: boolean;
   refreshTrigger: boolean;
 }) => {

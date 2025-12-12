@@ -39,12 +39,12 @@ import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteAp
 import type {
   GetFeedbackIndicesBody,
   GetFeedbackIndicesResponse
-} from '@/pages/api/core/chat/getFeedbackIndices';
+} from '@/pages/api/core/chat/feedback/getFeedbackIndices';
 import type {
   GetRecordsAroundBody,
   GetRecordsAroundResponse
 } from '@/pages/api/core/chat/getRecordsAround';
-import type { UpdateFeedbackReadStatusBody } from '@/pages/api/core/chat/updateFeedbackReadStatus';
+import type { UpdateFeedbackReadStatusBody } from '@/pages/api/core/chat/feedback/updateFeedbackReadStatus';
 
 /**
  * 获取初始化聊天内容
@@ -70,15 +70,6 @@ export const getChatResData = (data: getResDataQuery) =>
 export const getChatRecords = (data: getPaginationRecordsBody) =>
   POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data);
 
-/**
- * get feedback indices for navigation
- */
-export const getFeedbackIndices = (data: GetFeedbackIndicesBody) =>
-  POST<GetFeedbackIndicesResponse>('core/chat/getFeedbackIndices', data);
-
-/**
- * get chat records around a specific message
- */
 export const getRecordsAround = (data: GetRecordsAroundBody) =>
   POST<GetRecordsAroundResponse>('core/chat/getRecordsAround', data);
 
@@ -113,8 +104,11 @@ export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
 export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
   POST('/core/chat/feedback/closeCustom', data).catch();
 
+export const getFeedbackIndices = (data: GetFeedbackIndicesBody) =>
+  POST<GetFeedbackIndicesResponse>('core/chat/feedback/getFeedbackIndices', data);
+
 export const updateFeedbackReadStatus = (data: UpdateFeedbackReadStatusBody) =>
-  POST('/core/chat/updateFeedbackReadStatus', data);
+  POST('/core/chat/feedback/updateFeedbackReadStatus', data);
 
 /* team chat */
 /**

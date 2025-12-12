@@ -48,7 +48,6 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
-import type { FeedbackType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -72,7 +71,7 @@ const LogTable = ({
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
-  const [feedbackType, setFeedbackType] = useState<FeedbackType>('all');
+  const [feedbackType, setFeedbackType] = useState<'all' | 'good' | 'bad'>('all');
 
   // source
   const sourceList = useMemo(

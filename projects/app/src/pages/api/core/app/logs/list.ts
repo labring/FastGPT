@@ -1,6 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { PipelineStage, Types } from '@fastgpt/service/common/mongo';
+import type { PipelineStage} from '@fastgpt/service/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
   ChatItemCollectionName,
@@ -85,24 +86,12 @@ async function handler(
               messageCount: { $sum: 1 },
               goodFeedback: {
                 $sum: {
-                  $cond: [
-                    {
-                      $ifNull: ['$userGoodFeedback', false]
-                    },
-                    1,
-                    0
-                  ]
+                  $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
                 }
               },
               badFeedback: {
                 $sum: {
-                  $cond: [
-                    {
-                      $ifNull: ['$userBadFeedback', false]
-                    },
-                    1,
-                    0
-                  ]
+                  $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
                 }
               },
               customFeedback: {
@@ -112,13 +101,7 @@ async function handler(
               },
               adminMark: {
                 $sum: {
-                  $cond: [
-                    {
-                      $ifNull: ['$adminFeedback', false]
-                    },
-                    1,
-                    0
-                  ]
+                  $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
                 }
               },
               totalResponseTime: {
@@ -131,7 +114,6 @@ async function handler(
                   $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
                 }
               },
-              // errorCount from chatItem responseData
               errorCountFromChatItem: {
                 $sum: {
                   $cond: [
@@ -154,19 +136,15 @@ async function handler(
                   ]
                 }
               },
-              // totalPoints from chatItem responseData
               totalPointsFromChatItem: {
                 $sum: {
                   $reduce: {
                     input: { $ifNull: ['$responseData', []] },
                     initialValue: 0,
-                    in: {
-                      $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }]
-                    }
+                    in: { $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }] }
                   }
                 }
               },
-              // Unread feedback statistics
               unreadFeedbackCount: {
                 $sum: {
                   $cond: [
@@ -238,195 +216,149 @@ async function handler(
         ],
         as: 'chatItemsData'
       }
-    }
-  ];
-
-  // Add lookup for chatItemResponse data
-  pipeline.push({
-    $lookup: {
-      from: ChatItemResponseCollectionName,
-      let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+    },
+    {
+      $lookup: {
+        from: ChatItemResponseCollectionName,
+        let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: AppVersionCollectionName,
+              let: { appVersionId: '$appVersionId' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $ne: ['$$appVersionId', null] },
+                        { $ne: ['$$appVersionId', undefined] },
+                        { $eq: ['$_id', '$$appVersionId'] }
+                      ]
+                    }
+                  }
+                },
+                { $project: { versionName: 1 } }
+              ],
+              as: 'versionData'
+            }
+          },
+          {
+            $addFields: {
+              versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
             }
           }
-        },
-        {
-          $lookup: {
-            from: AppVersionCollectionName,
-            let: { appVersionId: '$appVersionId' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $ne: ['$$appVersionId', null] },
-                      { $ne: ['$$appVersionId', undefined] },
-                      { $eq: ['$_id', '$$appVersionId'] }
-                    ]
-                  }
-                }
-              },
-              {
-                $project: {
-                  versionName: 1
-                }
+        ],
+        as: 'chatItemResponsesData'
+      }
+    },
+    // Feedback type filtering
+    ...(feedbackType === 'good'
+      ? [
+          {
+            $match: {
+              $expr: {
+                $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0] }, 0]
               }
-            ],
-            as: 'versionData'
+            }
           }
-        },
-        {
-          $addFields: {
-            versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
-          }
-        },
-        {
-          $project: {
-            _id: { $toString: '$_id' },
-            chatId: 1,
-            title: 1,
-            customTitle: 1,
-            source: 1,
-            sourceName: 1,
-            updateTime: 1,
-            createTime: 1,
-            messageCount: 1,
-            userGoodFeedbackCount: 1,
-            userBadFeedbackCount: 1,
-            customFeedbacksCount: 1,
-            markCount: 1,
-            averageResponseTime: 1,
-            errorCount: 1,
-            totalPoints: 1,
-            outLinkUid: 1,
-            tmbId: {
-              $cond: {
-                if: { $eq: ['$tmbId', null] },
-                then: null,
-                else: { $toString: '$tmbId' }
-              }
-            },
-            versionName: 1,
-            region: '$metadata.originIp'
-          }
-        }
-      ],
-      as: 'chatItemResponsesData'
-    }
-  });
-
-  // Add feedback type filtering if specified
-  if (feedbackType === 'good') {
-    pipeline.push({
-      $match: {
-        $expr: {
-          $gt: [
+        ]
+      : feedbackType === 'bad'
+        ? [
             {
-              $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
+              $match: {
+                $expr: {
+                  $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0] }, 0]
+                }
+              }
+            }
+          ]
+        : []),
+    {
+      $addFields: {
+        messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
+        hasUnreadFeedback: {
+          $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.unreadFeedbackCount', 0] }, 0] }, 0]
+        },
+        unreadFeedbackCount: {
+          $ifNull: [{ $arrayElemAt: ['$chatItemsData.unreadFeedbackCount', 0] }, 0]
+        },
+        userGoodFeedbackCount: {
+          $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
+        },
+        userBadFeedbackCount: {
+          $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
+        },
+        markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+        averageResponseTime: {
+          $cond: [
+            { $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0] },
+            {
+              $divide: [
+                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
+                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+              ]
             },
             0
           ]
+        },
+        errorCount: {
+          $add: [
+            { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCountFromChatItem', 0] }, 0] },
+            { $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0] }
+          ]
+        },
+        totalPoints: {
+          $add: [
+            { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },
+            {
+              $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] }, 0]
+            }
+          ]
         }
       }
-    });
-  } else if (feedbackType === 'bad') {
-    pipeline.push({
-      $match: {
-        $expr: {
-          $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0] }, 0]
-        }
-      }
-    });
-  }
-
-  // Add fields projection
-  pipeline.push({
-    $addFields: {
-      messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
-      hasUnreadFeedback: {
-        $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.unreadFeedbackCount', 0] }, 0] }, 0]
-      },
-      unreadFeedbackCount: {
-        $ifNull: [{ $arrayElemAt: ['$chatItemsData.unreadFeedbackCount', 0] }, 0]
-      },
-      userGoodFeedbackCount: {
-        $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
-      },
-      userBadFeedbackCount: {
-        $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
-      },
-      markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
-      averageResponseTime: {
-        $cond: [
-          {
-            $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
-          },
-          {
-            $divide: [
-              { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
-              { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
-            ]
-          },
-          0
-        ]
-      },
-      // Merge errorCount from both sources
-      errorCount: {
-        $add: [
-          { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCountFromChatItem', 0] }, 0] },
-          {
-            $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0]
+    },
+    {
+      $project: {
+        _id: { $toString: '$_id' },
+        chatId: 1,
+        title: 1,
+        customTitle: 1,
+        source: 1,
+        sourceName: 1,
+        updateTime: 1,
+        createTime: 1,
+        messageCount: 1,
+        userGoodFeedbackCount: 1,
+        userBadFeedbackCount: 1,
+        customFeedbacksCount: 1,
+        markCount: 1,
+        averageResponseTime: 1,
+        errorCount: 1,
+        totalPoints: 1,
+        outLinkUid: 1,
+        tmbId: {
+          $cond: {
+            if: { $eq: ['$tmbId', null] },
+            then: null,
+            else: { $toString: '$tmbId' }
           }
-        ]
-      },
-      // Merge totalPoints from both sources
-      totalPoints: {
-        $add: [
-          { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },
-          {
-            $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] }, 0]
-          }
-        ]
+        },
+        versionName: 1,
+        region: '$metadata.originIp'
       }
     }
-  });
+  ];
 
-  // Add projection
-  pipeline.push({
-    $project: {
-      _id: 1,
-      id: '$chatId',
-      title: 1,
-      customTitle: 1,
-      source: 1,
-      sourceName: 1,
-      updateTime: 1,
-      createTime: 1,
-      messageCount: 1,
-      userGoodFeedbackCount: 1,
-      userBadFeedbackCount: 1,
-      customFeedbacksCount: 1,
-      markCount: 1,
-      averageResponseTime: 1,
-      errorCount: 1,
-      totalPoints: 1,
-      outLinkUid: 1,
-      tmbId: 1,
-      hasUnreadFeedback: 1,
-      unreadFeedbackCount: 1,
-      region: '$metadata.originIp'
-    }
-  });
-
-  // For counting, we need to use the same pipeline but without sort, skip, limit, and projection
-  const countPipeline = [...pipeline];
-  countPipeline.push({
-    $count: 'total'
-  });
+  // Count pipeline
+  const countPipeline: PipelineStage[] = [...pipeline, { $count: 'total' }];
 
   // Execute both queries
   const [listResult, countResult] = await Promise.all([
