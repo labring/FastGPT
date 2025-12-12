@@ -29,25 +29,20 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.appLog]
     },
     {
-      name: '对话',
+      name: '对话管理',
       tags: [TagsMap.chatSetting, TagsMap.chatPage, TagsMap.chatFeedback]
     },
     {
-      name: '插件相关',
+      name: '插件系统',
       tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },
     {
-      name: '支付',
+      name: '支付系统',
       tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     },
     {
-      name: 'ApiKey',
-      tags: [TagsMap.apiKey]
-    },
-
-    {
-      name: '自定义域名',
-      tags: [TagsMap.customDomain]
+      name: '通用-辅助功能',
+      tags: [TagsMap.customDomain, TagsMap.apiKey]
     },
     {
       name: '管理员-插件管理',

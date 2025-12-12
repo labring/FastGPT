@@ -82,7 +82,7 @@ const SimpleEdit = () => {
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
-          fileSelectConfig: appDetail.chatConfig.fileSelectConfig || {
+          fileSelectConfig: appDetail.chatConfig?.fileSelectConfig || {
             ...defaultAppSelectFileConfig,
             canSelectFile: true
           }

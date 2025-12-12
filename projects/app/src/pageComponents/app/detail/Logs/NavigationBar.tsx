@@ -43,7 +43,6 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
         appId,
         chatId,
         targetDataId,
-        contextSize: 10,
         offset: 0,
         pageSize: 10
       }),
@@ -104,7 +103,7 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
 
         <HStack spacing={3}>
           <Button
-            variant={'outline'}
+            variant={'whitePrimary'}
             w={150}
             onClick={() => handleNavigate('prev')}
             isDisabled={!hasPrev || loading || isLoadingRecords}
@@ -114,7 +113,7 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
           </Button>
 
           <Button
-            variant={'outline'}
+            variant={'whitePrimary'}
             w={150}
             onClick={() => handleNavigate('next')}
             isDisabled={!hasNext || loading || isLoadingRecords}

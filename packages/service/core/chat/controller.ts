@@ -11,8 +11,7 @@ export async function getChatItems({
   offset,
   limit,
   field,
-  targetDataId,
-  contextSize = 10
+  targetDataId
 }: {
   appId: string;
   chatId?: string;
@@ -20,7 +19,6 @@ export async function getChatItems({
   limit: number;
   field: string;
   targetDataId?: string;
-  contextSize?: number;
 }): Promise<{ histories: ChatItemType[]; total: number }> {
   if (!chatId) {
     return { histories: [], total: 0 };
@@ -54,7 +52,7 @@ export async function getChatItems({
           field
         )
           .sort({ time: -1 })
-          .limit(contextSize)
+          .limit(limit)
           .lean(),
         MongoChatItem.find(
           {
@@ -65,7 +63,7 @@ export async function getChatItems({
           field
         )
           .sort({ time: 1 })
-          .limit(contextSize)
+          .limit(limit)
           .lean()
       ]);
 

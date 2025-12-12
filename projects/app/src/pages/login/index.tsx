@@ -24,6 +24,7 @@ const Login = () => {
       setUserInfo(res.user);
 
       const decodeLastRoute = safeDecodeURIComponent(lastRoute);
+
       const navigateTo = await (async () => {
         if (res.user.team.status !== 'active') {
           if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
@@ -44,7 +45,7 @@ const Login = () => {
         return decodeLastRoute &&
           !decodeLastRoute.includes('/login') &&
           decodeLastRoute.startsWith('/')
-          ? lastRoute
+          ? decodeLastRoute
           : '/dashboard/agent';
       })();
 

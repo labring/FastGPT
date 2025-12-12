@@ -71,7 +71,6 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
-const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
@@ -917,25 +916,6 @@ const ChatBox = ({
     };
   });
 
-  const showEmpty = useMemo(
-    () =>
-      chatType !== ChatTypeEnum.home &&
-      feConfigs?.show_emptyChat &&
-      showEmptyIntro &&
-      chatRecords.length === 0 &&
-      !commonVariableList?.length &&
-      !showExternalVariable &&
-      !welcomeText,
-    [
-      chatType,
-      feConfigs?.show_emptyChat,
-      showEmptyIntro,
-      chatRecords.length,
-      commonVariableList?.length,
-      showExternalVariable,
-      welcomeText
-    ]
-  );
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -1176,7 +1156,6 @@ const ChatBox = ({
         pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1188,7 +1167,7 @@ const ChatBox = ({
         </Box>
       </ScrollData>
     );
-  }, [ScrollData, showEmpty, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
+  }, [ScrollData, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>
