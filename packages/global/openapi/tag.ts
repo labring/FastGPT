@@ -9,6 +9,7 @@ export const TagsMap = {
   apiKey: 'APIKey',
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
+  customDomain: '自定义域名',
 
   adminDashboard: '管理员仪表盘'
 };
