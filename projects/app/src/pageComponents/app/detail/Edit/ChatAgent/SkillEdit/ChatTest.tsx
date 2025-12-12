@@ -27,7 +27,7 @@ const ChatTest = ({ skill, setAppForm }: Props) => {
   return (
     <MyBox display={'flex'} position={'relative'} flexDirection={'column'} h={'full'} py={4}>
       <Flex px={[2, 5]} pb={2}>
-        <Box color={'myGray.900'} fontWeight={'bold'} flex={1}>
+        <Box color={'myGray.900'} fontWeight={'bold'} fontSize={'lg'} flex={1}>
           {t('app:skill_editor')}
         </Box>
         <MyTooltip label={t('common:core.chat.Restart')}>
