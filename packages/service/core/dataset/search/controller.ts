@@ -305,11 +305,38 @@ export async function searchDatasetData(
     let collectionIdList: string[] | undefined = undefined;
 
     try {
-      const jsonMatch =
-        typeof collectionFilterMatch === 'object'
-          ? collectionFilterMatch
-          : json5.parse(collectionFilterMatch);
+      const jsonMatch = (() => {
+        if (typeof collectionFilterMatch === 'object') return collectionFilterMatch;
 
+        try {
+          return json5.parse(collectionFilterMatch);
+        } catch {
+          // 针对传入的非标准格式 {"collectionId":[xxx]} 进行处理
+          const raw = String(collectionFilterMatch);
+
+          const listMatch = raw.match(/collectionId\s*:\s*\[([^\]]+)\]/i);
+          if (listMatch) {
+            const ids = listMatch[1]
+              .split(',')
+              .map((id) => id.trim())
+              .filter(Boolean)
+              .map((id) => id.replace(/^['"]|['"]$/g, ''));
+
+            return { collectionId: ids };
+          }
+
+          const singleMatch = raw.match(/collectionId\s*:\s*([0-9a-fA-F]{24})/i);
+          if (singleMatch) {
+            return { collectionId: [singleMatch[1]] };
+          }
+
+          return;
+        }
+      })();
+
+      if (!jsonMatch) return;
+
+      // 获取前端传入的 collectionId，并判断是否有效
       const formatCollectionIds = (() => {
         const collectionIdConfig = jsonMatch?.collectionId;
         if (collectionIdConfig === undefined || collectionIdConfig === null) return undefined;
@@ -430,10 +457,13 @@ export async function searchDatasetData(
         tagCollectionIdList = collections.map((item) => String(item._id));
       }
 
-      // collectionId
+      // collectionId与用户传入的datasetId取交集
       if (formatCollectionIds) {
-        const validCollectionIds = formatCollectionIds
-          .filter((id) => typeof id === 'string' && Types.ObjectId.isValid(id))
+        const isValidObjectId = (value: unknown): value is string =>
+          typeof value === 'string' && Types.ObjectId.isValid(value);
+
+        const validCollectionIds = (formatCollectionIds as unknown[])
+          .filter(isValidObjectId)
           .map((id) => String(id));
 
         if (validCollectionIds.length === 0) return [];
@@ -832,6 +862,7 @@ export async function searchDatasetData(
       filterCollectionByMetadata()
     ]);
 
+    //元数据过滤为空结果时，直接跳过知识库检索
     if (filterCollectionIdList && filterCollectionIdList.length === 0) {
       return {
         tokens: 0,
