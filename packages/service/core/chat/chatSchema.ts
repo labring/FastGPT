@@ -34,7 +34,7 @@ const ChatSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
-  versionId: {
+  appVersionId: {
     type: Schema.Types.ObjectId,
     ref: AppVersionCollectionName
   },

@@ -342,15 +342,15 @@ async function handler(req: ApiRequestProps<exportChatLogsBody, {}>, res: NextAp
       {
         $lookup: {
           from: AppVersionCollectionName,
-          let: { versionId: '$versionId' },
+          let: { appVersionId: '$appVersionId' },
           pipeline: [
             {
               $match: {
                 $expr: {
                   $and: [
-                    { $ne: ['$$versionId', null] },
-                    { $ne: ['$$versionId', undefined] },
-                    { $eq: ['$_id', '$$versionId'] }
+                    { $ne: ['$$appVersionId', null] },
+                    { $ne: ['$$appVersionId', undefined] },
+                    { $eq: ['$_id', '$$appVersionId'] }
                   ]
                 }
               }
