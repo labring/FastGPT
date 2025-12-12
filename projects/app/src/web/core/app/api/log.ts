@@ -1,24 +1,24 @@
-import type { getLogKeysQuery, getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
-import type { updateLogKeysBody } from '@/pages/api/core/app/logs/updateLogKeys';
 import { GET, POST } from '@/web/common/api/request';
-import type { AppLogsListItemType } from '@/types/app';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { GetAppChatLogsParams } from '@/global/core/api/appReq';
 import type {
+  getLogKeysQuery,
+  getLogKeysResponseType,
+  updateLogKeysBody,
+  getAppChatLogsBody,
   getChartDataBody,
   getChartDataResponse,
   getTotalDataQuery,
-  getTotalDataResponse
-} from '@fastgpt/global/core/app/logs/api';
+  getTotalDataResponse,
+  getAppChatLogsResponseType
+} from '@fastgpt/global/openapi/core/app/log/api';
 
 export const updateLogKeys = (data: updateLogKeysBody) =>
   POST('/core/app/logs/updateLogKeys', data);
 
 export const getLogKeys = (data: getLogKeysQuery) =>
-  GET<getLogKeysResponse>('/core/app/logs/getLogKeys', data);
+  GET<getLogKeysResponseType>('/core/app/logs/getLogKeys', data);
 
-export const getAppChatLogs = (data: GetAppChatLogsParams) =>
-  POST<PaginationResponse<AppLogsListItemType>>(`/core/app/getChatLogs`, data, { maxQuantity: 1 });
+export const getAppChatLogs = (data: getAppChatLogsBody) =>
+  POST<getAppChatLogsResponseType>(`/core/app/logs/list`, data, { maxQuantity: 1 });
 
 export const getAppTotalData = (data: getTotalDataQuery) =>
   GET<getTotalDataResponse>('/proApi/core/app/logs/getTotalData', data);

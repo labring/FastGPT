@@ -6,6 +6,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { clearToken } from '@/web/support/user/auth';
+import { safeEncodeURIComponent } from '@/web/common/utils/uri';
 
 const responseError = (err: any) => {
   console.log('error->', '请求错误', err);
@@ -32,7 +33,9 @@ const responseError = (err: any) => {
     if (!isOutlinkPage) {
       clearToken();
       window.location.replace(
-        getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
+        getWebReqUrl(
+          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+        )
       );
     }
 
