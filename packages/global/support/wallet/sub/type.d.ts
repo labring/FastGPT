@@ -43,6 +43,7 @@ export type SubPlanType = {
   [SubTypeEnum.standard]?: StandSubPlanLevelMapType;
   planDescriptionUrl?: string;
   appRegistrationUrl?: string;
+  communitySupportTip?: string;
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };

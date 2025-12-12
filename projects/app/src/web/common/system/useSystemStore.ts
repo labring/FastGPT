@@ -29,7 +29,8 @@ export type NotSufficientModalType =
   | TeamErrEnum.aiPointsNotEnough
   | TeamErrEnum.datasetAmountNotEnough
   | TeamErrEnum.teamMemberOverSize
-  | TeamErrEnum.appAmountNotEnough;
+  | TeamErrEnum.appAmountNotEnough
+  | TeamErrEnum.ticketNotAvailable;
 
 type State = {
   initd: boolean;
