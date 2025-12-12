@@ -365,7 +365,7 @@ const ChatItem = (props: Props) => {
             <Flex justifyContent={'flex-end'} mt={2}>
               <Button
                 size={'xs'}
-                variant={'ghost'}
+                variant={'grayGhost'}
                 fontSize={'xs'}
                 onClick={() => setShowFeedbackContent(false)}
                 color={'primary.600'}

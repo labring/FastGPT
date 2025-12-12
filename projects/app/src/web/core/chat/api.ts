@@ -40,10 +40,6 @@ import type {
   GetFeedbackIndicesBody,
   GetFeedbackIndicesResponse
 } from '@/pages/api/core/chat/feedback/getFeedbackIndices';
-import type {
-  GetRecordsAroundBody,
-  GetRecordsAroundResponse
-} from '@/pages/api/core/chat/getRecordsAround';
 import type { UpdateFeedbackReadStatusBody } from '@/pages/api/core/chat/feedback/updateFeedbackReadStatus';
 
 /**
@@ -69,9 +65,6 @@ export const getChatResData = (data: getResDataQuery) =>
 
 export const getChatRecords = (data: getPaginationRecordsBody) =>
   POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data);
-
-export const getRecordsAround = (data: GetRecordsAroundBody) =>
-  POST<GetRecordsAroundResponse>('core/chat/getRecordsAround', data);
 
 /**
  * delete one history

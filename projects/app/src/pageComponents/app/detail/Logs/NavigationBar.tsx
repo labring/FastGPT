@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import { useFeedbackNavigation } from '@/components/core/chat/ChatContainer/hooks/useFeedbackNavigation';
-import { getRecordsAround } from '@/web/core/chat/api';
+import { getChatRecords } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -39,16 +39,19 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
 
   const { runAsync: loadRecordsAround, loading: isLoadingRecords } = useRequest2(
     async (targetDataId: string) =>
-      await getRecordsAround({
+      await getChatRecords({
         appId,
         chatId,
-        targetDataId
+        targetDataId,
+        contextSize: 10,
+        offset: 0,
+        pageSize: 10
       }),
 
     {
       manual: true,
       onSuccess: (result, params) => {
-        const newRecords = result.records.map((item) => ({
+        const newRecords = result.list.map((item) => ({
           ...item,
           dataId: item.dataId || getNanoid(),
           status: ChatStatusEnum.finish
@@ -89,9 +92,13 @@ const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: Navigation
             setFeedbackType={setFeedbackType}
             unreadOnly={unreadOnly}
             setUnreadOnly={setUnreadOnly}
+            menuButtonProps={{
+              color: 'myGray.700',
+              _active: {}
+            }}
           />
           <Box fontSize="sm" color="gray.600">
-            {loading ? '' : currentIndex === -1 ? `? / ${total}` : `${currentIndex + 1} / ${total}`}
+            {loading ? '' : `${currentIndex + 1} / ${total}`}
           </Box>
         </HStack>
 

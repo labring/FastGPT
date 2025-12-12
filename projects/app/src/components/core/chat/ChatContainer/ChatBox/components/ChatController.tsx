@@ -334,7 +334,7 @@ const ChatController = ({
               ) : (
                 <Button
                   size={'xs'}
-                  variant={'outline'}
+                  variant={'whitePrimaryOutline'}
                   fontSize={'xs'}
                   h={'22px'}
                   onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
@@ -358,7 +358,7 @@ const ChatController = ({
                 ) : (
                   <Button
                     size={'xs'}
-                    variant={'outline'}
+                    variant={'whitePrimaryOutline'}
                     fontSize={'xs'}
                     h={'22px'}
                     onClick={() => handleToggleFeedbackReadStatus(chat.isFeedbackRead)}
@@ -369,7 +369,7 @@ const ChatController = ({
                 {onToggleFeedbackContent && !showFeedbackContent && (
                   <Button
                     size={'xs'}
-                    variant={'ghost'}
+                    variant={'grayGhost'}
                     fontSize={'xs'}
                     h={'22px'}
                     onClick={onToggleFeedbackContent}

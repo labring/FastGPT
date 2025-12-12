@@ -10,13 +10,17 @@ export async function getChatItems({
   chatId,
   offset,
   limit,
-  field
+  field,
+  targetDataId,
+  contextSize = 10
 }: {
   appId: string;
   chatId?: string;
   offset: number;
   limit: number;
   field: string;
+  targetDataId?: string;
+  contextSize?: number;
 }): Promise<{ histories: ChatItemType[]; total: number }> {
   if (!chatId) {
     return { histories: [], total: 0 };
@@ -25,11 +29,62 @@ export async function getChatItems({
   // Extend dataId
   field = `dataId ${field}`;
 
-  const [histories, total] = await Promise.all([
-    MongoChatItem.find({ appId, chatId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
-    MongoChatItem.countDocuments({ appId, chatId })
-  ]);
-  histories.reverse();
+  // Choose query mode based on whether targetDataId is provided
+  const { histories, total } = await (async () => {
+    if (targetDataId) {
+      // Mode 1: fetch records around the target message
+      const targetItem = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        dataId: targetDataId
+      }).lean();
+
+      if (!targetItem) {
+        return { histories: [], total: 0 };
+      }
+
+      // Fetch previous and next messages in parallel
+      const [prevItems, nextItems] = await Promise.all([
+        MongoChatItem.find(
+          {
+            appId,
+            chatId,
+            time: { $lt: targetItem.time }
+          },
+          field
+        )
+          .sort({ time: -1 })
+          .limit(contextSize)
+          .lean(),
+        MongoChatItem.find(
+          {
+            appId,
+            chatId,
+            time: { $gt: targetItem.time }
+          },
+          field
+        )
+          .sort({ time: 1 })
+          .limit(contextSize)
+          .lean()
+      ]);
+
+      // Merge result: prev N + target + next N
+      const histories = [...prevItems.reverse(), targetItem, ...nextItems];
+      return { histories, total: histories.length };
+    } else {
+      // Mode 2: normal pagination
+      const [histories, total] = await Promise.all([
+        MongoChatItem.find({ appId, chatId }, field)
+          .sort({ _id: -1 })
+          .skip(offset)
+          .limit(limit)
+          .lean(),
+        MongoChatItem.countDocuments({ appId, chatId })
+      ]);
+      return { histories: histories.reverse(), total };
+    }
+  })();
 
   // Add node responses field
   if (field.includes(DispatchNodeResponseKeyEnum.nodeResponse)) {

@@ -47,10 +47,17 @@ const FeedbackTypeFilter = ({
   ];
 
   return (
-    <Menu isOpen={isOpen} onOpen={onOpen} onClose={onClose} closeOnSelect={false} strategy="fixed">
+    <Menu
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
+      closeOnSelect={false}
+      strategy={'fixed'}
+      autoSelect={false}
+    >
       <MenuButton
         as={Button}
-        variant="ghost"
+        variant={'grayGhost'}
         size="sm"
         rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} />}
         fontWeight={'normal'}
@@ -81,6 +88,7 @@ const FeedbackTypeFilter = ({
                 e.preventDefault();
                 setUnreadOnly(!unreadOnly);
               }}
+              autoFocus={false}
             >
               <Checkbox
                 isChecked={!!unreadOnly}
