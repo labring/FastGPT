@@ -335,6 +335,8 @@
   "skill_name_placeholder": "请输入技能明，仅用于展示",
   "skills": "技能",
   "skills_tip": "模型的行为知识",
+  "execution_steps": "执行步骤",
+  "no_steps_yet": "暂无步骤，请通过对话生成",
   "source_updateTime": "更新时间",
   "space_to_expand_folder": "按\"空格\"展开文件夹",
   "stop_sign": "停止序列",

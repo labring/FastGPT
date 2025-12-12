@@ -7,12 +7,13 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const defaultSkill: SkillEditType = {
   id: '',
   name: '',
   description: '',
-  prompt: '',
+  stepsText: '',
   dataset: {
     list: []
   },
@@ -34,7 +35,7 @@ const Row = ({
 }: {
   skills: SkillEditType[];
   onEditSkill: (e: SkillEditType) => void;
-  onDeleteSkill: (id: string) => void;
+  onDeleteSkill: (skill: SkillEditType) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -53,7 +54,7 @@ const Row = ({
           mr={'-5px'}
           size={'sm'}
           fontSize={'sm'}
-          onClick={() => onEditSkill({ ...defaultSkill })}
+          onClick={() => onEditSkill({ ...defaultSkill, id: getNanoid(6) })}
         >
           {t('common:Add')}
         </Button>
@@ -77,7 +78,7 @@ const Row = ({
           >
             <Box flex={'1 0 0'}>{skill.name}</Box>
             <MyIconButton icon={'edit'} onClick={() => onEditSkill(skill)} />
-            <MyIconButton icon={'delete'} onClick={() => onDeleteSkill(skill.id)} />
+            <MyIconButton icon={'delete'} onClick={() => onDeleteSkill(skill)} />
           </HStack>
         ))}
       </Box>

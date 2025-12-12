@@ -32,6 +32,8 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import { deleteGeneratedSkill } from '@/components/core/chat/HelperBot/generatedSkill/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -61,8 +63,10 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appId = appDetail._id;
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
 
@@ -207,11 +211,35 @@ const EditForm = ({
           <SkillRow
             skills={appForm.skills}
             onEditSkill={onEditSkill}
-            onDeleteSkill={(id) => {
-              setAppForm((state) => ({
-                ...state,
-                skills: state.skills.filter((item) => item.id !== id)
-              }));
+            onDeleteSkill={async (skill) => {
+              try {
+                // 如果有 dbId，从数据库删除
+                if (skill.dbId) {
+                  await deleteGeneratedSkill({ id: skill.dbId });
+                  toast({
+                    title: '技能删除成功',
+                    status: 'success'
+                  });
+                } else {
+                  // 没有 dbId 的是本地临时技能，只需提示
+                  toast({
+                    title: '本地技能已移除',
+                    status: 'info'
+                  });
+                }
+
+                // 从 appForm.skills 中移除（无论是否有 dbId）
+                setAppForm((state) => ({
+                  ...state,
+                  skills: state.skills.filter((s) => s.id !== skill.id)
+                }));
+              } catch (error) {
+                console.error('删除失败:', error);
+                toast({
+                  title: '删除失败',
+                  status: 'error'
+                });
+              }
             }}
           />
         </Box>

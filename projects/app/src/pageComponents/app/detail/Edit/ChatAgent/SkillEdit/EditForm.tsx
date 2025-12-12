@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useTransition } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
   Grid,
-  type BoxProps,
   useTheme,
   useDisclosure,
   Button,
@@ -14,7 +13,6 @@ import {
 } from '@chakra-ui/react';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -22,30 +20,18 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import VariableEdit from '@/components/core/app/VariableEdit';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
-import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import { workflowSystemVariables } from '@/web/core/app/utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../../FormComponent/ToolSelector/ToolSelect';
-import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { useSkillManager } from '../hooks/useSkillManager';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { cardStyles } from '../../../constants';
-import { defaultSkill as defaultEditSkill } from './Row';
-import { useForm } from 'react-hook-form';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  saveGeneratedSkill,
+  updateGeneratedSkill
+} from '@/components/core/chat/HelperBot/generatedSkill/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -56,37 +42,32 @@ const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideC
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
+type EditFormProps = {
+  model: string;
+  fileSelectConfig?: AppFileSelectConfigType;
+  skill: SkillEditType; // 受控：从父组件接收
+  onFieldChange: (updates: Partial<SkillEditType>) => void; // 变化时通知父组件
+  onClose: () => void;
+  onSave: (skill: SkillEditType) => void;
+};
+
 const EditForm = ({
   model,
   fileSelectConfig,
-  defaultSkill = defaultEditSkill,
+  skill,
+  onFieldChange,
   onClose,
-  setAppForm
-}: {
-  model: string;
-  fileSelectConfig?: AppFileSelectConfigType;
-  defaultSkill?: SkillEditType;
-  onClose: () => void;
-  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
-}) => {
+  onSave
+}: EditFormProps) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const [, startTst] = useTransition();
+  const { toast } = useToast();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectedModel = getWebLLMModel(model);
-
-  const { register, setValue, handleSubmit, reset, watch } = useForm<SkillEditType>({
-    defaultValues: defaultSkill
-  });
-  useEffect(() => {
-    reset(defaultSkill);
-  }, [defaultSkill, reset]);
-
-  const name = watch('name');
-  const prompt = watch('prompt');
-  const selectedTools = watch('selectedTools');
-  const selectDatasets = watch('dataset.list');
+  const selectDatasets = skill.dataset?.list || [];
+  const selectedTools = skill.selectedTools || [];
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -94,14 +75,46 @@ const EditForm = ({
     onClose: onCloseKbSelect
   } = useDisclosure();
 
-  const onSave = (e: SkillEditType) => {
-    setAppForm((state) => ({
-      ...state,
-      skills: e.id
-        ? state.skills.map((item) => (item.id === e.id ? e : item))
-        : [{ ...e, id: getNanoid(6) }, ...state.skills]
-    }));
-    onClose();
+  const handleSave = async () => {
+    try {
+      let dbId = skill.dbId;
+
+      // 保存到数据库
+      if (dbId) {
+        await updateGeneratedSkill({
+          id: dbId,
+          name: skill.name,
+          description: skill.description,
+          steps: skill.stepsText || '',
+          status: 'active'
+        });
+      } else {
+        const result = await saveGeneratedSkill({
+          appId: appId,
+          chatId: 'temp-chat-id',
+          chatItemId: 'temp-item-id',
+          name: skill.name,
+          description: skill.description || '',
+          steps: skill.stepsText || '',
+          status: 'active'
+        });
+        dbId = result._id;
+      }
+
+      // 通知父组件保存成功
+      onSave({ ...skill, dbId });
+
+      toast({
+        title: dbId ? '技能更新成功' : '技能保存成功',
+        status: 'success'
+      });
+    } catch (error) {
+      console.error('保存失败:', error);
+      toast({
+        title: '保存失败',
+        status: 'error'
+      });
+    }
   };
 
   return (
@@ -119,14 +132,14 @@ const EditForm = ({
             onClick={onClose}
           />
           <Box color={'myGray.900'} flex={'1 0 0'} w={'0'} className={'textEllipsis'}>
-            {name || t('app:skill_empty_name')}
+            {skill.name || t('app:skill_empty_name')}
           </Box>
 
           <Button
             variant={'primaryOutline'}
             size={'sm'}
             leftIcon={<MyIcon name="save" w={'1rem'} />}
-            onClick={handleSubmit(onSave)}
+            onClick={handleSave}
           >
             {t('common:Save')}
           </Button>
@@ -137,7 +150,8 @@ const EditForm = ({
             {t('common:Name')}
           </FormLabel>
           <Input
-            {...register('name', { required: true })}
+            value={skill.name}
+            onChange={(e) => onFieldChange({ name: e.target.value })}
             bg={'myGray.50'}
             maxLength={30}
             placeholder={t('app:skill_name_placeholder')}
@@ -152,30 +166,30 @@ const EditForm = ({
             <QuestionTip label={t('app:skill_description_placeholder')} />
           </HStack>
           <Textarea
+            value={skill.description}
+            onChange={(e) => onFieldChange({ description: e.target.value })}
             bg={'myGray.50'}
             rows={3}
             mt={1}
             resize={'vertical'}
-            {...register('description', { required: true })}
             placeholder={t('app:skill_description_placeholder')}
           />
         </Box>
-        {/* Prompt */}
+        {/* Steps */}
         <Box mt={4}>
           <HStack w={'100%'}>
-            <FormLabel>Prompt</FormLabel>
+            <FormLabel>{t('app:execution_steps')}</FormLabel>
           </HStack>
-          <Box mt={1}>
-            <PromptEditor
-              minH={100}
-              maxH={300}
-              value={prompt}
-              onChange={(text) => {
-                startTst(() => {
-                  setValue('prompt', text);
-                });
-              }}
-              isRichText={false}
+          <Box mt={2}>
+            <Textarea
+              value={skill.stepsText || ''}
+              onChange={(e) => onFieldChange({ stepsText: e.target.value })}
+              bg={'myGray.50'}
+              rows={10}
+              resize={'vertical'}
+              placeholder={t('app:no_steps_yet')}
+              fontSize={'sm'}
+              color={'myGray.900'}
             />
           </Box>
         </Box>
@@ -187,16 +201,19 @@ const EditForm = ({
             selectedTools={selectedTools}
             fileSelectConfig={fileSelectConfig}
             onAddTool={(e) => {
-              setValue('selectedTools', [e, ...(selectedTools || [])]);
+              onFieldChange({
+                selectedTools: [e, ...(selectedTools || [])]
+              });
             }}
             onUpdateTool={(e) => {
-              setValue(
-                'selectedTools',
-                selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              );
+              onFieldChange({
+                selectedTools: selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              });
             }}
             onRemoveTool={(id) => {
-              setValue('selectedTools', selectedTools?.filter((item) => item.id !== id) || []);
+              onFieldChange({
+                selectedTools: selectedTools?.filter((item) => item.id !== id) || []
+              });
             }}
           />
         </Box>
@@ -268,7 +285,9 @@ const EditForm = ({
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {
-            setValue('dataset.list', e);
+            onFieldChange({
+              dataset: { list: e }
+            });
           }}
         />
       )}

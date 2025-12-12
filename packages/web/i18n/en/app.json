@@ -320,6 +320,8 @@
   "skill_name_placeholder": "Please enter the skill description, for display only",
   "skills": "Skills",
   "skills_tip": "Model behavioral knowledge",
+  "execution_steps": "Execution Steps",
+  "no_steps_yet": "No steps yet, generate via chat",
   "source_updateTime": "Update time",
   "space_to_expand_folder": "Press \"Space\" to expand the folder",
   "stop_sign": "Stop",

@@ -15,14 +15,30 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   skill: SkillEditType;
-  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  appForm: AppFormEditFormType;
+  onAIGenerate: (updates: Partial<SkillEditType>) => void;
 };
-const ChatTest = ({ skill, setAppForm }: Props) => {
+const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  // 构建 SkillAgent metadata,从 appForm 中提取配置
-  const skillAgentMetadata = useMemo(() => ({}), []);
+  // 构建 SkillAgent metadata
+  const skillAgentMetadata = useMemo(() => {
+    return {
+      skillAgent: {
+        name: skill.name,
+        description: skill.description,
+        stepsText: skill.stepsText
+      },
+      topAgent: {
+        role: appForm.aiSettings.aiRole,
+        taskObject: appForm.aiSettings.aiTaskObject,
+        fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
+        selectedTools: skill.selectedTools?.map((tool) => tool.id) || [],
+        selectedDatasets: skill.dataset?.list?.map((ds) => ds.datasetId) || []
+      }
+    };
+  }, [appForm.aiSettings, appForm.chatConfig.fileSelectConfig, skill]);
 
   return (
     <MyBox display={'flex'} position={'relative'} flexDirection={'column'} h={'full'} py={4}>
@@ -46,10 +62,43 @@ const ChatTest = ({ skill, setAppForm }: Props) => {
       </Flex>
       <Box flex={1}>
         <HelperBot
-          type={HelperBotTypeEnum.skillEditor}
+          type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
-          onApply={(e) => {
-            console.log(e);
+          onApply={(generatedSkillData) => {
+            console.log('📝 ChatTest onApply - Received generated skill data:', generatedSkillData);
+            console.log('📝 Current skill id:', skill.id);
+
+            // 检查是否是 generatedSkill 类型
+            if (!generatedSkillData.plan_analysis || !generatedSkillData.execution_plan) {
+              console.warn('❌ Invalid generated skill data format');
+              return;
+            }
+
+            // 将 steps 数组转换为格式化的文本
+            const stepsText = generatedSkillData.execution_plan.steps
+              .map((step, index) => {
+                let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
+                if (step.expectedTools && step.expectedTools.length > 0) {
+                  const tools = step.expectedTools
+                    .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
+                    .join(', ');
+                  stepText += `\n使用工具: ${tools}`;
+                }
+                return stepText;
+              })
+              .join('\n\n');
+
+            // 通知父组件更新状态（自动同步到 EditForm）
+            onAIGenerate({
+              name: generatedSkillData.plan_analysis.name || skill.name,
+              description: generatedSkillData.plan_analysis.description || skill.description,
+              stepsText: stepsText
+            });
+
+            toast({
+              title: t('chat:generated_skill.applied_success'),
+              status: 'success'
+            });
           }}
         />
       </Box>
