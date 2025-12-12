@@ -6,7 +6,6 @@ import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
-import type { GetAppChatLogsProps } from '@/global/core/api/appReq';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -27,6 +26,8 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
+import type { exportChatLogsBody } from '@fastgpt/global/openapi/core/app/log/api';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -36,13 +37,7 @@ const formatJsonString = (data: any) => {
   return data;
 };
 
-export type ExportChatLogsBody = GetAppChatLogsProps & {
-  title: string;
-  sourcesMap: Record<string, { label: string }>;
-  logKeys: AppLogKeysEnum[];
-};
-
-async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextApiResponse) {
+async function handler(req: ApiRequestProps<exportChatLogsBody, {}>, res: NextApiResponse) {
   let {
     appId,
     dateStart,
@@ -345,6 +340,36 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         }
       },
       {
+        $lookup: {
+          from: AppVersionCollectionName,
+          let: { versionId: '$versionId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $ne: ['$$versionId', null] },
+                    { $ne: ['$$versionId', undefined] },
+                    { $eq: ['$_id', '$$versionId'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                versionName: 1
+              }
+            }
+          ],
+          as: 'versionData'
+        }
+      },
+      {
+        $addFields: {
+          versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
+        }
+      },
+      {
         $project: {
           _id: 1,
           id: '$chatId',
@@ -363,6 +388,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           totalPoints: 1,
           outLinkUid: 1,
           tmbId: 1,
+          versionName: 1,
           userGoodFeedbackItems: 1,
           userBadFeedbackItems: 1,
           customFeedbackItems: 1,
@@ -439,6 +465,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
       [AppLogKeysEnum.REGION]: () => region,
+      versionName: () => doc.versionName || '',
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 

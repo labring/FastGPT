@@ -216,6 +216,7 @@
   "logs_keys_source": "Source",
   "logs_keys_title": "Title",
   "logs_keys_user": "User",
+  "logs_keys_versionName": "Version Name",
   "logs_message_total": "Total Messages",
   "logs_new_user_count": "New users",
   "logs_points": "Points Consumed",

@@ -4,6 +4,7 @@ import { ApiKeyPath } from './support/openapi';
 import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
 import { WalletPath } from './support/wallet';
+import { AppPath } from './core/app';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -13,6 +14,7 @@ export const openAPIDocument = createDocument({
     description: 'FastGPT API 文档'
   },
   paths: {
+    ...AppPath,
     ...ChatPath,
     ...ApiKeyPath,
     ...PluginPath,
@@ -20,6 +22,10 @@ export const openAPIDocument = createDocument({
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
+    {
+      name: 'Agent 应用',
+      tags: [TagsMap.appLog]
+    },
     {
       name: '对话',
       tags: [TagsMap.chatSetting, TagsMap.chatPage]
@@ -29,16 +35,17 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },
     {
-      name: '插件-管理员',
-      tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
+      name: '支付',
+      tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     },
     {
       name: 'ApiKey',
       tags: [TagsMap.apiKey]
     },
+
     {
-      name: '支付',
-      tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+      name: '管理员-插件管理',
+      tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
     }
   ]
 });

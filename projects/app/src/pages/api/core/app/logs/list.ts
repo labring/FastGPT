@@ -1,8 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { type AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
   ChatItemCollectionName,
@@ -11,7 +9,6 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
@@ -19,12 +16,20 @@ import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/con
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
+import {
+  GetAppChatLogsBodySchema,
+  GetAppChatLogsResponseSchema,
+  type getAppChatLogsResponseType
+} from '@fastgpt/global/openapi/core/app/log/api';
 
 async function handler(
-  req: ApiRequestProps<GetAppChatLogsParams>,
+  req: ApiRequestProps,
   _res: NextApiResponse
-): Promise<PaginationResponse<AppLogsListItemType>> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = req.body;
+): Promise<getAppChatLogsResponseType> {
+  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch } = GetAppChatLogsBodySchema.parse(
+    req.body
+  );
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -262,9 +267,39 @@ async function handler(
           }
         },
         {
+          $lookup: {
+            from: AppVersionCollectionName,
+            let: { versionId: '$versionId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $ne: ['$$versionId', null] },
+                      { $ne: ['$$versionId', undefined] },
+                      { $eq: ['$_id', '$$versionId'] }
+                    ]
+                  }
+                }
+              },
+              {
+                $project: {
+                  versionName: 1
+                }
+              }
+            ],
+            as: 'versionData'
+          }
+        },
+        {
+          $addFields: {
+            versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
+          }
+        },
+        {
           $project: {
-            _id: 1,
-            id: '$chatId',
+            _id: { $toString: '$_id' },
+            chatId: 1,
             title: 1,
             customTitle: 1,
             source: 1,
@@ -280,7 +315,14 @@ async function handler(
             errorCount: 1,
             totalPoints: 1,
             outLinkUid: 1,
-            tmbId: 1,
+            tmbId: {
+              $cond: {
+                if: { $eq: ['$tmbId', null] },
+                then: null,
+                else: { $toString: '$tmbId' }
+              }
+            },
+            versionName: 1,
             region: '$metadata.originIp'
           }
         }
@@ -302,16 +344,17 @@ async function handler(
     };
   });
 
+  // 获取有 tmbId 的人员
   const listWithSourceMember = await addSourceMember({
     list: listWithRegion
   });
-
+  // 获取没有 tmbId 的人员
   const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
-
-  return {
+  console.log(listWithSourceMember, 222);
+  return GetAppChatLogsResponseSchema.parse({
     list: listWithSourceMember.concat(listWithoutTmbId),
     total
-  };
+  });
 }
 
 export default NextAPI(handler);

@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../app/schema';
 import { chatCollectionName } from './constants';
+import { AppVersionCollectionName } from '../app/version/schema';
 
 const ChatSchema = new Schema({
   chatId: {
@@ -32,6 +33,10 @@ const ChatSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: AppCollectionName,
     required: true
+  },
+  versionId: {
+    type: Schema.Types.ObjectId,
+    ref: AppVersionCollectionName
   },
   createTime: {
     type: Date,
