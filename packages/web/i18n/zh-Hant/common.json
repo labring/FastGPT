@@ -981,6 +981,8 @@
   "pay.wechat": "請微信掃碼付款：{{price}}元\n\n付款完成前，請勿關閉頁面",
   "pay.wx_payment": "微信支付",
   "pay.yuan": "{{amount}} 元",
+  "pay.more_payment_methods": "更多支付方式，請",
+  "pay.click_form": "點擊表單",
   "pay_alipay_payment": "支付寶支付",
   "pay_bill": "支付",
   "pay_corporate_payment": "對公支付",

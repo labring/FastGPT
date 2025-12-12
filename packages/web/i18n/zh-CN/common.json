@@ -990,6 +990,8 @@
   "pay.wechat": "请微信扫码支付: {{price}}元\n支付完成前，请勿关闭页面",
   "pay.wx_payment": "微信支付",
   "pay.yuan": "{{amount}}元",
+  "pay.more_payment_methods": "更多支付方式，请",
+  "pay.click_form": "点击表单",
   "pay_alipay_payment": "支付宝支付",
   "pay_bill": "支付",
   "pay_corporate_payment": "对公支付",
