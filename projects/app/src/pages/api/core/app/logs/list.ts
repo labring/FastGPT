@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { PipelineStage} from '@fastgpt/service/common/mongo';
+import type { PipelineStage } from '@fastgpt/service/common/mongo';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
