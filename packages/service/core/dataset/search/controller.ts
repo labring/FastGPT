@@ -302,12 +302,34 @@ export async function searchDatasetData(
 
     let tagCollectionIdList: string[] | undefined = undefined;
     let createTimeCollectionIdList: string[] | undefined = undefined;
+    let collectionIdList: string[] | undefined = undefined;
 
     try {
       const jsonMatch =
         typeof collectionFilterMatch === 'object'
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
+
+      const formatCollectionIds = (() => {
+        const collectionIdConfig = jsonMatch?.collectionId;
+        if (collectionIdConfig === undefined || collectionIdConfig === null) return undefined;
+        if (typeof collectionIdConfig === 'string') {
+          if (collectionIdConfig.trim() === '') return undefined;
+          return [collectionIdConfig];
+        }
+        if (Array.isArray(collectionIdConfig)) {
+          if (collectionIdConfig.length === 0) return undefined;
+          return collectionIdConfig;
+        }
+        if (typeof collectionIdConfig === 'object') {
+          if ('$in' in collectionIdConfig && Array.isArray(collectionIdConfig.$in)) {
+            if (collectionIdConfig.$in.length === 0) return undefined;
+            return collectionIdConfig.$in;
+          }
+          return [];
+        }
+        return [];
+      })();
 
       const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
       const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
@@ -408,6 +430,33 @@ export async function searchDatasetData(
         tagCollectionIdList = collections.map((item) => String(item._id));
       }
 
+      // collectionId
+      if (formatCollectionIds) {
+        const validCollectionIds = formatCollectionIds
+          .filter((id) => typeof id === 'string' && Types.ObjectId.isValid(id))
+          .map((id) => String(id));
+
+        if (validCollectionIds.length === 0) return [];
+
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            _id: { $in: validCollectionIds }
+          },
+          '_id type',
+          {
+            ...readFromSecondary
+          }
+        ).lean();
+
+        if (collections.length === 0) return [];
+
+        collectionIdList = await getAllCollectionIds({
+          parentCollectionIds: collections.map((item) => String(item._id))
+        });
+      }
+
       // time
       const getCreateTime = jsonMatch?.createTime?.$gte as string | undefined;
       const lteCreateTime = jsonMatch?.createTime?.$lte as string | undefined;
@@ -429,7 +478,7 @@ export async function searchDatasetData(
       }
 
       // Concat tag and time
-      const collectionIds = (() => {
+      const tagOrTimeCollectionIds = (() => {
         if (tagCollectionIdList && createTimeCollectionIdList) {
           return tagCollectionIdList.filter((id) =>
             (createTimeCollectionIdList as string[]).includes(id)
@@ -439,9 +488,22 @@ export async function searchDatasetData(
         return tagCollectionIdList || createTimeCollectionIdList;
       })();
 
-      return await getAllCollectionIds({
-        parentCollectionIds: collectionIds
+      const tagTimeResult = await getAllCollectionIds({
+        parentCollectionIds: tagOrTimeCollectionIds
       });
+
+      if (!tagOrTimeCollectionIds && collectionIdList === undefined) return;
+
+      if (tagOrTimeCollectionIds && (tagTimeResult?.length || 0) === 0) return [];
+
+      if (collectionIdList === undefined) return tagTimeResult;
+
+      if (collectionIdList && collectionIdList.length === 0) return [];
+
+      if (!tagTimeResult) return collectionIdList;
+
+      const collectionIdSet = new Set(collectionIdList);
+      return tagTimeResult.filter((id) => collectionIdSet.has(id));
     } catch (error) {}
   };
   const embeddingRecall = async ({
@@ -769,6 +831,14 @@ export async function searchDatasetData(
       getForbidData(),
       filterCollectionByMetadata()
     ]);
+
+    if (filterCollectionIdList && filterCollectionIdList.length === 0) {
+      return {
+        tokens: 0,
+        embeddingRecallResults: [],
+        fullTextRecallResults: []
+      };
+    }
 
     const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
       embeddingRecall({
