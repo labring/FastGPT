@@ -28,7 +28,7 @@ export type ChatSchemaType = {
   teamId: string;
   tmbId: string;
   appId: string;
-  version?: string;
+  appVersionId?: string;
   createTime: Date;
   updateTime: Date;
   title: string;
