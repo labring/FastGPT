@@ -112,17 +112,22 @@ const EditForm = ({
           <IconButton
             variant={'whiteBase'}
             icon={<MyIcon name="common/backLight" w={'1rem'} />}
-            size={'smSquare'}
+            size={'xsSquare'}
             aria-label={''}
-            w={'32px'}
-            h={'32px'}
+            w={'28px'}
+            h={'28px'}
             onClick={onClose}
           />
           <Box color={'myGray.900'} flex={'1 0 0'} w={'0'} className={'textEllipsis'}>
             {name || t('app:skill_empty_name')}
           </Box>
 
-          <Button variant={'primary'} onClick={handleSubmit(onSave)}>
+          <Button
+            variant={'primaryOutline'}
+            size={'sm'}
+            leftIcon={<MyIcon name="save" w={'1rem'} />}
+            onClick={handleSubmit(onSave)}
+          >
             {t('common:Save')}
           </Button>
         </HStack>
@@ -133,6 +138,7 @@ const EditForm = ({
           </FormLabel>
           <Input
             {...register('name', { required: true })}
+            bg={'myGray.50'}
             maxLength={30}
             placeholder={t('app:skill_name_placeholder')}
           />
@@ -146,6 +152,7 @@ const EditForm = ({
             <QuestionTip label={t('app:skill_description_placeholder')} />
           </HStack>
           <Textarea
+            bg={'myGray.50'}
             rows={3}
             mt={1}
             resize={'vertical'}
