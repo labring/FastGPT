@@ -207,11 +207,10 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
   const onDelApp = useCallback(
     () =>
-      openConfirmDel(
-        deleteApp,
-        undefined,
-        t('app:confirm_del_app_tip', { name: appDetail.name })
-      )(),
+      openConfirmDel({
+        onConfirm: deleteApp,
+        customContent: t('app:confirm_del_app_tip', { name: appDetail.name })
+      })(),
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
 
