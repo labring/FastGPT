@@ -37,6 +37,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
@@ -131,31 +132,34 @@ const AIContentCard = React.memo(function AIContentCard({
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
+  const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const [showFeedbackContent, setShowFeedbackContent] = useState(false);
 
-  const styleMap: BoxProps = {
-    ...(type === ChatRoleEnum.Human
-      ? {
-          order: 0,
-          borderRadius: '8px 0 8px 8px',
-          justifyContent: 'flex-end',
-          textAlign: 'right',
-          bg: 'primary.100'
-        }
-      : {
-          order: 1,
-          borderRadius: '0 8px 8px 8px',
-          justifyContent: 'flex-start',
-          textAlign: 'left',
-          bg: 'myGray.50'
-        }),
-    fontSize: 'mini',
-    fontWeight: '400',
-    color: 'myGray.500'
-  };
-  const { t } = useTranslation();
+  const styleMap: BoxProps = useMemoEnhance(
+    () => ({
+      ...(type === ChatRoleEnum.Human
+        ? {
+            order: 0,
+            borderRadius: '8px 0 8px 8px',
+            justifyContent: 'flex-end',
+            textAlign: 'right',
+            bg: 'primary.100'
+          }
+        : {
+            order: 1,
+            borderRadius: '0 8px 8px 8px',
+            justifyContent: 'flex-start',
+            textAlign: 'left',
+            bg: 'myGray.50'
+          }),
+      fontSize: 'mini',
+      fontWeight: '400',
+      color: 'myGray.500'
+    }),
+    [type]
+  );
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
@@ -342,9 +346,8 @@ const ChatItem = (props: Props) => {
         )}
       </Flex>
 
-      {/* User Feedback Content */}
+      {/* User Feedback Content: Admin log show */}
       {isChatLog &&
-        type === ChatRoleEnum.AI &&
         showFeedbackContent &&
         chat.obj === ChatRoleEnum.AI &&
         (chat.userGoodFeedback || chat.userBadFeedback) && (

@@ -113,6 +113,7 @@ const FeedbackTypeFilter = ({
               e.stopPropagation();
               e.preventDefault();
               setFeedbackType(option.value);
+              onClose();
             }}
           >
             <Flex alignItems={'center'} gap={2}>

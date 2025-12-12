@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFeedbackIndices } from '@/web/core/chat/api';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 export const useFeedbackNavigation = ({
   appId,
@@ -31,7 +32,7 @@ export const useFeedbackNavigation = ({
     }
   );
 
-  const indices = feedbackIndices?.indices || [];
+  const indices = useMemoEnhance(() => feedbackIndices?.indices || [], [feedbackIndices?.indices]);
   const total = feedbackIndices?.total || 0;
 
   // Update currentIndex if any feedback is currently in the view
@@ -46,7 +47,7 @@ export const useFeedbackNavigation = ({
     const foundIndex = indices.findIndex((item) => loadedDataIds.has(item.dataId));
 
     setCurrentIndex(foundIndex);
-  }, [indices, chatRecords]);
+  }, [indices, chatRecords, total]);
 
   // Navigate to a specific index
   const navigateTo = useCallback(
