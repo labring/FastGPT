@@ -914,6 +914,13 @@
   "link.UnValid": "無效的連結",
   "llm_model_not_config": "偵測到沒有可用的語言模型",
   "load_failed": "載入失敗",
+  "log.feedback.bad_feedback_content": "差評內容",
+  "log.feedback.hide_feedback": "隱藏反饋",
+  "log.feedback.mark_as_read": "標為已讀",
+  "log.feedback.read": "已讀",
+  "log.feedback.show_feedback": "顯示反饋",
+  "log.navigation.next": "下一條",
+  "log.navigation.previous": "上一條",
   "logout": "登出",
   "max_quote_tokens": "引用上限",
   "max_quote_tokens_tips": "單次搜尋最大的 token 數量，中文約 1 字=1.7 tokens，英文約 1 字=1 token",
@@ -1385,11 +1392,5 @@
   "zoomin_tip": "縮小  ctrl  -",
   "zoomin_tip_mac": "縮小  ⌘  -",
   "zoomout_tip": "放大  ctrl  +",
-  "zoomout_tip_mac": "放大  ⌘  +",
-  "log.navigation.previous": "上一條",
-  "log.navigation.next": "下一條",
-  "log.feedback.read": "已讀",
-  "log.feedback.mark_as_read": "標為已讀",
-  "log.feedback.show_feedback": "顯示反饋",
-  "log.feedback.bad_feedback_content": "差評內容"
+  "zoomout_tip_mac": "放大  ⌘  +"
 }

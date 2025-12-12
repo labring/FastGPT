@@ -321,7 +321,6 @@ async function handler(
 
   // Add feedback type filtering if specified
   if (feedbackType === 'good') {
-    // 好评筛选：有好反馈
     pipeline.push({
       $match: {
         $expr: {
@@ -335,7 +334,6 @@ async function handler(
       }
     });
   } else if (feedbackType === 'bad') {
-    // 差评筛选：有差反馈
     pipeline.push({
       $match: {
         $expr: {

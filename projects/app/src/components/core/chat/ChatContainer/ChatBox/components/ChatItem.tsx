@@ -1,5 +1,5 @@
-import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -132,6 +132,8 @@ const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { isPc } = useSystem();
+
+  const [showFeedbackContent, setShowFeedbackContent] = useState(false);
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -305,7 +307,12 @@ const ChatItem = (props: Props) => {
                 }).replace('#', ':')}
               </Box>
             )}
-            <ChatController {...props} isLastChild={isLastChild} />
+            <ChatController
+              {...props}
+              isLastChild={isLastChild}
+              showFeedbackContent={showFeedbackContent}
+              onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
+            />
           </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
@@ -334,6 +341,38 @@ const ChatItem = (props: Props) => {
           </Flex>
         )}
       </Flex>
+
+      {/* User Feedback Content */}
+      {isChatLog &&
+        type === ChatRoleEnum.AI &&
+        showFeedbackContent &&
+        chat.obj === ChatRoleEnum.AI &&
+        (chat.userGoodFeedback || chat.userBadFeedback) && (
+          <Box
+            mt={2}
+            maxW={'250'}
+            border={'1px solid'}
+            borderColor={'myGray.250'}
+            borderRadius={'md'}
+            p={3}
+          >
+            <Box fontSize={'sm'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
+              {chat.userBadFeedback || chat.userGoodFeedback}
+            </Box>
+            <Flex justifyContent={'flex-end'} mt={2}>
+              <Button
+                size={'xs'}
+                variant={'ghost'}
+                fontSize={'xs'}
+                onClick={() => setShowFeedbackContent(false)}
+                color={'primary.600'}
+              >
+                {t('common:log.feedback.hide_feedback')}
+              </Button>
+            </Flex>
+          </Box>
+        )}
+
       {/* content */}
       {splitAiResponseResults.map((value, i) => (
         <Box

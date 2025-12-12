@@ -5,34 +5,28 @@ import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import type { FeedbackType } from '@/types/app';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import { useFeedbackNavigation } from '@/components/core/chat/ChatContainer/hooks/useFeedbackNavigation';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getRecordsAround } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useContextSelector } from 'use-context-selector';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type NavigationBarProps = {
   appId: string;
   chatId: string;
-  chatRecords: ChatSiteItemType[];
-  setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   onNavigate: (dataId: string) => void;
-  refreshTrigger: number;
+  refreshTrigger: boolean;
 };
 
-const NavigationBar = ({
-  appId,
-  chatId,
-  chatRecords,
-  setChatRecords,
-  onNavigate,
-  refreshTrigger
-}: NavigationBarProps) => {
+const NavigationBar = ({ appId, chatId, onNavigate, refreshTrigger }: NavigationBarProps) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const [isNavigating, setIsNavigating] = useState(false);
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('all');
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
 
   const { currentIndex, total, loading, hasPrev, hasNext, navigateToPrev, navigateToNext } =
     useFeedbackNavigation({
@@ -43,6 +37,32 @@ const NavigationBar = ({
       unreadOnly,
       refreshTrigger
     });
+
+  const { runAsync: loadRecordsAround, loading: isLoadingRecords } = useRequest2(
+    async (targetDataId: string) =>
+      await getRecordsAround({
+        appId,
+        chatId,
+        targetDataId
+      }),
+
+    {
+      manual: true,
+      onSuccess: (result, params) => {
+        const newRecords = result.records.map((item) => ({
+          ...item,
+          dataId: item.dataId || getNanoid(),
+          status: ChatStatusEnum.finish
+        })) as ChatSiteItemType[];
+
+        setChatRecords(newRecords);
+
+        setTimeout(() => {
+          onNavigate(params[0]);
+        }, 100);
+      }
+    }
+  );
 
   const handleNavigate = useCallback(
     async (direction: 'prev' | 'next') => {
@@ -55,44 +75,10 @@ const NavigationBar = ({
       if (isLoaded) {
         onNavigate(targetDataId);
       } else {
-        setIsNavigating(true);
-        try {
-          const result = await getRecordsAround({
-            appId,
-            chatId,
-            targetDataId,
-            contextSize: 10
-          });
-
-          const newRecords = result.records.map((item) => ({
-            ...item,
-            dataId: item.dataId || getNanoid(),
-            status: ChatStatusEnum.finish
-          })) as ChatSiteItemType[];
-
-          setChatRecords(newRecords);
-
-          setTimeout(() => {
-            onNavigate(targetDataId);
-          }, 100);
-        } catch (error) {
-          console.error('Failed to load records:', error);
-        } finally {
-          setIsNavigating(false);
-        }
+        await loadRecordsAround(targetDataId);
       }
     },
-    [
-      navigateToPrev,
-      navigateToNext,
-      chatRecords,
-      onNavigate,
-      appId,
-      chatId,
-      setChatRecords,
-      toast,
-      t
-    ]
+    [navigateToPrev, navigateToNext, chatRecords, onNavigate, loadRecordsAround]
   );
 
   return (
@@ -115,8 +101,8 @@ const NavigationBar = ({
             variant={'outline'}
             w={150}
             onClick={() => handleNavigate('prev')}
-            isDisabled={!hasPrev || loading || isNavigating}
-            isLoading={loading || isNavigating}
+            isDisabled={!hasPrev || loading || isLoadingRecords}
+            isLoading={loading || isLoadingRecords}
           >
             {t('common:log.navigation.previous')}
           </Button>
@@ -125,8 +111,8 @@ const NavigationBar = ({
             variant={'outline'}
             w={150}
             onClick={() => handleNavigate('next')}
-            isDisabled={!hasNext || loading || isNavigating}
-            isLoading={loading || isNavigating}
+            isDisabled={!hasNext || loading || isLoadingRecords}
+            isLoading={loading || isLoadingRecords}
           >
             {t('common:log.navigation.next')}
           </Button>

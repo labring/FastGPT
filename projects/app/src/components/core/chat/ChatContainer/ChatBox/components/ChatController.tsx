@@ -1,17 +1,5 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import {
-  Flex,
-  type FlexProps,
-  Box,
-  Button,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Flex, type FlexProps, Box, Button } from '@chakra-ui/react';
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
@@ -25,7 +13,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { updateFeedbackReadStatus } from '@/web/core/chat/api';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -37,6 +25,8 @@ export type ChatControllerProps = {
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
   onTriggerRefresh?: () => void;
+  showFeedbackContent?: boolean;
+  onToggleFeedbackContent?: () => void;
 };
 
 const controlIconStyle = {
@@ -60,11 +50,12 @@ const ChatController = ({
   onDelete,
   onAddUserDislike,
   onAddUserLike,
-  onTriggerRefresh
+  onTriggerRefresh,
+  showFeedbackContent,
+  onToggleFeedbackContent
 }: ChatControllerProps & FlexProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { toast } = useToast();
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
@@ -84,18 +75,12 @@ const ChatController = ({
 
   const isLogMode = chatType === 'log';
 
-  const {
-    isOpen: isBadFeedbackOpen,
-    onOpen: onBadFeedbackOpen,
-    onClose: onBadFeedbackClose
-  } = useDisclosure();
+  const { runAsync: handleToggleFeedbackReadStatus } = useRequest2(
+    async (currentReadStatus: boolean | undefined) => {
+      if (!appId || !chatId || !chat.dataId) return;
 
-  const handleToggleFeedbackReadStatus = async (currentReadStatus: boolean | undefined) => {
-    if (!appId || !chatId || !chat.dataId) return;
+      const newReadStatus = !currentReadStatus;
 
-    const newReadStatus = !currentReadStatus;
-
-    try {
       await updateFeedbackReadStatus({
         appId,
         chatId,
@@ -103,24 +88,27 @@ const ChatController = ({
         isRead: newReadStatus
       });
 
-      // 更新本地状态
-      setChatRecords?.((prev) =>
-        prev.map((item) =>
-          item.dataId === chat.dataId
-            ? {
-                ...item,
-                isFeedbackRead: newReadStatus
-              }
-            : item
-        )
-      );
+      return { newReadStatus };
+    },
+    {
+      onSuccess: (res) => {
+        if (!res) return;
 
-      // 触发反馈索引更新检查
-      onTriggerRefresh?.();
-    } catch (error) {
-      onTriggerRefresh?.();
+        setChatRecords?.((prev) =>
+          prev.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: res.newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      }
     }
-  };
+  );
 
   return (
     <>
@@ -378,36 +366,23 @@ const ChatController = ({
                     {t('common:log.feedback.mark_as_read')}
                   </Button>
                 )}
-                <Button
-                  size={'xs'}
-                  variant={'ghost'}
-                  fontSize={'xs'}
-                  h={'22px'}
-                  onClick={onBadFeedbackOpen}
-                  color={'primary.600'}
-                >
-                  {t('common:log.feedback.show_feedback')}
-                </Button>
+                {onToggleFeedbackContent && !showFeedbackContent && (
+                  <Button
+                    size={'xs'}
+                    variant={'ghost'}
+                    fontSize={'xs'}
+                    h={'22px'}
+                    onClick={onToggleFeedbackContent}
+                    color={'primary.600'}
+                  >
+                    {t('common:log.feedback.show_feedback')}
+                  </Button>
+                )}
               </>
             )}
           </>
         )}
       </Flex>
-
-      {isLogMode && chat.obj === ChatRoleEnum.AI && !!chat.userBadFeedback && (
-        <Modal isOpen={isBadFeedbackOpen} onClose={onBadFeedbackClose} size={'md'}>
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>{t('common:log.feedback.bad_feedback_content')}</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody pb={6}>
-              <Box fontSize={'sm'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
-                {chat.userBadFeedback}
-              </Box>
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      )}
     </>
   );
 };

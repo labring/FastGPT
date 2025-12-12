@@ -36,10 +36,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const triggerRefresh = useCallback(() => {
-    setRefreshTrigger((prev) => prev + 1);
-  }, []);
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -49,7 +46,6 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const { data: chat } = useRequest2(
@@ -184,7 +180,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
                   showMarkIcon
                   showVoiceIcon={false}
                   chatType={ChatTypeEnum.log}
-                  onTriggerRefresh={triggerRefresh}
+                  onTriggerRefresh={() => setRefreshTrigger((prev) => !prev)}
                 />
               )}
             </Box>
@@ -214,8 +210,6 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
           <NavigationBar
             appId={appId}
             chatId={chatId}
-            chatRecords={chatRecords}
-            setChatRecords={setChatRecords}
             onNavigate={handleScrollToChatItem}
             refreshTrigger={refreshTrigger}
           />
