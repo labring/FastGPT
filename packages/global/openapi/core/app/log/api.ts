@@ -88,6 +88,10 @@ export const GetAppChatLogsBodySchema = PaginationSchema.safeExtend({
   chatSearch: z.string().optional().meta({
     example: 'hello',
     description: '对话内容搜索关键词'
+  }),
+  feedbackType: z.enum(['all', 'good', 'bad']).optional().meta({
+    example: 'good',
+    description: '反馈类型'
   })
 });
 export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;

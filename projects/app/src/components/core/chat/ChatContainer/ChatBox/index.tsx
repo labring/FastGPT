@@ -24,7 +24,8 @@ import {
   closeCustomFeedback,
   delChatRecordById,
   updateChatAdminFeedback,
-  updateChatUserFeedback
+  updateChatUserFeedback,
+  updateFeedbackReadStatus
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -99,6 +100,7 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    onTriggerRefresh?: () => void;
   };
 
 const ChatBox = ({
@@ -110,7 +112,8 @@ const ChatBox = ({
   active = true,
   showWorkorder,
   onStartChat,
-  chatType
+  chatType,
+  onTriggerRefresh
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -883,6 +886,36 @@ const ChatBox = ({
       }
     };
   });
+  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
+    return async () => {
+      if (!appId || !chatId || !chat.dataId) return;
+
+      const newReadStatus = !chat.isFeedbackRead;
+
+      try {
+        await updateFeedbackReadStatus({
+          appId,
+          chatId,
+          dataId: chat.dataId,
+          isRead: newReadStatus
+        });
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      } catch (error) {}
+    };
+  });
 
   const showEmpty = useMemo(
     () =>
@@ -1067,9 +1100,8 @@ const ChatBox = ({
                       formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
                     ),
                     onAddUserLike: onAddUserLike(item),
-                    onCloseUserLike: onCloseUserLike(item),
                     onAddUserDislike: onAddUserDislike(item),
-                    onReadUserDislike: onReadUserDislike(item)
+                    onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                   }}
                 >
                   {/* custom feedback */}
@@ -1124,9 +1156,8 @@ const ChatBox = ({
     questionGuides,
     onMark,
     onAddUserLike,
-    onCloseUserLike,
     onAddUserDislike,
-    onReadUserDislike,
+    onToggleFeedbackReadStatus,
     t,
     showMarkIcon,
     onCloseCustomFeedback

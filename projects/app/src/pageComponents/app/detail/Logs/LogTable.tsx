@@ -47,6 +47,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
+import FeedbackTypeFilter from './FeedbackTypeFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -70,6 +71,7 @@ const LogTable = ({
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
+  const [feedbackType, setFeedbackType] = useState<'all' | 'good' | 'bad'>('all');
 
   // source
   const sourceList = useMemo(
@@ -180,7 +182,8 @@ const LogTable = ({
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-      chatSearch
+      chatSearch,
+      feedbackType
     }),
     [
       appId,
@@ -190,7 +193,8 @@ const LogTable = ({
       isSelectAllSource,
       selectTmbIds,
       isSelectAllTmb,
-      chatSearch
+      chatSearch,
+      feedbackType
     ]
   );
 
@@ -228,7 +232,22 @@ const LogTable = ({
       [AppLogKeysEnum.MESSAGE_COUNT]: (
         <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
       ),
-      [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
+      [AppLogKeysEnum.FEEDBACK]: (
+        <Th key={AppLogKeysEnum.FEEDBACK}>
+          <FeedbackTypeFilter
+            feedbackType={feedbackType}
+            setFeedbackType={setFeedbackType}
+            menuButtonProps={{
+              fontSize: '12.8px',
+              fontWeight: 'medium',
+              color: 'myGray.600',
+              px: 0,
+              _hover: {},
+              _active: {}
+            }}
+          />
+        </Th>
+      ),
       [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
         <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>
           {t('common:core.app.feedback.Custom feedback')}
@@ -253,7 +272,7 @@ const LogTable = ({
         <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
       )
     }),
-    [t]
+    [t, feedbackType, setFeedbackType]
   );
 
   const getCellRenderMap = (item: AppLogsListItemType) => ({
@@ -297,39 +316,22 @@ const LogTable = ({
     ),
     [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
     [AppLogKeysEnum.FEEDBACK]: (
-      <Td key={AppLogKeysEnum.FEEDBACK} w={'100px'}>
-        {!!item?.userGoodFeedbackCount && (
-          <Flex
-            mb={item?.userGoodFeedbackCount ? 1 : 0}
-            bg={'green.100'}
-            color={'green.600'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.600'} w={'14px'} />
-            {item.userGoodFeedbackCount}
-          </Flex>
-        )}
-        {!!item?.userBadFeedbackCount && (
-          <Flex
-            bg={'#FFF2EC'}
-            color={'#C96330'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'#C96330'} w={'14px'} />
-            {item.userBadFeedbackCount}
-          </Flex>
-        )}
-        {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+      <Td key={AppLogKeysEnum.FEEDBACK}>
+        <Flex gap={3} px={1}>
+          {!!item?.userGoodFeedbackCount && (
+            <Flex alignItems={'center'}>
+              <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.500'} w={4} />
+              {item.userGoodFeedbackCount}
+            </Flex>
+          )}
+          {!!item?.userBadFeedbackCount && (
+            <Flex alignItems={'center'}>
+              <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'yellow.500'} w={4} />
+              {item.userBadFeedbackCount}
+            </Flex>
+          )}
+          {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+        </Flex>
       </Td>
     ),
     [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
