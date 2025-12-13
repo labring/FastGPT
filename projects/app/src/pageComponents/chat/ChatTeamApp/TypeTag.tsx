@@ -38,6 +38,12 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '',
       color: ''
     },
+    [AppTypeEnum.assistant]: {
+      label: t('app:type.Smart customer service'),
+      icon: 'core/app/type/simple',
+      bg: '#FFF5E6',
+      color: '#FF8A00'
+    },
     [AppTypeEnum.tool]: undefined,
     [AppTypeEnum.folder]: undefined,
     [AppTypeEnum.hidden]: undefined

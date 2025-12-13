@@ -15,8 +15,8 @@
         "avatar": "core/workflow/template/systemConfig",
         "flowNodeType": "userGuide",
         "position": {
-          "x": -83.21188516590976,
-          "y": -455.6131256516957
+          "x": -67.28076977067361,
+          "y": -598.1403417187121
         },
         "version": "481",
         "inputs": [
@@ -36,7 +36,7 @@
           },
           {
             "key": "questionGuide",
-            "valueType": "object",
+            "valueType": "any",
             "renderTypeList": ["hidden"],
             "label": "core.app.Question Guide",
             "value": {
@@ -80,8 +80,8 @@
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "workflowStart",
         "position": {
-          "x": 481.30634687244265,
-          "y": -501.97057002072324
+          "x": 3.719230229326385,
+          "y": -1272.140341718712
         },
         "version": "481",
         "inputs": [
@@ -107,6 +107,43 @@
         ]
       },
       {
+        "nodeId": "variableUpdateNodeId",
+        "name": "问答配置",
+        "intro": "可以更新指定节点的输出值或更新全局变量",
+        "avatar": "core/workflow/template/variableUpdate",
+        "flowNodeType": "variableUpdate",
+        "showStatus": false,
+        "position": {
+          "x": 494.7192302293264,
+          "y": -1192.140341718712
+        },
+        "inputs": [
+          {
+            "key": "updateList",
+            "valueType": "any",
+            "label": "",
+            "renderTypeList": ["hidden"],
+            "value": [
+              {
+                "variable": ["VARIABLE_NODE_ID", "byG7WNk4"],
+                "value": ["", "抱歉,我没有找到答案,您可以尝试重新提问,我也会帮您反馈给相关团队。"],
+                "valueType": "string",
+                "renderType": "input"
+              },
+              {
+                "variable": ["VARIABLE_NODE_ID", "utjZSg8f"],
+                "value": ["", "llm-summary"],
+                "renderType": "input",
+                "valueType": "string"
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
         "nodeId": "iKBoX2vIzETU",
         "name": "知识库搜索",
         "intro": "调用语义检索、全文检索、数据库检索能力,从知识库中查找可能与问题相关的参考内容",
@@ -114,8 +151,8 @@
         "flowNodeType": "datasetSearchNode",
         "showStatus": true,
         "position": {
-          "x": 1181.4000948777586,
-          "y": -1041.7929020914667
+          "x": 1060.7192302293263,
+          "y": -1315.640341718712
         },
         "version": "4.9.2",
         "inputs": [
@@ -256,7 +293,8 @@
             "isPro": true,
             "description": "workflow:filter_description",
             "debugLabel": "",
-            "toolDescription": ""
+            "toolDescription": "",
+            "selectedTypeIndex": 1
           },
           {
             "key": "generateSqlModel",
@@ -292,14 +330,14 @@
       },
       {
         "nodeId": "qaFDoVSH4WcXMZPO",
-        "name": "判断器",
-        "intro": "根据一定的条件,执行不同的分支",
+        "name": "是否启用兜底回复",
+        "intro": "根据一定的条件,执行不同的分支。",
         "avatar": "core/workflow/template/ifelse",
         "flowNodeType": "ifElseNode",
         "showStatus": true,
         "position": {
-          "x": 2277.985028019776,
-          "y": -1299.563387920271
+          "x": 1846.7192302293263,
+          "y": -1165.140341718712
         },
         "inputs": [
           {
@@ -337,13 +375,13 @@
       },
       {
         "nodeId": "vprtN0xvK1dV0c6M",
-        "name": "指定回复",
-        "intro": "该模块可以直接回复一段指定的内容,常用于引导、提示,非字符串内容传入时会转成字符串进行输出",
+        "name": "兜底回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时,会转成字符串进行输出。",
         "avatar": "core/workflow/template/reply",
         "flowNodeType": "answerNode",
         "position": {
-          "x": 3281.4085684466586,
-          "y": -1344.9921952365255
+          "x": 2683.7192302293265,
+          "y": -1426.390341718712
         },
         "inputs": [
           {
@@ -363,52 +401,6 @@
         "outputs": []
       },
       {
-        "nodeId": "zPMaGZJTcmh6qjx2",
-        "name": "判断器#2",
-        "intro": "根据一定的条件,执行不同的分支",
-        "avatar": "core/workflow/template/ifelse",
-        "flowNodeType": "ifElseNode",
-        "showStatus": true,
-        "position": {
-          "x": 3067.066917987494,
-          "y": -837.539310501848
-        },
-        "inputs": [
-          {
-            "key": "ifElseList",
-            "renderTypeList": ["hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": [
-              {
-                "condition": "AND",
-                "list": [
-                  {
-                    "variable": ["VARIABLE_NODE_ID", "utjZSg8f"],
-                    "condition": "equalTo",
-                    "value": "llm-summary",
-                    "valueType": "input"
-                  }
-                ]
-              }
-            ],
-            "debugLabel": "",
-            "toolDescription": ""
-          }
-        ],
-        "outputs": [
-          {
-            "id": "ifElseResult",
-            "key": "ifElseResult",
-            "label": "workflow:judgment_result",
-            "valueType": "string",
-            "type": "static",
-            "valueDesc": "",
-            "description": ""
-          }
-        ]
-      },
-      {
         "nodeId": "7BdojPlukIQw",
         "name": "AI 对话",
         "intro": "AI 大模型对话",
@@ -416,8 +408,8 @@
         "flowNodeType": "chatNode",
         "showStatus": true,
         "position": {
-          "x": 4430.42738186963,
-          "y": -837.539310501848
+          "x": 2754.7192302293265,
+          "y": -1123.390341718712
         },
         "version": "4.9.7",
         "inputs": [
@@ -538,7 +530,8 @@
             "description": "common:core.app.tip.systemPromptTip",
             "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
             "debugLabel": "",
-            "toolDescription": ""
+            "toolDescription": "",
+            "value": ""
           },
           {
             "key": "history",
@@ -632,8 +625,14 @@
     "edges": [
       {
         "source": "workflowStartNodeId",
-        "target": "iKBoX2vIzETU",
+        "target": "variableUpdateNodeId",
         "sourceHandle": "workflowStartNodeId-source-right",
+        "targetHandle": "variableUpdateNodeId-target-left"
+      },
+      {
+        "source": "variableUpdateNodeId",
+        "target": "iKBoX2vIzETU",
+        "sourceHandle": "variableUpdateNodeId-source-right",
         "targetHandle": "iKBoX2vIzETU-target-left"
       },
       {
@@ -650,14 +649,8 @@
       },
       {
         "source": "qaFDoVSH4WcXMZPO",
-        "target": "zPMaGZJTcmh6qjx2",
-        "sourceHandle": "qaFDoVSH4WcXMZPO-source-ELSE",
-        "targetHandle": "zPMaGZJTcmh6qjx2-target-left"
-      },
-      {
-        "source": "zPMaGZJTcmh6qjx2",
         "target": "7BdojPlukIQw",
-        "sourceHandle": "zPMaGZJTcmh6qjx2-source-IF",
+        "sourceHandle": "qaFDoVSH4WcXMZPO-source-ELSE",
         "targetHandle": "7BdojPlukIQw-target-left"
       }
     ],
@@ -667,30 +660,32 @@
           "key": "byG7WNk4",
           "label": "fallbackReply",
           "type": "input",
-          "description": "兜底回复",
-          "required": true,
+          "description": "兜底回复内容",
+          "required": false,
           "valueType": "string",
-          "defaultValue": "抱歉,我没有找到答案,您可以尝试重新提问,我也会帮您反馈给相关团队。",
-          "maxLength": 4000
+          "defaultValue": "",
+          "maxLength": "",
+          "icon": "core/workflow/inputType/input"
         },
         {
           "key": "utjZSg8f",
           "label": "faqAnswerMode",
           "type": "select",
-          "description": "FAQ 回答模式",
-          "required": true,
+          "description": "FAQ知识回答配置",
+          "required": false,
           "valueType": "string",
           "list": [
             {
               "value": "quote",
-              "label": "直接引用"
+              "label": "quote"
             },
             {
-              "label": "LLM 总结",
+              "label": "llm-summary",
               "value": "llm-summary"
             }
           ],
-          "defaultValue": "quote"
+          "defaultValue": "",
+          "icon": "core/workflow/inputType/option"
         }
       ],
       "scheduledTriggerConfig": {

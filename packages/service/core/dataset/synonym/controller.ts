@@ -106,7 +106,7 @@ export async function parseSynonymCSV(fileContent: string): Promise<ParsedSynony
           reject(error);
         }
       },
-      error: (error) => {
+      error: (error: Error) => {
         reject(new Error(DatasetErrEnum.synonymFileParseFailed));
       }
     });
@@ -122,7 +122,6 @@ export async function parseSynonymCSV(fileContent: string): Promise<ParsedSynony
 export function parseExcelToCSV(buffer: Buffer): string {
   // 解析Excel文件，只读取第一个sheet
   const sheets = xlsx.parse(buffer, {
-    skipHidden: false,
     defval: ''
   });
 
@@ -160,7 +159,7 @@ export async function readSynonymFileFromGridFS(fileId: string): Promise<string>
     fileId
   });
 
-  const buffer = await gridFsStream2Buffer(fileStream);
+  const buffer = await gridFsStream2Buffer(fileStream as unknown as NodeJS.ReadableStream);
 
   // 检测并处理BOM (Byte Order Mark)
   let offset = 0;
