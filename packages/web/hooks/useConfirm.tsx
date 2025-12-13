@@ -50,12 +50,12 @@ export const useConfirm = (props?: {
     content,
     showCancel = true,
     hideFooter = false,
-    inputConfirmText
+    inputConfirmText: initialInputConfirmText
   } = props || {};
   const [customContent, setCustomContent] = useState<string | React.ReactNode>(content);
   const [customContentInputConfirmText, setCustomContentInputConfirmText] = useState<
     string | undefined
-  >(inputConfirmText);
+  >(initialInputConfirmText);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -78,7 +78,7 @@ export const useConfirm = (props?: {
       cancelCb.current = onCancel;
 
       setCustomContent(customContent || content);
-      setCustomContentInputConfirmText(inputConfirmText || inputConfirmText);
+      setCustomContentInputConfirmText(inputConfirmText || initialInputConfirmText);
 
       return onOpen;
     }
