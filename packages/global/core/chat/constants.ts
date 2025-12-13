@@ -95,3 +95,10 @@ export enum ChatStatusEnum {
   running = 'running',
   finish = 'finish'
 }
+
+export enum FeedbackFilterEnum {
+  all = 'all',
+  good = 'good',
+  bad = 'bad',
+  noFeedback = 'noFeedback'
+}

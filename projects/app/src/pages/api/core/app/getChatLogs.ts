@@ -14,6 +14,7 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -25,7 +26,8 @@ async function handler(
     dateEnd = new Date(),
     sources,
     tmbIds,
-    chatSearch
+    chatSearch,
+    feedbackFilter = FeedbackFilterEnum.all
   } = req.body as GetAppChatLogsParams;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
@@ -125,6 +127,11 @@ async function handler(
                       ]
                     }
                   },
+                  correctedCount: {
+                    $sum: {
+                      $cond: [{ $ifNull: ['$correctionStatus', false] }, 1, 0]
+                    }
+                  },
                   totalResponseTime: {
                     $sum: {
                       $cond: [{ $eq: ['$obj', 'AI'] }, { $ifNull: ['$durationSeconds', 0] }, 0]
@@ -187,6 +194,9 @@ async function handler(
               $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
             markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+            correctionCount: {
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.correctedCount', 0] }, 0]
+            },
             averageResponseTime: {
               $cond: [
                 {
@@ -205,6 +215,24 @@ async function handler(
             totalPoints: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPoints', 0] }, 0] }
           }
         },
+        // Filter by feedback type
+        ...(feedbackFilter !== FeedbackFilterEnum.all
+          ? [
+              {
+                $match:
+                  feedbackFilter === FeedbackFilterEnum.good
+                    ? { userGoodFeedbackCount: { $gt: 0 } }
+                    : feedbackFilter === FeedbackFilterEnum.bad
+                      ? { userBadFeedbackCount: { $gt: 0 } }
+                      : feedbackFilter === FeedbackFilterEnum.noFeedback
+                        ? {
+                            userGoodFeedbackCount: { $eq: 0 },
+                            userBadFeedbackCount: { $eq: 0 }
+                          }
+                        : {}
+              }
+            ]
+          : []),
         {
           $project: {
             _id: 1,
@@ -220,6 +248,7 @@ async function handler(
             userBadFeedbackCount: 1,
             customFeedbacksCount: 1,
             markCount: 1,
+            correctionCount: 1,
             averageResponseTime: 1,
             errorCount: 1,
             totalPoints: 1,

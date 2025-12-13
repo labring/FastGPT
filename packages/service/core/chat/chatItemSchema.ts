@@ -10,6 +10,7 @@ import {
 import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ChatCorrectionCollectionName } from './correction/schema';
 
 export const ChatItemCollectionName = 'chatitems';
 
@@ -79,7 +80,12 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
-  durationSeconds: Number
+  durationSeconds: Number,
+  correctionStatus: Boolean,
+  correctionId: {
+    type: Schema.Types.ObjectId,
+    ref: ChatCorrectionCollectionName
+  }
 });
 
 try {

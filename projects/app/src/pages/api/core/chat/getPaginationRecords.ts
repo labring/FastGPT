@@ -4,7 +4,6 @@ import { type GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -17,18 +16,33 @@ import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
+import { getPaginationChatItems } from '@fastgpt/service/core/chat/controller';
 
 export type getPaginationRecordsQuery = {};
 
-export type getPaginationRecordsBody = PaginationProps & GetChatRecordsProps;
+export type getPaginationRecordsBody = PaginationProps &
+  GetChatRecordsProps & {
+    chatLogsFilter?: `${ChatLogsFilterEnum}`;
+  };
 
-export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
+export type getPaginationRecordsResponse = PaginationResponse<ChatItemType> & {
+  goodTotal?: number;
+  badTotal?: number;
+  notFoundTotal?: number;
+};
 
 async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   _res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const { appId, chatId, loadCustomFeedbacks, type = GetChatTypeEnum.normal } = req.body;
+  const {
+    appId,
+    chatId,
+    loadCustomFeedbacks,
+    type = GetChatTypeEnum.normal,
+    chatLogsFilter = ChatLogsFilterEnum.all
+  } = req.body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
 
@@ -56,7 +70,7 @@ async function handler(
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
   const commonField =
-    'dataId obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
+    'dataId obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg correctionStatus correctionId';
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${
       DispatchNodeResponseKeyEnum.nodeResponse
@@ -66,17 +80,21 @@ async function handler(
     [GetChatTypeEnum.home]: `${commonField} ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
 
-  const { total, histories } = await getChatItems({
+  // Call controller function to get paginated chat items
+  const { histories, total, goodTotal, badTotal, notFoundTotal } = await getPaginationChatItems({
     appId,
     chatId,
-    field: fieldMap[type],
     offset,
-    limit: pageSize
+    pageSize,
+    field: fieldMap[type],
+    chatLogsFilter
   });
+
+  let filteredHistories = histories;
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.plugin) {
-    histories.forEach((item) => {
+    filteredHistories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           flowResponses: item.responseData,
@@ -90,7 +108,7 @@ async function handler(
     });
   }
   if (!responseDetail) {
-    histories.forEach((item) => {
+    filteredHistories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
       }
@@ -98,8 +116,13 @@ async function handler(
   }
 
   return {
-    list: isPlugin ? histories : transformPreviewHistories(histories, responseDetail),
-    total
+    list: isPlugin
+      ? filteredHistories
+      : transformPreviewHistories(filteredHistories, responseDetail),
+    total,
+    goodTotal,
+    badTotal,
+    notFoundTotal
   };
 }
 

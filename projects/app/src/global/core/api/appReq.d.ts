@@ -1,4 +1,4 @@
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceEnum, FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { PaginationProps } from '@fastgpt/web/common/fetch/type';
 
@@ -9,6 +9,11 @@ export type GetAppChatLogsProps = {
   sources?: ChatSourceEnum[];
   tmbIds?: string[];
   chatSearch?: string;
+  feedbackFilter?: `${FeedbackFilterEnum}`;
 };
 
 export type GetAppChatLogsParams = PaginationProps<GetAppChatLogsProps>;
+
+export type GetAppDatasetCollectionParams = {
+  appId: string;
+};
