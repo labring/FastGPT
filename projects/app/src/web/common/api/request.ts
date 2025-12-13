@@ -12,6 +12,7 @@ import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
+import { safeEncodeURIComponent } from '@/web/common/utils/uri';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -134,7 +135,9 @@ function responseError(err: any) {
     if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
       clearToken();
       window.location.replace(
-        getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
+        getWebReqUrl(
+          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+        )
       );
     }
 

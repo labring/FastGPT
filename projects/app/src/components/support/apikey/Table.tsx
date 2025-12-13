@@ -220,7 +220,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                             label: t('common:Delete'),
                             icon: 'delete',
                             type: 'danger',
-                            onClick: () => openConfirm(() => onclickRemove(_id))()
+                            onClick: () => openConfirm({ onConfirm: () => onclickRemove(_id) })()
                           }
                         ]
                       }

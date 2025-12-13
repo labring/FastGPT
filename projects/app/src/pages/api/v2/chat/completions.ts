@@ -20,7 +20,11 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import {
+  type Props as SaveChatProps,
+  saveChat,
+  updateInteractiveChat
+} from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -233,7 +237,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get and concat history;
     const limit = getMaxHistoryLimitFromNodes(app.modules);
-    const [{ histories }, { nodes, edges, chatConfig }, chatDetail] = await Promise.all([
+    const [{ histories }, { versionId, nodes, edges, chatConfig }, chatDetail] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
@@ -351,9 +355,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     const saveChatId = chatId || getNanoid(24);
-    const params = {
+    const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,
+      versionId,
       teamId,
       tmbId: tmbId,
       nodes,

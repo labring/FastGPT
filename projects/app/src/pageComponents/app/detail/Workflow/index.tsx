@@ -36,8 +36,13 @@ const WorkflowEdit = () => {
 
   useMount(() => {
     if (!isV2Workflow) {
-      openConfirm(() => {
-        initData(JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))), true);
+      openConfirm({
+        onConfirm: () => {
+          initData(
+            JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))),
+            true
+          );
+        }
       })();
     } else {
       initData(

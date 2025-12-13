@@ -96,7 +96,7 @@ const List = () => {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm(async () => onPutAppById(dragId, { parentId: targetId }))();
+      openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
     }
   });
 
@@ -397,7 +397,9 @@ const List = () => {
                                           type: 'grayBg' as MenuItemType,
                                           label: t('app:copy_one_app'),
                                           onClick: () =>
-                                            openConfirmCopy(() => onclickCopy({ appId: app._id }))()
+                                            openConfirmCopy({
+                                              onConfirm: () => onclickCopy({ appId: app._id })
+                                            })()
                                         }
                                       ]
                                     }
@@ -411,13 +413,14 @@ const List = () => {
                                           icon: 'delete',
                                           label: t('common:Delete'),
                                           onClick: () =>
-                                            openConfirmDel(
-                                              () => onclickDelApp(app._id),
-                                              undefined,
-                                              app.type === AppTypeEnum.folder
-                                                ? t('app:confirm_delete_folder_tip')
-                                                : t('app:confirm_del_app_tip', { name: app.name })
-                                            )()
+                                            openConfirmDel({
+                                              onConfirm: () => onclickDelApp(app._id),
+                                              inputConfirmText: app.name,
+                                              customContent:
+                                                app.type === AppTypeEnum.folder
+                                                  ? t('app:confirm_delete_folder_tip')
+                                                  : t('app:confirm_del_app_tip')
+                                            })()
                                         }
                                       ]
                                     }
@@ -499,8 +502,11 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    appType !== 'all' && appType in createAppTypeMap
+      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
+      : router.pathname.includes('/agent')
+        ? AppTypeEnum.workflow
+        : AppTypeEnum.workflowTool;
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -571,8 +577,11 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    appType !== 'all' && appType in createAppTypeMap
+      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
+      : router.pathname.includes('/agent')
+        ? AppTypeEnum.workflow
+        : AppTypeEnum.workflowTool;
 
   return (
     <MyBox

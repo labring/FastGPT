@@ -188,7 +188,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                       label: t('common:Delete'),
                                       icon: 'delete',
                                       onClick: () => {
-                                        openDeleteGroupModal(() => delDeleteGroup(group._id))();
+                                        openDeleteGroupModal({
+                                          onConfirm: () => delDeleteGroup(group._id)
+                                        })();
                                       },
                                       type: 'danger' as MenuItemType
                                     }

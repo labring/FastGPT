@@ -1,6 +1,7 @@
 import type { OpenAPIPath } from '../../type';
 import { ChatSettingPath } from './setting';
 import { ChatFavouriteAppPath } from './favourite/index';
+import { ChatFeedbackPath } from './feedback/index';
 import { z } from 'zod';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
 import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from '../../../core/chat/api';
@@ -9,6 +10,7 @@ import { TagsMap } from '../../tag';
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
+  ...ChatFeedbackPath,
 
   '/core/chat/presignChatFileGetUrl': {
     post: {

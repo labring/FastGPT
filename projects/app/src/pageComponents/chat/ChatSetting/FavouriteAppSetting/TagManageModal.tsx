@@ -65,8 +65,10 @@ const EditableTagItem = React.memo(function EditableTagItem({
   });
 
   const handleConfirmDelete = useCallback(() => {
-    openConfirm(() => {
-      onConfirmDelete(tag);
+    openConfirm({
+      onConfirm: () => {
+        onConfirmDelete(tag);
+      }
     })();
   }, [openConfirm, onConfirmDelete, tag]);
 

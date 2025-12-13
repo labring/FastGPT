@@ -1,5 +1,5 @@
-import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -37,6 +37,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
@@ -131,29 +132,34 @@ const AIContentCard = React.memo(function AIContentCard({
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
+  const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const styleMap: BoxProps = {
-    ...(type === ChatRoleEnum.Human
-      ? {
-          order: 0,
-          borderRadius: '8px 0 8px 8px',
-          justifyContent: 'flex-end',
-          textAlign: 'right',
-          bg: 'primary.100'
-        }
-      : {
-          order: 1,
-          borderRadius: '0 8px 8px 8px',
-          justifyContent: 'flex-start',
-          textAlign: 'left',
-          bg: 'myGray.50'
-        }),
-    fontSize: 'mini',
-    fontWeight: '400',
-    color: 'myGray.500'
-  };
-  const { t } = useTranslation();
+  const [showFeedbackContent, setShowFeedbackContent] = useState(false);
+
+  const styleMap: BoxProps = useMemoEnhance(
+    () => ({
+      ...(type === ChatRoleEnum.Human
+        ? {
+            order: 0,
+            borderRadius: '8px 0 8px 8px',
+            justifyContent: 'flex-end',
+            textAlign: 'right',
+            bg: 'primary.100'
+          }
+        : {
+            order: 1,
+            borderRadius: '0 8px 8px 8px',
+            justifyContent: 'flex-start',
+            textAlign: 'left',
+            bg: 'myGray.50'
+          }),
+      fontSize: 'mini',
+      fontWeight: '400',
+      color: 'myGray.500'
+    }),
+    [type]
+  );
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
@@ -280,6 +286,7 @@ const ChatItem = (props: Props) => {
 
   return (
     <Box
+      data-chat-id={chat.dataId}
       _hover={{
         '& .time-label': {
           display: 'block'
@@ -304,7 +311,12 @@ const ChatItem = (props: Props) => {
                 }).replace('#', ':')}
               </Box>
             )}
-            <ChatController {...props} isLastChild={isLastChild} />
+            <ChatController
+              {...props}
+              isLastChild={isLastChild}
+              showFeedbackContent={showFeedbackContent}
+              onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
+            />
           </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
@@ -333,6 +345,37 @@ const ChatItem = (props: Props) => {
           </Flex>
         )}
       </Flex>
+
+      {/* User Feedback Content: Admin log show */}
+      {isChatLog &&
+        showFeedbackContent &&
+        chat.obj === ChatRoleEnum.AI &&
+        (chat.userGoodFeedback || chat.userBadFeedback) && (
+          <Box
+            mt={2}
+            maxW={'250'}
+            border={'1px solid'}
+            borderColor={'myGray.250'}
+            borderRadius={'md'}
+            p={3}
+          >
+            <Box fontSize={'sm'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
+              {chat.userBadFeedback || chat.userGoodFeedback}
+            </Box>
+            <Flex justifyContent={'flex-end'} mt={2}>
+              <Button
+                size={'xs'}
+                variant={'grayGhost'}
+                fontSize={'xs'}
+                onClick={() => setShowFeedbackContent(false)}
+                color={'primary.600'}
+              >
+                {t('chat:log.feedback.hide_feedback')}
+              </Button>
+            </Flex>
+          </Box>
+        )}
+
       {/* content */}
       {splitAiResponseResults.map((value, i) => (
         <Box

@@ -98,7 +98,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     type: 'delete',
     content: t('account_team:confirm_delete_org')
   });
-  const deleteOrgHandler = (orgId: string) => openDeleteOrgModal(() => deleteOrgReq(orgId))();
+  const deleteOrgHandler = (orgId: string) =>
+    openDeleteOrgModal({ onConfirm: () => deleteOrgReq(orgId) })();
   const { runAsync: deleteOrgReq } = useRequest2(deleteOrg, {
     onSuccess: refresh
   });
@@ -229,13 +230,15 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                           username: member.memberName
                                         }),
                                         onClick: () => {
-                                          openDeleteMemberFromTeamModal(
-                                            () => deleteMemberFromTeamReq(member.tmbId),
-                                            undefined,
-                                            t('account_team:confirm_delete_from_team', {
-                                              username: member.memberName
-                                            })
-                                          )();
+                                          openDeleteMemberFromTeamModal({
+                                            onConfirm: () => deleteMemberFromTeamReq(member.tmbId),
+                                            customContent: t(
+                                              'account_team:confirm_delete_from_team',
+                                              {
+                                                username: member.memberName
+                                              }
+                                            )
+                                          })();
                                         }
                                       },
                                       ...(isSyncMember
@@ -250,8 +253,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                               },
                                               label: t('account_team:delete_from_org'),
                                               onClick: () =>
-                                                openDeleteMemberFromOrgModal(
-                                                  () => {
+                                                openDeleteMemberFromOrgModal({
+                                                  onConfirm: () => {
                                                     if (currentOrg) {
                                                       return deleteMemberReq(
                                                         currentOrg._id,
@@ -259,11 +262,13 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                                       );
                                                     }
                                                   },
-                                                  undefined,
-                                                  t('account_team:confirm_delete_from_org', {
-                                                    username: member.memberName
-                                                  })
-                                                )()
+                                                  customContent: t(
+                                                    'account_team:confirm_delete_from_org',
+                                                    {
+                                                      username: member.memberName
+                                                    }
+                                                  )
+                                                })()
                                             }
                                           ])
                                     ]

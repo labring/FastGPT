@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';

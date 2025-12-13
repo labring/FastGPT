@@ -147,7 +147,7 @@ function MemberModal({
       newChildClbs
     });
     if (isConflict && isInheritPermission) {
-      return openConfirmDisableInheritPer(_onConfirm)();
+      return openConfirmDisableInheritPer({ onConfirm: _onConfirm })();
     } else {
       return _onConfirm();
     }

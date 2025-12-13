@@ -195,9 +195,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               onChange={(e) => {
                 const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
-                return onOpenConfirmRebuild(async () => {
-                  await onRebuilding(vectorModel);
-                  setValue('vectorModel', vectorModel);
+                return onOpenConfirmRebuild({
+                  onConfirm: async () => {
+                    await onRebuilding(vectorModel);
+                    setValue('vectorModel', vectorModel);
+                  }
                 })();
               }}
             />
@@ -264,16 +266,15 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 const autoSync = e.target.checked;
                 const text = autoSync ? t('dataset:open_auto_sync') : t('dataset:close_auto_sync');
 
-                onOpenConfirmSyncSchedule(
-                  async () => {
+                onOpenConfirmSyncSchedule({
+                  onConfirm: async () => {
                     return updateDataset({
                       id: datasetId,
                       autoSync
                     });
                   },
-                  undefined,
-                  text
-                )();
+                  customContent: text
+                })();
               }}
             />
           </Flex>

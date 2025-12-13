@@ -45,7 +45,9 @@ export const getScheduleTriggerApp = async () => {
       await delay(Math.floor(Math.random() * 60 * 1000));
 
       // Get app latest version
-      const { nodes, edges, chatConfig } = await retryFn(() => getAppLatestVersion(app._id, app));
+      const { versionId, nodes, edges, chatConfig } = await retryFn(() =>
+        getAppLatestVersion(app._id, app)
+      );
       const userQuery: UserChatItemValueItemType[] = [
         {
           type: ChatItemValueTypeEnum.text,
@@ -97,6 +99,7 @@ export const getScheduleTriggerApp = async () => {
         await saveChat({
           chatId,
           appId: app._id,
+          versionId,
           teamId: String(app.teamId),
           tmbId: String(app.tmbId),
           nodes,

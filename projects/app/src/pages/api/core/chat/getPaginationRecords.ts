@@ -21,7 +21,10 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 
 export type getPaginationRecordsQuery = {};
 
-export type getPaginationRecordsBody = PaginationProps & GetChatRecordsProps;
+export type getPaginationRecordsBody = PaginationProps &
+  GetChatRecordsProps & {
+    targetDataId?: string;
+  };
 
 export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
 
@@ -29,7 +32,13 @@ async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   _res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const { appId, chatId, loadCustomFeedbacks, type = GetChatTypeEnum.normal } = req.body;
+  const {
+    appId,
+    chatId,
+    loadCustomFeedbacks,
+    type = GetChatTypeEnum.normal,
+    targetDataId
+  } = req.body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
 
@@ -69,7 +78,8 @@ async function handler(
     chatId,
     field: fieldMap[type],
     offset,
-    limit: pageSize
+    limit: pageSize,
+    targetDataId
   });
 
   // Presign file urls

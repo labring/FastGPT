@@ -28,6 +28,7 @@ export type ChatSchemaType = {
   teamId: string;
   tmbId: string;
   appId: string;
+  appVersionId?: string;
   createTime: Date;
   updateTime: Date;
   title: string;
@@ -105,6 +106,7 @@ export type AIChatItemType = {
   userBadFeedback?: string;
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
+  isFeedbackRead?: boolean;
 
   durationSeconds?: number;
   errorMsg?: string;

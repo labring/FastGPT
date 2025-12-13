@@ -24,7 +24,8 @@ import {
   closeCustomFeedback,
   delChatRecordById,
   updateChatAdminFeedback,
-  updateChatUserFeedback
+  updateChatUserFeedback,
+  updateFeedbackReadStatus
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -70,7 +71,6 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
-const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
@@ -99,6 +99,7 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    onTriggerRefresh?: () => void;
   };
 
 const ChatBox = ({
@@ -110,7 +111,8 @@ const ChatBox = ({
   active = true,
   showWorkorder,
   onStartChat,
-  chatType
+  chatType,
+  onTriggerRefresh
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -883,26 +885,37 @@ const ChatBox = ({
       }
     };
   });
+  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
+    return async () => {
+      if (!appId || !chatId || !chat.dataId) return;
 
-  const showEmpty = useMemo(
-    () =>
-      chatType !== ChatTypeEnum.home &&
-      feConfigs?.show_emptyChat &&
-      showEmptyIntro &&
-      chatRecords.length === 0 &&
-      !commonVariableList?.length &&
-      !showExternalVariable &&
-      !welcomeText,
-    [
-      chatType,
-      feConfigs?.show_emptyChat,
-      showEmptyIntro,
-      chatRecords.length,
-      commonVariableList?.length,
-      showExternalVariable,
-      welcomeText
-    ]
-  );
+      const newReadStatus = !chat.isFeedbackRead;
+
+      try {
+        await updateFeedbackReadStatus({
+          appId,
+          chatId,
+          dataId: chat.dataId,
+          isRead: newReadStatus
+        });
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      } catch (error) {}
+    };
+  });
+
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -1067,9 +1080,8 @@ const ChatBox = ({
                       formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
                     ),
                     onAddUserLike: onAddUserLike(item),
-                    onCloseUserLike: onCloseUserLike(item),
                     onAddUserDislike: onAddUserDislike(item),
-                    onReadUserDislike: onReadUserDislike(item)
+                    onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                   }}
                 >
                   {/* custom feedback */}
@@ -1124,9 +1136,8 @@ const ChatBox = ({
     questionGuides,
     onMark,
     onAddUserLike,
-    onCloseUserLike,
     onAddUserDislike,
-    onReadUserDislike,
+    onToggleFeedbackReadStatus,
     t,
     showMarkIcon,
     onCloseCustomFeedback
@@ -1145,7 +1156,6 @@ const ChatBox = ({
         pb={6}
       >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1157,7 +1167,7 @@ const ChatBox = ({
         </Box>
       </ScrollData>
     );
-  }, [ScrollData, showEmpty, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
+  }, [ScrollData, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>

@@ -26,9 +26,10 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 
-type Props = {
+export type Props = {
   chatId: string;
   appId: string;
+  versionId?: string;
   teamId: string;
   tmbId: string;
   nodes: StoreNodeItemType[];
@@ -212,6 +213,7 @@ export async function saveChat(props: Props) {
   const {
     chatId,
     appId,
+    versionId,
     teamId,
     tmbId,
     nodes,
@@ -299,6 +301,7 @@ export async function saveChat(props: Props) {
             teamId,
             tmbId,
             appId,
+            versionId,
             chatId,
             variableList,
             welcomeText,
