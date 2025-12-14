@@ -18,7 +18,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
-export type GetCollectionQuoteProps = LinkedPaginationProps & {
+export type GetCollectionQuoteProps = LinkedPaginationProps<{}, number> & {
   chatId: string;
   chatItemDataId: string;
 
@@ -31,7 +31,7 @@ export type GetCollectionQuoteProps = LinkedPaginationProps & {
   teamToken?: string;
 };
 
-export type GetCollectionQuoteRes = LinkedListResponse<DatasetCiteItemType>;
+export type GetCollectionQuoteRes = LinkedListResponse<DatasetCiteItemType, number>;
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
@@ -40,11 +40,9 @@ async function handler(
 ): Promise<GetCollectionQuoteRes> {
   const {
     initialId,
-    initialIndex,
     prevId,
-    prevIndex,
     nextId,
-    nextIndex,
+    anchor: initialAnchor,
 
     collectionId,
     chatItemDataId,
@@ -75,7 +73,7 @@ async function handler(
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
 
-  if (!showRawSource || !chat || !chatItem) {
+  if (!showRawSource || !chat || !chatItem || initialAnchor === undefined) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
@@ -89,22 +87,21 @@ async function handler(
     ]
   };
 
-  if (initialId && initialIndex !== undefined) {
+  if (initialId) {
     return await handleInitialLoad({
       initialId,
-      initialIndex,
+      initialIndex: initialAnchor,
       pageSize: limitedPageSize,
       chatTime: chatItem.time,
       baseMatch
     });
   }
 
-  if ((prevId && prevIndex !== undefined) || (nextId && nextIndex !== undefined)) {
+  if (prevId || nextId) {
     return await handlePaginatedLoad({
       prevId,
-      prevIndex,
       nextId,
-      nextIndex,
+      nextAnchor: initialAnchor,
       pageSize: limitedPageSize,
       chatTime: chatItem.time,
       baseMatch
@@ -138,14 +135,18 @@ async function handleInitialLoad({
 
   if (!centerNode) {
     const list = await MongoDatasetData.find(baseMatch, quoteDataFieldSelector)
-      .sort({ chunkIndex: 1, _id: -1 })
+      .sort({ chunkIndex: 1 })
       .limit(pageSize)
       .lean();
 
     const hasMoreNext = list.length === pageSize;
 
     return {
-      list: processChatTimeFilter(getFormatDatasetCiteList(list), chatTime),
+      list: processChatTimeFilter(getFormatDatasetCiteList(list), chatTime).map((item) => ({
+        ...item,
+        id: item._id,
+        anchor: item.index
+      })),
       hasMorePrev: false,
       hasMoreNext
     };
@@ -170,7 +171,11 @@ async function handleInitialLoad({
   const resultList = [...prevList, centerNode, ...nextList];
 
   return {
-    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime),
+    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime).map((item) => ({
+      ...item,
+      id: item._id,
+      anchor: item.index
+    })),
     hasMorePrev,
     hasMoreNext
   };
@@ -178,30 +183,27 @@ async function handleInitialLoad({
 
 async function handlePaginatedLoad({
   prevId,
-  prevIndex,
   nextId,
-  nextIndex,
+  nextAnchor,
   pageSize,
   chatTime,
   baseMatch
 }: {
   prevId: string | undefined;
-  prevIndex: number | undefined;
   nextId: string | undefined;
-  nextIndex: number | undefined;
+  nextAnchor: number;
   pageSize: number;
   chatTime: Date;
   baseMatch: BaseMatchType;
 }): Promise<GetCollectionQuoteRes> {
-  const { list, hasMore } =
-    prevId && prevIndex !== undefined
-      ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
-      : await getNextNodes(nextId!, nextIndex!, pageSize, baseMatch);
+  const { list, hasMore } = prevId
+    ? await getPrevNodes(prevId, nextAnchor, pageSize, baseMatch)
+    : await getNextNodes(nextId!, nextAnchor, pageSize, baseMatch);
 
   const processedList = processChatTimeFilter(getFormatDatasetCiteList(list), chatTime);
 
   return {
-    list: processedList,
+    list: processedList.map((item) => ({ ...item, id: item._id, anchor: item.index })),
     hasMorePrev: !!prevId && hasMore,
     hasMoreNext: !!nextId && hasMore
   };
@@ -218,19 +220,17 @@ async function getPrevNodes(
 }> {
   const match: BaseMatchType = {
     ...baseMatch,
-    $or: [
-      { chunkIndex: { $lte: initialIndex } },
-      { chunkIndex: initialIndex, _id: { $lte: new Types.ObjectId(initialId) } }
-    ]
+    chunkIndex: { $lte: initialIndex },
+    _id: { $ne: new Types.ObjectId(initialId) }
   };
 
   const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
-    .sort({ chunkIndex: -1, _id: 1 })
+    .sort({ chunkIndex: -1 })
     .limit(limit)
     .lean();
 
   return {
-    list: list.filter((item) => String(item._id) !== initialId).reverse(),
+    list: list.reverse(),
     hasMore: list.length === limit
   };
 }
@@ -246,19 +246,17 @@ async function getNextNodes(
 }> {
   const match: BaseMatchType = {
     ...baseMatch,
-    $or: [
-      { chunkIndex: { $gte: initialIndex } },
-      { chunkIndex: initialIndex, _id: { $gte: new Types.ObjectId(initialId) } }
-    ]
+    chunkIndex: { $gte: initialIndex },
+    _id: { $ne: new Types.ObjectId(initialId) }
   };
 
   const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
-    .sort({ chunkIndex: 1, _id: -1 })
+    .sort({ chunkIndex: 1 })
     .limit(limit)
     .lean();
 
   return {
-    list: list.filter((item) => String(item._id) !== initialId),
+    list,
     hasMore: list.length === limit
   };
 }

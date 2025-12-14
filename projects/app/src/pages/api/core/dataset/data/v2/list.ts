@@ -50,7 +50,7 @@ async function handler(
 
   const [list, total] = await Promise.all([
     MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId teamId')
-      .sort({ chunkIndex: 1, _id: -1 })
+      .sort({ chunkIndex: 1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),

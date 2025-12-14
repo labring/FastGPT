@@ -65,7 +65,7 @@ const CollectionReader = ({
     if (item) {
       return {
         id: item.id,
-        index: item.chunkIndex,
+        anchor: item.chunkIndex,
         score: item.score
       };
     }

@@ -63,20 +63,20 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
             return this.constructor?.name || 'unknown';
           })();
           return {
+            duration,
             collectionName,
             op,
             ...(this._query && { query: this._query }),
             ...(this._pipeline && { pipeline: this._pipeline }),
             ...(this._update && { update: this._update }),
-            ...(this._delete && { delete: this._delete }),
-            duration
+            ...(this._delete && { delete: this._delete })
           };
         };
 
-        if (duration > 500) {
-          addLog.warn(`[Mongo Slow 1] ${duration}ms`, getLogData());
-        } else if (duration > 2000) {
-          addLog.warn(`[Mongo Slow 2] ${duration}ms`, getLogData());
+        if (duration > 2000) {
+          addLog.warn(`[Mongo Slow] Level2`, getLogData());
+        } else if (duration > 500) {
+          addLog.warn(`[Mongo Slow] Level1`, getLogData());
         }
       }
       next();

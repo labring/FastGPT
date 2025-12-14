@@ -58,6 +58,7 @@ const FeedbackTypeFilter = ({
       closeOnSelect={false}
       strategy={'fixed'}
       autoSelect={false}
+      placement="right"
     >
       <MenuButton
         as={Button}
