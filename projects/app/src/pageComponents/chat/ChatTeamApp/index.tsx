@@ -41,7 +41,8 @@ const MyApps = () => {
         [AppTypeEnum.folder]: t('common:Folder'),
         [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
         [AppTypeEnum.tool]: t('app:type.MCP tools'),
-        [AppTypeEnum.hidden]: t('app:type.hidden')
+        [AppTypeEnum.hidden]: t('app:type.hidden'),
+        [AppTypeEnum.assistant]: t('app:type.Smart customer service')
       }) satisfies Record<AppTypeEnum | 'all', string>,
     [t]
   );

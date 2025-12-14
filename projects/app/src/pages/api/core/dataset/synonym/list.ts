@@ -20,7 +20,7 @@ export type ListSynonymFilesQuery = {
 };
 
 export type ListSynonymFilesResponse = {
-  files: (DatasetSynonymSchemaType & { uploaderName?: string })[];
+  files: (DatasetSynonymSchemaType & { uploaderName?: string; uploaderAvatar?: string })[];
 };
 
 async function handler(
@@ -47,17 +47,23 @@ async function handler(
     datasetId: String(datasetId)
   });
 
-  // 3. 查询上传者姓名
+  // 3. 查询上传者姓名和头像
   const uploaderIds = files.map((file) => file.uploaderId);
-  const uploaders = await MongoTeamMember.find({ _id: { $in: uploaderIds } }, 'name').lean();
+  const uploaders = await MongoTeamMember.find({ _id: { $in: uploaderIds } }, 'name avatar').lean();
 
-  const uploaderMap = new Map(uploaders.map((u) => [String(u._id), u.name]));
+  const uploaderMap = new Map(
+    uploaders.map((u) => [String(u._id), { name: u.name, avatar: u.avatar }])
+  );
 
-  // 4. 合并上传者姓名到文件列表
-  const filesWithUploader = files.map((file) => ({
-    ...file,
-    uploaderName: uploaderMap.get(file.uploaderId)
-  }));
+  // 4. 合并上传者姓名和头像到文件列表
+  const filesWithUploader = files.map((file) => {
+    const uploader = uploaderMap.get(file.uploaderId);
+    return {
+      ...file,
+      uploaderName: uploader?.name,
+      uploaderAvatar: uploader?.avatar
+    };
+  });
 
   // 5. 返回结果
   return {
